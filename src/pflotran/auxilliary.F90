@@ -9,6 +9,7 @@ module Auxilliary_module
   use Flash2_Aux_Module
 #ifdef GENERAL
   use General_Aux_module
+  use Material_Aux_module
 #endif
   
   implicit none
@@ -27,20 +28,12 @@ module Auxilliary_module
     type(flash2_type), pointer :: Flash2
 #ifdef GENERAL
     type(general_type), pointer :: General
+    type(material_type), pointer :: Material
 #endif
   end type auxilliary_type
   
-#if 0
-  type, public :: auxilliary_coupler_type 
-    type(global_auxvar_type), pointer :: global_auxvar
-    type(reactive_transport_auxvar_type), pointer :: rt_auxvar
-  end type auxilliary_coupler_type
-#endif  
-  
   public :: AuxInit, &
             AuxDestroy
-!            AuxCouplerInit, &
-!            AuxCouplerDestroy
 
 contains
 
@@ -66,6 +59,7 @@ subroutine AuxInit(aux)
   nullify(aux%Flash2)
 #ifdef GENERAL
   nullify(aux%General)
+  nullify(aux%Material)
 #endif
 
 end subroutine AuxInit
@@ -90,6 +84,7 @@ subroutine AuxDestroy(aux)
   !call MphaseAuxDestroy(aux%Mphase)
 #ifdef GENERAL
   call GeneralAuxDestroy(aux%General)
+  call MaterialAuxDestroy(aux%Material)
 #endif
   nullify(aux%Global)
   nullify(aux%RT)
@@ -99,49 +94,9 @@ subroutine AuxDestroy(aux)
   nullify(aux%Immis)
 #ifdef GENERAL
   nullify(aux%General)
+  nullify(aux%Material)
 #endif  
+
 end subroutine AuxDestroy
-
-#if 0
-! ************************************************************************** !
-!
-! AuxCouplerInit: Nullifies pointers in auxilliary object for a coupler
-! author: Glenn Hammond
-! date: 04/09/08
-!
-! ************************************************************************** !
-subroutine AuxCouplerInit(aux)
-
-  implicit none
-  
-  type(auxilliary_coupler_type) :: aux
-  
-  nullify(aux%global_auxvar)
-  nullify(aux%rt_auxvar)
-  
-end subroutine AuxCouplerInit
-
-! ************************************************************************** !
-!
-! AuxCouplerDestroy: Deallocates any allocated pointers in auxilliary object
-!                    for a coupler
-! author: Glenn Hammond
-! date: 12/05/08
-!
-! ************************************************************************** !
-subroutine AuxCouplerDestroy(aux)
-
-  implicit none
-  
-  type(auxilliary_coupler_type) :: aux
-  
-  call GlobalAuxVarDestroy(aux%global_auxvar)
-  call RTAuxVarDestroy(aux%rt_auxvar)
-  
-  nullify(aux%global_auxvar)
-  nullify(aux%rt_auxvar)
-  
-end subroutine AuxCouplerDestroy
-#endif
 
 end module Auxilliary_module

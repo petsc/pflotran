@@ -247,6 +247,10 @@ PetscInt, parameter :: OBSERVATION_AT_COORDINATE = 2
 PetscInt, parameter :: LIQUID_PHASE = 1
 PetscInt, parameter :: GAS_PHASE = 2
 
+! thermodynamic state of fluid ids
+PetscInt, parameter :: LIQUID_STATE = 1
+PetscInt, parameter :: GAS_STATE = 2
+PetscInt, parameter :: TWO_PHASE_STATE = 3
 
 ! variable centerings
 PetscInt, parameter :: CELL_CENTERED = 0

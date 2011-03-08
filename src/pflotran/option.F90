@@ -72,6 +72,13 @@ module Option_module
     PetscInt :: nflowdof
     PetscInt :: nflowspec
 
+    PetscInt :: air_pressure_id
+    PetscInt :: capillary_pressure_id
+    PetscInt :: vapor_pressure_id 
+    PetscInt :: water_id  ! index of water component dof
+    PetscInt :: air_id  ! index of air component dof
+    PetscInt :: energy_id  ! index of energy dof
+
     PetscInt :: ntrandof
   
     PetscInt :: iflag
@@ -403,6 +410,14 @@ subroutine OptionInitRealization(option)
   option%nphase = 0
   option%liquid_phase = 0
   option%gas_phase = 0
+  
+  option%air_pressure_id = 0
+  option%capillary_pressure_id = 0
+  option%vapor_pressure_id = 0
+
+  option%water_id = 0
+  option%air_id = 0
+  option%energy_id = 0
   
   option%uniform_velocity = 0.d0
   option%store_solute_fluxes = PETSC_FALSE

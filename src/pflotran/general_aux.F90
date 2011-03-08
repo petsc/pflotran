@@ -7,18 +7,25 @@ module General_Aux_module
 #include "definitions.h"
 
   type, public :: general_auxvar_type
-    PetscReal, pointer :: xmol(:,:)
-    PetscReal, pointer :: dsat_dp(:,:)
-    PetscReal, pointer :: dden_dp(:,:)
-    PetscReal, pointer :: dsat_dt(:)
-    PetscReal, pointer :: dden_dt(:)
+    PetscReal, pointer :: pres(:)   ! (iphase)
+    PetscReal, pointer :: sat(:)    ! (iphase)
+    PetscReal, pointer :: den(:)    ! (iphase)
+    PetscReal, pointer :: den_kg(:) ! (iphase)
+    PetscReal :: temp
+    PetscReal, pointer :: xmol(:,:) ! (icomp,iphase)
+    PetscReal, pointer :: H(:)
+    PetscReal, pointer :: U(:)
+!    PetscReal, pointer :: dsat_dp(:,:)
+!    PetscReal, pointer :: dden_dp(:,:)
+!    PetscReal, pointer :: dsat_dt(:)
+!    PetscReal, pointer :: dden_dt(:)
     PetscReal, pointer :: kvr(:)
-    PetscReal, pointer :: dkvr_dp(:)
+!    PetscReal, pointer :: dkvr_dp(:)
   end type general_auxvar_type
   
-  type, public :: general_parameter_type
-    PetscReal, pointer :: sir(:,:)
-  end type general_parameter_type
+!  type, public :: general_parameter_type
+    ! placeholder
+!  end type general_parameter_type
   
   type, public :: general_type
     PetscInt :: n_zero_rows
@@ -27,14 +34,14 @@ module General_Aux_module
     PetscBool :: aux_vars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
-    type(general_parameter_type), pointer :: general_parameter
-    type(general_auxvar_type), pointer :: aux_vars(:)
+!    type(general_parameter_type), pointer :: general_parameter
+    type(general_auxvar_type), pointer :: aux_vars(:,:)
     type(general_auxvar_type), pointer :: aux_vars_bc(:)
   end type general_type
 
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
             GeneralAuxVarCompute, GeneralAuxVarInit, &
-            GeneralAuxVarCopy
+            GeneralAuxVarCopy, GeneralAuxVarDestroy
 
 contains
 
@@ -66,9 +73,6 @@ function GeneralAuxCreate()
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
-#ifdef GLENN
-  nullify(aux%matrix_buffer)
-#endif
 
   GeneralAuxCreate => aux
   
@@ -89,6 +93,23 @@ subroutine GeneralAuxVarInit(aux_var,option)
   
   type(general_auxvar_type) :: aux_var
   type(option_type) :: option
+
+  allocate(aux_var%pres(option%nphase+THREE_INTEGER))
+  aux_var%pres = 0.d0
+  allocate(aux_var%sat(option%nphase))
+  aux_var%sat = 0.d0
+  allocate(aux_var%den(option%nphase))
+  aux_var%den = 0.d0
+  allocate(aux_var%den_kg(option%nphase))
+  aux_var%den_kg = 0.d0
+  allocate(aux_var%xmol(option%nflowspec,option%nphase))
+  aux_var%xmol = 0.d0
+  allocate(aux_var%H(option%nphase))
+  aux_var%H = 0.d0
+  allocate(aux_var%U(option%nphase))
+  aux_var%U = 0.d0
+  allocate(aux_var%kvr(option%nphase))
+  aux_var%kvr = 0.d0
   
 end subroutine GeneralAuxVarInit
 
@@ -108,6 +129,16 @@ subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
   type(general_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
+  aux_var2%pres = aux_var%pres
+  aux_var2%temp = aux_var%temp
+  aux_var2%sat = aux_var%sat
+  aux_var2%den = aux_var%den
+  aux_var2%den_kg = aux_var%den_kg
+  aux_var2%xmol = aux_var%xmol
+  aux_var2%H = aux_var%H
+  aux_var2%U = aux_var%U
+  aux_var2%kvr = aux_var%kvr
+
 end subroutine GeneralAuxVarCopy
   
 ! ************************************************************************** !
@@ -117,12 +148,13 @@ end subroutine GeneralAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine GeneralAuxVarCompute(x,aux_var,global_aux_var,&
+subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                                 saturation_function,por,perm,option)
 
   use Option_module
   use Global_Aux_module
   use water_eos_module
+  use Gas_Eos_module
   use Saturation_Function_module
   
   implicit none
@@ -130,96 +162,152 @@ subroutine GeneralAuxVarCompute(x,aux_var,global_aux_var,&
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
-  type(general_auxvar_type) :: aux_var
+  type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
 
   PetscReal :: por, perm
-
-#if 0
-  PetscInt :: iphase
+  PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: den_wat_vap, den_kg_wat_vap, h_wat_vap
+  PetscReal :: den_air, h_air
+  PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
+  PetscReal :: krl, visl, dkrl_Se
+  PetscReal :: krg, visg, dkrg_Se
+  PetscReal :: K_H
+  PetscInt :: apid, cid, vid
   PetscErrorCode :: ierr
-  PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal :: kr, ds_dp, dkr_dp
-  PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
-  PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cid = option%capillary_pressure_id
+  vid = option%vapor_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
   
-  global_aux_var%sat = 0.d0
-  global_aux_var%den = 0.d0
-  global_aux_var%den_kg = 0.d0
-  aux_var%kvr = 0.d0
-  kr = 0.d0
- 
-  global_aux_var%pres = x(1)
-  global_aux_var%temp = option%reference_temperature
- 
-  aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
+  
+  gen_aux_var%H = 0.d0
+  gen_aux_var%U = 0.d0
+  
+  select case(global_aux_var%istate)
+    case(LIQUID_STATE)
+      gen_aux_var%pres(lid) = x(ONE_INTEGER)
+      gen_aux_var%xmol(acid,lid) = x(TWO_INTEGER)
+      gen_aux_var%temp = x(THREE_INTEGER)
 
-!***************  Liquid phase properties **************************
-  pw = option%reference_pressure
-  ds_dp = 0.d0
-  dkr_dp = 0.d0
-!  if (aux_var%pc > 0.d0) then
-  if (aux_var%pc > 1.d0) then
-    iphase = 3
-    call SaturationFunctionCompute(global_aux_var%pres(1),global_aux_var%sat(1),kr, &
-                                   ds_dp,dkr_dp, &
-                                   saturation_function, &
-                                   por,perm,option)
-  else
-    iphase = 1
-    aux_var%pc = 0.d0
-    global_aux_var%sat = 1.d0  
-    kr = 1.d0    
-    pw = global_aux_var%pres(1)
-  endif  
+      gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
+      gen_aux_var%sat(lid) = 1.d0
+      gen_aux_var%sat(gid) = 0.d0
 
-!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-              hw_dp,hw_dt,option%scale,ierr)
+      call psat(gen_aux_var%temp,gen_aux_var%pres(vid),ierr)
 
-! may need to compute dpsat_dt to pass to VISW
-  call psat(global_aux_var%temp(1),sat_pressure,ierr)
-!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
-  dvis_dpsat = -dvis_dp 
-  if (iphase == 3) then !kludge since pw is constant in the unsat zone
-    dvis_dp = 0.d0
-    dw_dp = 0.d0
-    hw_dp = 0.d0
+    case(GAS_STATE)
+      gen_aux_var%pres(gid) = x(ONE_INTEGER)
+      gen_aux_var%pres(apid) = x(TWO_INTEGER)
+      gen_aux_var%temp = x(THREE_INTEGER)
+
+      gen_aux_var%sat(lid) = 0.d0
+      gen_aux_var%sat(gid) = 1.d0
+      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
+      gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
+      gen_aux_var%pres(vid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
+
+    case(TWO_PHASE_STATE)
+      gen_aux_var%pres(gid) = x(ONE_INTEGER)
+      gen_aux_var%pres(acid) = x(TWO_INTEGER)
+      gen_aux_var%sat(gid) = x(THREE_INTEGER)
+      
+      gen_aux_var%sat(lid) = 1.d0 - gen_aux_var%sat(gid)
+      gen_aux_var%pres(vid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
+      
+      call SatFuncGetCapillaryPressure(gen_aux_var%pres(cid), &
+                                       gen_aux_var%sat(lid), &
+                                       saturation_function,option)      
+
+      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cid)
+
+      call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
+                             gen_aux_var%pres(vid),K_H)
+      gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / &
+                                  (gen_aux_var%pres(gid)*K_H)
+      gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(apid,lid)
+      gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
+      gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
+
+  end select
+
+  if (global_aux_var%istate == LIQUID_STATE .or. &
+      global_aux_var%istate == TWO_PHASE_STATE) then
+    call wateos_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
+                        gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
+                        gen_aux_var%H(lid),option%scale,ierr)
+
+    gen_aux_var%U(lid) = gen_aux_var%H(lid) - &
+                         (gen_aux_var%pres(lid) / gen_aux_var%den(lid))
+                         
+    call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
+                                  saturation_function,lid,PETSC_FALSE,option)
+    call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
+                      gen_aux_var%pres(vid),visl,ierr)
+    gen_aux_var%kvr(lid) = krl/visl
   endif
- 
-  global_aux_var%den = dw_mol
-  global_aux_var%den_kg = dw_kg
-  aux_var%kvr = kr/visl
-  
-!  aux_var%vis = visl
-!  aux_var%dvis_dp = dvis_dp
-!  aux_var%kr = kr
-!  aux_var%dkr_dp = dkr_dp
-  aux_var%dsat_dp = ds_dp
 
-  aux_var%dden_dp = dw_dp
-  
-  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+  if (global_aux_var%istate == GAS_STATE .or. &
+      global_aux_var%istate == TWO_PHASE_STATE) then
+    call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
+                              option%scale,den_air,h_air,u)
+    call steameos(gen_aux_var%temp,gen_aux_var%pres(vid), &
+                  gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
+                  h_wat_vap,hgp,hgt,option%scale,ierr)      
+    
+    gen_aux_var%den(gid) = den_wat_vap + den_air
+    gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
+    gen_aux_var%H(gid) = gen_aux_var%xmol(wid,gid)*h_wat_vap + &
+                         gen_aux_var%xmol(acid,gid)*h_air
+    gen_aux_var%U(gid) = gen_aux_var%H(gid) - &
+                         (gen_aux_var%pres(gid) / gen_aux_var%den(gid))
 
-#endif
+    call SatFuncGetRelPermFromSat(gen_aux_var%sat(gid),krg,dkrg_Se, &
+                                  saturation_function,gid,PETSC_FALSE,option)
+    call visgas_noderiv(gen_aux_var%temp,gen_aux_var%pres(apid), &
+                        gen_aux_var%pres(gid),den_air,visg)
+    gen_aux_var%kvr(gid) = krg/visg
+  endif
 
 end subroutine GeneralAuxVarCompute
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a general auxilliary object
+! GeneralAuxVarDestroy: Deallocates a general auxilliary object
 ! author: Glenn Hammond
 ! date: 01/05/10
 !
 ! ************************************************************************** !
-subroutine AuxVarDestroy(aux_var)
+subroutine GeneralAuxVarDestroy(aux_var)
 
   implicit none
 
   type(general_auxvar_type) :: aux_var
   
-end subroutine AuxVarDestroy
+  if (associated(aux_var%pres)) deallocate(aux_var%pres)
+  nullify(aux_var%pres)
+  if (associated(aux_var%sat)) deallocate(aux_var%sat)
+  nullify(aux_var%sat)
+  if (associated(aux_var%den)) deallocate(aux_var%den)
+  nullify(aux_var%den)
+  if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
+  nullify(aux_var%den_kg)
+  if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
+  nullify(aux_var%xmol)
+  if (associated(aux_var%H)) deallocate(aux_var%H)
+  nullify(aux_var%H)
+  if (associated(aux_var%U)) deallocate(aux_var%U)
+  nullify(aux_var%U)
+  if (associated(aux_var%kvr)) deallocate(aux_var%kvr)
+  nullify(aux_var%kvr)
+  
+end subroutine GeneralAuxVarDestroy
 
 ! ************************************************************************** !
 !
@@ -233,20 +321,22 @@ subroutine GeneralAuxDestroy(aux)
   implicit none
 
   type(general_type), pointer :: aux
-  PetscInt :: iaux
+  PetscInt :: iaux, idof
   
   if (.not.associated(aux)) return
   
   if (associated(aux%aux_vars)) then
     do iaux = 1, aux%num_aux
-      call AuxVarDestroy(aux%aux_vars(iaux))
+      do idof = 1, size(aux%aux_vars,ONE_INTEGER)
+        call GeneralAuxVarDestroy(aux%aux_vars(idof,iaux))
+      enddo
     enddo  
     deallocate(aux%aux_vars)
   endif
   nullify(aux%aux_vars)
   if (associated(aux%aux_vars_bc)) then
     do iaux = 1, aux%num_aux_bc
-      call AuxVarDestroy(aux%aux_vars_bc(iaux))
+      call GeneralAuxVarDestroy(aux%aux_vars_bc(iaux))
     enddo  
     deallocate(aux%aux_vars_bc)
   endif

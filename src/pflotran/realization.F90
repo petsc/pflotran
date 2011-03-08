@@ -735,10 +735,12 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     if (.not.associated(cur_material_property)) exit
 
     ! obtain saturation function id
-    cur_material_property%saturation_function_id = &
-      SaturationFunctionGetID(realization%saturation_functions, &
-                              cur_material_property%saturation_function_name, &
-                              cur_material_property%name,option)
+    if (option%iflowmode /= NULL_MODE) then
+      cur_material_property%saturation_function_id = &
+        SaturationFunctionGetID(realization%saturation_functions, &
+                                cur_material_property%saturation_function_name, &
+                                cur_material_property%name,option)
+    endif
     
     ! if named, link dataset to property
     if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
