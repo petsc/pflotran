@@ -33,6 +33,11 @@ module Material_module
     PetscReal :: mnrl_surf_area_volfrac_pwr
     PetscReal :: mnrl_surf_area_porosity_pwr
     PetscReal :: permeability_pwr
+#ifdef SUBCONTINUUM_MODEL
+    PetscInt, pointer :: subcontinuum_property_id(:)
+    character(len=MAXSTRINGLENGTH), pointer :: subcontinuum_type_name(:)
+    PetscInt, pointer :: subcontinuum_type_count(:)
+#endif
     type(material_property_type), pointer :: next
   end type material_property_type
   
@@ -91,6 +96,10 @@ function MaterialPropertyCreate()
   material_property%mnrl_surf_area_volfrac_pwr = 0.d0
   material_property%mnrl_surf_area_porosity_pwr = 0.d0
   material_property%permeability_pwr = 0.d0
+#ifdef SUBCONTINUUM_MODEL
+  nullify(material_property%subcontinuum_type_name)
+  nullify(material_property%subcontinuum_type_count)
+#endif
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
@@ -300,6 +309,51 @@ subroutine MaterialPropertyRead(material_property,input,option)
             call InputErrorMsg(input,option,'porosity power', &
                    'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
         end select
+
+#ifdef SUBCONTINUUM_MODEL
+      case('SUBCONTINUUM')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,SUBCONTINUUM')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,SUBCONTINUUM')   
+          select case(trim(word))
+            case('NUM_SUBCONTINUUM_TYPE')
+              call InputReadInt(input,option, &
+                                   material_property%num_subcontinuum_type)
+              call InputErrorMsg(input,option,'num_subcontinuum_type', &
+                                 'MATERIAL_PROPERTY,SUBCONTINUUM')
+          end select
+
+          allocate(material_property%subcontinuum_type_name(material_property%num_subcontinuum_type))
+          allocate(material_property%subcontinuum_type_count(material_property%num_subcontinuum_type))
+
+          do i=1,material_property%num_subcontinuum_type
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,SUBCONTINUUM')
+          
+            if (InputCheckExit(input,option)) exit          
+          
+            if (InputError(input)) exit
+            call InputReadWord(input,option, &
+                    material_property%subcontinuum_type_name(i),PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,SUBCONTINUUM')   
+            call InputReadInt(input,option, &
+                    material_property%subcontinuum_type_count(i),PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,SUBCONTINUUM')   
+          enddo
+        enddo      
+#endif
+
       case default
         option%io_buffer = 'Keyword (' // trim(keyword) // &
                            ') not recognized in material_property'    
