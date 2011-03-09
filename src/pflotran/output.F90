@@ -329,9 +329,7 @@ subroutine OutputTecplotBlock(realization)
       case(RICHARDS_MODE)
        string2 = RichardsGetTecplotHeader(realization,icolumn)
       case(G_MODE)
-#ifdef GENERAL      
        string2 = GeneralGetTecplotHeader(realization,icolumn)
-#endif
     end select
     string = trim(string) // trim(string2)
     
@@ -1326,9 +1324,7 @@ subroutine OutputTecplotPoint(realization)
       case(RICHARDS_MODE)
        string2 = RichardsGetTecplotHeader(realization,icolumn)
       case(G_MODE)
-#ifdef GENERAL      
        string2 = GeneralGetTecplotHeader(realization,icolumn)
-#endif
     end select
     string = trim(string) // trim(string2)
     
@@ -6964,9 +6960,7 @@ subroutine OutputMassBalanceNew(realization)
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(G_MODE)
-#ifdef GENERAL
         call GeneralComputeMassBalance(realization,sum_kg(1,:))
-#endif
     end select
     int_mpi = option%nflowspec*option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &

@@ -326,10 +326,8 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
                              realization,ierr)
       case(G_MODE)
-#ifdef GENERAL      
         call SNESSetFunction(flow_solver%snes,field%flow_r,GeneralResidual, &
                              realization,ierr)
-#endif
     end select
     
     if (flow_solver%J_mat_type == MATMFFD) then
@@ -361,10 +359,8 @@ subroutine Init(simulation)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              FLASH2Jacobian,realization,ierr)
       case(G_MODE)
-#ifdef GENERAL      
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              GeneralJacobian,realization,ierr)
-#endif
     end select
     
     ! by default turn off line search
@@ -608,9 +604,7 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
       case(G_MODE)
-#ifdef GENERAL
         call GeneralSetup(realization)
-#endif
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
@@ -641,9 +635,7 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
       case(G_MODE)
-#ifdef GENERAL      
         call GeneralUpdateAuxVars(realization)
-#endif
     end select
   endif
 

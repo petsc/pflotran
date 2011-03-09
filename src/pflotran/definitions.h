@@ -165,6 +165,13 @@ PetscInt, parameter :: MPH_ENTHALPY_DOF = 5
 PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
 PetscInt, parameter :: RICHARDS_CONDUCTANCE_DOF = 2
 
+PetscInt, parameter :: GENERAL_LIQUID_PRESSURE_DOF = 1
+PetscInt, parameter :: GENERAL_GAS_PRESSURE_DOF = 2
+PetscInt, parameter :: GENERAL_LIQUID_FLUX_DOF = 1
+PetscInt, parameter :: GENERAL_GAS_FLUX_DOF = 2
+PetscInt, parameter :: GENERAL_LIQUID_CONDUCTANCE_DOF = 3
+PetscInt, parameter :: GENERAL_GAS_CONDUCTANCE_DOF = 4
+
 ! output definitions
 PetscInt, parameter :: X_COORDINATE = 1
 PetscInt, parameter :: Y_COORDINATE = 2

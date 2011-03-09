@@ -23,7 +23,6 @@ module General_module
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
-#ifdef GENERAL  
   public GeneralResidual, GeneralJacobian, &
          GeneralUpdateFixedAccum, GeneralTimeCut,&
          GeneralSetup, GeneralNumericalJacTest, &
@@ -452,7 +451,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
     if (patch%imat(ghosted_id) <= 0) cycle
    
     call GeneralAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id), &
-                       gen_aux_vars(ONE_INTEGER,ghosted_id), &
+                       gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
@@ -676,14 +675,14 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
     call GeneralAuxVarCompute(xx_p(local_id:local_id), &
-                              gen_aux_vars(ONE_INTEGER,ghosted_id), &
+                              gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               realization%saturation_function_array( &
                                 int(icap_loc_p(ghosted_id)))%ptr, &
                               porosity_loc_p(ghosted_id), &
                               perm_xx_loc_p(ghosted_id), &                        
                               option)
-    call GeneralAccumulation(gen_aux_vars(ONE_INTEGER,ghosted_id), &
+    call GeneralAccumulation(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                              global_aux_vars(ghosted_id), &
                              material_parameter%dencpr(imat), &
                              porosity_loc_p(ghosted_id), &
@@ -794,99 +793,81 @@ end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
 !
-! GeneralAccumDerivative: Computes derivatives of the accumulation 
-!                                 term for the Jacobian
+! GeneralAuxVarPerturb: Calculates auxilliary variables for perturbed system
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
-subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,dencpr,por,vol, &
-                                  option,sat_func,J)
+subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
+                                saturation_function,option)
 
   use Option_module
   use Saturation_Function_module
-  
+
   implicit none
 
-  type(general_auxvar_type) :: gen_aux_var
-  type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal :: dencpr, vol, por
-  type(saturation_function_type) :: sat_func
-  PetscReal :: J(option%nflowdof,option%nflowdof)
+  type(general_auxvar_type) :: gen_aux_var(0:)
+  type(global_auxvar_type) :: global_aux_var
+  type(saturation_function_type) :: saturation_function
      
-  type(general_auxvar_type) :: gen_aux_var_pert
-  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), pert
+  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), pert(option%nflowdof)
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
-
-  PetscInt :: idof, irow
-
-  ! accumulation term units = dkmol/dp
-  ! for now, skip over analytical derivative
-#if 0
-  J(1,1) = (global_aux_var%sat(1)*gen_aux_var%dden_dp+ &
-            gen_aux_var%dsat_dp*global_aux_var%den(1))* &
-            porXvol
-#endif
-
-!geh  if (option%numerical_derivatives) then
-    call GeneralAuxVarInit(gen_aux_var_pert,option)  
-    call GeneralAuxVarCopy(gen_aux_var,gen_aux_var_pert,option)
-
-    call GeneralAccumulation(gen_aux_var,global_aux_var,dencpr, &
-                             por,vol,option,res)
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  PetscInt :: idof
 
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-       x(ONE_INTEGER) = gen_aux_var%pres(option%liquid_phase)
-       x(TWO_INTEGER) = gen_aux_var%xmol(option%air_id,option%liquid_phase)
-       x(THREE_INTEGER) = gen_aux_var%temp
+       x(ONE_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
+       x(TWO_INTEGER) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
+       x(THREE_INTEGER) = gen_aux_var(ZERO_INTEGER)%temp
+       pert(ONE_INTEGER) = 1.d0
+       pert(TWO_INTEGER) = perturbation_tolerance*x(TWO_INTEGER)
+       pert(THREE_INTEGER) = perturbation_tolerance*x(THREE_INTEGER)
     case(GAS_STATE)
-       x(ONE_INTEGER) = gen_aux_var%pres(option%gas_phase)
-       x(TWO_INTEGER) = gen_aux_var%pres(option%air_pressure_id)
-       x(THREE_INTEGER) = gen_aux_var%temp
+       x(ONE_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
+       x(TWO_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
+       x(THREE_INTEGER) = gen_aux_var(ZERO_INTEGER)%temp
+       pert(ONE_INTEGER) = 1.d0
+       if (x(ONE_INTEGER) - x(TWO_INTEGER) > 1.d0) then 
+         pert(TWO_INTEGER) = 1.d0
+       else
+         pert(TWO_INTEGER) = -1.d0
+       endif
+       pert(THREE_INTEGER) = perturbation_tolerance*x(THREE_INTEGER)
     case(TWO_PHASE_STATE)
-       x(ONE_INTEGER) = gen_aux_var%pres(option%gas_phase)
-       x(TWO_INTEGER) = gen_aux_var%pres(option%air_pressure_id)
-       x(THREE_INTEGER) = gen_aux_var%sat(option%gas_phase)
+       x(ONE_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
+       x(TWO_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
+       x(THREE_INTEGER) = gen_aux_var(ZERO_INTEGER)%sat(option%gas_phase)
+       pert(ONE_INTEGER) = 1.d0
+       if (x(ONE_INTEGER) - x(TWO_INTEGER) > 1.d0) then 
+         pert(TWO_INTEGER) = 1.d0
+       else
+         pert(TWO_INTEGER) = -1.d0
+       endif
+       if (x(THREE_INTEGER) > 0.5d0) then 
+         pert(THREE_INTEGER) = -perturbation_tolerance*x(THREE_INTEGER)
+       else
+         pert(THREE_INTEGER) = perturbation_tolerance*x(THREE_INTEGER)
+       endif
   end select
   
-    do idof = 1, option%nflowdof
-      pert = x(idof)*perturbation_tolerance
-      x_pert(idof) = x(idof) + pert
-      call GeneralAuxVarCompute(x_pert,gen_aux_var_pert,global_aux_var, &
-                                sat_func,0.d0,0.d0,option)
-#if 0    
-      select case(ideriv)
-        case(1)
-!         print *, 'dvis_dp:', gen_aux_var%dvis_dp, (aux_var_pert%vis-aux_var%vis)/pert(ideriv)
-!         print *, 'dkr_dp:', gen_aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
-          print *, 'dsat_dp:', gen_aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
-          print *, 'dden_dp:', gen_aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
-          print *, 'dkvr_dp:', gen_aux_var%dkvr_dp, (gen_aux_var_pert%kvr-gen_aux_var%kvr)/pert
-      end select     
-#endif
-
-      call GeneralAccumulation(gen_aux_var_pert,global_aux_var,dencpr, &
-                               por,vol,option,res)
-
-      do irow = 1, option%nflowdof
-        J(irow,idof) = (res_pert(irow)-res(irow))/pert
-      enddo !irow
-    enddo ! idof
-
-    call GeneralAuxVarDestroy(gen_aux_var_pert)
-    
-!  endif !option%numerical_derivatives
-
-end subroutine GeneralAccumDerivative
-
+  do idof = 1, option%nflowdof
+    gen_aux_var(idof)%pert = pert(idof)
+    x_pert = x
+    x_pert(idof) = x(idof) + pert(idof)
+    call GeneralAuxVarCompute(x_pert,gen_aux_var(idof),global_aux_var, &
+                              saturation_function,0.d0,0.d0,option)
+  enddo
+  
+end subroutine GeneralAuxVarPerturb
+  
 ! ************************************************************************** !
 !
 ! GeneralAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !  
 subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
@@ -917,7 +898,6 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
   Res = 0.d0
   do icomp = 1, option%nflowspec
     do iphase = 1, option%nphase
-      ! gas component
       Res(icomp) = Res(icomp) + gen_aux_var%sat(iphase) * &
                                 gen_aux_var%den(iphase) * &
                                 gen_aux_var%xmol(icomp,iphase)
@@ -940,173 +920,50 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
                                     (1.d0 - por) * dencpr * gen_aux_var%temp
 
 end subroutine GeneralAccumulation
-
+  
 ! ************************************************************************** !
 !
-! GeneralFluxDerivative: Computes the derivatives of the internal flux terms
-!                         for the Jacobian
+! GeneralAccumDerivative: Computes derivatives of the accumulation 
+!                                 term for the Jacobian
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
-! ************************************************************************** ! 
-subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
-                                  sir_up,dd_up,perm_up, &
-                                  gen_aux_var_dn,global_aux_var_dn,por_dn, &
-                                  sir_dn,dd_dn,perm_dn, &
-                                  area,dist_gravity,upweight, &
-                                  option,sat_func_up,sat_func_dn,Jup,Jdn)
-  use Option_module 
-  use Saturation_Function_module                        
+! ************************************************************************** !
+subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,dencpr,por,vol, &
+                                  option,J)
+
+  use Option_module
+  use Saturation_Function_module
   
   implicit none
-  
-  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+
+  type(general_auxvar_type) :: gen_aux_var(0:)
+  type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal :: sir_up, sir_dn
-  PetscReal :: por_up, por_dn
-  PetscReal :: dd_up, dd_dn
-  PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy
-  PetscReal :: area
-  PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: upweight
-  type(saturation_function_type) :: sat_func_up, sat_func_dn
-  PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
+  PetscReal :: dencpr, vol, por
+  PetscReal :: J(option%nflowdof,option%nflowdof)
+     
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscInt :: idof, irow
 
-  PetscReal :: q
-  PetscReal :: ukvr,Dq
-  PetscReal :: density_ave,cond,gravity,dphi
-  
-  PetscReal :: dden_ave_dp_up, dden_ave_dp_dn
-  PetscReal :: dgravity_dden_up, dgravity_dden_dn
-  PetscReal :: dphi_dp_up, dphi_dp_dn
-  PetscReal :: dukvr_dp_up, dukvr_dp_dn
-  PetscReal :: dq_dp_up, dq_dp_dn
+  call GeneralAccumulation(gen_aux_var(ZERO_INTEGER),global_aux_var,dencpr, &
+                           por,vol,option,res)
+                           
+  do idof = 1, option%nflowdof
+    call GeneralAccumulation(gen_aux_var(idof),global_aux_var,dencpr, &
+                             por,vol,option,res_pert)
+    do irow = 1, option%nflowdof
+      J(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var(idof)%pert
+    enddo !irow
+  enddo ! idof
 
-  PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: gen_aux_var_pert_up, gen_aux_var_pert_dn
-  type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
-  PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
-            res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
-  
-  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-  
-  v_darcy = 0.D0 
-  
-  Jup = 0.d0
-  Jdn = 0.d0 
-  
-  dden_ave_dp_up = 0.d0
-  dden_ave_dp_dn = 0.d0
-  dgravity_dden_up = 0.d0
-  dgravity_dden_dn = 0.d0
-  dphi_dp_up = 0.d0
-  dphi_dp_dn = 0.d0
-  dukvr_dp_up = 0.d0
-  dukvr_dp_dn = 0.d0
-  dq_dp_up = 0.d0
-  dq_dp_dn = 0.d0
-  
-! Flow term
-#ifdef GENERAL2
-  if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
-    if (global_aux_var_up%sat(1) <eps) then 
-      upweight=0.d0
-    else if (global_aux_var_dn%sat(1) <eps) then 
-      upweight=1.d0
-    endif
-    density_ave = upweight*global_aux_var_up%den(1)+ &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)
-    dden_ave_dp_up = upweight*gen_aux_var_up%dden_dp
-    dden_ave_dp_dn = (1.D0-upweight)*gen_aux_var_dn%dden_dp
-
-    gravity = (upweight*global_aux_var_up%den(1) + &
-              (1.D0-upweight)*global_aux_var_dn%den(1)) &
-              * FMWH2O * dist_gravity
-    dgravity_dden_up = upweight*FMWH2O*dist_gravity
-    dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
-
-    dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
-    dphi_dp_up = 1.d0 + dgravity_dden_up*gen_aux_var_up%dden_dp
-    dphi_dp_dn = -1.d0 + dgravity_dden_dn*gen_aux_var_dn%dden_dp
-
-    if (dphi>=0.D0) then
-      ukvr = gen_aux_var_up%kvr
-      dukvr_dp_up = gen_aux_var_up%dkvr_dp
-    else
-      ukvr = gen_aux_var_dn%kvr
-      dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
-    endif      
-   
-    if (ukvr>floweps) then
-      v_darcy= Dq * ukvr * dphi
-   
-      q = v_darcy * area
-      dq_dp_up = Dq*(dukvr_dp_up*dphi+ukvr*dphi_dp_up)*area
-      dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
-      
-      Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)
-      Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
-    endif
-  endif 
-#endif
- ! note: Res is the flux contribution, for node up J = J + Jup
- !                                              dn J = J - Jdn  
-
-  if (option%numerical_derivatives) then
-    call GlobalAuxVarInit(global_aux_var_pert_up,option)
-    call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call GeneralAuxVarCopy(gen_aux_var_up,gen_aux_var_pert_up,option)
-    call GeneralAuxVarCopy(gen_aux_var_dn,gen_aux_var_pert_dn,option)
-    call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
-    call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
-    x_up(1) = global_aux_var_up%pres(1)
-    x_dn(1) = global_aux_var_dn%pres(1)
-    call GeneralFlux(gen_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
-                      gen_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
-                      area,dist_gravity,upweight, &
-                      option,v_darcy,res)
-    ideriv = 1
-    pert_up = x_up(ideriv)*perturbation_tolerance
-    pert_dn = x_dn(ideriv)*perturbation_tolerance
-    x_pert_up = x_up
-    x_pert_dn = x_dn
-    x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
-    x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call GeneralAuxVarCompute(x_pert_up(1),gen_aux_var_pert_up, &
-                               global_aux_var_pert_up,sat_func_up, &
-                               0.d0,0.d0,option)
-    call GeneralAuxVarCompute(x_pert_dn(1),gen_aux_var_pert_dn, &
-                               global_aux_var_pert_dn,sat_func_dn, &
-                               0.d0,0.d0,option)
-    call GeneralFlux(gen_aux_var_pert_up,global_aux_var_pert_up, &
-                      por_up,sir_up,dd_up,perm_up, &
-                      gen_aux_var_dn,global_aux_var_dn, &
-                      por_dn,sir_dn,dd_dn,perm_dn, &
-                      area,dist_gravity,upweight, &
-                      option,v_darcy,res_pert_up)
-    call GeneralFlux(gen_aux_var_up,global_aux_var_up, &
-                      por_up,sir_up,dd_up,perm_up, &
-                      gen_aux_var_pert_dn,global_aux_var_pert_dn, &
-                      por_dn,sir_dn,dd_dn,perm_dn, &
-                      area,dist_gravity,upweight, &
-                      option,v_darcy,res_pert_dn)
-    J_pert_up(1,ideriv) = (res_pert_up(1)-res(1))/pert_up
-    J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
-    Jup = J_pert_up
-    Jdn = J_pert_dn
-    call GlobalAuxVarDestroy(global_aux_var_pert_up)
-    call GlobalAuxVarDestroy(global_aux_var_pert_dn)    
-  endif
-
-end subroutine GeneralFluxDerivative
+end subroutine GeneralAccumDerivative
 
 ! ************************************************************************** !
 !
 ! GeneralFlux: Computes the internal flux terms for the residual
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** ! 
 subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
@@ -1126,349 +983,366 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy
+  PetscReal :: v_darcy(option%nphase)
   PetscReal :: area
-  PetscReal :: Res(option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: upweight
+  PetscReal :: Res(option%nflowdof)
 
-#if 0
-
-  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+  PetscReal :: upweight_adj
+  PetscInt :: wat_comp_id, air_comp_id, energy_id
+  PetscInt :: icomp, iphase
   
-  fluxm = 0.d0
-  v_darcy = 0.D0  
+  PetscReal :: fmw_phase(option%nphase)
+  PetscReal :: xmol(option%nflowspec)
+  PetscReal :: density_ave
+  PetscReal :: H_ave
+  PetscReal :: perm_ave_over_dist
+  PetscReal :: delta_pressure
+  PetscReal :: gravity
+  PetscReal :: ukvr, mole_flux, q
   
-! Flow term
-  if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
-    if (global_aux_var_up%sat(1) <eps) then 
-      upweight=0.d0
-    else if (global_aux_var_dn%sat(1) <eps) then 
-      upweight=1.d0
-    endif
-    density_ave = upweight*global_aux_var_up%den(1)+ &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)
+  wat_comp_id = option%water_id
+  air_comp_id = option%air_id
+  energy_id = option%energy_id
 
-    gravity = (upweight*global_aux_var_up%den(1) + &
-              (1.D0-upweight)*global_aux_var_dn%den(1)) &
-              * FMWH2O * dist_gravity
+  fmw_phase(option%liquid_phase) = FMWH2O
+  fmw_phase(option%gas_phase) = FMWAIR
 
-    dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
+  perm_ave_over_dist = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
 
-#ifdef GENERAL2
-    if (dphi>=0.D0) then
-      ukvr = gen_aux_var_up%kvr
-    else
-      ukvr = gen_aux_var_dn%kvr
-    endif      
-#endif
+  Res = 0.d0
+  do iphase = 1, option%nphase
+    
+    ! using residual saturation cannot be correct! - geh
+    if (gen_aux_var_up%sat(iphase) > sir_up .or. &
+        gen_aux_var_dn%sat(iphase) > sir_dn) then
+      upweight_adj = upweight
+      if (gen_aux_var_up%sat(iphase) < eps) then 
+        upweight_adj=0.d0
+      else if (gen_aux_var_dn%sat(iphase) < eps) then 
+        upweight_adj=1.d0
+      endif    
+      density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
+                    (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
+      H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
+              (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
 
-    if (ukvr>floweps) then
-      v_darcy= Dq * ukvr * dphi
-   
-      q = v_darcy * area
+      gravity = (upweight_adj*gen_aux_var_up%den(iphase) + &
+                (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
+                * fmw_phase(iphase) * dist_gravity 
 
-      fluxm = q*density_ave       
-    endif
-  endif 
+      delta_pressure = gen_aux_var_up%pres(iphase) - &
+             gen_aux_var_dn%pres(iphase) + &
+             gravity
 
-  Res(1) = fluxm
- ! note: Res is the flux contribution, for node 1 R = R + Res_FL
- !                                              2 R = R - Res_FL  
-#endif
+      if (delta_pressure >= 0.D0) then
+        ukvr = gen_aux_var_up%kvr(iphase)
+        xmol(:) = gen_aux_var_up%xmol(:,iphase)
+      else
+        ukvr = gen_aux_var_dn%kvr(iphase)
+        xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+      endif      
+
+      if (ukvr > floweps) then
+        v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
+        q = v_darcy(iphase) * area
+        mole_flux = q*density_ave       
+        do icomp = 1, option%nflowspec
+          Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+        enddo
+        
+        Res(energy_id) = Res(energy_id) + mole_flux * &
+                                          gen_aux_var_dn%H(iphase)
+        
+      endif                   
+    endif ! sat > eps
+  enddo
+  
+  do icomp = 2, option%nflowspec
+    Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
+  enddo
 
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
 !
-! GeneralBCFluxDerivative: Computes the derivatives of the boundary flux 
-!                           terms for the Jacobian
+! GeneralFluxDerivative: Computes the derivatives of the internal flux terms
+!                         for the Jacobian
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
-! ************************************************************************** !
-subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
-                                    gen_aux_var_up,global_aux_var_up, &
-                                    gen_aux_var_dn,global_aux_var_dn, &
-                                    por_dn,sir_dn,dd_up,perm_dn, &
-                                    area,dist_gravity,option, &
-                                    sat_func_dn,Jdn)
-  use Option_module
-  use Saturation_Function_module
- 
+! ************************************************************************** ! 
+subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
+                                  sir_up,dd_up,perm_up, &
+                                  gen_aux_var_dn,global_aux_var_dn,por_dn, &
+                                  sir_dn,dd_dn,perm_dn, &
+                                  area,dist_gravity,upweight, &
+                                  option,Jup,Jdn)
+  use Option_module 
+  
   implicit none
   
-  PetscInt :: ibndtype(:)
-  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up(0:), gen_aux_var_dn(0:)
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn
-  PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
-  PetscReal :: por_dn,perm_dn
+  PetscReal :: sir_up, sir_dn
+  PetscReal :: por_up, por_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
   PetscReal :: area
-  type(saturation_function_type) :: sat_func_dn  
-  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+  PetscReal :: dist_gravity
+  PetscReal :: upweight
+  PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
 
-  PetscReal :: dist_gravity  ! distance along gravity vector
-          
-  PetscReal :: v_darcy
-  PetscReal :: q,density_ave
-  PetscReal :: ukvr,diffdp,Dq
-  PetscReal :: upweight,cond,gravity,dphi
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscInt :: idof, irow
 
-  PetscReal :: dden_ave_dp_dn
-  PetscReal :: dgravity_dden_dn
-  PetscReal :: dphi_dp_dn
-  PetscReal :: dukvr_dp_dn
-  PetscReal :: dq_dp_dn
-  PetscInt :: pressure_bc_type
+  call GeneralFlux(gen_aux_var_up(ZERO_INTEGER),global_aux_var_up, &
+                   por_up,sir_up,dd_up,perm_up, &
+                   gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
+                   por_dn,sir_dn,dd_dn,perm_dn, &
+                   area,dist_gravity,upweight, &
+                   option,v_darcy,res)
+                           
+  ! upgradient derivatives
+  do idof = 1, option%nflowdof
+    call GeneralFlux(gen_aux_var_up(idof),global_aux_var_up, &
+                     por_up,sir_up,dd_up,perm_up, &
+                     gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
+                     por_dn,sir_dn,dd_dn,perm_dn, &
+                     area,dist_gravity,upweight, &
+                     option,v_darcy,res_pert)
+    do irow = 1, option%nflowdof
+      Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_up(idof)%pert
+    enddo !irow
+  enddo ! idof
 
-  PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: gen_aux_var_pert_dn, gen_aux_var_pert_up
-  type(global_auxvar_type) :: global_aux_var_pert_dn, global_aux_var_pert_up
-  PetscReal :: perturbation
-  PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
-            res_pert_dn(1), J_pert_dn(1,1)
-  
-  v_darcy = 0.d0
-  density_ave = 0.d0
-  q = 0.d0
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+    call GeneralFlux(gen_aux_var_up(ZERO_INTEGER),global_aux_var_up, &
+                     por_up,sir_up,dd_up,perm_up, &
+                     gen_aux_var_dn(idof),global_aux_var_dn, &
+                     por_dn,sir_dn,dd_dn,perm_dn, &
+                     area,dist_gravity,upweight, &
+                     option,v_darcy,res_pert)
+    do irow = 1, option%nflowdof
+      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
+    enddo !irow
+  enddo ! idof
 
-  Jdn = 0.d0 
-  
-  dden_ave_dp_dn = 0.d0
-  dgravity_dden_dn = 0.d0
-  dphi_dp_dn = 0.d0
-  dukvr_dp_dn = 0.d0
-  dq_dp_dn = 0.d0
-        
-  ! Flow
-#ifdef GENERAL2
-  pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
-  select case(pressure_bc_type)
-    ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-      if (pressure_bc_type == CONDUCTANCE_BC) then
-        Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
-      else
-        Dq = perm_dn / dd_up
-      endif
-      ! Flow term
-      if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
-        upweight=1.D0
-        if (global_aux_var_up%sat(1) < eps) then 
-          upweight=0.d0
-        else if (global_aux_var_dn%sat(1) < eps) then 
-          upweight=1.d0
-        endif
-        
-        density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
-        dden_ave_dp_dn = (1.D0-upweight)*gen_aux_var_dn%dden_dp
-
-        gravity = (upweight*global_aux_var_up%den(1) + &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)) &
-                  * FMWH2O * dist_gravity
-        dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
-
-        dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
-        dphi_dp_dn = -1.d0 + dgravity_dden_dn*gen_aux_var_dn%dden_dp
-
-        if (pressure_bc_type == SEEPAGE_BC .or. &
-            pressure_bc_type == CONDUCTANCE_BC) then
-              ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
-            dphi = 0.d0
-            dphi_dp_dn = 0.d0
-          endif
-        endif
-        
-        if (dphi>=0.D0) then
-          ukvr = gen_aux_var_up%kvr
-        else
-          ukvr = gen_aux_var_dn%kvr
-#ifdef GENERAL2         
-          dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
-#endif
-        endif      
-     
-        if (ukvr*Dq>floweps) then
-          v_darcy = Dq * ukvr * dphi
-          q = v_darcy * area
-          dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
-        endif
-      endif 
-
-    case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
-        if (v_darcy > 0.d0) then 
-          density_ave = global_aux_var_up%den(1)
-        else 
-          density_ave = global_aux_var_dn%den(1)
-          dden_ave_dp_dn = gen_aux_var_dn%dden_dp
-        endif 
-        q = v_darcy * area
-      endif
-
-  end select
-#endif
-
-  Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
-
-  if (option%numerical_derivatives) then
-    call GlobalAuxVarInit(global_aux_var_pert_up,option)
-    call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call GeneralAuxVarCopy(gen_aux_var_up,gen_aux_var_pert_up,option)
-    call GeneralAuxVarCopy(gen_aux_var_dn,gen_aux_var_pert_dn,option)
-    call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
-    call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
-    x_up(1) = global_aux_var_up%pres(1)
-    x_dn(1) = global_aux_var_dn%pres(1)
-    ideriv = 1
-    if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
-      x_up(ideriv) = x_dn(ideriv)
-    endif
-    call GeneralBCFlux(ibndtype,aux_vars, &
-                        gen_aux_var_up,global_aux_var_up, &
-                        gen_aux_var_dn,global_aux_var_dn, &
-                        por_dn,sir_dn,dd_up,perm_dn, &
-                        area,dist_gravity,option,v_darcy,res)
-    if (pressure_bc_type == ZERO_GRADIENT_BC) then
-      x_pert_up = x_up
-    endif
-    ideriv = 1
-    pert_dn = x_dn(ideriv)*perturbation_tolerance    
-    x_pert_dn = x_dn
-    x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    x_pert_up = x_up
-    if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
-      x_pert_up(ideriv) = x_pert_dn(ideriv)
-    endif   
-    call GeneralAuxVarCompute(x_pert_dn(1),gen_aux_var_pert_dn, &
-                               global_aux_var_pert_dn,sat_func_dn, &
-                               0.d0,0.d0,option)
-    call GeneralAuxVarCompute(x_pert_up(1),gen_aux_var_pert_up, &
-                               global_aux_var_pert_up,sat_func_dn, &
-                               0.d0,0.d0,option)
-    call GeneralBCFlux(ibndtype,aux_vars, &
-                        gen_aux_var_pert_up,global_aux_var_pert_up, &
-                        gen_aux_var_pert_dn,global_aux_var_pert_dn, &
-                        por_dn,sir_dn,dd_up,perm_dn, &
-                        area,dist_gravity,option,v_darcy,res_pert_dn)
-    J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
-    Jdn = J_pert_dn
-    call GlobalAuxVarDestroy(global_aux_var_pert_up)
-    call GlobalAuxVarDestroy(global_aux_var_pert_dn)      
-  endif
-
-end subroutine GeneralBCFluxDerivative
+end subroutine GeneralFluxDerivative
 
 ! ************************************************************************** !
 !
-! GeneralBCFlux: Computes the  boundary flux terms for the residual
+! GeneralBCFlux: Computes the boundary flux terms for the residual
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
-! ************************************************************************** !
+! ************************************************************************** ! 
 subroutine GeneralBCFlux(ibndtype,aux_vars, &
-                          gen_aux_var_up,global_aux_var_up, &
-                          gen_aux_var_dn,global_aux_var_dn, &
-                          por_dn,sir_dn,dd_up,perm_dn, &
-                          area,dist_gravity,option,v_darcy,Res)
-  use Option_module
- 
+                         gen_aux_var_up,global_aux_var_up, &
+                         gen_aux_var_dn,global_aux_var_dn, &
+                         por_dn,sir_dn,dd_up,perm_dn, &
+                         area,dist_gravity,option,v_darcy,Res)
+  use Option_module                              
+  
   implicit none
   
   PetscInt :: ibndtype(:)
   type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn
+  PetscReal :: dd_up, sir_dn(option%nphase)
   PetscReal :: aux_vars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn
-  PetscReal :: v_darcy, area
-  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: v_darcy(option%nphase), area
+  PetscReal :: dist_gravity
+  PetscReal :: Res(1:option%nflowdof)
+
+  PetscReal :: upweight
+  PetscInt :: wat_comp_id, air_comp_id, energy_id
+  PetscInt :: icomp, iphase
+
+  PetscReal :: fmw_phase(option%nphase)
+  PetscReal :: xmol(option%nflowspec)  
+  PetscReal :: density_ave
+  PetscReal :: H_ave
+  PetscReal :: perm_ave_over_dist
+  PetscReal :: delta_pressure
+  PetscReal :: gravity
+  PetscReal :: ukvr, mole_flux, q
   
-  PetscReal :: dist_gravity  ! distance along gravity vector
-
-  PetscInt :: ispec
-  PetscReal :: fluxm,q,density_ave
-  PetscReal :: ukvr,diffdp,Dq
-  PetscReal :: upweight,cond,gravity,dphi
-  PetscInt :: pressure_bc_type
+  PetscInt :: bc_type
+  PetscInt :: idof
   
-  fluxm = 0.d0
-  v_darcy = 0.d0
-  density_ave = 0.d0
-  q = 0.d0
+  wat_comp_id = option%water_id
+  air_comp_id = option%air_id
+  energy_id = option%energy_id
 
-  ! Flow  
-#ifdef GENERAL2 
-  pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
-  select case(pressure_bc_type)
-    ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+  fmw_phase(option%liquid_phase) = FMWH2O
+  fmw_phase(option%gas_phase) = FMWAIR
 
-      if (pressure_bc_type == CONDUCTANCE_BC) then
-        Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
-      else
-        Dq = perm_dn / dd_up
-      endif
-      ! Flow term
-      if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
-        upweight=1.D0
-        if (global_aux_var_up%sat(1) < eps) then 
-          upweight=0.d0
-        else if (global_aux_var_dn%sat(1) < eps) then 
-          upweight=1.d0
-        endif
-        density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
-   
-        gravity = (upweight*global_aux_var_up%den(1) + &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)) &
-                  * FMWH2O * dist_gravity
-       
-        dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
+  Res = 0.d0
 
-        if (pressure_bc_type == SEEPAGE_BC .or. &
-            pressure_bc_type == CONDUCTANCE_BC) then
-              ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
-            dphi = 0.d0
-          endif
-        endif
-   
-        if (dphi>=0.D0) then
-          ukvr = gen_aux_var_up%kvr
+  do iphase = 1, option%nphase
+  
+    select case(iphase)
+      case(LIQUID_PHASE)
+        bc_type = ibndtype(GENERAL_LIQUID_PRESSURE_DOF)
+      case(GAS_PHASE)
+        bc_type = ibndtype(GENERAL_GAS_PRESSURE_DOF)
+    end select
+
+    select case(bc_type)
+      ! figure out the direction of flow
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+
+        if (bc_type == CONDUCTANCE_BC) then
+          select case(iphase)
+            case(LIQUID_PHASE)
+              idof = GENERAL_LIQUID_CONDUCTANCE_DOF
+            case(GAS_PHASE)
+              idof = GENERAL_GAS_CONDUCTANCE_DOF
+          end select        
+          perm_ave_over_dist = aux_vars(idof)
         else
-          ukvr = gen_aux_var_dn%kvr
-        endif      
-     
-        if (ukvr*Dq>floweps) then
-          v_darcy = Dq * ukvr * dphi
+          perm_ave_over_dist = perm_dn / dd_up
         endif
-      endif 
+        
+          
+        ! using residual saturation cannot be correct! - geh
+        if (gen_aux_var_up%sat(iphase) > sir_dn(iphase) .or. &
+            gen_aux_var_dn%sat(iphase) > sir_dn(iphase)) then
+          upweight = upweight
+          if (gen_aux_var_up%sat(iphase) < eps) then 
+            upweight=0.d0
+          else if (gen_aux_var_dn%sat(iphase) < eps) then 
+            upweight=1.d0
+          endif    
+          density_ave = upweight*gen_aux_var_up%den(iphase)+ &
+                        (1.D0-upweight)*gen_aux_var_dn%den(iphase)
+          H_ave = upweight*gen_aux_var_up%H(iphase)+ &
+                  (1.D0-upweight)*gen_aux_var_dn%H(iphase)
 
-    case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
-        if (v_darcy > 0.d0) then 
-          density_ave = global_aux_var_up%den(1)
-        else 
-          density_ave = global_aux_var_dn%den(1)
-        endif 
-      endif
+          gravity = (upweight*gen_aux_var_up%den(iphase) + &
+                    (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
+                    * fmw_phase(iphase) * dist_gravity 
 
-  end select
-#endif
+          delta_pressure = gen_aux_var_up%pres(iphase) - &
+                 gen_aux_var_dn%pres(iphase) + &
+                 gravity
 
-  q = v_darcy * area
+          if (bc_type == SEEPAGE_BC .or. &
+              bc_type == CONDUCTANCE_BC) then
+                ! flow in         ! boundary cell is <= pref
+            if (delta_pressure > 0.d0 .and. &
+                global_aux_var_up%pres(iphase)-option%reference_pressure < eps) then
+              delta_pressure = 0.d0
+            endif
+          endif
+            
+          if (delta_pressure >= 0.D0) then
+            ukvr = gen_aux_var_up%kvr(iphase)
+            xmol(:) = gen_aux_var_up%xmol(:,iphase)
+          else
+            ukvr = gen_aux_var_dn%kvr(iphase)
+            xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+          endif      
 
-  fluxm = q*density_ave
+          if (ukvr > floweps) then
+            v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
+          endif                   
+        endif ! sat > eps
 
-  Res(1)=fluxm
+      case(NEUMANN_BC)
+        select case(iphase)
+          case(LIQUID_PHASE)
+            idof = GENERAL_LIQUID_FLUX_DOF
+          case(GAS_PHASE)
+            idof = GENERAL_GAS_FLUX_DOF
+        end select
+      
+        if (dabs(aux_vars(idof)) > floweps) then
+          v_darcy(iphase) = aux_vars(idof)
+          if (v_darcy(iphase) > 0.d0) then 
+            density_ave = global_aux_var_up%den(iphase)
+          else 
+            density_ave = global_aux_var_dn%den(iphase)
+          endif 
+        endif
+    end select
+
+    q = v_darcy(iphase) * area
+    mole_flux = q*density_ave       
+    do icomp = 1, option%nflowspec
+      Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+    enddo
+    
+    Res(energy_id) = Res(energy_id) + mole_flux * &
+                                      gen_aux_var_dn%H(iphase)
+
+  enddo
+  
+  do icomp = 2, option%nflowspec
+    Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
+  enddo
 
 end subroutine GeneralBCFlux
+
+! ************************************************************************** !
+!
+! GeneralBCFluxDerivative: Computes the derivatives of the boundary flux terms
+!                          for the Jacobian
+! author: Glenn Hammond
+! date: 03/09/11
+!
+! ************************************************************************** ! 
+subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
+                                    gen_aux_var_up, &
+                                    global_aux_var_up, &
+                                    gen_aux_var_dn,global_aux_var_dn, &
+                                    por_dn,sir_dn,dd_up,perm_dn, &
+                                    area,dist_gravity,option,Jdn)
+
+  use Option_module 
+  
+  implicit none
+
+  PetscInt :: ibndtype(:)
+  PetscReal :: aux_vars(:) ! from aux_real_var array
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn(0:)
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(option_type) :: option
+  PetscReal :: dd_up, sir_dn(option%nphase)
+  PetscReal :: por_dn,perm_dn
+  PetscReal :: area
+  PetscReal :: dist_gravity
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscInt :: idof, irow
+
+  call GeneralBCFlux(ibndtype,aux_vars, &
+                     gen_aux_var_up,global_aux_var_up, &
+                     gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
+                     por_dn,sir_dn,dd_up,perm_dn, &
+                     area,dist_gravity,option,v_darcy,res)                     
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+    call GeneralBCFlux(ibndtype,aux_vars, &
+                       gen_aux_var_up,global_aux_var_up, &
+                       gen_aux_var_dn(idof),global_aux_var_dn, &
+                       por_dn,sir_dn,dd_up,perm_dn, &
+                       area,dist_gravity,option,v_darcy,res_pert)
+    do irow = 1, option%nflowdof
+      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
+    enddo !irow
+  enddo ! idof
+
+end subroutine GeneralBCFluxDerivative
 
 ! ************************************************************************** !
 !
@@ -1739,7 +1613,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: upweight
-  PetscReal :: Res(realization%option%nflowdof), v_darcy
+  PetscReal :: Res(realization%option%nflowdof), v_darcy(realization%option%nphase)
 
 
   type(grid_type), pointer :: grid
@@ -1862,12 +1736,12 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      call GeneralFlux(gen_aux_vars(ONE_INTEGER,ghosted_id_up), &
+      call GeneralFlux(gen_aux_vars(ZERO_INTEGER,ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
                           material_parameter%sir(1,icap_up), &
                           dd_up,perm_up, &
-                        gen_aux_vars(ONE_INTEGER,ghosted_id_dn), &
+                        gen_aux_vars(ZERO_INTEGER,ghosted_id_dn), &
                         global_aux_vars(ghosted_id_dn), &
                           porosity_loc_p(ghosted_id_dn), &
                           material_parameter%sir(1,icap_dn), &
@@ -1875,7 +1749,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
 
-      patch%internal_velocities(1,sum_connection) = v_darcy
+      patch%internal_velocities(:,sum_connection) = v_darcy
       
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
@@ -1956,15 +1830,15 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 gen_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
-                                gen_aux_vars(ONE_INTEGER,ghosted_id), &
+                                gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
-                                material_parameter%sir(1,icap_dn), &
+                                material_parameter%sir(:,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 v_darcy,Res)
-      patch%boundary_velocities(1,sum_connection) = v_darcy
+      patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
         global_aux_vars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
@@ -2113,7 +1987,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       imat = patch%imat(ghosted_id)
       if (imat <= 0) cycle
-      call GeneralAccumulation(gen_aux_vars(ONE_INTEGER,ghosted_id), &
+      call GeneralAccumulation(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 material_parameter%dencpr(imat), &
@@ -2351,7 +2225,8 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(material_parameter_type), pointer :: material_parameter
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:) 
+  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
+  type(general_auxvar_type) :: test
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
   PetscViewer :: viewer
@@ -2417,20 +2292,18 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call GeneralFluxDerivative(gen_aux_vars(ONE_INTEGER,ghosted_id_up), &
+      call GeneralFluxDerivative(gen_aux_vars(:,ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
                                     material_parameter%sir(1,icap_up), &
                                     dd_up,perm_up, &
-                                  gen_aux_vars(ONE_INTEGER,ghosted_id_dn), &
+                                  gen_aux_vars(:,ghosted_id_dn), &
                                   global_aux_vars(ghosted_id_dn), &
                                     porosity_loc_p(ghosted_id_dn), &
                                     material_parameter%sir(1,icap_dn), &
                                     dd_dn,perm_dn, &
                                   cur_connection_set%area(iconn),distance_gravity, &
                                   upweight,option,&
-                                  realization%saturation_function_array(icap_up)%ptr,&
-                                  realization%saturation_function_array(icap_dn)%ptr,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
           call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -2493,18 +2366,18 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id))  
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
-                                boundary_condition%flow_aux_real_var(:,iconn), &
-                                gen_aux_vars_bc(sum_connection), &
-                                global_aux_vars_bc(sum_connection), &
-                                gen_aux_vars(ONE_INTEGER,ghosted_id), &
-                                global_aux_vars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                material_parameter%sir(1,icap_dn), &
-                                cur_connection_set%dist(0,iconn),perm_dn, &
-                                cur_connection_set%area(iconn), &
-                                distance_gravity,option, &
-                                realization%saturation_function_array(icap_dn)%ptr,&
-                                Jdn)
+                                  boundary_condition%flow_aux_real_var(:,iconn), &
+                                  gen_aux_vars_bc(sum_connection), &
+                                  global_aux_vars_bc(sum_connection), &
+                                  gen_aux_vars(:,ghosted_id), &
+                                  global_aux_vars(ghosted_id), &
+                                  porosity_loc_p(ghosted_id), &
+                                  material_parameter%sir(:,icap_dn), &
+                                  cur_connection_set%dist(0,iconn),perm_dn, &
+                                  cur_connection_set%area(iconn), &
+                                  distance_gravity,option, &
+                                  Jdn)
+
       Jdn = -Jdn
         call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
                                ADD_VALUES,ierr) 
@@ -2620,13 +2493,12 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
     icap = int(icap_loc_p(ghosted_id))
-    call GeneralAccumDerivative(gen_aux_vars(ONE_INTEGER,ghosted_id), &
+    call GeneralAccumDerivative(gen_aux_vars(:,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               material_parameter%dencpr(imat), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option, &
-                              realization%saturation_function_array(icap)%ptr,&
                               Jup) 
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                              ADD_VALUES,ierr)
@@ -2907,5 +2779,5 @@ subroutine GeneralDestroyPatch(realization)
   ! place anything that needs to be freed here.
 
 end subroutine GeneralDestroyPatch
-#endif
+
 end module General_module

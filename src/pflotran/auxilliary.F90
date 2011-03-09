@@ -7,10 +7,8 @@ module Auxilliary_module
   use Mphase_Aux_module
   use Immis_Aux_module
   use Flash2_Aux_Module
-#ifdef GENERAL
   use General_Aux_module
   use Material_Aux_module
-#endif
   
   implicit none
 
@@ -29,10 +27,8 @@ module Auxilliary_module
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
     type(flash2_type), pointer :: Flash2
-#ifdef GENERAL
     type(general_type), pointer :: General
     type(material_type), pointer :: Material
-#endif
   end type auxilliary_type
   
   public :: AuxInit, &
@@ -63,10 +59,8 @@ subroutine AuxInit(aux)
   nullify(aux%Mphase)
   nullify(aux%Immis)
   nullify(aux%Flash2)
-#ifdef GENERAL
   nullify(aux%General)
   nullify(aux%Material)
-#endif
 
 end subroutine AuxInit
 
@@ -91,10 +85,8 @@ subroutine AuxDestroy(aux)
   call THCAuxDestroy(aux%THC)
   call RichardsAuxDestroy(aux%Richards)
   !call MphaseAuxDestroy(aux%Mphase)
-#ifdef GENERAL
   call GeneralAuxDestroy(aux%General)
   call MaterialAuxDestroy(aux%Material)
-#endif
   nullify(aux%Global)
   nullify(aux%RT)
 #ifdef SUBCONTINUUM_MODEL
@@ -104,10 +96,8 @@ subroutine AuxDestroy(aux)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
-#ifdef GENERAL
   nullify(aux%General)
   nullify(aux%Material)
-#endif  
 
 end subroutine AuxDestroy
 

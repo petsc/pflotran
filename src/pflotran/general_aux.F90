@@ -20,6 +20,7 @@ module General_Aux_module
 !    PetscReal, pointer :: dsat_dt(:)
 !    PetscReal, pointer :: dden_dt(:)
     PetscReal, pointer :: kvr(:)
+    PetscReal :: pert
 !    PetscReal, pointer :: dkvr_dp(:)
   end type general_auxvar_type
   
@@ -50,7 +51,7 @@ contains
 !
 ! GeneralAuxCreate: Allocate and initialize auxilliary object
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/07/11
 !
 ! ************************************************************************** !
 function GeneralAuxCreate()
@@ -82,7 +83,7 @@ end function GeneralAuxCreate
 !
 ! GeneralAuxVarInit: Initialize auxilliary object
 ! author: Glenn Hammond
-! date: 01/10/10
+! date: 03/07/11
 !
 ! ************************************************************************** !
 subroutine GeneralAuxVarInit(aux_var,option)
@@ -111,13 +112,15 @@ subroutine GeneralAuxVarInit(aux_var,option)
   allocate(aux_var%kvr(option%nphase))
   aux_var%kvr = 0.d0
   
+  aux_var%pert = 0.d0
+  
 end subroutine GeneralAuxVarInit
 
 ! ************************************************************************** !
 !
 ! GeneralAuxVarCopy: Copies an auxilliary variable
 ! author: Glenn Hammond
-! date: 12/13/07
+! date: 03/07/11
 !
 ! ************************************************************************** !  
 subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
@@ -138,6 +141,7 @@ subroutine GeneralAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%H = aux_var%H
   aux_var2%U = aux_var%U
   aux_var2%kvr = aux_var%kvr
+  aux_var2%pert = aux_var%pert
 
 end subroutine GeneralAuxVarCopy
   
@@ -145,7 +149,7 @@ end subroutine GeneralAuxVarCopy
 !
 ! GeneralAuxVarCompute: Computes auxilliary variables for each grid cell
 ! author: Glenn Hammond
-! date: 02/22/08
+! date: 03/07/11
 !
 ! ************************************************************************** !
 subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
@@ -281,7 +285,7 @@ end subroutine GeneralAuxVarCompute
 !
 ! GeneralAuxVarDestroy: Deallocates a general auxilliary object
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/07/11
 !
 ! ************************************************************************** !
 subroutine GeneralAuxVarDestroy(aux_var)
@@ -313,7 +317,7 @@ end subroutine GeneralAuxVarDestroy
 !
 ! GeneralAuxDestroy: Deallocates a general auxilliary object
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/07/11
 !
 ! ************************************************************************** !
 subroutine GeneralAuxDestroy(aux)
