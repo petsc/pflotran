@@ -867,37 +867,37 @@ subroutine FlowConditionRead(condition,input,option)
       do idof = 1, 4
         nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
-      
+
       if (option%iflowmode == G_MODE) then
-        if (associated(rate)) condition%sub_condition_ptr(GENERAL_LIQUID_FLUX_DOF)%ptr => rate
         if (associated(pressure)) condition%sub_condition_ptr(GENERAL_LIQUID_PRESSURE_DOF)%ptr => pressure
+        if (associated(rate)) condition%sub_condition_ptr(GENERAL_LIQUID_FLUX_DOF)%ptr => rate
         condition%sub_condition_ptr(GENERAL_TEMPERATURE_DOF)%ptr => temperature
         condition%sub_condition_ptr(GENERAL_CONCENTRATION_DOF)%ptr => concentration
         if (associated(enthalpy)) condition%sub_condition_ptr(GENERAL_ENTHALPY_DOF)%ptr => enthalpy
         
         allocate(condition%itype(FOUR_INTEGER))
         condition%itype = 0
-        if (associated(rate)) condition%itype(GENERAL_LIQUID_FLUX_DOF) = rate%itype
         if (associated(pressure)) condition%itype(GENERAL_LIQUID_PRESSURE_DOF) = pressure%itype
+        if (associated(rate)) condition%itype(GENERAL_LIQUID_FLUX_DOF) = rate%itype
         condition%itype(GENERAL_TEMPERATURE_DOF) = temperature%itype
         condition%itype(GENERAL_CONCENTRATION_DOF) = concentration%itype
         if (associated(enthalpy)) condition%itype(GENERAL_ENTHALPY_DOF) = concentration%itype
       else
         ! must be in this order, which matches the dofs i problem
-        if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
         if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+        if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
         condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
         condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
         if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
         
         allocate(condition%itype(FIVE_INTEGER))
         condition%itype = 0
-        if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
         if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+        if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
         condition%itype(TWO_INTEGER) = temperature%itype
         condition%itype(THREE_INTEGER) = concentration%itype
         if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
-    endif
+      endif
     
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
