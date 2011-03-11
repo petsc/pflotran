@@ -868,16 +868,18 @@ subroutine FlowConditionRead(condition,input,option)
         nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
       ! must be in this order, which matches the dofs i problem
-      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+!geh - swapped order of pressure and rate so that rate supercedes
       if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
       condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
       condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
       if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
       
       allocate(condition%itype(FIVE_INTEGER))
       condition%itype = 0
-      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
+!geh - swapped order of pressure and rate so that rate supercedes
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
       condition%itype(TWO_INTEGER) = temperature%itype
       condition%itype(THREE_INTEGER) = concentration%itype
       if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
