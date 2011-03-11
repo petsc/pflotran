@@ -1034,6 +1034,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
                              RichardsTimeCut
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
+  use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
+                             GeneralTimeCut
   use Global_module
 
   use Output_module, only : Output
@@ -1135,6 +1137,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
         call ImmisInitializeTimestep(realization)
       case(FLASH2_MODE)
         call Flash2InitializeTimestep(realization)
+      case(G_MODE)
+        call GeneralInitializeTimestep(realization)
     end select
     
     do
@@ -1155,7 +1159,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     read(*,*)    
 #endif
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
@@ -1206,7 +1210,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call Flash2UpdateReason(update_reason,realization)
           case(THC_MODE)
             update_reason=1
-          case(RICHARDS_MODE)
+          case(RICHARDS_MODE,G_MODE)
             update_reason=1
         end select   
         if (option%print_screen_flag) print *,'update_reason: ',update_reason
@@ -1257,6 +1261,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call ImmisTimeCut(realization)
           case(FLASH2_MODE)
             call Flash2TimeCut(realization)
+          case(G_MODE)
+            call GeneralTimeCut(realization)
         end select
         call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
 
@@ -1421,7 +1427,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       if (option%print_file_flag) then
         write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
       endif
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       select case(option%iflowmode)
         case(MPH_MODE)
           call MphaseMaxChange(realization)
@@ -1429,6 +1435,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           call ImmisMaxChange(realization)
         case(FLASH2_MODE)
           call FLASH2MaxChange(realization)
+        case(G_MODE)
+          call GeneralMaxChange(realization)
       end select
       ! note use mph will use variable switching, the x and s change is not meaningful 
       if (option%print_screen_flag) then
@@ -2457,6 +2465,7 @@ subroutine StepperUpdateFlowSolution(realization)
   use Immis_module, only: ImmisUpdateSolution
   use Richards_module, only : RichardsUpdateSolution
   use THC_module, only : THCUpdateSolution
+  use General_module, only : GeneralUpdateSolution
 
   use Realization_module
   use Option_module
@@ -2482,6 +2491,8 @@ subroutine StepperUpdateFlowSolution(realization)
       call THCUpdateSolution(realization)
     case(RICHARDS_MODE)
       call RichardsUpdateSolution(realization)
+    case(G_MODE)
+      call GeneralUpdateSolution(realization)
   end select    
 
 end subroutine StepperUpdateFlowSolution
@@ -2548,6 +2559,7 @@ subroutine StepperUpdateFlowAuxVars(realization)
   use Immis_module, only: ImmisUpdateAuxVars
   use Richards_module, only : RichardsUpdateAuxVars
   use THC_module, only : THCUpdateAuxVars
+  use General_module, only : GeneralUpdateAuxVars
 
   use Realization_module
   use Option_module
@@ -2573,6 +2585,8 @@ subroutine StepperUpdateFlowAuxVars(realization)
       call THCUpdateAuxVars(realization)
     case(RICHARDS_MODE)
       call RichardsUpdateAuxVars(realization)
+    case(G_MODE)
+      call GeneralUpdateAuxVars(realization)
   end select    
 
 end subroutine StepperUpdateFlowAuxVars

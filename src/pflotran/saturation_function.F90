@@ -199,11 +199,9 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
-          case(RICHARDS_MODE,THC_MODE)
+          case(RICHARDS_MODE,THC_MODE,G_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
-          case(G_MODE)
-            call printErrMsg(option,"Set up saturation function reader for g-mode")
         end select
       case('LAMBDA') 
         call InputReadDouble(input,option,saturation_function%lambda)

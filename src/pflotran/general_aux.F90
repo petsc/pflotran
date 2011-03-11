@@ -177,14 +177,15 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: krg, visg, dkrg_Se
   PetscReal :: K_H
-  PetscInt :: apid, cid, vid
+  PetscReal :: guess, dummy
+  PetscInt :: apid, cpid, vpid
   PetscErrorCode :: ierr
 
   lid = option%liquid_phase
   gid = option%gas_phase
   apid = option%air_pressure_id
-  cid = option%capillary_pressure_id
-  vid = option%vapor_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
 
   acid = option%air_id ! air component id
   wid = option%water_id
@@ -196,48 +197,51 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-      gen_aux_var%pres(lid) = x(ONE_INTEGER)
-      gen_aux_var%xmol(acid,lid) = x(TWO_INTEGER)
-      gen_aux_var%temp = x(THREE_INTEGER)
+      gen_aux_var%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
+      gen_aux_var%xmol(acid,lid) = x(GENERAL_CONCENTRATION_DOF)
+      gen_aux_var%temp = x(GENERAL_TEMPERATURE_DOF)
 
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
       gen_aux_var%sat(lid) = 1.d0
       gen_aux_var%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,gen_aux_var%pres(vid),ierr)
+      call psat(gen_aux_var%temp,gen_aux_var%pres(vpid),ierr)
 
     case(GAS_STATE)
-      gen_aux_var%pres(gid) = x(ONE_INTEGER)
-      gen_aux_var%pres(apid) = x(TWO_INTEGER)
-      gen_aux_var%temp = x(THREE_INTEGER)
+      gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
+      gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
+      gen_aux_var%temp = x(GENERAL_TEMPERATURE_DOF)
 
       gen_aux_var%sat(lid) = 0.d0
       gen_aux_var%sat(gid) = 1.d0
       gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
-      gen_aux_var%pres(vid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
+      gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
 
     case(TWO_PHASE_STATE)
-      gen_aux_var%pres(gid) = x(ONE_INTEGER)
-      gen_aux_var%pres(acid) = x(TWO_INTEGER)
-      gen_aux_var%sat(gid) = x(THREE_INTEGER)
+      gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
+      gen_aux_var%pres(apid) = x(GENERAL_AIR_PRESSURE_DOF)
+      gen_aux_var%sat(gid) = x(GENERAL_GAS_SATURATION_DOF)
       
       gen_aux_var%sat(lid) = 1.d0 - gen_aux_var%sat(gid)
-      gen_aux_var%pres(vid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
+      gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
       
-      call SatFuncGetCapillaryPressure(gen_aux_var%pres(cid), &
+      call SatFuncGetCapillaryPressure(gen_aux_var%pres(cpid), &
                                        gen_aux_var%sat(lid), &
                                        saturation_function,option)      
 
-      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cid)
+      gen_aux_var%pres(lid) = gen_aux_var%pres(gid) - gen_aux_var%pres(cpid)
 
       call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
-                             gen_aux_var%pres(vid),K_H)
+                             gen_aux_var%pres(vpid),K_H)
       gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / &
                                   (gen_aux_var%pres(gid)*K_H)
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(apid,lid)
       gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
+
+      guess = gen_aux_var%temp
+      call Tsat(gen_aux_var%temp,gen_aux_var%pres(vpid),dummy,guess,ierr)
 
   end select
 
@@ -253,7 +257,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
     call visw_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
-                      gen_aux_var%pres(vid),visl,ierr)
+                      gen_aux_var%pres(vpid),visl,ierr)
     gen_aux_var%kvr(lid) = krl/visl
   endif
 
@@ -261,7 +265,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       global_aux_var%istate == TWO_PHASE_STATE) then
     call ideal_gaseos_noderiv(gen_aux_var%pres(apid),gen_aux_var%temp, &
                               option%scale,den_air,h_air,u)
-    call steameos(gen_aux_var%temp,gen_aux_var%pres(vid), &
+    call steameos(gen_aux_var%temp,gen_aux_var%pres(vpid), &
                   gen_aux_var%pres(apid),den_kg_wat_vap,den_wat_vap,dgp,dgt, &
                   h_wat_vap,hgp,hgt,option%scale,ierr)      
     
@@ -331,7 +335,7 @@ subroutine GeneralAuxDestroy(aux)
   
   if (associated(aux%aux_vars)) then
     do iaux = 1, aux%num_aux
-      do idof = 1, size(aux%aux_vars,ONE_INTEGER)
+      do idof = 0, size(aux%aux_vars,ONE_INTEGER)-1  ! 0:option%nflowdof
         call GeneralAuxVarDestroy(aux%aux_vars(idof,iaux))
       enddo
     enddo  

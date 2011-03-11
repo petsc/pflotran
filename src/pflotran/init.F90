@@ -1964,9 +1964,18 @@ subroutine setFlowMode(option)
       option%iflowmode = G_MODE
       option%nphase = 2
       option%liquid_phase = 1      
-      option%gas_phase = 2      
+      option%gas_phase = 2 
+
+      option%air_pressure_id = 2
+      option%capillary_pressure_id = 3
+      option%vapor_pressure_id = 4
+
+      option%water_id = 1
+      option%air_id = 2
+      option%energy_id = 3
+
       option%nflowdof = 3
-      option%nflowspec = 1
+      option%nflowspec = 2
       option%use_isothermal = PETSC_FALSE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'

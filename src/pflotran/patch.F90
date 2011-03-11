@@ -731,7 +731,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
               coupler%flow_aux_int_var = 0
                 
             case(G_MODE)
-              allocate(coupler%flow_aux_real_var(0,num_connections))
+              allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
               allocate(coupler%flow_aux_int_var(0,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
@@ -911,15 +911,16 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
                 case(G_MODE)
-                  coupler%flow_aux_real_var(0,1:num_connections) = &
+                  coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(0,1:num_connections) = &
+                  coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,1:num_connections) = &
                     flow_condition%temperature%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(0,1:num_connections) = &
+                  coupler%flow_aux_real_var(GENERAL_CONCENTRATION_DOF,1:num_connections) = &
                     flow_condition%concentration%dataset%cur_value(1)
-                  coupler%flow_aux_int_var(0,1:num_connections) = &
-                    flow_condition%iphase
-                    
+                  coupler%flow_aux_real_var(GENERAL_ENTHALPY_DOF,1:num_connections) = &
+                    flow_condition%concentration%dataset%cur_value(1)
+!                  coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
+ !                   flow_condition%iphase
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)

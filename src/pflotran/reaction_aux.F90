@@ -2292,7 +2292,7 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%primary_species_print)
   if (associated(reaction%secondary_species_print)) &
     deallocate(reaction%secondary_species_print)
-  nullify(reaction%primary_species_print)
+  nullify(reaction%secondary_species_print)
   if (associated(reaction%eqcplx_basis_print)) &
     deallocate(reaction%eqcplx_basis_print)
   nullify(reaction%eqcplx_basis_print)

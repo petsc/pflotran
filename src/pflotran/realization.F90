@@ -1441,6 +1441,10 @@ subroutine RealizAssignFlowInitCond(realization)
                    initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
                enddo
                iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+               if (option%iflowmode == G_MODE) then
+                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                   iphase_loc_p(ghosted_id)
+               endif
              enddo
            else
              do iconn=1,initial_condition%connection_set%num_connections
@@ -1458,6 +1462,10 @@ subroutine RealizAssignFlowInitCond(realization)
                xx_p(ibegin:iend) = &
                  initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
                iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+               if (option%iflowmode == G_MODE) then
+                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                   iphase_loc_p(ghosted_id)
+               endif
              enddo
            endif
         end if

@@ -37,7 +37,7 @@ contains
 !
 ! GeneralTimeCut: Resets arrays for time step cut
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralTimeCut(realization)
@@ -67,7 +67,7 @@ end subroutine GeneralTimeCut
 !
 ! GeneralSetup: 
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralSetup(realization)
@@ -100,7 +100,7 @@ end subroutine GeneralSetup
 !
 ! GeneralSetupPatch: Creates arrays for auxilliary variables
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralSetupPatch(realization)
@@ -159,9 +159,9 @@ subroutine GeneralSetupPatch(realization)
   enddo
 
   ! allocate aux_var data structures for all grid cells  
-  allocate(gen_aux_vars(option%nflowdof+1,grid%ngmax))
+  allocate(gen_aux_vars(0:option%nflowdof,grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    do idof = 1, option%nflowdof+1
+    do idof = 0, option%nflowdof
       call GeneralAuxVarInit(gen_aux_vars(idof,ghosted_id),option)
     enddo
   enddo
@@ -195,7 +195,7 @@ end subroutine GeneralSetupPatch
 !
 ! GeneralSetup: 
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralComputeMassBalance(realization,mass_balance)
@@ -231,7 +231,7 @@ end subroutine GeneralComputeMassBalance
 !
 ! GeneralComputeMassBalancePatch: Initializes mass balance
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
@@ -288,7 +288,7 @@ end subroutine GeneralComputeMassBalancePatch
 !
 ! GeneralZeroMassBalDeltaPatch: Zeros mass balance delta array
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralZeroMassBalDeltaPatch(realization)
@@ -323,7 +323,7 @@ end subroutine GeneralZeroMassBalDeltaPatch
 !
 ! GeneralUpdateMassBalancePatch: Updates mass balance
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateMassBalancePatch(realization)
@@ -361,7 +361,7 @@ end subroutine GeneralUpdateMassBalancePatch
 ! GeneralUpdateAuxVars: Updates the auxilliary variables associated with 
 !                        the General problem
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateAuxVars(realization)
@@ -395,7 +395,7 @@ end subroutine GeneralUpdateAuxVars
 ! GeneralUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
 !                        the General problem
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateAuxVarsPatch(realization)
@@ -423,6 +423,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
+  PetscInt :: ghosted_start, ghosted_end
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
@@ -449,8 +450,9 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
      
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
-   
-    call GeneralAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id), &
+    ghosted_end = ghosted_id*option%nflowdof
+    ghosted_start = ghosted_end - option%nflowdof + 1
+    call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -469,14 +471,16 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(1) = xx_loc_p(ghosted_id)
-      end select
+      do idof = 1, option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+        end select
+      enddo
       
-      call GeneralAuxVarCompute(xxbc(1),gen_aux_vars_bc(sum_connection), &
+      call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
@@ -499,7 +503,7 @@ end subroutine GeneralUpdateAuxVarsPatch
 !
 ! GeneralInitializeTimestep: Update data in module prior to time step
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralInitializeTimestep(realization)
@@ -519,7 +523,7 @@ end subroutine GeneralInitializeTimestep
 ! GeneralUpdateSolution: Updates data in module after a successful time 
 !                             step
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateSolution(realization)
@@ -563,7 +567,7 @@ end subroutine GeneralUpdateSolution
 ! GeneralUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateSolutionPatch(realization)
@@ -585,7 +589,7 @@ end subroutine GeneralUpdateSolutionPatch
 ! GeneralUpdateFixedAccum: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateFixedAccum(realization)
@@ -619,7 +623,7 @@ end subroutine GeneralUpdateFixedAccum
 ! GeneralUpdateFixedAccumPatch: Updates the fixed portion of the 
 !                                accumulation term
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralUpdateFixedAccumPatch(realization)
@@ -705,7 +709,7 @@ end subroutine GeneralUpdateFixedAccumPatch
 !
 ! GeneralNumericalJacTest: Computes the a test numerical jacobian
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/10/11
 !
 ! ************************************************************************** !
 subroutine GeneralNumericalJacTest(xx,realization)
@@ -818,37 +822,37 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-       x(ONE_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(TWO_INTEGER) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
-       x(THREE_INTEGER) = gen_aux_var(ZERO_INTEGER)%temp
-       pert(ONE_INTEGER) = 1.d0
-       pert(TWO_INTEGER) = perturbation_tolerance*x(TWO_INTEGER)
-       pert(THREE_INTEGER) = perturbation_tolerance*x(THREE_INTEGER)
+       x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
+       x(GENERAL_CONCENTRATION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
+       x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
+       pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
+       pert(GENERAL_CONCENTRATION_DOF) = perturbation_tolerance*x(GENERAL_CONCENTRATION_DOF)
+       pert(GENERAL_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
     case(GAS_STATE)
-       x(ONE_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
-       x(TWO_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(THREE_INTEGER) = gen_aux_var(ZERO_INTEGER)%temp
-       pert(ONE_INTEGER) = 1.d0
-       if (x(ONE_INTEGER) - x(TWO_INTEGER) > 1.d0) then 
-         pert(TWO_INTEGER) = 1.d0
+       x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
+       x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
+       x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
+       pert(GENERAL_GAS_PRESSURE_DOF) = 1.d0
+       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > 1.d0) then 
+         pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
        else
-         pert(TWO_INTEGER) = -1.d0
+         pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
        endif
-       pert(THREE_INTEGER) = perturbation_tolerance*x(THREE_INTEGER)
+       pert(GENERAL_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
     case(TWO_PHASE_STATE)
-       x(ONE_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
-       x(TWO_INTEGER) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
-       x(THREE_INTEGER) = gen_aux_var(ZERO_INTEGER)%sat(option%gas_phase)
-       pert(ONE_INTEGER) = 1.d0
-       if (x(ONE_INTEGER) - x(TWO_INTEGER) > 1.d0) then 
-         pert(TWO_INTEGER) = 1.d0
+       x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
+       x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
+       x(GENERAL_GAS_SATURATION_DOF) = gen_aux_var(ZERO_INTEGER)%sat(option%gas_phase)
+       pert(GENERAL_GAS_PRESSURE_DOF) = 1.d0
+       if (x(GENERAL_GAS_PRESSURE_DOF) - x(GENERAL_AIR_PRESSURE_DOF) > 1.d0) then 
+         pert(GENERAL_AIR_PRESSURE_DOF) = 1.d0
        else
-         pert(TWO_INTEGER) = -1.d0
+         pert(GENERAL_AIR_PRESSURE_DOF) = -1.d0
        endif
-       if (x(THREE_INTEGER) > 0.5d0) then 
-         pert(THREE_INTEGER) = -perturbation_tolerance*x(THREE_INTEGER)
+       if (x(GENERAL_GAS_SATURATION_DOF) > 0.5d0) then 
+         pert(GENERAL_GAS_SATURATION_DOF) = -perturbation_tolerance*x(GENERAL_GAS_SATURATION_DOF)
        else
-         pert(THREE_INTEGER) = perturbation_tolerance*x(THREE_INTEGER)
+         pert(GENERAL_GAS_SATURATION_DOF) = perturbation_tolerance*x(GENERAL_GAS_SATURATION_DOF)
        endif
   end select
   
@@ -1215,7 +1219,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         ! using residual saturation cannot be correct! - geh
         if (gen_aux_var_up%sat(iphase) > sir_dn(iphase) .or. &
             gen_aux_var_dn%sat(iphase) > sir_dn(iphase)) then
-          upweight = upweight
+          upweight = 1.d0
           if (gen_aux_var_up%sat(iphase) < eps) then 
             upweight=0.d0
           else if (gen_aux_var_dn%sat(iphase) < eps) then 
@@ -1346,9 +1350,58 @@ end subroutine GeneralBCFluxDerivative
 
 ! ************************************************************************** !
 !
+! GeneralSrcSink: Computes the source/sink terms for the residual
+! author: Glenn Hammond
+! date: 03/09/11
+!
+! ************************************************************************** !
+subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                          gen_aux_var,scale,res)
+
+  use Option_module
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: qsrc(option%nphase)
+  PetscInt :: flow_src_sink_type
+  type(general_auxvar_type) :: gen_aux_var
+  PetscReal :: scale
+  PetscReal :: res(option%nflowdof)
+      
+  PetscReal :: fmw_phase(option%nphase)
+  PetscReal :: qsrc_mol
+  PetscInt :: icomp
+  
+
+  fmw_phase(option%liquid_phase) = FMWH2O
+  fmw_phase(option%gas_phase) = FMWAIR
+
+  res = 0.d0
+  do icomp = 1, option%nflowspec
+    select case(flow_src_sink_type)
+      case(MASS_RATE_SS)
+        qsrc_mol = qsrc(icomp)/fmw_phase(icomp) ! kg/sec -> kmol/sec
+      case(SCALED_MASS_RATE_SS)
+        qsrc_mol = qsrc(icomp)/fmw_phase(icomp)*scale ! kg/sec -> kmol/sec
+      case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+        ! qsrc1 = m^3/sec
+        qsrc_mol = qsrc(icomp)*gen_aux_var%den(icomp) ! den = kmol/m^3
+      case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+        ! qsrc1 = m^3/sec
+        qsrc_mol = qsrc(icomp)*gen_aux_var%den(icomp)*scale ! den = kmol/m^3
+    end select
+    res(icomp) = qsrc_mol
+    res(option%energy_id) = res(option%energy_id) ! * some sort of heat transfer
+  enddo
+
+end subroutine GeneralSrcSink
+  
+! ************************************************************************** !
+!
 ! GeneralResidual: Computes the residual equation 
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralResidual(snes,xx,r,realization,ierr)
@@ -1479,7 +1532,7 @@ end subroutine GeneralResidual
 !
 ! GeneralResidualfuxContribsPatch: should be called only for SAMR
 ! author: Bobby Philip
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralResidualFluxContribPatch(r,realization,ierr)
@@ -1559,7 +1612,7 @@ end subroutine GeneralResidualFluxContribPatch
 !
 ! GeneralResidualPatch1: Computes the residual equation 
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
@@ -1913,7 +1966,7 @@ end subroutine GeneralResidualPatch1
 !
 ! GeneralResidualPatch2: Computes the residual equation 
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
@@ -1946,7 +1999,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:)
 
-  PetscReal :: qsrc, qsrc_mol
+  PetscReal :: scale
   PetscReal :: Res(realization%option%nflowdof)
 
 
@@ -1960,6 +2013,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   type(connection_set_type), pointer :: cur_connection_set
   type(material_parameter_type), pointer :: material_parameter
   PetscInt :: iconn
+  PetscInt :: local_start, local_end
   
   patch => realization%patch
   grid => patch%grid
@@ -1987,24 +2041,24 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       imat = patch%imat(ghosted_id)
       if (imat <= 0) cycle
+      local_end = local_id * option%nflowdof
+      local_start = local_end - option%nflowdof + 1
       call GeneralAccumulation(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 material_parameter%dencpr(imat), &
                                 volume_p(local_id), &
                                 option,Res) 
-      r_p(local_id) = r_p(local_id) + Res(1)
+      r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
     enddo
 
   endif
-
+#ifdef GENERAL
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-      
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
@@ -2012,23 +2066,26 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      select case(source_sink%flow_condition%rate%itype)
-        case(MASS_RATE_SS)
-          qsrc_mol = qsrc/FMWH2O ! kg/sec -> kmol/sec
-        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-          ! qsrc1 = m^3/sec
-          qsrc_mol = qsrc*global_aux_vars(ghosted_id)%den(1) ! den = kmol/m^3
-      end select
-!      if (option%compute_mass_balance_new) then
-        ! need to added global aux_var for src/sink
-!        global_aux_vars_ss(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars_ss(ghosted_id)%mass_balance_delta(1) - qsrc_kg
-!      endif
-      r_p(local_id) = r_p(local_id) - qsrc_mol
+      local_end = local_id * option%nflowdof
+      local_start = local_end - option%nflowdof + 1
+
+      if (associated(source_sink%flow_aux_real_var)) then
+        scale = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
+      else
+        scale = 1.d0
+      endif
+      
+      call GeneralSrcSink(option,source_sink%flow_condition%rate%dataset%cur_value(:), &
+                        source_sink%flow_condition%rate%itype, &
+                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
+                        scale,Res)
+
+      r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+
     enddo
     source_sink => source_sink%next
   enddo
-
+#endif
   if (patch%aux%General%inactive_cells_exist) then
     do i=1,patch%aux%General%n_zero_rows
       r_p(patch%aux%General%zero_rows_local(i)) = 0.d0
@@ -2046,7 +2103,7 @@ end subroutine GeneralResidualPatch2
 !
 ! GeneralJacobian: Computes the Jacobian
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
@@ -2172,7 +2229,7 @@ end subroutine GeneralJacobian
 !
 ! GeneralJacobianPatch1: Computes the Jacobian
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
@@ -2405,7 +2462,7 @@ end subroutine GeneralJacobianPatch1
 !
 ! GeneralJacobianPatch2: Computes the Jacobian
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
@@ -2576,7 +2633,7 @@ end subroutine GeneralJacobianPatch2
 !
 ! GeneralCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralCreateZeroArray(patch,option)
@@ -2653,7 +2710,7 @@ end subroutine GeneralCreateZeroArray
 !
 ! GeneralMaxChange: Computes the maximum change in the solution vector
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralMaxChange(realization)
@@ -2676,6 +2733,10 @@ subroutine GeneralMaxChange(realization)
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dcmax,ierr)
+  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
 
 end subroutine GeneralMaxChange
 
@@ -2684,7 +2745,7 @@ end subroutine GeneralMaxChange
 ! GeneralGetTecplotHeader: Returns General Lite contribution to 
 !                               Tecplot file header
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 function GeneralGetTecplotHeader(realization,icolumn)
@@ -2732,7 +2793,7 @@ end function GeneralGetTecplotHeader
 !
 ! GeneralDestroy: Deallocates variables associated with Richard
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralDestroy(realization)
@@ -2765,7 +2826,7 @@ end subroutine GeneralDestroy
 !
 ! GeneralDestroyPatch: Deallocates variables associated with Richard
 ! author: Glenn Hammond
-! date: 01/05/10
+! date: 03/09/11
 !
 ! ************************************************************************** !
 subroutine GeneralDestroyPatch(realization)
