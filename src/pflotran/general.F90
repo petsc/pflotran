@@ -480,6 +480,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
         end select
       enddo
       
+      global_aux_vars_bc(sum_connection)%istate = &
+        boundary_condition%flow_condition%iphase
       call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -647,7 +649,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(material_parameter_type), pointer :: material_parameter
 
-  PetscInt :: ghosted_id, local_id
+  PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
@@ -678,7 +680,9 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
-    call GeneralAuxVarCompute(xx_p(local_id:local_id), &
+    local_end = local_id*option%nflowdof
+    local_start = local_end - option%nflowdof + 1
+    call GeneralAuxVarCompute(xx_p(local_start:local_end), &
                               gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               realization%saturation_function_array( &
@@ -691,7 +695,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
                              material_parameter%dencpr(imat), &
                              porosity_loc_p(ghosted_id), &
                              volume_p(local_id), &
-                             option,accum_p(local_id:local_id)) 
+                             option,accum_p(local_start:local_end)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -1016,6 +1020,8 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   perm_ave_over_dist = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
 
   Res = 0.d0
+  v_darcy = 0.d0
+  
   do iphase = 1, option%nphase
     
     ! using residual saturation cannot be correct! - geh
@@ -1189,7 +1195,8 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   fmw_phase(option%gas_phase) = FMWAIR
 
   Res = 0.d0
-
+  v_darcy = 0.d0
+  
   do iphase = 1, option%nphase
   
     select case(iphase)
@@ -1278,15 +1285,16 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         endif
     end select
 
-    q = v_darcy(iphase) * area
-    mole_flux = q*density_ave       
-    do icomp = 1, option%nflowspec
-      Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
-    enddo
-    
-    Res(energy_id) = Res(energy_id) + mole_flux * &
-                                      gen_aux_var_dn%H(iphase)
-
+    if (dabs(v_darcy(iphase)) > 0.d0) then
+      q = v_darcy(iphase) * area
+      mole_flux = q*density_ave       
+      do icomp = 1, option%nflowspec
+        Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+      enddo
+      
+      Res(energy_id) = Res(energy_id) + mole_flux * &
+                                        gen_aux_var_dn%H(iphase)
+    endif
   enddo
   
   do icomp = 2, option%nflowspec
@@ -1514,13 +1522,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   endif
    
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Gresidual.out', &
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Gxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -2045,8 +2053,8 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       local_start = local_end - option%nflowdof + 1
       call GeneralAccumulation(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                                 global_aux_vars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
                                 material_parameter%dencpr(imat), &
+                                porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res) 
       r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
@@ -2201,10 +2209,10 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 1  
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Gjacobian.out', &
                               viewer,ierr)
 #else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Gjacobian.bin', &
                                FILE_MODE_WRITE,viewer,ierr)
 #endif    
     call MatView(J,viewer,ierr)
@@ -2303,6 +2311,15 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+  ! Perturb aux vars
+  do ghosted_id = 1, grid%ngmax  ! For each local node do...
+    if (patch%imat(ghosted_id) <= 0) cycle
+    call GeneralAuxVarPerturb(gen_aux_vars(:,ghosted_id), &
+                              global_aux_vars(ghosted_id), &
+                              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                              option)
+  enddo  
   
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
@@ -2363,17 +2380,17 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   upweight,option,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
-          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+          call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                         Jup,ADD_VALUES,ierr)
-          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+          call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
                                         Jdn,ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
-          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+          call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                         Jdn,ADD_VALUES,ierr)
-          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+          call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
                                         Jup,ADD_VALUES,ierr)
       endif
     enddo
@@ -2436,8 +2453,8 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   Jdn)
 
       Jdn = -Jdn
-        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
-                               ADD_VALUES,ierr) 
+        call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
+                                      ADD_VALUES,ierr) 
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2557,8 +2574,8 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               volume_p(local_id), &
                               option, &
                               Jup) 
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                             ADD_VALUES,ierr)
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                    ADD_VALUES,ierr)
   enddo
   endif
   if (realization%debug%matview_Jacobian_detailed) then
@@ -2592,7 +2609,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           Jup(1,1) = -qsrc*gen_aux_vars(ghosted_id)%dden_dp*FMWH2O
 #endif
       end select
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
 
     enddo
     source_sink => source_sink%next
