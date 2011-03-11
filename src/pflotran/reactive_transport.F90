@@ -1624,7 +1624,10 @@ subroutine RTCalculateRHS_t1Patch(realization)
       do 
         if (.not.associated(source_sink)) exit
 
-        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+!geh begin change
+!geh        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+        msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh end change
         msrc(1) =  msrc(1) / FMWH2O*1D3
         msrc(2) =  msrc(2) / FMWCO2*1D3
         ! print *,'RT SC source'
@@ -3193,7 +3196,10 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
             do 
               if (.not.associated(source_sink)) exit
 
-              msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+!geh begin change
+!geh              msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+              msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh end change
               msrc(1) =  msrc(1) / FMWH2O*1D3
               msrc(2) =  msrc(2) / FMWCO2*1D3
               ! print *,'RT SC source'
@@ -4750,7 +4756,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       do 
         if (.not.associated(source_sink)) exit
 
-        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+!geh begin change
+!geh        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+        msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh end change
         msrc(1) =  msrc(1) / FMWH2O*1D3
         msrc(2) =  msrc(2) / FMWCO2*1D3
         ! print *,'RT SC source'
