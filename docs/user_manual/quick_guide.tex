@@ -312,14 +312,14 @@ Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Da
 Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
 \begin{subequations}
 \BA\label{mass_conservation_equation}
-&\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\rho_\a^{} X_i^\a \bigg)
-+ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\rho_\a^{} X_i^\a \bigg.\nonumber\\
-& \qquad - \varphi s_\a^{} D_\a^{} \rho_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\rho_\a^{} X_i^\a \bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\rho_\a^{} X_i^\a 
+ - \varphi s_\a^{} D_\a^{} \rho_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
 \EA
 for the $i$th component, and
 \BA\label{energy_equation}
-&\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\rho_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)\nonumber\\
-&+ \bnabla\cdot\sum_\a\bigg[\bq_\a\rho_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\rho_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a\rho_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
 \EA
 \end{subequations}
 for energy. 
@@ -347,9 +347,9 @@ degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number
 
 The {\tt IMMIS} mode applies to multiple immiscible phases.
 
-\subsection{Mode: {\tt 2PH}}
+\subsection{Mode: {\tt Air-Water}}
 
-The {\tt 2PH} mode involves two phase liquid water-gas flow coupled to the reactive transport mode. Mass conservation equations have the form
+The {\tt Air-Water} mode involves two phase liquid water-gas flow coupled to the reactive transport mode. Mass conservation equations have the form
 \EQ
 \frac{\p}{\p t} \varphi \Big(s_l^{} \rho_l^{} x_i^l + s_g^{} \rho_g^{} x_i^g \Big) + \bnabla\cdot\Big(\bq_l^{} \rho_l^{} x_i^l + \bq_g \rho_g^{} x_i^g -\varphi s_l^{} D_l^{} \rho_l^{} \bnabla x_i^l -\varphi s_g^{} D_g^{} \rho_g^{} \bnabla x_i^g \Big) \eq Q_i^{},
 \EN
@@ -767,7 +767,7 @@ Define environment variables: $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving 
 --with-mpi-dir=$MPI_HOME \
 --download-openmpi=1 \
 --with-debugging=1 \
---with-shared=0 \
+--with-shared-libraries=0 \
 --download-mumps=1 \
 --download-parmetis=1 \
 --download-scalapack=1 \
@@ -1304,7 +1304,8 @@ Velocity: & meter/second [m/s]\\
 Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
 Enthalpy: & kilojoule/mole [kJ/mol]\\
 Mass: & kilogram [kg]\\
-Rate: & mass/time [kg/s] or volume/time [m$^3$/s]\\
+Rate: & mass/second [kg/s] or volume/second [m$^3$/s]\\
+Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
 \bottomrule[1.5pt]
 %\hline
 \end{tabular}
@@ -2774,18 +2775,18 @@ END
 \item[OUTPUT] ~
 \begin{deflist}{000}
 \item[TIMES] {\tt Unit (s, h, y)} \ \ \ {\tt Value} 
-\item[SCREEN OFF]
-\item[SCREEN PERIODIC] {\tt Value}
-\item[PERIODIC TIME] {\tt Value} \ {\tt Unit}
-\item[PERIODIC TIMESTEP] {\tt Value} \ {\tt Unit}
-\item[PERIODIC\_OBSERVATION TIME] {\tt Value} \ {\tt Unit}
-\item[PERIODIC\_OBSERVATION TIMESTEP] {\tt Value}
+\item[SCREEN \ OFF]
+\item[SCREEN \ PERIODIC] {\tt Value}
+\item[PERIODIC \ TIME] {\tt Value} \ {\tt Unit}
+\item[PERIODIC \ TIMESTEP] {\tt Value} \ {\tt Unit}
+\item[PERIODIC\_OBSERVATION \ TIME] {\tt Value} \ {\tt Unit}
+\item[PERIODIC\_OBSERVATION \ TIMESTEP] {\tt Value}
 \item[NO\_FINAL, NO\_PRINT\_FINAL]
-\item[FORMAT TECPLOT POINT]
-\item[FORMAT TECPLOT BLOCK]
-\item[FORMAT HDF5]
-\item[FORMAT MAD]
-\item[FORMAT VTK]
+\item[FORMAT \ TECPLOT \ POINT]
+\item[FORMAT \ TECPLOT \ BLOCK]
+\item[FORMAT \ HDF5]
+\item[FORMAT \ MAD]
+\item[FORMAT \ VTK]
 \item[PERMEABILITY]
 \item[POROSITY]
 \item[FLUXES]
@@ -3070,6 +3071,7 @@ POWER 1.d0
 \item[FINAL\_TIME] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
 \item[INITIAL\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
 \item[MAXIMUM\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[MAXIMUM\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)} \ {\bf AT} \ {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
 \item[STEADY\_STATE]
 \end{deflist}
 \item[(., /, END)]

@@ -133,11 +133,13 @@ ENTHALPY 0.d0 0.d0
 FLOW_CONDITION source
 UNITS Pa,C,M,yr
 TYPE
-PRESSURE mass_rate
+RATE mass_rate
+PRESSURE dirichlet
 TEMPERATURE dirichlet
 CONCENTRATION dirichlet
 /
-PRESSURE file c2i.txt  ! kg/s
+RATE file c2i.txt  ! kg/s
+PRESSURE 2.d7 2.d7
 TEMPERATURE 50.d0
 CONCENTRATION 0.D0
 ENTHALPY 0.d0 0.d0
