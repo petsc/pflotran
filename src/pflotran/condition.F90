@@ -699,9 +699,9 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = PRODUCTION_WELL
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
-            case('volumetric','volumetric_rate')
+            case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-            case('scaled_volumetric','scaled_volumetric_rate')
+            case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
@@ -810,11 +810,35 @@ subroutine FlowConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
+  ! check to ensure that a pressure condition is not of type rate   
+  if (associated(pressure)) then                          
+    select case(pressure%itype)
+      case(MASS_RATE_SS,SCALED_MASS_RATE_SS,VOLUMETRIC_RATE_SS, &
+           SCALED_VOLUMETRIC_RATE_SS,EQUILIBRIUM_SS,PRODUCTION_WELL)
+        option%io_buffer = 'PRESSURE or FLUX condition must not be of type: ' // &
+          'mass_rate, scaled_mass_rate, volumetric_rate, ' // &
+          'scaled_volumetric_rate, equilibrium, or production_well.'
+        call printErrMsg(option)
+    end select
+  endif
+
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,rate,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
+  ! check to ensure that a rate condition is not of type pressure   
+  if (associated(rate)) then
+    select case(rate%itype)
+      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC, &
+           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
+        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
+          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
+          'seepage, or conductance".'
+        call printErrMsg(option)
+    end select
+  endif
+
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
                               default_ctype, default_itype, &
