@@ -24,9 +24,10 @@ module General_Aux_module
 !    PetscReal, pointer :: dkvr_dp(:)
   end type general_auxvar_type
   
-!  type, public :: general_parameter_type
-    ! placeholder
-!  end type general_parameter_type
+  type, public :: general_parameter_type
+    PetscReal, pointer :: diffusion_coefficient(:) ! (iphase)
+    PetscReal, pointer :: thermal_conductivity(:) ! (iphase)
+  end type general_parameter_type
   
   type, public :: general_type
     PetscInt :: n_zero_rows
@@ -35,7 +36,7 @@ module General_Aux_module
     PetscBool :: aux_vars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
-!    type(general_parameter_type), pointer :: general_parameter
+    type(general_parameter_type), pointer :: general_parameter
     type(general_auxvar_type), pointer :: aux_vars(:,:)
     type(general_auxvar_type), pointer :: aux_vars_bc(:)
   end type general_type
@@ -54,12 +55,14 @@ contains
 ! date: 03/07/11
 !
 ! ************************************************************************** !
-function GeneralAuxCreate()
+function GeneralAuxCreate(option)
 
   use Option_module
 
   implicit none
-  
+
+  type(option_type) :: option
+    
   type(general_type), pointer :: GeneralAuxCreate
   
   type(general_type), pointer :: aux
@@ -74,6 +77,12 @@ function GeneralAuxCreate()
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+
+  allocate(aux%general_parameter)
+  allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
+  aux%general_parameter%diffusion_coefficient = 0.d0
+  allocate(aux%general_parameter%thermal_conductivity(option%nphase))
+  aux%general_parameter%thermal_conductivity = 0.d0
 
   GeneralAuxCreate => aux
   
@@ -354,6 +363,17 @@ subroutine GeneralAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
 
+  if (associated(aux%general_parameter)) then
+    if (associated(aux%general_parameter%diffusion_coefficient)) &
+      deallocate(aux%general_parameter%diffusion_coefficient)
+    nullify(aux%general_parameter%diffusion_coefficient)
+    if (associated(aux%general_parameter%thermal_conductivity)) &
+      deallocate(aux%general_parameter%thermal_conductivity)
+    nullify(aux%general_parameter%thermal_conductivity)
+    deallocate(aux%general_parameter)
+  endif
+  nullify(aux%general_parameter)
+  
 end subroutine GeneralAuxDestroy
 
 end module General_Aux_module

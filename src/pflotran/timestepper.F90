@@ -766,7 +766,6 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           endif
           dtt = fac * dt * (1.d0 + ut)
         case(G_MODE)   
-          call printErrMsg(option,"Set up ts update for g-mode")
           fac = 0.5d0
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
             fac = 0.33d0
@@ -775,8 +774,8 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             up = option%dpmxe/(option%dpmax+0.1)
             utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
             uc = option%dcmxe/(option%dcmax+1.d-6)
-            uus= option%dsmxe/(option%dsmax+1.d-6)
-            ut = min(up,utmp,uc,uus)
+!            uus= option%dsmxe/(option%dsmax+1.d-6)
+            ut = min(up,utmp,uc)
           endif
           dtt = fac * dt * (1.d0 + ut)
         case default

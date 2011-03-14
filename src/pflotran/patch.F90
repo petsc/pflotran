@@ -1347,7 +1347,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscReal :: xmass
-  PetscInt :: irate
+  PetscInt :: irate, istate
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -1568,6 +1568,56 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
               vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
             enddo
         end select
+      else if (associated(patch%aux%General)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%temp
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              istate = patch%aux%Global%aux_vars(ghosted_id)%istate
+              select case(istate)
+                case(LIQUID_STATE,TWO_PHASE_STATE)
+                  vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase)
+                case(GAS_STATE)
+                  vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
+              end select
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%liquid_phase)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%liquid_phase)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%liquid_phase)
+            enddo
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%gas_phase)
+            enddo
+          case(GAS_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%gas_phase)
+            enddo
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%gas_phase)
+            enddo
+          case(GAS_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%gas_phase)
+            enddo
+        end select         
       endif
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
@@ -1805,7 +1855,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
   PetscInt :: ghosted_id
 
   PetscReal :: value, xmass
-  PetscInt :: irate
+  PetscInt :: irate, istate
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
   PetscErrorCode :: ierr
@@ -1939,6 +1989,35 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
           case(LIQUID_ENERGY)
             value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
+      else if (associated(patch%aux%General)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%temp
+          case(PRESSURE)
+            istate = patch%aux%Global%aux_vars(ghosted_id)%istate
+            select case(istate)
+              case(LIQUID_STATE,TWO_PHASE_STATE)
+                value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase)
+              case(GAS_STATE)
+                value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
+            end select
+          case(LIQUID_SATURATION)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%sat(option%liquid_phase)
+          case(LIQUID_DENSITY)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%den_kg(option%liquid_phase)
+          case(LIQUID_ENERGY)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%U(option%liquid_phase)
+          case(LIQUID_MOLE_FRACTION)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%xmol(isubvar,option%liquid_phase)
+          case(GAS_SATURATION)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%sat(option%gas_phase)
+          case(GAS_DENSITY) 
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%den_kg(option%gas_phase)
+          case(GAS_ENERGY)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%U(option%gas_phase)
+          case(GAS_MOLE_FRACTION)
+            value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%xmol(isubvar,option%gas_phase)
+        end select        
       endif
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
@@ -2075,7 +2154,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   PetscInt :: vec_format
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt :: iphase
+  PetscInt :: iphase, istate
 
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
@@ -2486,6 +2565,56 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
         end select
+      else if (associated(patch%aux%General)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%temp = vec_ptr(local_id)
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              istate = patch%aux%Global%aux_vars(ghosted_id)%istate
+              select case(istate)
+                case(LIQUID_STATE,TWO_PHASE_STATE)
+                  patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%liquid_phase) = vec_ptr(local_id)
+                case(GAS_STATE)
+                  patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase) = vec_ptr(local_id)
+              end select
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%liquid_phase) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%liquid_phase) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%liquid_phase) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%liquid_phase) = vec_ptr(local_id)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%sat(option%gas_phase) = vec_ptr(local_id)
+            enddo
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%den_kg(option%gas_phase) = vec_ptr(local_id)
+            enddo
+          case(GAS_ENERGY)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%U(option%gas_phase) = vec_ptr(local_id)
+            enddo
+          case(GAS_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%xmol(isubvar,option%gas_phase) = vec_ptr(local_id)
+            enddo
+        end select         
       endif
     case(PRIMARY_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF)
