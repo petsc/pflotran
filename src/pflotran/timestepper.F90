@@ -842,16 +842,15 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       if (tran_stepper%iaccel == 0) return
 
       dtt = dt
-      if ( &
-      !tran_stepper%num_newton_iterations <= tran_stepper%iaccel .and. &
-          tran_stepper%num_newton_iterations <= size(tran_stepper%tfac)) then
-        if (tran_stepper%num_newton_iterations == 0) then
-          dtt = tran_stepper%tfac(1) * dt
-        else
+      if (tran_stepper%num_newton_iterations <= tran_stepper%iaccel) then
+        if (tran_stepper%num_newton_iterations <= size(tran_stepper%tfac)) then
           dtt = tran_stepper%tfac(tran_stepper%num_newton_iterations) * dt
+        else
+          dtt = 0.5d0 * dt
         endif
       else
-        dtt = 2.d0 * dt
+!       dtt = 2.d0 * dt
+        dtt = 0.5d0 * dt
       endif
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt

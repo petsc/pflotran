@@ -13,7 +13,9 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
-#include "finclude/petscmg.h"
+#ifdef DMDA_NEW
+#include "finclude/petscpcmg.h"
+#endif
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
