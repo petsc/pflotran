@@ -84,6 +84,10 @@ else
  include ${PETSC_DIR}/conf/rules
 endif
 
+ifdef dmda
+  GLENN_FLAGS += -DDMDA_NEW
+endif
+
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif
