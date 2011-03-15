@@ -1193,7 +1193,7 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                    por_up,sir_up,dd_up,perm_up,tor_up, &
                    gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
                    por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                   area,dist_gravity,upweight,general_parameter, & &
+                   area,dist_gravity,upweight,general_parameter, &
                    option,v_darcy,res)
                            
   ! upgradient derivatives
@@ -1202,7 +1202,7 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                      por_up,sir_up,dd_up,perm_up,tor_up, &
                      gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
                      por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                     area,dist_gravity,upweight,general_parameter, & &
+                     area,dist_gravity,upweight,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_up(idof)%pert
@@ -1215,7 +1215,7 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                      por_up,sir_up,dd_up,perm_up,tor_up, &
                      gen_aux_var_dn(idof),global_aux_var_dn, &
                      por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
-                     area,dist_gravity,upweight,general_parameter, & &
+                     area,dist_gravity,upweight,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
