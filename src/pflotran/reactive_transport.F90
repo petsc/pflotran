@@ -2737,7 +2737,7 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
 
   if (option%use_samr) then
      do axis=0,2  
-      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)
+      call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)
       fluxes(axis)%flux_p(:)=0.0
      enddo
   endif
@@ -3625,7 +3625,7 @@ subroutine RTTransportResidualFluxContribPatch(r,realization,ierr)
   call GridVecGetArrayF90(grid,r, r_p, ierr)
 
   do axis=0,2  
-     call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+     call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
   enddo
 
   nlx = grid%structured_grid%nlx  
