@@ -3295,6 +3295,8 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
+  PetscInt :: ieqgas, icomp
+  PetscReal :: msrc(realization%option%nphase)
   PetscReal :: qsrc, molality
   PetscInt :: flow_src_sink_type
   PetscReal :: scale, coef_in, coef_out
