@@ -1883,6 +1883,8 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
     call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
     call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
     call RTCalculateTransportMatrix(realization,solver%Jpre)
+!  the next line was used to debug why an ludcmp error was showing up
+!     call RTCalculateTransportMatrix(realization,solver%J)
 #ifndef PC_BUG       
     call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
 #endif       

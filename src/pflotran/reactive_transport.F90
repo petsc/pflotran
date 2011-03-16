@@ -2737,7 +2737,8 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
 
   if (option%use_samr) then
      do axis=0,2  
-        call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)
+      fluxes(axis)%flux_p(:)=0.0
      enddo
   endif
 
@@ -2859,9 +2860,15 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
                      coef_up,coef_dn)
 
       ! leave off the boundary contribution since it is already inclued in the
-      ! rhs value
-      res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
-            coef_dn(iphase)*solution_loc_p(ghosted_id)
+! rhs value
+      if(option%use_samr) then
+      ! bp, I only need this                  
+         res = coef_dn(iphase)*solution_loc_p(ghosted_id)
+      else                  
+        res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
+        coef_dn(iphase)*solution_loc_p(ghosted_id)
+      endif
+      
 !geh - the below assumes that the boundary contribution was provided in the
 !      rhs vector above.
 !geh      res = coef_dn(iphase)*solution_loc_p(ghosted_id)
@@ -3248,11 +3255,14 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
 
   use Realization_module
   use Patch_module
-  use Connection_module
-  use Coupler_module
+  use Transport_module
   use Option_module
-  use Field_module  
-  use Grid_module  
+  use Field_module
+  use Grid_module
+  use Connection_module
+  use Coupler_module  
+  use Debug_module
+  use Logging_module
 
   implicit none
   
@@ -3262,11 +3272,13 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
   PetscInt :: idof
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_param_type), pointer :: rt_parameter
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
+  type(reaction_type), pointer :: reaction
   type(field_type), pointer :: field
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: volume_p(:)
@@ -3278,10 +3290,14 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
   PetscInt :: iphase
   PetscReal :: res
   
+  type(coupler_type), pointer :: source_sink
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
+  PetscReal :: qsrc, molality
+  PetscInt :: flow_src_sink_type
+  PetscReal :: scale, coef_in, coef_out
   PetscReal :: coef
   PetscReal :: coef_up(1), coef_dn(1)
   PetscErrorCode :: ierr
@@ -3290,7 +3306,9 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
   option => realization%option
   field => realization%field
   patch => realization%patch
+  reaction => realization%reaction
   global_aux_vars => patch%aux%Global%aux_vars
+  rt_parameter => patch%aux%RT%rt_parameter
   rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   grid => patch%grid
@@ -3326,6 +3344,100 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
                            coef*solution_loc_p(ghosted_id)
 
   enddo
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection_set
+    
+    flow_src_sink_type = 0
+    if (associated(source_sink%flow_condition) .and. &
+        associated(source_sink%flow_condition%rate)) then
+      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      flow_src_sink_type = source_sink%flow_condition%rate%itype
+    endif
+      
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      if (associated(source_sink%flow_aux_real_var)) then
+        scale = source_sink%flow_aux_real_var(1,iconn)
+      else
+        scale = 1.d0
+      endif
+
+      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
+                        source_sink%tran_condition%itype, &
+                        porosity_loc_p(ghosted_id), &
+                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
+                        volume_p(local_id), &
+                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
+                        scale,PETSC_FALSE,coef_in,coef_out)
+      res = coef_in*solution_loc_p(ghosted_id) + &
+                             coef_out*source_sink%tran_condition%cur_constraint_coupler% &
+                                        rt_auxvar%total(idof,iphase)
+      if (reaction%ncoll > 0) then
+        res = coef_in*rt_aux_vars(ghosted_id)%colloid%conc_mob(idof) + &
+              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
+                                              rt_auxvar%colloid%conc_mob(idof)
+      endif
+
+      residual_p(local_id) = residual_p(local_id) + res
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+#ifdef CHUAN_CO2
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
+      
+      !geh: conditional moved outside the do loop to speed things up
+      ! first figure out if the current component (idof) is involved 
+      ! in the src sink
+      
+      do ieqgas = 1, reaction%ngas
+        if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+ 
+          icomp = reaction%eqgasspecid(1,ieqgas)
+          if (idof == icomp) then
+      
+            source_sink => patch%source_sinks%first 
+            do 
+              if (.not.associated(source_sink)) exit
+
+!geh begin change
+!geh              msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+              msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh end change
+              msrc(1) =  msrc(1) / FMWH2O*1D3
+              msrc(2) =  msrc(2) / FMWCO2*1D3
+              ! print *,'RT SC source'
+              do iconn = 1, cur_connection_set%num_connections      
+                local_id = cur_connection_set%id_dn(iconn)
+                ghosted_id = grid%nL2G(local_id)
+                Res=0D0
+                
+                if (patch%imat(ghosted_id) <= 0) cycle
+                
+                select case(source_sink%flow_condition%itype(1))
+                  case(MASS_RATE_SS)
+                    res = -msrc(2)
+                    residual_p(local_id) = residual_p(local_id) + res
+      !                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
+                end select 
+              enddo
+              source_sink => source_sink%next
+            enddo
+          endif ! idof == icomp
+        endif ! co2_gas_id == ieqgas
+      enddo
+  end select
+     
+#endif
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
@@ -3397,6 +3509,7 @@ subroutine RTTransportMatVec(mat, x, y)
 #ifndef PC_BUG  
   call SAMRGetRealization(p_application, realization)
 #endif
+  ! the next call is for debugging purposes
 !  call SAMRGetPetscTransportMatrix(p_application, vmat)
 
   field => realization%field
@@ -3453,6 +3566,7 @@ subroutine RTTransportMatVec(mat, x, y)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       call RTTransportMatVecPatch2(realization,field%work_loc,y,idof)
+!      call RTTransportResidualPatch2(realization,field%work_loc,y,idof)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -3460,13 +3574,10 @@ subroutine RTTransportMatVec(mat, x, y)
 
 !  alpha=-1.0    
 !  call VecScale(y, alpha, ierr)
-
 !  call MatMult(vmat, x, field%work_samr, ierr)
-
 !  call VecAXPY(field%work_samr, alpha, y, ierr)
-
-!    call VecNorm(field%work_samr, NORM_2, diff, ierr)
-      
+!  call VecNorm(field%work_samr, NORM_2, diff, ierr)
+!  print *,'Difference in MatVec computations ', diff    
 end subroutine RTTransportMatVec
       
 ! ************************************************************************** !
@@ -3778,7 +3889,7 @@ end subroutine RTResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualfuxContribsPatch: should be called only for SAMR
+! RichardsResidualFluxContribsPatch: should be called only for SAMR
 ! author: Bobby Philip
 ! date: 02/17/09
 !

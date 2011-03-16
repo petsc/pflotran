@@ -179,7 +179,7 @@ int main( int argc, char **argv )
        // create a RefinementBoundaryInterpolation object
        SAMRAI::RefinementBoundaryInterpolation *cf_interpolant = new SAMRAI::RefinementBoundaryInterpolation(hierarchy);
        cf_interpolant->setVariableOrderInterpolation(false);
-       
+       cf_interpolant->setExtrapolatePhysicalEdge(true);
        /*
 	* Add the RefinementBoundaryInterpolation object
 	*/
