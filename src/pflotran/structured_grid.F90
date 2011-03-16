@@ -197,6 +197,9 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
+#ifdef DMDA_NEW
+#include "finclude/petscdmda.h"
+#endif
 
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
@@ -209,12 +212,22 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   !-----------------------------------------------------------------------
   ! Generate the DM object that will manage communication.
   !-----------------------------------------------------------------------
+#ifdef DMDA_NEW
+  call DMDACreate3D(option%mycomm,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE, &
+                  DMDA_BOUNDARY_NONE,DMDA_STENCIL_STAR, &
+                  structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                  structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                  ndof,stencil_width, &
+                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                  da,ierr)
+#else
   call DMDACreate3D(option%mycomm,DMDA_NONPERIODIC,DMDA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   da,ierr)
+#endif
 
   call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                  PETSC_NULL_INTEGER,structured_grid%npx_final, &

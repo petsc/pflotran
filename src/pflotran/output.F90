@@ -6806,16 +6806,16 @@ subroutine OutputMassBalanceNew(realization)
         case(MPH_MODE)
           icol = icol + 1
           write(strcol,'(i3,"-")') icol
-          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in Water Phase [mol]"'
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in Water Phase [kmol]"'
           icol = icol + 1
           write(strcol,'(i3,"-")') icol
-          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in Water Phase [mol]"'
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in Water Phase [kmol]"'
           icol = icol + 1
           write(strcol,'(i3,"-")') icol
-          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in CO2 Phase [mol]"'
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in CO2 Phase [kmol]"'
           icol = icol + 1
           write(strcol,'(i3,"-")') icol
-          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in CO2 Phase [mol]"'
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in CO2 Phase [kmol]"'
       end select
       
       if (option%ntrandof > 0) then

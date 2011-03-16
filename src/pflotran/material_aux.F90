@@ -44,10 +44,12 @@ function MaterialAuxCreate()
   
   type(material_type), pointer :: aux
 
-  allocate(aux) 
+  allocate(aux)
+  nullify(aux%aux_vars)
   allocate(aux%material_parameter)
   nullify(aux%material_parameter%sir)
   nullify(aux%material_parameter%dencpr)
+  aux%num_aux = 0
 
   MaterialAuxCreate => aux
   

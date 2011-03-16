@@ -132,7 +132,7 @@ subroutine GeneralSetupPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  patch%aux%General => GeneralAuxCreate()
+  patch%aux%General => GeneralAuxCreate(option)
   patch%aux%Material => MaterialAuxCreate()
 
   allocate(patch%aux%Material%material_parameter% &
@@ -894,38 +894,51 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
   PetscInt :: wat_comp_id, air_comp_id, energy_id
   PetscInt :: icomp, iphase
   
-  PetscReal :: pv_over_t
+  PetscReal :: v_over_t
   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
   
-  pv_over_t = por * vol / option%flow_dt
+  ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
+  v_over_t = vol / option%flow_dt
   
   ! accumulation term units = kmol/s
   Res = 0.d0
   do icomp = 1, option%nflowspec
     do iphase = 1, option%nphase
+      ! Res[mol comp/m^3 void] = sat[m^3 phase/m^3 void] * den[mol phase/m^3 phase] * 
+      !                            xmol[mol comp/mol phase]
       Res(icomp) = Res(icomp) + gen_aux_var%sat(iphase) * &
                                 gen_aux_var%den(iphase) * &
                                 gen_aux_var%xmol(icomp,iphase)
     enddo
   enddo
   
+  ! some all components into first dof
   do icomp = 2, option%nflowspec
+    ! Res[mol total/m^3 void] = sum(Res[mol comp/m^3 void])
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
   
-  Res(1:option%nflowspec) = Res(1:option%nflowspec) * pv_over_t
+  ! scale by porosity * volume / dt
+  ! Res[mol/sec] = Res[mol/m^3 void] * por[m^3 void/m^3 bulk] * 
+  !                  vol[m^3 bulk] / dt[sec]
+  Res(1:option%nflowspec) = Res(1:option%nflowspec) * por * v_over_t
   
   do iphase = 1, option%nphase
+    ! Res[J/m^3 void] = sat[m^3 phase/m^3 void] *
+    !                     den[mol phase/m^3 phase] * u[J/mol phase]
     Res(energy_id) = Res(energy_id) + gen_aux_var%sat(iphase) * &
                                       gen_aux_var%den(iphase) * &
                                       gen_aux_var%u(iphase)
   enddo
-
-  Res(energy_id) = Res(energy_id) * pv_over_t + &
-                                    (1.d0 - por) * dencpr * gen_aux_var%temp
+  ! Res[J/sec] = (Res[J/m^3 void] * por[m^3 void/m^3 bulk] + 
+  !                (1-por)[m^3 rock/m^3 bulk] * 
+  !                  dencpr[kg rock/m^3 rock * J/kg rock-K] * T[C]) &
+  !              vol[m^3 bulk] / dt[sec]
+  Res(energy_id) = (Res(energy_id) * por + &
+                    (1.d0 - por) * dencpr * gen_aux_var%temp) * v_over_t 
 
 end subroutine GeneralAccumulation
   
@@ -975,10 +988,10 @@ end subroutine GeneralAccumDerivative
 !
 ! ************************************************************************** ! 
 subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
-                       por_up,sir_up,dd_up,perm_up, &
+                       por_up,sir_up,dd_up,perm_up,tor_up, &
                        gen_aux_var_dn,global_aux_var_dn, &
-                       por_dn,sir_dn,dd_dn,perm_dn, &
-                       area,dist_gravity,upweight, &
+                       por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                       area,dist_gravity,upweight,general_parameter, &
                        option,v_darcy,Res)
   use Option_module                              
   
@@ -991,10 +1004,12 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
+  PetscReal :: tor_up, tor_dn
   PetscReal :: v_darcy(option%nphase)
   PetscReal :: area
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: upweight
+  type(general_parameter_type) :: general_parameter
   PetscReal :: Res(option%nflowdof)
 
   PetscReal :: upweight_adj
@@ -1006,9 +1021,12 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscReal :: density_ave
   PetscReal :: H_ave
   PetscReal :: perm_ave_over_dist
-  PetscReal :: delta_pressure
+  PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity
   PetscReal :: ukvr, mole_flux, q
+  PetscReal :: stp_up, stp_dn
+  PetscReal :: temp_ave, stp_ave, theta, v_air
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
@@ -1055,13 +1073,20 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       endif      
 
       if (ukvr > floweps) then
+        ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+        !                    dP[Pa]]
         v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
-        q = v_darcy(iphase) * area
+        ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+        q = v_darcy(iphase) * area  
+        ! mole_flux[mol phase/sec] = q[m^3 phase/sec] * 
+        !                              density_ave[mol phase/m^3 phase]        
         mole_flux = q*density_ave       
         do icomp = 1, option%nflowspec
+          ! Res[mol comp/sec] = mole_flux[mol phase/sec] * 
+          !                       xmol[mol comp/mol phase]
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
         enddo
-        
+        ! Res[J/sec] = mole_flux[mol comp/sec] * H_ave[J/mol comp]
         Res(energy_id) = Res(energy_id) + mole_flux * &
                                           gen_aux_var_dn%H(iphase)
         
@@ -1070,9 +1095,61 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   enddo
   
   do icomp = 2, option%nflowspec
+    ! Res[mol total/sec] = sum(Res[mol comp/sec])  
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
 
+  ! add in gas component diffusion
+  iphase = option%gas_phase
+  theta = 1.d0
+  
+  if (gen_aux_var_up%sat(iphase) > eps .and. &
+      gen_aux_var_dn%sat(iphase) > eps) then
+    upweight_adj = upweight
+    if (gen_aux_var_up%sat(iphase) < eps) then 
+      upweight_adj=0.d0
+    else if (gen_aux_var_dn%sat(iphase) < eps) then 
+      upweight_adj=1.d0
+    endif         
+    stp_up = gen_aux_var_up%sat(iphase)*tor_up*por_up
+    stp_dn = gen_aux_var_dn%sat(iphase)*tor_dn*por_dn
+    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+    temp_ave = upweight_adj*gen_aux_var_up%temp + &
+               (1.d0-upweight_adj)*gen_aux_var_dn%temp
+    density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
+                  (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)             
+    stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
+    delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
+                 gen_aux_var_dn%xmol(air_comp_id,iphase)
+    ! need to account for multiple phases
+    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+    v_air = stp_ave * &
+            (temp_ave/273.15d0)**theta * &
+            option%reference_pressure / gen_aux_var_dn%pres(option%gas_phase) * &
+            general_parameter%diffusion_coefficient(iphase) * delta_xmol
+    q =  v_air * area
+    mole_flux = q * density_ave
+    Res(air_comp_id) = Res(air_comp_id) + mole_flux
+  endif  
+    
+  ! add heat conduction flux
+  k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
+             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+             gen_aux_var_up%sat(option%gas_phase) * &
+             general_parameter%diffusion_coefficient(option%gas_phase)
+  k_eff_dn = gen_aux_var_dn%sat(option%liquid_phase) * &
+             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+             gen_aux_var_dn%sat(option%gas_phase) * &
+             general_parameter%diffusion_coefficient(option%gas_phase)
+  if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
+    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*dd_up)
+  else
+    k_eff_ave = 0.d0
+  endif
+  delta_temp = gen_aux_var_up%temp - gen_aux_var_dn%temp
+  heat_flux = k_eff_ave * delta_temp * area
+  Res(energy_id) = Res(energy_id) + heat_flux
+    
 end subroutine GeneralFlux
 
 ! ************************************************************************** !
@@ -1084,10 +1161,11 @@ end subroutine GeneralFlux
 !
 ! ************************************************************************** ! 
 subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
-                                  sir_up,dd_up,perm_up, &
+                                  sir_up,dd_up,perm_up,tor_up, &
                                   gen_aux_var_dn,global_aux_var_dn,por_dn, &
-                                  sir_dn,dd_dn,perm_dn, &
+                                  sir_dn,dd_dn,perm_dn,tor_dn, &
                                   area,dist_gravity,upweight, &
+                                  general_parameter, &
                                   option,Jup,Jdn)
   use Option_module 
   
@@ -1100,9 +1178,11 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
+  PetscReal :: tor_up, tor_dn
   PetscReal :: area
   PetscReal :: dist_gravity
   PetscReal :: upweight
+  type(general_parameter_type) :: general_parameter
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
 
   PetscReal :: v_darcy(option%nphase)
@@ -1110,19 +1190,19 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
   PetscInt :: idof, irow
 
   call GeneralFlux(gen_aux_var_up(ZERO_INTEGER),global_aux_var_up, &
-                   por_up,sir_up,dd_up,perm_up, &
+                   por_up,sir_up,dd_up,perm_up,tor_up, &
                    gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
-                   por_dn,sir_dn,dd_dn,perm_dn, &
-                   area,dist_gravity,upweight, &
+                   por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                   area,dist_gravity,upweight,general_parameter, &
                    option,v_darcy,res)
                            
   ! upgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralFlux(gen_aux_var_up(idof),global_aux_var_up, &
-                     por_up,sir_up,dd_up,perm_up, &
+                     por_up,sir_up,dd_up,perm_up,tor_up, &
                      gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
-                     por_dn,sir_dn,dd_dn,perm_dn, &
-                     area,dist_gravity,upweight, &
+                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                     area,dist_gravity,upweight,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_up(idof)%pert
@@ -1132,10 +1212,10 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralFlux(gen_aux_var_up(ZERO_INTEGER),global_aux_var_up, &
-                     por_up,sir_up,dd_up,perm_up, &
+                     por_up,sir_up,dd_up,perm_up,tor_up, &
                      gen_aux_var_dn(idof),global_aux_var_dn, &
-                     por_dn,sir_dn,dd_dn,perm_dn, &
-                     area,dist_gravity,upweight, &
+                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                     area,dist_gravity,upweight,general_parameter, &
                      option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
@@ -1154,8 +1234,9 @@ end subroutine GeneralFluxDerivative
 subroutine GeneralBCFlux(ibndtype,aux_vars, &
                          gen_aux_var_up,global_aux_var_up, &
                          gen_aux_var_dn,global_aux_var_dn, &
-                         por_dn,sir_dn,dd_up,perm_dn, &
-                         area,dist_gravity,option,v_darcy,Res)
+                         por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                         area,dist_gravity,general_parameter, &
+                         option,v_darcy,Res)
   use Option_module                              
   
   implicit none
@@ -1164,11 +1245,12 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn(option%nphase)
+  PetscReal :: dd_dn, sir_dn(option%nphase)
   PetscReal :: aux_vars(:) ! from aux_real_var array
-  PetscReal :: por_dn,perm_dn
+  PetscReal :: por_dn, perm_dn, tor_dn
   PetscReal :: v_darcy(option%nphase), area
   PetscReal :: dist_gravity
+  type(general_parameter_type) :: general_parameter
   PetscReal :: Res(1:option%nflowdof)
 
   PetscReal :: upweight
@@ -1180,9 +1262,11 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   PetscReal :: density_ave
   PetscReal :: H_ave
   PetscReal :: perm_ave_over_dist
-  PetscReal :: delta_pressure
+  PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity
   PetscReal :: ukvr, mole_flux, q
+  PetscReal :: temp_ave, stp_ave, theta, v_air
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
   
   PetscInt :: bc_type
   PetscInt :: idof
@@ -1219,7 +1303,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           end select        
           perm_ave_over_dist = aux_vars(idof)
         else
-          perm_ave_over_dist = perm_dn / dd_up
+          perm_ave_over_dist = perm_dn / dd_dn
         endif
         
           
@@ -1263,6 +1347,8 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           endif      
 
           if (ukvr > floweps) then
+            ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+            !                    dP[Pa]]
             v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
           endif                   
         endif ! sat > eps
@@ -1286,20 +1372,75 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
     end select
 
     if (dabs(v_darcy(iphase)) > 0.d0) then
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
       q = v_darcy(iphase) * area
+      ! mole_flux[mol phase/sec] = q[m^3 phase/sec] * 
+      !                              density_ave[mol phase/m^3 phase]
       mole_flux = q*density_ave       
       do icomp = 1, option%nflowspec
+        ! Res[mol comp/sec] = mole_flux[mol phase/sec] * 
+        !                       xmol[mol comp/mol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
       enddo
-      
-      Res(energy_id) = Res(energy_id) + mole_flux * &
-                                        gen_aux_var_dn%H(iphase)
+      ! Res[J/sec] = mole_flux[mol comp/sec] * H_ave[J/mol comp]
+      Res(energy_id) = Res(energy_id) + mole_flux * H_ave
     endif
   enddo
   
   do icomp = 2, option%nflowspec
+    ! Res[mol total/sec] = sum(Res[mol comp/sec])
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
+
+  ! add in gas component diffusion
+  iphase = option%gas_phase
+  theta = 1.d0
+  
+  if (gen_aux_var_up%sat(iphase) > eps .and. &
+      gen_aux_var_dn%sat(iphase) > eps) then
+    upweight = 1.d0
+    if (gen_aux_var_up%sat(iphase) < eps) then 
+      upweight=0.d0
+    else if (gen_aux_var_dn%sat(iphase) < eps) then 
+      upweight=1.d0
+    endif       
+    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+    temp_ave = upweight*gen_aux_var_up%temp + &
+            (1.d0-upweight)*gen_aux_var_dn%temp
+    density_ave = upweight*gen_aux_var_up%den(iphase)+ &
+                  (1.D0-upweight)*gen_aux_var_dn%den(iphase)             
+!    stp_ave = tor_dn*por_dn*(gen_aux_var_up%sat(iphase)*gen_aux_var_dn%sat(iphase))/ &
+!              ((gen_aux_var_up%sat(iphase)+gen_aux_var_dn%sat(iphase))*dd_dn)
+    ! should saturation be distance weighted?
+    stp_ave = tor_dn*por_dn*gen_aux_var_dn%sat(iphase)/dd_dn
+    delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
+                 gen_aux_var_dn%xmol(air_comp_id,iphase)
+    ! need to account for multiple phases
+    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+    v_air = stp_ave * &
+            (temp_ave/273.15d0)**theta * &
+            option%reference_pressure / gen_aux_var_dn%pres(option%gas_phase) * &
+            general_parameter%diffusion_coefficient(iphase) * delta_xmol
+    q =  v_air * area
+    mole_flux = q * density_ave
+    Res(air_comp_id) = Res(air_comp_id) + mole_flux
+  endif  
+
+  ! add heat conduction flux
+!  k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
+!             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+!             gen_aux_var_up%sat(option%gas_phase) * &
+!             general_parameter%diffusion_coefficient(option%gas_phase)
+  k_eff_dn = gen_aux_var_dn%sat(option%liquid_phase) * &
+             general_parameter%diffusion_coefficient(option%liquid_phase) + &
+             gen_aux_var_dn%sat(option%gas_phase) * &
+             general_parameter%diffusion_coefficient(option%gas_phase)
+!  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dd_dn+k_eff_dn*0)
+  ! should k_eff be distance weighted?
+  k_eff_ave = k_eff_dn/dd_dn
+  delta_temp = gen_aux_var_up%temp - gen_aux_var_dn%temp
+  heat_flux = k_eff_ave * delta_temp * area
+  Res(energy_id) = Res(energy_id) + heat_flux
 
 end subroutine GeneralBCFlux
 
@@ -1315,8 +1456,9 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
                                     gen_aux_var_up, &
                                     global_aux_var_up, &
                                     gen_aux_var_dn,global_aux_var_dn, &
-                                    por_dn,sir_dn,dd_up,perm_dn, &
-                                    area,dist_gravity,option,Jdn)
+                                    por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                                    area,dist_gravity,general_parameter, &
+                                    option,Jdn)
 
   use Option_module 
   
@@ -1327,10 +1469,11 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn(0:)
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn(option%nphase)
-  PetscReal :: por_dn,perm_dn
+  PetscReal :: dd_dn, sir_dn(option%nphase)
+  PetscReal :: por_dn,perm_dn,tor_dn
   PetscReal :: area
   PetscReal :: dist_gravity
+  type(general_parameter_type) :: general_parameter
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
 
   PetscReal :: v_darcy(option%nphase)
@@ -1340,15 +1483,17 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   call GeneralBCFlux(ibndtype,aux_vars, &
                      gen_aux_var_up,global_aux_var_up, &
                      gen_aux_var_dn(ZERO_INTEGER),global_aux_var_dn, &
-                     por_dn,sir_dn,dd_up,perm_dn, &
-                     area,dist_gravity,option,v_darcy,res)                     
+                     por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                     area,dist_gravity,general_parameter, &
+                     option,v_darcy,res)                     
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralBCFlux(ibndtype,aux_vars, &
                        gen_aux_var_up,global_aux_var_up, &
                        gen_aux_var_dn(idof),global_aux_var_dn, &
-                       por_dn,sir_dn,dd_up,perm_dn, &
-                       area,dist_gravity,option,v_darcy,res_pert)
+                       por_dn,sir_dn,dd_dn,perm_dn,tor_dn, &
+                       area,dist_gravity,general_parameter, &
+                       option,v_darcy,res_pert)
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_aux_var_dn(idof)%pert
     enddo !irow
@@ -1667,7 +1812,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: icap_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:), tort_loc_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:)
   PetscInt :: icap_up, icap_dn
@@ -1683,6 +1828,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
+  type(general_parameter_type), pointer :: general_parameter
   type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1702,6 +1848,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   material_parameter => patch%aux%Material%material_parameter
   gen_aux_vars => patch%aux%General%aux_vars
   gen_aux_vars_bc => patch%aux%General%aux_vars_bc
+  general_parameter => patch%aux%General%general_parameter
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -1718,6 +1865,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
   if (option%use_samr) then
@@ -1801,14 +1949,14 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
                           material_parameter%sir(1,icap_up), &
-                          dd_up,perm_up, &
+                          dd_up,perm_up,tort_loc_p(ghosted_id_up), &
                         gen_aux_vars(ZERO_INTEGER,ghosted_id_dn), &
                         global_aux_vars(ghosted_id_dn), &
                           porosity_loc_p(ghosted_id_dn), &
                           material_parameter%sir(1,icap_dn), &
-                          dd_dn,perm_dn, &
+                          dd_dn,perm_dn,tort_loc_p(ghosted_id_dn), &
                         cur_connection_set%area(iconn),distance_gravity, &
-                        upweight,option,v_darcy,Res)
+                        upweight,general_parameter,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy
       
@@ -1896,8 +2044,9 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                                 porosity_loc_p(ghosted_id), &
                                 material_parameter%sir(:,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
+                                tort_loc_p(ghosted_id), &
                                 cur_connection_set%area(iconn), &
-                                distance_gravity,option, &
+                                distance_gravity,general_parameter,option, &
                                 v_darcy,Res)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
@@ -1967,6 +2116,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
 end subroutine GeneralResidualPatch1
 
@@ -2266,7 +2416,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   PetscReal, pointer :: porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: icap_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:), tort_loc_p(:)
   PetscInt :: icap,icap_up,icap_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
@@ -2290,6 +2440,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(material_parameter_type), pointer :: material_parameter
+  type(general_parameter_type), pointer :: general_parameter
   type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
   type(general_auxvar_type) :: test
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
@@ -2303,6 +2454,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   material_parameter => patch%aux%Material%material_parameter
   gen_aux_vars => patch%aux%General%aux_vars
   gen_aux_vars_bc => patch%aux%General%aux_vars_bc
+  general_parameter => patch%aux%General%general_parameter
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -2311,6 +2463,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
   ! Perturb aux vars
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
@@ -2370,14 +2523,14 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   global_aux_vars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
                                     material_parameter%sir(1,icap_up), &
-                                    dd_up,perm_up, &
+                                    dd_up,perm_up,tort_loc_p(ghosted_id_up), &
                                   gen_aux_vars(:,ghosted_id_dn), &
                                   global_aux_vars(ghosted_id_dn), &
                                     porosity_loc_p(ghosted_id_dn), &
                                     material_parameter%sir(1,icap_dn), &
-                                    dd_dn,perm_dn, &
+                                    dd_dn,perm_dn,tort_loc_p(ghosted_id_dn), &
                                   cur_connection_set%area(iconn),distance_gravity, &
-                                  upweight,option,&
+                                  upweight,general_parameter,option,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
           call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -2448,8 +2601,9 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   porosity_loc_p(ghosted_id), &
                                   material_parameter%sir(:,icap_dn), &
                                   cur_connection_set%dist(0,iconn),perm_dn, &
+                                  tort_loc_p(ghosted_id), &
                                   cur_connection_set%area(iconn), &
-                                  distance_gravity,option, &
+                                  distance_gravity,general_parameter,option, &
                                   Jdn)
 
       Jdn = -Jdn
@@ -2472,6 +2626,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
 end subroutine GeneralJacobianPatch1
 
@@ -2780,6 +2935,7 @@ function GeneralGetTecplotHeader(realization,icolumn)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
+  PetscInt :: i
 
   option => realization%option
   field => realization%field
@@ -2788,19 +2944,95 @@ function GeneralGetTecplotHeader(realization,icolumn)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-T [C]"'')') icolumn
+  else
+    write(string2,'('',"T [C]"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
   else
-    write(string2,'('',"P [Pa]"'')') 
+    write(string2,'('',"P [Pa]"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-State"'')') icolumn
+  else
+    write(string2,'('',"State"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Sat(l)"'')') icolumn
+  else
+    write(string2,'('',"Sat(l)"'')')
   endif
   string = trim(string) // trim(string2)
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-sl"'')') icolumn
+    write(string2,'('',"'',i2,''-Sat(g)"'')') icolumn
   else
-    write(string2,'('',"sl"'')') 
+    write(string2,'('',"Sat(g)"'')')
   endif
   string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Rho(l)"'')') icolumn
+  else
+    write(string2,'('',"Rho(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Rho(g)"'')') icolumn
+  else
+    write(string2,'('',"Rho(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-U(l)"'')') icolumn
+  else
+    write(string2,'('',"U(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-U(g)"'')') icolumn
+  else
+    write(string2,'('',"U(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  do i=1,option%nflowspec
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Xl('',i2,'')"'')') icolumn, i
+    else
+      write(string2,'('',"Xl('',i2,'')"'')') i
+    endif
+    string = trim(string) // trim(string2)
+  enddo
+
+  do i=1,option%nflowspec
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Xg('',i2,'')"'')') icolumn, i
+    else
+      write(string2,'('',"Xg('',i2,'')"'')') i
+    endif
+    string = trim(string) // trim(string2)
+  enddo
  
   GeneralGetTecplotHeader = string
 
