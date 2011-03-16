@@ -403,6 +403,19 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   option%init_stage = PETSC_FALSE
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
+  !if TIMESTEPPER->MAX_STEPS < 0, print out solution composition only
+  if (master_stepper%max_time_step < 0) then
+    call printMsg(option,'')
+    write(option%io_buffer,*) master_stepper%max_time_step
+    option%io_buffer = 'The maximum # of time steps (' // &
+                       trim(adjustl(option%io_buffer)) // &
+                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
+                       'has been met.  Stopping....'  
+    call printMsg(option)
+    call printMsg(option,'')
+    return
+  endif
+
   ! print initial condition output if not a restarted sim
   call OutputInit(realization)
   if (output_option%plot_number == 0 .and. &
@@ -427,6 +440,20 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif
 
   endif
+  
+  !if TIMESTEPPER->MAX_STEPS < 0, print out initial condition only
+  if (master_stepper%max_time_step < 1) then
+    call printMsg(option,'')
+    write(option%io_buffer,*) master_stepper%max_time_step
+    option%io_buffer = 'The maximum # of time steps (' // &
+                       trim(adjustl(option%io_buffer)) // &
+                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
+                       'has been met.  Stopping....'  
+    call printMsg(option)
+    call printMsg(option,'')                    
+    return
+  endif
+
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
@@ -604,6 +631,17 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (.not.associated(master_stepper%cur_waypoint) .or. stop_flag) exit
 
   enddo
+
+  if (master_stepper%steps >= master_stepper%max_time_step) then
+    call printMsg(option,'')
+    write(option%io_buffer,*) master_stepper%max_time_step
+    option%io_buffer = 'The maximum # of time steps (' // &
+                       trim(adjustl(option%io_buffer)) // &
+                       '), specified by TIMESTEPPER->MAX_STEPS, ' // &
+                       'has been met.  Stopping....'  
+    call printMsg(option)
+    call printMsg(option,'')
+  endif
 
   if (option%checkpoint_flag) then
     call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
@@ -984,7 +1022,10 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     cur_waypoint => cur_waypoint%next
     if (associated(cur_waypoint)) &
       dt_max = cur_waypoint%dt_max
-  else if (cumulative_time_steps >= max_time_step) then
+  endif
+  ! subtract 1 from max_time_steps since we still have to complete the current
+  ! time step
+  if (cumulative_time_steps >= max_time_step-1) then
     plot_flag = PETSC_TRUE
     nullify(cur_waypoint)
   endif
