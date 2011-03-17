@@ -873,6 +873,24 @@ Options [] are:
 \verb|dasvyat|: & --enable MFD full permeability tensor capability
 \end{tabular}
 
+\subsection{Running PFLOTRAN}
+
+PFLOTRAN can be run from the command line as
+
+\verb|mpirun -np 10 pflotran|
+
+A number of command line options are available:
+
+\begin{tabular}{ll}
+{\tt -pflotranin} <input file name> & specify an input file [Default: {\tt pflotran.in}]\\
+{\tt -screen\_output} &\\
+{\tt -file\_output} <output file name> & specify an input file [Default: {\tt pflotran.out}]\\
+{\tt -v} &\\
+{\tt -multisimulation} &\\
+{\tt -stochastic} &\\
+{\tt -log\_summary} &
+\end{tabular}
+
 \subsection{Building SAMRAI Version 2.4.4}
 
 \noindent
@@ -1169,7 +1187,7 @@ Compile PFLOTRAN using the command
 \noindent
 Create input file \verb|pflotran.in| and run PFLOTRAN with the command:
 
-\verb|mpirun -n #proc pflotran|
+\verb|mpirun -np #proc pflotran|
 
 \noindent
 where \verb|#proc| is the desired number of processor cores.
