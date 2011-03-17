@@ -317,6 +317,12 @@ subroutine SolverReadLinear(solver,input,option)
             solver%ksp_type = KSPRICHARDSON
           case('CG')
             solver%ksp_type = KSPCG
+          case('DIRECT')
+            solver%ksp_type = KSPPREONLY
+            solver%pc_type = PCLU
+          case('ITERATIVE','KRYLOV')
+            solver%ksp_type = KSPBCGS
+            solver%pc_type = PCBJACOBI
           case default
             option%io_buffer  = 'Krylov solver type: ' // trim(word) // ' unknown.'
             call printErrMsg(option)
