@@ -220,6 +220,12 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   da,ierr)
+  call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                 PETSC_NULL_INTEGER,structured_grid%npx_final, &
+                 structured_grid%npy_final,structured_grid%npz_final, &
+                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                 PETSC_NULL_INTEGER,ierr)
 #else
   call DMDACreate3D(option%mycomm,DMDA_NONPERIODIC,DMDA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
@@ -227,13 +233,13 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   da,ierr)
-#endif
-
   call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                  PETSC_NULL_INTEGER,structured_grid%npx_final, &
                  structured_grid%npy_final,structured_grid%npz_final, &
                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                  PETSC_NULL_INTEGER,ierr)
+#endif
+
 
 end subroutine StructuredGridCreateDM
 
