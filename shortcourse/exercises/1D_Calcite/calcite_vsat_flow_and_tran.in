@@ -1,10 +1,7 @@
 :Description: 1D Calcite dissolution problem
 
 :=========================== flow mode ========================================
-: Uniform velocity (see below). No flow mode specified.
-
-:=========================== useful tranport parameters ==================
-UNIFORM_VELOCITY 3.170979d-8 0.d0 0.d0 ! 1. meter/yr
+MODE RICHARDS
 
 :=========================== chemistry ========================================
 CHEMISTRY
@@ -43,6 +40,10 @@ CHEMISTRY
 END
 
 :=========================== solver options ===================================
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
 LINEAR_SOLVER TRANSPORT
   SOLVER DIRECT
 END
@@ -50,12 +51,11 @@ END
 :=========================== discretization ===================================
 GRID
   TYPE structured
-  ORIGIN 0.d0 0.d0 0.d0  ! optional
-  NXYZ 100 1 1
+  NXYZ 1 1 100
   BOUNDS
-    0.d0 100.d0
     0.d0 1.d0
     0.d0 1.d0
+    0.d0 10.d0
   /
 END
 
@@ -69,12 +69,26 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
   TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  SATURATION_FUNCTION sf1
 END
+
+:=========================== material properties ==============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.5d0
+  ALPHA 1.d-4
+  MAX_CAPILLARY_PRESSURE 1.d8
+/
 
 :=========================== output options ===================================
 OUTPUT
   TIMES y 5. 10. 15. 20.
   FORMAT TECPLOT POINT
+  VELOCITIES
 END
 
 :=========================== times ============================================
@@ -88,24 +102,40 @@ END
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
-    100.d0 1.d0 1.d0
+    1.d0 1.d0 100.d0
   /
 END
 
-REGION west
-  FACE west
+REGION top
+  FACE top
+  COORDINATES
+    0.d0 0.d0 10.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+REGION bottom
+  FACE bottom
   COORDINATES
     0.d0 0.d0 0.d0
-    0.d0 1.d0 1.d0
+    1.d0 1.d0 0.d0
   /
 END
 
-REGION east
-  FACE east
-  COORDINATES
-    100.d0 0.d0 0.d0
-    100.d0 1.d0 1.d0
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
   /
+  DATUM 0.d0 0.d0 1.d0
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 3.170979d-9  ! 10 cm/y
 END
 
 :=========================== transport conditions =============================
@@ -146,18 +176,21 @@ END
 :=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
+  FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
   REGION all
 END
 
 BOUNDARY_CONDITION outlet
+  FLOW_CONDITION initial
   TRANSPORT_CONDITION initial
-  REGION east
+  REGION bottom
 END
 
 BOUNDARY_CONDITION inlet
+  FLOW_CONDITION recharge
   TRANSPORT_CONDITION inlet
-  REGION west
+  REGION top
 END
 
 :=========================== stratigraphy couplers ============================
