@@ -1,246 +1,337 @@
-:Description: 1D infiltration problem for the SX-115 tank at Hanford
- 
-: == debugging ================================================================
-DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-/
+:Description: 1D test problem for tracer transport
 
-: == mode =====================================================================
+:=========================== flow mode ========================================
 MODE RICHARDS
 
-:================ runtime ==================
-CHECKPOINT 100000
-RESTART restart0.chk 0.d0
-
-: == chemistry ================================================================
+:=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
 Tracer
 /
-OUTPUT
-All
-/
 /
 
-: == reference variables ======================================================
-REFERENCE_POROSITY 0.25d0
+:=========================== runtime ==========================================
+:CHECKPOINT 1000
+RESTART ./ss/restart.chk 0.d0
+OVERWRITE_RESTART_TRANSPORT
+:WALLCLOCK_STOP 23.75
 
-: == time stepping ============================================================
+
+:=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
+:INITIALIZE_TO_STEADY_STATE 1.d0
 /
 
-: == discretization ===========================================================
-GRID
-TYPE structured
-NXYZ 1 1 136
-DXYZ
-1.
-1.
-0.5
-/
-/
-
-: == flow solvers =============================================================
 NEWTON_SOLVER FLOW
-PRECONDITIONER_MATRIX_TYPE AIJ
-RTOL 1.d-8
-ATOL 1.d-8
-STOL 1.d-30
+:RTOL 1.d-12
+RTOL 1.d-20
+:ATOL 1.d-12
+:STOL 1.e-60
+:DTOL 1.e4
 ITOL_UPDATE 1.d0
 :NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
+::NO_PRINT_CONVERGENCE
 :PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
+:KSP_TYPE GMRES
+:PC_TYPE NONE
 :KSP_TYPE PREONLY
 :PC_TYPE LU
+:SOLVER GMRES
 /
 
-: == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
-PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-12
 ATOL 1.d-12
-STOL 1.d-30
+STOL 1.e-60
+DTOL 1.e4
+:ITOL_UPDATE 1.d-4
 :NO_INFINITY_NORM
 :NO_PRINT_CONVERGENCE
 :PRINT_DETAILED_CONVERGENCE
 /
 
 LINEAR_SOLVER TRANSPORT
+:KSP_TYPE GMRES
+:PC_TYPE NONE
 :KSP_TYPE PREONLY
 :PC_TYPE LU
+:SOLVER GMRES
 /
 
-: == fluid properties =========================================================
-FLUID_PROPERTY
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 1 1 136
+BOUNDS
+0.d0 1.d0
+0.d0 1.d0
+0.d0 68.d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
 DIFFUSION_COEFFICIENT 1.d-9
 /
 
-: == material properties ======================================================
-MATERIAL_PROPERTY BF
+:=========================== material properties ==============================
+MATERIAL_PROPERTY Backfill
 ID 1
+POROSITY 0.2585d0
+TORTUOSITY 0.5d0
 SATURATION_FUNCTION BF
-POROSITY 0.2585
-TORTUOSITY 1.0
 PERMEABILITY
-PERM_ISO 1.24e-12
+PERM_X 1.24e-12
+PERM_Y 1.24e-12
+PERM_Z 1.24e-12
 /
 /
 
-MATERIAL_PROPERTY HF
+MATERIAL_PROPERTY Hanford-Fine-Sand
 ID 2
-SATURATION_FUNCTION HF
 POROSITY 0.3586
-TORTUOSITY 1.0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION HF
 PERMEABILITY
-PERM_ISO 3.37028e-13
+PERM_X 3.37028e-13
+PERM_Y 3.37028e-13
+PERM_Z 3.37028e-13
 /
 /
-
-MATERIAL_PROPERTY PP
+MATERIAL_PROPERTY Plio-Pleistocene
 ID 3
+POROSITY 0.4223d0
+TORTUOSITY 0.5d0
 SATURATION_FUNCTION PP
-POROSITY 0.4223
-TORTUOSITY 1.0
 PERMEABILITY
-PERM_ISO 3.73463e-14
+PERM_X 3.73463e-14
+PERM_Y 3.73463e-14
+PERM_Z 3.73463e-14
 /
 /
 
-MATERIAL_PROPERTY URG
+MATERIAL_PROPERTY Upper-Ringold-Gravel
 ID 4
+POROSITY 0.2625d0
+TORTUOSITY 0.5d0
 SATURATION_FUNCTION URG
-POROSITY 0.2625
-TORTUOSITY 1.0
 PERMEABILITY
-PERM_ISO 1.4392e-13
+PERM_X 1.4392e-13
+PERM_Y 1.4392e-13
+PERM_Z 1.4392e-13
 /
 /
 
-MATERIAL_PROPERTY MRG
+MATERIAL_PROPERTY Middle-Ringold-Gravel
 ID 5
-SATURATION_FUNCTION MRG
 POROSITY 0.1643
-TORTUOSITY 1.0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION MRG
 PERMEABILITY
-PERM_ISO 2.00395e-13
+PERM_X 2.00395e-13
+PERM_Y 2.00395e-13
+PERM_Z 2.00395e-13
 /
 /
 
-: == saturation / permeability functions ======================================
+:=========================== saturation functions =============================
 SATURATION_FUNCTION BF
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.0774
-LAMBDA 0.6585
+PERMEABILITY_FUNCTION_TYPE MUALEM
+RESIDUAL_SATURATION 0.0774d0
+LAMBDA 0.6585d0
 ALPHA 1.008d-3
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 0.d0
+POWER 1.d0
 /
 
 SATURATION_FUNCTION HF
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.08366
-LAMBDA 0.46944
-ALPHA 9.40796e-5
+PERMEABILITY_FUNCTION_TYPE MUALEM
+RESIDUAL_SATURATION 0.08366d0
+LAMBDA 0.46944d0
+ALPHA 9.40796d-5
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 0.d0
+POWER 1.d0
 /
 
 SATURATION_FUNCTION PP
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.25953
-LAMBDA 0.45587
-ALPHA 6.85145e-5
+PERMEABILITY_FUNCTION_TYPE MUALEM
+RESIDUAL_SATURATION 0.25953d0
+LAMBDA 0.45587d0
+ALPHA 6.85145d-5
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 0.d0
+POWER 1.d0
 /
 
 SATURATION_FUNCTION URG
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.21295
-LAMBDA 0.38594
-ALPHA 2.96555e-5
+PERMEABILITY_FUNCTION_TYPE MUALEM
+RESIDUAL_SATURATION 0.21295d0
+LAMBDA 0.38594d0
+ALPHA 2.96555d-5
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 0.d0
+POWER 1.d0
 /
 
 SATURATION_FUNCTION MRG
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.06086
-LAMBDA 0.39215
+PERMEABILITY_FUNCTION_TYPE MUALEM
+RESIDUAL_SATURATION 0.06086d0
+LAMBDA 0.39217d0
 ALPHA 6.34015e-5
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 0.d0
+POWER 1.d0
 /
 
-: == output ===================================================================
+:=========================== output options ===================================
 OUTPUT
-:PERIODIC TIMESTEP 1
-:PERIODIC TIME 0.025 y
-times y 0.03846 0.5 1. 1.5 2.0 5.0 10. 25. 50. 75. 100. 250. 400. 500.
+:SCREEN PERIODIC 10
+:MASS_BALANCE
+TIMES y 0.5 1.0 2.0 5.0 10.0 35.0 100. 200.
 FORMAT TECPLOT POINT
-FORMAT HDF5
+VELOCITIES
 /
 
-: == times ====================================================================
+:=========================== times ============================================
 TIME
-FINAL_TIME 10. y
-INITIAL_TIMESTEP_SIZE 1.e-6 y
-MAXIMUM_TIMESTEP_SIZE 1.e-2 y
+:FINAL_TIME 1000.d0 y
+FINAL_TIME 200.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
+MAXIMUM_TIMESTEP_SIZE 1.d-0 y
 /
 
-: == regions ==================================================================
+:=========================== regions ==========================================
 REGION all
-BLOCK 1 1 1 1 1 136
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 136.d0
 /
-
-REGION Top
-BLOCK 1 1 1 1 136 136
-FACE TOP
-/
-
-REGION Bottom
-BLOCK 1 1 1 1 1 1
-FACE BOTTOM
-/
-
-REGION BF
-BLOCK 1 1 1 1 105 136
-/
-
-REGION HF
-BLOCK 1 1 1 1 59 104
-/
-
-REGION PP
-BLOCK 1 1 1 1 47 58
-/
-
-REGION URG
-BLOCK 1 1 1 1 41 46
-/
+END
 
 REGION MRG
-BLOCK 1 1 1 1 1 40
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 20.d0
 /
+END
 
-REGION Leak
-BLOCK 1 1 1 1 103 103
+REGION URG
+COORDINATES
+0.d0 0.d0 20.d0
+1.d0 1.d0 23.d0
 /
+END
 
-: == flow conditions ==========================================================
-FLOW_CONDITION Inlet
-TYPE
-FLUX neumann
+REGION PP
+COORDINATES
+0.d0 0.d0 23.d0
+1.d0 1.d0 29.d0
 /
-:FLUX 0.317098d-7 ! 1 cm/y
-:FLUX 1.5855d-8 ! 5 mm/y
-FLUX 2.53678e-8 ! 8 mm/y
-:FLUX file 200w_recharge_1951-2000_daily.dat
-/
+END
 
-FLOW_CONDITION Initial
+REGION HF
+COORDINATES
+0.d0 0.d0 29.d0
+1.d0 1.d0 52.d0
+/
+END
+
+REGION BF
+COORDINATES
+0.d0 0.d0 52.d0
+1.d0 1.d0 68.d0
+/
+END
+
+:=============boundaries=================
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 68.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+1.d0 0.d0 0.d0
+1.d0 1.d0 68.d0
+/
+END
+
+REGION north
+FACE NORTH
+COORDINATES
+0.d0 1.d0 0.d0
+1.d0 1.d0 68.d0
+/
+END
+
+REGION south
+FACE SOUTH
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 0.d0 68.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 68.d0
+1.d0 1.d0 68.d0
+/
+END
+
+REGION bottom
+FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 0.d0
+/
+END
+
+REGION well
+COORDINATES
+1.d0 1.d0 52.d0
+1.d0 1.d0 52.d0
+/
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
 TYPE
 PRESSURE hydrostatic
 /
-DATUM 0.d0 0.d0 10.d0
-PRESSURE 101325.d0
+PRESSURE 1.e5 ! 200 meter piezometric head (200*997.32*9.81)
+/
+
+FLOW_CONDITION boundary
+TYPE
+FLUX neumann
+/
+FLUX 2.53678e-9 ! 0.08 m/yr
+/
+
+FLOW_CONDITION water_table
+TYPE
+PRESSURE dirichlet
+/
+PRESSURE 1.4e5 ! 200 meter piezometric head (200*997.32*9.81)
 /
 
 FLOW_CONDITION source
@@ -248,23 +339,39 @@ TYPE
 RATE mass_rate
 /
 INTERPOLATION STEP
-RATE file src.dat ! 8.4e-4 kg/s for 2 weeks (60,000 gallons)
+RATE file src.dat !8.5d-4 ! kg/s
 /
 
-: == transport conditions =====================================================
-TRANSPORT_CONDITION Inlet
-TYPE dirichlet
-CONSTRAINT_LIST
-0.d0 Inlet
+skip
+FLOW_CONDITION infiltration
+TYPE
+RATE mass_rate
 /
+RATE 8.0215d-5 ! kg/s
 /
+noskip
 
-TRANSPORT_CONDITION Initial
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
 TYPE zero_gradient
 CONSTRAINT_LIST
-0.d0 Initial
+0.d0 initial
 /
+END
+
+TRANSPORT_CONDITION boundary
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
 /
+END
+
+TRANSPORT_CONDITION infiltration
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 infiltration
+/
+END
 
 TRANSPORT_CONDITION source
 TYPE dirichlet
@@ -273,73 +380,126 @@ CONSTRAINT_LIST
 /
 /
 
-: == transport constraints ====================================================
-CONSTRAINT Initial
-CONCENTRATIONS
-Tracer   1.e-10            F
-/
-/
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION all
+END
 
-CONSTRAINT Inlet
-CONCENTRATIONS
-Tracer   5.e-1             F
-/
-/
+skip
+: west boundary condition
+BOUNDARY_CONDITION west
+FLOW_CONDITION boundary
+TRANSPORT_CONDITION boundary
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+FLOW_CONDITION boundary
+TRANSPORT_CONDITION boundary
+REGION east
+END
+
+: north boundary condition
+BOUNDARY_CONDITION north
+FLOW_CONDITION boundary
+TRANSPORT_CONDITION boundary
+REGION north
+END
+
+: south boundary condition
+BOUNDARY_CONDITION south
+FLOW_CONDITION boundary
+TRANSPORT_CONDITION boundary
+REGION south
+END
+noskip
+
+: top boundary condition
+BOUNDARY_CONDITION top
+:FLOW_CONDITION initial
+FLOW_CONDITION boundary
+TRANSPORT_CONDITION initial
+REGION top
+END
+
+: bottom boundary condition
+BOUNDARY_CONDITION bottom
+FLOW_CONDITION water_table
+TRANSPORT_CONDITION initial
+REGION bottom
+END
+
+: well source/sink
+:skip
+SOURCE_SINK well
+FLOW_CONDITION source
+TRANSPORT_CONDITION source
+REGION well
+END
+:noskip
+
+: infiltration source/sink
+skip
+SOURCE_SINK infil
+FLOW_CONDITION infiltration
+TRANSPORT_CONDITION infiltration
+REGION top
+END
+noskip
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION MRG
+MATERIAL Middle-Ringold-Gravel
+END
+
+STRATA
+REGION URG
+MATERIAL Upper-Ringold-Gravel
+END
+
+STRATA
+REGION PP
+MATERIAL Plio-Pleistocene
+END
+
+STRATA
+REGION HF
+MATERIAL Hanford-Fine-Sand
+END
+
+STRATA
+REGION BF
+MATERIAL Backfill
+END
+
+skip
+STRATA
+REGION all
+MATERIAL Middle-Ringold-Gravel
+END
+noskip
+
+:=========================== constraints ======================================
+
 CONSTRAINT well
 CONCENTRATIONS
 Tracer 1.d0 T
 /
-/
+END
 
-: == couplers =================================================================
-BOUNDARY_CONDITION Inlet
-FLOW_CONDITION Inlet
-TRANSPORT_CONDITION Inlet
-REGION Top
+CONSTRAINT infiltration
+CONCENTRATIONS
+Tracer 1.d0 T
 /
+END
 
-BOUNDARY_CONDITION Outlet
-FLOW_CONDITION Initial
-TRANSPORT_CONDITION Initial
-REGION Bottom
+CONSTRAINT initial
+CONCENTRATIONS
+Tracer 1.d-16 T
 /
-
-INITIAL_CONDITION Initial
-FLOW_CONDITION Initial
-TRANSPORT_CONDITION Initial
-REGION all
-/
-
-:skip
-SOURCE_SINK Source
-FLOW_CONDITION source
-TRANSPORT_CONDITION source
-REGION all
-/
-noskip
-
-: == stratigraphy =============================================================
-STRATA
-MATERIAL BF
-REGION BF
-/
-
-STRATA
-MATERIAL HF
-REGION HF
-/
-
-STRATA
-MATERIAL PP
-REGION PP
-/
-
-STRATA
-MATERIAL URG
-REGION URG
-/
-
-STRATA
-MATERIAL MRG
-REGION MRG
-/
+END
