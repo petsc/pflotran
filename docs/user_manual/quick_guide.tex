@@ -877,18 +877,18 @@ Options [] are:
 
 PFLOTRAN can be run from the command line as
 
-\verb|mpirun -np 10 pflotran|
+\verb|mpirun -np 10 pflotran [options]|
 
 A number of command line options are available:
 
 \begin{tabular}{ll}
 {\tt -pflotranin} <input file name> & specify an input file [Default: {\tt pflotran.in}]\\
-{\tt -screen\_output} &\\
+{\tt -screen\_output off} & turn off screen output\\
 {\tt -file\_output} <output file name> & specify an input file [Default: {\tt pflotran.out}]\\
-{\tt -v} &\\
-{\tt -multisimulation} &\\
-{\tt -stochastic} &\\
-{\tt -log\_summary} &
+%{\tt -v} &\\
+{\tt -multisimulation} & run multiple input files in one run\\
+{\tt -stochastic} & Monte Carlo multiple realization run\\
+{\tt -log\_summary} & print out run performance (PETSc option)
 \end{tabular}
 
 \subsection{Building SAMRAI Version 2.4.4}
@@ -1008,7 +1008,7 @@ Instructions for building $\verb|SAMRAIDriver|$:
 \begin{center}
 \begin{verbatim}
 cd pflotran/src/pflotran
-make hdf5=1 pflotranamr
+make samr_hdf5=1 pflotranamr
 
 cd samr/src
 make
