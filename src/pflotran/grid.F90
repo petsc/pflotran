@@ -1412,7 +1412,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             z_max = z_max-z_shift
                  
             ! if plane or line, ensure it is within the grid cells     
-            if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
+            if (grid%itype == STRUCTURED_GRID .or. &
+                grid%itype == STRUCTURED_GRID_MIMETIC) then
               if (x_max-x_min < 1.d-10) then
                 x_max = region%coordinates(ONE_INTEGER)%x
                 x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
@@ -1420,6 +1421,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   x_max = x_max + x_shift
                 else if (region%iface == EAST_FACE) then
                   x_max = x_max - x_shift
+                ! otherwise, shift upwind, unless at upwind physical boundary
+                else
+                  if (x_max > grid%x_min_global + x_shift) then
+                    x_max = x_max - x_shift
+                  else
+                    x_max = x_max + x_shift
+                  endif
                 endif
                 x_min = x_max
               endif
@@ -1430,6 +1438,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   y_max = y_max + y_shift
                 else if (region%iface == NORTH_FACE) then
                   y_max = y_max - y_shift
+                ! otherwise, shift upwind, unless at upwind physical boundary
+                else
+                  if (y_max > grid%y_min_global + y_shift) then
+                    y_max = y_max - y_shift
+                  else
+                    y_max = y_max + y_shift
+                  endif
                 endif
                 y_min = y_max
               endif
@@ -1440,6 +1455,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   z_max = z_max + z_shift
                 else if (region%iface == TOP_FACE) then
                   z_max = z_max - z_shift
+                ! otherwise, shift upwind, unless at upwind physical boundary
+                else
+                  if (z_max > grid%z_min_global + z_shift) then
+                    z_max = z_max - z_shift
+                  else
+                    z_max = z_max + z_shift
+                  endif
                 endif
                 z_min = z_max
               endif
