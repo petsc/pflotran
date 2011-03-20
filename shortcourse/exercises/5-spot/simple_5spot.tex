@@ -113,6 +113,7 @@
 \newcommand{\bS}{\boldsymbol{S}}
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bz}{\boldsymbol{z}}
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
@@ -204,15 +205,31 @@ In the formulation that follows the activity of H$_2$O is assumed to be one and 
 
 \section{Mass Conservation Equations}
 
-Mass conservation equations for reaction with calcite have the following form for aqueous primary species
+The flow field in the five-spot well field is described by the mass conservation equation
 \EQ
-\frac{\p}{\p t} \varphi\Psi_j + \bnabla\cdot\bOmega_j \eq \R_j,
+\frac{\p}{\p t} \varphi \rho + \bnabla\cdot\bq\rho \eq Q,
 \EN
-with porosity $\varphi$, and for the $m$th mineral
+where $\rho$ denotes the molar fluid density, $\varphi$ refers to the porosity, $Q$ is a source/sink term for injection and extraction of fluid, and $\bq$ denotes the Darcy velocity defined as
+\EQ
+\bq \eq -\frac{k}{\mu}\big(\bnabla p-W\rho g \bz\big),
+\EN
+where $p$ denotes the fluid pressure, $W$ refers to the formula weight of water, g is the acceleration of gravity, $k$ is permeability, $\mu$ the fluid viscosity,  and 
+$\bz$ 
+a unit vector.
+
+Mass conservation equations for reaction with chrysocolla have the following form for aqueous primary species
+\EQ
+\frac{\p}{\p t} \varphi\Psi_j + \bnabla\cdot\bOmega_j \eq \R_j + Q_j,
+\EN
+and for the $m$th mineral
 \EQ
 \frac{\p\phi_{m}}{\p t} \eq I_{m},
 \EN
-where $\phi_{m}$ denotes the mineral volume fraction, $\R_j$ represents the rate of reaction of the subscripted primary species, and $I_{m}$ denotes the rate of dissolution and precipitation.
+where $\phi_{m}$ denotes the mineral volume fraction, $\R_j$ represents the rate of reaction of the subscripted primary species, $Q_j$ denotes a source/sink term, and $I_{m}$ denotes the rate of dissolution and precipitation.
+The source/sink terms $Q$ and $Q_j$ are related by the equation
+\EQ
+Q_j \eq Q \Psi_j.
+\EN
 
 The total primary species concentrations $\Psi_j$ are defined as
 \EQ
@@ -239,22 +256,11 @@ with $\bq$ the Darcy velocity, and $D$ diffusion/dispersion coefficient. This re
 
 \section{Kinetic Rate Law}
 
-The reaction rate $\R_j$ is related to the calcite reaction rate according to
+The reaction rate $\R_j$ is related to the mineral reaction rates according to
 \EQ
 \R_j \eq -\sum_m\nu_{jm} I_m,
 \EN
 where the sum over $m$ includes the primary mineral chrysocolla and other secondary products.
-
-\begin{comment} 
-\begin{subequations}
-\BA
-\R_{\rm Ca^{2+}} &\eq -I_{m},\\
-\R_{\rm HCO_3^{-}} &\eq -I_{m},\\
-\R_{\rm H^{+}} &\eq I_{m},
-\EA
-\end{subequations}
-with the calcite reaction rate $I_{m}$ 
-\end{comment}
 
 \noindent
 The mineral reaction rate $I_m$ is
@@ -275,20 +281,20 @@ The factor $\zeta_{m}$ takes on the values zero or one according to
 \end{array}
 \right.
 \EN
-The factor $\zeta_{m}$ ensures that calcite does not dissolve if it is not present. The activity $a_i = \gamma_i C_i$ is related to concentration by the activity coefficient $\gamma_i$. According to the sign convention used here, $I_{m}$ is positive for precipitation and negative for dissolution.
+The factor $\zeta_{m}$ ensures that the mineral does not dissolve if it is not present. The activity $a_i = \gamma_i C_i$ is related to concentration by the activity coefficient $\gamma_i$. According to the sign convention used here, $I_{m}$ is positive for precipitation and negative for dissolution.
 
-In general the specific surface area is a function of the calcite concentration. One such relation is to assume the power law
+In general the specific surface area is a function of the mineral concentration. One such relation is to assume the power law
 \EQ
 a_{m} \eq a_{m}^0 \left(\frac{\phi_{m}}{\phi_{m}^0}\right)^n,
 \EN
-where $a_{m}^0$ and $\phi_{m}^0$ denote the initial surface area and calcite volume fraction, and $n$ is an exponent typically with the value 2/3 reflecting the surface to volume ratio.
+where $a_{m}^0$ and $\phi_{m}^0$ denote the initial surface area and mineral volume fraction, and $n$ is an exponent typically with the value 2/3 reflecting the surface to volume ratio.
 
-In general the permeability of the porous medium may also be related to the calcite concentration through a similar relation.
+In general the permeability of the porous medium may also be related to the mineral volume fraction through a similar relation.
 
 \section{Example Calculation}
 
-A 2D problem with a domain measuring 15 m on a side and with injection and extraction wells located at opposite corners is considered. A solution with pH 1 is injected into the porous medium which contains the ore mineral chrysocolla. The initial volume fraction of chrysocolla used in the simulation is 0.005, with an effective rate constant of $5\times 10^{-12}$ mol/cm$^3$/s.
-Results for the chrysocolla volume fraction and pH are shown in 
+A 2D problem with a domain measuring 15 m on a side and with injection and extraction wells located at opposite corners is considered. No flow boundary conditions are imposed on the sides of the domain. A solution with pH 1 is injected into the porous medium which contains the ore mineral chrysocolla. The initial volume fraction of chrysocolla used in the simulation is 0.005, with an effective rate constant of $5\times 10^{-12}$ mol/cm$^3$/s.
+Results for the chrysocolla volume fraction and pH are shown in the embedded
 movies (1) and (2).
 %Figures~\ref{fchry} and \ref{fph}.
 As can be seen in the movies a quasi-stationary state is established with the time evolution of the chrysocolla dissolution front form a sequence of stationary states (Lichtner, 1988).
@@ -298,10 +304,11 @@ As can be seen in the movies a quasi-stationary state is established with the ti
 \begin{figure}[ht]
 \label{fchry}
 \includemovie[
-text={\bf\color{blue} Movie 1: Chrysocolla Volume Fraction}
+text={\bf\color{blue} Movie 1: Chrysocolla}
 ]{6in}{6in}{./figs/5spot_simple_chry.mpeg}
 \end{figure}
 \end{center}
+%\bf\color{blue} Movie 1: Chrysocolla Volume Fraction}
 
 \addtocounter{figure}{2}
 
@@ -314,4 +321,9 @@ text={\bf\color{blue} Movie 2: pH}
 \end{figure}
 \end{center}
 
+
 \end{document}
+
+\movie[showcontrols, scale=0.15]
+{\includegraphics[scale=0.15]{./figs/5spot-chry.jpeg}}
+{./figs/5spot_simple_chry.mpeg}
