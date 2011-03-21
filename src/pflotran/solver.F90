@@ -13,7 +13,7 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
-#ifdef DMDA_NEW
+#ifndef DMDA_OLD
 #include "finclude/petscpcmg.h"
 #endif
 

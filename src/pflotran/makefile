@@ -84,8 +84,8 @@ else
  include ${PETSC_DIR}/conf/rules
 endif
 
-ifdef dmda
-  GLENN_FLAGS += -DDMDA_NEW
+ifdef dmda_old
+  GLENN_FLAGS += -DDMDA_OLD
 endif
 
 ifdef have_hdf5

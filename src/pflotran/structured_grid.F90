@@ -197,7 +197,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
 #include "finclude/petscvec.h90"
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
-#ifdef DMDA_NEW
+#ifndef DMDA_OLD
 #include "finclude/petscdmda.h"
 #endif
 
@@ -212,7 +212,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   !-----------------------------------------------------------------------
   ! Generate the DM object that will manage communication.
   !-----------------------------------------------------------------------
-#ifdef DMDA_NEW
+#ifndef DMDA_OLD
   call DMDACreate3D(option%mycomm,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE, &
                   DMDA_BOUNDARY_NONE,DMDA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
