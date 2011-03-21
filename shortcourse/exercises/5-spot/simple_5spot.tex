@@ -1,0 +1,329 @@
+\documentclass[12pt]{article} 
+%\usepackage{times,helvet}
+\usepackage{fourier}
+%\usepackage{ssss}
+\usepackage{amsmath,amsbsy,amssymb}
+%\usepackage{fancyheadings}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{verbatim}
+\usepackage{moreverb}
+\usepackage{float}
+%\usepackage{deflist}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{portland}
+\usepackage{booktabs}
+\usepackage{comment}
+
+%\usepackage{multimedia}
+\usepackage{movie15}
+
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=black, urlcolor=blue]{hyperref}
+
+\textwidth 6.5in
+\textheight 9.5in
+%\topmargin -.1in
+\topmargin -.75in
+\newlength{\boxwidth}
+\setlength{\boxwidth}{5.8in}
+\oddsidemargin -0in
+\evensidemargin -0in
+\headheight 0.25in
+\lhead{{\sl PFLOTRAN Shortcourse: Copper Leaching}}
+\chead{\rm - \thepage\ -}
+\rhead{\today}
+\cfoot{}
+\newcommand\flotran{{\sl FLOTRAN}}
+\renewcommand{\baselinestretch}{1.2}
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\BS#1\ES{\begin{split}#1\end{split}}
+%\newcommand{\EQ}{\begin{equation}}
+%\newcommand{\EN}{\end{equation}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\eq}{\ =\ }
+\newcommand{\degc}{$^\circ$C}
+\newcommand{\ecm}{{\rm ecm}}
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\eqr}{{\rm le}}
+\newcommand{\equ}{{\rm eq}}
+\newcommand{\kin}{{\rm kin}}
+\newcommand{\rdx}{{\rm rdx}}
+\newcommand{\ind}{{\rm id}}
+\newcommand{\dep}{{\rm dp}}
+\newcommand{\e}{{\rm{e}}}
+\newcommand{\erf}{{\rm{erf}}}
+\newcommand{\erfc}{{\rm{erfc}}}
+\newcommand{\p}{{\partial}}
+\newcommand{\A}{{\mathcal A}}
+\newcommand{\B}{{\mathcal B}}
+\newcommand{\C}{{\mathcal C}}
+\newcommand{\D}{{\mathcal D}}
+\newcommand{\E}{{\mathcal E}}
+\newcommand{\F}{{\mathcal F}}
+\newcommand{\G}{{\mathcal G}}
+\newcommand{\J}{{\mathcal J}}
+\newcommand{\M}{{\mathcal M}}
+\newcommand{\cO}{{\mathcal O}}
+\renewcommand{\P}{{{\mathcal P}}}
+\newcommand{\Q}{{\mathcal Q}}
+\newcommand{\R}{{{\mathcal R}}}
+\renewcommand{\S}{{\mathcal S}}
+\newcommand{\T}{{\mathcal T}}
+\newcommand{\W}{{\mathcal W}}
+\newcommand{\Y}{{\mathcal Y}}
+\newcommand{\Z}{{\mathcal Z}}
+\newcommand{\rev}{{\rm rev}}
+\newcommand{\irr}{{\rm irr}}
+\renewcommand{\a}{{\alpha}}
+\newcommand{\abar}{{\bar \alpha}}
+\renewcommand{\b}{{\beta}}
+\newcommand{\w}{{\rm H_2O}}
+\newcommand{\air}{{\rm N_2}}
+\newcommand{\pe}{{\rm Pe}}
+\newcommand{\da}{{\rm Da}}
+\renewcommand{\k}{{\dot R}^0}
+\renewcommand{\L}{\widehat{\mathcal L}}
+\renewcommand{\bar}{\overline}
+\newcommand{\dsty}{{\displaystyle}}
+\newcommand{\diff}{{\mathcal D}}
+\newcommand{\surf}{\equiv \!\!\!}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\bA}{\boldsymbol{A}}
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\bB}{\boldsymbol{B}}
+\newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bE}{\boldsymbol{E}}
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bJ}{\boldsymbol{J}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bM}{\boldsymbol{M}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\arrows}{~\rightleftharpoons~}
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
+\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
+
+%\numberwithin{equation}{section}
+%\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+
+%\newcounter{saveeqn}%
+%\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
+%\stepcounter{saveeqn}\setcounter{equation}{0}%
+%\renewcommand{\theequation}
+%      {\mbox{\arabic{saveeqn}-\alph{equation}}}}%
+%\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
+%\renewcommand{\theequation}{\arabic{equation}}}%
+
+\newcounter{saveeqn}%
+\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
+\stepcounter{saveeqn}\setcounter{equation}{0}%
+\renewcommand{\theequation}
+      {\mbox{\arabic{section}.\arabic{saveeqn}\alph{equation}}}}%
+\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}}%
+
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{5}
+
+\setlength{\parindent}{0.3125in}
+\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
+
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+\setcounter{secnumdepth}{5}
+
+\setlongtables
+
+\pagestyle{fancy}
+
+\thispagestyle{empty}
+
+\begin{document}
+
+\section*{Five-Spot Copper Leaching Reactive Transport Calculation}
+
+Five-Spot Copper Leaching Notes: PCL (LANL) \hfill \today
+
+\section{Introduction}
+
+In this problem leaching of copper from a porphyry copper deposit containing chrysocolla (CuSiO$_3 \cdot {\rm H_2O}_{\rm (s)}$) ore is modeled. A lixiviant consisting of sulfuric acid with pH 1 is introduced into the deposit dissolving the chrysocolla. A quarter symmetry element of a five-spot well pattern is considered with an injection well in one corner of the domain and an extraction well in the opposite corner.
+
+\section{Chemical Reactions}
+
+Primary Species: Cu$^{2+}$, SO$_4^-$, H$^+$, SiO$_{2(aq)}$
+
+\noindent
+Secondary Species: OH$^-$, HSO$_4^-$, H$_2$SO$_{\rm 4(aq)}$, CuOH$^+$, CuSO$_{\rm 4(aq)}$
+
+\noindent Solid: CuSiO$_3 \cdot {\rm H_2O}_{\rm (s)}$
+
+\begin{comment}
+\begin{center}
+\begin{tabular}{rlr}
+\toprule
+Reaction && log $K$ (25\degc) \\
+\midrule
+$\rm H_2O - H^+ $ &$\arrows$ $\rm OH^-$ & $-$13.9951\\
+$\rm HCO_3^- - H^+$ &$\arrows$ $\rm CO_3^{2-}$ & $-$10.3288\\
+$\rm HCO_3^- + H^+ - H_2O$ &$\arrows$ $\rm CO_{2(aq)}$ & 6.3447\\
+$\rm Ca^{2+} + HCO_3^- - H^+$ &$\arrows$ $\rm CaCO_{3(aq)}$ & $-$7.0017\\
+$\rm Ca^{2+} + HCO_3^- $ &$\arrows$ $\rm CaHCO_3^+$ & 1.0467\\
+\midrule
+$\rm Ca^{2+} + HCO_3^- - H^+$ &$\arrows$ $\rm CaCO_{3(s)}$ & $-$1.8487\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{comment}
+
+\noindent
+For the general reaction, 
+\EQ
+\sum_j\nu_{ji}\A_j \arrows \A_i,
+\EN
+the equilibrium constant is defined as
+\EQ
+K_i \eq \dfrac{a_i}{\displaystyle\prod_j \big(a_j\big)^{\nu_{ji}}},
+\EN
+where $a_l$ refers to the activity of species $\A_l$.
+
+\noindent
+In the formulation that follows the activity of H$_2$O is assumed to be one and therefore is not considered in the mass balance equations.
+
+\section{Mass Conservation Equations}
+
+The flow field in the five-spot well field is described by the mass conservation equation
+\EQ
+\frac{\p}{\p t} \varphi \rho + \bnabla\cdot\bq\rho \eq Q,
+\EN
+where $\rho$ denotes the molar fluid density, $\varphi$ refers to the porosity, $Q$ is a source/sink term for injection and extraction of fluid, and $\bq$ denotes the Darcy velocity defined as
+\EQ
+\bq \eq -\frac{k}{\mu}\big(\bnabla p-W\rho g \bz\big),
+\EN
+where $p$ denotes the fluid pressure, $W$ refers to the formula weight of water, g is the acceleration of gravity, $k$ is permeability, $\mu$ the fluid viscosity,  and 
+$\bz$ 
+a unit vector.
+
+Mass conservation equations for reaction with chrysocolla have the following form for aqueous primary species
+\EQ
+\frac{\p}{\p t} \varphi\Psi_j + \bnabla\cdot\bOmega_j \eq \R_j + Q_j,
+\EN
+and for the $m$th mineral
+\EQ
+\frac{\p\phi_{m}}{\p t} \eq I_{m},
+\EN
+where $\phi_{m}$ denotes the mineral volume fraction, $\R_j$ represents the rate of reaction of the subscripted primary species, $Q_j$ denotes a source/sink term, and $I_{m}$ denotes the rate of dissolution and precipitation.
+The source/sink terms $Q$ and $Q_j$ are related by the equation
+\EQ
+Q_j \eq Q \Psi_j.
+\EN
+
+The total primary species concentrations $\Psi_j$ are defined as
+\EQ
+\Psi_j \eq C_j + \sum_i\nu_{ji}C_i,
+\EN
+
+\begin{comment}
+\begin{subequations}
+\BA
+\Psi_{\rm Ca^{2+}} &\eq C_{\rm Ca^{2+}} + C_{\rm CaCO_{3(aq)}} + C_{\rm CaHCO_3^-},\\
+\Psi_{\rm HCO_3^-} &\eq C_{\rm HCO_3^-} + C_{\rm CO_3^{2-}} + C_{\rm CO_{2(aq)}} + C_{\rm CaCO_{3(aq)}} + C_{\rm CaHCO_3^-} ,\\
+\Psi_{\rm H^+} &\eq C_{\rm H^+} - C_{\rm OH^-}
+\EA
+\end{subequations}
+\end{comment}
+
+\noindent
+where $C_i$ denotes the aqueous concentration of the subscripted species.
+Total primary species flux $\bOmega_j$ is defined as:
+\EQ
+\bOmega_j \eq \big(\bq - \varphi D \bnabla\big)\Psi_j,
+\EN
+with $\bq$ the Darcy velocity, and $D$ diffusion/dispersion coefficient. This relation is valid provided the diffusion coefficient $D$ is species independent.
+
+\section{Kinetic Rate Law}
+
+The reaction rate $\R_j$ is related to the mineral reaction rates according to
+\EQ
+\R_j \eq -\sum_m\nu_{jm} I_m,
+\EN
+where the sum over $m$ includes the primary mineral chrysocolla and other secondary products.
+
+\noindent
+The mineral reaction rate $I_m$ is
+taken to have the form given by transition state theory
+\EQ
+I_{m} \eq - k_{m} a_{m} \big(1-K_{m}Q_{m}\big)\zeta_{m},
+\EN
+with equilibrium constant $K_{m}$, specific surface area $a_{m}$, and ion activity product $Q_{m}$ defined by
+\EQ
+Q_{m} \eq K_m \prod_j\big(\gamma_j C_j\big)^{\nu_{jm}}.
+\EN
+The factor $\zeta_{m}$ takes on the values zero or one according to
+\EQ
+\zeta_{m} \eq \left\{
+\begin{array}{ll}
+1, & \phi_{m} > 0 \ \text{or} \ K_{m}Q_{m}>1,\\
+0, & \text{otherwise}.
+\end{array}
+\right.
+\EN
+The factor $\zeta_{m}$ ensures that the mineral does not dissolve if it is not present. The activity $a_i = \gamma_i C_i$ is related to concentration by the activity coefficient $\gamma_i$. According to the sign convention used here, $I_{m}$ is positive for precipitation and negative for dissolution.
+
+In general the specific surface area is a function of the mineral concentration. One such relation is to assume the power law
+\EQ
+a_{m} \eq a_{m}^0 \left(\frac{\phi_{m}}{\phi_{m}^0}\right)^n,
+\EN
+where $a_{m}^0$ and $\phi_{m}^0$ denote the initial surface area and mineral volume fraction, and $n$ is an exponent typically with the value 2/3 reflecting the surface to volume ratio.
+
+In general the permeability of the porous medium may also be related to the mineral volume fraction through a similar relation.
+
+\section{Example Calculation}
+
+A 2D problem with a domain measuring 15 m on a side and with injection and extraction wells located at opposite corners is considered. No flow boundary conditions are imposed on the sides of the domain. A solution with pH 1 is injected into the porous medium which contains the ore mineral chrysocolla. The initial volume fraction of chrysocolla used in the simulation is 0.005, with an effective rate constant of $5\times 10^{-12}$ mol/cm$^3$/s.
+Results for the chrysocolla volume fraction and pH are shown in the embedded
+movies (1) and (2).
+%Figures~\ref{fchry} and \ref{fph}.
+As can be seen in the movies a quasi-stationary state is established with the time evolution of the chrysocolla dissolution front form a sequence of stationary states (Lichtner, 1988).
+
+\setcounter{figure}{0}
+\begin{center}
+\begin{figure}[ht]
+\label{fchry}
+\includemovie[
+text={\bf\color{blue} Movie 1: Chrysocolla}
+]{6in}{6in}{./figs/5spot_simple_chry.mpeg}
+\end{figure}
+\end{center}
+%\bf\color{blue} Movie 1: Chrysocolla Volume Fraction}
+
+\addtocounter{figure}{2}
+
+\begin{center}
+\begin{figure}[ht]
+\includemovie[
+text={\bf\color{blue} Movie 2: pH}
+]{6in}{6in}{./figs/5spot_simple_ph.mpeg}
+\label{fph}
+\end{figure}
+\end{center}
+
+
+\end{document}
+
+\movie[showcontrols, scale=0.15]
+{\includegraphics[scale=0.15]{./figs/5spot-chry.jpeg}}
+{./figs/5spot_simple_chry.mpeg}
