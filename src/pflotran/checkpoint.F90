@@ -474,7 +474,8 @@ subroutine Restart(realization, &
   call printMsg(option)
   call PetscViewerBinaryOpen(option%mycomm,option%restart_filename, &
                              FILE_MODE_READ,viewer,ierr)
- 
+  ! skip reading info file when loading, but not working
+  call PetscViewerBinarySetSkipOptions(viewer,PETSC_TRUE,ierr)
   activity_coefs_read = PETSC_FALSE
   
   ! Get the header data.
