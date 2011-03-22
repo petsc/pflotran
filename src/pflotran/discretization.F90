@@ -19,7 +19,7 @@ module Discretization_module
 #include "finclude/petscmat.h90"
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
-#ifdef DMDA_NEW
+#ifndef DMDA_OLD
 #include "finclude/petscdmda.h"
 #endif
 
