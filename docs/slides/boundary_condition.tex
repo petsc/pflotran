@@ -1,0 +1,36 @@
+\section{BOUNDARY\_CONDITION Card}
+
+\begin{frame}[fragile,containsverbatim]\frametitle{BOUNDARY\_CONDITION}
+
+\begin{itemize}
+\item[] \textbf{Purpose:} Couples a flow and/or transport conditions with a region to create a boundary condition.
+\item[] \textbf{Example uses:}
+\begin{itemize}
+  \item To assign a boundary condition
+\end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{BOUNDARY\_CONDITION: Examples}
+
+\begin{semiverbatim}
+\scriptsize
+: west boundary condition
+BOUNDARY_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION west
+  REGION West
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION East
+END
+
+\end{semiverbatim}
+
+
+\end{frame}
