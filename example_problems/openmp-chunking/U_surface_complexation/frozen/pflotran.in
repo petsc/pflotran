@@ -5,18 +5,18 @@
 MODE RICHARDS
 
 :=========================== debug settings ===================================
-:DEBUG
+DEBUG
 :MATVIEW_JACOBIAN
 :VECVIEW_RESIDUAL
 :VECVIEW_SOLUTION
-:/
+/
 
 :=========================== chemistry =======================================
 CHEMISTRY
 :
   ! set CHUNK_SIZE and NUM_THREADS to desired values
   CHUNK_SIZE 8
-  NUM_THREADS 2
+  NUM_THREADS 1
 :
   PRIMARY_SPECIES
     H+
@@ -189,7 +189,7 @@ noskip
       /
     /
   /
-  DATABASE ../../../database/hanford.dat
+  DATABASE ../../../../database/hanford.dat
   LOG_FORMULATION
   ACTIVITY_COEFFICIENTS TIMESTEP
   OPERATOR_SPLIT
