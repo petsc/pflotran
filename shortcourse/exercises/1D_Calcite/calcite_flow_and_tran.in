@@ -150,7 +150,7 @@ END
 :=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
-    H+     1.d-7      Z
+    H+     1.d-8      F
     HCO3-  1.d-3      G  CO2(g)
     Ca++   5.d-4      M  Calcite
   /

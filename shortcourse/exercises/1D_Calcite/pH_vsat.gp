@@ -3,7 +3,7 @@ set x2tics font "Helvetica, 20"
 set ytics font "Helvetica, 20"
 set xrange[4.8:8.7]
 set x2range[0:1.2]
-set yrange[0:10]
+set yrange[1:10]
 set xlabel 'pH' font "Helvetica,24"
 set x2label 'Saturation [-]' font "Helvetica,24"
 set ylabel 'Z [m]' font "Helvetica,24"
