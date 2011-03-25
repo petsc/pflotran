@@ -2330,6 +2330,7 @@ subroutine RTReactPatch(realization)
   endif
       
   iphase = 1
+  ithread = 1
 #ifdef OS_STATISTICS
   sum_iterations = 0
   max_iterations = 0
