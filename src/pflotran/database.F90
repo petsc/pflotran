@@ -3813,14 +3813,14 @@ subroutine BasisPrint(reaction,title,option)
     write(option%fid_out,*) trim(title)
     write(option%fid_out,*)
 
-    write(option%fid_out,*) 'Primary Components:'
+    write(option%fid_out,*) 'Primary Species:'
     cur_aq_spec => reaction%primary_species_list
     do
       if (.not.associated(cur_aq_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
       write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
       write(option%fid_out,110) '    Molar Mass: ', cur_aq_spec%molar_weight, ' [g/mol]'
-      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
+      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0, ' [Angstrom]'
       if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
@@ -3838,17 +3838,17 @@ subroutine BasisPrint(reaction,title,option)
     cur_aq_spec => reaction%secondary_species_list
     if (associated(cur_aq_spec)) then
       write(option%fid_out,*)
-      write(option%fid_out,*) 'Secondary Components:'
+      write(option%fid_out,*) 'Secondary Species:'
     else
       write(option%fid_out,*)
-      write(option%fid_out,*) 'Secondary Components: None'
+      write(option%fid_out,*) 'Secondary Species: None'
     endif
     do
       if (.not.associated(cur_aq_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
       write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
       write(option%fid_out,110) '    Molar Mass: ', cur_aq_spec%molar_weight,' [g/mol]'
-      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
+      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0, ' [Angstrom]'
       if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
