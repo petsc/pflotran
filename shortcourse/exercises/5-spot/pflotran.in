@@ -1,0 +1,280 @@
+:Description: 2D 5-spot copper leaching problem
+
+: == mode =====================================================================
+MODE RICHARDS
+
+: == chemistry ================================================================
+CHEMISTRY
+
+OPERATOR_SPLIT
+
+PRIMARY_SPECIES
+H+
+Cu++
+SiO2(aq)
+SO4--
+Tracer
+/
+SECONDARY_SPECIES
+OH-
+CuOH+
+CuSO4(aq)
+HSO4-
+H2SO4(aq)
+/
+MINERALS
+Quartz
+Chalcedony
+SiO2(am)
+Chrysocolla
+Chrysocolla1
+Chrysocolla2
+/
+:
+MINERAL_KINETICS
+Chrysocolla2
+RATE_CONSTANT 5.e-12
+/
+SiO2(am) 
+RATE_CONSTANT 1.e-10
+/
+Quartz 
+RATE_CONSTANT 1.e-18
+/
+/
+:
+DATABASE /Users/lichtner/flotran/database/hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
+MOLAL
+OUTPUT
+All
+/
+UPDATE_MINERAL_SURFACE_AREA
+/
+
+: == reference variables ======================================================
+REFERENCE_POROSITY 0.25d0
+
+: == time stepping ============================================================
+TIMESTEPPER
+TS_ACCELERATION 8
+MAX_STEPS 100000
+:MAX_STEPS 1
+/
+
+: == discretization ===========================================================
+GRID
+TYPE structured 
+NXYZ 30 30 1
+BOUNDS
+0.d0 15.d0
+0.d0 15.d0
+0.d0 1.d0
+/
+/
+
+: == flow solvers =============================================================
+NEWTON_SOLVER FLOW
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.d-30
+ITOL_UPDATE 1.d0
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:KSP_TYPE FGMRES !samrai
+:PC_TYPE SHELL !samrai
+/
+
+: == transport solvers ========================================================
+NEWTON_SOLVER TRANSPORT
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-10
+ATOL 1.d-10
+STOL 1.d-30
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+:PC_TYPE LU
+:KSP_TYPE PREONLY
+:KSP_TYPE FGMRES ! samrai
+:PC_TYPE SHELL !samrai
+/
+
+: == fluid properties =========================================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+: == material properties ======================================================
+MATERIAL_PROPERTY HD
+ID 1
+SATURATION_FUNCTION default
+POROSITY 0.05
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 5.43d-13
+/
+MINERAL_SURFACE_AREA_POWER VOLUME_FRACTION 0.666667d0
+/
+
+: == saturation / permeability functions ======================================
+SATURATION_FUNCTION HD
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.115
+LAMBDA 0.286
+ALPHA 1.9401d-4
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+: == output ===================================================================
+OUTPUT
+MASS_BALANCE
+SCREEN PERIODIC 10
+:PERIODIC TIMESTEP 1
+PERIODIC TIME 0.02 y
+FORMAT HDF5
+FORMAT TECPLOT BLOCK
+:VELOCITIES
+/
+
+: == times ====================================================================
+TIME
+FINAL_TIME 2.d0 y
+INITIAL_TIMESTEP_SIZE 1.e-9 y
+MAXIMUM_TIMESTEP_SIZE 2.e-3 y
+/
+
+: == regions ==================================================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+15.d0 15.d0 1.d0
+/
+/
+
+REGION injection
+COORDINATES
+0. 0. 0.
+1. 1. 1. 
+/
+/
+
+REGION extraction
+COORDINATES
+14. 14. 0.
+15. 15. 1.
+/
+/
+
+: == flow conditions ==========================================================
+FLOW_CONDITION Initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 15.d0
+PRESSURE 101325.d0
+/
+
+FLOW_CONDITION injection
+TYPE
+RATE mass_rate
+:RATE volumetric_rate
+END
+RATE 5.24248e-4 ! kg/s
+END
+
+FLOW_CONDITION extraction
+TYPE
+RATE mass_rate
+:RATE volumetric_rate
+END
+RATE -5.24248e-4
+END
+
+: == transport conditions =====================================================
+TRANSPORT_CONDITION injection
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+
+TRANSPORT_CONDITION Initial
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Initial
+/
+/
+
+TRANSPORT_CONDITION withdrawal
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Initial
+/
+/
+
+: == couplers =================================================================
+
+INITIAL_CONDITION Initial
+FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
+REGION all
+/
+
+SOURCE_SINK
+FLOW_CONDITION injection
+TRANSPORT_CONDITION injection
+REGION injection
+END
+
+SOURCE_SINK
+FLOW_CONDITION extraction
+TRANSPORT_CONDITION withdrawal
+REGION extraction
+END
+
+: == stratigraphy =============================================================
+STRATA
+MATERIAL HD
+REGION all
+/
+
+: == transport constraints ====================================================
+CONSTRAINT Initial
+CONCENTRATIONS
+H+            8.0   pH
+Cu++          1.d-6  M  Chrysocolla2
+SiO2(aq)      5.d-4  M  Chalcedony
+SO4--         5.d-4  T
+Tracer        1.d-8  T
+/
+MINERALS
+Chrysocolla2   0.005 1.
+Quartz         0.82  1.
+SiO2(am)       0.    1.
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+H+            1.0   pH
+Cu++          1.d-8  T
+SiO2(aq)      5.d-4  M  SiO2(am)
+SO4--         5.d-4  Z
+Tracer        1.d0   T
+/
+/

@@ -7,6 +7,7 @@ module Global_Aux_module
 #include "definitions.h"
 
   type, public :: global_auxvar_type
+    PetscInt :: istate
     PetscReal, pointer :: pres(:)
     PetscReal, pointer :: pres_store(:,:)
     PetscReal, pointer :: temp(:)
@@ -84,6 +85,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
   type(global_auxvar_type) :: aux_var
   type(option_type) :: option
   
+  aux_var%istate = 0
 
   allocate(aux_var%pres(option%nphase))
   aux_var%pres = 0.d0
@@ -100,38 +102,48 @@ subroutine GlobalAuxVarInit(aux_var,option)
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
 
-select case(option%iflowmode)
-  case( IMS_MODE, MPH_MODE, FLASH2_MODE)
-    allocate(aux_var%xmass(option%nphase))
-    aux_var%xmass = 1.d0
-    allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
-    aux_var%pres_store = 0.d0
-    allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%temp_store = 0.d0
-    allocate(aux_var%fugacoeff(ONE_INTEGER))
-    aux_var%fugacoeff = 1.d0
-    allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%fugacoeff_store = 1.d0    
-    allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
-    aux_var%den_store = 0.d0
-    allocate(aux_var%m_nacl(TWO_INTEGER))
-    aux_var%m_nacl = option%m_nacl
-    allocate(aux_var%reaction_rate(option%nflowspec))
-    aux_var%reaction_rate = 0.d0
-    allocate(aux_var%reaction_rate_store(option%nflowspec))
-    aux_var%reaction_rate_store = 0.d0
-  ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
-  ! aux_var%reaction_rate_store = 0.d0
-  case default
-    nullify(aux_var%xmass)
-    nullify(aux_var%pres_store)
-    nullify(aux_var%temp_store)
-    nullify(aux_var%fugacoeff)
-    nullify(aux_var%fugacoeff_store)
-    nullify(aux_var%den_store)
-    nullify(aux_var%m_nacl)
-    nullify(aux_var%reaction_rate)
-    nullify(aux_var%reaction_rate_store)
+  select case(option%iflowmode)
+    case( IMS_MODE, MPH_MODE, FLASH2_MODE)
+      allocate(aux_var%xmass(option%nphase))
+      aux_var%xmass = 1.d0
+      allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
+      aux_var%pres_store = 0.d0
+      allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
+      aux_var%temp_store = 0.d0
+      allocate(aux_var%fugacoeff(ONE_INTEGER))
+      aux_var%fugacoeff = 1.d0
+      allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
+      aux_var%fugacoeff_store = 1.d0    
+      allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
+      aux_var%den_store = 0.d0
+      allocate(aux_var%m_nacl(TWO_INTEGER))
+      aux_var%m_nacl = option%m_nacl
+      allocate(aux_var%reaction_rate(option%nflowspec))
+      aux_var%reaction_rate = 0.d0
+      allocate(aux_var%reaction_rate_store(option%nflowspec))
+      aux_var%reaction_rate_store = 0.d0
+    ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
+    ! aux_var%reaction_rate_store = 0.d0
+    case (G_MODE)
+      nullify(aux_var%xmass)
+      nullify(aux_var%pres_store)
+      nullify(aux_var%temp_store)
+      nullify(aux_var%fugacoeff)
+      nullify(aux_var%fugacoeff_store)
+      nullify(aux_var%den_store)
+      nullify(aux_var%m_nacl)
+      nullify(aux_var%reaction_rate)
+      nullify(aux_var%reaction_rate_store)  
+    case default
+      nullify(aux_var%xmass)
+      nullify(aux_var%pres_store)
+      nullify(aux_var%temp_store)
+      nullify(aux_var%fugacoeff)
+      nullify(aux_var%fugacoeff_store)
+      nullify(aux_var%den_store)
+      nullify(aux_var%m_nacl)
+      nullify(aux_var%reaction_rate)
+      nullify(aux_var%reaction_rate_store)
   end select
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
@@ -143,7 +155,7 @@ select case(option%iflowmode)
     nullify(aux_var%mass_balance)
     nullify(aux_var%mass_balance_delta)
   endif
-
+  
 end subroutine GlobalAuxVarInit
 
 ! ************************************************************************** !
@@ -162,6 +174,7 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   type(global_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
+  aux_var2%istate = aux_var%istate
   aux_var2%pres = aux_var%pres
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
@@ -210,7 +223,6 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
     aux_var2%fugacoeff_store = aux_var%fugacoeff_store  
   endif
 
-  
   if (associated(aux_var%mass_balance) .and. &
       associated(aux_var2%mass_balance)) then
     aux_var2%mass_balance = aux_var%mass_balance

@@ -1,0 +1,221 @@
+\documentclass{beamer}
+
+\usepackage{comment}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{verbatim}
+\usepackage{multicol}
+\usepackage{booktabs}
+\definecolor{green}{RGB}{0,128,0}
+
+\def\EQ#1\EN{\begin{equation*}#1\end{equation*}}
+\def\BA#1\EA{\begin{align*}#1\end{align*}}
+\def\BS#1\ES{\begin{split*}#1\end{split*}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\eq}{\ =\ }
+\newcommand{\degc}{$^\circ$C}
+
+\def\p{\partial}
+\def\qbs{\boldsymbol{q}}
+\def\Dbs{\boldsymbol{D}}
+\def\A{\mathcal A}
+\def\gC{\mathcal C}
+\def\gD{\mathcal D}
+\def\gL{\mathcal L}
+\def\M{\mathcal M}
+\def\P{\mathcal P}
+\def\Q{\mathcal Q}
+\def\gR{\mathcal R}
+\def\gS{\mathcal S}
+\def\X{\mathcal X}
+\def\bnabla{\boldsymbol{\nabla}}
+\def\bnu{\boldsymbol{\nu}}
+\renewcommand{\a}{{\alpha}}
+%\renewcommand{\a}{{}}
+\newcommand{\s}{{\sigma}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\bz}{\boldsymbol{z}}
+\def\bPsi{\boldsymbol{\Psi}}
+
+\def\Li{\textit{L}}
+\def\Fb{\textbf{f}}
+\def\Jb{\textbf{J}}
+\def\cb{\textbf{c}}
+
+\def\Dt{\Delta t}
+\def\tpdt{{t + \Delta t}}
+\def\bpsi{\boldsymbol{\psi}}
+\def\dbpsi{\delta \boldsymbol{\psi}}
+\def\bc{\textbf{c}}
+\def\dbc{\delta \textbf{c}}
+\def\arrows{\rightleftharpoons}
+
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+%\newcommand{\bPsi}{\boldsymbol{\Psi}}
+%\newcommand{\bpsi}{\boldsymbol{\psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+%\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bg}{\boldsymbol{g}}
+\newcommand{\bk}{\boldsymbol{k}}
+%\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+%\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\pressure}{P}
+
+\def\water{H$_2$O}
+\def\calcium{Ca$^{2+}$}
+\def\copper{Cu$^{2+}$}
+\def\magnesium{Mg$^{2+}$}
+\def\sodium{Na$^+$}
+\def\potassium{K$^+$}
+\def\uranium{UO$_2^{2+}$}
+\def\hion{H$^+$}
+\def\hydroxide{0H$^-$}
+\def\bicarbonate{HCO$_3^-$}
+\def\carbonate{CO$_3^{2-}$}
+\def\cotwo{CO$_2$(aq)}
+\def\chloride{Cl$^-$}
+\def\fluoride{F$^-$}
+\def\phosphoricacid{HPO$_4^{2-}$}
+\def\nitrate{NO$_3^-$}
+\def\sulfate{SO$_4^{2-}$}
+\def\souotwooh{$>$SOUO$_2$OH}
+\def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
+\def\soh{$>$SOH}
+
+\newcommand\gehcomment[1]{{{\color{orange} #1}}}
+\newcommand\add[1]{{{\color{blue} #1}}}
+\newcommand\remove[1]{\sout{{\color{red} #1}}}
+\newcommand\codecomment[1]{{{\color{green} #1}}}
+\newcommand\redcomment[1]{{{\color{red} #1}}}
+\newcommand\bluecomment[1]{{{\color{blue} #1}}}
+\newcommand\greencomment[1]{{{\color{green} #1}}}
+\newcommand\magentacomment[1]{{{\color{magenta} #1}}}
+
+\begin{comment}
+\tiny
+\scriptsize
+\footnotesize
+\small
+\normalsize
+\large
+\Large
+\LARGE
+\huge
+\Huge
+\end{comment}
+
+\begin{document}
+\title{3D Regional Flow and Transport \ldots in a Nutshell}
+\author{Glenn Hammond}
+\date{\today}
+
+%\frame{\titlepage}
+
+%-----------------------------------------------------------------------------
+\section{Random Fields}
+
+\begin{frame}[fragile,containsverbatim]\frametitle{Random Fields}
+
+Steps for incorporating random fields:
+  \begin{itemize}
+    \item Generate random fields
+    \item Store fields in 1D HDF5 Datasets. PFLOTRAN assumes the following regarding HDF5 Dataset names:
+      \begin{itemize}
+        \item Permeability is stored in one of the following top-level HDF5 Datasets:
+        \begin{itemize}
+          \item `\verb=Permeability=' -- isotropic or vertical anisotropy ratio
+          \item `\verb=PermeabilityX=', `\verb=PermeabilityY=', or `\verb=PermeabilityZ=' -- anisotropic (default)
+        \end{itemize}
+        \item Porosity stored in top-level HDF5 Dataset named `\verb=Porosity='
+        \item Realization ID (integer) is appended to Dataset name if a multirealization simulation (e.g. \verb=Permeability199=)
+      \end{itemize}
+    \item Store cell ids in single 1D HDF5 Dataset named `\verb=Cell Ids='. Datatype = integer
+    \item Read in through DATASET card in input deck
+    \item Couple DATASET with appropriate property under MATERIAL\_PROPERTY
+  \end{itemize}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\subsection{DATASET}
+
+\begin{frame}[fragile,containsverbatim]\frametitle{DATASET}
+
+\begin{itemize} 
+  \item \verb=perm_field.h5= contains HDF5 Datasets \verb=Permeability1=, \dots, \verb=Permeability10=
+\end{itemize}
+
+\begin{semiverbatim}
+
+DATASET perm_field
+  FILENAME ./perm_fields.h5   \bluecomment{! name of hdf5 file}
+  REALIZATION_DEPENDENT       \bluecomment{! append realization id}
+/
+\end{semiverbatim}
+
+\end{frame}
+
+\subsection{MATERIAL\_PROPERTY}
+
+\begin{frame}[fragile]\frametitle{MATERIAL\_PROPERTY}
+
+\begin{itemize}
+  \item Assuming anisotropic with a vertical anisotropy ratio for now.
+\end{itemize}
+
+\begin{semiverbatim}
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  SATURATION_FUNCTION sf1
+  PERMEABILITY       
+    \magentacomment{DATASET perm_field}      \bluecomment{! name of data set}
+    \magentacomment{VERTICAL_ANISOTROPY_RATIO 0.1}
+  /
+END
+\end{semiverbatim}
+
+\end{frame}
+
+\subsection{Launching the Job}
+
+\begin{frame}[fragile]\frametitle{Launching the Job}
+
+\begin{itemize}
+  \item Launch the job based on the following assumptions:
+  \begin{itemize}
+    \item 2 processor groups (simultaneous simulations)
+    \item 4 core per simulation
+  \end{itemize}
+  
+\end{itemize}
+
+\begin{semiverbatim}
+mpirun -n 8 pflotran 
+  -pflotranin stochastic_regional_model.in 
+  -stochastic 
+  -num_realizations 10 
+  -num_groups 2 
+  -screen_output=no
+\end{semiverbatim}
+
+or to run a single realization (e.g. \#5)
+
+\begin{semiverbatim}
+mpirun -n 8 pflotran 
+  -pflotranin stochastic_regional_model.in 
+  -realization_id 5
+\end{semiverbatim}
+
+\end{frame}
+
+\end{document} 

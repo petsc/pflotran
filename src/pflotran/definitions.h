@@ -87,6 +87,7 @@ PetscInt, parameter :: RICHARDS_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
 PetscInt, parameter :: FLASH2_MODE = 6
+PetscInt, parameter :: G_MODE = 7
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1
@@ -163,6 +164,18 @@ PetscInt, parameter :: MPH_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
 PetscInt, parameter :: RICHARDS_CONDUCTANCE_DOF = 2
+
+PetscInt, parameter :: GENERAL_LIQUID_PRESSURE_DOF = 1
+PetscInt, parameter :: GENERAL_GAS_PRESSURE_DOF = 1
+PetscInt, parameter :: GENERAL_AIR_PRESSURE_DOF = 2
+PetscInt, parameter :: GENERAL_GAS_SATURATION_DOF = 3
+PetscInt, parameter :: GENERAL_LIQUID_FLUX_DOF = 1
+PetscInt, parameter :: GENERAL_GAS_FLUX_DOF = 1
+PetscInt, parameter :: GENERAL_TEMPERATURE_DOF = 3
+PetscInt, parameter :: GENERAL_CONCENTRATION_DOF = 2
+PetscInt, parameter :: GENERAL_ENTHALPY_DOF = 4
+PetscInt, parameter :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
+PetscInt, parameter :: GENERAL_GAS_CONDUCTANCE_DOF = -2
 
 ! output definitions
 PetscInt, parameter :: X_COORDINATE = 1
@@ -246,6 +259,10 @@ PetscInt, parameter :: OBSERVATION_AT_COORDINATE = 2
 PetscInt, parameter :: LIQUID_PHASE = 1
 PetscInt, parameter :: GAS_PHASE = 2
 
+! thermodynamic state of fluid ids
+PetscInt, parameter :: LIQUID_STATE = 1
+PetscInt, parameter :: GAS_STATE = 2
+PetscInt, parameter :: TWO_PHASE_STATE = 3
 
 ! variable centerings
 PetscInt, parameter :: CELL_CENTERED = 0

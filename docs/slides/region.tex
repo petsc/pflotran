@@ -1,0 +1,67 @@
+\section{REGION Card}
+
+\begin{frame}[fragile,containsverbatim]\frametitle{REGION}
+
+\begin{itemize}{}
+\item[] \textbf{Purpose:} To define a region within the model domain to be associated with another entity within the simulation.
+\item[] \textbf{Example uses:}
+\begin{itemize}
+  \item To assign a recharge boundary condition to the top surface of the model
+  \item To assign material properties to a zone in the model
+  \item To assign a source/sink term representing an injection well to cells intercepted by the well string
+  \item To an initial condition to a zone in the model
+\end{itemize}
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{REGION: Examples}
+
+\scriptsize
+\begin{multicols}{2}
+
+\textbf{Volume:}
+\begin{semiverbatim}
+REGION all
+  COORDINATES
+    0. 0. 0.
+    100. 100. 10.
+  /
+/
+\end{semiverbatim}
+\textbf{Surface:}
+\begin{semiverbatim}
+REGION river
+  COORDINATES
+    0. 0. 0.
+    0. 100. 10.
+  /
+  FACE west
+/
+\end{semiverbatim}
+
+\textbf{Surface:}
+\begin{semiverbatim}
+REGION river
+  BLOCK 1 1 1 100 1 10
+  FACE west
+/
+\end{semiverbatim}
+
+\textbf{Point:}
+\begin{semiverbatim}
+REGION observation_point
+  COORDINATE 50. 50. 5.
+/
+\end{semiverbatim}
+
+\textbf{List of cells and faces:}
+\begin{semiverbatim}
+REGION FILE river.h5
+\end{semiverbatim}
+
+
+\end{multicols}
+
+\end{frame}

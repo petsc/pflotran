@@ -699,9 +699,9 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = PRODUCTION_WELL
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
-            case('volumetric','volumetric_rate')
+            case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-            case('scaled_volumetric','scaled_volumetric_rate')
+            case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
@@ -810,11 +810,35 @@ subroutine FlowConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
+  ! check to ensure that a pressure condition is not of type rate   
+  if (associated(pressure)) then                          
+    select case(pressure%itype)
+      case(MASS_RATE_SS,SCALED_MASS_RATE_SS,VOLUMETRIC_RATE_SS, &
+           SCALED_VOLUMETRIC_RATE_SS,EQUILIBRIUM_SS,PRODUCTION_WELL)
+        option%io_buffer = 'PRESSURE or FLUX condition must not be of type: ' // &
+          'mass_rate, scaled_mass_rate, volumetric_rate, ' // &
+          'scaled_volumetric_rate, equilibrium, or production_well.'
+        call printErrMsg(option)
+    end select
+  endif
+
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,rate,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
+  ! check to ensure that a rate condition is not of type pressure   
+  if (associated(rate)) then
+    select case(rate%itype)
+      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC, &
+           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
+        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
+          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
+          'seepage, or conductance".'
+        call printErrMsg(option)
+    end select
+  endif
+
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
                               default_ctype, default_itype, &
@@ -832,7 +856,7 @@ subroutine FlowConditionRead(condition,input,option)
                               default_datum, default_gradient,PETSC_TRUE)
     
   select case(option%iflowmode)
-    case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE)
+    case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
         option%io_buffer = 'pressure and rate condition null in ' // &
                            'condition: ' // trim(condition%name)
@@ -867,21 +891,38 @@ subroutine FlowConditionRead(condition,input,option)
       do idof = 1, 4
         nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
-      ! must be in this order, which matches the dofs i problem
-      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
-      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-      
-      allocate(condition%itype(FIVE_INTEGER))
-      condition%itype = 0
-      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
-      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-      condition%itype(TWO_INTEGER) = temperature%itype
-      condition%itype(THREE_INTEGER) = concentration%itype
-      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
-      
+
+      if (option%iflowmode == G_MODE) then
+        if (associated(pressure)) condition%sub_condition_ptr(GENERAL_LIQUID_PRESSURE_DOF)%ptr => pressure
+        if (associated(rate)) condition%sub_condition_ptr(GENERAL_LIQUID_FLUX_DOF)%ptr => rate
+        condition%sub_condition_ptr(GENERAL_TEMPERATURE_DOF)%ptr => temperature
+        condition%sub_condition_ptr(GENERAL_CONCENTRATION_DOF)%ptr => concentration
+        if (associated(enthalpy)) condition%sub_condition_ptr(GENERAL_ENTHALPY_DOF)%ptr => enthalpy
+        
+        allocate(condition%itype(FOUR_INTEGER))
+        condition%itype = 0
+        if (associated(pressure)) condition%itype(GENERAL_LIQUID_PRESSURE_DOF) = pressure%itype
+        if (associated(rate)) condition%itype(GENERAL_LIQUID_FLUX_DOF) = rate%itype
+        condition%itype(GENERAL_TEMPERATURE_DOF) = temperature%itype
+        condition%itype(GENERAL_CONCENTRATION_DOF) = concentration%itype
+        if (associated(enthalpy)) condition%itype(GENERAL_ENTHALPY_DOF) = concentration%itype
+      else
+        ! must be in this order, which matches the dofs i problem
+        if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+        if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+        
+        allocate(condition%itype(FIVE_INTEGER))
+        condition%itype = 0
+        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+        if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
+        condition%itype(TWO_INTEGER) = temperature%itype
+        condition%itype(THREE_INTEGER) = concentration%itype
+        if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
+      endif
+    
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
         option%io_buffer = 'pressure and rate condition null in ' // &

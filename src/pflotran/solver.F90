@@ -13,7 +13,9 @@ module Solver_module
 #include "finclude/petscksp.h"
 #include "finclude/petscpc.h"
 #include "finclude/petscsnes.h"
-#include "finclude/petscmg.h"
+#ifndef DMDA_OLD
+#include "finclude/petscpcmg.h"
+#endif
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport
@@ -315,6 +317,12 @@ subroutine SolverReadLinear(solver,input,option)
             solver%ksp_type = KSPRICHARDSON
           case('CG')
             solver%ksp_type = KSPCG
+          case('DIRECT')
+            solver%ksp_type = KSPPREONLY
+            solver%pc_type = PCLU
+          case('ITERATIVE','KRYLOV')
+            solver%ksp_type = KSPBCGS
+            solver%pc_type = PCBJACOBI
           case default
             option%io_buffer  = 'Krylov solver type: ' // trim(word) // ' unknown.'
             call printErrMsg(option)

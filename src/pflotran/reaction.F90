@@ -694,6 +694,8 @@ subroutine ReactionRead(reaction,input,option)
                            'CHEMISTRY,DATABASE FILENAME')  
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE        
+      case('NO_CHECK_UPDATE')
+        reaction%check_update = PETSC_FALSE       
       case('NO_CHECKPOINT_ACT_COEFS')
         reaction%checkpoint_activity_coefs = PETSC_FALSE
       case('ACTIVITY_COEFFICIENTS')
@@ -720,11 +722,11 @@ subroutine ReactionRead(reaction,input,option)
       case('NO_BDOT')
         reaction%act_coef_use_bdot = PETSC_FALSE
       case('CHUNK_SIZE')
-        ! for some reason, cannot pass in option%chunk_size...Intel on Win doesn't like it - geh 
-        !call InputReadDouble(input,option,option%chunk_size)
-        call InputReadInt(input,option,tempint)
+        call InputReadInt(input,option,option%chunk_size)
         call InputErrorMsg(input,option,'chunk_size','CHEMISTRY')
-        option%chunk_size = tempint
+      case('NUM_THREADS')
+        call InputReadInt(input,option,option%num_threads)
+        call InputErrorMsg(input,option,'num_thread','CHEMISTRY')
       case('UPDATE_POROSITY')
         option%update_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')
@@ -2279,7 +2281,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (reaction%nmnrl > 0) then
   
     130 format(/,'  mineral                             log SI    log K')
-    131 format(2x,a30,2x,f10.4,2x,1pe12.4)
+    131 format(2x,a30,2x,f12.4,2x,1pe12.4)
 
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
@@ -4346,7 +4348,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     
 !     check for supersaturation threshold for precipitation
       if (associated(reaction%kinmnrl_affinity_threshold)) then
-        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) exit
+        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) cycle
       endif
 
       ! compute prefactor

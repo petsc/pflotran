@@ -44,7 +44,8 @@ module Saturation_Function_module
             SaturatFuncConvertListToArray, &
             SaturationFunctionComputeSpline, &
             SaturationFunctionRead, &
-            SaturationFunctionInvert, &
+            SatFuncGetRelPermFromSat, &
+            SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID
 
 ! Permeability function defination ************************ 
@@ -198,7 +199,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
-          case(RICHARDS_MODE,THC_MODE)
+          case(RICHARDS_MODE,THC_MODE,G_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
         end select
@@ -618,20 +619,77 @@ end subroutine SaturationFunctionCompute
 
 ! ************************************************************************** !
 !
-! SaturationFunctionInvert: Computes the capillary pressure as a function of 
-!                           pressure
+! SatFuncGetRelPermFromSat: Calculates relative permeability from
+!                           phase saturation
 ! author: Glenn Hammond
-! date: 06/03/09
+! date: 03/05/11
 !
 ! ************************************************************************** !
-subroutine SaturationFunctionInvert(pressure,saturation, &
-                                    saturation_function,option)
+subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
+                                    saturation_function,iphase, &
+                                    derivative,option)
 
   use Option_module
   
   implicit none
 
-  PetscReal :: pressure, saturation
+  PetscReal :: saturation, relative_perm, dkr_Se
+  PetscInt :: iphase
+  type(saturation_function_type) :: saturation_function
+  PetscBool :: derivative
+  type(option_type) :: option
+
+  PetscReal :: m, Sr
+  PetscReal :: Se, one_over_m, Se_one_over_m
+  
+  Sr = saturation_function%Sr(iphase)
+  Se = (saturation-Sr)/(1.d0-Sr)
+    
+  ! compute relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(BURDINE)
+      m = saturation_function%m
+      one_over_m = 1.d0/m
+      Se_one_over_m = Se**one_over_m
+      relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
+      if (derivative) then
+        dkr_Se = 2.d0*relative_perm/Se + &
+                 Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
+      endif
+    case(MUALEM)
+      m = saturation_function%m
+      one_over_m = 1.d0/m
+      Se_one_over_m = Se**one_over_m
+      relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
+      if (derivative) then
+        dkr_Se = 0.5d0*relative_perm/Se+ &
+                 2.d0*Se**(one_over_m-0.5d0)* &
+                      (1.d0-Se_one_over_m)**(m-1.d0)* &
+                      (1.d0-(1.d0-Se_one_over_m)**m)
+      endif
+    case default
+      option%io_buffer = 'Unknown relative permeabilty function' 
+      call printErrMsg(option)
+  end select
+
+end subroutine SatFuncGetRelPermFromSat
+
+! ************************************************************************** !
+!
+! SatFuncGetCapillaryPressure: Computes the capillary pressure as a function of 
+!                           pressure
+! author: Glenn Hammond
+! date: 06/03/09
+!
+! ************************************************************************** !
+subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
+                                       saturation_function,option)
+
+  use Option_module
+  
+  implicit none
+
+  PetscReal :: capillary_pressure, saturation
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
 
@@ -647,7 +705,7 @@ subroutine SaturationFunctionInvert(pressure,saturation, &
   select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
       if (saturation >= 1.d0) then
-        pressure = option%reference_pressure
+        capillary_pressure = 0.d0
         return
       else
         alpha = saturation_function%alpha
@@ -657,8 +715,7 @@ subroutine SaturationFunctionInvert(pressure,saturation, &
         one_plus_pc_alpha_n = Se**(-1.d0/m)
         pc_alpha_n = one_plus_pc_alpha_n - 1.d0
         pc_alpha = pc_alpha_n**(1.d0/n)
-        pc = pc_alpha/alpha
-        pressure = option%reference_pressure-pc
+        capillary_pressure = pc_alpha/alpha
       endif
       ! compute relative permeability
     case(BROOKS_COREY)
@@ -666,16 +723,14 @@ subroutine SaturationFunctionInvert(pressure,saturation, &
       one_over_alpha = 1.d0/alpha
 !      pc = option%reference_pressure-pressure
       if (saturation >= 1.d0) then
-        pc = one_over_alpha
-        pressure = option%reference_pressure-pc
+        capillary_pressure = one_over_alpha
         return
       else
         lambda = saturation_function%lambda
         Sr = saturation_function%Sr(iphase)
         Se = (saturation-Sr)/(1.d0-Sr)
         pc_alpha_neg_lambda = Se
-        pc = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
-        pressure = option%reference_pressure-pc
+        capillary_pressure = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
       endif
 #if 0
     case(THOMEER_COREY)
@@ -709,7 +764,7 @@ subroutine SaturationFunctionInvert(pressure,saturation, &
       call printErrMsg(option)
   end select
 
-end subroutine SaturationFunctionInvert
+end subroutine SatFuncGetCapillaryPressure
 
 ! ************************************************************************** !
 !

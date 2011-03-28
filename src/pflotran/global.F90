@@ -554,7 +554,11 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
 !        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
 !         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
     enddo     
-  endif 
+  endif
+  if (option%iflowmode == G_MODE) then
+    do ghosted_id = 1, patch%aux%Global%num_aux
+    enddo
+  endif  
   
 end subroutine GlobalUpdateDenAndSatPatch
 
@@ -640,7 +644,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF,time_level)       
-      
+    case(G_MODE)
   end select
 
 end subroutine GlobalUpdateAuxVars

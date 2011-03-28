@@ -84,6 +84,10 @@ else
  include ${PETSC_DIR}/conf/rules
 endif
 
+ifdef dmda_old
+  GLENN_FLAGS += -DDMDA_OLD
+endif
+
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif
@@ -110,11 +114,13 @@ common_obj = ${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
+	${common_src}material_aux.o\
 	${common_src}matrix_block_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
 	${common_src}richards_aux.o\
+	${common_src}general_aux.o\
 	${common_src}mphase_aux.o\
 	${common_src}immis_aux.o\
         ${common_src}mfd_aux.o\
@@ -160,6 +166,7 @@ common_obj = ${common_src}option.o \
 	${common_src}reactive_transport.o\
 	${common_src}thc.o\
 	${common_src}richards.o\
+	${common_src}general.o\
 	${common_src}mass_balance.o\
 	${common_src}general_grid.o \
 	${common_src}checkpoint.o \
@@ -218,7 +225,8 @@ grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
 region.o : input.o utility.o logging.o string.o
-material.o : option.o input.o string.o dataset.o
+material.o : option.o input.o string.o dataset.o material_aux.o
+material_aux.o : option.o
 fluid.o : option.o input.o string.o
 saturation_function.o : option.o input.o string.o utility.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
@@ -231,10 +239,10 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 		observation.o velocity.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
                 fluid.o saturation_function.o dataset.o
-level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
-          field.o 
+          field.o
+level.o : patch.o option.o
 strata.o : input.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
@@ -258,6 +266,12 @@ richards.o : richards_aux.o realization.o saturation_function.o \
 thc_aux.o : option.o material.o water_eos.o saturation_function.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                  matrix_buffer.o global_aux.o
+general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
+            field.o coupler.o grid.o connection.o material.o material_aux.o \
+            discretization.o water_eos.o debug.o saturation_function.o \
+            amrgrid.o
+general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
+                global_aux.o
 mphase.o : mphase_aux.o realization.o fluid.o global_aux.o
 immis.o : immis_aux.o realization.o  global_aux.o
 flash2.o : flash2_aux.o realization.o fluid.o global_aux.o

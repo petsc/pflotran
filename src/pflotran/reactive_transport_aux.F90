@@ -66,51 +66,51 @@ module Reactive_Transport_Aux_module
   ! START CHUNKED!!!!!
   type, public :: react_tran_auxvar_chunk_type
   
-    PetscReal, pointer :: den(:,:)
-    PetscReal, pointer :: temp(:,:)
-    PetscReal, pointer :: sat(:,:)
-    PetscReal, pointer :: vol(:)
-    PetscReal, pointer :: por(:)
+    PetscReal, pointer :: den(:,:,:)
+    PetscReal, pointer :: temp(:,:,:)
+    PetscReal, pointer :: sat(:,:,:)
+    PetscReal, pointer :: vol(:,:)
+    PetscReal, pointer :: por(:,:)
     
 #ifdef CHUAN_CO2
-    PetscReal, pointer :: pres(:,:)
-    PetscReal, pointer :: xmass(:,:)
-    PetscReal, pointer :: fugacoeff(:,:)
+    PetscReal, pointer :: pres(:,:,:)
+    PetscReal, pointer :: xmass(:,:,:)
+    PetscReal, pointer :: fugacoeff(:,:,:)
 #endif    
   
     ! molality
-    PetscReal, pointer :: pri_molal(:,:)     ! mol/kg water
-    PetscReal, pointer :: ln_pri_molal(:,:)
+    PetscReal, pointer :: pri_molal(:,:,:)     ! mol/kg water
+    PetscReal, pointer :: ln_pri_molal(:,:,:)
     
     ! phase dependent totals
-    PetscReal, pointer :: total(:,:,:)       ! mol solute/L water
-    PetscReal, pointer :: dtotal(:,:,:,:)
+    PetscReal, pointer :: total(:,:,:,:)       ! mol solute/L water
+    PetscReal, pointer :: dtotal(:,:,:,:,:)
 
     ! sorbed totals
-    PetscReal, pointer :: total_sorb_eq(:,:)    ! mol/m^3 bulk
-    PetscReal, pointer :: dtotal_sorb_eq(:,:,:) ! kg water/m^3 bulk
+    PetscReal, pointer :: total_sorb_eq(:,:,:)    ! mol/m^3 bulk
+    PetscReal, pointer :: dtotal_sorb_eq(:,:,:,:) ! kg water/m^3 bulk
     
     ! aqueous species
     ! aqueous complexes
-    PetscReal, pointer :: sec_molal(:,:)
-    PetscReal, pointer :: gas_molal(:,:)
+    PetscReal, pointer :: sec_molal(:,:,:)
+    PetscReal, pointer :: gas_molal(:,:,:)
     
-    PetscReal, pointer :: eqsrfcplx_conc(:,:)
-    PetscReal, pointer :: eqsrfcplx_free_site_conc(:,:)
+    PetscReal, pointer :: eqsrfcplx_conc(:,:,:)
+    PetscReal, pointer :: eqsrfcplx_free_site_conc(:,:,:)
 
     ! mineral reactions
-!    PetscReal, pointer :: mnrl_volfrac0(:,:)
-    PetscReal, pointer :: mnrl_volfrac(:,:)
-!    PetscReal, pointer :: mnrl_area0(:,:)
-    PetscReal, pointer :: mnrl_area(:,:)
-    PetscReal, pointer :: mnrl_rate(:,:)
+!    PetscReal, pointer :: mnrl_volfrac0(:,:,:)
+    PetscReal, pointer :: mnrl_volfrac(:,:,:)
+!    PetscReal, pointer :: mnrl_area0(:,:,:)
+    PetscReal, pointer :: mnrl_area(:,:,:)
+    PetscReal, pointer :: mnrl_rate(:,:,:)
     
     ! activity coefficients
 !   PetscReal :: act_h2o
-    PetscReal, pointer :: pri_act_coef(:,:)
-    PetscReal, pointer :: sec_act_coef(:,:)
+    PetscReal, pointer :: pri_act_coef(:,:,:)
+    PetscReal, pointer :: sec_act_coef(:,:,:)
     
-    PetscReal, pointer :: ln_act_h2o(:)
+    PetscReal, pointer :: ln_act_h2o(:,:)
 
   end type react_tran_auxvar_chunk_type
   ! END CHUNKED!!!!!

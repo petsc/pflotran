@@ -17,7 +17,8 @@ module water_eos_module
   end interface
 
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
-            wateos, wateos_noderiv, density, nacl_den, nacl_vis, cowat, steameos
+            wateos, wateos_noderiv, density, nacl_den, nacl_vis, cowat, steameos, &
+            Tsat
 
 contains
 
@@ -1280,5 +1281,127 @@ visnacl = mu0*(1.d0 + beta*p)
 
 return
 end subroutine nacl_vis
+
+
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+! PURPOSE
+
+!  This function calculates saturation temperature for a given Ps c  Ref.: International Formulation Committee of the Sixth International
+!       Conference on Properties of Steam (1967).
+
+
+
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+!    ps  = saturation pressure (pascals)
+!    ts  = saturation temperature (deg. C)
+!    tsp = estimated ts on entry and dT/dps on return
+
+
+
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+subroutine Tsat(ts,ps,t_ps,ts_guess,ierr)
+
+  implicit none
+
+  PetscReal :: ts
+  PetscReal :: ps
+  PetscReal :: t_ps
+  PetscReal :: ts_guess
+  PetscErrorCode :: ierr
+  
+
+  PetscReal, parameter :: epsilon = 1.d-10
+  PetscReal, parameter :: tc1 = 647.3d0
+  PetscReal, parameter :: pc1 = 2.212d7  
+      
+  PetscReal :: theta, beta, u1, err
+  PetscReal :: t1num, t1nump
+  PetscReal :: t1, t1den, t1denp, term1, term1p, t2, term2, term2p
+  PetscReal :: f, fp
+  PetscReal :: kn(9)
+  PetscInt :: itr
+
+  data kn / -7.691234564d0,-2.608023696d1,-1.681706546d2, &
+            6.423285504d1,-1.189646225d2, 4.167117320d0, &
+            2.097506760d1, 1.d9         , 6.d0/
+
+  ierr = 0
+
+!geh  if(ipvtab.eq.0 .or. tsp.gt.369.d0) then
+
+!-------newton-raphson iteration for calculating ts by analytical funcs
+
+!-------on entry, ts_guess = estimated ts
+  theta = (ts_guess+273.15d0)/tc1
+  beta  = ps/pc1
+
+  u1  = 1.d0-theta
+  itr = 0
+
+  do         
+    itr = itr + 1
+
+    t1num  = u1*(kn(1)+u1*(kn(2)+u1*(kn(3)+u1*(kn(4)+u1*kn(5)))))
+    t1nump = u1*(2.d0*kn(2)+u1*(3.d0*kn(3)+u1*(4.d0*kn(4)+5.d0* &
+             u1*kn(5))))+kn(1)
+    t1     = 1.d0+u1*(kn(6)+kn(7)*u1)
+    t1den  = 1.d0/(theta*t1)
+    t1denp = theta*(kn(6)+2.d0*kn(7)*u1)-t1
+    term1  = t1num*t1den
+    term1p = (t1nump-term1*t1denp)*t1den
+
+    t2     = 1.d0/(kn(8)*u1*u1+kn(9))
+    term2  = u1*t2
+    term2p = t2*(1.d0-2.d0*kn(8)*u1*u1*t2)
+    f      = exp(term1-term2)-beta
+    fp     = (f+beta)*(term1p-term2p)
+    err    = f/fp
+    u1     = u1-err
+    theta  = 1.d0-u1
+    
+    if (dabs(err) <= epsilon .or. itr >= 20) exit
+
+  enddo
+
+  ts = theta*tc1-273.15d0
+
+!-------Note-(dbeta/dtheta) = -fp ; tsp = dT/dps
+  t_ps = -tc1/(pc1*fp)
+
+#if 0
+      else
+
+        kk = (tsp-tfirst)*dtempr
+        if(ps.ge.ptab(kk)) then
+          do i1p = kk,npvttab
+            if(ps.lt.ptab(i1p)) goto 10
+          enddo
+        else
+          do i1p = kk-1,1,-1
+            if(ps.gt.ptab(i1p)) goto 15
+          enddo
+        endif
+
+        write (iferr,12) kk,npvttab,tsp,ps
+        write (*,12) kk,npvttab,tsp,ps
+
+   12   format(/1x,'in funct ts: bad values- kk npvtab  Ts  ps ',
+     .      2i5,3x,4e12.4/)
+        ierr = 1
+        return
+
+   15   i1p = i1p+1
+   10   i1  = i1p-1
+c-------tsp = delT/dps, delT = 1.
+        frc = (ps-ptab(i1))/(ptab(i1p)-ptab(i1))
+        ts  = tfirst+(dfloat(i1)-one+frc)/dtempr
+        tsp = tsptab(i1)+frc*(tsptab(i1+1)-tsptab(i1))
+      endif
+#endif
+
+end subroutine Tsat
 
 end module water_eos_module

@@ -5,6 +5,9 @@ module Realization_module
   use Region_module
   use Condition_module
   use Material_module
+#ifdef SUBCONTINUUM_MODEL
+  use Subcontinuum_module
+#endif
   use Saturation_Function_module
   use Dataset_module
   use Fluid_module
@@ -32,6 +35,7 @@ private
     type(patch_type), pointer :: patch
 
     type(option_type), pointer :: option
+
     type(input_type), pointer :: input
     type(field_type), pointer :: field
     type(pflow_debug_type), pointer :: debug
@@ -46,6 +50,11 @@ private
     
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
+#ifdef SUBCONTINUUM_MODEL
+    type(subcontinuum_property_type), pointer :: subcontinuum_properties
+    type(subcontinuum_property_ptr_type), pointer ::  &
+                               subcontinuum_property_array(:)
+#endif
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
@@ -86,6 +95,7 @@ private
             RealizationPrintCouplers, &
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
+            RealProcessSubcontinuumProp, &
             RealProcessFluidProperties, &
             RealizationUpdateProperties, &
             RealizationCountCells, &
@@ -159,6 +169,10 @@ function RealizationCreate2(option)
 
   nullify(realization%material_properties)
   nullify(realization%material_property_array)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(realization%subcontinuum_properties)
+  nullify(realization%subcontinuum_property_array)
+#endif
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
@@ -669,6 +683,11 @@ subroutine RealizationProcessCouplers(realization)
                                 realization%transport_conditions, &
                                 realization%material_properties, &
                                 realization%option)
+!      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
+!                                realization%transport_conditions, &
+!                                realization%material_properties, &
+!                                realization%subcontinuum_properties, &
+!                                realization%option)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -734,10 +753,12 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     if (.not.associated(cur_material_property)) exit
 
     ! obtain saturation function id
-    cur_material_property%saturation_function_id = &
-      SaturationFunctionGetID(realization%saturation_functions, &
-                              cur_material_property%saturation_function_name, &
-                              cur_material_property%name,option)
+    if (option%iflowmode /= NULL_MODE) then
+      cur_material_property%saturation_function_id = &
+        SaturationFunctionGetID(realization%saturation_functions, &
+                                cur_material_property%saturation_function_name, &
+                                cur_material_property%name,option)
+    endif
     
     ! if named, link dataset to property
     if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
@@ -763,6 +784,73 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
 end subroutine RealProcessMatPropAndSatFunc
 
+
+! *********************************************************************** !
+!
+! RealProcessSubcontinuumProp: Sets up linkeage between material properties
+!                         and subcontinuum properties and auxilliary arrays
+! author: Jitendra Kumar 
+! date: 10/07/2010 
+!
+! *********************************************************************** !
+subroutine RealProcessSubcontinuumProp(realization)
+
+  use String_module
+  
+  implicit none
+  type(realization_type) :: realization
+#ifdef SUBCONTINUUM_MODEL 
+  
+  PetscBool :: found
+  PetscInt :: i
+  type(option_type), pointer :: option
+  type(material_property_type), pointer :: cur_material_property
+  type(subcontinuum_property_type), pointer :: cur_subcontinuum_property
+  
+  option => realization%option
+  
+  ! organize lists
+  call MaterialPropConvertListToArray(realization%material_properties, &
+                                      realization%material_property_array)
+  call SubcontinuumPropConvertListToArray(realization%subcontinuum_properties, &
+                                     realization%subcontinuum_properties_array, &
+                                     option) 
+    
+  cur_material_property => realization%material_properties                            
+  do                                      
+    if (.not.associated(cur_material_property)) exit
+    found = PETSC_FALSE
+    cur_subcontinuum_property => realization%subcontinuum_properties
+    do 
+      if (.not.associated(cur_subcontinuum_property)) exit
+      do i=1,cur_material_property%subcontinuum_type_count
+        if (StringCompare(cur_material_property%subcontinuum_type_name(i), &
+                        cur_subcontinuum_property%name,MAXWORDLENGTH)) then
+          found = PETSC_TRUE
+          cur_material_property%subcontinuum_property_id(i) = &
+            cur_subcontinuum_property%id
+          exit
+        endif
+        ! START TODO: check if this error check block is at right place. might have
+        ! to push it to upper do loop: Jitu 10/07/2010 
+        if (.not.found) then
+          option%io_buffer = 'Saturation function "' // &
+               trim(cur_material_property%subcontinuum_type_name(i)) // &
+               '" in material property "' // &
+               trim(cur_material_property%name) // &
+               '" not found among available subcontinuum types.'
+          call printErrMsg(realization%option)    
+        endif
+        ! END TODO
+      enddo  
+      cur_subcontinuum_property => cur_subcontinuum_property%next
+    enddo
+    cur_material_property => cur_material_property%next
+  enddo
+#endif 
+end subroutine RealProcessSubcontinuumProp
+
+! ************************************************************************** !
 ! ************************************************************************** !
 !
 ! RealProcessFluidProperties: Sets up linkeage with fluid properties
@@ -1273,6 +1361,7 @@ subroutine RealizAssignFlowInitCond(realization)
         case(IMS_MODE)
         case(FLASH2_MODE)
 !            call pflow_mphase_setupini(realization)
+        case(G_MODE)
       end select 
 
       ! assign initial conditions values to domain
@@ -1352,6 +1441,10 @@ subroutine RealizAssignFlowInitCond(realization)
                    initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
                enddo
                iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+               if (option%iflowmode == G_MODE) then
+                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                   iphase_loc_p(ghosted_id)
+               endif
              enddo
            else
              do iconn=1,initial_condition%connection_set%num_connections
@@ -1369,6 +1462,10 @@ subroutine RealizAssignFlowInitCond(realization)
                xx_p(ibegin:iend) = &
                  initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
                iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+               if (option%iflowmode == G_MODE) then
+                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                   iphase_loc_p(ghosted_id)
+               endif
              enddo
            endif
         end if
@@ -1682,7 +1779,7 @@ subroutine RealizationScaleSourceSink(realization)
           ghosted_id = grid%nL2G(local_id)
 
           select case(option%iflowmode)
-            case(RICHARDS_MODE)
+            case(RICHARDS_MODE,G_MODE)
                call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
                                             x_width,y_width,z_width, &
                                             ghosted_neighbors,option)
@@ -1733,7 +1830,7 @@ subroutine RealizationScaleSourceSink(realization)
         do iconn = 1, cur_connection_set%num_connections      
           local_id = cur_connection_set%id_dn(iconn)
           select case(option%iflowmode)
-            case(RICHARDS_MODE)
+            case(RICHARDS_MODE,G_MODE)
               cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
                 vec_ptr(local_id)
             case(THC_MODE)

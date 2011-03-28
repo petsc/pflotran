@@ -1774,7 +1774,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscInt :: ichange  
+  PetscInt :: ichange, i  
 
   field => realization%field
   grid => realization%patch%grid
@@ -1804,6 +1804,9 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
+      call MPI_Allreduce(ichange,i,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                         MPI_MIN,option%mycomm,ierr)
+      ichange = i 
       if (ichange < 0) then
         call SNESSetFunctionDomainError(snes,ierr) 
         return
@@ -2353,7 +2356,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 !   qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !   csrc1 = csrc1 / FMWCO2
 !   msrc(1)=qsrc1; msrc(2) =csrc1
-    msrc(:)= psrc(:)
+!geh begin change
+!geh remove
+!geh    msrc(:)= psrc(:)
+!geh add
+    msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh end change
     msrc(1) =  msrc(1) / FMWH2O
     msrc(2) =  msrc(2) / FMWCO2
 
@@ -2914,7 +2922,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
-      msrc(:)= psrc(:)
+!geh begin change
+!geh remove
+!geh      msrc(:)= psrc(:)
+!geh add
+      msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh end change
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
  

@@ -87,6 +87,16 @@ module Grid_module
     type(face_type), pointer :: faces(:)
     type(mfd_type), pointer :: MFD
 
+#ifdef SUBCONTINUUM_MODEL
+    ! Save no. of subcontinuum subgrids for all subcontinua patched 
+    ! together in one array
+    PetscInt, pointer :: subcontinuum_grid(:)
+    ! Offsets to access subcontinuum_grid array. No. of rows = no. of cells
+    ! in the patch. First column = no. of subcontinua at the cell
+    ! Second column = offset to access subcontinuum_grid for the cell
+    PetscInt, pointer :: subcontinuum_grid_offset(:,:)
+#endif
+
   end type grid_type
 
   type, public :: face_type
@@ -1135,6 +1145,24 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
    endif
  endif
 
+  if (associated(grid%unstructured_grid)) then
+    !if (grid%unstructured_grid%p_samr_patch==0) then
+     ! compute global max/min from the local max/in
+     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+   !endif
+ endif
+
 end subroutine GridComputeCoordinates
 
 ! ************************************************************************** !
@@ -1374,7 +1402,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             z_max = z_max-z_shift
                  
             ! if plane or line, ensure it is within the grid cells     
-            if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
+            if (grid%itype == STRUCTURED_GRID .or. &
+                grid%itype == STRUCTURED_GRID_MIMETIC) then
               if (x_max-x_min < 1.d-10) then
                 x_max = region%coordinates(ONE_INTEGER)%x
                 x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
@@ -1382,6 +1411,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   x_max = x_max + x_shift
                 else if (region%iface == EAST_FACE) then
                   x_max = x_max - x_shift
+                ! otherwise, shift upwind, unless at upwind physical boundary
+                else
+                  if (x_max > grid%x_min_global + x_shift) then
+                    x_max = x_max - x_shift
+                  else
+                    x_max = x_max + x_shift
+                  endif
                 endif
                 x_min = x_max
               endif
@@ -1392,6 +1428,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   y_max = y_max + y_shift
                 else if (region%iface == NORTH_FACE) then
                   y_max = y_max - y_shift
+                ! otherwise, shift upwind, unless at upwind physical boundary
+                else
+                  if (y_max > grid%y_min_global + y_shift) then
+                    y_max = y_max - y_shift
+                  else
+                    y_max = y_max + y_shift
+                  endif
                 endif
                 y_min = y_max
               endif
@@ -1402,6 +1445,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   z_max = z_max + z_shift
                 else if (region%iface == TOP_FACE) then
                   z_max = z_max - z_shift
+                ! otherwise, shift upwind, unless at upwind physical boundary
+                else
+                  if (z_max > grid%z_min_global + z_shift) then
+                    z_max = z_max - z_shift
+                  else
+                    z_max = z_max + z_shift
+                  endif
                 endif
                 z_min = z_max
               endif
@@ -2126,4 +2176,80 @@ function GridIndexToCellID(vec,index,grid,vec_type)
                      
 end function GridIndexToCellID
 
+
+!! ********************************************************************** !
+!!
+!! GridPopulateSubcontinuum: Populate subcontinuum discretization info in
+!!                           the grid object
+!! author: Jitendra Kumar
+!! date: 11/22/2010
+!!
+!! *********************************************************************** !
+!subroutine GridPopulateSubcontinuum(realization)
+!
+!  use Realization_module
+!  use Discretization_module
+!  use Material_module
+!  use Grid_module
+!  use Patch_module
+!  use Level_module
+!
+!  implicit none
+!
+!  type(realization_type), pointer :: realization
+!  type(grid_type), pointer :: grid
+!  type(discretization_type), pointer :: discretization
+!  type(patch_type), pointer :: patch 
+!  type(level_type), pointer :: cur_level
+!  type(patch_type), pointer :: cur_patch
+!  type(subcontinuum_type), pointer :: subcontinuum_type
+!
+!  PetscInt :: icell, ssub
+!
+!  ! do this only at the last and finest level
+!  cur_level => realization%level_list%last
+!  if(.not.associated(cur_level)) exit
+!  cur_patch => cur_level%patch_list%first
+!  do 
+!    grid => cur_patch%grid
+!    ! Allocate storage for subcontinuum_grid_offset
+!    allocate(cur_patch%grid%subcontinuum_grid_offset(cur_patch%grid%nlmax,2)
+!    
+!    ! Loop through all cells in the patch, copy the no. of subcontinuum 
+!    ! and offset from patch%num_subcontinuum_type into
+!    ! grid%subcontinuum_grid_offset.
+!    ssub = 0
+!    do icell=1, cur_patch%grid%nlmax
+!      cur_patch%grid%subcontinuum_grid_offset(icell,1) =   &
+!                          cur_patch%num_subcontinuum_type(icell,1)
+!      cur_patch%grid%subcontinuum_grid_offset(icell,2) =   &
+!                          cur_patch%num_subcontinuum_type(icell,2)
+!      ssub = ssub + cur_patch%grid%subcontinuum_grid_offset(icell,1)
+!    enddo
+!
+!    ! Allocate storage for grid%subcontinuum_grid and store the subgrid
+!    ! information
+!    allocate(cur_patch%grid%subcontinuum_grid(ssub))
+!    
+!    ! Loop through all the cells-> all subcontinuum and set the subgrid
+!    ! information
+!    do icell=1, cur_patch%grid%nlmax
+!      if(associated(region)) the
+!        local_id = region%cell_ids(icell)
+!      else
+!        local_id = icell
+!      endif
+!
+!      ! Loop over all subcontinua
+!      offset = cur_patch%grid%subcontinuum_grid_offset(icell,2)
+!      do isub = 1, cur_patch%grid%subcontinuum_grid_offset(icell,1)
+!        cur_patch%grid%subcontinuum_grid(offset) =  &
+!        realization%subcontinuum_properties(cur_patch%subcontinuum_type_ids(offset))%num_subgrids
+!        offset = offset + 1
+!      enddo
+!    enddo
+!    cur_patch => cur_patch%next
+!  enddo           
+!end subroutine GridPopulateSubcontinuum
+!
 end module Grid_module

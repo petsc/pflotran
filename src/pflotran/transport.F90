@@ -607,7 +607,7 @@ end subroutine TFluxDerivative_CD
 ! date: 02/22/10
 !
 ! ************************************************************************** !
-subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
+subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
 
   use Option_module
 
@@ -617,6 +617,7 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
   PetscReal :: area
   PetscReal :: velocity(*)
   PetscReal :: diffusion(*)
+  PetscReal :: fraction_upwind
   PetscReal :: T_up(*), T_dn(*)
 
   PetscInt :: iphase
@@ -641,22 +642,8 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
     ! central difference, currently assuming uniform grid spacing
     ! units = (m^3 water/m^2 bulk/sec)
     ! 
-    ! coef_up/coef_dn needs to flip sign of dispersion, but preserve sign of
-    ! of advection.  Since I simply flip the sign of coef_up/coef_dn outside
-    ! in RTResidual and RTJacobian, flipping dispersion without flipping
-    ! advection is not possible, and thus central difference will not work
-    ! for now.
-    if (q > 0.d0) then
-      coef_up =  diffusion(iphase)+ 0.5d0*q
-      coef_dn = -diffusion(iphase)+ 0.5d0*q
-      ! coef_up_dif = diffusion(iphase)
-      ! coef_up_adv = -0.5d0*q
-      ! coef_dn_dif = -diffusion(iphase)
-      ! coef_dn_adv = 0.5d0*q
-    else
-      coef_up =  diffusion(iphase)+ 0.5d0*q
-      coef_dn = -diffusion(iphase)+ 0.5d0*q
-    endif
+    coef_up =  diffusion(iphase)+ (1.d0-fraction_upwind)*q
+    coef_dn = -diffusion(iphase)+ fraction_upwind*q
   endif  
   
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
@@ -674,14 +661,19 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
     ! super critical CO2 phase have the index 2: need implementation
       q = velocity(iphase)
   
-    !upstream weighting
-    ! units = (m^3 water/m^2 bulk/sec)
-      if (q > 0.d0) then
-        coef_up =  diffusion(iphase)+q
-        coef_dn = -diffusion(iphase)
+      if (option%use_upwinding) then
+        !upstream weighting
+        ! units = (m^3 water/m^2 bulk/sec)
+        if (q > 0.d0) then
+          coef_up =  diffusion(iphase)+q
+          coef_dn = -diffusion(iphase)
+        else
+          coef_up =  diffusion(iphase)
+          coef_dn = -diffusion(iphase)+q
+        endif
       else
-        coef_up =  diffusion(iphase)
-        coef_dn = -diffusion(iphase)+q
+        coef_up =  diffusion(iphase)+ (1.d0-fraction_upwind)*q
+        coef_dn = -diffusion(iphase)+ fraction_upwind*q
       endif
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
@@ -702,7 +694,8 @@ end subroutine TFluxCoef
 ! date: 02/22/10
 !
 ! ************************************************************************** !
-subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
+subroutine TFluxCoef_CD(option,area,velocity,diffusion,fraction_upwind, &
+                        T_11,T_12,T_21,T_22)
 
   use Option_module
 
@@ -712,84 +705,52 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
   PetscReal :: area
   PetscReal :: velocity(*)
   PetscReal :: diffusion(*)
+  PetscReal :: fraction_upwind
   PetscReal :: T_11(*), T_12(*), T_21(*), T_22(*)
 
   PetscInt :: iphase
   PetscReal :: coef_up, coef_dn
   PetscReal :: tempreal
   PetscReal :: weight
+  PetscReal :: advection_upwind(option%nphase)
+  PetscReal :: advection_downwind(option%nphase)
   PetscReal :: q
-  
-  iphase = 1
   
   ! T_11 = diagonal term for upwind cell (row)
   ! T_12 = off diagonal term for upwind cell (row)
   ! T_21 = off diagonal term for downwind cell (row)
   ! T_22 = diagonal term for downwind cell (row)
-  
-  q = velocity(iphase)
 
+  ! Advection
   if (option%use_upwinding) then
     ! upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion(iphase)+q
-      coef_dn = -diffusion(iphase)
-    else
-      coef_up =  diffusion(iphase)
-      coef_dn = -diffusion(iphase)+q
-    endif
-
-    ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
-    !       = L water/sec
-    tempreal = area*1000.d0
-    T_11(iphase) = coef_up*tempreal  ! 1000 converts m^3 -> L
-    T_12(iphase) = coef_dn*tempreal
-    T_21(iphase) = -T_11(iphase)
-    T_22(iphase) = -T_12(iphase)
-
-  else
-    ! central difference, currently assuming uniform grid spacing
-    ! units = (m^3 water/m^2 bulk/sec)
-    ! 
-    weight = 0.5d0
-    tempreal = area*1000.d0
-    T_11(iphase) = (diffusion(iphase) + weight*q)*tempreal
-    T_12(iphase) = (-diffusion(iphase) + weight*q)*tempreal
-    T_21(iphase) = -(diffusion(iphase) + weight*q)*tempreal
-    T_22(iphase) = (diffusion(iphase) - weight*q)*tempreal
-  endif  
-  
-! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
-      .or. option%iflowmode == FLASH2_MODE) then
-    do
-      iphase = iphase +1 
-      if (iphase > option%nphase) exit
-    ! super critical CO2 phase have the index 2: need implementation
-      q = velocity(iphase)
-  
-    !upstream weighting
-    ! units = (m^3 water/m^2 bulk/sec)
-      if (q > 0.d0) then
-        coef_up =  diffusion(iphase)+q
-        coef_dn = -diffusion(iphase)
+    do iphase = 1, option%nphase
+      if (velocity(iphase) > 0.d0) then
+        advection_upwind(iphase) = velocity(iphase)
+        advection_downwind(iphase) = 0.d0
       else
-        coef_up =  diffusion(iphase)
-        coef_dn = -diffusion(iphase)+q
+        advection_upwind(iphase) = 0.d0
+        advection_downwind(iphase) = velocity(iphase)
       endif
-  
-    ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
-    !       = L water/sec
-      T_11(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-      T_12(iphase) = coef_dn*area*1000.d0
-      T_21(iphase) = -T_11(iphase)
-      T_22(iphase) = -T_12(iphase)      
-  
+    enddo
+  else
+    ! central difference
+    do iphase = 1, option%nphase
+      advection_upwind(iphase) = (1.d0-fraction_upwind)*velocity(iphase)
+      advection_downwind(iphase) = fraction_upwind*velocity(iphase)
     enddo
   endif
-#endif
+    
+  tempreal = area*1000.d0
+  do iphase = 1, option%nphase
+    T_11(iphase) = (diffusion(iphase) + advection_upwind(iphase))*tempreal
+    T_12(iphase) = (-diffusion(iphase) + advection_downwind(iphase))*tempreal
+!    T_21(iphase) = -(diffusion(iphase) + advection_upwind(iphase))*tempreal
+!    T_22(iphase) = (diffusion(iphase) - advection_downwind(iphase))*tempreal
+    T_21(iphase) = -T_11(iphase)
+    T_22(iphase) = -T_12(iphase)
+  enddo
 
 end subroutine TFluxCoef_CD
 

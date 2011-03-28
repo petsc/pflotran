@@ -3799,11 +3799,11 @@ subroutine BasisPrint(reaction,title,option)
   PetscInt :: ispec, itemp
 
 100 format(a)
-110 format(a,f9.4)
-120 format(a,f6.2,2x,a)
+110 format(a,f9.4,a)
+120 format(a,f8.2,2x,a)
 130 format(a,100f11.4)
 140 format(a,f6.2)
-150 format(a,es11.4)
+150 format(a,es11.4,a)
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,*)
@@ -3813,14 +3813,14 @@ subroutine BasisPrint(reaction,title,option)
     write(option%fid_out,*) trim(title)
     write(option%fid_out,*)
 
-    write(option%fid_out,*) 'Primary Components:'
+    write(option%fid_out,*) 'Primary Species:'
     cur_aq_spec => reaction%primary_species_list
     do
       if (.not.associated(cur_aq_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
       write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
-      write(option%fid_out,110) '    Molar Weight: ', cur_aq_spec%molar_weight
-      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
+      write(option%fid_out,110) '    Molar Mass: ', cur_aq_spec%molar_weight, ' [g/mol]'
+      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0, ' [Angstrom]'
       if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
@@ -3838,17 +3838,17 @@ subroutine BasisPrint(reaction,title,option)
     cur_aq_spec => reaction%secondary_species_list
     if (associated(cur_aq_spec)) then
       write(option%fid_out,*)
-      write(option%fid_out,*) 'Secondary Components:'
+      write(option%fid_out,*) 'Secondary Species:'
     else
       write(option%fid_out,*)
-      write(option%fid_out,*) 'Secondary Components: None'
+      write(option%fid_out,*) 'Secondary Species: None'
     endif
     do
       if (.not.associated(cur_aq_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
       write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
-      write(option%fid_out,110) '    Molar Weight: ', cur_aq_spec%molar_weight
-      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
+      write(option%fid_out,110) '    Molar Mass: ', cur_aq_spec%molar_weight,' [g/mol]'
+      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0, ' [Angstrom]'
       if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
@@ -3874,7 +3874,7 @@ subroutine BasisPrint(reaction,title,option)
     do
       if (.not.associated(cur_gas_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_gas_spec%name)
-      write(option%fid_out,110) '    Molar Weight: ', cur_gas_spec%molar_weight
+      write(option%fid_out,110) '    Molar Mass: ', cur_gas_spec%molar_weight,' [g/mol]'
       if (associated(cur_gas_spec%dbaserxn)) then
         write(option%fid_out,100) '    Gas Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_gas_spec%name
@@ -3900,8 +3900,8 @@ subroutine BasisPrint(reaction,title,option)
     do
       if (.not.associated(cur_mineral)) exit
       write(option%fid_out,100) '  ' // trim(cur_mineral%name)
-      write(option%fid_out,110) '    Molar Weight: ', cur_mineral%molar_weight
-      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume
+      write(option%fid_out,110) '    Molar Mass: ', cur_mineral%molar_weight,' [g/mol]'
+      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume,' [cm^3/mol]'
       if (associated(cur_mineral%tstrxn)) then
         write(option%fid_out,100) '    Mineral Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
@@ -3917,7 +3917,7 @@ subroutine BasisPrint(reaction,title,option)
     enddo
     
     cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
-    if (associated(cur_srfcplx)) then
+    if (associated(cur_srfcplx_rxn)) then
       write(option%fid_out,*)
       write(option%fid_out,*) 'Surface Complexation Reactions:'
     else

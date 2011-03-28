@@ -1,0 +1,39 @@
+\section{Syntax}
+
+\begin{frame}[containsverbatim,allowframebreaks]\frametitle{Syntax}
+
+The PFLOTRAN input deck is defined using keywords or cards that are associated with data.  The file is designed with modularity in mind and the cards need not be in any particular order.  Many cards open a section that provides additional cards and is terminated by an ``END'' or ``/''.  For example:
+
+\begin{semiverbatim}
+CARD1
+  CARD2 value value
+  CARD3
+    CARD4 value
+    CARD5 value
+  /
+END
+\end{semiverbatim}
+
+
+Several options exist for commenting out lines or sections of the input file:
+\begin{itemize}
+\item Individual lines may be commented out by placing a colon (:) or exclamation point (!) at the beginning of line (i.e. before any text).
+\item The SKIP/NOSKIP cards may be used to comment out a large number of lines.  SKIP/NOSKIP may be used in a nested manner.  But beware!  One must ensure consistency (i.e. \# SKIPs == \# NOSKIPs).
+\item Exclamation points (!) are often used to place comments at the end of a line, but serve no purpose and are solely for markup (i.e. PFLOTRAN will continue to read the string if it is expecting additional entry data).
+\end{itemize}
+
+\begin{semiverbatim}
+CARD1
+  skip
+  CARD2 value value
+  CARD3
+    skip
+    CARD4 value
+    CARD5 value
+    noskip
+  /
+  noskip
+END
+\end{semiverbatim}
+
+\end{frame}

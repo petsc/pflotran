@@ -7,9 +7,8 @@ module Auxilliary_module
   use Mphase_Aux_module
   use Immis_Aux_module
   use Flash2_Aux_Module
-#ifdef GENERAL
   use General_Aux_module
-#endif
+  use Material_Aux_module
   
   implicit none
 
@@ -20,27 +19,20 @@ module Auxilliary_module
   type, public :: auxilliary_type 
     type(global_type), pointer :: Global
     type(reactive_transport_type), pointer :: RT
+#ifdef SUBCONTINUUM_MODEL
+    type(subcontinuum_transport_type), pointer :: ST
+#endif
     type(thc_type), pointer :: THC
     type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
     type(flash2_type), pointer :: Flash2
-#ifdef GENERAL
     type(general_type), pointer :: General
-#endif
+    type(material_type), pointer :: Material
   end type auxilliary_type
-  
-#if 0
-  type, public :: auxilliary_coupler_type 
-    type(global_auxvar_type), pointer :: global_auxvar
-    type(reactive_transport_auxvar_type), pointer :: rt_auxvar
-  end type auxilliary_coupler_type
-#endif  
   
   public :: AuxInit, &
             AuxDestroy
-!            AuxCouplerInit, &
-!            AuxCouplerDestroy
 
 contains
 
@@ -59,14 +51,16 @@ subroutine AuxInit(aux)
   
   nullify(aux%Global)
   nullify(aux%RT)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(aux%ST)
+#endif
   nullify(aux%THC)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
   nullify(aux%Flash2)
-#ifdef GENERAL
   nullify(aux%General)
-#endif
+  nullify(aux%Material)
 
 end subroutine AuxInit
 
@@ -85,63 +79,26 @@ subroutine AuxDestroy(aux)
   
   call GlobalAuxDestroy(aux%Global)
   call RTAuxDestroy(aux%RT)
+#ifdef SUBCONTINUUM_MODEL
+  call STAuxDestroy(aux%ST) 
+#endif
   call THCAuxDestroy(aux%THC)
   call RichardsAuxDestroy(aux%Richards)
   !call MphaseAuxDestroy(aux%Mphase)
-#ifdef GENERAL
   call GeneralAuxDestroy(aux%General)
-#endif
+  call MaterialAuxDestroy(aux%Material)
   nullify(aux%Global)
   nullify(aux%RT)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(aux%ST)  
+#endif
   nullify(aux%THC)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
-#ifdef GENERAL
   nullify(aux%General)
-#endif  
+  nullify(aux%Material)
+
 end subroutine AuxDestroy
-
-#if 0
-! ************************************************************************** !
-!
-! AuxCouplerInit: Nullifies pointers in auxilliary object for a coupler
-! author: Glenn Hammond
-! date: 04/09/08
-!
-! ************************************************************************** !
-subroutine AuxCouplerInit(aux)
-
-  implicit none
-  
-  type(auxilliary_coupler_type) :: aux
-  
-  nullify(aux%global_auxvar)
-  nullify(aux%rt_auxvar)
-  
-end subroutine AuxCouplerInit
-
-! ************************************************************************** !
-!
-! AuxCouplerDestroy: Deallocates any allocated pointers in auxilliary object
-!                    for a coupler
-! author: Glenn Hammond
-! date: 12/05/08
-!
-! ************************************************************************** !
-subroutine AuxCouplerDestroy(aux)
-
-  implicit none
-  
-  type(auxilliary_coupler_type) :: aux
-  
-  call GlobalAuxVarDestroy(aux%global_auxvar)
-  call RTAuxVarDestroy(aux%rt_auxvar)
-  
-  nullify(aux%global_auxvar)
-  nullify(aux%rt_auxvar)
-  
-end subroutine AuxCouplerDestroy
-#endif
 
 end module Auxilliary_module

@@ -72,6 +72,13 @@ module Option_module
     PetscInt :: nflowdof
     PetscInt :: nflowspec
 
+    PetscInt :: air_pressure_id
+    PetscInt :: capillary_pressure_id
+    PetscInt :: vapor_pressure_id 
+    PetscInt :: water_id  ! index of water component dof
+    PetscInt :: air_id  ! index of air component dof
+    PetscInt :: energy_id  ! index of energy dof
+
     PetscInt :: ntrandof
   
     PetscInt :: iflag
@@ -177,7 +184,7 @@ module Option_module
     PetscBool :: use_upwinding
 
     PetscInt :: chunk_size
-    PetscInt :: chunk_offset
+    PetscInt :: num_threads
 
   end type option_type
   
@@ -235,7 +242,7 @@ module Option_module
     module procedure printWrnMsg1
     module procedure printWrnMsg2
   end interface
-    
+
   public :: OptionCreate, &
             OutputOptionCreate, &
             OptionCheckCommandLine, &
@@ -357,8 +364,8 @@ subroutine OptionInitAll(option)
   option%use_upwinding = PETSC_TRUE
 
   option%chunk_size = 8
-  option%chunk_offset = 0
-
+  option%num_threads = 1
+  
   call OptionInitRealization(option)
 
 end subroutine OptionInitAll
@@ -403,6 +410,14 @@ subroutine OptionInitRealization(option)
   option%nphase = 0
   option%liquid_phase = 0
   option%gas_phase = 0
+  
+  option%air_pressure_id = 0
+  option%capillary_pressure_id = 0
+  option%vapor_pressure_id = 0
+
+  option%water_id = 0
+  option%air_id = 0
+  option%energy_id = 0
   
   option%uniform_velocity = 0.d0
   option%store_solute_fluxes = PETSC_FALSE

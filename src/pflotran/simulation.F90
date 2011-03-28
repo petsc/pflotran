@@ -183,6 +183,7 @@ subroutine SimulationDestroy(simulation)
 
   use Richards_module, only : RichardsDestroy
   use Reactive_Transport_module, only : RTDestroy
+  use General_module, only : GeneralDestroy
 
   implicit none
   
@@ -194,6 +195,8 @@ subroutine SimulationDestroy(simulation)
     select case(simulation%realization%option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsDestroy(simulation%realization)
+      case(G_MODE)
+        call GeneralDestroy(simulation%realization)
     end select
   endif
 
