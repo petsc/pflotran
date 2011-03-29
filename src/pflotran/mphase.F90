@@ -3625,9 +3625,9 @@ function MphaseGetTecplotHeader(realization,icolumn)
   do i=1,option%nflowspec
     if (icolumn > -1) then
       icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-Xl('',i2,'')"'')') icolumn, i
+      write(string2,'('',"'',i2,''-Xl('',i1,'')"'')') icolumn, i
     else
-      write(string2,'('',"Xl('',i2,'')"'')') i
+      write(string2,'('',"Xl('',i1,'')"'')') i
     endif
     string = trim(string) // trim(string2)
   enddo
@@ -3635,9 +3635,9 @@ function MphaseGetTecplotHeader(realization,icolumn)
   do i=1,option%nflowspec
     if (icolumn > -1) then
       icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-Xg('',i2,'')"'')') icolumn, i
+      write(string2,'('',"'',i2,''-Xg('',i1,'')"'')') icolumn, i
     else
-      write(string2,'('',"Xg('',i2,'')"'')') i
+      write(string2,'('',"Xg('',i1,'')"'')') i
     endif
     string = trim(string) // trim(string2)
   enddo

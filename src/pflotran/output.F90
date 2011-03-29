@@ -4249,7 +4249,7 @@ subroutine OutputVTK(realization)
         case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
-            write(word,'(''Xl('',i2,'')'')') i
+            write(word,'(''Xl('',i1,'')'')') i
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -4260,7 +4260,7 @@ subroutine OutputVTK(realization)
         case(MPH_MODE,FLASH2_MODE,G_MODE)
           ! gas mole fractions
           do i=1,option%nflowspec
-            write(word,'(''Xg('',i2,'')'')') i
+            write(word,'(''Xg('',i1,'')'')') i
             call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -5387,7 +5387,7 @@ subroutine OutputHDF5(realization)
         case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
-            write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+            write(string,'(''Liquid Mole Fraction-'',i1)') i
             if(.not.(option%use_samr)) then
                call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
@@ -5405,7 +5405,7 @@ subroutine OutputHDF5(realization)
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)      
           do i=1,option%nflowspec
              call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-             write(string,'(''Gas Mole Fraction('',i4,'')'')') i
+             write(string,'(''Gas Mole Fraction-'',i1)') i
              if(.not.(option%use_samr)) then
                 call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
