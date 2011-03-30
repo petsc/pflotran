@@ -1516,7 +1516,8 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
         length(1) = group_xyz(i*7+2) ! nz_local
 #endif
         !  if (num_to_write == 0) length(1) = 1
-        if (group_count_mpi(i) .NE. length(1)*length(2)*length(3)) write (*,'("My Rank is ",i8," Memory space and Hyperslab space do not match!!")') option%myrank
+        if (group_count_mpi(i) .NE. length(1)*length(2)*length(3)) &
+          write (*,'("My Rank is ",i8," Memory space and Hyperslab space do not match!!")') option%myrank
         stride = 1
         call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                                    hdf5_err,stride,stride)
