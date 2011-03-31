@@ -2236,6 +2236,8 @@ subroutine BasisInit(reaction,option)
 #endif
     allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
     reaction%kinmnrl_affinity_threshold = 0.d0
+    allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
+    reaction%kinmnrl_rate_limiter = 1.d0
     allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))

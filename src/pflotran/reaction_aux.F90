@@ -392,6 +392,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_Tempkin_const(:)
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
+    PetscReal, pointer :: kinmnrl_rate_limiter(:)
     
     ! general rxn
     PetscInt :: ngeneral_rxn
@@ -670,7 +671,6 @@ function ReactionCreate()
   nullify(reaction%kinmnrlh2ostoich)
   nullify(reaction%kinmnrl_logK)
   nullify(reaction%kinmnrl_logKcoef)
-  nullify(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_molar_vol)
   nullify(reaction%kinmnrl_molar_wt)
@@ -686,6 +686,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_threshold)
+  nullify(reaction%kinmnrl_rate_limiter)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -2544,9 +2545,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_logKcoef)) &
     deallocate(reaction%kinmnrl_logKcoef)
   nullify(reaction%kinmnrl_logKcoef)
-  if (associated(reaction%kinmnrl_affinity_threshold)) &
-    deallocate(reaction%kinmnrl_affinity_threshold)
-  nullify(reaction%kinmnrl_affinity_threshold)
   if (associated(reaction%kinmnrl_rate)) deallocate(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_rate)
   if (associated(reaction%kinmnrl_molar_vol)) &
@@ -2591,6 +2589,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_threshold)) &
     deallocate(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_affinity_threshold)
+  if (associated(reaction%kinmnrl_rate_limiter)) &
+    deallocate(reaction%kinmnrl_rate_limiter)
+  nullify(reaction%kinmnrl_rate_limiter)
 
   if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
   nullify(reaction%kinmr_rate)
