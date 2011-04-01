@@ -4373,7 +4373,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
             prefactor(ipref) = prefactor(ipref) * &
               exp(reaction%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
               ln_act(icomp))/ &
-              ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl))* &
+              (1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl)* &
               exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
               ln_act(icomp)))
           enddo
@@ -4383,7 +4383,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
               prefactor(ipref) = prefactor(ipref) * &
                 exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
                 ln_sec_act(kcplx))/ &
-                ((1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
+                (1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl)* &
                 exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
                 ln_sec_act(kcplx)))
             enddo
@@ -4466,7 +4466,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                                        prefactor(ipref)/rt_auxvar%pri_molal(jcomp) ! dR_dm
           ! denominator
           dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-            ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
+            (1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
             exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
             ln_act(jcomp)))* & 
             reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &

@@ -624,7 +624,7 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L,option)
           structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
                                        structured_grid%bounds(X_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nx)
-          structured_grid%dy = 1.d0
+          structured_grid%dy_global = 1.d0
           structured_grid%dz_global = (structured_grid%bounds(Z_DIRECTION,UPPER)- &
                                        structured_grid%bounds(Z_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nz)
@@ -634,8 +634,8 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L,option)
           structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
                                        structured_grid%bounds(X_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nx)
-          structured_grid%dy = 1.d0
-          structured_grid%dz = 1.d0
+          structured_grid%dy_global = 1.d0
+          structured_grid%dz_global = 1.d0
       end select
       
     endif
