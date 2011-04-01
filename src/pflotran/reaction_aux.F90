@@ -31,6 +31,7 @@ module Reaction_Aux_module
     PetscReal :: molar_weight
     PetscReal :: Z
     PetscBool :: print_me
+    PetscBool :: is_redox
     type(database_rxn_type), pointer :: dbaserxn
     type(aq_species_type), pointer :: next
   end type aq_species_type
@@ -219,6 +220,7 @@ module Reaction_Aux_module
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     type(general_rxn_type), pointer :: general_rxn_list
     type(kd_rxn_type), pointer :: kd_rxn_list
+    type(aq_species_type), pointer :: redox_species_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscBool :: checkpoint_activity_coefs
@@ -532,6 +534,7 @@ function ReactionCreate()
   nullify(reaction%surface_complexation_rxn_list)
   nullify(reaction%general_rxn_list)
   nullify(reaction%kd_rxn_list)
+  nullify(reaction%redox_species_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -773,6 +776,7 @@ function AqueousSpeciesCreate()
   species%molar_weight = 0.d0
   species%Z = 0.d0
   species%print_me = PETSC_FALSE
+  species%is_redox = PETSC_FALSE
   nullify(species%dbaserxn)
   nullify(species%next)
 
@@ -2255,7 +2259,12 @@ subroutine ReactionDestroy(reaction)
     call KDRxnDestroy(prev_kd_rxn)
   enddo    
   nullify(reaction%kd_rxn_list)
-  
+
+  ! redox species
+  if (associated(reaction%redox_species_list)) &
+    call AqueousSpeciesListDestroy(reaction%redox_species_list)
+  nullify(reaction%redox_species_list)
+
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
   nullify(reaction%primary_species_names)

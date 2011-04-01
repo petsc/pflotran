@@ -16,6 +16,7 @@ module Reaction_module
             ReactionRead, &
             ReactionReadMineralKinetics, &
             ReactionReadOutput, &
+            ReactionReadRedoxSpecies, &
             RTotal, &
             RTotalSorb, &
             CO2AqActCoeff, &
@@ -739,6 +740,8 @@ subroutine ReactionRead(reaction,input,option)
         reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
         reaction%use_activity_h2o = PETSC_TRUE
+      case('REDOX_SPECIES')
+        call InputSkipToEnd(input,option,word)
       case('OUTPUT')
         call InputSkipToEnd(input,option,word)
       case('MAX_DLNC')
@@ -937,6 +940,57 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   enddo
 
 end subroutine ReactionReadMineralKinetics
+
+! ************************************************************************** !
+!
+! ReactionReadRedoxSpecies: Reads names of mineral species and sets flag
+! author: Glenn Hammond
+! date: 04/01/11
+!
+! ************************************************************************** !
+subroutine ReactionReadRedoxSpecies(reaction,input,option)
+
+  use Input_module
+  use String_module  
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: name
+  
+  type(aq_species_type), pointer :: cur_species
+
+  input%ierr = 0
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,name,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,REDOX_SPECIES')
+    
+    cur_species => reaction%primary_species_list
+    do 
+      if (.not.associated(cur_species)) exit
+      if (StringCompare(cur_species%name,name,MAXWORDLENGTH)) then
+        cur_species%is_redox = PETSC_TRUE
+        exit
+      endif
+      cur_species => cur_species%next
+    enddo
+    
+    if (.not.associated(cur_species)) then
+      option%io_buffer = 'Redox species "' // trim(name) // &
+        '" not found among primary species.'
+      call printErrMsg(option)
+    endif
+  enddo
+  
+end subroutine ReactionReadRedoxSpecies
 
 ! ************************************************************************** !
 !
