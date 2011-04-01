@@ -888,6 +888,10 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
 !             read affinity threshold for precipitation
               call InputReadDouble(input,option,cur_mineral%tstrxn%affinity_threshold)
               call InputErrorMsg(input,option,'threshold','CHEMISTRY,MINERAL_KINETICS')
+            case('RATE_LIMITER')
+!             read rate limiter for precipitation
+              call InputReadDouble(input,option,cur_mineral%tstrxn%rate_limiter)
+              call InputErrorMsg(input,option,'rate_limiter','CHEMISTRY,MINERAL_KINETICS')
             case default
               option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
                                  trim(word) // ' not recognized'
@@ -4349,6 +4353,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 !     check for supersaturation threshold for precipitation
       if (associated(reaction%kinmnrl_affinity_threshold)) then
         if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) cycle
+      endif
+    
+!     check for rate limiter for precipitation
+      if (associated(reaction%kinmnrl_rate_limiter)) then
+        affinity_factor = affinity_factor/(1.d0+(1.d0-affinity_factor) &
+          /reaction%kinmnrl_rate_limiter(imnrl))
       endif
 
       ! compute prefactor

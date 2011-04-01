@@ -2315,6 +2315,7 @@ subroutine BasisInit(reaction,option)
 #endif
         reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
           cur_mineral%tstrxn%affinity_threshold
+        reaction%kinmnrl_rate_limiter(ikinmnrl) = cur_mineral%tstrxn%rate_limiter
         reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight

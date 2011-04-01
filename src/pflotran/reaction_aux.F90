@@ -90,6 +90,7 @@ module Reaction_Aux_module
     PetscReal :: affinity_factor_sigma
     PetscReal :: affinity_factor_beta
     PetscReal :: affinity_threshold
+    PetscReal :: rate_limiter
     PetscReal :: rate
   end type transition_state_rxn_type
   
@@ -928,6 +929,7 @@ function TransitionStateTheoryRxnCreate()
   tstrxn%affinity_factor_sigma = 0.d0
   tstrxn%affinity_factor_beta = 0.d0
   tstrxn%affinity_threshold = 1.d0
+  tstrxn%rate_limiter = 1.d0
   tstrxn%rate = 0.d0
   
   TransitionStateTheoryRxnCreate => tstrxn
