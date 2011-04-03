@@ -639,6 +639,15 @@ with transport-limited rate $r_{\rm lim}$. In the limit $K_mQ_m\rightarrow\infty
 \EQ
 \lim_{K_mQ_m\rightarrow\infty}\widehat I_m \eq r_m^{\rm lim} s_m^{}\sum_l \P_{ml}^{}.
 \EN
+Defining the affinity factor
+\EQ
+A_m \eq 1-\left(K_m Q_m\right)^{1/\sigma_m},
+\EN
+the rate may be expressed alternatively as
+\EQ
+\widehat I_m \eq -s_m^{} \sum_l \P_{ml}^{} k_{ml}^{} 
+\dfrac{A_m}{1+\dfrac{k_{ml}^{}}{r_m^{\rm lim}} \big(1-A_m\big)}.
+\EN
 
 Adding mineral precipitation/dissolution to the mass conservation equations yields
 \EQ
@@ -2654,7 +2663,9 @@ Using as electron acceptor NO$_3^-$ with $f_s^\circ \!\!=\!\! 0.62$ gives
 \EA
 For this reaction the yield $\Y$ has the value $\Y \!\!=\!\! 0.558$.
 
-Reactions (\ref{oxy}) and (\ref{nit}) are linearly independent provided the intra-cell electron synthesis factor $f_s^\circ$ is different for different electron acceptors. Otherwise the reactions are linearly dependent. Provided local equilibrium prevails within the aqueous phase between different redox couples, catalyzed by bacteria, reactions based on different electron-acceptor substrates with equal intra-cell electron factors $f_s^\circ$ are linearly dependent and as a consequence the stoichiometry of the linearly-dependent reactions does not play a role in the transport equations, their rates being additive [see Eqn.(\ref{parallelj})]. Only if disequilibrium of redox couples persists does the stoichiometry of the overall reaction come into play according to Eqn.(\ref{parallelkk}). 
+Reactions (\ref{oxy}) and (\ref{nit}) are linearly independent provided the intra-cell electron synthesis factor $f_s^\circ$ is different for different electron acceptors. Otherwise the reactions are linearly dependent. 
+Provided local equilibrium prevails within the aqueous phase between different redox couples, catalyzed by bacteria, reactions based on different electron-acceptor substrates with equal intra-cell electron factors $f_s^\circ$ are linearly dependent and as a consequence the stoichiometry of the linearly-dependent reactions does not play a role in the transport equations, their rates being additive. %[see Eqn.(\ref{parallelj})]. 
+Only if disequilibrium of redox couples persists does the stoichiometry of the overall reaction come into play. % according to Eqn.(\ref{parallelkk}). 
 
 \textbf{\textsl{Kinetic Rate Law.}} Introducing the yield, reaction (\ref{overallbio}) can be written as
 \EQ\label{overally}
@@ -2753,13 +2764,18 @@ The equations may be further generalized to more than one electron donor substra
 
 \section{Species-Independent Diffusion Coefficients}
 
-For the case of species-independent diffusion coefficients, because the homogeneous and heterogeneous reactions conserve charge, expressed by Eqn.\eqref{chrg},
+For the case of species-independent diffusion coefficients, because the homogeneous and heterogeneous reactions conserve charge, 
+%expressed by Eqn.\eqref{chrg},
 the mass conservation equations also conserve charge. The total charge density $\rho_e$ in solution must vanish
 \EQ\label{electroneutrality}
 \rho_e \eq \F\sum_jz_j\Psi_j\eq \F\sum_jz_jC_j+\F\sum_iz_iC_i \eq 0,
 \EN
 where $\F$ denotes the Faraday constant (96,485.3415 Coulombs/mol).
-Multiplying the primary species transport equations Eqn.\eqref{pri} by $z_j$ and summing over all primary species noting that $\sum_{jm}z_j\nu_{jm}I_m=\sum_mz_mI_m=0$ from Eqn.\eqref{chrg}, gives
+Multiplying the primary species transport equations 
+%Eqn.\eqref{pri} 
+by $z_j$ and summing over all primary species noting that $\sum_{jm}z_j\nu_{jm}I_m=\sum_mz_mI_m=0$, 
+%from Eqn.\eqref{chrg}, 
+gives
 \EQ
 \frac{\p}{\p t}\varphi\rho_e + \bnabla\bdot\bOmega_{\rho_e} \eq 0,
 \EN
@@ -2840,15 +2856,18 @@ Al$^{3+}$ & 0.559\\
 \end{tabular}
 \end{table}
 
-To account for effects of pH and aqueous complexing reactions it is necessary to allow for homogeneous equilibrium reactions with the possibility of charged secondary species. Note that from Table~\eqref{tdiff} the species H$^+$ and OH$^-$ have the largest tracer diffusion coefficients. It is assumed that homogeneous reactions are fast and local equilibrium conditions may be assumed. As for the case of equal diffusivities, it is also possible in the case of species-dependent diffusivities to derive mass conservation equations for the primary species taking into account homogeneous equilibrium relations. However, in this case it is no longer possible to express the primary species transport equations in terms of the total concentration $\Psi_j$ alone, but in this case each individual species now occurs in the transport equations. To derive the form of the primary species transport equations, first separate equations are written for primary and secondary species including rates of the homogeneous reactions $I_i$ as before [see Eqns.\eqref{eqpri} and \eqref{eqsec}], but with the solute flux $\bF_l$ now given by Eqn.\eqref{eflux}.
-Substituting Eqn.\eqref{eflux} into Eqn.\eqref{omega}, the total primary species flux is found to be after rearranging terms
+To account for effects of pH and aqueous complexing reactions it is necessary to allow for homogeneous equilibrium reactions with the possibility of charged secondary species. Note that from Table~\eqref{tdiff} the species H$^+$ and OH$^-$ have the largest tracer diffusion coefficients. It is assumed that homogeneous reactions are fast and local equilibrium conditions may be assumed. As for the case of equal diffusivities, it is also possible in the case of species-dependent diffusivities to derive mass conservation equations for the primary species taking into account homogeneous equilibrium relations. However, in this case it is no longer possible to express the primary species transport equations in terms of the total concentration $\Psi_j$ alone, but in this case each individual species now occurs in the transport equations. To derive the form of the primary species transport equations, first separate equations are written for primary and secondary species including rates of the homogeneous reactions $I_i$ as before 
+%[see Eqns.\eqref{eqpri} and \eqref{eqsec}], 
+but with the solute flux $\bF_l$ now given by Eqn.\eqref{eflux}.
+%Substituting Eqn.\eqref{eflux} into Eqn.\eqref{omega}, 
+The total primary species flux is found to be 
 \BA
 \bOmega_j \eq & -\tau\varphi\frac{\F\bnabla \Phi}{RT}\big(z_j D_j C_j + \sum_i\nu_{ji} z_i D_i C_i\big) 
 \nonumber\\
 &-\tau \varphi \left(D_j \bnabla C_j + \sum_i\nu_{ji} D_i \bnabla C_i\right.\nonumber\\
 & + \left. D_j C_j \bnabla \ln \gamma_j + \sum_i\nu_{ji} D_i C_i \bnabla \ln \gamma_i \right) + {\bq} \Psi_j.
 \EA
-Defining the quantities
+after rearranging terms. Defining the quantities
 \EQ
 \Lambda_j \eq z_j D_j C_j + \sum_i\nu_{ji} z_i D_i C_i,
 \EN
@@ -2908,7 +2927,9 @@ and where the generalized transference number $\Upsilon_j$ is defined as
 \EN
 
 To demonstrate that charge is indeed conserved,
-the primary species transport equations Eqn.\eqref{pri} with flux given by Eqn.\eqref{totflux} are multiplied by the valence $z_j$ and summed over all primary species to yield
+the primary species transport equations 
+%Eqn.\eqref{pri} 
+with flux given by Eqn.\eqref{totflux} are multiplied by the valence $z_j$ and summed over all primary species to yield
 \EQ\label{chrgcon}
 \frac{\p}{\p t} \varphi\rho_e + \bnabla\bdot\bi_e\eq 0.
 \EN
@@ -4402,6 +4423,8 @@ x_\a &\eq \frac{n_\a}{n} \eq \frac{(n_\a/V_\a) (V_\a/V_p)}{\sum_\b (n_\b/ V_\b) 
 \bibliographystyle{plainnat}
 \bibliography{./reference-new}
 
+\begin{comment}
+
 \section*{Appendix: Supercritical CO$_2$--H$_2$O Equilibrium Relations}
 
 This section follows Duan \& Sun (2003).
@@ -4445,7 +4468,7 @@ Introducing the equilibrium constant $K_\c^{\rm eq}$ defined as
 \ln K_\c^{\rm eq} \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
 \EN
 yields the mass action equation
-\EQ\label{massactco2}
+\EQ\label{massactco2a}
 K_\c^{\rm eq} \eq \frac{f_\c^{}}{a_\c^{}} \eq \frac{\phi_\c^{} P_\c^g}{a_\c} \eq \frac{\phi_\c^{} X_\c^g P_g^{}}{a_\c^{}}.
 \EN
 The equilibrium CO$_2$ molality is thus given by
@@ -4453,7 +4476,7 @@ The equilibrium CO$_2$ molality is thus given by
 m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{\rm eq}}  P_g^{}.
 \EN
 %Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
-Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
+Solving Eqn.\eqref{massactco2a} for the $\c$ partial pressure gives
 \BA
 P_\c^g &\eq \frac{K_\c^{\rm eq}}{\phi_\c} a_\c,\\
 &\eq \widetilde K_\c^{\rm eq} a_\c,
@@ -4507,7 +4530,7 @@ C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c^{
 &\eq \rho_\c K_\c^{\rm eq} \frac{a_\c}{\phi_\c P_g}.
 \EA
 
-
+\end{comment}
 
 \subsection{Supercritical CO$_2$--H$_2$O Equilibrium (Duan \& Sun, 2003)}
 
@@ -4540,7 +4563,7 @@ with fugacity coefficient $\phi_\c$ where the mole fraction of $\c$ in the super
 y_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
 \EN
 with total gas pressure $P_g$ equal to
-\EQ\label{totalp}
+\EQ\label{totalp1}
 P_g \eq P_\c^g + P_\w^{\rm sat}(T),
 \EN
 and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. 
@@ -4557,7 +4580,7 @@ The equilibrium CO$_2$ molality is thus given by
 \EQ
 m_\c^{} \eq \frac{\phi_\c^{} y_\c^g}{\gamma_\c^{}K_\c^{}}  P_g^{}.
 \EN
-%Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
+%Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp1}.
 
 Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
 \BA
