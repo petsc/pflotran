@@ -92,6 +92,7 @@ module Reaction_Aux_module
     PetscReal :: affinity_factor_beta
     PetscReal :: affinity_threshold
     PetscReal :: rate_limiter
+    PetscInt :: irreversible
     PetscReal :: rate
   end type transition_state_rxn_type
   
@@ -396,6 +397,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
     PetscReal, pointer :: kinmnrl_rate_limiter(:)
+    PetscInt, pointer :: kinmnrl_irreversible(:)
     
     ! general rxn
     PetscInt :: ngeneral_rxn
@@ -690,6 +692,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_threshold)
+  nullify(reaction%kinmnrl_irreversible)
   nullify(reaction%kinmnrl_rate_limiter)
   
   reaction%ngeneral_rxn = 0
@@ -932,8 +935,9 @@ function TransitionStateTheoryRxnCreate()
   nullify(tstrxn%stoich_secondary_prefactor)
   tstrxn%affinity_factor_sigma = 0.d0
   tstrxn%affinity_factor_beta = 0.d0
-  tstrxn%affinity_threshold = 1.d0
-  tstrxn%rate_limiter = 1.d0
+  tstrxn%affinity_threshold = 0.d0
+  tstrxn%rate_limiter = 0.d0
+  tstrxn%irreversible = 0
   tstrxn%rate = 0.d0
   
   TransitionStateTheoryRxnCreate => tstrxn
@@ -2603,6 +2607,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_rate_limiter)) &
     deallocate(reaction%kinmnrl_rate_limiter)
   nullify(reaction%kinmnrl_rate_limiter)
+  if (associated(reaction%kinmnrl_irreversible)) &
+    deallocate(reaction%kinmnrl_irreversible)
+  nullify(reaction%kinmnrl_irreversible)
 
   if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
   nullify(reaction%kinmr_rate)
