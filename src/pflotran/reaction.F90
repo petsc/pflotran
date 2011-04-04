@@ -4433,7 +4433,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 !     check for supersaturation threshold for precipitation
 !     if (associated(reaction%kinmnrl_affinity_threshold)) then
       if (reaction%kinmnrl_affinity_threshold(imnrl) > 0.d0) then
-        print *,'threshold: ',reaction%kinmnrl_affinity_threshold(imnrl),sign_,QK
         if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) cycle
       endif
     
@@ -4442,7 +4441,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       if (reaction%kinmnrl_rate_limiter(imnrl) > 0.d0) then
         affinity_factor = affinity_factor/(1.d0+(1.d0-affinity_factor) &
           /reaction%kinmnrl_rate_limiter(imnrl))
-        print *,'RKineticMineral: ',reaction%kinmnrl_rate_limiter(imnrl),affinity_factor
       endif
 
       ! compute prefactor
