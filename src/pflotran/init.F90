@@ -1165,6 +1165,8 @@ subroutine InitReadInput(simulation)
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS','COLLOIDS','GENERAL_REACTION')
               call InputSkipToEND(input,option,card)
+            case('REDOX_SPECIES')
+              call ReactionReadRedoxSpecies(reaction,input,option)
             case('OUTPUT')
               call ReactionReadOutput(reaction,input,option)
             case('MINERAL_KINETICS')

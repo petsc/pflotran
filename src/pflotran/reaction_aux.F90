@@ -31,6 +31,7 @@ module Reaction_Aux_module
     PetscReal :: molar_weight
     PetscReal :: Z
     PetscBool :: print_me
+    PetscBool :: is_redox
     type(database_rxn_type), pointer :: dbaserxn
     type(aq_species_type), pointer :: next
   end type aq_species_type
@@ -90,6 +91,8 @@ module Reaction_Aux_module
     PetscReal :: affinity_factor_sigma
     PetscReal :: affinity_factor_beta
     PetscReal :: affinity_threshold
+    PetscReal :: rate_limiter
+    PetscInt :: irreversible
     PetscReal :: rate
   end type transition_state_rxn_type
   
@@ -218,6 +221,7 @@ module Reaction_Aux_module
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     type(general_rxn_type), pointer :: general_rxn_list
     type(kd_rxn_type), pointer :: kd_rxn_list
+    type(aq_species_type), pointer :: redox_species_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscBool :: checkpoint_activity_coefs
@@ -392,6 +396,8 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_Tempkin_const(:)
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
+    PetscReal, pointer :: kinmnrl_rate_limiter(:)
+    PetscInt, pointer :: kinmnrl_irreversible(:)
     
     ! general rxn
     PetscInt :: ngeneral_rxn
@@ -530,6 +536,7 @@ function ReactionCreate()
   nullify(reaction%surface_complexation_rxn_list)
   nullify(reaction%general_rxn_list)
   nullify(reaction%kd_rxn_list)
+  nullify(reaction%redox_species_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -670,7 +677,6 @@ function ReactionCreate()
   nullify(reaction%kinmnrlh2ostoich)
   nullify(reaction%kinmnrl_logK)
   nullify(reaction%kinmnrl_logKcoef)
-  nullify(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_molar_vol)
   nullify(reaction%kinmnrl_molar_wt)
@@ -686,6 +692,8 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_threshold)
+  nullify(reaction%kinmnrl_irreversible)
+  nullify(reaction%kinmnrl_rate_limiter)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -771,6 +779,7 @@ function AqueousSpeciesCreate()
   species%molar_weight = 0.d0
   species%Z = 0.d0
   species%print_me = PETSC_FALSE
+  species%is_redox = PETSC_FALSE
   nullify(species%dbaserxn)
   nullify(species%next)
 
@@ -926,7 +935,9 @@ function TransitionStateTheoryRxnCreate()
   nullify(tstrxn%stoich_secondary_prefactor)
   tstrxn%affinity_factor_sigma = 0.d0
   tstrxn%affinity_factor_beta = 0.d0
-  tstrxn%affinity_threshold = 1.d0
+  tstrxn%affinity_threshold = 0.d0
+  tstrxn%rate_limiter = 0.d0
+  tstrxn%irreversible = 0
   tstrxn%rate = 0.d0
   
   TransitionStateTheoryRxnCreate => tstrxn
@@ -2252,7 +2263,12 @@ subroutine ReactionDestroy(reaction)
     call KDRxnDestroy(prev_kd_rxn)
   enddo    
   nullify(reaction%kd_rxn_list)
-  
+
+  ! redox species
+  if (associated(reaction%redox_species_list)) &
+    call AqueousSpeciesListDestroy(reaction%redox_species_list)
+  nullify(reaction%redox_species_list)
+
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
   nullify(reaction%primary_species_names)
@@ -2544,9 +2560,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_logKcoef)) &
     deallocate(reaction%kinmnrl_logKcoef)
   nullify(reaction%kinmnrl_logKcoef)
-  if (associated(reaction%kinmnrl_affinity_threshold)) &
-    deallocate(reaction%kinmnrl_affinity_threshold)
-  nullify(reaction%kinmnrl_affinity_threshold)
   if (associated(reaction%kinmnrl_rate)) deallocate(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_rate)
   if (associated(reaction%kinmnrl_molar_vol)) &
@@ -2591,6 +2604,12 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_threshold)) &
     deallocate(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_affinity_threshold)
+  if (associated(reaction%kinmnrl_rate_limiter)) &
+    deallocate(reaction%kinmnrl_rate_limiter)
+  nullify(reaction%kinmnrl_rate_limiter)
+  if (associated(reaction%kinmnrl_irreversible)) &
+    deallocate(reaction%kinmnrl_irreversible)
+  nullify(reaction%kinmnrl_irreversible)
 
   if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
   nullify(reaction%kinmr_rate)

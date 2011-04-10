@@ -316,7 +316,7 @@ end subroutine ludcmp
 
 !* Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
 !* A but rather as its LU decomposition. INDX is the input as the permutation
-!* vector returned bu ludcmp. B is input as the right-hand side vector B, and
+!* vector returned by ludcmp. B is input as the right-hand side vector B, and
 !* returns with the solution vector X.
 subroutine lubksb(A,N,INDX,B)
 

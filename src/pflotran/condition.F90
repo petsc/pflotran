@@ -1621,14 +1621,17 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   type(option_type) :: option
   type(flow_condition_dataset_type) :: dataset
   character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: units
   
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
                         temp_array3(:)
   PetscReal :: temp_time
   PetscInt :: max_size
   PetscInt :: temp_max_size
   PetscInt :: count, i, status
+  PetscErrorCode :: ierr
   type(input_type), pointer :: input
   
   input => InputCreate(IUNIT_TEMP,filename)
@@ -1648,11 +1651,23 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
     allocate(temp_array3(max_size))
     temp_array3 = 0.d0
   endif
-  
+
   count = 0
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
+    ! check for units on first line
+    if (count == 0) then
+      string = input%buf
+      call InputReadWord(string,word,PETSC_TRUE,ierr)
+      if (StringCompareIgnoreCase(word,'UNITS',FIVE_INTEGER)) then
+        call InputReadWord(string,units,PETSC_TRUE,ierr)
+        input%ierr = ierr
+        call InputErrorMsg(input,option,'UNITS','CONDITION FILE')
+        call StringToLower(units) 
+        cycle
+      endif
+    endif
     count = count + 1
     call InputReadDouble(input,option,temp_times(count))
     call InputErrorMsg(input,option,'time','CONDITION FILE')   

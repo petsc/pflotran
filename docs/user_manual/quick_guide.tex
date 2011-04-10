@@ -1808,6 +1808,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item [{\tt Mineral Name}]
 \item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s]
+\item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
 \item [\keyend]
 \end{deflist}
 
@@ -2825,6 +2826,25 @@ MASS_BALANCE
 %================================================================
 
 \newpage
+\protect\hypertarget{target_proc}{}
+
+\subsection{Keyword: PROC}
+
+\begin{deflist}{0000}
+\item[PROC] <int int int> 
+\item[Description:] The number of processor to be employed in each direction $x$, $y$, and $z$ (structured grids only). Default: let PETSc decide. {\em Warning: the product of the integers must be equal to the number of processor employed.}
+\item[Examples:] ~
+
+{\tt PROC 100 10 10} \ \ \ \ \ ! 10,000 processes
+
+{\tt PROC 2 2 2} \ \ \ \ \ ! 2$\times$2$\times$2 decomposition
+
+{\tt PROC 1 1 8} \ \ \ \ ! Force decomposition in z direction only (1$\times$1$\times$8 decomposition).
+\end{deflist}
+
+%========================================================================
+
+\newpage
 \protect\hypertarget{target_region}{}
 
 
@@ -2942,9 +2962,15 @@ The RESTART card defines a checkpoint file from which the current simulation sho
 Examples:}
 
 \begin{verbatim}
-RESTART restart.chk 0. y
+: restart the simulation from the end of the previous simulation, /
+  but set the time back to 0.
 
-RESTART restart.chk 
+RESTART restart.chk 0.d0 y
+
+: restart the program running from where it left off /
+  when the file pflotran.chk3000 was printed
+
+RESTART pflotran.chk3000
 
 \end{verbatim}
 
@@ -3103,7 +3129,7 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 
 \subsection{Keyword: TRANSPORT\_CONDITION}
 
-\noindent{\bf Description:}
+\noindent{\bf Description:} Specifies a geochemical solution composition based on various user defined constraints with minerals, gases, pH, charge balance, free ion and total concentrations.
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
@@ -3124,6 +3150,79 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
+
+\begin{verbatim}
+TRANSPORT_CONDITION Initial
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+
+TRANSPORT_CONDITION U_source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 U_source
+336000.d0 Initial
+/
+/
+
+: the units for time are seconds by default
+
+CONSTRAINT U_source
+CONCENTRATIONS
+:name    concentration constraint constraint species
+H+       3.0             pH
+Ca++     1.20644e-3       T
+Cu++     1.e-8            T
+Mg++     5.09772e-4       T
+UO2++    1.E-6            T
+K+       1.54789e-4       T
+Na+      1.03498e-3       T
+HCO3-   -3.5              G CO2(g)
+Cl-      6.97741e-4       Z
+F-       2.09491e-5       T
+HPO4--   1.e-8            M Fluorapatite
+NO3-     4.69979e-4       T
+SO4--    6.37961e-4       T
+Tracer   1.e0             F
+Tracer2  1.e0             F
+/
+MINERALS
+:mineral     vol. frac. area
+Calcite        0.1   1.
+Metatorbernite 0.    1.
+/ ! end of minerals
+/ ! end of constraint
+/ ! end of transport condition
+
+CONSTRAINT initial
+CONCENTRATIONS
+:name    concentration constraint constraint species
+H+       7.3              M Calcite
+Ca++     1.20644e-3       T
+Cu++     1.e-8            T
+Mg++     5.09772e-4       M Dolomite
+UO2++    2.4830E-11       T
+K+       1.54789e-4       T
+Na+      1.03498e-3       Z
+HCO3-   -3.5              G CO2(g)
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-8            M Fluorapatite
+NO3-     4.69979e-4       T
+SO4--    6.37961e-4       T
+Tracer   1.e-7            F
+Tracer2  1.e-7            F
+/
+MINERALS
+:mineral     vol. frac. area
+Calcite        0.1   1.
+Metatorbernite 0.    1.
+/
+/
+/
+\end{verbatim}
 
 %========================================================================
 
@@ -3218,12 +3317,12 @@ VELOCITY
 %\shadowbox{
 %\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item[WALLCLOCK\_STOP] wallclock\_stop\_time
+\item[WALLCLOCK\_STOP] <real> <char>
 \end{deflist}
 
-\noindent{\bf Explanation:}
+\noindent{\bf Explanation:} Specifies a wall clock time at which the simulation will shut down gracefully generating a restart file, if specified. The option is especially useful when there is an upper limit on wall clock time that can be requested (e.g. on a supercomputer) and it is not certain if the run will be completed within that time.
 
-\noindent{\bf Example:}
+\noindent{\bf Example:} {\tt WALLCLOCK\_STOP 9.5 h}
 
 %========================================================================
 %========================================================================
