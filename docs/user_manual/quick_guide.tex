@@ -2749,7 +2749,7 @@ END
 \item[PERIODIC \ TIME] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC \ TIMESTEP] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC\_OBSERVATION \ TIME] \ {\tt <float>} \ {\tt <unit>}: \ output the results at observation points at times specified by the actual time
-\item[PERIODIC\_OBSERVATION \ TIMESTEP] \ {\tt <integer> <unit>}: \ output the results at observation points at times specified by time steps
+\item[PERIODIC\_OBSERVATION \ TIMESTEP] \ {\tt <integer>}: \ output the results at observation points at specified time steps 
 \item[NO\_PRINT\_INITIAL:] \ the initial state of the system will not be printed to the output file if this card is activated
 \item[NO\_PRINT\_FINAL:] \ the final state of the system will not be printed to the output file if this card is activated
 \item[FORMAT] \ <file format>: \ specify the snapshot file type. Options available are TECPLOT BLOCK, TECPLOT POINT, HDF5, MAD, VTK
@@ -2761,7 +2761,7 @@ END
 \item[POROSITY]
 \item[FLUXES]
 \item[VELOCITIES]
-\item[MASS\_BALANCE:] \ output the mass balance of the system if this card is activated. It include global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card.
+\item[MASS\_BALANCE:] \ output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times.
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}

@@ -1276,11 +1276,11 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
           call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
         endif
               
-          Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-          if (energy_flag) &
-            Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
-              enth_src_co2 *option%flow_dt
-      endif
+        Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
+        if (energy_flag) &
+          Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
+            enth_src_co2 *option%flow_dt
+        endif
 
       case(-1) ! production well
      !  if node pessure is lower than the given extraction pressure, shut it down
@@ -1304,7 +1304,7 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
         enddo
        ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
          
-      case(1) ! injetion well with constant pressure
+      case(1) ! injection well with constant pressure
         Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
@@ -1889,7 +1889,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: k1, k2, z1, z2,xg, vmco2, vmh2o,sg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
-  PetscReal :: yh2o_in_co2 = 1.d-2, wat_sat_x, co2_sat_x
+! PetscReal :: yh2o_in_co2 = 1.d-2
+  PetscReal :: yh2o_in_co2 = 0.d0
+  PetscReal :: wat_sat_x, co2_sat_x
   PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
@@ -1926,15 +1928,15 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     t= xx_p(dof_offset+2)
     den(1:option%nphase) = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%den(1:option%nphase)
     select case(iipha) 
-      case(1) 
+      case(1) ! liquid
         xmol(2)= xx_p(dof_offset+3)
         xmol(1)=1.D0 - xmol(2)
         satu(1)=1.D0; satu(2)=0.D0
-      case(2)  
+      case(2) ! gas
         xmol(4)= xx_p(dof_offset+3)
         xmol(3)=1.D0 - xmol(4)
         satu(1)=eps; satu(2)=1.D0
-      case(3) 
+      case(3) ! two-phase
         satu(2)= xx_p(dof_offset+3) 
         satu(1)= 1.D0- satu(2)
         xmol(3)= yh2o_in_co2; xmol(4)=1.D0-xmol(3)
@@ -2028,63 +2030,63 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !      &  '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
 !      &  '' 1-Ps/P='',1pe11.4)') &
 !         option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
-          iphase_loc_p(ghosted_id) = 3
+            iphase_loc_p(ghosted_id) = 3
         
         ! Rachford-Rice initial guess: 1=H2O, 2=CO2
-          k1 = wat_sat_x !sat_pressure*1.D5/p
-          k2 = henry/p
-          z1 = xmol(1); z2 = xmol(2)
-          xg = ((1.d0-k2)*z2+(1.d0-k1)*z1)/((1.d0-k2)*(1.d0-k1)*(z1+z2))
-          vmco2 = 1.d0/dg
-          vmh2o = 1.D0 /den(1)   ! FMWH2O/0.9d3
+            k1 = wat_sat_x !sat_pressure*1.D5/p
+            k2 = henry/p
+            z1 = xmol(1); z2 = xmol(2)
+            xg = ((1.d0-k2)*z2+(1.d0-k1)*z1)/((1.d0-k2)*(1.d0-k1)*(z1+z2))
+            vmco2 = 1.d0/dg
+            vmh2o = 1.D0 /den(1)   ! FMWH2O/0.9d3
        !  calculate initial guess for sg
-          sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
+            sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
 !         write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
-          xx_p(dof_offset+3) = sg   
-          ichange = 1
-        endif
+            xx_p(dof_offset+3) = sg   
+            ichange = 1
+          endif
 
         case(2)   
-        if (xmol(3) > wat_sat_x*1.05)then
+          if (xmol(3) > wat_sat_x*1.05)then
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
-!         write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
+!           write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
 !      &  '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
-!         option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
-          iphase_loc_p(ghosted_id) = 3
-          xx_p(dof_offset+3)=1.D0-formeps
-          ichange = 1
-        endif
+!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
+            iphase_loc_p(ghosted_id) = 3
+            xx_p(dof_offset+3)=1.D0-formeps
+            ichange = 1
+          endif
 
         case(3)
-        tmp = wat_sat_x
+          tmp = wat_sat_x
 !       xmol(2)= (1.D0-tmp)/(Henry/p-tmp) ! solve: x1+x2=1, y1+y2=1, y1=k1*x1, y2=k2*x2
 !       xmol(2)= p*(1.D0-tmp)/Henry ! approximate form
 !       xmol(1)= 1.D0-xmol(2)
 !       xmol(3)= xmol(1)*tmp
 !       xmol(4)= 1.D0-xmol(3)
-        xmol(1) = 1D0 - xco2eq
-        xmol(2) = xco2eq
-        xmol(3) = tmp
-        xmol(4) = 1.D0-tmp          
+          xmol(1) = 1D0 - xco2eq
+          xmol(2) = xco2eq
+          xmol(3) = tmp
+          xmol(4) = 1.D0-tmp          
 
-        if(satu(2)>=1.D0)then
-!         write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
+          if(satu(2)>=1.D0)then
+!           write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
 !      &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1p3e11.4)') &
-!         option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
-          iphase_loc_p(ghosted_id) = 2
-          xx_p(dof_offset+3) = 1.D0-1D-8
-          ichange =1  
-        else if(satu(2) <= 0.D0)then
+!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
+            iphase_loc_p(ghosted_id) = 2
+            xx_p(dof_offset+3) = 1.D0-1D-8
+            ichange =1  
+          else if(satu(2) <= 0.D0)then
 !        write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
 !     &  '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
 !        option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
-          iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
-          ichange = 1
-          tmp = xmol(2) * 0.99
-          xx_p(dof_offset+3)=tmp
-        endif
+            iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
+            ichange = 1
+            tmp = xmol(2) * 0.99
+            xx_p(dof_offset+3)=tmp
+          endif
 
-    end select
+      end select
 
     case(1)
     
