@@ -1327,7 +1327,7 @@ subroutine RealizAssignFlowInitCond(realization)
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:), xx_faces_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -1366,7 +1366,8 @@ subroutine RealizAssignFlowInitCond(realization)
 
       ! assign initial conditions values to domain
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-        call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+        call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr); CHKERRQ(ierr)        
       else
         call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
       end if
@@ -1394,87 +1395,95 @@ subroutine RealizAssignFlowInitCond(realization)
                iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
              enddo
            else
-             do icell=1,initial_condition%region%num_cells
-               local_id = initial_condition%region%cell_ids(icell)
-               ghosted_id = grid%nL2G(local_id)
-               if (associated(cur_patch%imat)) then
-                 if (cur_patch%imat(ghosted_id) <= 0) then
-                   iphase_loc_p(ghosted_id) = 0
-                   cycle
-                 endif
-               endif
-               iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,icell)
-             enddo
-             do iface=1,initial_condition%numfaces_set
-                ghosted_id = initial_condition%faces_set(iface)
-                local_id = grid%fG2L(ghosted_id)
-                if (local_id > 0) then
-                  iend = local_id*option%nflowdof
-                  ibegin = iend-option%nflowdof+1
-                  xx_p(ibegin:iend) = &
-                 initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
-                end if
-             end do
-           
+               do iface=1,initial_condition%numfaces_set
+                   ghosted_id = initial_condition%faces_set(iface)
+                   local_id = grid%fG2L(ghosted_id)
+                   if (local_id > 0) then
+                      iend = local_id*option%nflowdof
+                      ibegin = iend-option%nflowdof+1
+                      xx_faces_p(ibegin:iend) = &
+                      initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
+                   end if
+                end do
+
+                do iconn=1,initial_condition%connection_set%num_connections
+                     local_id = initial_condition%region%cell_ids(iconn)
+                     ghosted_id = grid%nL2G(local_id)
+                     iend = local_id*option%nflowdof
+                     ibegin = iend-option%nflowdof+1
+                     if (associated(cur_patch%imat)) then
+                          if (cur_patch%imat(ghosted_id) <= 0) then
+                                xx_p(ibegin:iend) = 0.d0
+                                iphase_loc_p(ghosted_id) = 0
+                                cycle
+                          endif
+                     endif
+                     xx_p(ibegin:iend) = &
+                     initial_condition%flow_aux_real_var(1:option%nflowdof,iconn + initial_condition%numfaces_set)
+                     iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn  + initial_condition%numfaces_set)
+                enddo
            end if
 #endif
         else 
            if (.not.associated(initial_condition%flow_aux_real_var)) then
-          if (.not.associated(initial_condition%flow_condition)) then
-            option%io_buffer = 'Flow condition is NULL in initial condition'
-            call printErrMsg(option)
-          endif
-             do icell=1,initial_condition%region%num_cells
-               local_id = initial_condition%region%cell_ids(icell)
-               ghosted_id = grid%nL2G(local_id)
-               iend = local_id*option%nflowdof
-               ibegin = iend-option%nflowdof+1
-               if (associated(cur_patch%imat)) then
-                 if (cur_patch%imat(ghosted_id) <= 0) then
-                   xx_p(ibegin:iend) = 0.d0
-                   iphase_loc_p(ghosted_id) = 0
-                   cycle
-                 endif
+               if (.not.associated(initial_condition%flow_condition)) then
+                    option%io_buffer = 'Flow condition is NULL in initial condition'
+                    call printErrMsg(option)
                endif
-               do idof = 1, option%nflowdof
-                 xx_p(ibegin+idof-1) = &
-                   initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-               enddo
-               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-               if (option%iflowmode == G_MODE) then
-                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                   iphase_loc_p(ghosted_id)
-               endif
-             enddo
-           else
-             do iconn=1,initial_condition%connection_set%num_connections
-               local_id = initial_condition%connection_set%id_dn(iconn)
-               ghosted_id = grid%nL2G(local_id)
-               iend = local_id*option%nflowdof
-               ibegin = iend-option%nflowdof+1
-               if (associated(cur_patch%imat)) then
-                 if (cur_patch%imat(ghosted_id) <= 0) then
-                   xx_p(ibegin:iend) = 0.d0
-                   iphase_loc_p(ghosted_id) = 0
-                   cycle
-                 endif
-               endif
-               xx_p(ibegin:iend) = &
-                 initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-               iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
-               if (option%iflowmode == G_MODE) then
-                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                   iphase_loc_p(ghosted_id)
-               endif
-             enddo
-           endif
+               do icell=1,initial_condition%region%num_cells
+                  local_id = initial_condition%region%cell_ids(icell)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  if (associated(cur_patch%imat)) then
+                     if (cur_patch%imat(ghosted_id) <= 0) then
+                        xx_p(ibegin:iend) = 0.d0
+                        iphase_loc_p(ghosted_id) = 0
+                        cycle
+                     endif
+                  endif
+                  do idof = 1, option%nflowdof
+                     xx_p(ibegin+idof-1) = &
+                         initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                  enddo
+                  iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+                  if (option%iflowmode == G_MODE) then
+                      cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                          iphase_loc_p(ghosted_id)
+                  endif
+                enddo
+            else
+                do iconn=1,initial_condition%connection_set%num_connections
+                    local_id = initial_condition%connection_set%id_dn(iconn)
+                    ghosted_id = grid%nL2G(local_id)
+                    iend = local_id*option%nflowdof
+                    ibegin = iend-option%nflowdof+1
+                    if (associated(cur_patch%imat)) then
+                        if (cur_patch%imat(ghosted_id) <= 0) then
+                             xx_p(ibegin:iend) = 0.d0
+                             iphase_loc_p(ghosted_id) = 0
+                             cycle
+                        endif
+                    endif
+                    xx_p(ibegin:iend) = &
+                          initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+                          iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+                    if (option%iflowmode == G_MODE) then
+                          cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                          iphase_loc_p(ghosted_id)
+                    endif
+                 enddo
+             endif
         end if
         initial_condition => initial_condition%next
       enddo
-      
+     
+ 
       call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
       call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
-        
+
+      
+   
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1488,12 +1497,24 @@ subroutine RealizAssignFlowInitCond(realization)
 
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-   call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
 
-   call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
-   call MFDInitializeMassMatrices(realization%discretization%grid,&
+    
+    call VecRestoreArrayF90(field%flow_xx_faces,xx_faces_p, ierr)
+
+    call RealizationSetUpBC4Faces(realization)
+
+
+
+
+    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+
+    call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
+    call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &
                                   realization%discretization%MFD, realization%option)
+   patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_TRUE
+
+
   end if
 #endif
 !  stop 
@@ -2480,14 +2501,15 @@ subroutine RealizationSetUpBC4Faces(realization)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
+  
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
   type(coupler_type), pointer ::  boundary_condition
 
-  PetscReal, pointer :: bc_faces_p(:)
-  PetscInt :: iconn, sum_connection, bc_type
-  PetscInt :: local_id, ghosted_id, ghost_face_id, j, jface
+  PetscReal, pointer :: bc_faces_p(:), xx_faces_p(:)
+  PetscInt :: iconn, sum_connection, bc_type, bound_id
+  PetscInt :: local_id, ghosted_id, ghost_face_id, j, jface, local_face_id
   PetscErrorCode :: ierr
 
 
@@ -2498,6 +2520,7 @@ subroutine RealizationSetUpBC4Faces(realization)
 
 
   call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+  call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
 
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
@@ -2514,16 +2537,22 @@ subroutine RealizationSetUpBC4Faces(realization)
       aux_var => grid%MFD%aux_vars(local_id)
       do j = 1, aux_var%numfaces
         ghost_face_id = aux_var%face_id_gh(j)
+        local_face_id = grid%fG2L(ghost_face_id)
         conn => grid%faces(ghost_face_id)%conn_set_ptr
         jface = grid%faces(ghost_face_id)%id
         if (boundary_condition%faces_set(iconn) == ghost_face_id) then
            if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
               .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
                     bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+                    xx_faces_p(local_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
            else if ((bc_type == NEUMANN_BC)) then
                     bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+                    bound_id = grid%fL2B(local_face_id)
+                    if (bound_id>0) then
+                        patch%boundary_velocities(realization%option%nphase, bound_id) = &
+                                             boundary_condition%flow_aux_real_var(1,iconn)
+                    end if
            end if 
-  !         write(*,*) ghost_face_id, boundary_condition%flow_aux_real_var(1,iconn), conn%cntr(3,jface)     
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
         end if
       end do
@@ -2532,10 +2561,25 @@ subroutine RealizationSetUpBC4Faces(realization)
   end do
 
 
+
+
+
+  call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
 
-!  write(*,*) "RealizationSetUpBC4Faces Finished"
-!  read(*,*)
+
+
+#ifdef DASVYAT
+!   write(*,*) "Boundary faces"
+!   do iconn = 1, grid%boundary_connection_set_list%first%num_connections 
+!      write(*,*) "bound_flux", iconn, patch%boundary_velocities(realization%option%nphase, iconn),&
+!               grid%boundary_connection_set_list%first%cntr(1,iconn), &
+!               grid%boundary_connection_set_list%first%cntr(2,iconn), &
+!               grid%boundary_connection_set_list%first%cntr(3,iconn)
+!   end do  
+!   read(*,*)
+#endif
+
 #endif
 
 end subroutine RealizationSetUpBC4Faces

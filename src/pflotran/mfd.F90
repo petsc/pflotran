@@ -316,18 +316,18 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   type(mfd_auxvar_type), pointer :: aux_var
   type(richards_auxvar_type) :: rich_aux_var
   type(global_auxvar_type) :: global_aux_var
-  PetscScalar, pointer :: sq_faces(:)
+  PetscScalar :: sq_faces(:)
   type(option_type) :: option
-  PetscScalar, pointer :: bc_g(:), rhs(:), bc_h(:), face_pres(:), bnd(:)
+  PetscScalar :: bc_g(:), rhs(:), bc_h(:), face_pres(:), bnd(:)
   PetscScalar :: Accum(1:option%nflowdof),source_f(1:option%nflowdof), pres(1:option%nflowdof)
   PetscScalar :: PermTensor(3,3), sat,  dukvr_dp
-  PetscScalar, pointer :: dden_dp(:), dbeta_dp(:), den(:), beta(:)
+!  PetscScalar, pointer :: dden_dp(:), dbeta_dp(:), den(:), beta(:)
   PetscInt :: ghosted_cell_id
 
 
 
   PetscScalar :: Kg(3), dir_norm(3)
-  PetscScalar , pointer :: gr(:), f(:)
+!  PetscScalar , pointer :: gr(:), f(:)
   PetscInt :: i, j, ghost_face_id
   type(connection_set_type), pointer :: conn
   PetscInt, parameter :: numfaces = 6
@@ -335,21 +335,24 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 
 
   PetscInt :: iface, jface
-  PetscScalar :: E, den_gWB, den_BWB, den_BWCl 
+  PetscScalar :: E, den_gWB, den_BWB, den_BWCl , div_grav_term
   PetscScalar :: ukvr, ds_dp, porosity, volume, den_cntr, dden_cntr_dp
   PetscScalar :: PorVol_dt
   PetscScalar :: norm_len
-  PetscScalar, pointer :: WB(:), Wg(:), CWCl(:),denB(:)
+!  PetscScalar, pointer :: WB(:), Wg(:), CWCl(:),denB(:)
+  PetscScalar :: WB(6), Wg(6), CWCl(6), f(6), dden_dp(6)
+  PetscScalar :: dbeta_dp(6), den(6), beta(6), denB(6), gr(6)
 
-  allocate(WB(numfaces))
-  allocate(Wg(numfaces))
-  allocate(CWCl(numfaces))
-  allocate(f(option%nflowdof))
-  allocate(dden_dp(numfaces))
-  allocate(dbeta_dp(numfaces))
-  allocate(den(numfaces))
-  allocate(beta(numfaces))
-  allocate(denB(numfaces))
+!  allocate(WB(numfaces))
+!  allocate(Wg(numfaces))
+!  allocate(CWCl(numfaces))
+!  allocate(f(option%nflowdof))
+!  allocate(dden_dp(numfaces))
+!  allocate(dbeta_dp(numfaces))
+!  allocate(den(numfaces))
+!  allocate(beta(numfaces))
+!  allocate(denB(numfaces))
+!  allocate(gr(numfaces))
 
   
 
@@ -365,6 +368,13 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
      dbeta_dp(i) = dukvr_dp*den(i) + ukvr*dden_dp(i)
      denB(i) = sq_faces(i)*den(i)
   end do
+
+!  write(*,*) "sq ", (sq_faces(iface),iface=1,6)
+!  write(*,*) "p ", (face_pres(iface) + bc_g(iface)/sq_faces(iface),iface=1,6)
+!  write(*,*) "den ", (den(iface),iface=1,6)
+!  write(*,*) "den_dp ", (dden_dp(iface),iface=1,6)
+!  write(*,*) "dbeta_dp ", ( dbeta_dp(i),i=1,6)
+!  write(*,*) "Accum ", Accum(1)
 
 
 
@@ -389,7 +399,6 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   end do
 
 
-  allocate(gr(numfaces))
 
   do i = 1, numfaces
 
@@ -440,17 +449,21 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   end do
   
   den_BWCl = 0
+  div_grav_term = 0
   do iface = 1, numfaces
      den_BWCl = den_BWCl + den(iface)*WB(iface)*(    sq_faces(iface)*face_pres(iface) + bc_g(iface)   )
+     div_grav_term = div_grav_term + den(iface)*ukvr*sq_faces(iface)*den(iface)*gr(iface)
   end do
 
-   aux_var%Rp = ukvr*den_BWB*pres(1) - ukvr*den_BWCl  + f(1) 
+   aux_var%Rp = ukvr*den_BWB*pres(1) - ukvr*den_BWCl  + f(1) + div_grav_term
+
  
    aux_var%dRp_dp = ukvr*den_BWB
    do iface = 1, numfaces
      aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(i)*pres(1)*WB(iface)*sq_faces(iface)
 
      aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(i)*WB(iface)*(sq_faces(iface)*face_pres(iface) + bc_g(iface)) 
+
    end do
    aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
 
@@ -494,7 +507,29 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 !     end if 
    end do
 
-!    read(*,*)
+#ifdef DASVYAT_DEBUG
+   if ((ghosted_cell_id == 1).or.(ghosted_cell_id == 150)) then
+      write(*,*) "Rp ", aux_var%Rp
+      write(*,*) "Rl ", aux_var%Rl
+      write(*,*) "f", f(1), "ukvr", ukvr
+      write(*,*) "xp", pres(1)
+      write(*,*) "sq_faces",(sq_faces(iface),iface=1,6)
+      write(*,*) "face_pres",(face_pres(iface),iface=1,6)
+      write(*,*) "bc_g",(bc_g(iface)/sq_faces(iface),iface=1,6)
+      write(*,*) "den", (den(iface),iface=1,6)
+      write(*,*) "Inverse"
+      do jface=1,6
+        write(*,*) (aux_var%MassMatrixInv(iface,jface),iface=1,6)
+      end do
+  write(*,*) "aux_var%dRl_dp", (aux_var%dRl_dp(iface),iface=1,6)
+  write(*,*) "aux_var%Rl", (aux_var%Rl(iface),iface=1,6)
+
+      read(*,*)
+   end if
+#endif
+
+
+  
 
   do iface = 1, aux_var%numfaces
       rhs(iface) = -aux_var%dRl_dp(iface)*aux_var%Rp/aux_var%dRp_dp + aux_var%Rl(iface)
@@ -502,18 +537,19 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   end do
  !    read(*,*)
 
+!  write(*,*) "rhs", (rhs(iface),iface=1,6)
 
-  deallocate(WB)
-  deallocate(Wg)
-  deallocate(gr)
-  deallocate(f)
-
-  deallocate(CWCl)
-  deallocate(dden_dp)
-  deallocate(dbeta_dp)
-  deallocate(den)
-  deallocate(beta)
-  deallocate(denB)
+!  deallocate(WB)
+!  deallocate(Wg)
+!  deallocate(gr)
+!  deallocate(f)
+!
+!  deallocate(CWCl)
+!  deallocate(dden_dp)
+!  deallocate(dbeta_dp)
+!  deallocate(den)
+!  deallocate(beta)
+!  deallocate(denB)
 
 end subroutine MFDAuxGenerateRhs
 
@@ -562,6 +598,17 @@ subroutine MFDAuxJacobianLocal( grid, aux_var, &
 !        J(iface + (iface - 1)*aux_var%numfaces) = J(iface + (iface - 1)*aux_var%numfaces) + 1 !ukvr0
    end do
 
+!   write(*,*) (J(iface + (iface - 1)*aux_var%numfaces), iface = 1,6)
+!   write(*,*)
+
+#ifdef DASVYAT_DEBUG
+   do iface = 1, aux_var%numfaces
+      if (J(iface + (iface - 1)*aux_var%numfaces) < 0) then 
+         write(*,*) "Negative on diagonal"
+         stop
+      end if
+   end do
+#endif
 
 end subroutine MFDAuxJacobianLocal
 
@@ -745,7 +792,6 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
      iface = grid%faces(ghost_face_id)%id
      if (conn%itype==INTERNAL_CONNECTION_TYPE) local_id = grid%nG2L(conn%id_up(iface)) 
 
-     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id.and.local_id>0) cycle
      
       dir = 1
 
@@ -759,11 +805,18 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
      gr(i) = dot_product(Kg, conn%dist(1:3,iface))
      if (dot_product(dir_norm(1:3), conn%dist(1:3,iface)).lt.0) gr(i) =  gr(i) * NEG_ONE_INTEGER
 
+#ifdef DASVYAT_DEBUG
+     if (ghosted_cell_id==1.or.ghosted_cell_id==150) then
+        write(*,*) "ghosted_cell_id: ", ghosted_cell_id, "xx", xx(1), "ukvr", ukvr
+        write(*,*) "gr", gr(i), "lm", face_pr(i), "dir ", dir
+     end if
+#endif
+     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id.and.local_id>0) cycle
+
 !     gr(i) = dot_product(Kg, conn%dist(1:3,iface))
 !     if (conn%id_dn(iface) == ghost_id) gr(i) =  gr(i) * NEG_ONE_INTEGER
 
 
-!     write(*,*) "xx", xx(1), "lm", face_pr(i)
 !     write(*,*) "M", aux_var%MassMatrixInv(i,i), "sq", sq_faces(i), "ukvr", ukvr
 !     write(*,*) "Dq", aux_var%MassMatrixInv(i,i)*sq_faces(i)
 
@@ -771,8 +824,12 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
      do j = 1, aux_var%numfaces
         darcy_v = darcy_v + ukvr*aux_var%MassMatrixInv(i, j)* &
                                            (sq_faces(j)*(xx(1) - face_pr(j)))
-     end do
 
+
+     end do
+#ifdef DASVYAT_DEBUG
+     if (ghosted_cell_id==150) write(*,*) "flux no gr", darcy_v, "gr",  ukvr*gr(i)
+#endif
      darcy_v = darcy_v + ukvr*gr(i)
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
@@ -780,6 +837,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
            bound_id = grid%fL2B(local_face_id)
            if (bound_id>0) then
               patch%boundary_velocities(option%nphase, bound_id) = -darcy_v
+!              write(*,*) bound_id, "fl", -darcy_v, "lm", face_pr(i), "p", xx(1) 
            end if
         end if
      else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
@@ -795,6 +853,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 !   if (option%myrank==1) then
 !       write(*,*) "End of MFDAuxFluxes"
 !       write(*,*)
+!       read(*,*)
 !   end if
 
 !  stop

@@ -766,8 +766,6 @@ function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
 
   coupler => list%first
 
-#ifdef DASVYAT  
-
   allocate(grid%fL2B(grid%nlmax_faces))
 
   grid%fL2B = 0
@@ -787,7 +785,6 @@ function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
     enddo
     coupler => coupler%next
   enddo
-#endif
 
   CouplerGetNumBoundConnectionsInListMFD = iconn
 
