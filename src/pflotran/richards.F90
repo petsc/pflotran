@@ -3309,7 +3309,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 
 !    call PetscViewerDestroy(viewer,ierr)
 
-     write(*,*) "stop RichardsResidualPatch2"
+!    write(*,*) "stop RichardsResidualPatch2"
 !     read(*,*)
 !     stop
 
