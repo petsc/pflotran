@@ -895,6 +895,10 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
 !             read rate limiter for precipitation
               call InputReadDouble(input,option,cur_mineral%tstrxn%rate_limiter)
               call InputErrorMsg(input,option,'rate_limiter','CHEMISTRY,MINERAL_KINETICS')
+            case('IRREVERSIBLE')
+!             read flag for irreversible reaction
+              cur_mineral%tstrxn%irreversible = 1
+              call InputErrorMsg(input,option,'irreversible','CHEMISTRY,MINERAL_KINETICS')
             case default
               option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
                                  trim(word) // ' not recognized'
@@ -1447,7 +1451,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !    endif
         
     do icomp = 1, reaction%naqcomp
-      
+
       select case(constraint_type(icomp))
       
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -1974,7 +1978,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     200 format('')
     201 format(a20,i5)
     202 format(a20,f10.2)
-    203 format(a20,f8.2)
+    203 format(a20,f8.4)
     204 format(a20,es12.4)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
@@ -1993,7 +1997,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     
     ionic_strength = 0.d0
     charge_balance = 0.d0
-    do icomp = 1, reaction%naqcomp
+    do icomp = 1, reaction%naqcomp      
       charge_balance = charge_balance + rt_auxvar%total(icomp,1)* &
                                         reaction%primary_spec_Z(icomp)
       ionic_strength = ionic_strength + rt_auxvar%pri_molal(icomp)* &
@@ -2650,6 +2654,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   PetscReal :: volume
   PetscReal :: porosity
   PetscInt :: num_iterations_
+  PetscReal :: sign_(reaction%ncomp)
   
   PetscReal :: residual(reaction%ncomp)
   PetscReal :: res(reaction%ncomp)
@@ -2731,12 +2736,24 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     
     prev_molal = rt_auxvar%pri_molal
     rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
-  
+
+    if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
+      call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
+    endif
+    call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+    call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+                        option,residual)
+    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, porosity, volume, &
+                   reaction,option)
+    residual = residual-fixed_accum
+    
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
+    if (maxval(abs(residual)) < reaction%reaction_tolerance) exit
+    
     if (maximum_relative_change < reaction%reaction_tolerance) exit
 
-    if (num_iterations > 50) then
+    if (num_iterations > 500) then
       if (num_iterations > 50) then
         rt_auxvar%pri_molal(:) = (rt_auxvar%pri_molal(:)-prev_molal(:))* &
                                  0.1d0+prev_molal(:)
@@ -2748,6 +2765,13 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
                                  0.001d0+prev_molal(:)
       endif
 
+    endif
+    
+    if (num_iterations > 500) then
+      print *, 'Maximum iterations in RReact: stop: ',num_iterations
+      print *, 'Maximum iterations in RReact: stop: residual: ',residual
+      print *, 'Maximum iterations in RReact: stop: primary species: ',rt_auxvar%pri_molal
+      stop
     endif
   
   enddo
@@ -3252,6 +3276,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   rt_auxvar%total(:,iphase) = rt_auxvar%pri_molal(:)
+  
   ! initialize derivatives
   rt_auxvar%aqueous%dtotal = 0.d0
   do icomp = 1, reaction%naqcomp
@@ -4358,7 +4383,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_sec(reaction%neqcplx)
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: ln_sec_act(reaction%neqcplx)
-  PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
+  PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
   PetscBool :: prefactor_exists
 
   iphase = 1                         
@@ -4392,7 +4417,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       icomp = reaction%kinmnrlspecid(i,imnrl)
       lnQK = lnQK + reaction%kinmnrlstoich(i,imnrl)*ln_act(icomp)
     enddo
-    QK = exp(lnQK)
+    
+    if (lnQK <= 6.90776d0) then
+      QK = exp(lnQK)
+    else
+      QK = 1.d3
+    endif
     
     if (associated(reaction%kinmnrl_Tempkin_const)) then
       affinity_factor = 1.d0-QK**(1.d0/reaction%kinmnrl_Tempkin_const(imnrl))
@@ -4403,14 +4433,20 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     sign_ = sign(1.d0,affinity_factor)
 
     if (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
+
+!   if ((reaction%kinmnrl_irreversible(imnrl) == 0 &
+!     .and. (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0)) &
+!     .or. (reaction%kinmnrl_irreversible(imnrl) == 1 .and. sign_ < 0.d0)) then
     
 !     check for supersaturation threshold for precipitation
-      if (associated(reaction%kinmnrl_affinity_threshold)) then
+!     if (associated(reaction%kinmnrl_affinity_threshold)) then
+      if (reaction%kinmnrl_affinity_threshold(imnrl) > 0.d0) then
         if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) cycle
       endif
     
 !     check for rate limiter for precipitation
-      if (associated(reaction%kinmnrl_rate_limiter)) then
+!     if (associated(reaction%kinmnrl_rate_limiter)) then
+      if (reaction%kinmnrl_rate_limiter(imnrl) > 0.d0) then
         affinity_factor = affinity_factor/(1.d0+(1.d0-affinity_factor) &
           /reaction%kinmnrl_rate_limiter(imnrl))
       endif
@@ -4470,6 +4506,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     Im_const = Im_const*volume
     ! units = mol/sec
     Im = Im*volume
+    
+!   print *,'RKineticMineral: ',imnrl,Im,QK
 
     ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
@@ -4491,21 +4529,42 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ! derivatives with respect to primary species in reaction quotient
-    do j = 1, ncomp
-      jcomp = reaction%kinmnrlspecid(j,imnrl)
-      ! unit = L water/mol
-      dQK_dCj = reaction%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
-      ! units = (L water/mol)*(kg water/m^3 water)*(m^3 water/1000 L water) = kg water/mol
-      dQK_dmj = dQK_dCj*global_auxvar%den_kg(iphase)*1.d-3 ! the multiplication by density could be moved
-                                   ! outside the loop
-      do i = 1, ncomp
-        icomp = reaction%kinmnrlspecid(i,imnrl)
-        ! units = (mol/sec)*(kg water/mol) = kg water/sec
-        Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                           reaction%kinmnrlstoich(i,imnrl)*dIm_dQK*dQK_dmj
+    if (reaction%kinmnrl_rate_limiter(imnrl) <= 0.d0) then
+      do j = 1, ncomp
+        jcomp = reaction%kinmnrlspecid(j,imnrl)
+        ! unit = L water/mol
+        dQK_dCj = reaction%kinmnrlstoich(j,imnrl)*QK*exp(-ln_conc(jcomp))
+        ! units = (L water/mol)*(kg water/m^3 water)*(m^3 water/1000 L water) = kg water/mol
+        dQK_dmj = dQK_dCj*global_auxvar%den_kg(iphase)*1.d-3 ! the multiplication by density could be moved
+                                     ! outside the loop
+        do i = 1, ncomp
+          icomp = reaction%kinmnrlspecid(i,imnrl)
+          ! units = (mol/sec)*(kg water/mol) = kg water/sec
+          Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                             reaction%kinmnrlstoich(i,imnrl)*dIm_dQK*dQK_dmj
+        enddo
       enddo
-    enddo
+      
+    else
 
+      den = 1.d0+(1.d0-affinity_factor)/reaction%kinmnrl_rate_limiter(imnrl)
+      do j = 1, ncomp
+        jcomp = reaction%kinmnrlspecid(j,imnrl)
+        ! unit = L water/mol
+        dQK_dCj = reaction%kinmnrlstoich(j,imnrl)*QK*exp(-ln_conc(jcomp))
+        ! units = (L water/mol)*(kg water/m^3 water)*(m^3 water/1000 L water) = kg water/mol
+        dQK_dmj = dQK_dCj*global_auxvar%den_kg(iphase)*1.d-3 ! the multiplication by density could be moved
+                                     ! outside the loop
+        do i = 1, ncomp
+          icomp = reaction%kinmnrlspecid(i,imnrl)
+          ! units = (mol/sec)*(kg water/mol) = kg water/sec
+          Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+            reaction%kinmnrlstoich(i,imnrl)*dIm_dQK  &
+            *(1.d0 + QK/reaction%kinmnrl_rate_limiter(imnrl)/den)*dQK_dmj/den
+        enddo
+      enddo
+    endif
+    
     if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
       print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
       stop

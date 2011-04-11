@@ -947,60 +947,60 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
   
   Res=0D0
  ! if (present(ireac)) iireac=ireac
-      if (energy_flag) then
-        Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
-      endif         
+  if (energy_flag) then
+    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
+  endif         
  
-   select case(isrctype)
-     case(MASS_RATE_SS)
-        msrc(:)=mmsrc(:)
-             if (msrc(1) > 0.d0) then ! H2O injection
+  select case(isrctype)
+    case(MASS_RATE_SS)
+      msrc(:)=mmsrc(:)
+      if (msrc(1) > 0.d0) then ! H2O injection
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res( jh2o) + msrc(1) *option%flow_dt
         if (energy_flag) &
-             Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
+          Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
 !        call printErrMsg(option,"concentration source not yet implemented in Flash2")
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+        if(option%co2eos == EOS_SPAN_WAGNER) then
          !  span-wagner
           rho = aux_var%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
               if( option%itable >=4) then
-              call co2_sw_interp(aux_var%pres*1.D-6,&
+                call co2_sw_interp(aux_var%pres*1.D-6,&
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
-              iflag = 1
+                iflag = 1
               call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
-             case(3) 
+            case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
                      enth_src_co2, eng, fg)
           end select     
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
             enth_src_co2 = enth_src_co2 * FMWCO2
-      else if(option%co2eos == EOS_MRK)then
+        else if(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
             call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
             enth_src_co2 = enth_src_co2*FMWCO2*option%scale
-      else
-         call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
-      endif
+        else
+          call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
+        endif
               
-      Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-      if (energy_flag) &
+        Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
+        if (energy_flag) &
          Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
-       endif
+      endif
 
-     case(-1) ! production well
+    case(-1) ! production well
      ! if node pessure is lower than the given extraction pressure, shut it down
          Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
@@ -1008,36 +1008,36 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
         do np = 1, option%nphase
           dphi = aux_var%pres - aux_var%pc(np)- psrc(1)
           if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
-                 v_darcy = Dq * ukvr * dphi
-                 Res(np) =Res(np)- v_darcy* aux_var%den(np) 
-                 if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
-              endif
-           endif
+            ukvr = aux_var%kvr(np)
+            v_darcy=0D0
+            if (ukvr*Dq>floweps) then
+              v_darcy = Dq * ukvr * dphi
+              Res(np) =Res(np)- v_darcy* aux_var%den(np) 
+              if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
+            endif
+          endif
         enddo
        ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
          
     case(1) ! injetion well with constant pressure, need more work
-         Dq = psrc(2) ! well parameter, read in input file
+      Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        do np = 1, option%nphase
-          dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
-          if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
-                 v_darcy = Dq * ukvr * dphi
-                 Res(np) =Res(np)- v_darcy* aux_var%den(np) 
-                 if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
-               endif
-           endif
-        enddo 
+      do np = 1, option%nphase
+        dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
+        if (dphi>=0.D0) then ! outflow only
+          ukvr = aux_var%kvr(np)
+          v_darcy=0D0
+          if (ukvr*Dq>floweps) then
+            v_darcy = Dq * ukvr * dphi
+            Res(np) =Res(np)- v_darcy* aux_var%den(np) 
+            if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
+          endif
+        endif
+      enddo 
     case default
-        print *,'Unrecognized Source/Sink condition: ', isrctype 
-   end select      
+    print *,'Unrecognized Source/Sink condition: ', isrctype 
+  end select      
       
  end subroutine Flash2SourceSink
 

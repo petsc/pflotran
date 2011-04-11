@@ -2414,6 +2414,7 @@ subroutine RTReactPatch(realization)
       
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
+    
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                 tran_xx_p(istart:iend),volume_p(local_id), &
                 porosity_loc_p(ghosted_id), &

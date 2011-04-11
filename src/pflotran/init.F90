@@ -622,7 +622,7 @@ subroutine Init(simulation)
       case(RICHARDS_MODE)
 #ifdef DASVYAT
        if (option%mimetic) then
-        call RichardsInitialPressureReconstruction(realization)
+!        call RichardsInitialPressureReconstruction(realization)
 !        write(*,*) "RichardsInitialPressureReconstruction"
 !        read(*,*)
        end if

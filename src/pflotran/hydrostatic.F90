@@ -47,7 +47,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: concentration_at_datum
   PetscReal :: xm_nacl, dw_kg
   PetscReal :: max_z, min_z
-  PetscInt  :: num_faces, face_id_ghosted, conn_id
+  PetscInt  :: num_faces, face_id_ghosted, conn_id, num_regions
   type(connection_set_type), pointer :: conn_set_ptr
   PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
   PetscReal :: pressure_gradient(3), piezometric_head_gradient(3), datum(3)
@@ -292,7 +292,72 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 !    endif
       
   enddo
+
+  if ((grid%itype==STRUCTURED_GRID_MIMETIC).and.(coupler%itype == INITIAL_COUPLER_TYPE)) then
+     num_regions = coupler%region%num_cells
+     do iconn = 1, num_regions
+
+       local_id = coupler%region%cell_ids(iconn)
+       ghosted_id = grid%nL2G(local_id)
+  
+       if (associated(coupler%connection_set%dist)) then
+         dx_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(1,iconn)
+         dy_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(2,iconn)
+         dz_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(3,iconn)
+       endif
+       ! note the negative (-) d?_conn is required due to the offset of the boundary face
+       dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)
+       dist_y = grid%y(ghosted_id)-dy_conn-datum(Y_DIRECTION)
+       dist_z = grid%z(ghosted_id)-dz_conn-datum(Z_DIRECTION)
+
+       if (associated(pressure_array)) then
+         ipressure = idatum+int(dist_z/delta_z)
+         dist_z_for_pressure = grid%z(ghosted_id)-dz_conn-z(ipressure)
+         pressure = pressure_array(ipressure) + &
+                 density_array(ipressure)*option%gravity(Z_DIRECTION) * &
+                 dist_z_for_pressure + &
+!                 (grid%z(ghosted_id)-z(ipressure)) + &
+                 pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
+                 pressure_gradient(Y_DIRECTION)*dist_y
+
  
+       else
+         pressure = pressure_at_datum + &
+                 pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
+                 pressure_gradient(Y_DIRECTION)*dist_y + &
+                 pressure_gradient(Z_DIRECTION)*dist_z 
+       endif
+   
+ 
+      if (pressure < option%minimum_hydrostatic_pressure) &
+          pressure = option%minimum_hydrostatic_pressure
+
+      if (condition%pressure%itype == SEEPAGE_BC) then
+        coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
+      else if (condition%pressure%itype == CONDUCTANCE_BC) then
+        coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
+        coupler%flow_aux_real_var(2,num_faces + iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
+      else
+        coupler%flow_aux_real_var(1,num_faces + iconn) = pressure
+      endif
+
+      select case(option%iflowmode)
+        case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+           temperature = temperature_at_datum + &
+                      temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
+                      temperature_gradient(Y_DIRECTION)*dist_y + &
+                     temperature_gradient(Z_DIRECTION)*dist_z 
+           coupler%flow_aux_real_var(2,num_faces + iconn) = temperature
+           coupler%flow_aux_real_var(3,num_faces + iconn) = concentration_at_datum
+        case(G_MODE)
+      end select
+
+       coupler%flow_aux_int_var(1,num_faces + iconn) = 1
+     end do 
+  end if
+
+!   write(*,*) "End of HydrostaticUpdateCoupler" 
+!   read(*,*)
   if (associated(pressure_array)) deallocate(pressure_array)
   nullify(pressure_array)
 

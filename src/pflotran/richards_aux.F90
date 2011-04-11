@@ -320,7 +320,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
 #ifdef DASVYAT
 
-!global_aux_var%den = 55.35245650628916
+!global_aux_var%den = 55.3d-0
 !aux_var%kvr_x =  1123.055414382469
 !aux_var%kvr_y =  1123.055414382469
 !aux_var%kvr_z =  1123.055414382469

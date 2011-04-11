@@ -1602,6 +1602,8 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
               connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
               connection%area(iconn) = structured_grid%dy(ghosted_id)* &
                                    structured_grid%dz(ghosted_id)
+
+
               if (iface ==  WEST_FACE) then
                 connection%dist(1,iconn) = 1.d0
               else
