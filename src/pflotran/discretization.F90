@@ -291,6 +291,9 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
                 call InputErrorMsg(input,option,'Lower Y','BOUNDS')
                 call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
                 call InputErrorMsg(input,option,'Upper Y','BOUNDS')
+              else
+                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID) then
@@ -300,6 +303,9 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
                 call InputErrorMsg(input,option,'Lower Z','BOUNDS')
                 call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
                 call InputErrorMsg(input,option,'Upper Z','BOUNDS')
+              else
+                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
               endif
               call InputReadFlotranString(input,option) ! z-direction
               call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
