@@ -891,6 +891,19 @@ A number of command line options are available:
 {\tt -log\_summary} & print out run performance (PETSc option)
 \end{tabular}
 
+\subsection*{Multi-Realization Simulation Mode}
+
+To launch 1000 realizations on 100 processor groups using 10,000 processor cores:
+
+{\tt mpirun -np 10000 pflotran -stochastic -num\_realizations 1000 -num\_groups 100}
+
+Each processor group will utilized 100 processor cores and run 10 realizations apiece \linebreak ({\tt num\_realizations/num\_groups}), one after another. Thus, only 100 realizations may be executed simultaneously as each processor group may only simulate a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 has completed.
+
+\noindent
+To simulate a specific realization without running in multi-realization stochastic mode:
+
+{\tt mpirun -np 10000 pflotran -realization\_id 5}
+
 \subsection{Building SAMRAI Version 2.4.4}
 
 \noindent
