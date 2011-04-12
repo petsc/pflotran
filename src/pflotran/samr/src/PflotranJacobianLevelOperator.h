@@ -1,6 +1,12 @@
 #ifndef included_PflotranJacobianLevelOperator
 #define included_PflotranJacobianLevelOperator
 
+extern "C" {
+#include "petsc.h"
+#include "petscvec.h"
+#include "petscmat.h"
+}
+
 #ifndef included_RefineSchedule
 #include "RefineSchedule.h"
 #endif
@@ -18,12 +24,6 @@ extern "C"{
 #include "LevelOperator.h"
 #include <vector>
 #include "RefinementBoundaryInterpolation.h"
-
-extern "C" {
-#include "petsc.h"
-#include "petscvec.h"
-#include "petscmat.h"
-}
 
 namespace SAMRAI{
   namespace SAMRSolvers{

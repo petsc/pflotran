@@ -1,6 +1,7 @@
 #ifndef included_PflotranTransportPreconditioner
 #define included_PflotranTransportPreconditioner
 
+#include "PETSc_SAMRAIVectorReal.h"
 
 #ifndef included_PreconditionerStrategy
 #include "PreconditionerStrategy.h"

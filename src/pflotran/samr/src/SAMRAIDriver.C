@@ -12,6 +12,8 @@
 
 #include <sys/stat.h>
 
+#include "PflotranApplicationStrategy.h" 
+
 /*
  * SAMRAI headers.
  */
@@ -31,7 +33,6 @@
 #include "tbox/InputManager.h"
 #include "IntVector.h"
 #include "LoadBalancer.h"
-#include "tbox/SAMRAI_MPI.h"
 #include "Patch.h"
 #include "PatchGeometry.h"
 #include "tbox/PIO.h"
@@ -44,7 +45,6 @@
 #include "tbox/TimerManager.h"
 #include "VariableContext.h"
 #include "VariableDatabase.h"
-#include "PETSc_SAMRAIVectorReal.h"
 extern "C"{
 #include "assert.h"
 }
@@ -56,7 +56,6 @@ extern "C"{
 #include "BogusTagAndInitStrategy.h"
 
 #include "RefinementBoundaryInterpolation.h"
-#include "PflotranApplicationStrategy.h" 
 #include "PflotranApplicationParameters.h" 
 #include "CCellDoubleConstantRefine.h"
 #include "CartesianCCellDoubleWeightedAverage.h"
@@ -65,6 +64,7 @@ extern "C"{
 #include "CartesianCCellDoubleSum.h"
 #include "fc_interface.h"
 #include "SAMRAIDriver.h"
+#include "tbox/SAMRAI_MPI.h"
 
 /*
  * Ghost cell width for variables that need them.

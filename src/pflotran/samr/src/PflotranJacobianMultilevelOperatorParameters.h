@@ -1,15 +1,15 @@
 #ifndef included_PflotranJacobianMultilevelOperatorParameters
 #define included_PflotranJacobianMultilevelOperatorParameters
 
+extern "C" {
+#include "petscmat.h"
+}
+
 #include <string>
 
 #include "tbox/Database.h"
 #include "PatchHierarchy.h"
 #include "MultilevelOperatorParameters.h"
-
-extern "C" {
-#include "petscmat.h"
-}
 
 namespace SAMRAI{
   namespace SAMRSolvers{
