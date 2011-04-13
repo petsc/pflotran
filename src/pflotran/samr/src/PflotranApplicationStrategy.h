@@ -1,6 +1,10 @@
 #ifndef included_PflotranApplicationStrategy
 #define included_PflotranApplicationStrategy
 
+extern"C"{
+#include "petsc.h"
+#include "petscpc.h"
+}
 
 #include <string>
 #include <vector>
@@ -32,11 +36,6 @@
 #include "VisItDataWriter.h"
 #include "PflotranFlowPreconditioner.h"
 #include "PflotranTransportPreconditioner.h"
-
-extern"C"{
-#include "petsc.h"
-#include "petscpc.h"
-}
 namespace SAMRAI{
 
 class PflotranApplicationStrategy: public ApplicationStrategy

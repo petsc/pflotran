@@ -891,6 +891,18 @@ A number of command line options are available:
 {\tt -log\_summary} & print out run performance (PETSc option)
 \end{tabular}
 
+\subsection*{Updating PFLOTRAN}
+
+Instructions to update PFLOTRAN
+
+\noindent
+From within the PFLOTRAN repository, type: {\tt hg pull -u}
+
+\noindent
+Within {\tt \$PFLOTRAN\_DIR/src/pflotran} recompile PFLOTRAN using:\\
+{\tt make clean}\\
+{\tt make [options] pflotran}
+
 \subsection*{Multi-Realization Simulation Mode}
 
 To launch 1000 realizations on 100 processor groups using 10,000 processor cores:

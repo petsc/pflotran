@@ -2,6 +2,11 @@
 #ifndef included_PflotranTransportPreconditionerParameters
 #define included_PflotranTransportPreconditionerParameters
 
+extern "C"{
+#include "petsc.h" 
+#include "petscpc.h" 
+}
+
 #ifndef included_PreconditionerParameters
 #include "PreconditionerParameters.h"
 #endif
@@ -25,11 +30,6 @@
 #ifndef included_RefinementBoundaryInterpolation
 #include "RefinementBoundaryInterpolation.h"
 #endif
-
-extern "C"{
-#include "petsc.h" 
-#include "petscpc.h" 
-}
 
 namespace SAMRAI{
   namespace SAMRSolvers{

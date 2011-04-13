@@ -1,3 +1,4 @@
+#include "PflotranTransportPreconditioner.h"
 
 #ifndef included_CartesianGridGeometry
 #include "CartesianGridGeometry.h"
@@ -12,11 +13,9 @@
 
 #include "tbox/Timer.h"
 #include "tbox/TimerManager.h"
-#include "PETSc_SAMRAIVectorReal.h"
 
 #include "MultilevelOperatorParameters.h"
 
-#include "PflotranTransportPreconditioner.h"
 
 namespace SAMRAI{
 

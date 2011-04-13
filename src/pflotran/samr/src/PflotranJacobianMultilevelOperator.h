@@ -1,6 +1,10 @@
 #ifndef included_PflotranJacobianMultilevelOperator
 #define included_PflotranJacobianMultilevelOperator
-
+// petsc functions are way up here to prevent issues with
+// isinf/isnan on macs
+extern "C" {
+#include "petscmat.h"
+}
 
 #ifndef included_Array
 #define included_Array
@@ -24,10 +28,6 @@ extern "C"{
 #include "CSideVariable.h"
 #include "HierarchyDataOpsReal.h"
 #include "CoarsenSchedule.h"
-
-extern "C" {
-#include "petscmat.h"
-}
 
 namespace SAMRAI{
   namespace SAMRSolvers{
