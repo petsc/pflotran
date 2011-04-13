@@ -4688,7 +4688,6 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
      allocate(sq_faces(numfaces))
      allocate(bound_id(numfaces))
 
-!  write(*,*) "ENTER MFD JACOBIAN"
 
   do local_id = 1, grid%nlmax
      aux_var => grid%MFD%aux_vars(local_id)
@@ -4760,6 +4759,8 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 
      call MatSetValuesLocal(A, numfaces, ghosted_face_id, numfaces, ghosted_face_id, &
                                         J, ADD_VALUES,ierr)
+!     call MatSetValuesLocal(A, 1, ghosted_face_id(1), 1, ghosted_face_id(1), &
+!                                        1d0, ADD_VALUES,ierr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!-------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end do
 

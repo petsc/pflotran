@@ -110,8 +110,8 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
-        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
-        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
+        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces, mfd_aux%mapping_ltog_faces, ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces, mfd_aux%mapping_ltogb_faces, ierr)
 
 
       case(MATBAIJ)
@@ -119,8 +119,14 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
-        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
-        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
+        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,mfd_aux%mapping_ltog_faces,ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces, mfd_aux%mapping_ltogb_faces, ierr)
+        
+!       if (option%myrank==0) then
+!       write(*,*) "myrank", option%myrank
+!       call MatSetValuesLocal(J, 1, 100, 1, 100, &
+!                                        5.0, INSERT_VALUES,ierr)
+!       end if
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -940,7 +946,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 
   type(grid_type) :: grid
   type(mfd_auxvar_type), pointer :: aux_var
-  PetscScalar :: PermTensor(3,3), dir_norm(3)
+  PetscScalar :: PermTensor(3,3), dir_norm(3), sq_faces(6)
   PetscScalar :: N(6,3), D(6,3), H(6,3),  W1(6,6), U(3,3), rx(6), ry(6), rz(6)   ! hex only
   PetscScalar :: volume, norm, area, a1, a2, u_parm
   PetscInt :: ghost_face_id, ghosted_cell_id
@@ -965,6 +971,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      conn => grid%faces(ghost_face_id)%conn_set_ptr
      iface = grid%faces(ghost_face_id)%id
      area = conn%area(iface)
+     sq_faces(i) = conn%area(iface)
 
      dir_norm(1) = conn%cntr(1, iface) - grid%x(ghosted_cell_id)       !direction to define outward normal
      dir_norm(2) = conn%cntr(2, iface) - grid%y(ghosted_cell_id)
@@ -989,14 +996,18 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 #ifdef DASVYAT_DEBUG
       write(*,*) "N"
     do i=1,6
+      ghost_face_id = aux_var%face_id_gh(i)
+      conn => grid%faces(ghost_face_id)%conn_set_ptr
+      iface = grid%faces(ghost_face_id)%id
+
       write(*,*) (N(i,j),j=1,3), "     ", (conn%cntr(k, iface), k=1,3)
     end do
-#endif
-  !write(*,*) "R"
+  write(*,*) "R"
 
-!  do i=1,6
- !  write(*,*) rx(i), ry(i), rz(i)
-!  end do
+  do i=1,6
+   write(*,*) rx(i), ry(i), rz(i)
+  end do
+#endif
 
 
 
@@ -1045,11 +1056,15 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
     D(i,3) = D(i,3)/norm
   end do
 
- ! write(*,*) "D"
-!  do i=1,6
- !    write(*,*) D(i,1:3)
-!  end do
- ! write(*,*)
+#ifdef DASVYAT_DEBUG
+
+  write(*,*) "D"
+  do i=1,6
+     write(*,*) D(i,1:3)
+  end do
+  write(*,*)
+
+#endif
 
 
   do i = 1, aux_var%numfaces
@@ -1098,21 +1113,22 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 
 #ifdef DASVYAT_DEBUG
 
-!  write(*,*)
-!  do i=1,3
-!     write(*,*) PermTensor(i, 1:3)
-!  end do
+  write(*,*)
+  do i=1,3
+     write(*,*) PermTensor(i, 1:3)
+  end do
 
+  write(*,*) "sq"
+  write(*,*) (sq_faces(i),i=1,6)
 
-
-!  write(*,*) "vol", volume
-!  write(*,*) "MassMatrix"
-!  do i=1,6
-!     write(*,*) aux_var%MassMatrixInv(i, 1:6)
-!  end do
-!  write(*,*)
-!  write(*,*)
-!  stop
+  write(*,*) "vol", volume
+  write(*,*) "MassMatrix"
+  do i=1,6
+     write(*,*) aux_var%MassMatrixInv(i, 1:6)
+  end do
+  write(*,*)
+  write(*,*)
+  stop
 #endif
 
 
