@@ -11,6 +11,7 @@ module Input_module
   type, public :: input_type 
     PetscInt :: fid
     PetscErrorCode :: ierr
+    character(len=MAXWORDLENGTH) :: filename
     character(len=MAXSTRINGLENGTH) :: buf
     character(len=MAXSTRINGLENGTH) :: err_buf
     character(len=MAXSTRINGLENGTH) :: err_buf2
@@ -102,6 +103,7 @@ function InputCreate(fid,filename)
   allocate(input)
 
   input%fid = fid
+  input%filename = filename
   input%ierr = 0
   input%buf = ''
   input%err_buf = ''

@@ -560,6 +560,7 @@ subroutine FlowConditionRead(condition,input,option)
   PetscInt :: default_itype
   PetscInt :: array_size, idof
   PetscBool :: found
+  PetscBool :: destroy_if_null
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_flow_condition_read,ierr)
@@ -705,6 +706,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
+            case('unit_gradient')
+              sub_condition_ptr%itype = UNIT_GRADIENT_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -806,10 +809,11 @@ subroutine FlowConditionRead(condition,input,option)
 
   ! verify the datasets
   word = 'pressure'
+  destroy_if_null = (pressure%itype /= UNIT_GRADIENT_BC)
   call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
-                              default_datum, default_gradient,PETSC_TRUE)
+                              default_datum, default_gradient,destroy_if_null)
   ! check to ensure that a pressure condition is not of type rate   
   if (associated(pressure)) then                          
     select case(pressure%itype)
@@ -1433,6 +1437,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   use Option_module
   use Logging_module
   use HDF5_aux_module
+  use Units_module
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
@@ -1454,6 +1459,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   PetscInt :: ndims
   PetscInt, pointer :: dims(:)
   PetscReal, pointer :: real_buffer(:)
+  type(input_type), pointer :: input2
   PetscErrorCode :: ierr
 
 #if defined(PETSC_HAVE_HDF5)  
@@ -1464,6 +1470,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
 
   call PetscLogEventBegin(logging%event_flow_condition_read_values,ierr)    
 
+  nullify(input2)
   filename = ''
   realization_word = ''
   hdf5_path = ''
@@ -1579,8 +1586,12 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       else
         filename = trim(filename) // trim(realization_word)
       endif
-      call FlowConditionReadValuesFromFile(filename,dataset,option)
+      input2 => InputCreate(IUNIT_TEMP,filename)
+      call FlowConditionReadValuesFromFile(input2,dataset,option)
+      call InputDestroy(input2)
     endif
+  else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
+    call FlowConditionReadValuesFromFile(input,dataset,option)
   else
     input%buf = trim(string2)
     allocate(dataset%values(dataset%rank,1))
@@ -1596,6 +1607,9 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       call InputDefaultMsg(input,option,word)
     else
       units = trim(word)
+      dataset%values(1:dataset%rank,1) = &
+        UnitsConvertToInternal(units,option) * &
+        dataset%values(1:dataset%rank,1)
     endif
   endif
   call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)    
@@ -1609,33 +1623,34 @@ end subroutine FlowConditionReadValues
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
+subroutine FlowConditionReadValuesFromFile(input,dataset,option)
 
   use Input_module
   use String_module
   use Utility_module
   use Option_module
+  use Units_module
 
   implicit none
   
-  type(option_type) :: option
+  type(input_type) :: input
   type(flow_condition_dataset_type) :: dataset
-  character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXWORDLENGTH) :: units
-  
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: time_units, data_units
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
                         temp_array3(:)
   PetscReal :: temp_time
+  PetscReal :: conversion
   PetscInt :: max_size
   PetscInt :: temp_max_size
   PetscInt :: count, i, status
   PetscErrorCode :: ierr
-  type(input_type), pointer :: input
   
-  input => InputCreate(IUNIT_TEMP,filename)
-  
+  time_units = ''
+  data_units = ''
   max_size = 1000
   allocate(temp_times(max_size))
   allocate(temp_array1(max_size))
@@ -1653,20 +1668,30 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   endif
 
   count = 0
+  ierr = 0
   do
     call InputReadFlotranString(input,option)
-    if (InputError(input)) exit
+    ! reach the end of file or close out block
+    if (InputError(input) .or. InputCheckExit(input,option)) exit
     ! check for units on first line
     if (count == 0) then
       string = input%buf
       call InputReadWord(string,word,PETSC_TRUE,ierr)
-      if (StringCompareIgnoreCase(word,'UNITS',FIVE_INTEGER)) then
-        call InputReadWord(string,units,PETSC_TRUE,ierr)
-        input%ierr = ierr
-        call InputErrorMsg(input,option,'UNITS','CONDITION FILE')
-        call StringToLower(units) 
-        cycle
-      endif
+      call StringToUpper(word)
+      select case(word)
+        case('TIME_UNITS')
+          call InputReadWord(string,time_units,PETSC_TRUE,ierr)
+          input%ierr = ierr
+          call InputErrorMsg(input,option,'TIME_UNITS','CONDITION FILE')
+          call StringToLower(time_units) 
+          cycle
+        case('DATA_UNITS')
+          call InputReadWord(string,data_units,PETSC_TRUE,ierr)
+          input%ierr = ierr
+          call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
+          call StringToLower(data_units) 
+          cycle
+      end select
     endif
     count = count + 1
     call InputReadDouble(input,option,temp_times(count))
@@ -1701,14 +1726,14 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   if (associated(dataset%times)) then
     if (count /= size(dataset%times,1) .and. &
         OptionPrintToScreen(option)) then
-      print *, 'Number of times (', count, ') in ', trim(filename), &
+      print *, 'Number of times (', count, ') in ', trim(input%filename), &
                ' does not match previous allocation: ', size(dataset%times,1)
       stop
     endif
     do i=1,count
       if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8 .and. &
           OptionPrintToScreen(option)) then
-        print *, 'Time (', temp_times(i), ') in ', trim(filename), &
+        print *, 'Time (', temp_times(i), ') in ', trim(input%filename), &
                  ' does not match previous allocation time: ', &
                  dataset%times(i), i
         stop
@@ -1730,9 +1755,18 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   deallocate(temp_array1)
   if (dataset%rank > 1) deallocate(temp_array2)
   if (dataset%rank > 2) deallocate(temp_array3)
-  
-  call InputDestroy(input)
 
+  if (len_trim(time_units) > 0) then
+    ! Times
+    conversion = UnitsConvertToInternal(time_units,option)
+    dataset%times(1:count) = conversion * dataset%times(1:count)
+  endif
+  if (len_trim(data_units) > 0) then
+    ! Data
+    conversion = UnitsConvertToInternal(data_units,option)
+    dataset%values(1:dataset%rank,1:count) = conversion * dataset%values(1:dataset%rank,1:count)
+  endif
+  
 end subroutine FlowConditionReadValuesFromFile
 
 ! ************************************************************************** !
@@ -1806,26 +1840,31 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     case(CONDUCTANCE_BC)
       string = 'conductance'
     case(ZERO_GRADIENT_BC)
-      string = 'zero_gradient'
+      string = 'zero gradient'
     case(PRODUCTION_WELL)
-      string = 'production_well'
+      string = 'production well'
     case(SEEPAGE_BC)
       string = 'seepage'
     case(VOLUMETRIC_RATE_SS)
-      string = 'volumetric_rate'
+      string = 'volumetric rate'
     case(EQUILIBRIUM_SS)
       string = 'equilibrium'
+    case(UNIT_GRADIENT_BC)
+      string = 'unit gradient'
   end select
   100 format(6x,'Type: ',a12)  
   write(option%fid_out,100) trim(string)
   
   110 format(6x,a)  
-  write(option%fid_out,110) 'Datum:'
-  call FlowConditionPrintDataset(subcondition%datum,option)
-  write(option%fid_out,110) 'Gradient:'
-  call FlowConditionPrintDataset(subcondition%gradient,option)
-  write(option%fid_out,110) 'Dataset:'
-  call FlowConditionPrintDataset(subcondition%dataset,option)
+
+  if (subcondition%itype /= UNIT_GRADIENT_BC) then
+    write(option%fid_out,110) 'Datum:'
+    call FlowConditionPrintDataset(subcondition%datum,option)
+    write(option%fid_out,110) 'Gradient:'
+    call FlowConditionPrintDataset(subcondition%gradient,option)
+    write(option%fid_out,110) 'Dataset:'
+    call FlowConditionPrintDataset(subcondition%dataset,option)
+  endif
             
 end subroutine FlowConditionPrintSubCondition
  

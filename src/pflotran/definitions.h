@@ -114,6 +114,7 @@ PetscInt, parameter :: SCALED_VOLUMETRIC_RATE_SS = 10
 PetscInt, parameter :: CONCENTRATION_SS = 11
 PetscInt, parameter :: EQUILIBRIUM_SS = 12
 PetscInt, parameter :: CONDUCTANCE_BC = 13
+PetscInt, parameter :: UNIT_GRADIENT_BC = 14
 
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0
