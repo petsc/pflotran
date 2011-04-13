@@ -1982,7 +1982,7 @@ subroutine FlowSubConditionUpdateDataset(option,time,dataset)
   PetscReal :: time_fraction
 
  ! potentially for initial condition
-  if (time < 1.d-40 .and. .not.dataset%is_transient) return  
+  if (time < 1.d-40 .or. .not.dataset%is_transient) return  
 
   ! cycle times if at max_time_index and cyclic
   if (dataset%cur_time_index == dataset%max_time_index .and. &
