@@ -1738,7 +1738,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   if(ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
-    call SNESSetFunctionDomainError() 
+    call SNESSetFunctionDomainError(snes,ierr) 
     return
   endif 
   ! end check ---------------------------------------------------------
@@ -2061,7 +2061,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
-     msrc(:)= psrc(:)
+!    msrc(:)= psrc(:)
+     msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
      msrc(1) =  msrc(1) / FMWH2O
      msrc(2) =  msrc(2) / FMWCO2
 
@@ -3144,7 +3145,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
-     msrc(:)= psrc(:)
+     msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
      msrc(1) =  msrc(1) / FMWH2O
      msrc(2) =  msrc(2) / FMWCO2
 
@@ -3526,7 +3527,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
-      msrc(:)= psrc(:)
+      msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
  
@@ -4489,7 +4490,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
-      msrc(:)= psrc(:)
+      msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
  
