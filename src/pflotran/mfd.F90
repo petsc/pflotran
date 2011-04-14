@@ -1010,7 +1010,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 #endif
 
 
-
+#if 1
 
  !   write(*,*) 
 
@@ -1110,6 +1110,28 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
        aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) - u_parm*W1(i,j)
      end do
    end do
+
+#endif
+
+#if 0
+
+  do i = 1, aux_var%numfaces
+     do j = 1, 3
+       D(i,j) = abs(N(i,j))
+     end do
+  end do
+
+  do i = 1,3
+     U(i,i) = PermTensor(i,i)
+     do j = i+1, 3
+        U(i,j) = -abs(PermTensor(i,j)
+        U(j,i) = U(i,j)
+     end do
+  end do 
+
+
+
+#endif
 
 #ifdef DASVYAT_DEBUG
 

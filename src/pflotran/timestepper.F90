@@ -1283,8 +1283,14 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           return
         endif
 
-        stepper%target_time = stepper%target_time - option%flow_dt
-        option%flow_dt = 0.5d0 * option%flow_dt
+ 
+       stepper%target_time = stepper%target_time - option%flow_dt
+
+#ifdef DASVYAT_TEST_CUT
+        option%flow_dt = 1d0*option%flow_dt
+#else
+        option%flow_dt = 0.5d0 * option%flow_dt  
+#endif
       
         if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &

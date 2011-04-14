@@ -66,6 +66,10 @@ ifdef dasvyat_debug
   DASVYAT_DEBUG = -DDASVYAT_DEBUG
 endif
 
+ifdef dasvyat_test_cut
+  DASVYAT += -DDASVYAT_TEST_CUT
+endif
+
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG) $(GPU_FLAGS)\
 				$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG)

@@ -320,7 +320,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
-  PetscScalar :: sq_faces(6), den(6), dden_dp(6)
+  PetscScalar :: sq_faces(6), den(6), dden_dp(6), max_violation
   PetscInt :: jface, j, numfaces, ghost_face_id, local_face_id, dir, bound_id
   PetscViewer :: viewer
 
@@ -337,6 +337,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
   call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_loc_p, ierr)
 
+     max_violation = 0.
 
      do local_id = 1, grid%nlmax 
 !     do local_id = 1, 1
@@ -393,13 +394,18 @@ subroutine RichardsCheckMassBalancePatch(realization)
                                 option, res)
 
          mass_conserv = mass_conserv + res(1) - accum_p(local_id)
+   
+         max_violation = max(max_violation, abs(mass_conserv))
 
 #ifdef DASVYAT_DEBUG
          write(*,*) "accumulation ", res(1) - accum_p(local_id)
 
          write(*,*) "Mass conservation ", local_id, mass_conserv
 #endif
+         
      end do
+
+     write(*,*) "Mass conservation violation", max_violation
  
      call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
      call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
@@ -1318,49 +1324,6 @@ subroutine RichardsUpdateSolution(realization)
   
 end subroutine RichardsUpdateSolution
 
-
-! ************************************************************************** !
-!
-! RichardsUpdateSolutionFaces: Updates data in module after a successful time 
-!                             step
-! author: Glenn Hammond
-! date: 02/13/08
-!
-! ************************************************************************** !
-subroutine RichardsUpdateSolutionFaces(realization)
-
-  use Realization_module
-  use Field_module
-  use Level_module
-  use Patch_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-
-  type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  PetscErrorCode :: ierr
-  
-  field => realization%field
-  
-  call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr)   
-
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-  
-end subroutine RichardsUpdateSolutionFaces
 
 
 ! ************************************************************************** !
@@ -2596,7 +2559,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       call RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
-      call RichardsCheckMassBalancePatch(realization)
+!      call RichardsCheckMassBalancePatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -4926,11 +4889,15 @@ subroutine RichardsMaxChange(realization)
   if (option%mimetic) then
 
      call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces,ierr)
-     call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+!     call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+
+     call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+     call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
 #ifdef DASVYAT_DEBUG
      call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out',viewer,ierr)
      call VecView(field%flow_dxx_faces, viewer,ierr)
+     call VecView(field%flow_dxx, viewer,ierr)
      call PetscViewerDestroy(viewer, ierr)
      write(*,*) "write flow_dxx_faces.out"
 !     read(*,*)

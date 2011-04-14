@@ -159,7 +159,7 @@ subroutine Checkpoint(realization, &
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
-  PetscInt :: i
+  PetscInt :: i, j, k
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_checkpoint,ierr)  
@@ -326,7 +326,6 @@ subroutine Checkpoint(realization, &
     ! packed for the SNESSolve().
     call VecView(field%flow_xx, viewer, ierr)
 
-    if (grid%itype == STRUCTURED_GRID_MIMETIC) call VecView(field%flow_xx_faces, viewer, ierr) 
 
     ! If we are running with multiple phases, we need to dump the vector 
     ! that indicates what phases are present, as well as the 'var' vector 
@@ -366,6 +365,13 @@ subroutine Checkpoint(realization, &
     call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
                                      global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
+
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
+              call VecGetSize(field%flow_xx_faces, j, ierr)
+              call VecGetBlockSize(field%flow_xx_faces, k, ierr)
+!              write(*,*) "Size", j, "block", k
+              call VecView(field%flow_xx_faces, viewer, ierr) 
+    end if
 
   endif
 
@@ -477,7 +483,7 @@ subroutine Restart(realization, &
   Vec :: global_vec = 0
   Vec :: local_vec = 0
   PetscInt :: int_flag
-  PetscInt :: i
+  PetscInt :: i,j,k
   PetscInt :: read_activity_coefs
   PetscBool :: found
   character(len=MAXSTRINGLENGTH) :: string
@@ -587,12 +593,6 @@ subroutine Restart(realization, &
                                      field%flow_xx_loc,NFLOWDOF)
     call VecCopy(field%flow_xx,field%flow_yy,ierr)  
 
-    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
-       call VecLoad(field%flow_xx_faces, viewer,ierr)
-       call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
-       call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
-    end if
-    
     select case(option%iflowmode)
       case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
         call VecLoad(global_vec,viewer,ierr)      
@@ -636,6 +636,16 @@ subroutine Restart(realization, &
     call VecLoad(global_vec,viewer,ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_yz_loc,ONEDOF)
+
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+              call VecGetSize(field%flow_xx_faces, j, ierr)
+              call VecGetBlockSize(field%flow_xx_faces, k, ierr)
+!              write(*,*) "Size", j, "block", k
+       call VecLoad(field%flow_xx_faces, viewer,ierr)
+       call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+       call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
+    end if
+    
   endif
   
   if (transport_read) then
@@ -688,7 +698,8 @@ subroutine Restart(realization, &
         '("      Seconds to read to checkpoint file: ", f6.2)') tend-tstart
   call printMsg(option)
 
-  call PetscLogEventEnd(logging%event_restart,ierr)  
+  call PetscLogEventEnd(logging%event_restart,ierr) 
+
   
 end subroutine Restart
 
