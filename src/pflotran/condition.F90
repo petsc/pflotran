@@ -707,6 +707,11 @@ subroutine FlowConditionRead(condition,input,option)
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case('unit_gradient')
+              if (.not.associated(sub_condition_ptr,pressure)) then
+                option%io_buffer = 'unit_gradient flow condition type may ' // &
+                  'only be associated with a PRESSURE flow condition.'
+                call printErrMsg(option)
+              endif
               sub_condition_ptr%itype = UNIT_GRADIENT_BC
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
@@ -809,11 +814,10 @@ subroutine FlowConditionRead(condition,input,option)
 
   ! verify the datasets
   word = 'pressure'
-  destroy_if_null = (pressure%itype /= UNIT_GRADIENT_BC)
   call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
-                              default_datum, default_gradient,destroy_if_null)
+                              default_datum, default_gradient, PETSC_TRUE)
   ! check to ensure that a pressure condition is not of type rate   
   if (associated(pressure)) then                          
     select case(pressure%itype)
@@ -1852,19 +1856,17 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
     case(UNIT_GRADIENT_BC)
       string = 'unit gradient'
   end select
-  100 format(6x,'Type: ',a12)  
+  100 format(6x,'Type: ',a)  
   write(option%fid_out,100) trim(string)
   
   110 format(6x,a)  
 
-  if (subcondition%itype /= UNIT_GRADIENT_BC) then
-    write(option%fid_out,110) 'Datum:'
-    call FlowConditionPrintDataset(subcondition%datum,option)
-    write(option%fid_out,110) 'Gradient:'
-    call FlowConditionPrintDataset(subcondition%gradient,option)
-    write(option%fid_out,110) 'Dataset:'
-    call FlowConditionPrintDataset(subcondition%dataset,option)
-  endif
+  write(option%fid_out,110) 'Datum:'
+  call FlowConditionPrintDataset(subcondition%datum,option)
+  write(option%fid_out,110) 'Gradient:'
+  call FlowConditionPrintDataset(subcondition%gradient,option)
+  write(option%fid_out,110) 'Dataset:'
+  call FlowConditionPrintDataset(subcondition%dataset,option)
             
 end subroutine FlowConditionPrintSubCondition
  
