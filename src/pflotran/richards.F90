@@ -65,7 +65,10 @@ subroutine RichardsTimeCut(realization)
   
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
 
-  if (option%mimetic) call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr)
+  if (option%mimetic) then
+      call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr)
+      call RichardsUpdateAuxVars(realization)  
+  end if
 
   call RichardsInitializeTimestep(realization)  
  
@@ -731,7 +734,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC,UNIT_GRADIENT_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
@@ -1220,9 +1223,6 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
           xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
-        case(UNIT_GRADIENT_BC)
-          ! the auxvar is not needed for unit gradient
-          cycle
       end select
       
       call RichardsAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
@@ -1969,8 +1969,8 @@ end subroutine RichardsFlux
 subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                                     rich_aux_var_up,global_aux_var_up, &
                                     rich_aux_var_dn,global_aux_var_dn, &
-                                    por_dn,sir_dn,perm_dn, &
-                                    area, dist,option, &
+                                    por_dn,sir_dn,dd_up,perm_dn, &
+                                    area, norm, dist_gravity,option, &
                                     sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
@@ -1984,11 +1984,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
   PetscReal :: por_dn,perm_dn
-  PetscReal :: area
-  ! dist(0) = magnitude
-  ! dist(1:3) = unit vector
-  ! dist(0)*dist(1:3) = vector
-  PetscReal :: dist(0:3)
+  PetscReal :: area, norm(3)
   type(saturation_function_type) :: sat_func_dn  
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   
@@ -2030,12 +2026,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   select case(pressure_bc_type)
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-
-      ! dist(0) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3) = vector(3) - unit vector
-      dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
-
       if (pressure_bc_type == CONDUCTANCE_BC) then
         Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
       else
@@ -2072,23 +2062,23 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         
         if (dphi>=0.D0) then
 !          ukvr = rich_aux_var_up%kvr
-          if (dabs(dabs(dist(1))-1) < 1e-6) then
+          if (dabs(dabs(norm(1))-1) < 1e-6) then
             ukvr = rich_aux_var_up%kvr_x
-          else if (dabs(dabs(dist(2))-1) < 1e-6) then
+          else if (dabs(dabs(norm(2))-1) < 1e-6) then
             ukvr = rich_aux_var_up%kvr_y
-          else if (dabs(dabs(dist(3))-1) < 1e-6) then
+          else if (dabs(dabs(norm(3))-1) < 1e-6) then
             ukvr = rich_aux_var_up%kvr_z
           end if
         else
 !          ukvr = rich_aux_var_dn%kvr
 !          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
-          if (dabs(dabs(dist(1))-1) < 1e-6) then
+          if (dabs(dabs(norm(1))-1) < 1e-6) then
             ukvr = rich_aux_var_dn%kvr_x
             dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
-          else if (dabs(dabs(dist(2))-1) < 1e-6) then
+          else if (dabs(dabs(norm(2))-1) < 1e-6) then
             ukvr = rich_aux_var_dn%kvr_y
             dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
-          else if (dabs(dabs(dist(3))-1) < 1e-6) then
+          else if (dabs(dabs(norm(3))-1) < 1e-6) then
             ukvr = rich_aux_var_dn%kvr_z
             dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
           end if
@@ -2114,36 +2104,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         q = v_darcy * area
       endif
 
-    case(UNIT_GRADIENT_BC)
-
-      if (global_aux_var_dn%sat(1) > sir_dn) then
-
-        dphi = dot_product(option%gravity,dist(1:3))*global_aux_var_dn%den(1)*FMWH2O      
-        density_ave = global_aux_var_dn%den(1)
-
-        dphi_dp_dn = dot_product(option%gravity,dist(1:3))*rich_aux_var_dn%dden_dp*FMWH2O
-        dden_ave_dp_dn = rich_aux_var_dn%dden_dp
-
-        ! since boundary auxvar is meaningless (no pressure specified there), only use cell
-        if (dabs(dabs(dist(1))-1) < 1e-6) then
-          ukvr = rich_aux_var_dn%kvr_x
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
-        else if (dabs(dabs(dist(2))-1) < 1e-6) then
-          ukvr = rich_aux_var_dn%kvr_y
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
-        else if (dabs(dabs(dist(3))-1) < 1e-6) then
-          ukvr = rich_aux_var_dn%kvr_z
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
-        end if
-     
-        if (ukvr*perm_dn>floweps) then
-          v_darcy = perm_dn * ukvr * dphi
-          q = v_darcy*area
-          dq_dp_dn = perm_dn*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
-        endif 
-     
-      endif
-
   end select
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
@@ -2164,8 +2124,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
     call RichardsBCFlux(ibndtype,aux_vars, &
                         rich_aux_var_up,global_aux_var_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
-                        por_dn,sir_dn,perm_dn, &
-                        area,dist,option,v_darcy,res)
+                        por_dn,sir_dn,dd_up,perm_dn, &
+                        area, norm, dist_gravity,option,v_darcy,res)
     if (pressure_bc_type == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
@@ -2186,8 +2146,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
     call RichardsBCFlux(ibndtype,aux_vars, &
                         rich_aux_var_pert_up,global_aux_var_pert_up, &
                         rich_aux_var_pert_dn,global_aux_var_pert_dn, &
-                        por_dn,sir_dn,perm_dn, &
-                        area,dist,option,v_darcy,res_pert_dn)
+                        por_dn,sir_dn,dd_up,perm_dn, &
+                        area, norm, dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
     call GlobalAuxVarDestroy(global_aux_var_pert_up)
@@ -2204,10 +2164,10 @@ end subroutine RichardsBCFluxDerivative
 !
 ! ************************************************************************** !
 subroutine RichardsBCFlux(ibndtype,aux_vars, &
-                          rich_aux_var_up, global_aux_var_up, &
-                          rich_aux_var_dn, global_aux_var_dn, &
-                          por_dn, sir_dn, perm_dn, &
-                          area, dist, option,v_darcy,Res)
+                          rich_aux_var_up,global_aux_var_up, &
+                          rich_aux_var_dn,global_aux_var_dn, &
+                          por_dn,sir_dn,dd_up,perm_dn, &
+                          area, norm, dist_gravity,option,v_darcy,Res)
   use Option_module
  
   implicit none
@@ -2216,14 +2176,10 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
-  PetscReal :: sir_dn
+  PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn
-  PetscReal :: v_darcy, area
-  ! dist(0) = magnitude
-  ! dist(1:3) = unit vector
-  ! dist(0)*dist(1:3) = vector
-  PetscReal :: dist(0:3)
+  PetscReal :: v_darcy, area, norm(3)
   PetscReal :: Res(1:option%nflowdof) 
   
   PetscReal :: dist_gravity  ! distance along gravity vector
@@ -2245,15 +2201,10 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
 
-      ! dist(0) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3) = vector(3) - unit vector
-      dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
-
       if (pressure_bc_type == CONDUCTANCE_BC) then
         Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
       else
-        Dq = perm_dn / dist(0)
+        Dq = perm_dn / dd_up
       endif
       ! Flow term
       if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
@@ -2283,20 +2234,20 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
    
        if (dphi>=0.D0) then
 !        ukvr = rich_aux_var_up%kvr
-         if (dabs(dabs(dist(1))-1) < 1e-6) then
+         if (dabs(dabs(norm(1))-1) < 1e-6) then
            ukvr = rich_aux_var_up%kvr_x
-         else if (dabs(dabs(dist(2))-1) < 1e-6) then
+         else if (dabs(dabs(norm(2))-1) < 1e-6) then
            ukvr = rich_aux_var_up%kvr_y
-         else if (dabs(dabs(dist(3))-1) < 1e-6) then
+         else if (dabs(dabs(norm(3))-1) < 1e-6) then
            ukvr = rich_aux_var_up%kvr_z
          end if
        else
 !        ukvr = rich_aux_var_dn%kvr
-         if (dabs(dabs(dist(1))-1) < 1e-6) then
+         if (dabs(dabs(norm(1))-1) < 1e-6) then
            ukvr = rich_aux_var_dn%kvr_x
-         else if (dabs(dabs(dist(2))-1) < 1e-6) then
+         else if (dabs(dabs(norm(2))-1) < 1e-6) then
            ukvr = rich_aux_var_dn%kvr_y
-         else if (dabs(dabs(dist(3))-1) < 1e-6) then
+         else if (dabs(dabs(norm(3))-1) < 1e-6) then
            ukvr = rich_aux_var_dn%kvr_z
          end if
        endif      
@@ -2317,24 +2268,6 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
           density_ave = global_aux_var_dn%den(1)
         endif 
       endif
-
-    case(UNIT_GRADIENT_BC)
-
-      dphi = dot_product(option%gravity,dist(1:3))*global_aux_var_dn%den(1)*FMWH2O
-      density_ave = global_aux_var_dn%den(1)
-
-      ! since boundary auxvar is meaningless (no pressure specified there), only use cell
-      if (dabs(dabs(dist(1))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_x
-      else if (dabs(dabs(dist(2))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_y
-      else if (dabs(dabs(dist(3))-1) < 1e-6) then
-        ukvr = rich_aux_var_dn%kvr_z
-      end if
-     
-      if (ukvr*perm_dn>floweps) then
-        v_darcy = perm_dn * ukvr * dphi
-      endif 
 
   end select
 
@@ -3079,10 +3012,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 richards_parameter%sir(1,icap_dn), &
-                                perm_dn, &
+                                cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
-                                cur_connection_set%dist(0:3,iconn), &
-                                option, &
+                                cur_connection_set%dist(1:3,iconn), &
+                                distance_gravity,option, &
                                 v_darcy,Res)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
@@ -3770,7 +3703,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
             
 
         Accum(1) = Res(1) - accum_p(local_id)
-!        write(*,*) "Accum ", Accum(1)
+!        if (local_id < 10) write(*,*) "Accum ", Accum(1)
 !		Accum(1) = 0
 !        write(*,*) "accum ",accum_p(local_id), "Res ", Res(1),  "diff ", Accum(1)
 !       write(*,*) "Sat", global_aux_vars(ghosted_id)%sat(1), "Pres", global_aux_vars(ghosted_id)%pres(1)
@@ -3788,6 +3721,11 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
         PermTensor(3,2) = PermTensor(2,3)
 
  
+
+!        if (local_id<10) then
+!           write(*,*) "ukvr", rich_aux_vars(ghosted_id)%kvr_x 
+!           write(*,*) "den ", global_aux_vars(ghosted_id)%den(1)
+!        end if
 
         call MFDAuxGenerateRhs(grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
                                  rich_aux_vars(ghosted_id),&
@@ -3818,8 +3756,11 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           end if
         end do
 !
-!		write(*,*) (rhs(iface),iface=1,6)
-!		write(*,*)
+!        if (local_id < 10) then
+!           write(*,*) "rhs"
+!           write(*,*) (rhs(iface),iface=1,6)
+!           write(*,*)
+!        end if
         
   enddo
 
@@ -4360,10 +4301,10 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 richards_parameter%sir(1,icap_dn), &
-                                perm_dn, &
+                                cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
-                                cur_connection_set%dist(0:3,iconn), &
-                                option, &
+                                cur_connection_set%dist(1:3,iconn), &
+                                distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn

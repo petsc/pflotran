@@ -577,8 +577,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     ! update solution variables
     
-    option%time = master_stepper%target_time
     call StepperUpdateSolution(realization)
+    option%time = master_stepper%target_time
     
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
