@@ -159,6 +159,10 @@ function UnitsConvert(unit,option)
       UnitsConvert = 1.d0
     case('1') ! one
       UnitsConvert = 1.d0
+    case('C') ! one
+      UnitsConvert = 1.d0
+    case('M') ! one
+      UnitsConvert = 1.d0
     case default
        option%io_buffer = 'Unit "' // trim(unit) // '" not recognized.'
        call printErrMsg(option)

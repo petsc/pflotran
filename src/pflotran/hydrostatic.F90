@@ -281,16 +281,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                     temperature_gradient(Z_DIRECTION)*dist_z 
         coupler%flow_aux_real_var(2,iconn) = temperature
         coupler%flow_aux_real_var(3,iconn) = concentration_at_datum
+
+        coupler%flow_aux_int_var(1,iconn) = condition%iphase
+
       case(G_MODE)
+      case default
+        coupler%flow_aux_int_var(1,iconn) = 1
     end select
 
-    coupler%flow_aux_int_var(1,iconn) = 1
-!    if (structured_pressure(iz) > patm) then
-!      coupler%flow_aux_int_var(1,iconn) = condition%iphase
-!    else
-!      coupler%flow_aux_int_var(1,iconn) = 3
-!    endif
-      
   enddo
 
   if ((grid%itype==STRUCTURED_GRID_MIMETIC).and.(coupler%itype == INITIAL_COUPLER_TYPE)) then
