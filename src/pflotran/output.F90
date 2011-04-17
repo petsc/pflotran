@@ -3489,12 +3489,18 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,111,advance="no") &
-        int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+!     write(fid,111,advance="no") &
+!       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+!                                        region%coordinates(ONE_INTEGER)%x, &
+!                                        region%coordinates(ONE_INTEGER)%y, &
+!                                        region%coordinates(ONE_INTEGER)%z, &
+!                                        count,ghosted_ids))
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
-                                         count,ghosted_ids))
+                                         count,ghosted_ids)
   end select
 
   if (option%ntrandof > 0) then
