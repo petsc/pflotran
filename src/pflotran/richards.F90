@@ -1981,7 +1981,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
-  PetscReal :: dd_up, sir_dn
+  PetscReal :: sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
   PetscReal :: por_dn,perm_dn
   PetscReal :: area
@@ -2039,7 +2039,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
       if (pressure_bc_type == CONDUCTANCE_BC) then
         Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
       else
-        Dq = perm_dn / dd_up
+        Dq = perm_dn / dist(0)
       endif
       ! Flow term
       if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
@@ -3061,13 +3061,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       perm_dn = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &
                 perm_yy_loc_p(ghosted_id)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id)*dabs(cur_connection_set%dist(3,iconn))
-      ! dist(0,iconn) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-
       icap_dn = int(icap_loc_p(ghosted_id)) 
 
 
@@ -4343,13 +4336,6 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       perm_dn = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &
                 perm_yy_loc_p(ghosted_id)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id)*dabs(cur_connection_set%dist(3,iconn))
-      ! dist(0,iconn) = scalar - magnitude of distance
-      ! gravity = vector(3)
-      ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(option%gravity, &
-                                     cur_connection_set%dist(1:3,iconn))
-
       icap_dn = int(icap_loc_p(ghosted_id))  
 
       call RichardsBCFluxDerivative(boundary_condition%flow_condition%itype, &
