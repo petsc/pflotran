@@ -1676,7 +1676,8 @@ subroutine FlowConditionReadValuesFromFile(input,dataset,option)
   do
     call InputReadFlotranString(input,option)
     ! reach the end of file or close out block
-    if (InputError(input) .or. InputCheckExit(input,option)) exit
+    if (InputError(input)) exit  ! check for end of file
+    if (InputCheckExit(input,option)) exit  ! check for end of list
     ! check for units on first line
     if (count == 0) then
       string = input%buf

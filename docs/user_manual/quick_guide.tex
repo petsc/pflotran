@@ -364,6 +364,13 @@ with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, rock heat c
 U_\a \eq H_\a -\frac{P_\a}{\rho_\a}.
 \EN
 
+ 
+Thermal conductivity $\kappa$ is determined from the equation (Somerton et 
+al., 1974)  
+\EQ\label{cond} 
+\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+\EN 
+where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
 
 
 \subsection{Mode: {\tt THC} (Thermal-Hydrologic-Chemical)}
@@ -577,11 +584,11 @@ An alternative form of these equations is obtained by introducing the total sorb
 S_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
 \EN
 Then the transport equations become
-\EQ
+\EQ\label{totj}
 \frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}S_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
 \EN
 The total sorbed concentrations are obtained from the equations
-\EQ
+\EQ\label{sja}
 \frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
 \EN
 
@@ -602,16 +609,22 @@ with corresponding reaction rates $I_k^\m$, $I_k^\im$, and $I_k^s$, where the su
 \EN
 The transport equations for primary species, mobile and immobile colloids, read
 \BA
-\frac{\p}{\p t} \varphi s_l \Psi_j^l + \bnabla\cdot\bOmega_j^l &\eq -\sum_k\nu_{jk}\big(I_k^\m + I_k^\im + I_k^s\big) - \sum_s \nu_{js} I_s,\\
-\frac{\p}{\p t} S_k^\m + \bnabla\cdot\bq_c S_k^\m & \eq I_k^\m,\\
-\frac{\p}{\p t} S_k^\im & \eq I_k^\im,\\
-\frac{\p}{\p t} S_k^s & \eq I_k^s,
+\frac{\p}{\p t} \varphi s_l \Psi_j^l + \bnabla\cdot\bOmega_j^l &\eq -\sum_k\nu_{jk}\big(I_k^\m + I_k^\im + \sum_s I_k^s\big) - \sum_s \nu_{js} I_s,\label{rateform}\\
+\frac{\p}{\p t} \varphi s_l S_k^\m + \bnabla\cdot\bq_c S_k^\m & \eq I_k^\m,\label{mobile}\\
+\frac{\p}{\p t} S_k^\im & \eq I_k^\im,\label{immobile}\\
+\frac{\p}{\p t} S_k^s & \eq I_k^s,\label{solid}
 \EA
 where $\bq_c$ denotes the colloid Darcy velocity which may be greater than the fluid velocity $\bq$.
 For conditions of local equilibrium the sorption reaction rates may be eliminated and replaced by algebraic sorption isotherms to yield
-\EQ
-\frac{\p}{\p t} \varphi s_l \Big[\Psi_j^l + \sum_k \nu_{jk} \big(S_k^\m + S_k^\im + S_k^s\big) \Big] + \bnabla\cdot\Big(\bOmega_j^l + \bq_c \sum_k \nu_{jk} S_k^\m\Big) \eq - \sum_s \nu_{js} I_s.
+\EQ\label{eqform}
+\frac{\p}{\p t}\Big[ \varphi s_l \Psi_j^l + \sum_k \nu_{jk} \big(\varphi s_l S_k^\m + S_k^\im + \sum_s S_k^s\big) \Big] + \bnabla\cdot\Big(\bOmega_j^l + \bq_c \sum_k \nu_{jk} S_k^\m\Big) \eq - \sum_s \nu_{js} I_s.
 \EN
+
+In the kinetic case either form of the primary species transport equations given by Eqn.\eqref{rateform} or \eqref{eqform} can be used provided it is coupled with the appropriate kinetic equations Eqns.\eqref{mobile}--\eqref{solid}. The mobile case leads to additional equations that must be solved simultaneously with the primary species equations. A typical expression for $I_k^m$ might be
+\EQ
+I_k^m \eq k_k\big(S_k^m - S_{km}^{\rm eq}\big),
+\EN
+with rate constant $k_k$ and where $S_{km}^{\rm eq}$ is a known function of the solute concentrations. In this case, Eqn.\eqref{mobile} must be added to the primary species transport equations. Further reduction of the transport equations for the case where a flux term is present in the kinetic equation is not possible in general for complex flux terms.
 
 \subsection{Solute Age}
 
@@ -655,6 +668,21 @@ the solution is updated according to the equation
 \by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\!\ln\by^{(i+1)}}.
 \EN
 
+\subsubsection{Multirate Sorption}
+
+The residual function incorporating the multirate sorption model can be further simplified by solving analytically the finite difference form of kinetic sorption equations. This is possible when these equations are linear in the sorbed concentration $S_{j\a}$ and because they do not contain a flux term. Thus discretizing Eqn.\eqref{sja} in time using the fully implicit backward Euler method gives
+\EQ
+\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq k_\a \big(f_\a S_{j\a}^{\rm eq} - S_{j\a}^{t+\Delta t}\big).
+\EN
+Solving for $S_{j\a}^{t+\Delta t}$ yields
+\EQ\label{sjadt}
+S_{j\a}^{t+\Delta t} \eq \frac{S_{j\a}^t + k_\a \Delta t f_\a S_j^{\rm eq}}{1+k_\a\Delta t}.
+\EN
+From this expression the reaction rate can be calculated as
+\EQ
+\frac{S_{j\a}^{t+\Delta t}-S_{j\a}^t}{\Delta t} \eq \frac{k_\a}{1+k_\a\Delta t} \big(f_\a S_{j\a}^{\rm eq} - S_{j\a}^t\big).
+\EN
+The right-hand side of this equation is a known function of the solute concentration and thus by substituting into Eqn.\eqref{totj} eliminates the appearance of the unknown sorbed concentration. Once the transport equations are solved over a time step, the sorbed concentrations can be computed from Eqn.\eqref{sjadt}.
 
 \subsection{Operator Splitting}
 
@@ -672,6 +700,8 @@ The first set of equations are linear in $\Psi_j$ (for species-independent diffu
 \Psi_j^* \eq C_j^* + \sum_i \nu_{ji} C_i^*,
 \EN
 where the secondary species concentrations $C_i^*$ are nonlinear functions of the primary species concentrations $C_j^*$. With this result the second set of equations are solved implicitly for $C_j$ at $t+\Delta t$ using $\Psi_j^*$ for the starting value at time $t$.
+
+\subsubsection{Constant $K_d$}
 
 As a simple example of operator splitting consider a single component system with retardation described by a constant $K_d$. According to this model the sorbed concentration $S$ is related to the aqueous concentration by the linear equation
 \EQ\label{skd}
@@ -5084,6 +5114,11 @@ TimerManager{
 {\em Ground Water Reactive Transport Models},
 Bentham Science Publishers.
 ISBN 978-1-60805-029-1. 
+
+\item Somerton, W.H., A.H. El-Shaarani, and S.M. Mobarak (1974) 
+High temperature behavior of rocks associated with geothermal-type reservoirs. Paper SPE-4897. Proceedings of the 44th Annual 
+California Regional Meeting of the Society of Petroleum Engineers. Richardson, TX: Society of Petroleum Engineers. 
+
 
 \end{description}
 
