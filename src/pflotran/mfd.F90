@@ -1122,12 +1122,51 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
   end do
 
   do i = 1,3
-     U(i,i) = PermTensor(i,i)
+     U(i,i) = PermTensor(i,i)/volume
      do j = i+1, 3
-        U(i,j) = -abs(PermTensor(i,j)
+        U(i,j) = -abs(PermTensor(i,j)/volume
         U(j,i) = U(i,j)
      end do
   end do 
+
+  do i = 1, aux_var%numfaces
+     do j = 1, 3
+       H(i,j) = 0
+       do k = 1, 3
+         H(i,j) = H(i,j) + N(i,k)*PermTensor(k,j)
+       end do
+     end do
+  end do
+
+  allocate(aux_var%MassMatrixInv(aux_var%numfaces, aux_var%numfaces))
+
+
+  do i = 1, aux_var%numfaces
+    do j = 1, aux_var%numfaces
+       aux_var%MassMatrixInv(i,j) = 0
+       do k =1,3
+         aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) + H(i,k) * N(j,k)
+       end do
+       aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) / volume
+     end do
+   end do
+
+  do i = 1, aux_var%numfaces
+     do j = 1, 3
+       H(i,j) = 0
+       do k = 1, 3
+         H(i,j) = H(i,j) + D(i,k)*U(k,j)
+       end do
+    end do
+  end do
+
+  do i = 1, aux_var%numfaces
+    do j = 1, aux_var%numfaces
+       do k =1,3
+         aux_var%MassMatrixInv(i,j) = aux_var%MassMatrixInv(i,j) + H(i,k) * D(j,k)
+       end do
+     end do
+   end do
 
 
 
