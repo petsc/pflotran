@@ -487,11 +487,14 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         um=pckr_m
         un=1.D0/(1.D0-um)
         se=(sw-0.03D0)/(sw0-0.03D0)
-        temp=se**(-1.D0/um)
-        if(temp<1.D0) temp =1.D0
-        upc=(temp-1.D0)**(1.d0/un)/ala
-        if(upc>pcmax) upc=pcmax
-          
+        if (se > 1.d-6) then
+          temp=se**(-1.D0/um)
+          if(temp<1.D0) temp =1.D0
+          upc=(temp-1.D0)**(1.d0/un)/ala
+          if(upc>pcmax) upc=pcmax
+        else
+          upc = pcmax
+        endif
         se = (sw-swir)/(sw0-swir)
           if(se<0.D0)then 
             se =0.D0
