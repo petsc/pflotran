@@ -76,7 +76,12 @@ module Unstructured_Grid_module
     PetscReal :: D
   end type plane_type
 
-  PetscInt, parameter :: HEX_TYPE = 1
+  PetscInt, parameter :: HEX_TYPE          = 1
+  PetscInt, parameter :: WEDGE_TYPE        = 2
+  PetscInt, parameter :: TRI_FACE_TYPE     = 1
+  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
+  PetscInt, parameter :: MAX_CELL_VERTICES = 8
+  PetscInt, parameter :: MAX_DUALS         = 6
 
   public :: UnstructuredGridCreate, &
             UnstructuredGridRead, &
@@ -321,7 +326,7 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   PetscReal, allocatable :: temp_real_array(:,:)
   PetscReal, allocatable :: vertex_coordinates(:,:)
 
-  PetscInt :: icell, ivertex, idir, irank
+  PetscInt :: icell, ivertex, idir, irank, num_vertices
   PetscInt :: remainder
   PetscErrorCode :: ierr
   PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
@@ -346,6 +351,26 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
 ! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
 ! -----------------------------------------------------------------
 
+!
+! Note: When compiled with -DMIXED_FLAG the input file needs to be
+!       modified. Each line corresponding to a cell now needs to contain
+!       number of vertices as the first entry. Presnetly (4/25/2011)
+!       only hexahedron and wedge cell-types supported
+!
+! -----------------------------------------------------------------
+! num_cells num_vertices  (integers)
+! nverts vert1 vert2 vert3 ... vert8  ! for cell 1 (integers)
+! nverts vert1 vert2 vert3 ... vert8  ! for cell 2
+! ...
+! ...
+! nverts vert1 vert2 vert3 ... vert8  ! for cell num_cells
+! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
+! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
+! ...
+! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
+! -----------------------------------------------------------------
+!
+
   card = 'Unstructured Grid'
 
   call InputReadFlotranString(input,option)
@@ -369,13 +394,14 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
                                   unstructured_grid%num_cells_local + 1
 
   ! allocate array to store vertices for each cell
-  allocate(unstructured_grid%cell_vertices_0(8,unstructured_grid%num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(MAX_CELL_VERTICES,unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices_0 = 0
 
   ! for now, read all cells from ASCII file through io_rank and communicate
   ! to other ranks
   if (option%myrank == option%io_rank) then
-    allocate(temp_int_array(8,num_cells_local_save+1))
+    allocate(temp_int_array(MAX_CELL_VERTICES,num_cells_local_save+1))
+	temp_int_array = -1
     ! read for other processors
     do irank = 0, option%mycommsize-1
       num_to_read = num_cells_local_save
@@ -384,7 +410,21 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
         ! read in the vertices defining the grid cell
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
-        do ivertex = 1, 8
+        num_vertices = MAX_CELL_VERTICES
+#ifdef MIXED_UMESH
+		call InputReadInt(input,option,num_vertices)
+		call InputErrorMsg(input,option,'num_vertices',card)
+		if (num_vertices.gt.MAX_CELL_VERTICES) then
+		   option%io_buffer = 'Cells verticies exceed maximum number of vertices'
+           call printErrMsg(option)
+		endif
+		if((num_vertices.ne.8).and.(num_vertices.ne.6)) then
+		   write(*,*),num_vertices
+		   option%io_buffer = 'Only cells with 6 or 8 vertices supported'
+           call printErrMsg(option)
+		endif
+#endif
+        do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
           call InputErrorMsg(input,option,'vertex id',card)
         enddo
@@ -398,7 +438,7 @@ print *, '0: ', unstructured_grid%num_cells_local, ' cells'
       else
         ! otherwise communicate to other ranks
 print *, '0: ', num_to_read, ' cells sent'
-        int_mpi = num_to_read*8
+        int_mpi = num_to_read*MAX_CELL_VERTICES
         call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
@@ -407,7 +447,7 @@ print *, '0: ', num_to_read, ' cells sent'
   else
     ! other ranks post the recv
 print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
-    int_mpi = unstructured_grid%num_cells_local*8
+    int_mpi = unstructured_grid%num_cells_local*MAX_CELL_VERTICES
     call MPI_Recv(unstructured_grid%cell_vertices_0,int_mpi, &
                   MPIU_INTEGER,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
@@ -580,9 +620,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! in a crude way within a strided petsc vec and pass it.  The stride 
   ! determines the size of each cells "packaged" data 
   vertex_ids_offset = 1 + 1 ! +1 for -777
-  max_vertex_count = 8
+  max_vertex_count = MAX_CELL_VERTICES
   dual_offset = vertex_ids_offset + max_vertex_count + 1 ! +1 for -888
-  max_dual = 6
+  max_dual = MAX_DUALS
   stride = dual_offset+ max_dual + 1 ! +1 for -999
 
   ! Information for each cell is packed in a strided petsc vec
@@ -610,6 +650,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   local_vertex_offset(1) = 0
   do icell = 1, unstructured_grid%num_cells_local
     do ivertex = 1, max_vertex_count
+#ifdef MIXED_UMESH
+	  if(unstructured_grid%cell_vertices_0(ivertex,icell).lt.0) exit
+#endif
       count = count + 1
       local_vertices(count) = unstructured_grid%cell_vertices_0(ivertex,icell)
     enddo
@@ -1130,8 +1173,13 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   int_array3 = 0
   int_array4 = 0
   int_array3(1) = int_array(int_array2(1))
-  int_array4(1) = 1
   count = 1
+  !
+  ! The following line commented out by GB, because it was assuming
+  ! that int_array2(1) = 1; which may not be the case
+  !
+  !int_array4(1) = 1
+  int_array4(int_array2(1)) = count
   do ivertex = 2, vertex_count
     vertex_id = int_array(int_array2(ivertex))
     if (vertex_id > int_array3(count)) then
@@ -1671,6 +1719,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt :: ivertex, ivertex2
   PetscInt :: vertex_id, vertex_id2
   PetscInt :: vertex_ids4(4)
+  PetscInt :: nfaces,nfaces2,nvertices,nvertices2,cell_type,cell_type2, face_type
+  PetscBool:: face_found, vertex_found
   
   PetscReal :: v1(3), v2(3), n1(3), n2(3), n_up_dn(3)
   PetscReal :: area1, area2
@@ -1790,22 +1840,180 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   
   face_count = 0
   do icell = 1, unstructured_grid%num_cells_ghosted
-    do iface = 1, 6
+    ! Determine number of faces and cell-type of the current cell
+    select case(unstructured_grid%cell_vertices_0(0,icell))
+	  case(8)
+	    nfaces = 6
+		cell_type = HEX_TYPE
+	  case(6)
+	    nfaces = 5
+		cell_type = WEDGE_TYPE
+      case default
+        option%io_buffer = 'Cell type not recognized'
+        call printErrMsg(option)
+	end select
+    do iface = 1, nfaces
       face_count = face_count + 1
       cell_to_face(iface,icell) = face_count
       face_to_cell(1,face_count) = icell
-      call UGridGetCellFaceVertices(option,HEX_TYPE,iface,vertex_ids4)
-      do ivertex = 1, 4
+      call UGridGetCellFaceVertices(option,cell_type,iface,vertex_ids4)
+	  ! Determine number of vertices forming the face
+	  nvertices = 4
+	  if((cell_type.eq.WEDGE_TYPE).and.(iface.gt.3)) nvertices = 3
+      do ivertex = 1, nvertices
         face_to_vertex(ivertex,face_count) = &
           unstructured_grid%cell_vertices_0(vertex_ids4(ivertex),icell)+1
       enddo
     enddo
   enddo
 
+#ifdef MIXED_UMESH
+  !
+  ! Remove duplicate faces:
+  !
+  ! A cell (cell_id) and Neighboring-Cell (cell_id2) will only share ONE face.
+  ! Find the face that cell_id ane cell_id2 share and remove it.
+  !
+  ! Method:
+  !        - Pick i-th face (iface) of cell_id and check if ALL the vertices of
+  !          the iface are present in cell_id2. If all the vertices of iface are
+  !          not present in cell_id2, move to the next face.
+  !        - After finding the iface, now find iface2 in cell_id2 that
+  !          corresponds to iface.
+  !        - Check to ensure that atleast on face of cell_id is shared
+  !          with cell_id2.
+  !
+  !
+  !
+  ! NOTE: For a cell_type = WEDGE_TYPE, faces 1-3 have 4 vertices; while
+  !       faces 4-5 have 3 vertices
+  !
+  do icell = 1, unstructured_grid%num_cells_local
+    ! Selet a cell and find number of vertices
+    cell_id = icell
+	select case(unstructured_grid%cell_vertices_0(0,icell))
+	  case(8)
+	    nfaces = 6
+		cell_type = HEX_TYPE
+	  case(6)
+		nfaces = 5
+		cell_type = WEDGE_TYPE
+	end select
 
+	do icell2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
+	  ! Selet a neighboring cell
+	  cell_id2 =  unstructured_grid%cell_neighbors_local_ghosted(icell2,icell)
+	  ! If cell-id is neighbor is lower, skip it
+	  if (cell_id2 <= cell_id) cycle
+	  ! Find the number of vertices for neighboring cell
+	  select case(unstructured_grid%cell_vertices_0(0,icell2))
+	    case(8)
+		  nfaces2 = 6
+		  cell_type2 = HEX_TYPE
+		case(6)
+		  nfaces2 = 5
+		  cell_type2 = WEDGE_TYPE
+	  end select
+      ! Initialize
+      face_found = PETSC_FALSE
+      do iface = 1, nfaces
+        ! Select a face and find number of vertices forming the face
+        face_id = cell_to_face(iface,cell_id)
+        nvertices = 4
+	    if((cell_type.eq.WEDGE_TYPE).and.(iface.gt.3)) nvertices = 3
+        do ivertex = 1,nvertices
+          ! Select a vertex and initialize vertex_found
+          vertex_id = face_to_vertex(ivertex,face_id) ! face_to_vertex is 1-based indexing
+          vertex_found = PETSC_FALSE
+          do ivertex2 = 1,unstructured_grid%cell_vertices_0(0,cell_id2)
+            vertex_id2 = unstructured_grid%cell_vertices_0(ivertex2,cell_id2)+1 ! cell_vertices_0 is 0-based indexing
+            if(vertex_id.eq.vertex_id2) then
+              vertex_found = PETSC_TRUE
+              exit
+            endif
+          enddo
+		  !
+          ! If ivertex of iface of the Cell is not present as vertices of the
+          ! Neighboring-Cell, then iface is not the shared face. Skip iterating
+          ! over the remaing vertices of iface
+          if(.not.vertex_found) exit
+        enddo
+        
+        if(vertex_found) then
+          ! All the vertices of iface are present in the Neighboring cells.
+          ! Thus, iface is the shared face.
+          face_found = PETSC_TRUE
+          
+          ! Now, we have to find iface2 that corresponds to iface
+          do iface2 = 1, nfaces2
+            face_id2 = cell_to_face(iface2,cell_id2)
+            nvertices2 = 4
+            if((cell_type.eq.WEDGE_TYPE).and.(iface.gt.3)) nvertices2 = 3
+            
+            ! Both iface and iface2 need to have same number of vertices
+            if(nvertices.eq.nvertices2) then
+              ! Count the number of vertices of iface which match vertices
+              ! of iface2
+              num_match = 0
+              do ivertex = 1,nvertices
+                vertex_id = face_to_vertex(ivertex,face_id)
+                vertex_found = PETSC_TRUE
+				
+                do ivertex2 = 1,nvertices
+                  vertex_id2 = face_to_vertex(ivertex2,face_id2)
+				  if (vertex_id.eq.vertex_id2) then
+				    vertex_found = PETSC_TRUE
+				    num_match = num_match + 1
+				    vertex_ids4(num_match) = vertex_id
+				    exit
+				  endif
+				enddo
+                !
+				! If vertex_id of face_id not found as one of vertices of face_id2,
+				! face_id2 is not shared between cells
+			    if(.not.vertex_found) exit
+			  enddo
+			  if(num_match.eq.nvertices) then
+			    ! remove duplicate face
+                if (face_id2 > face_id) then
+                  write(string,*) option%myrank, face_id2, ' -> ', face_id
+                  option%io_buffer = 'Duplicated face removed:' // string //'\n'
+				  call printMsg(option)
+                  cell_to_face(iface2,cell_id2) = face_id
+                  !! flag as removed
+                  face_to_cell(1,face_id2) = -face_to_cell(1,face_id2)
+                  face_to_cell(2,face_id) = cell_id2
+				else
+				  write(string,*) option%myrank, face_id, ' -> ', face_id2
+                  option%io_buffer = 'Duplicated face removed:' // string //'\n'
+                  call printMsg(option)
+                  cell_to_face(iface,cell_id) = face_id2
+                  !! flag as removed
+                  face_to_cell(1,face_id) = -face_to_cell(1,face_id)
+                  face_to_cell(2,face_id2) = cell_id
+				endif
+				exit
+		      endif
+		    endif
+		  enddo
+		  exit
+        endif
+	  enddo ! iface-loop
+      
+	  ! Check that one shared face was found between the Cell and Neighboring-Cell
+	  if(.not.face_found) then
+	    write(string,*),'rank=',option%myrank, 'icell_id',cell_id,'icell_id2',cell_id2
+	    option%io_buffer='No shared face found: ' // string // '\n'
+		write(*,*),'No shared face found: rank=',option%myrank, 'icell_id',cell_id,'icell_id2',cell_id2
+		call printErrMsg(option)
+	  endif
+    enddo ! icell2-loop
+  enddo  ! icell-loop
+#endif
 
    
 
+#ifndef MIXED_UMESH
   ! remove duplicate faces
   ! fill face ids
   do icell = 1, unstructured_grid%num_cells_local !sp   was num_cells_ghosted 
@@ -1889,6 +2097,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     enddo
   enddo
 
+#endif
 
   
   ! count up the # of faces
@@ -1927,7 +2136,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   face_to_cell = temp_int_2d
   deallocate(temp_int_2d)
 
-
   
   ! remap faces in cells using temp_int from above
   do iface = 1, size(face_to_cell,2)
@@ -1939,6 +2147,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       found = PETSC_FALSE
       do iface2 = 1, 6
         face_id2 = cell_to_face(iface2,cell_id)
+		if(face_id<0) cycle
         if (face_id == temp_int(face_id2)) then
           found = PETSC_TRUE
           cell_to_face(iface2,cell_id) = face_id
@@ -1994,7 +2203,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         iconn = iconn + 1
         ! find face
         found = PETSC_FALSE
-        do iface = 1, 6
+        do iface = 1, unstructured_grid%cell_vertices_0(0,icell)
           face_id = cell_to_face(iface,icell)
           do icell2 = 1,2
             cell_id2 = face_to_cell(icell2,face_id)
@@ -2012,16 +2221,29 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           option%io_buffer = 'face not found in connection loop' // string 
           call printErrMsg(option)
         endif
+        if(face_to_vertex(4,face_id).lt.0) then
+          face_type = TRI_FACE_TYPE
+        else
+          face_type = QUAD_FACE_TYPE
+        endif
         connections%id_up(iconn) = icell
         connections%id_dn(iconn) = abs(dual_icell)
         ! need to add the surface areas, distance, etc.
         point1 = unstructured_grid%vertices(face_to_vertex(1,face_id))
         point2 = unstructured_grid%vertices(face_to_vertex(2,face_id))
         point3 = unstructured_grid%vertices(face_to_vertex(3,face_id))
-        point4 = unstructured_grid%vertices(face_to_vertex(4,face_id))
+		if (face_type.eq.QUAD_FACE_TYPE) then
+          point4 = unstructured_grid%vertices(face_to_vertex(4,face_id))
+        else
+		  point4 = unstructured_grid%vertices(face_to_vertex(3,face_id))
+		endif
         
         call ComputePlane(plane1,point1,point2,point3)
-        call ComputePlane(plane2,point3,point4,point1)
+		if (face_type.eq.QUAD_FACE_TYPE) then
+		  call ComputePlane(plane2,point3,point4,point1)
+        else
+		  call ComputePlane(plane2,point1,point2,point3)
+		endif
         
         point_up%x = grid_x(icell)
         point_up%y = grid_y(icell)
@@ -2146,6 +2368,35 @@ subroutine UGridGetCellFaceVertices(option,cell_type,iface,vertex_ids)
           vertex_ids(3) = 7
           vertex_ids(4) = 8
       end select
+	case(WEDGE_TYPE)
+	  select case(iface)
+	    case(1)
+		  vertex_ids(1) = 1
+		  vertex_ids(2) = 2
+		  vertex_ids(3) = 5
+		  vertex_ids(4) = 4
+	    case(2)
+		  vertex_ids(1) = 2
+		  vertex_ids(2) = 3
+		  vertex_ids(3) = 6
+		  vertex_ids(4) = 5
+	    case(3)
+		  vertex_ids(1) = 3
+		  vertex_ids(2) = 1
+		  vertex_ids(3) = 4
+		  vertex_ids(4) = 6
+	    case(4)
+		  vertex_ids(1) = 1
+		  vertex_ids(2) = 2
+		  vertex_ids(3) = 3
+	    case(5)
+		  vertex_ids(1) = 4
+		  vertex_ids(2) = 5
+		  vertex_ids(3) = 6
+		case default
+		  option%io_buffer='Cell WEDGE_TYPE has only 5 faces'
+		  call printErrMsg(option)
+		end select
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -2188,7 +2439,7 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
   PetscErrorCode :: ierr 
 
   do icell = 1, unstructured_grid%num_cells_local 
-    do ivertex = 1, 8
+    do ivertex = 1, unstructured_grid%cell_vertices_0(0,icell)
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell) + 1
       vertex_8(ivertex)%x = &
         unstructured_grid%vertices(vertex_id)%x
@@ -2197,7 +2448,12 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-    centroid = ComputeCentroid(HEX_TYPE,vertex_8)
+	select case (unstructured_grid%cell_vertices_0(0,icell))
+	  case(8)
+        centroid = ComputeCentroid(HEX_TYPE,vertex_8)
+	  case(6)
+	    centroid = ComputeCentroid(WEDGE_TYPE,vertex_8)
+	end select
     grid_x(icell) = centroid(1)
     grid_y(icell) = centroid(2)
     grid_z(icell) = centroid(3)
@@ -2314,7 +2570,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,nL2G,volume)
 
   do local_id = 1, unstructured_grid%num_cells_local
     ghosted_id = nL2G(local_id)
-    do ivertex = 1, 8
+    do ivertex = 1, unstructured_grid%cell_vertices_0(0,ghosted_id)
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,ghosted_id) + 1
       vertex_8(ivertex)%x = &
         unstructured_grid%vertices(vertex_id)%x
@@ -2323,7 +2579,12 @@ subroutine UGridComputeVolumes(unstructured_grid,option,nL2G,volume)
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-    volume_p(local_id) = ComputeVolume(HEX_TYPE,vertex_8)
+	select case (unstructured_grid%cell_vertices_0(0,ghosted_id))
+	  case(8)
+        volume_p(local_id) = ComputeVolume(HEX_TYPE,vertex_8)
+	  case(6)
+	    volume_p(local_id) = ComputeVolume(WEDGE_TYPE,vertex_8)
+	end select
   enddo
       
   call VecRestoreArrayF90(volume,volume_p,ierr)
@@ -2357,6 +2618,14 @@ function ComputeCentroid(cell_type,vertices)
         ComputeCentroid(3) = ComputeCentroid(3) + vertices(ivertex)%z
       enddo
       ComputeCentroid = ComputeCentroid / 8.d0
+    case(WEDGE_TYPE)
+      ! need something more sophisticated, but for now, just use average
+      do ivertex = 1, 6
+        ComputeCentroid(1) = ComputeCentroid(1) + vertices(ivertex)%x
+        ComputeCentroid(2) = ComputeCentroid(2) + vertices(ivertex)%y
+        ComputeCentroid(3) = ComputeCentroid(3) + vertices(ivertex)%z
+      enddo
+      ComputeCentroid = ComputeCentroid / 6.d0
   end select
 
 end function ComputeCentroid
@@ -2370,7 +2639,7 @@ end function ComputeCentroid
 ! ************************************************************************** !
 function ComputeVolume(cell_type,vertices)
 
-  use Utility_module, only : DotProduct
+  use Utility_module, only : DotProduct, CrossProduct
 
   implicit none
   
@@ -2380,6 +2649,7 @@ function ComputeVolume(cell_type,vertices)
   PetscReal :: ComputeVolume
   PetscReal :: v(3)
   PetscReal :: l1, l2, l3
+  PetscReal :: n1(3), area1, dz,v1(3),v2(3)
   
   ComputeVolume = 0.d0
   select case(cell_type)
@@ -2399,6 +2669,18 @@ function ComputeVolume(cell_type,vertices)
       v(3) = vertices(5)%z-vertices(1)%z
       l3 = sqrt(DotProduct(v,v))
       ComputeVolume = l1*l2*l3
+    case(WEDGE_TYPE)
+      v1(1) = vertices(3)%x-vertices(2)%x
+      v1(2) = vertices(3)%y-vertices(2)%y
+      v1(3) = vertices(3)%z-vertices(2)%z
+      v2(1) = vertices(1)%x-vertices(2)%x
+      v2(2) = vertices(1)%y-vertices(2)%y
+      v2(3) = vertices(1)%z-vertices(2)%z
+      n1 = CrossProduct(v1,v2)
+      area1 = 0.5d0*sqrt(DotProduct(n1,n1))
+	  dz = (vertices(1)%z+vertices(2)%z+vertices(3)%z)/3.d0 - &
+	       (vertices(4)%z+vertices(5)%z+vertices(6)%z)/3.d0
+      ComputeVolume = abs(dz)*area1
   end select
 
 end function ComputeVolume
