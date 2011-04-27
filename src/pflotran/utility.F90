@@ -922,4 +922,33 @@ function SearchOrderedArray(array,array_length,int_value)
 
 end function SearchOrderedArray
 
+! ************************************************************************** !
+!
+! FileExists: Returns PETSC_TRUE if file exists
+! author: Glenn Hammond
+! date: 04/27/11
+!
+! ************************************************************************** !
+function FileExists(filename)
+
+  implicit none
+  
+  PetscBool FileExists
+
+  character(len=*) :: filename
+  PetscInt :: fid
+  PetscInt :: ios
+  
+  ios = 0
+  fid = 86
+  open(unit=fid,file=filename,action="read",status="old",iostat=ios)
+  if (ios == 0) then
+    close(fid)
+    FileExists = PETSC_TRUE
+  else
+    FileExists = PETSC_FALSE
+  endif
+
+end function FileExists
+
 end module Utility_module

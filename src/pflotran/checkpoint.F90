@@ -149,9 +149,11 @@ subroutine Checkpoint(realization, &
   PetscBag :: bag
   type(checkpoint_header_type), pointer :: header
   PetscErrorCode :: ierr
-  PetscLogDouble :: tstart, tend  
+  PetscLogDouble :: tstart, tend
   
-  Vec :: global_vec = 0
+  PetscReal, pointer :: vec_ptr(:)  
+  
+  Vec :: global_vec
   PetscInt :: int_flag
   
   type(field_type), pointer :: field
@@ -170,6 +172,7 @@ subroutine Checkpoint(realization, &
   output_option => realization%output_option
   grid => discretization%grid 
 
+  global_vec = 0
   ! Open the checkpoint file.
   call PetscGetTime(tstart,ierr)   
   if (id < 0) then
@@ -378,6 +381,13 @@ subroutine Checkpoint(realization, &
 
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr)
+
+    call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
+    print *
+    print *, vec_ptr
+    print *
+    call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
+    
     if (realization%reaction%checkpoint_activity_coefs .and. &
         realization%reaction%act_coef_update_frequency /= &
         ACT_COEF_FREQUENCY_OFF) then
@@ -481,13 +491,15 @@ subroutine Restart(realization, &
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
 
-  Vec :: global_vec = 0
-  Vec :: local_vec = 0
+  Vec :: global_vec
+  Vec :: local_vec
   PetscInt :: int_flag
   PetscInt :: i,j,k
   PetscInt :: read_activity_coefs
   PetscBool :: found
   character(len=MAXSTRINGLENGTH) :: string
+  
+  PetscReal, pointer :: vec_ptr(:)
   
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -503,6 +515,9 @@ subroutine Restart(realization, &
   output_option => realization%output_option
   grid => discretization%grid
   
+  global_vec = 0
+  local_vec = 0
+
   call PetscGetTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%restart_filename)
@@ -654,6 +669,12 @@ subroutine Restart(realization, &
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
     call VecCopy(field%tran_xx,field%tran_yy,ierr)
+
+    call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
+    print *
+    print *, vec_ptr
+    print *
+    call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
 
     if (read_activity_coefs == ONE_INTEGER) then
       activity_coefs_read = PETSC_TRUE
