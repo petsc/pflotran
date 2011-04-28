@@ -149,9 +149,7 @@ subroutine Checkpoint(realization, &
   PetscBag :: bag
   type(checkpoint_header_type), pointer :: header
   PetscErrorCode :: ierr
-  PetscLogDouble :: tstart, tend
-  
-  PetscReal, pointer :: vec_ptr(:)  
+  PetscLogDouble :: tstart, tend  
   
   Vec :: global_vec
   PetscInt :: int_flag
@@ -381,13 +379,6 @@ subroutine Checkpoint(realization, &
 
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr)
-
-    call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
-    print *
-    print *, vec_ptr
-    print *
-    call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
-    
     if (realization%reaction%checkpoint_activity_coefs .and. &
         realization%reaction%act_coef_update_frequency /= &
         ACT_COEF_FREQUENCY_OFF) then
@@ -498,8 +489,6 @@ subroutine Restart(realization, &
   PetscInt :: read_activity_coefs
   PetscBool :: found
   character(len=MAXSTRINGLENGTH) :: string
-  
-  PetscReal, pointer :: vec_ptr(:)
   
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -669,12 +658,6 @@ subroutine Restart(realization, &
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
     call VecCopy(field%tran_xx,field%tran_yy,ierr)
-
-    call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
-    print *
-    print *, vec_ptr
-    print *
-    call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
 
     if (read_activity_coefs == ONE_INTEGER) then
       activity_coefs_read = PETSC_TRUE
