@@ -151,7 +151,7 @@ subroutine Checkpoint(realization, &
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend  
   
-  Vec :: global_vec = 0
+  Vec :: global_vec
   PetscInt :: int_flag
   
   type(field_type), pointer :: field
@@ -170,6 +170,7 @@ subroutine Checkpoint(realization, &
   output_option => realization%output_option
   grid => discretization%grid 
 
+  global_vec = 0
   ! Open the checkpoint file.
   call PetscGetTime(tstart,ierr)   
   if (id < 0) then
@@ -190,7 +191,7 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 208
+  bagsize = 216
   call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
@@ -354,23 +355,24 @@ subroutine Checkpoint(realization, &
                                      global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
 
-    call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-
-    call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
-
-    call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
-                                     global_vec,ONEDOF)
-    call VecView(global_vec,viewer,ierr)
 
     if (grid%itype == STRUCTURED_GRID_MIMETIC) then 
-              call VecGetSize(field%flow_xx_faces, j, ierr)
-              call VecGetBlockSize(field%flow_xx_faces, k, ierr)
+      call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
+                                        global_vec,ONEDOF)
+      call VecView(global_vec,viewer,ierr)
+
+      call VecGetSize(field%flow_xx_faces, j, ierr)
+      call VecGetBlockSize(field%flow_xx_faces, k, ierr)
 !              write(*,*) "Size", j, "block", k
-              call VecView(field%flow_xx_faces, viewer, ierr) 
+      call VecView(field%flow_xx_faces, viewer, ierr) 
     end if
 
   endif
@@ -480,8 +482,8 @@ subroutine Restart(realization, &
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
 
-  Vec :: global_vec = 0
-  Vec :: local_vec = 0
+  Vec :: global_vec
+  Vec :: local_vec
   PetscInt :: int_flag
   PetscInt :: i,j,k
   PetscInt :: read_activity_coefs
@@ -502,6 +504,9 @@ subroutine Restart(realization, &
   output_option => realization%output_option
   grid => discretization%grid
   
+  global_vec = 0
+  local_vec = 0
+
   call PetscGetTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%restart_filename)
@@ -627,23 +632,23 @@ subroutine Restart(realization, &
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_zz_loc,ONEDOF)
     
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_xz_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
-                                     field%perm_xy_loc,ONEDOF)
-    call VecLoad(global_vec,viewer,ierr)
-    call DiscretizationGlobalToLocal(discretization,global_vec, &
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        field%perm_xz_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                        field%perm_xy_loc,ONEDOF)
+      call VecLoad(global_vec,viewer,ierr)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_yz_loc,ONEDOF)
 
-    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
-              call VecGetSize(field%flow_xx_faces, j, ierr)
-              call VecGetBlockSize(field%flow_xx_faces, k, ierr)
+      call VecGetSize(field%flow_xx_faces, j, ierr)
+      call VecGetBlockSize(field%flow_xx_faces, k, ierr)
 !              write(*,*) "Size", j, "block", k
-       call VecLoad(field%flow_xx_faces, viewer,ierr)
-       call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
-       call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
+      call VecLoad(field%flow_xx_faces, viewer,ierr)
+      call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+      call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
     end if
     
   endif

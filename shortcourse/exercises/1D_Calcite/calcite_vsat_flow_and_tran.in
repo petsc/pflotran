@@ -75,7 +75,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION sf1
 END
 
-:=========================== material properties ==============================
+:=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.1d0
@@ -153,7 +153,7 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== constraints ======================================
+:=========================== transport constraints ============================
 CONSTRAINT initial
   CONCENTRATIONS
     H+     1.d-8      F

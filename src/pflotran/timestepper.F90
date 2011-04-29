@@ -417,7 +417,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(realization)
+  call OutputInit(realization,master_stepper%steps)
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
@@ -577,8 +577,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     ! update solution variables
     
-    call StepperUpdateSolution(realization)
     option%time = master_stepper%target_time
+    call StepperUpdateSolution(realization)
     
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
@@ -2098,7 +2098,11 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(realization)
+  if (associated(flow_stepper)) then
+    call OutputInit(realization,flow_stepper%steps)
+  else
+    call OutputInit(realization,tran_stepper%steps)
+  endif
   transient_plot_flag = PETSC_FALSE
   plot_flag = PETSC_TRUE
   if (output_option%print_initial) then

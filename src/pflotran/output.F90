@@ -45,19 +45,27 @@ contains
 ! date: 01/22/09
 !
 ! ************************************************************************** !
-subroutine OutputInit(realization)
+subroutine OutputInit(realization,num_steps)
 
   use Realization_module
 
   implicit none
   
   type(realization_type) :: realization
+  PetscInt :: num_steps
   
   ! set size to -1 in order to re-initialize parallel communication blocks
   max_local_size_saved = -1
-  observation_first = PETSC_TRUE
-  hdf5_first = PETSC_TRUE
-  mass_balance_first = PETSC_TRUE
+
+  if (num_steps == 0) then
+    observation_first = PETSC_TRUE
+    hdf5_first = PETSC_TRUE
+    mass_balance_first = PETSC_TRUE
+  else
+    observation_first = PETSC_FALSE
+    hdf5_first = PETSC_FALSE
+    mass_balance_first = PETSC_FALSE
+  endif
 
 end subroutine OutputInit
 
@@ -2280,6 +2288,7 @@ subroutine OutputObservationTecplot(realization)
   use Field_module
   use Patch_module
   use Observation_module
+  use Utility_module
  
   implicit none
 
@@ -2294,6 +2303,7 @@ subroutine OutputObservationTecplot(realization)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
+  PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
 
@@ -2305,7 +2315,7 @@ subroutine OutputObservationTecplot(realization)
   field => realization%field
   output_option => realization%output_option
   
-  if (observation_first) then
+  if (check_for_observation_points) then
     open_file = PETSC_FALSE
     observation => patch%observation%first
     do
@@ -2318,6 +2328,7 @@ subroutine OutputObservationTecplot(realization)
       endif
       observation => observation%next
     enddo
+    check_for_observation_points = PETSC_FALSE
   endif
   
   
@@ -2339,7 +2350,7 @@ subroutine OutputObservationTecplot(realization)
   
     ! open file
     fid = 86
-    if (observation_first) then
+    if (observation_first .or. .not.FileExists(filename)) then
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
@@ -3489,12 +3500,18 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,111,advance="no") &
-        int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+!     write(fid,111,advance="no") &
+!       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+!                                        region%coordinates(ONE_INTEGER)%x, &
+!                                        region%coordinates(ONE_INTEGER)%y, &
+!                                        region%coordinates(ONE_INTEGER)%z, &
+!                                        count,ghosted_ids))
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
-                                         count,ghosted_ids))
+                                         count,ghosted_ids)
   end select
 
   if (option%ntrandof > 0) then
@@ -4999,8 +5016,6 @@ subroutine OutputHDF5(realization)
   output_option => realization%output_option
 
   first = hdf5_first
-  if (option%restart_flag .and. option%restart_time > 1.d-40)  &
-    first = PETSC_FALSE
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
 
@@ -6705,6 +6720,7 @@ subroutine OutputMassBalanceNew(realization)
   use Grid_module
   use Option_module
   use Coupler_module
+  use Utility_module
   
   use Richards_module
   use Mphase_module
@@ -6746,7 +6762,6 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_kg_global(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
-  PetscBool :: local_first
   PetscMPIInt :: int_mpi
   
   patch => realization%patch
@@ -6755,8 +6770,7 @@ subroutine OutputMassBalanceNew(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  local_first = mass_balance_first
-  
+ 
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.dat'
   else
@@ -6769,16 +6783,7 @@ subroutine OutputMassBalanceNew(realization)
 !geh    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
 !geh    call printMsg(option)    
 
-    if (mass_balance_first .and. option%restart_flag) then ! check if file already exists
-      ios = 0
-      open(unit=fid,file=filename,action="write",status="old",iostat=ios)
-      if (ios == 0) then
-        close(fid)
-        local_first = PETSC_FALSE 
-      endif
-    endif
-
-    if (local_first) then
+    if (mass_balance_first .or. .not.FileExists(filename)) then
       open(unit=fid,file=filename,action="write",status="replace")
 
       ! write header
