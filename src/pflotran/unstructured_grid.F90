@@ -80,8 +80,10 @@ module Unstructured_Grid_module
   PetscInt, parameter :: WEDGE_TYPE        = 2
   PetscInt, parameter :: TRI_FACE_TYPE     = 1
   PetscInt, parameter :: QUAD_FACE_TYPE    = 2
-  PetscInt, parameter :: MAX_CELL_VERTICES = 8
+  PetscInt, parameter :: MAX_VERT_PER_CELL = 8
   PetscInt, parameter :: MAX_DUALS         = 6
+  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
+  PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 
   public :: UnstructuredGridCreate, &
             UnstructuredGridRead, &
@@ -394,13 +396,13 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
                                   unstructured_grid%num_cells_local + 1
 
   ! allocate array to store vertices for each cell
-  allocate(unstructured_grid%cell_vertices_0(MAX_CELL_VERTICES,unstructured_grid%num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL,unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices_0 = 0
 
   ! for now, read all cells from ASCII file through io_rank and communicate
   ! to other ranks
   if (option%myrank == option%io_rank) then
-    allocate(temp_int_array(MAX_CELL_VERTICES,num_cells_local_save+1))
+    allocate(temp_int_array(MAX_VERT_PER_CELL,num_cells_local_save+1))
 	temp_int_array = -1
     ! read for other processors
     do irank = 0, option%mycommsize-1
@@ -410,11 +412,11 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
         ! read in the vertices defining the grid cell
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
-        num_vertices = MAX_CELL_VERTICES
+        num_vertices = MAX_VERT_PER_CELL
 #ifdef MIXED_UMESH
 		call InputReadInt(input,option,num_vertices)
 		call InputErrorMsg(input,option,'num_vertices',card)
-		if (num_vertices.gt.MAX_CELL_VERTICES) then
+		if (num_vertices.gt.MAX_VERT_PER_CELL) then
 		   option%io_buffer = 'Cells verticies exceed maximum number of vertices'
            call printErrMsg(option)
 		endif
@@ -438,7 +440,7 @@ print *, '0: ', unstructured_grid%num_cells_local, ' cells'
       else
         ! otherwise communicate to other ranks
 print *, '0: ', num_to_read, ' cells sent'
-        int_mpi = num_to_read*MAX_CELL_VERTICES
+        int_mpi = num_to_read*MAX_VERT_PER_CELL
         call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
@@ -447,7 +449,7 @@ print *, '0: ', num_to_read, ' cells sent'
   else
     ! other ranks post the recv
 print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
-    int_mpi = unstructured_grid%num_cells_local*MAX_CELL_VERTICES
+    int_mpi = unstructured_grid%num_cells_local*MAX_VERT_PER_CELL
     call MPI_Recv(unstructured_grid%cell_vertices_0,int_mpi, &
                   MPIU_INTEGER,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
@@ -620,7 +622,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! in a crude way within a strided petsc vec and pass it.  The stride 
   ! determines the size of each cells "packaged" data 
   vertex_ids_offset = 1 + 1 ! +1 for -777
-  max_vertex_count = MAX_CELL_VERTICES
+  max_vertex_count = MAX_VERT_PER_CELL
   dual_offset = vertex_ids_offset + max_vertex_count + 1 ! +1 for -888
   max_dual = MAX_DUALS
   stride = dual_offset+ max_dual + 1 ! +1 for -999
@@ -1828,13 +1830,13 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
    
 
   ! create mappings of [cells,faces,vertices] to [cells,faces,vertices]
-  allocate(face_to_vertex(4,unstructured_grid%num_cells_ghosted*6))
+  allocate(face_to_vertex(MAX_VERT_PER_FACE,MAX_DUALS*unstructured_grid%num_cells_ghosted))
   face_to_vertex = -999
-  allocate(cell_to_face(6,unstructured_grid%num_cells_ghosted))
+  allocate(cell_to_face(MAX_DUALS,unstructured_grid%num_cells_ghosted))
   cell_to_face = -999
-  allocate(face_to_cell(2,6*unstructured_grid%num_cells_ghosted))
+  allocate(face_to_cell(2,MAX_DUALS*unstructured_grid%num_cells_ghosted))
   face_to_cell = -999
-  allocate(vertex_to_cell(0:8,unstructured_grid%num_vertices_local))
+  allocate(vertex_to_cell(0:MAX_CELLS_SHARING_A_VERTEX,unstructured_grid%num_vertices_local))
   vertex_to_cell = 0
 
   
@@ -2168,7 +2170,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell)+1
       if( vertex_id <= 0) cycle 
       count = vertex_to_cell(0,vertex_id) + 1
-      if( count .gt. 8) print *, option%myrank, icell, vertex_id, vertex_to_cell(1:8,vertex_id) 
+      if( count .gt. MAX_CELLS_SHARING_A_VERTEX) then
+          write(string,*) 'Vertex can be shared by at most by ',MAX_CELLS_SHARING_A_VERTEX, &
+		  ' cells. Rank = ', option%myrank, ' vertex_id = ', vertex_id, ' exceeds it.'
+          option%io_buffer = string
+          call printErrMsg(option)
+	  endif
       vertex_to_cell(count,vertex_id) = icell
       vertex_to_cell(0,vertex_id) = count
     enddo
