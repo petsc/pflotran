@@ -375,7 +375,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         select case(discretization%itype)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UnstructuredGridCreate()
-            call UnstructuredGridRead(un_str_grid,filename,option)
+            if (index(filename,'.h5') > 0) then
+              call UnstructuredGridReadHDF5(un_str_grid,filename,option)
+            else
+              call UnstructuredGridRead(un_str_grid,filename,option)
+            endif
             grid%unstructured_grid => un_str_grid
             grid%nmax = un_str_grid%num_cells_global
           case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
