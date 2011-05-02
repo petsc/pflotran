@@ -2680,7 +2680,8 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   ! aqueous
   rt_auxvar%total(:,iphase) = total(1:reaction%naqcomp)
 
-#if 0  
+! skip chemistry if species nonreacting 
+#if 1  
   if (.not.reaction%use_full_geochemistry) then
     rt_auxvar%pri_molal(:) = total(:)/global_auxvar%den_kg(iphase)*1.d-3
     return
@@ -2769,8 +2770,8 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     
     if (num_iterations > 500) then
       print *, 'Maximum iterations in RReact: stop: ',num_iterations
-      print *, 'Maximum iterations in RReact: stop: residual: ',residual
-      print *, 'Maximum iterations in RReact: stop: primary species: ',rt_auxvar%pri_molal
+      print *, 'Maximum iterations in RReact: residual: ',residual
+      print *, 'Maximum iterations in RReact: primary species: ',rt_auxvar%pri_molal
       stop
     endif
   

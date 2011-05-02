@@ -264,7 +264,7 @@ subroutine ludcmp(A,N,INDX,D)
     enddo
     if (aamax.eq.0) then
       call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
-      print *, "ERROR: Singular value encountered in ludcmp() on processor", rank
+      print *, "ERROR: Singular value encountered in ludcmp() on processor", rank, aamax
       call MPI_Abort(MPI_COMM_WORLD,ONE_INTEGER_MPI,ierr)
       call MPI_Finalize(ierr)
       stop
