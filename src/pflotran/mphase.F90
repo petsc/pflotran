@@ -576,7 +576,7 @@ end subroutine MphaseUpdateMassBalancePatch
  !             else  
                  re=0; exit
  !             endif          ! clu removed 05/02/2011
-           endif
+ !         endif
         case (2)
            if(xx_p(n0 + 3) > 1.0D0)then
               re=0; exit
