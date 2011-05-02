@@ -570,12 +570,12 @@ end subroutine MphaseUpdateMassBalancePatch
            if(xx_p(n0 + 3) > 1.0D0)then
               re=0; exit
            endif
-           if(xx_p(n0 + 3) < 0D0)then
-              if(xx_p(n0 + 3) > -1D-3)then
-                 xx_p(n0 + 3) =0.D0
-              else  
+ !          if(xx_p(n0 + 3) < 0D0)then
+ !             if(xx_p(n0 + 3) > -1D-3)then
+ !                xx_p(n0 + 3) =0.D0
+ !             else  
                  re=0; exit
-              endif
+ !             endif          ! clu removed 05/02/2011
            endif
         case (2)
            if(xx_p(n0 + 3) > 1.0D0)then
@@ -601,7 +601,7 @@ end subroutine MphaseUpdateMassBalancePatch
 
    endif
   ! print *,' update reason', grid%myrank, re,n,grid%nlmax
- 
+ reason=re
   
 end subroutine MPhaseUpdateReasonPatch
 
@@ -645,10 +645,11 @@ subroutine MPhaseUpdateReason(reason, realization)
         endif
         cur_patch => cur_patch%next
      enddo
+    if (.not.associated(cur_level)) exit 
     cur_level => cur_level%next
- enddo
+  enddo
 
- call MPI_Barrier(realization%option%mycomm,ierr)
+  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if (realization%option%mycommsize >1 ) then
      call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
@@ -2605,7 +2606,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
      endif
 
      istart = 1 + (local_id-1)*option%nflowdof
-     if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+ !    if(volume_p(local_id)>1.D0) &    ! clu removed 05/02/2011
+       r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
      if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
   enddo
 
@@ -3083,7 +3085,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
-     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+ !    if(volume_p(local_id)>1.D0 )&    !clu removed 05/02/2011
+        Jup=Jup / volume_p(local_id)
    
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
@@ -3186,9 +3189,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     if (local_id_up > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_up)>1.D0)then
+ !      if(volume_p(local_id_up)>1.D0)then   !clu removed 05/02/2011
          voltemp = 1.D0/volume_p(local_id_up)
-       endif
+ !      endif
        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
 
@@ -3199,9 +3202,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     endif
     if (local_id_dn > 0) then
        voltemp=1.D0
-       if(volume_p(local_id_dn)>1.D0)then
+ !      if(volume_p(local_id_dn)>1.D0)then   !clu removed 05/02/2011
          voltemp=1.D0/volume_p(local_id_dn)
-       endif
+ !      endif
        Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
 
