@@ -1010,7 +1010,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 #endif
 
 
-#if 1
+#if 0
 
  !   write(*,*) 
 
@@ -1113,7 +1113,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 
 #endif
 
-#if 0
+#if 1
 
   do i = 1, aux_var%numfaces
      do j = 1, 3
@@ -1124,7 +1124,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
   do i = 1,3
      U(i,i) = PermTensor(i,i)/volume
      do j = i+1, 3
-        U(i,j) = -abs(PermTensor(i,j)/volume
+        U(i,j) = -abs(PermTensor(i,j))/volume
         U(j,i) = U(i,j)
      end do
   end do 

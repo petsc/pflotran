@@ -254,6 +254,8 @@ subroutine MFDAuxDestroy(aux)
     deallocate(aux%aux_vars)
   endif
   nullify(aux%aux_vars)
+  
+  
     
 end subroutine MFDAuxDestroy
 

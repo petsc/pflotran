@@ -1209,7 +1209,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#ifdef DASVYAT_DEBUG
+#ifdef DASVYAT
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
