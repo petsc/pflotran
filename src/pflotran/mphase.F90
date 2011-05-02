@@ -570,7 +570,7 @@ end subroutine MphaseUpdateMassBalancePatch
            if(xx_p(n0 + 3) > 1.0D0)then
               re=0; exit
            endif
- !          if(xx_p(n0 + 3) < 0D0)then
+           if(xx_p(n0 + 3) < 0D0)then
  !             if(xx_p(n0 + 3) > -1D-3)then
  !                xx_p(n0 + 3) =0.D0
  !             else  
