@@ -2687,7 +2687,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
 ! skip chemistry if species nonreacting 
 #if 1  
   if (.not.reaction%use_full_geochemistry) then
-    rt_auxvar%pri_molal(:) = total(:)/global_auxvar%den_kg(iphase)*1.d-3
+    rt_auxvar%pri_molal(:) = total(:)/global_auxvar%den_kg(iphase)*1.d3
     return
   endif
 #endif  

@@ -2109,7 +2109,7 @@ end subroutine RTCalculateTranMatrixPatch2
 
 ! ************************************************************************** !
 !
-! RTReactPatch: Calculate reaction
+! RTReact: Calculate reaction
 ! author: Glenn Hammond
 ! date: 05/03/10
 !
