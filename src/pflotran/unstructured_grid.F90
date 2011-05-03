@@ -577,8 +577,11 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
 
   ! Setup file access property with parallel I/O access
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+
+#ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
-  
+#endif
+
   ! Open the file collectively
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)

@@ -749,9 +749,12 @@ subroutine ReactionRead(reaction,input,option)
         call InputErrorMsg(input,option,trim(word),'CHEMISTRY')
       case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
         option%reactive_transport_coupling = OPERATOR_SPLIT    
-      case('REACTION_TOLERANCE')
-        call InputReadDouble(input,option,reaction%reaction_tolerance)
-        call InputErrorMsg(input,option,'reaction tolerance','CHEMISTRY')
+      case('MAX_RELATIVE_CHANGE_TOLERANCE','REACTION_TOLERANCE')
+        call InputReadDouble(input,option,reaction%max_relative_change_tolerance)
+        call InputErrorMsg(input,option,'maximum relative change tolerance','CHEMISTRY')
+      case('MAX_RESIDUAL_TOLERANCE')
+        call InputReadDouble(input,option,reaction%max_residual_tolerance)
+        call InputErrorMsg(input,option,'maximum residual  tolerance','CHEMISTRY')
       case default
         option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
         call printErrMsg(option)
@@ -2667,6 +2670,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   PetscReal :: fixed_accum(reaction%ncomp)
   PetscInt :: num_iterations
   PetscInt :: icomp
+  PetscReal :: ratio, min_ratio
   
   PetscInt, parameter :: iphase = 1
 
@@ -2731,30 +2735,40 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, porosity, volume, &
                    reaction,option)
     
-    call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp)
-    
-    update = dsign(1.d0,update)*min(dabs(update),5.d0)
+    if (maxval(abs(residual)) < reaction%max_residual_tolerance) exit
+
+
+    call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp, &
+                reaction%use_log_formulation)
     
     prev_molal = rt_auxvar%pri_molal
-    rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
 
-    if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
-      call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
+    if (reaction%use_log_formulation) then
+      update = dsign(1.d0,update)*min(dabs(update),reaction%max_dlnC)
+      rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
+    else ! linear upage
+      ! ensure non-negative concentration
+      min_ratio = 1.d20 ! large number
+      do icomp = 1, reaction%ncomp
+        if (prev_molal(icomp) <= update(icomp)) then
+          ratio = abs(prev_molal(icomp)/update(icomp))
+          if (ratio < min_ratio) min_ratio = ratio
+        endif
+      enddo
+      if (min_ratio < 1.d0) then
+        ! scale by 0.99 to make the update slightly smaller than the min_ratio
+        update = update*min_ratio*0.99d0
+      endif
+      rt_auxvar%pri_molal = prev_molal - update
     endif
-    call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
-    call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
-                        option,residual)
-    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, porosity, volume, &
-                   reaction,option)
-    residual = residual-fixed_accum
     
+
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
-    if (maxval(abs(residual)) < reaction%reaction_tolerance) exit
     
-    if (maximum_relative_change < reaction%reaction_tolerance) exit
+    if (maximum_relative_change < reaction%max_relative_change_tolerance) exit
 
-    if (num_iterations > 500) then
+    if (num_iterations > 50) then
       if (num_iterations > 50) then
         rt_auxvar%pri_molal(:) = (rt_auxvar%pri_molal(:)-prev_molal(:))* &
                                  0.1d0+prev_molal(:)
@@ -2764,15 +2778,13 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
       else if (num_iterations > 150) then
         rt_auxvar%pri_molal(:) = (rt_auxvar%pri_molal(:)-prev_molal(:))* &
                                  0.001d0+prev_molal(:)
+      else if (num_iterations > 500) then
+        print *, 'Maximum iterations in RReact: stop: ',num_iterations
+        print *, 'Maximum iterations in RReact: residual: ',residual
+        print *, 'Maximum iterations in RReact: primary species: ',rt_auxvar%pri_molal
+        stop
       endif
 
-    endif
-    
-    if (num_iterations > 500) then
-      print *, 'Maximum iterations in RReact: stop: ',num_iterations
-      print *, 'Maximum iterations in RReact: residual: ',residual
-      print *, 'Maximum iterations in RReact: primary species: ',rt_auxvar%pri_molal
-      stop
     endif
   
   enddo
@@ -4843,7 +4855,7 @@ end subroutine RGeneral
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RSolve(Res,Jac,conc,update,ncomp)
+subroutine RSolve(Res,Jac,conc,update,ncomp,use_log_formulation)
 
   use Utility_module
   
@@ -4854,6 +4866,7 @@ subroutine RSolve(Res,Jac,conc,update,ncomp)
   PetscReal :: Jac(ncomp,ncomp)
   PetscReal :: update(ncomp)
   PetscReal :: conc(ncomp)
+  PetscBool :: use_log_formulation
   
   PetscInt :: indices(ncomp)
   PetscReal :: rhs(ncomp)
@@ -4868,10 +4881,13 @@ subroutine RSolve(Res,Jac,conc,update,ncomp)
     Jac(icomp,:) = Jac(icomp,:)*norm
   enddo
     
-  ! for derivatives with respect to ln conc
-  do icomp = 1, ncomp
-    Jac(:,icomp) = Jac(:,icomp)*conc(icomp)
-  enddo
+  if (use_log_formulation) then
+    ! for derivatives with respect to ln conc
+    do icomp = 1, ncomp
+      Jac(:,icomp) = Jac(:,icomp)*conc(icomp)
+    enddo
+  endif
+
   call ludcmp(Jac,ncomp,indices,icomp)
   call lubksb(Jac,ncomp,indices,rhs)
   
