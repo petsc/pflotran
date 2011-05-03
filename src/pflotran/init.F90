@@ -1641,9 +1641,14 @@ subroutine InitReadInput(simulation)
         option%wallclock_stop_flag = PETSC_TRUE
         call InputReadDouble(input,option,option%wallclock_stop_time)
         call InputErrorMsg(input,option,'stop time','WALLCLOCK_STOP') 
+
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr /= 0) word = 'h'
+        call InputDefaultMsg(input,option,'WALLCLOCK_STOP time units')
+        units_conversion = UnitsConvertToInternal(word,option) 
         ! convert from hrs to seconds and add to start_time
         option%wallclock_stop_time = option%start_time + &
-                                     option%wallclock_stop_time*3600.d0
+                                     option%wallclock_stop_time*units_conversion
       
 !....................
       case ('OUTPUT')
