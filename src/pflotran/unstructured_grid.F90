@@ -670,7 +670,7 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   unstructured_grid%cell_vertices_0 = 0
   
   do ii = 1,unstructured_grid%num_cells_local
-    do jj = 2,int_buffer(1,ii)
+    do jj = 2,int_buffer(1,ii)+1
 	  unstructured_grid%cell_vertices_0(jj-1,ii) = int_buffer(jj,ii)
 	enddo
   enddo
