@@ -430,6 +430,7 @@ subroutine RegionReadFromFileId(region,input,option)
   temp_int_array = 0
   
   count = 0
+#if 0
   continuation_flag = PETSC_TRUE
   do
     if (.not.continuation_flag) exit
@@ -451,6 +452,21 @@ subroutine RegionReadFromFileId(region,input,option)
       endif
     enddo
   enddo
+#endif
+
+  do
+    call InputReadFlotranString(input,option)
+	if (InputError(input)) exit
+	call InputReadInt(input,option,temp_int)
+	if (.not.InputError(input)) then
+	  count = count + 1
+	  temp_int_array(count) = temp_int
+	endif
+    if (count+1 > max_size) then ! resize temporary array
+      call reallocateIntArray(temp_int_array,max_size)
+    endif
+  enddo
+
   if (count > 0) then
     region%num_cells = count
     allocate(region%cell_ids(count))
