@@ -619,8 +619,6 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L,option)
                                        structured_grid%bounds(Z_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nz)
         case(CYLINDRICAL_GRID)
-!         print *, 'CYLINDRICAL grids still need dr to be set up'
-!         stop
           structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
                                        structured_grid%bounds(X_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nx)
@@ -629,8 +627,6 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L,option)
                                        structured_grid%bounds(Z_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nz)
         case(SPHERICAL_GRID)
-!         print *, 'CYLINDRICAL grids still need dr to be set up'
-!         stop
           structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
                                        structured_grid%bounds(X_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nx)
@@ -1020,6 +1016,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
+  PetscReal :: r1, r2
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   PetscReal, pointer :: radius(:)
@@ -1213,10 +1210,10 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
           enddo
         enddo
       case(CYLINDRICAL_GRID)
-        option%io_buffer = 'Cylindrical coordinates not implemented.'
+        option%io_buffer = 'For cylindrical coordinates, NY must be equal to 1.'
         call printErrMsg(option)
       case(SPHERICAL_GRID)
-        option%io_buffer = 'Spherical coordinates not implemented.'
+        option%io_buffer = 'For spherical coordinates, NY must be equal to 1.'
         call printErrMsg(option)
 
     end select
@@ -1277,17 +1274,21 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
-              connections%area(iconn) = 2.d0 * pi * radius(id_up) * &
-                                        structured_grid%dx(id_up)
+              ! pi*(r2^2-r1^2)
+              r2 = xc(id_up) + 0.5d0*structured_grid%dx(id_up)
+              r1 = xc(id_up) - 0.5d0*structured_grid%dx(id_up)
+              connections%area(iconn) = pi * dabs(r2*r2 - r1*r1)
               connections%cntr(1,iconn) = xc(id_up) 
               connections%cntr(2,iconn) = yc(id_up) 
-              connections%cntr(3,iconn) = zc(id_up) + connections%dist(-1,iconn)*(zc(id_dn) - zc(id_up)) 
+              connections%cntr(3,iconn) = zc(id_up) + &
+                                          connections%dist(-1,iconn)* &
+                                          (zc(id_dn) - zc(id_up)) 
             enddo
           enddo
         enddo
       case(SPHERICAL_GRID)
-        print *, 'Areas for spherical coordinates for z-axis not applicable.'
-        stop
+        option%io_buffer = 'For spherical coordinates, NZ must be equal to 1.'
+        call printErrMsg(option)
   end select
   endif
 
@@ -1982,7 +1983,8 @@ end subroutine StructuredGridMapIndices
 subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
                                          stencil_type, &
                                          stencil_width_i,stencil_width_j, &
-                                         stencil_width_k,ghosted_neighbors, &
+                                         stencil_width_k,x_count,y_count, &
+                                         z_count,ghosted_neighbors, &
                                          option)
 
   use Option_module
@@ -1996,7 +1998,10 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k
-  PetscInt :: ghosted_neighbors(0:27)
+  PetscInt :: x_count
+  PetscInt :: y_count
+  PetscInt :: z_count
+  PetscInt :: ghosted_neighbors(*)
 
   PetscInt :: i, j, k
   PetscInt :: icount
@@ -2004,31 +2009,36 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
 
   call StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
   
+  x_count = 0
+  y_count = 0
+  z_count = 0
   icount = 0
   select case(stencil_type)
     case(STAR_STENCIL)
-      do ii = i-stencil_width_i, i+stencil_width_i
+      do ii = max(i-stencil_width_i,1), min(i+stencil_width_i,structured_grid%ngx)
         if (ii /= i) then
           icount = icount + 1
+          x_count = x_count + 1
           ghosted_neighbors(icount) = &
             StructGridGetGhostedIDFromIJK(structured_grid,ii,j,k)
         endif
       enddo
-      do jj = j-stencil_width_j, j+stencil_width_j
+      do jj = max(j-stencil_width_j,1), min(j+stencil_width_j,structured_grid%ngy)
         if (jj /= j) then
           icount = icount + 1
+          y_count = y_count + 1
           ghosted_neighbors(icount) = &
             StructGridGetGhostedIDFromIJK(structured_grid,i,jj,k)
         endif
       enddo
-      do kk = k-stencil_width_k, k+stencil_width_k
+      do kk = max(k-stencil_width_k,1), min(k+stencil_width_k,structured_grid%ngz)
         if (kk /= k) then
           icount = icount + 1
+          z_count = z_count + 1
           ghosted_neighbors(icount) = &
             StructGridGetGhostedIDFromIJK(structured_grid,i,j,kk)
         endif
       enddo
-      ghosted_neighbors(0) = icount
     case(BOX_STENCIL)
       option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
         'StructGridGetNeighbors.'

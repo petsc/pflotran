@@ -1764,6 +1764,7 @@ subroutine RealizationScaleSourceSink(realization)
   PetscInt :: iconn
   PetscReal :: scale, sum
   PetscInt :: icount
+  PetscInt :: x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
   
   PetscInt :: ghosted_neighbors(0:27)
@@ -1803,12 +1804,13 @@ subroutine RealizationScaleSourceSink(realization)
             case(RICHARDS_MODE,G_MODE)
                call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
                                             x_width,y_width,z_width, &
+                                            x_count,y_count,z_count, &
                                             ghosted_neighbors,option)
                ! ghosted neighbors is ordered first in x, then, y, then z
                icount = 0
                sum = 0.d0
                ! x-direction
-               do while (icount < 2*x_width)
+               do while (icount < x_count)
                  icount = icount + 1
                  neighbor_ghosted_id = ghosted_neighbors(icount)
                  sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1817,7 +1819,7 @@ subroutine RealizationScaleSourceSink(realization)
                  
                enddo
                ! y-direction
-               do while (icount < 2*(x_width+y_width))
+               do while (icount < x_count + y_count)
                  icount = icount + 1
                  neighbor_ghosted_id = ghosted_neighbors(icount)                 
                  sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1826,7 +1828,7 @@ subroutine RealizationScaleSourceSink(realization)
                  
                enddo
                ! z-direction
-               do while (icount < 2*(x_width+y_width+z_width))
+               do while (icount < x_count + y_count + z_count)
                  icount = icount + 1
                  neighbor_ghosted_id = ghosted_neighbors(icount)                 
                  sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
