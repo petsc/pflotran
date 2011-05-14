@@ -594,7 +594,7 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   group_name = "Domain"
   option%io_buffer = 'Opening group: ' // trim(group_name)
   call printMsg(option)
-  call h5gopen_f(file_id,group_name,grp_id,hdf5_err)
+  !call h5gopen_f(file_id,group_name,grp_id,hdf5_err)
 
   ! Open dataset
   call h5dopen_f(file_id,"Domain/Cells",data_set_id,hdf5_err)
@@ -670,26 +670,15 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   unstructured_grid%cell_vertices_0 = 0
   
   do ii = 1,unstructured_grid%num_cells_local
-    do jj = 2,int_buffer(1,ii)
+    do jj = 2,int_buffer(1,ii)+1
 	  unstructured_grid%cell_vertices_0(jj-1,ii) = int_buffer(jj,ii)
 	enddo
   enddo
   
   call h5dclose_f(data_set_id,hdf5_err)
-  call h5pclose_f(prop_id, hdf5_err)
-  call h5sclose_f(data_space_id,hdf5_err)
-  call h5sclose_f(memory_space_id, hdf5_err)
   
   deallocate(dims_h5)
   deallocate(max_dims_h5)
-  
-  do jj = 1,length(2)
-    do ii = 1,length(1)
-      if(option%myrank.eq.0) write(*,*),ii,jj,int_buffer(ii,jj)
-	enddo
-  enddo
-  
-  call MPI_Barrier(option%mycomm,ierr)
 
   !
   ! Domain/Vertices
@@ -765,17 +754,10 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
                  dims_h5,hdf5_err,memory_space_id,data_space_id)
   
   call h5dclose_f(data_set_id,hdf5_err)
-  call h5pclose_f(prop_id, hdf5_err)
-  call h5sclose_f(data_space_id,hdf5_err)
-  call h5sclose_f(memory_space_id, hdf5_err)
+  !call h5gclose_f(grp_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
 
-  do jj = 1,length(2)
-    do ii = 1,length(1)
-      if(option%myrank.eq.0) write(*,*),ii,jj,double_buffer(ii,jj)
-	enddo
-  enddo
   
   ! fill the vertices data structure
   allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
