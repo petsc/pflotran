@@ -1214,9 +1214,9 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            call VecView(field%flow_xx_faces, viewer, ierr)
+       !     call VecView(field%flow_xx_faces, viewer, ierr)
             call VecView(field%flow_xx, viewer, ierr)
-            call vecView(field%flow_r_faces, viewer, ierr)
+       !     call vecView(field%flow_r_faces, viewer, ierr)
     else
             call VecView(field%flow_xx, viewer, ierr)
     end if
@@ -1224,7 +1224,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     call PetscViewerDestroy(viewer,ierr)
 
     write(*,*) "After SNESSolve" 
-    read(*,*)   
+!    read(*,*)   
      
 #endif
 
