@@ -1929,6 +1929,14 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   call RTUpdateTransportCoefs(realization)
   ! RTCalculateRHS_t1() updates aux vars to k+1 and calculates RHS fluxes and src/sinks
   call RTCalculateRHS_t1(realization)
+
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Trhs.out', &
+                              viewer,ierr)
+    call VecView(field%tran_rhs,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
   if (option%use_samr) then
     call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
     call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
@@ -2006,12 +2014,26 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   sum_linear_iterations = int(dble(sum_linear_iterations) / option%ntrandof)
   stepper%cumulative_linear_iterations = &
     stepper%cumulative_linear_iterations + sum_linear_iterations
- 
+
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Txx.out', &
+                              viewer,ierr)
+    call VecView(field%tran_xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
   ! activity coefficients are updated within RReact!  DO NOT updated
   ! here as doing so will cause errors in the t0 portion of the
   ! accumulation term for equilibrium sorbed species
   call RTReact(realization)
   
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'RTxx.out', &
+                              viewer,ierr)
+    call VecView(field%tran_xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
   call PetscBarrier(solver%ksp,ierr)
   call PetscGetTime(log_end_time, ierr)
   stepper%cumulative_solver_time = stepper%cumulative_solver_time + &

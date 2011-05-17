@@ -1,0 +1,86 @@
+:Description: 3D toy problem for richards equation
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== solver options ===================================
+TIMESTEPPER
+:MAX_STEPS 10
+END
+
+:=========================== discretization ===================================
+GRID
+TYPE unstructured usg_5x4x3.h5
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+SATURATION_FUNCTION_TYPE BROOKS_COREY
+RESIDUAL_SATURATION 0.1d0
+LAMBDA 0.3d0
+ALPHA 1.d-4
+/
+
+:=========================== output options ===================================
+OUTPUT
+FORMAT TECPLOT BLOCK
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 1.d0 s
+MAXIMUM_TIMESTEP_SIZE 10.d0 d
+/
+
+REFERENCE_PRESSURE 101325.
+
+:=========================== regions ==========================================
+
+REGION all
+FILE usg_5x4x3_region.dat 
+END 
+
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 60.d0
+PRESSURE 101325.d0
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+:TRANSPORT_CONDITION initial_c
+REGION all
+END
+
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION all 
+MATERIAL soil1
+END
+

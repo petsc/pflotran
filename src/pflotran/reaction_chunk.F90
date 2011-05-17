@@ -403,7 +403,7 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,vector_length, &
   
 !    if (maximum_relative_change < reaction%reaction_tolerance) exit
     if (maxval(maximum_relative_change(:,ithread)) < &
-        reaction%reaction_tolerance) exit
+        reaction%max_relative_change_tolerance) exit
     
   enddo
 

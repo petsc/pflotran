@@ -426,7 +426,8 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqkdfreundlichn(:)
     
     PetscReal :: max_dlnC
-    PetscReal :: reaction_tolerance
+    PetscReal :: max_relative_change_tolerance
+    PetscReal :: max_residual_tolerance
 
   end type reaction_type
 
@@ -715,7 +716,8 @@ function ReactionCreate()
   nullify(reaction%eqkdfreundlichn)
       
   reaction%max_dlnC = 5.d0
-  reaction%reaction_tolerance = 1.d-12
+  reaction%max_relative_change_tolerance = 1.d-12
+  reaction%max_residual_tolerance = 1.d-12
 
   ReactionCreate => reaction
   
