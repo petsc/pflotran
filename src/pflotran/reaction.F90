@@ -850,6 +850,7 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   character(len=MAXWORDLENGTH) :: card
   
   type(mineral_type), pointer :: cur_mineral
+  PetscBool :: found
   PetscInt :: imnrl,icount
 
   cur_mineral => reaction%mineral_list
@@ -871,9 +872,11 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
     call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
     
     cur_mineral => reaction%mineral_list
+    found = PETSC_FALSE
     do 
       if (.not.associated(cur_mineral)) exit
       if (StringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
+        found = PETSC_TRUE
         cur_mineral%itype = MINERAL_KINETIC
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
@@ -914,6 +917,11 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
       endif
       cur_mineral => cur_mineral%next
     enddo
+    if (.not.found) then
+      option%io_buffer = 'Mineral "' // trim(name) // '" specified under ' // &
+        'CHEMISTRY,MINERAL_KINETICS not found in list of available minerals.'
+      call printErrMsg(option)
+    endif
   enddo
   
   ! allocate kinetic mineral names
