@@ -466,9 +466,9 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
  
    aux_var%dRp_dp = ukvr*den_BWB
    do iface = 1, numfaces
-     aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(i)*pres(1)*WB(iface)*sq_faces(iface)
+     aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(iface)*pres(1)*WB(iface)*sq_faces(iface)
 
-     aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(i)*WB(iface)*(sq_faces(iface)*face_pres(iface) + bc_g(iface)) 
+     aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(iface)*WB(iface)*(sq_faces(iface)*face_pres(iface) + bc_g(iface)) 
 
    end do
    aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
@@ -914,7 +914,10 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
    
   dden_dp = dw_dp
 
-  
+ 
+  den = 55.3d-0 
+  dden_dp = 0
+ 
 
 end subroutine MFDComputeDensity
 

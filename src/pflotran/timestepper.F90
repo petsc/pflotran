@@ -1084,6 +1084,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Option_module
   use Solver_module
   use Field_module
+  use Richards_module
   
   implicit none
 
@@ -1220,11 +1221,16 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     else
             call VecView(field%flow_xx, viewer, ierr)
     end if
-    write(*,*) "VecView error", ierr
     call PetscViewerDestroy(viewer,ierr)
 
+    call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
+
+    call VecNorm(field%flow_r, NORM_2, tempreal, ierr)
+
+    write(*,*) "FV residual", tempreal
+
     write(*,*) "After SNESSolve" 
-!    read(*,*)   
+    read(*,*)   
      
 #endif
 
