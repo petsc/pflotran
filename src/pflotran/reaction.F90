@@ -36,7 +36,8 @@ module Reaction_module
             RReact, &
             RTAuxVarCompute, &
             RTAccumulation, &
-            RTAccumulationDerivative
+            RTAccumulationDerivative, &
+            RTPrintAuxVar
 
 contains
 
@@ -1452,6 +1453,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     
+    ! geh - for debugging
+    !call RTPrintAuxVar(rt_auxvar,reaction,option)
+
     Jac = 0.d0
 
 ! for colloids later on    
@@ -5472,5 +5476,133 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
   call printMsg(option)
 
 end subroutine RCalculateCompression
+
+! ************************************************************************** !
+!
+! PrintRTAuxVar: Prints data from RTAuxVar object
+! author: Glenn Hammond
+! date: 05/18/2011
+!
+! ************************************************************************** !
+subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: i
+  
+  10 format(a20,':',10es13.5)
+  20 format(a20,':',a20)
+  30 format(\)
+
+  if (OptionPrintToScreen(option)) &
+    write(*,20) 'Primary', 'free molal., total molar., act. coef.'
+  if (OptionPrintToFile(option)) &
+    write(option%fid_out,20) 'Primary', 'free molal., total molar., act. coef.'
+  do i = 1, reaction%naqcomp  
+    if (OptionPrintToScreen(option)) &
+      write(*,10) reaction%primary_species_names(i), &
+        rt_auxvar%pri_molal(i), &
+        rt_auxvar%total(i,1), &
+        rt_auxvar%pri_act_coef(i)
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,10) reaction%primary_species_names(i), &
+        rt_auxvar%pri_molal(i), &
+        rt_auxvar%total(i,1), &
+        rt_auxvar%pri_act_coef(i)
+  enddo
+  if (OptionPrintToScreen(option)) write(*,30)
+  if (OptionPrintToFile(option)) write(option%fid_out,30)
+
+!  aux_var%aqueous => MatrixBlockAuxVarCreate(option)
+!  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp, &
+!                             reaction%naqcomp,option%nphase,option)
+  
+  if (reaction%neqcplx > 0) then
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Secondary Complex', 'molal., act. coef.'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Secondary Complex', 'molal., act. coef.'
+    do i = 1, reaction%neqcplx  
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%secondary_species_names(i), &
+          rt_auxvar%sec_molal(i), &
+          rt_auxvar%sec_act_coef(i)
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%secondary_species_names(i), &
+          rt_auxvar%sec_molal(i), &
+          rt_auxvar%sec_act_coef(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif
+
+  if (reaction%neqsorb > 0) then  
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Total Sorbed', 'mol/m^3'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Total Sorbed', 'mol/m^3'
+    do i = 1, reaction%naqcomp  
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%primary_species_names(i), rt_auxvar%total_sorb_eq(i)
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%primary_species_names(i), &
+          rt_auxvar%total_sorb_eq(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif    
+  
+  if (reaction%neqsrfcplx > 0) then
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Surface Complex Conc.', 'mol/m^3'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Surface Complex Conc.', 'mol/m^3'
+    do i = 1, reaction%neqsrfcplx
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%eqsrfcplx_names(i), rt_auxvar%eqsrfcplx_conc(i)
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%eqsrfcplx_names(i), &
+          rt_auxvar%eqsrfcplx_conc(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif
+
+  if (reaction%nkinsrfcplxrxn > 0) then
+  endif
+  
+  if (reaction%neqionxrxn > 0) then
+  endif
+  
+  if (reaction%nkinmnrl > 0) then
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Kinetic Minerals', 'vol frac, area, rate'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Kinetic Minerals', 'vol frac, area, rate'
+    do i = 1, reaction%nkinmnrl
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%kinmnrl_names(i), &
+          rt_auxvar%mnrl_volfrac(i), &
+          rt_auxvar%mnrl_area(i), &
+          rt_auxvar%mnrl_rate(i)
+
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%kinmnrl_names(i), &
+          rt_auxvar%mnrl_volfrac(i), &
+          rt_auxvar%mnrl_area(i), &
+          rt_auxvar%mnrl_rate(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif
+
+end subroutine RTPrintAuxVar
 
 end module Reaction_module
