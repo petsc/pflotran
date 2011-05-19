@@ -344,7 +344,7 @@ subroutine ReactionRead(reaction,input,option)
 
           select case(trim(word))
 
-            case('KD_REACTION','KD_REACTIONS')
+            case('ISOTHERM_REACTIONS')
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
@@ -356,7 +356,7 @@ subroutine ReactionRead(reaction,input,option)
                 ! first string is species name
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'species name', &
-                                   'CHEMISTRY,KD_RXN')
+                                   'CHEMISTRY,ISOTHERM_REACTIONS')
                 kd_rxn%species_name = trim(word)
                 do 
                   call InputReadFlotranString(input,option)
@@ -365,16 +365,16 @@ subroutine ReactionRead(reaction,input,option)
 
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'keyword', &
-                                     'CHEMISTRY,KD_RXN')
+                                     'CHEMISTRY,ISOTHERM_REACTIONS')
                   call StringToUpper(word)
                   
                   ! default type is linear
                   kd_rxn%itype = SORPTION_LINEAR
                   select case(trim(word))
-                    case('TYPE','SORPTION_TYPE')
+                    case('TYPE')
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'type', &
-                                         'CHEMISTRY,KD_RXN')
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                       select case(word)
                         case('LINEAR')
                           kd_rxn%itype = SORPTION_LINEAR
@@ -385,17 +385,17 @@ subroutine ReactionRead(reaction,input,option)
                       end select
                     case('DISTRIBUTION_COEFFICIENT','KD')
                       call InputReadDouble(input,option,kd_rxn%Kd)
-                      call InputErrorMsg(input,option,'Kd', &
-                                         'CHEMISTRY,KD_RXN')
+                      call InputErrorMsg(input,option,'DISTRIBUTION_COEFFICIENT', &
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                     case('LANGMUIR_B')
                       call InputReadDouble(input,option,kd_rxn%Langmuir_B)
                       call InputErrorMsg(input,option,'Langmuir_B', &
-                                         'CHEMISTRY,KD_RXN')
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                       kd_rxn%itype = SORPTION_LANGMUIR
                     case('FREUNDLICH_N')
                       call InputReadDouble(input,option,kd_rxn%Freundlich_N)
                       call InputErrorMsg(input,option,'Freundlich_N', &
-                                         'CHEMISTRY,KD_RXN')
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                       kd_rxn%itype = SORPTION_FREUNDLICH
                   end select
                 enddo
