@@ -14,8 +14,7 @@ module Waypoint_module
     PetscBool :: print_output
     PetscBool :: print_tr_output
     type(output_option_type), pointer :: output_option
-    PetscBool :: update_bcs
-    PetscBool :: update_srcs
+    PetscBool :: update_conditions
     PetscReal :: dt_max
     PetscBool :: final  ! any waypoint after this will be deleted
     type(waypoint_type), pointer :: prev
@@ -63,8 +62,7 @@ function WaypointCreate()
   waypoint%final = PETSC_FALSE
 !  waypoint%output_option => OutputOptionCreate()
   nullify(waypoint%output_option)
-  waypoint%update_bcs = PETSC_FALSE
-  waypoint%update_srcs = PETSC_FALSE
+  waypoint%update_conditions = PETSC_FALSE
   waypoint%dt_max = 0.d0
   nullify(waypoint%next)
   nullify(waypoint%prev)
@@ -123,8 +121,11 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   waypoint => waypoint_list%first
   if (associated(waypoint)) then ! list exists
     ! if waypoint time matches another waypoint time, merge them
-    if (new_waypoint%time > 0.999999d0*waypoint%time .and. &
-        new_waypoint%time < 1.000001d0*waypoint%time) then ! same
+    if ((new_waypoint%time > 0.999999d0*waypoint%time .and. &
+         new_waypoint%time < 1.000001d0*waypoint%time) .or. &
+         ! need to account for waypoint%time = 0.d0
+        (new_waypoint%time < 1.d-40 .and. &
+         waypoint%time < 1.d-40)) then ! same
       call WaypointMerge(waypoint,new_waypoint)
       return
     else
@@ -392,16 +393,10 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%print_tr_output = PETSC_FALSE
   endif
 
-  if (old_waypoint%update_bcs .or. new_waypoint%update_bcs) then
-    old_waypoint%update_bcs = PETSC_TRUE
+  if (old_waypoint%update_conditions .or. new_waypoint%update_conditions) then
+    old_waypoint%update_conditions = PETSC_TRUE
   else
-    old_waypoint%update_bcs = PETSC_FALSE
-  endif
-
-  if (old_waypoint%update_srcs .or. new_waypoint%update_srcs) then
-    old_waypoint%update_srcs = PETSC_TRUE
-  else
-    old_waypoint%update_srcs = PETSC_FALSE
+    old_waypoint%update_conditions = PETSC_FALSE
   endif
 
   if (new_waypoint%dt_max > 0.d0) then

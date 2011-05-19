@@ -999,7 +999,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
   if (target_time + tolerance*dt >= cur_waypoint%time .and. &
-      (cur_waypoint%update_srcs .or. &
+      (cur_waypoint%update_conditions .or. &
        cur_waypoint%print_output .or. &
        cur_waypoint%print_tr_output)) then
     ! decrement by time step size
