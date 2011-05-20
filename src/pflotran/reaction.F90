@@ -4952,10 +4952,9 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
       if (dabs(logK(i) - 500.) < 1.d-10) then
         iflag = 1
         temp_int(i) = ZERO_INTEGER
-      else if (logK(i) .gt. 500.) then
         option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-                           trim(name) // '---stop!'
-        call printErrMsg(option)
+                           trim(name)
+        call printWrnMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
@@ -5499,7 +5498,7 @@ subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
   
   10 format(a20,':',10es13.5)
   20 format(a20,':',a20)
-  30 format(\)
+  30 format('\')
 
   if (OptionPrintToScreen(option)) &
     write(*,20) 'Primary', 'free molal., total molar., act. coef.'
