@@ -78,7 +78,7 @@ subroutine Init(simulation)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(pflow_debug_type), pointer :: debug
+  type(flow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string
@@ -712,7 +712,10 @@ subroutine Init(simulation)
   if (debug%print_couplers) then
     call verifyAllCouplers(realization)
   endif
-  
+  if (debug%print_waypoints) then
+    call WaypointListPrint(realization%waypoints,option)
+  endif
+
 #ifdef OS_STATISTICS
   call RealizationPrintGridStatistics(realization)
 #endif

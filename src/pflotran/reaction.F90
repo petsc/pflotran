@@ -5498,7 +5498,10 @@ subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
   
   10 format(a20,':',10es13.5)
   20 format(a20,':',a20)
-  30 format('\')
+  30 format(/)
+
+  if (OptionPrintToScreen(option)) write(*,30)
+  if (OptionPrintToFile(option)) write(option%fid_out,30)
 
   if (OptionPrintToScreen(option)) &
     write(*,20) 'Primary', 'free molal., total molar., act. coef.'

@@ -38,7 +38,7 @@ private
 
     type(input_type), pointer :: input
     type(field_type), pointer :: field
-    type(pflow_debug_type), pointer :: debug
+    type(flow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
 
     type(region_list_type), pointer :: regions
@@ -152,7 +152,7 @@ function RealizationCreate2(option)
   endif
   nullify(realization%input)
   realization%field => FieldCreate()
-  realization%debug => DebugCreatePflow()
+  realization%debug => DebugCreateFlow()
   realization%output_option => OutputOptionCreate()
 
   realization%level_list => LevelCreateList()
