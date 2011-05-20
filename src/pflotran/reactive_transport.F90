@@ -1488,7 +1488,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
                         global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,PETSC_FALSE,coef_in,coef_out)
+                        scale,coef_in,coef_out)
       Res(istartaq:iendaq) = & !coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
@@ -1918,7 +1918,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
                         global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,PETSC_TRUE,coef_in,coef_out)
+                        scale,coef_in,coef_out)
 
       coef_dn(1) = coef_in
       !geh: do not remove this conditional as otherwise MatSetValuesLocal() 
@@ -2913,7 +2913,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
                         global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,PETSC_FALSE,coef_in,coef_out)
+                        scale,coef_in,coef_out)
       res = coef_in*solution_loc_p(ghosted_id) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(idof,iphase)
@@ -3120,7 +3120,7 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
                         global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,PETSC_FALSE,coef_in,coef_out)
+                        scale,coef_in,coef_out)
       res = coef_in*solution_loc_p(ghosted_id) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(idof,iphase)
@@ -4492,7 +4492,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                         global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,PETSC_FALSE,coef_in,coef_out)
+                        scale,coef_in,coef_out)
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
@@ -5292,17 +5292,16 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                         global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,PETSC_TRUE,coef_in,coef_out)
-      Jup = 0.d0
-      do idof = istartaq, iendaq
-          Jup(idof,idof) = coef_in
-      enddo
-      if (reaction%ncoll > 0) then
-        do idof = istartcoll, iendcoll
-          Jup(idof,idof) = coef_in
-        enddo
+                        scale,coef_in,coef_out)
+      ! coef_in is non-zero
+      if (dabs(coef_in-1.d20) > 0.d0) then
+        Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)
+        if (reaction%ncoll > 0) then
+          option%io_buffer = 'Source/sink not yet implemented for colloids'
+          call printErrMsg(option)
+        endif
+        call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
       endif
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
     enddo                       
     source_sink => source_sink%next
   enddo

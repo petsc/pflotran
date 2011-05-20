@@ -100,6 +100,7 @@ PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
 PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
 
 ! condition types
+PetscInt, parameter :: NULL_CONDITION = 0
 PetscInt, parameter :: DIRICHLET_BC = 1
 PetscInt, parameter :: PRODUCTION_WELL = -1
 PetscInt, parameter :: NEUMANN_BC = 2

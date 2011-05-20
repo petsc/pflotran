@@ -424,12 +424,10 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
     return
   endif
   
-  if (len_trim(sub_condition%ctype) < 1) then
-    option%io_buffer = 'type of ' // trim(condition%name) // ':' // &
-                     trim(sub_condition_name) // ' set to default'
-    call printWrnMsg(option)
-    sub_condition%ctype = default_ctype
-    sub_condition%itype = default_itype
+  if (len_trim(sub_condition%ctype) == NULL_CONDITION) then
+    option%io_buffer = 'TYPE of condition ' // trim(condition%name) // &
+      ' ' // trim(sub_condition_name) // ' dataset not defined.'
+    call printErrMsg(option)
   endif
   
   call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
@@ -871,12 +869,17 @@ subroutine FlowConditionRead(condition,input,option)
   if (default_gradient%interpolation_method == NULL) &
     default_gradient%interpolation_method = default_dataset%interpolation_method
 
-  ! verify the datasets
-  word = 'pressure'
-  call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient, PETSC_TRUE)
+  ! check to ensure that a rate condition is not of type pressure   
+  if (associated(rate)) then
+    select case(rate%itype)
+      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC,UNIT_GRADIENT_BC, &
+           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
+        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
+          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
+          'seepage, or conductance".'
+        call printErrMsg(option)
+    end select
+  endif
   ! check to ensure that a pressure condition is not of type rate   
   if (associated(pressure)) then                          
     select case(pressure%itype)
@@ -889,23 +892,17 @@ subroutine FlowConditionRead(condition,input,option)
     end select
   endif
 
+  ! verify the datasets
+  word = 'pressure/flux'
+  call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient, PETSC_TRUE)
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,rate,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
-  ! check to ensure that a rate condition is not of type pressure   
-  if (associated(rate)) then
-    select case(rate%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC, &
-           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
-        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
-          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
-          'seepage, or conductance".'
-        call printErrMsg(option)
-    end select
-  endif
-
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
                               default_ctype, default_itype, &
@@ -921,7 +918,7 @@ subroutine FlowConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
-    
+
   select case(option%iflowmode)
     case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then

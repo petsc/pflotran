@@ -762,7 +762,7 @@ end subroutine TFluxCoef_CD
 !
 ! ************************************************************************** !
 subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
-                        por,sat,vol,den,scale,kg_per_sec,T_in,T_out)
+                        por,sat,vol,den,scale,T_in,T_out)
 
   use Option_module
 
@@ -777,7 +777,6 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
   PetscReal :: vol
   PetscReal :: den
   PetscReal :: scale
-  PetscBool :: kg_per_sec
   PetscReal :: T_in ! coefficient that scales concentration at cell
   PetscReal :: T_out ! concentration that scales external concentration
       
@@ -824,13 +823,10 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
       endif
   end select
 
-  ! up to this point, units = L water/sec, which is correct for residual function
-  ! for Jacobian, need kg water/sec
-  if (kg_per_sec) then
-    T_in = T_in * den / 1000.d0
-    T_out = T_out * den / 1000.d0
-  endif
-  
+  ! Units of Tin & Tout should be L/s.  When multiplied by Total (M) you get
+  ! moles/sec, the units of the residual.  To get the units of the Jacobian
+  ! kg/sec, one must either scale by dtotal or den/1000. (kg/L).
+
 end subroutine TSrcSinkCoef
   
 end module Transport_module
