@@ -803,11 +803,11 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
           case(MASS_RATE_SS)
             T_out = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(SCALED_MASS_RATE_SS)
-            T_out = -1.d0*qsrc/den*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_out = -1.d0*qsrc/den*1000.d0*scale ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(VOLUMETRIC_RATE_SS)
-            T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 m^3/L -> L/s
+            T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
           case(SCALED_VOLUMETRIC_RATE_SS)
-            T_out = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_out = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 L/m^3 -> L/s
         end select
       else
         T_out = 0.d0
@@ -815,11 +815,11 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
           case(MASS_RATE_SS)
             T_in = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(SCALED_MASS_RATE_SS)
-            T_in = -1.d0*qsrc/den*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc/den*1000.d0*scale ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(VOLUMETRIC_RATE_SS)
-            T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
           case(SCALED_VOLUMETRIC_RATE_SS)
-            T_in = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 L/m^3 -> L/s
         end select
       endif
   end select

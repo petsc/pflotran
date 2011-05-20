@@ -11,8 +11,6 @@ module Reactive_Transport_module
   
   private 
 
-#define NEW_SRC_SINK2
-
 #include "definitions.h"
   
 #include "finclude/petscvec.h"
@@ -1453,16 +1451,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-#ifdef NEW_SRC_SINK
       flow_src_sink_type = source_sink%flow_condition%rate%itype
-#else
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-#endif    
     endif
     
     ! only handle injection on rhs
@@ -1493,7 +1482,6 @@ subroutine RTCalculateRHS_t1Patch(realization)
       else
         scale = 1.d0
       endif
-#ifdef NEW_SRC_SINK
       call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
                         source_sink%tran_condition%itype, &
                         porosity_loc_p(ghosted_id), &
@@ -1509,106 +1497,6 @@ subroutine RTCalculateRHS_t1Patch(realization)
                                    coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                               rt_auxvar%colloid%conc_mob(:)
       endif
-
-#else
-      
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          ! units should be mol/sec
-          Res(istartaq:iendaq) = -1.d-6* &
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-!                (source_sink%tran_condition%cur_constraint_coupler% &
-!                 rt_auxvar%total(:,iphase) - rt_aux_vars(ghosted_id)%total(:,iphase))* &
-! keeping only the fixed portion for RHS
-                (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%total(:,iphase))* & !- rt_aux_vars(ghosted_id)%total(:,iphase))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-          if (reaction%ncoll > 0) then
-            Res(istartcoll:iendcoll)  =  -1.d-6* &
-              !in this case, conc_mob is in molality 
-              ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)* 
-              !         (m^3 bulk)*(kg water/m^3 water)/(sec)*
-              !         (mol colloid /kg water) = mol colloid/sec
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-!                (source_sink%tran_condition%cur_constraint_coupler% &
-!                 rt_auxvar%colloid%conc_mob(:) - rt_aux_vars(ghosted_id)%colloid%conc_mob(:))* &
-! keeping only the fixed portion for RHS
-                (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%colloid%conc_mob(:))* & ! - rt_aux_vars(ghosted_id)%colloid%conc_mob(:))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-          endif
-        case(MASS_RATE_SS,SCALED_MASS_RATE_SS)
-          if (source_sink%tran_condition%itype == SCALED_MASS_RATE_SS) then
-            scale = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
-          endif
-          Res(istartaq:iendaq) = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%total(:,iphase) ! actually moles/sec
-          if (reaction%ncoll > 0) then
-            option%io_buffer = 'Need to implement MASS_RATE_SS source/sink ' // &
-                               'term correctly for colloids'
-            call printErrMsg(option)
-            Res(istartcoll:iendcoll) = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%colloid%conc_mob(:) ! actually moles/sec
-          endif          
-        case(VOLUMETRIC_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-          if (source_sink%tran_condition%itype == SCALED_VOLUMETRIC_RATE_SS) then
-            scale = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
-          endif
-          if (qsrc > 0) then ! injection
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              Res(istartaq:iendaq) = -qsrc*scale* & ! m^3 water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%total(:,iphase)*1000.d0
-              if (reaction%ncoll > 0) then
-                Res(istartcoll:iendcoll) = -qsrc*scale* & ! m^3 water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:)*1000.d0
-              endif                     
-            else ! mass
-              Res(istartaq:iendaq) = -qsrc*scale* & ! kg water / sec
-                     source_sink%tran_condition%cur_constraint_coupler% &
-                     rt_auxvar%total(:,iphase)/ &
-                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                     1000.d0
-              if (reaction%ncoll > 0) then  ! needs to be moles/sec
-                Res(istartcoll:iendcoll) = -qsrc*scale* & ! kg water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0
-              endif                     
-            endif
-          else ! extraction
-            ! all extraction, which is a function of the cell concentration is
-            ! handled in the transport matrix, not the RHS
-!            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-!              Res(istartaq:iendaq) = -qsrc*scale*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
-!              if (reaction%ncoll > 0) then
-!                Res(istartcoll:iendcoll) = -qsrc*scale* & ! m^3 water / sec
-!                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)*1000.d0
-!              endif               
-!            else
-!              Res(istartaq:iendaq) = -qsrc*scale* &
-!                    rt_aux_vars(ghosted_id)%total(:,iphase)/ &
-!                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-!                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-!              if (reaction%ncoll > 0) then  ! needs to be moles/sec
-!                Res(istartcoll:iendcoll) = -qsrc*scale* & ! kg water / sec
-!                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)/ & 
-!                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-!                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-!              endif                     
-!            endif
-          endif
-      end select
-!      if (option%compute_mass_balance_new) then
-        ! need to added global aux_var for src/sink
-!        rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) + Res
-!      endif
-#endif
       istartall = offset + 1
       iendall = offset + reaction%ncomp
       ! subtract since the contribution is on the rhs
@@ -2004,16 +1892,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-#ifdef NEW_SRC_SINK
       flow_src_sink_type = source_sink%flow_condition%rate%itype
-#else
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-#endif    
     endif
       
     ! only handle extraction on lhs
@@ -2033,7 +1912,6 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
       else
         scale = 1.d0
       endif
-#ifdef NEW_SRC_SINK
       call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
                         source_sink%tran_condition%itype, &
                         porosity_loc_p(ghosted_id), &
@@ -2043,35 +1921,6 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
                         scale,PETSC_TRUE,coef_in,coef_out)
 
       coef_dn(1) = coef_in
-#else      
-      coef_dn(1) = 0.d0
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          ! units should be mol/sec
-          coef_dn(1) = -1.d-6* &
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-! keeping only the non-fixed portion for RHS
-                !(source_sink%tran_condition%cur_constraint_coupler% &
-                !rt_auxvar%total(:,iphase) 
-                -1.d0 * & !rt_aux_vars(ghosted_id)%total(:,iphase))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-        case(MASS_RATE_SS)
-          ! since specified mass rate is fixed, include only on RHS
-        case default
-          if (qsrc > 0) then ! injection
-            ! all injection, which is fixed (i.e. not a function of the 
-            ! cell concentration is handled on the RHS, not in the transport 
-            ! matrix
-          else ! extraction
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              coef_dn(1) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
-            else
-              coef_dn(1) = -qsrc
-            endif
-          endif
-      end select
-#endif
       !geh: do not remove this conditional as otherwise MatSetValuesLocal() 
       !     will be called for injection too (wasted calls)
       if (coef_dn(1) > 0.d0) then
@@ -3044,16 +2893,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-#ifdef NEW_SRC_SINK
       flow_src_sink_type = source_sink%flow_condition%rate%itype
-#else
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-#endif    
     endif
       
     do iconn = 1, cur_connection_set%num_connections      
@@ -3067,7 +2907,6 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
       else
         scale = 1.d0
       endif
-#ifdef NEW_SRC_SINK
       call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
                         source_sink%tran_condition%itype, &
                         porosity_loc_p(ghosted_id), &
@@ -3083,105 +2922,6 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
               coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                               rt_auxvar%colloid%conc_mob(idof)
       endif
-
-#else      
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          ! units should be mol/sec
-          res = -1.d-6* &
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-                (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%total(idof,iphase) - solution_loc_p(ghosted_id))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-! not sure how to handle colloids here - geh
-#if 0  
-          if (reaction%ncoll > 0) then
-            res  =  -1.d-6* &
-              !in this case, conc_mob is in molality 
-              ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)* 
-              !         (m^3 bulk)*(kg water/m^3 water)/(sec)*
-              !         (mol colloid /kg water) = mol colloid/sec
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-                (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%colloid%conc_mob(idof) - solution_loc_p(ghosted_id))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-          endif
-#endif          
-        case(MASS_RATE_SS)
-          res = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%total(idof,iphase) ! actually moles/sec
-! not sure how to handle colloids here - geh
-#if 0  
-          if (reaction%ncoll > 0) then
-            option%io_buffer = 'Need to implement MASS_RATE_SS source/sink ' // &
-                               'term correctly for colloids'
-            call printErrMsg(option)
-            res = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%colloid%conc_mob(idof) ! actually moles/sec
-          endif          
-#endif
-        case default
-          if (qsrc > 0) then ! injection
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              res = -qsrc* & ! m^3 water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%total(idof,iphase)*1000.d0
-! not sure how to handle colloids here - geh
-#if 0  
-              if (reaction%ncoll > 0) then
-                res = -qsrc* & ! m^3 water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(idof)*1000.d0
-              endif                     
-#endif
-            else ! mass
-              res = -qsrc* & ! kg water / sec
-                     source_sink%tran_condition%cur_constraint_coupler% &
-                     rt_auxvar%total(idof,iphase)/ &
-                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                     1000.d0
-! not sure how to handle colloids here - geh
-#if 0  
-              if (reaction%ncoll > 0) then  ! needs to be moles/sec
-                res = -qsrc* & ! kg water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0
-              endif 
-#endif                                  
-            endif
-          else ! extraction
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              res = -qsrc*solution_loc_p(ghosted_id)*1000.d0
-! not sure how to handle colloids here - geh
-#if 0  
-              if (reaction%ncoll > 0) then
-                res = -qsrc* & ! m^3 water / sec
-                    solution_loc_p(ghosted_id)*1000.d0
-              endif               
-#endif
-            else
-              res = -qsrc* &
-                    solution_loc_p(ghosted_id)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-! not sure how to handle colloids here - geh
-#if 0  
-              if (reaction%ncoll > 0) then  ! needs to be moles/sec
-                res = -qsrc* & ! kg water / sec
-                    solution_loc_p(ghosted_id)/ & 
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-              endif                     
-#endif
-            endif
-          endif
-      end select
-#endif
-
       residual_p(local_id) = residual_p(local_id) + res
     enddo
     source_sink => source_sink%next
@@ -4722,16 +4462,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-#ifdef NEW_SRC_SINK
       flow_src_sink_type = source_sink%flow_condition%rate%itype
-#else
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-#endif    
     endif
       
     do iconn = 1, cur_connection_set%num_connections      
@@ -4755,7 +4486,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       else
         scale = 1.d0
       endif
-#ifdef NEW_SRC_SINK
       call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
                         source_sink%tran_condition%itype, &
                         porosity_loc_p(ghosted_id), &
@@ -4771,92 +4501,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                    coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                               rt_auxvar%colloid%conc_mob(:)
       endif
-
-#else
-
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          ! units should be mol/sec
-          Res(istartaq:iendaq) = -1.d-6* &
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-                (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%total(:,iphase) - rt_aux_vars(ghosted_id)%total(:,iphase))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-          if (reaction%ncoll > 0) then
-            Res(istartcoll:iendcoll)  =  -1.d-6* &
-              !in this case, conc_mob is in molality 
-              ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)* 
-              !         (m^3 bulk)*(kg water/m^3 water)/(sec)*
-              !         (mol colloid /kg water) = mol colloid/sec
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-                (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%colloid%conc_mob(:) - rt_aux_vars(ghosted_id)%colloid%conc_mob(:))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-          endif
-        case(MASS_RATE_SS)
-          Res(istartaq:iendaq) = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%total(:,iphase) ! actually moles/sec
-          if (reaction%ncoll > 0) then
-            option%io_buffer = 'Need to implement MASS_RATE_SS source/sink ' // &
-                               'term correctly for colloids'
-            call printErrMsg(option)
-            Res(istartcoll:iendcoll) = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%colloid%conc_mob(:) ! actually moles/sec
-          endif          
-        case default
-          if (qsrc > 0) then ! injection
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              Res(istartaq:iendaq) = -qsrc*scale* & ! m^3 water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%total(:,iphase)*1000.d0
-              if (reaction%ncoll > 0) then
-                Res(istartcoll:iendcoll) = -qsrc*scale* & ! m^3 water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:)*1000.d0
-              endif                     
-            else ! mass
-              Res(istartaq:iendaq) = -qsrc*scale* & ! kg water / sec
-                     source_sink%tran_condition%cur_constraint_coupler% &
-                     rt_auxvar%total(:,iphase)/ &
-                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                     1000.d0
-              if (reaction%ncoll > 0) then  ! needs to be moles/sec
-                Res(istartcoll:iendcoll) = -qsrc*scale* & ! kg water / sec
-                    source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0
-              endif                     
-            endif
-          else ! extraction
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              Res(istartaq:iendaq) = -qsrc*scale*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
-              if (reaction%ncoll > 0) then
-                Res(istartcoll:iendcoll) = -qsrc*scale* & ! m^3 water / sec
-                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)*1000.d0
-              endif               
-            else
-              Res(istartaq:iendaq) = -qsrc*scale* &
-                    rt_aux_vars(ghosted_id)%total(:,iphase)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-              if (reaction%ncoll > 0) then  ! needs to be moles/sec
-                Res(istartcoll:iendcoll) = -qsrc*scale* & ! kg water / sec
-                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)/ & 
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-              endif                     
-            endif
-          endif
-      end select
-!      if (option%compute_mass_balance_new) then
-        ! need to added global aux_var for src/sink
-!        rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) + Res
-!      endif
-#endif
       istartall = offset + 1
       iendall = offset + reaction%ncomp
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                                  
@@ -5620,16 +5264,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-#ifdef NEW_SRC_SINK
       flow_src_sink_type = source_sink%flow_condition%rate%itype
-#else
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-#endif    
     endif
       
     do iconn = 1, cur_connection_set%num_connections      
@@ -5651,7 +5286,6 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       else
         scale = 1.d0
       endif
-#ifdef NEW_SRC_SINK
       call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
                         source_sink%tran_condition%itype, &
                         porosity_loc_p(ghosted_id), &
@@ -5668,53 +5302,6 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           Jup(idof,idof) = coef_in
         enddo
       endif
-#else
-      
-      Jup = 0.d0
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          do idof = istartaq, iendaq
-            Jup(idof,idof) = 1.d-6* &
-                                 porosity_loc_p(ghosted_id)* &
-                                 global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
-                                 volume_p(local_id)
-          enddo
-          if (reaction%ncoll > 0) then
-             do idof = istartcoll, iendcoll
-              Jup(idof,idof) = 1.d-6* &
-                               porosity_loc_p(ghosted_id)* &
-                               global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
-                               volume_p(local_id)
-            enddo
-          endif
-        case(MASS_RATE_SS)
-        case default
-          ! units = kg water/sec
-          if (qsrc < 0) then ! extraction
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              ! qsrc = m^3 water/sec
-              do idof = istartaq, iendaq
-                ! m^3 water/sec * kg water/m^3 water = kg water/sec
-                Jup(idof,idof) = -qsrc*scale*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
-              enddo
-              if (reaction%ncoll > 0) then
-                do idof = istartcoll, iendcoll
-                  Jup(idof,idof) = -qsrc*scale*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
-                enddo
-              endif              
-            else ! qsrc is mass -> kg water/sec
-              do idof = istartaq, iendaq
-                Jup(idof,idof) = -qsrc*scale
-              enddo
-              if (reaction%ncoll > 0) then
-                do idof = istartcoll, iendcoll
-                  Jup(idof,idof) = -qsrc*scale
-                enddo
-              endif                 
-            endif
-          endif
-      end select
-#endif
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
     enddo                       
     source_sink => source_sink%next
