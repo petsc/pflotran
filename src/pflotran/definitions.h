@@ -198,7 +198,6 @@ PetscInt, parameter :: PHASE = 15
 PetscInt, parameter :: MATERIAL_ID = 16
 PetscInt, parameter :: GAS_DENSITY_MOL = 17
 
-
 PetscInt, parameter :: PRIMARY_MOLALITY = 18
 PetscInt, parameter :: SECONDARY_MOLALITY = 19
 PetscInt, parameter :: TOTAL_MOLALITY = 20
@@ -222,6 +221,7 @@ PetscInt, parameter :: TOTAL_SORBED_MOBILE = 37
 PetscInt, parameter :: COLLOID_MOBILE = 38
 PetscInt, parameter :: COLLOID_IMMOBILE = 39
 PetscInt, parameter :: AGE = 40
+PetscInt, parameter :: STATE = 41
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
