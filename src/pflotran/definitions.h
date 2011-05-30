@@ -283,4 +283,16 @@ PetscInt, parameter :: DATASET_HETEROGENEOUS = 4
 PetscInt, parameter :: STAR_STENCIL = 1
 PetscInt, parameter :: BOX_STENCIL = 2
 
+! grid cell type
+PetscInt, parameter :: HEX_TYPE          = 1
+PetscInt, parameter :: WEDGE_TYPE        = 2
+
+! grid cell properties
+PetscInt, parameter :: TRI_FACE_TYPE     = 1
+PetscInt, parameter :: QUAD_FACE_TYPE    = 2
+PetscInt, parameter :: MAX_VERT_PER_CELL = 8
+PetscInt, parameter :: MAX_DUALS         = 6
+PetscInt, parameter :: MAX_VERT_PER_FACE = 4
+PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
+
 #define HASH
