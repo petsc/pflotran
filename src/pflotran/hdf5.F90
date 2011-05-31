@@ -2460,7 +2460,7 @@ end subroutine HDF5ReadRegionFromFile
 ! HDF5ReadUnstructuredGridRegionFromFile: Reads a region from an hdf5 file
 !     for unstructured grid
 ! author: Gautam Bisht
-! date: 1/3/08
+! date: 5/31/11
 !
 ! ************************************************************************** !
 subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
@@ -3306,4 +3306,41 @@ end subroutine HDF5WriteStructDataSetFromVec
 
 #endif
       
+! ************************************************************************** !
+!
+! HDF5ReadUnstructuredGridRegionFromFile: AMR stub
+! author: Gautam Bisht
+! date: 5/31/11
+!
+! ************************************************************************** !
+#if defined(SAMR_HAVE_HDF5)
+subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+
+#if defined(PETSC_HAVE_HDF5)
+  use hdf5
+#endif
+
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Region_module
+  use Patch_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(realization_type)         :: realization
+  type(region_type)              :: region
+  character(len=MAXSTRINGLENGTH) :: filename
+
+
+end subroutine
+
+#endif
+
 end module HDF5_module
+
+
+
