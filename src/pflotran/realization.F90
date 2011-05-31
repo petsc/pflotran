@@ -38,7 +38,7 @@ private
 
     type(input_type), pointer :: input
     type(field_type), pointer :: field
-    type(pflow_debug_type), pointer :: debug
+    type(flow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
 
     type(region_list_type), pointer :: regions
@@ -152,7 +152,7 @@ function RealizationCreate2(option)
   endif
   nullify(realization%input)
   realization%field => FieldCreate()
-  realization%debug => DebugCreatePflow()
+  realization%debug => DebugCreateFlow()
   realization%output_option => OutputOptionCreate()
 
   realization%level_list => LevelCreateList()
@@ -1764,6 +1764,7 @@ subroutine RealizationScaleSourceSink(realization)
   PetscInt :: iconn
   PetscReal :: scale, sum
   PetscInt :: icount
+  PetscInt :: x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
   
   PetscInt :: ghosted_neighbors(0:27)
@@ -1803,12 +1804,13 @@ subroutine RealizationScaleSourceSink(realization)
             case(RICHARDS_MODE,G_MODE)
                call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
                                             x_width,y_width,z_width, &
+                                            x_count,y_count,z_count, &
                                             ghosted_neighbors,option)
                ! ghosted neighbors is ordered first in x, then, y, then z
                icount = 0
                sum = 0.d0
                ! x-direction
-               do while (icount < 2*x_width)
+               do while (icount < x_count)
                  icount = icount + 1
                  neighbor_ghosted_id = ghosted_neighbors(icount)
                  sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1817,7 +1819,7 @@ subroutine RealizationScaleSourceSink(realization)
                  
                enddo
                ! y-direction
-               do while (icount < 2*(x_width+y_width))
+               do while (icount < x_count + y_count)
                  icount = icount + 1
                  neighbor_ghosted_id = ghosted_neighbors(icount)                 
                  sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1826,7 +1828,7 @@ subroutine RealizationScaleSourceSink(realization)
                  
                enddo
                ! z-direction
-               do while (icount < 2*(x_width+y_width+z_width))
+               do while (icount < x_count + y_count + z_count)
                  icount = icount + 1
                  neighbor_ghosted_id = ghosted_neighbors(icount)                 
                  sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1974,61 +1976,11 @@ subroutine RealizationAddWaypointsToList(realization)
   type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
   PetscReal :: temp_real, final_time
+  PetscReal, pointer :: times(:)
 
   option => realization%option
   waypoint_list => realization%waypoints
-
-  cur_flow_condition => realization%flow_conditions%first
-  do
-    if (.not.associated(cur_flow_condition)) exit
-    if (cur_flow_condition%sync_time_with_update) then
-      do isub_condition = 1, cur_flow_condition%num_sub_conditions
-        sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
-        itime = 1
-        if (sub_condition%dataset%max_time_index == 1 .and. &
-            sub_condition%dataset%times(itime) > 1.d-40) then
-          waypoint => WaypointCreate()
-          waypoint%time = sub_condition%dataset%times(itime)
-          waypoint%update_bcs = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-          exit
-        endif
-      enddo
-    endif
-    cur_flow_condition => cur_flow_condition%next
-  enddo
-      
-  cur_tran_condition => realization%transport_conditions%first
-  do
-    if (.not.associated(cur_tran_condition)) exit
-    if (cur_tran_condition%sync_time_with_update .and. &
-        cur_tran_condition%is_transient) then
-      cur_constraint_coupler => cur_tran_condition%constraint_coupler_list
-      do
-        if (.not.associated(cur_constraint_coupler)) exit
-        if (cur_constraint_coupler%time > 1.d-40) then
-          waypoint => WaypointCreate()
-          waypoint%time = cur_constraint_coupler%time
-          waypoint%update_bcs = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        endif
-        cur_constraint_coupler => cur_constraint_coupler%next
-      enddo
-    endif
-    cur_tran_condition => cur_tran_condition%next
-  enddo
-
-  if (associated(realization%velocity_dataset)) then
-    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
-        size(realization%velocity_dataset%times) > 1) then
-      do itime = 1, size(realization%velocity_dataset%times)
-        waypoint => WaypointCreate()
-        waypoint%time = realization%velocity_dataset%times(itime)
-        waypoint%update_srcs = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-  endif
+  nullify(times)
   
   ! set flag for final output
   cur_waypoint => waypoint_list%first
@@ -2041,7 +1993,75 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_waypoint => cur_waypoint%next
   enddo
   ! use final time in conditional below
-  if (associated(cur_waypoint)) final_time = cur_waypoint%time
+  if (associated(cur_waypoint)) then
+    final_time = cur_waypoint%time
+  else
+    option%io_buffer = 'Final time not found in RealizationAddWaypointsToList'
+    call printErrMsg(option)
+  endif
+
+  ! add update of flow conditions
+  cur_flow_condition => realization%flow_conditions%first
+  do
+    if (.not.associated(cur_flow_condition)) exit
+    if (cur_flow_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_flow_condition%num_sub_conditions
+        sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
+        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
+                                          times)
+        if (size(times) > 1000) then
+          option%io_buffer = 'For flow condition "' // &
+            trim(cur_flow_condition%name) // &
+            '" dataset "' // trim(sub_condition%name) // &
+            '", the number of times is excessive for synchronization ' // &
+            'with waypoints.'
+          call printErrMsg(option)
+        endif
+        do itime = 1, size(times)
+          waypoint => WaypointCreate()
+          waypoint%time = times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        deallocate(times)
+        nullify(times)
+      enddo
+    endif
+    cur_flow_condition => cur_flow_condition%next
+  enddo
+      
+  ! add update of transport conditions
+  cur_tran_condition => realization%transport_conditions%first
+  do
+    if (.not.associated(cur_tran_condition)) exit
+    if (cur_tran_condition%is_transient) then
+      cur_constraint_coupler => cur_tran_condition%constraint_coupler_list
+      do
+        if (.not.associated(cur_constraint_coupler)) exit
+        if (cur_constraint_coupler%time > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = cur_constraint_coupler%time
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        endif
+        cur_constraint_coupler => cur_constraint_coupler%next
+      enddo
+    endif
+    cur_tran_condition => cur_tran_condition%next
+  enddo
+
+  ! add update of velocity fields
+  if (associated(realization%velocity_dataset)) then
+    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
+        size(realization%velocity_dataset%times) > 1) then
+      do itime = 1, size(realization%velocity_dataset%times)
+        waypoint => WaypointCreate()
+        waypoint%time = realization%velocity_dataset%times(itime)
+        waypoint%update_conditions = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+  endif
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &

@@ -450,12 +450,12 @@ contains
     fnine = 9.d0
     ten = 10.d0
     
-    tc1 = 647.3d0    
-    pc1 = 2.212d7     
-    vc1 = 0.00317d0
-    utc1 = one/tc1
-    upc1 = one/pc1
-    vc1mol = vc1*18.01534d0
+    tc1 = 647.3d0    ! K
+    pc1 = 2.212d7    ! Pa 
+    vc1 = 0.00317d0  ! m^3/kg
+    utc1 = one/tc1   ! 1/C
+    upc1 = one/pc1   ! 1/Pa
+    vc1mol = vc1*18.01534d0 ! m^3/kmol
     
     theta = (t+273.15d0)*utc1
     theta2x = theta*theta
@@ -491,8 +491,8 @@ contains
          +aa(16)*u4-u2*u3-u6*u7+(three*aa(21)*(a12-theta) &
          +four*aa(22)*beta/theta20)*beta2x
     
-    dwmol = one/(vr*vc1mol)
-    dw = one/(vr*vc1)
+    dwmol = one/(vr*vc1mol) ! kmol/m^3
+    dw = one/(vr*vc1) ! kg/m^3
     
 !---calculate derivatives for water density
     ypt = six*a2*theta**(-7)-two*a1*theta
@@ -510,8 +510,8 @@ contains
         theta20)*beta
     
     cnv = -one/(vc1mol*vr*vr)
-    dwt = cnv*vrpt*utc1
-    dwp = cnv*vrpp*upc1
+    dwt = cnv*vrpt*utc1 ! kmol/m^3/C
+    dwp = cnv*vrpp*upc1 ! kmol/m^3/Pa
     
 !   print *,'water_eos: ',p,t,dwp,cnv,vrpp,upc1
     
@@ -574,9 +574,12 @@ contains
     term7p = beta2x*(three*aa(21)*a12+84.d0*aa(22)*beta/theta20)
     term7t = -420.d0*aa(22)*beta4/(theta20*theta)
     
+    ! The scale (usually 1e-6) should be applied below to pc1 to convert
+    ! from Pa -> MPa.  Applying it to critical volume does the same, but is
+    ! misleading - geh
     vc1molh = vc1mol*scale
     
-    v1 = pc1*vc1molh
+    v1 = pc1*vc1molh ! MPa * m^3/kmol = MJ/kmol assuming scale = 1e-6
     hw = (term1-term2+term3+term4-term5+term6+term7)*v1
     
     hwp = (term3p+term4p-term5p+term6p+term7p)*vc1molh

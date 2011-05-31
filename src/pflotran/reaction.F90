@@ -36,7 +36,8 @@ module Reaction_module
             RReact, &
             RTAuxVarCompute, &
             RTAccumulation, &
-            RTAccumulationDerivative
+            RTAccumulationDerivative, &
+            RTPrintAuxVar
 
 contains
 
@@ -343,7 +344,7 @@ subroutine ReactionRead(reaction,input,option)
 
           select case(trim(word))
 
-            case('KD_REACTION','KD_REACTIONS')
+            case('ISOTHERM_REACTIONS')
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
@@ -355,7 +356,7 @@ subroutine ReactionRead(reaction,input,option)
                 ! first string is species name
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'species name', &
-                                   'CHEMISTRY,KD_RXN')
+                                   'CHEMISTRY,ISOTHERM_REACTIONS')
                 kd_rxn%species_name = trim(word)
                 do 
                   call InputReadFlotranString(input,option)
@@ -364,16 +365,16 @@ subroutine ReactionRead(reaction,input,option)
 
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'keyword', &
-                                     'CHEMISTRY,KD_RXN')
+                                     'CHEMISTRY,ISOTHERM_REACTIONS')
                   call StringToUpper(word)
                   
                   ! default type is linear
                   kd_rxn%itype = SORPTION_LINEAR
                   select case(trim(word))
-                    case('TYPE','SORPTION_TYPE')
+                    case('TYPE')
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'type', &
-                                         'CHEMISTRY,KD_RXN')
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                       select case(word)
                         case('LINEAR')
                           kd_rxn%itype = SORPTION_LINEAR
@@ -384,17 +385,17 @@ subroutine ReactionRead(reaction,input,option)
                       end select
                     case('DISTRIBUTION_COEFFICIENT','KD')
                       call InputReadDouble(input,option,kd_rxn%Kd)
-                      call InputErrorMsg(input,option,'Kd', &
-                                         'CHEMISTRY,KD_RXN')
+                      call InputErrorMsg(input,option,'DISTRIBUTION_COEFFICIENT', &
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                     case('LANGMUIR_B')
                       call InputReadDouble(input,option,kd_rxn%Langmuir_B)
                       call InputErrorMsg(input,option,'Langmuir_B', &
-                                         'CHEMISTRY,KD_RXN')
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                       kd_rxn%itype = SORPTION_LANGMUIR
                     case('FREUNDLICH_N')
                       call InputReadDouble(input,option,kd_rxn%Freundlich_N)
                       call InputErrorMsg(input,option,'Freundlich_N', &
-                                         'CHEMISTRY,KD_RXN')
+                                         'CHEMISTRY,ISOTHERM_REACTIONS')
                       kd_rxn%itype = SORPTION_FREUNDLICH
                   end select
                 enddo
@@ -850,6 +851,7 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   character(len=MAXWORDLENGTH) :: card
   
   type(mineral_type), pointer :: cur_mineral
+  PetscBool :: found
   PetscInt :: imnrl,icount
 
   cur_mineral => reaction%mineral_list
@@ -871,9 +873,11 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
     call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
     
     cur_mineral => reaction%mineral_list
+    found = PETSC_FALSE
     do 
       if (.not.associated(cur_mineral)) exit
       if (StringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
+        found = PETSC_TRUE
         cur_mineral%itype = MINERAL_KINETIC
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
@@ -914,6 +918,11 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
       endif
       cur_mineral => cur_mineral%next
     enddo
+    if (.not.found) then
+      option%io_buffer = 'Mineral "' // trim(name) // '" specified under ' // &
+        'CHEMISTRY,MINERAL_KINETICS not found in list of available minerals.'
+      call printErrMsg(option)
+    endif
   enddo
   
   ! allocate kinetic mineral names
@@ -1444,6 +1453,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     
+    ! geh - for debugging
+    !call RTPrintAuxVar(rt_auxvar,reaction,option)
+
     Jac = 0.d0
 
 ! for colloids later on    
@@ -4940,10 +4952,9 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
       if (dabs(logK(i) - 500.) < 1.d-10) then
         iflag = 1
         temp_int(i) = ZERO_INTEGER
-      else if (logK(i) .gt. 500.) then
         option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-                           trim(name) // '---stop!'
-        call printErrMsg(option)
+                           trim(name)
+        call printWrnMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
@@ -5464,5 +5475,136 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
   call printMsg(option)
 
 end subroutine RCalculateCompression
+
+! ************************************************************************** !
+!
+! PrintRTAuxVar: Prints data from RTAuxVar object
+! author: Glenn Hammond
+! date: 05/18/2011
+!
+! ************************************************************************** !
+subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: i
+  
+  10 format(a20,':',10es13.5)
+  20 format(a20,':',a20)
+  30 format(/)
+
+  if (OptionPrintToScreen(option)) write(*,30)
+  if (OptionPrintToFile(option)) write(option%fid_out,30)
+
+  if (OptionPrintToScreen(option)) &
+    write(*,20) 'Primary', 'free molal., total molar., act. coef.'
+  if (OptionPrintToFile(option)) &
+    write(option%fid_out,20) 'Primary', 'free molal., total molar., act. coef.'
+  do i = 1, reaction%naqcomp  
+    if (OptionPrintToScreen(option)) &
+      write(*,10) reaction%primary_species_names(i), &
+        rt_auxvar%pri_molal(i), &
+        rt_auxvar%total(i,1), &
+        rt_auxvar%pri_act_coef(i)
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,10) reaction%primary_species_names(i), &
+        rt_auxvar%pri_molal(i), &
+        rt_auxvar%total(i,1), &
+        rt_auxvar%pri_act_coef(i)
+  enddo
+  if (OptionPrintToScreen(option)) write(*,30)
+  if (OptionPrintToFile(option)) write(option%fid_out,30)
+
+!  aux_var%aqueous => MatrixBlockAuxVarCreate(option)
+!  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp, &
+!                             reaction%naqcomp,option%nphase,option)
+  
+  if (reaction%neqcplx > 0) then
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Secondary Complex', 'molal., act. coef.'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Secondary Complex', 'molal., act. coef.'
+    do i = 1, reaction%neqcplx  
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%secondary_species_names(i), &
+          rt_auxvar%sec_molal(i), &
+          rt_auxvar%sec_act_coef(i)
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%secondary_species_names(i), &
+          rt_auxvar%sec_molal(i), &
+          rt_auxvar%sec_act_coef(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif
+
+  if (reaction%neqsorb > 0) then  
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Total Sorbed', 'mol/m^3'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Total Sorbed', 'mol/m^3'
+    do i = 1, reaction%naqcomp  
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%primary_species_names(i), rt_auxvar%total_sorb_eq(i)
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%primary_species_names(i), &
+          rt_auxvar%total_sorb_eq(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif    
+  
+  if (reaction%neqsrfcplx > 0) then
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Surface Complex Conc.', 'mol/m^3'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Surface Complex Conc.', 'mol/m^3'
+    do i = 1, reaction%neqsrfcplx
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%eqsrfcplx_names(i), rt_auxvar%eqsrfcplx_conc(i)
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%eqsrfcplx_names(i), &
+          rt_auxvar%eqsrfcplx_conc(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif
+
+  if (reaction%nkinsrfcplxrxn > 0) then
+  endif
+  
+  if (reaction%neqionxrxn > 0) then
+  endif
+  
+  if (reaction%nkinmnrl > 0) then
+    if (OptionPrintToScreen(option)) &
+      write(*,20) 'Kinetic Minerals', 'vol frac, area, rate'
+    if (OptionPrintToFile(option)) &
+      write(option%fid_out,20) 'Kinetic Minerals', 'vol frac, area, rate'
+    do i = 1, reaction%nkinmnrl
+      if (OptionPrintToScreen(option)) &
+        write(*,10) reaction%kinmnrl_names(i), &
+          rt_auxvar%mnrl_volfrac(i), &
+          rt_auxvar%mnrl_area(i), &
+          rt_auxvar%mnrl_rate(i)
+
+      if (OptionPrintToFile(option)) &
+        write(option%fid_out,10) reaction%kinmnrl_names(i), &
+          rt_auxvar%mnrl_volfrac(i), &
+          rt_auxvar%mnrl_area(i), &
+          rt_auxvar%mnrl_rate(i)
+    enddo
+    if (OptionPrintToScreen(option)) write(*,30)
+    if (OptionPrintToFile(option)) write(option%fid_out,30)
+  endif
+
+end subroutine RTPrintAuxVar
 
 end module Reaction_module

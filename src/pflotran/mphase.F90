@@ -1278,54 +1278,53 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
         endif
               
         Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-        if (energy_flag) &
-          Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
-            enth_src_co2 *option%flow_dt
-        endif
+        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
+          enth_src_co2 *option%flow_dt
+      endif
 
-      case(-1) ! production well
-     !  if node pessure is lower than the given extraction pressure, shut it down
-        Dq = psrc(2) ! well parameter, read in input file
+    case(-1) ! production well
+     !if node pessure is lower than the given extraction pressure, shut it down
+      Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
-        ! Flow term
-        do np = 1, option%nphase
-          dphi = aux_var%pres - aux_var%pc(np)- psrc(1)
-          if (dphi>=0.D0) then ! outflow only
-            ukvr = aux_var%kvr(np)
-            v_darcy=0D0
-            if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-              Res(1) = Res(1)- v_darcy* aux_var%den(np)* &
-                aux_var%xmol((np-1)*option%nflowspec+1) 
-              Res(2) = Res(2)- v_darcy* aux_var%den(np)* &
-                aux_var%xmol((np-1)*option%nflowspec+2) 
-              if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
-            endif
+    ! Flow term
+      do np = 1, option%nphase
+        dphi = aux_var%pres - aux_var%pc(np)- psrc(1)
+        if (dphi>=0.D0) then ! outflow only
+          ukvr = aux_var%kvr(np)
+          v_darcy=0D0
+          if (ukvr*Dq>floweps) then
+            v_darcy = Dq * ukvr * dphi
+            Res(1) = Res(1)- v_darcy* aux_var%den(np)* &
+              aux_var%xmol((np-1)*option%nflowspec+1) 
+            Res(2) = Res(2)- v_darcy* aux_var%den(np)* &
+              aux_var%xmol((np-1)*option%nflowspec+2) 
+            if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
           endif
-        enddo
+        endif
+      enddo
        ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
          
-      case(1) ! injection well with constant pressure
-        Dq = psrc(2) ! well parameter, read in input file
+    case(1) ! injection well with constant pressure
+      Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        do np = 1, option%nphase
-          dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
-          if (dphi>=0.D0) then ! outflow only
-            ukvr = aux_var%kvr(np)
-            v_darcy=0.D0
-            if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-              Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
-                aux_var%xmol((np-1)*option%nflowspec+1) 
-              Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
-                aux_var%xmol((np-1)*option%nflowspec+2) 
-              if(energy_flag) Res(3) = Res(3) - v_darcy*aux_var%den(np)*aux_var%h(np)
-            endif
+      do np = 1, option%nphase
+        dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
+        if (dphi>=0.D0) then ! outflow only
+          ukvr = aux_var%kvr(np)
+          v_darcy=0.D0
+          if (ukvr*Dq>floweps) then
+            v_darcy = Dq * ukvr * dphi
+            Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
+              aux_var%xmol((np-1)*option%nflowspec+1) 
+            Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
+              aux_var%xmol((np-1)*option%nflowspec+2) 
+            if(energy_flag) Res(3) = Res(3) - v_darcy*aux_var%den(np)*aux_var%h(np)
           endif
-        enddo 
-      case default
-      print *,'Unrecognized Source/Sink condition: ', isrctype 
+        endif
+      enddo 
+    case default
+    print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
       
 end subroutine MphaseSourceSink

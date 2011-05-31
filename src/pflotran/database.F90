@@ -2860,7 +2860,7 @@ subroutine BasisInit(reaction,option)
 
       enddo
     enddo
-    do imnrl = 1, reaction%nkinmrnl
+    do imnrl = 1, reaction%nkinmnrl
       write(86,'(a32)') reaction%kinmnrl_names(imnrl)
       write(86,'(40i4)') reaction%kinmnrlspecid(:,imnrl)
       write(86,'(40f6.2)') reaction%kinmnrlstoich(:,imnrl)
@@ -2869,7 +2869,7 @@ subroutine BasisInit(reaction,option)
       write(86,'(1es13.5)') reaction%kinmnrl_logK(imnrl)
       write(86,'(1es13.5)') reaction%kinmnrl_molar_vol(imnrl)
       write(86,'(1es13.5)') reaction%kinmnrl_molar_wt(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_rate(imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_rate(1,imnrl)
       write(86,'(1es13.5)') 1.d0 ! specific surface area 1 cm^2 / cm^3
     enddo
         close(86)

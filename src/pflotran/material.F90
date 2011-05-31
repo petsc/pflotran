@@ -22,8 +22,8 @@ module Material_module
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
-    PetscReal :: rock_density
-    PetscReal :: specific_heat
+    PetscReal :: rock_density ! kg/m^3
+    PetscReal :: specific_heat ! J/kg-K
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: pore_compressibility

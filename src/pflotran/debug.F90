@@ -6,7 +6,7 @@ module Debug_module
   
 #include "definitions.h"
 
-  type, public :: pflow_debug_type
+  type, public :: flow_debug_type
     PetscBool :: vecview_residual
     PetscBool :: vecview_solution
     PetscBool :: matview_Jacobian
@@ -16,40 +16,42 @@ module Debug_module
     PetscBool :: print_numerical_derivatives
 
     PetscBool :: print_couplers
-  end type pflow_debug_type
+    PetscBool :: print_waypoints
+  end type flow_debug_type
   
-  type, public :: ptran_debug_type
+  type, public :: tran_debug_type
     PetscBool :: vecview_residual
     PetscBool :: vecview_solution
     PetscBool :: matview_Jacobian
     PetscBool :: matview_Jacobian_detailed
     PetscBool :: norm_Jacobian
-    PetscBool :: print_couplers    
-  end type ptran_debug_type
+    PetscBool :: print_couplers 
+    PetscBool :: print_waypoints   
+  end type tran_debug_type
 
   interface DebugRead
-    module procedure DebugReadPflow
+    module procedure DebugReadFlow
   end interface DebugRead
   
   
-  public :: DebugCreatePflow, DebugCreatePtran, DebugRead
+  public :: DebugCreateFlow, DebugCreateTran, DebugRead
   
 contains
 
 ! ************************************************************************** !
 !
-! DebugCreatePflow: Create object that stores debugging options for PFLOW
+! DebugCreateFlow: Create object that stores debugging options for PFLOW
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-function DebugCreatePflow()
+function DebugCreateFlow()
 
   implicit none
   
-  type(pflow_debug_type), pointer :: DebugCreatePflow
+  type(flow_debug_type), pointer :: DebugCreateFlow
   
-  type(pflow_debug_type), pointer :: debug
+  type(flow_debug_type), pointer :: debug
   
   allocate(debug)
   
@@ -62,25 +64,26 @@ function DebugCreatePflow()
   debug%print_numerical_derivatives = PETSC_FALSE
   
   debug%print_couplers = PETSC_FALSE
+  debug%print_waypoints = PETSC_FALSE
 
-  DebugCreatePflow => debug
+  DebugCreateFlow => debug
 
-end function DebugCreatePflow
+end function DebugCreateFlow
 
 ! ************************************************************************** !
 !
-! DebugCreatePtran: Create object that stores debugging options for PFLOW
+! DebugCreateTran: Create object that stores debugging options for PFLOW
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-function DebugCreatePtran()
+function DebugCreateTran()
 
   implicit none
   
-  type(ptran_debug_type), pointer :: DebugCreatePtran
+  type(tran_debug_type), pointer :: DebugCreateTran
   
-  type(ptran_debug_type), pointer :: debug
+  type(tran_debug_type), pointer :: debug
   
   allocate(debug)
   debug%vecview_residual = PETSC_FALSE
@@ -90,27 +93,27 @@ function DebugCreatePtran()
   debug%norm_Jacobian = PETSC_FALSE
   
   debug%print_couplers = PETSC_FALSE
+  debug%print_waypoints = PETSC_FALSE
 
-  
-  DebugCreatePtran => debug
+  DebugCreateTran => debug
 
-end function DebugCreatePtran
+end function DebugCreateTran
 
 ! ************************************************************************** !
 !
-! DebugReadPflow: Reads debugging data from the input file
+! DebugReadFlow: Reads debugging data from the input file
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-subroutine DebugReadPflow(debug,input,option)
+subroutine DebugReadFlow(debug,input,option)
 
   use Option_module
   use Input_module
   
   implicit none
     
-  type(pflow_debug_type) :: debug
+  type(flow_debug_type) :: debug
   type(input_type) :: input
   type(option_type) :: option
   
@@ -142,11 +145,12 @@ subroutine DebugReadPflow(debug,input,option)
         debug%matview_Jacobian_detailed = PETSC_TRUE
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')
         debug%print_numerical_derivatives = PETSC_TRUE
-
+      case('WAYPOINTS')
+        debug%print_waypoints = PETSC_TRUE
     end select 
   
   enddo  
 
-end subroutine DebugReadPflow
+end subroutine DebugReadFlow
 
 end module Debug_module

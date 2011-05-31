@@ -762,7 +762,7 @@ end subroutine TFluxCoef_CD
 !
 ! ************************************************************************** !
 subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
-                        por,sat,vol,den,scale,kg_per_sec,T_in,T_out)
+                        por,sat,vol,den,scale,T_in,T_out)
 
   use Option_module
 
@@ -777,7 +777,6 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
   PetscReal :: vol
   PetscReal :: den
   PetscReal :: scale
-  PetscBool :: kg_per_sec
   PetscReal :: T_in ! coefficient that scales concentration at cell
   PetscReal :: T_out ! concentration that scales external concentration
       
@@ -803,11 +802,11 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
           case(MASS_RATE_SS)
             T_out = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(SCALED_MASS_RATE_SS)
-            T_out = -1.d0*qsrc/den*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_out = -1.d0*qsrc/den*1000.d0*scale ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(VOLUMETRIC_RATE_SS)
-            T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 m^3/L -> L/s
+            T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
           case(SCALED_VOLUMETRIC_RATE_SS)
-            T_out = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_out = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 L/m^3 -> L/s
         end select
       else
         T_out = 0.d0
@@ -815,22 +814,19 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
           case(MASS_RATE_SS)
             T_in = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(SCALED_MASS_RATE_SS)
-            T_in = -1.d0*qsrc/den*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc/den*1000.d0*scale ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(VOLUMETRIC_RATE_SS)
-            T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
           case(SCALED_VOLUMETRIC_RATE_SS)
-            T_in = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 L/m^3 -> L/s
         end select
       endif
   end select
 
-  ! up to this point, units = L water/sec, which is correct for residual function
-  ! for Jacobian, need kg water/sec
-  if (kg_per_sec) then
-    T_in = T_in * den / 1000.d0
-    T_out = T_out * den / 1000.d0
-  endif
-  
+  ! Units of Tin & Tout should be L/s.  When multiplied by Total (M) you get
+  ! moles/sec, the units of the residual.  To get the units of the Jacobian
+  ! kg/sec, one must either scale by dtotal or den/1000. (kg/L).
+
 end subroutine TSrcSinkCoef
   
 end module Transport_module

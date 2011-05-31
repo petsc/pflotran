@@ -416,7 +416,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
         if (.not.associated(coupler%tran_condition)) then
           option%io_buffer = 'Transport condition "' // &
-                   trim(coupler%flow_condition_name) // &
+                   trim(coupler%tran_condition_name) // &
                    '" in initial condition ' // &
                    trim(coupler%name) // &
                    ' not found in transport condition list'
@@ -735,7 +735,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
               coupler%flow_aux_int_var = 0
 
             case(MPH_MODE, IMS_MODE, FLASH2_MODE)
-              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+!geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
@@ -992,9 +993,9 @@ subroutine PatchScaleSourceSink(patch,option)
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
   PetscReal :: scale, sum
-  PetscInt :: icount
+  PetscInt :: icount, x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
-  PetscInt :: ghosted_neighbors(0:27)
+  PetscInt :: ghosted_neighbors(27)
     
   field => patch%field
   grid => patch%grid
@@ -1021,12 +1022,13 @@ subroutine PatchScaleSourceSink(patch,option)
         case(RICHARDS_MODE,G_MODE)
            call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
                                         x_width,y_width,z_width, &
+                                        x_count,y_count,z_count, &
                                         ghosted_neighbors,option)
            ! ghosted neighbors is ordered first in x, then, y, then z
            icount = 0
            sum = 0.d0
            ! x-direction
-           do while (icount < 2*x_width)
+           do while (icount < x_count)
              icount = icount + 1
              neighbor_ghosted_id = ghosted_neighbors(icount)
              sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1035,7 +1037,7 @@ subroutine PatchScaleSourceSink(patch,option)
              
            enddo
            ! y-direction
-           do while (icount < 2*(x_width+y_width))
+           do while (icount < x_count + y_count)
              icount = icount + 1
              neighbor_ghosted_id = ghosted_neighbors(icount)                 
              sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1044,7 +1046,7 @@ subroutine PatchScaleSourceSink(patch,option)
              
            enddo
            ! z-direction
-           do while (icount < 2*(x_width+y_width+z_width))
+           do while (icount < x_count + y_count + z_count)
              icount = icount + 1
              neighbor_ghosted_id = ghosted_neighbors(icount)                 
              sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
@@ -1368,7 +1370,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF,STATE)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1594,6 +1596,10 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
                 case(GAS_STATE)
                   vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
               end select
+            enddo
+          case(STATE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%istate
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
@@ -1906,7 +1912,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF,STATE)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -2035,6 +2041,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
               case(GAS_STATE)
                 value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase)
             end select
+          case(STATE)
+            value = patch%aux%Global%aux_vars(ghosted_id)%istate
           case(LIQUID_SATURATION)
             value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%sat(option%liquid_phase)
           case(LIQUID_DENSITY)
@@ -2203,7 +2211,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,STATE)
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -2610,6 +2618,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
                 case(GAS_STATE)
                   patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%pres(option%gas_phase) = vec_ptr(local_id)
               end select
+            enddo
+          case(STATE)
+            do local_id=1,grid%nlmax
+              patch%aux%Global%aux_vars(ghosted_id)%istate = int(vec_ptr(local_id)+1.d-10)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax

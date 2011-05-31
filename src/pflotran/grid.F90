@@ -2598,7 +2598,8 @@ end subroutine GridPrintHashTable
 ! ************************************************************************** !
 subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
                                    stencil_width_i,stencil_width_j, &
-                                   stencil_width_k, &
+                                   stencil_width_k,x_count,y_count, &
+                                   z_count, &
                                    ghosted_neighbors,option)
 
   use Option_module
@@ -2612,7 +2613,10 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k
-  PetscInt :: ghosted_neighbors(0:27)
+  PetscInt :: x_count
+  PetscInt :: y_count
+  PetscInt :: z_count
+  PetscInt :: ghosted_neighbors(*)
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
@@ -2620,6 +2624,7 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
                                          ghosted_id,stencil_type, &
                                          stencil_width_i, &
                                          stencil_width_j,stencil_width_k, &
+                                         x_count,y_count,z_count, &
                                          ghosted_neighbors,option)
     case(UNSTRUCTURED_GRID) 
       option%io_buffer = 'GridGetNeighbors not currently supported for ' // &

@@ -74,7 +74,6 @@ module Condition_module
   type, public :: tran_condition_type
     PetscInt :: id                                ! id from which condition can be referenced
     PetscInt :: itype                  ! integer describing type of condition
-    PetscBool :: sync_time_with_update
     PetscBool :: is_transient
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     type(tran_constraint_coupler_type), pointer :: constraint_coupler_list
@@ -140,7 +139,7 @@ module Condition_module
             TranConstraintDestroyList, TranConstraintGetPtrFromList, &
             TranConditionRead, TranConstraintRead, &
             TranConditionUpdate, &
-            FlowConditionIsTransient
+            FlowConditionIsTransient, FlowConditionDatasetGetTimes
     
 contains
 
@@ -207,7 +206,6 @@ function TranConditionCreate(option)
   nullify(condition%next)
   condition%id = 0
   condition%itype = 0
-  condition%sync_time_with_update = PETSC_FALSE
   condition%name = ''
 
   TranConditionCreate => condition
@@ -426,12 +424,10 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
     return
   endif
   
-  if (len_trim(sub_condition%ctype) < 1) then
-    option%io_buffer = 'type of ' // trim(condition%name) // ':' // &
-                     trim(sub_condition_name) // ' set to default'
-    call printWrnMsg(option)
-    sub_condition%ctype = default_ctype
-    sub_condition%itype = default_itype
+  if (len_trim(sub_condition%ctype) == NULL_CONDITION) then
+    option%io_buffer = 'TYPE of condition ' // trim(condition%name) // &
+      ' ' // trim(sub_condition_name) // ' dataset not defined.'
+    call printErrMsg(option)
   endif
   
   call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
@@ -525,6 +521,65 @@ subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name
 ! print *,'condition: ',dataset%max_time_index,dataset%time_shift
 
 end subroutine FlowConditionDatasetVerify
+
+! ************************************************************************** !
+!
+! FlowConditionDatasetGetTimes: Fills an array of times based on dataset
+! author: Glenn Hammond
+! date: 05/19/11
+!
+! ************************************************************************** !
+subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
+                                        max_sim_time, times)
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(flow_sub_condition_type), pointer :: sub_condition
+  PetscReal :: max_sim_time
+  PetscReal, pointer :: times(:)
+  
+  type(flow_condition_dataset_type), pointer :: dataset
+  PetscInt :: num_times
+  PetscInt :: itime
+  PetscReal :: time_shift
+  PetscReal, allocatable :: temp_times(:)
+
+  dataset => sub_condition%dataset
+
+  if (.not.dataset%is_cyclic .or. dataset%max_time_index == 1) then
+    allocate(times(dataset%max_time_index))
+    times =  dataset%times
+  else ! cyclic
+    num_times = (int(max_sim_time/dataset%times(dataset%max_time_index))+1)* &
+                dataset%max_time_index
+    allocate(temp_times(num_times))
+    temp_times = 0.d0
+
+    num_times = 0
+    itime = 0
+    time_shift = 0.d0
+    do
+      num_times = num_times + 1
+      itime = itime + 1
+      ! exist for non-cyclic
+      if (itime > dataset%max_time_index) exit
+      temp_times(num_times) = dataset%times(itime) + time_shift
+      if (mod(itime,dataset%max_time_index) == 0) then
+        itime = 0
+        time_shift = time_shift + dataset%times(dataset%max_time_index) 
+      endif 
+      ! exit for cyclic
+      if (temp_times(num_times) >= max_sim_time) exit
+    enddo
+
+    allocate(times(num_times))
+    times(:) = temp_times(1:num_times)
+    deallocate(temp_times)
+  endif
+ 
+end subroutine FlowConditionDatasetGetTimes
 
 ! ************************************************************************** !
 !
@@ -638,6 +693,8 @@ subroutine FlowConditionRead(condition,input,option)
         enddo
       case('CYCLIC')
         default_dataset%is_cyclic = PETSC_TRUE
+      case('SYNC_TIMESTEP_WITH_UPDATE')
+        condition%sync_time_with_update = PETSC_TRUE
       case('INTERPOLATION')
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
@@ -812,12 +869,17 @@ subroutine FlowConditionRead(condition,input,option)
   if (default_gradient%interpolation_method == NULL) &
     default_gradient%interpolation_method = default_dataset%interpolation_method
 
-  ! verify the datasets
-  word = 'pressure'
-  call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient, PETSC_TRUE)
+  ! check to ensure that a rate condition is not of type pressure   
+  if (associated(rate)) then
+    select case(rate%itype)
+      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC,UNIT_GRADIENT_BC, &
+           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
+        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
+          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
+          'seepage, or conductance".'
+        call printErrMsg(option)
+    end select
+  endif
   ! check to ensure that a pressure condition is not of type rate   
   if (associated(pressure)) then                          
     select case(pressure%itype)
@@ -830,23 +892,17 @@ subroutine FlowConditionRead(condition,input,option)
     end select
   endif
 
+  ! verify the datasets
+  word = 'pressure/flux'
+  call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient, PETSC_TRUE)
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,rate,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
-  ! check to ensure that a rate condition is not of type pressure   
-  if (associated(rate)) then
-    select case(rate%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC, &
-           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
-        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
-          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
-          'seepage, or conductance".'
-        call printErrMsg(option)
-    end select
-  endif
-
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
                               default_ctype, default_itype, &
@@ -862,7 +918,7 @@ subroutine FlowConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
-    
+
   select case(option%iflowmode)
     case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
@@ -983,6 +1039,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   use Input_module
   use String_module
   use Logging_module  
+  use Units_module
   
   implicit none
   
@@ -1005,6 +1062,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   PetscInt :: icomp
   PetscBool :: minerals_exist
   PetscErrorCode :: ierr
+  PetscReal :: conversion
 
   call PetscLogEventBegin(logging%event_tran_condition_read,ierr)
 
@@ -1053,12 +1111,12 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
       case('TIME')
         call InputReadDouble(input,option,default_time)
         call InputErrorMsg(input,option,'TIME','CONDITION') 
-      case('UNITS') 
+      case('TIME_UNITS') 
         call InputReadWord(input,option,word,PETSC_TRUE) 
         call InputErrorMsg(input,option,'UNITS','CONDITION')   
         call StringToLower(word)
         select case(trim(word))     
-          case('s','sec','min','hr','d','day','y','yr')
+          case('s','sec','min','m','hr','h','d','day','y','yr')
             default_time_units = trim(word)         
         end select          
       case('CONSTRAINT_LIST')
@@ -1081,6 +1139,11 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
             constraint_coupler%constraint_name = trim(word)
           else
             constraint_coupler%time_units = word
+          endif
+          ! convert time units
+          if (len_trim(constraint_coupler%time_units) > 0) then
+            constraint_coupler%time = constraint_coupler%time* &
+              UnitsConvertToInternal(constraint_coupler%time_units,option)
           endif
           ! add to end of list
           if (.not.associated(condition%constraint_coupler_list)) then
@@ -1127,6 +1190,18 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   
   enddo  
   
+  if (len_trim(default_time_units) > 0) then
+    conversion = UnitsConvertToInternal(default_time_units,option)
+    cur_coupler => condition%constraint_coupler_list
+    do
+      if (.not.associated(cur_coupler)) exit
+      if (len_trim(cur_coupler%time_units) == 0) then
+        cur_coupler%time = cur_coupler%time*conversion
+      endif
+      cur_coupler => cur_coupler%next
+    enddo
+  endif
+
   call PetscLogEventEnd(logging%event_tran_condition_read,ierr)
 
 end subroutine TranConditionRead

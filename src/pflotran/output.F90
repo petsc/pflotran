@@ -2501,7 +2501,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
-    case (MPH_MODE, FLASH2_MODE, G_MODE)
+    case (MPH_MODE, FLASH2_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
@@ -2511,6 +2511,25 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
+      do i=1,option%nflowspec
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      do i=1,option%nflowspec
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+    case (G_MODE)
+      string = ',"T [C] '// trim(cell_string) // '",' // &
+               '"P [Pa] '// trim(cell_string) // '",' // &
+               '"State [-] ' // trim(cell_string) // '",' // &
+               '"Sat(l) '// trim(cell_string) // '",' // &
+               '"Sat(g) '// trim(cell_string) // '",' // &
+               '"Rho(l) '// trim(cell_string) // '",' // &
+               '"Rho(g) '// trim(cell_string) // '",' // &
+               '"U(l) '// trim(cell_string) // '",' // &
+               '"U(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -2760,7 +2779,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
-    case (MPH_MODE,FLASH2_MODE,G_MODE)
+    case (MPH_MODE,FLASH2_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
@@ -2770,6 +2789,25 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
+      do i=1,option%nflowspec
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      do i=1,option%nflowspec
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+    case (G_MODE)
+      string = ',"T [C] '// trim(cell_string) // '",' // &
+               '"P [Pa] '// trim(cell_string) // '",' // &
+               '"State [-] ' // trim(cell_string) // '",' // &
+               '"Sat(l) '// trim(cell_string) // '",' // &
+               '"Sat(g) '// trim(cell_string) // '",' // &
+               '"Rho(l) '// trim(cell_string) // '",' // &
+               '"Rho(g) '// trim(cell_string) // '",' // &
+               '"U(l) '// trim(cell_string) // '",' // &
+               '"U(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -3073,6 +3111,13 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! state
+  select case(option%iflowmode)
+    case(G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,STATE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid saturation
@@ -3398,6 +3443,17 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! pressure
+  select case(option%iflowmode)
+    case(G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,STATE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
