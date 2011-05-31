@@ -15,47 +15,51 @@
 #include "SideGeometry.h"
 
 // output definitions from ../../definitions.h
-#define X_COORDINATE  1
-#define Y_COORDINATE  2
-#define Z_COORDINATE  3
-#define TEMPERATURE  4
-#define PRESSURE  5
-#define LIQUID_SATURATION  6
-#define GAS_SATURATION  7
-#define LIQUID_DENSITY  8
-#define GAS_DENSITY  9
-#define LIQUID_ENERGY  10
-#define GAS_ENERGY  11
-#define LIQUID_MOLE_FRACTION  12
-#define GAS_MOLE_FRACTION  13
-#define POROSITY  14
-#define PHASE  15
-#define MATERIAL_ID  16
-#define GAS_DENSITY_MOL  17
+#define X_COORDINATE =             1
+#define Y_COORDINATE =             2
+#define Z_COORDINATE =             3
+#define TEMPERATURE =              4
+#define PRESSURE =                 5
+#define LIQUID_SATURATION =        6
+#define GAS_SATURATION =           7
+#define LIQUID_DENSITY =           8
+#define LIQUID_DENSITY_MOL =       9
+#define GAS_DENSITY =             10
+#define GAS_DENSITY_MOL =         11
+#define LIQUID_ENERGY =           12
+#define GAS_ENERGY =              13
+#define LIQUID_VISCOSITY =        14
+#define GAS_VISCOSITY =           15
+#define LIQUID_MOLE_FRACTION =    16
+#define GAS_MOLE_FRACTION =       17
+#define POROSITY =                18
+#define PHASE =                   19
+#define MATERIAL_ID =             20
 
-#define PRIMARY_MOLALITY  18
-#define SECONDARY_MOLALITY  19
-#define TOTAL_MOLALITY  20
-#define PRIMARY_MOLARITY  21
-#define SECONDARY_MOLARITY  22
-#define TOTAL_MOLARITY  23
-#define MINERAL_VOLUME_FRACTION  24
-#define MINERAL_RATE  25
-#define MINERAL_SURFACE_AREA  26
-#define PH  27
-#define SURFACE_CMPLX  28
-#define SURFACE_CMPLX_FREE  29
-#define KIN_SURFACE_CMPLX  30
-#define KIN_SURFACE_CMPLX_FREE  31
-#define PRIMARY_ACTIVITY_COEF  32
-#define SECONDARY_ACTIVITY_COEF  33
-#define SC_FUGA_COEFF  34
-#define PRIMARY_KD  35
-#define TOTAL_SORBED  36
-#define TOTAL_SORBED_MOBILE  37
-#define COLLOID_MOBILE  38
-#define COLLOID_IMMOBILE  39
-#define AGE  40
+#define PRIMARY_MOLALITY =        21
+#define SECONDARY_MOLALITY =      22
+#define TOTAL_MOLALITY =          23
+#define PRIMARY_MOLARITY =        24
+#define SECONDARY_MOLARITY =      25
+#define TOTAL_MOLARITY =          26
+#define MINERAL_VOLUME_FRACTION = 27
+#define MINERAL_RATE =            28
+#define MINERAL_SURFACE_AREA =    29
+#define PH =                      30
+#define SURFACE_CMPLX =           31
+#define SURFACE_CMPLX_FREE =      32
+#define KIN_SURFACE_CMPLX =       33
+#define KIN_SURFACE_CMPLX_FREE =  34
+#define PRIMARY_ACTIVITY_COEF =   35
+#define SECONDARY_ACTIVITY_COEF = 36
+#define SC_FUGA_COEFF =           37
+#define PRIMARY_KD =              38
+#define TOTAL_SORBED =            39
+#define TOTAL_SORBED_MOBILE =     40
+#define COLLOID_MOBILE =          41
+#define COLLOID_IMMOBILE =        42
+#define AGE =                     43
+#define STATE =                   44
 
 extern "C" {
 #include "petsc.h"
