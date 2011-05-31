@@ -258,7 +258,11 @@ subroutine PatchLocalizeRegions(patch,regions,option)
     cur_region => cur_region%next
   enddo
   
-  call GridLocalizeRegions(patch%grid,patch%regions,option)
+  if(patch%grid%itype.ne.UNSTRUCTURED_GRID) then
+    call GridLocalizeRegions(patch%grid,patch%regions,option)
+  else
+    call GridLocalizeRegionsForUnstructuredMesh(patch%grid,patch%regions,option)
+  endif
  
 end subroutine PatchLocalizeRegions
 

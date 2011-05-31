@@ -2618,7 +2618,11 @@ subroutine readRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
+      if(region%grid_type.eq.STRUCTURED_GRID) then
         call HDF5ReadRegionFromFile(realization,region,region%filename)
+    else
+      call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
+    endif
       else
         call RegionReadFromFile(region,realization%option, &
                                 region%filename)
