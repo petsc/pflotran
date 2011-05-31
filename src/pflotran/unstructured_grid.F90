@@ -3454,13 +3454,13 @@ subroutine UnstructuredGridDestroy(unstructured_grid)
   if (associated(unstructured_grid%cell_neighbors_local_ghosted)) &
     deallocate(unstructured_grid%cell_neighbors_local_ghosted)
   nullify(unstructured_grid%cell_neighbors_local_ghosted)
-  if (associated(unstructured_grid%cell_vertices_nindex))
+  if (associated(unstructured_grid%cell_vertices_nindex))&
     deallocate(unstructured_grid%cell_vertices_nindex)
   nullify(unstructured_grid%cell_vertices_nindex)
-  if (associated(unstructured_grid%face_to_cell_locindex))
+  if (associated(unstructured_grid%face_to_cell_locindex))&
     deallocate(unstructured_grid%face_to_cell_locindex)
   nullify(unstructured_grid%face_to_cell_locindex)
-  if (associated(unstructured_grid%face_to_vertex_nindex))
+  if (associated(unstructured_grid%face_to_vertex_nindex))&
     deallocate(unstructured_grid%face_to_vertex_nindex)
   nullify(unstructured_grid%face_to_vertex_nindex)
 
