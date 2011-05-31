@@ -2477,12 +2477,21 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Rresidual.bin',FILE_MODE_WRITE,&
+                              viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Rxx.bin',FILE_MODE_WRITE,&
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
   endif
 
 call PetscLogEventEnd(logging%event_r_residual,ierr)
@@ -3031,6 +3040,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
     cur_connection_set => cur_connection_set%next
   enddo    
+
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
@@ -3080,8 +3090,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 cur_connection_set%dist(0:3,iconn), &
                                 option, &
                                 v_darcy,Res)
-
       patch%boundary_velocities(1,sum_connection) = v_darcy
+
 
 #ifdef DASVYAT
 !      write(*,*) "bound flux ", sum_connection, "fl",v_darcy, &
@@ -4312,6 +4322,9 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_flux.bin',FILE_MODE_WRITE,viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
@@ -4376,6 +4389,9 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_bcflux.bin',FILE_MODE_WRITE,viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -4511,6 +4527,9 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_accum.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_accum.bin',FILE_MODE_WRITE,viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
@@ -4562,6 +4581,9 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(option%mycomm,'jacobian_srcsink.bin',FILE_MODE_WRITE,viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
