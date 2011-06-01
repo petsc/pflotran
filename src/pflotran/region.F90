@@ -21,6 +21,9 @@ module Region_module
     PetscInt :: num_cells
     PetscInt, pointer :: cell_ids(:)
     PetscInt, pointer :: faces(:)
+    PetscInt, pointer :: vert_ids(:,:) ! For Unstructured mesh
+    PetscInt :: num_verts              ! For Unstructured mesh
+    PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
     type(region_type), pointer :: next
   end type region_type
   
@@ -85,9 +88,14 @@ function RegionCreateWithNothing()
   region%k2 = 0
   region%iface = 0
   region%num_cells = 0
+  region%grid_type = STRUCTURED_GRID ! By default it is assumed that the region 
+                   ! is applicable to strucutred grid, unless
+                   ! explicitly stated in pflotran input file
+  region%num_verts = 0
   nullify(region%coordinates)
   nullify(region%cell_ids)
   nullify(region%faces)
+  nullify(region%vert_ids)
   nullify(region%next)
   
   RegionCreateWithNothing => region
@@ -181,6 +189,8 @@ function RegionCreateWithRegion(region)
   new_region%k2 = region%k2
   new_region%iface = region%iface
   new_region%num_cells = region%num_cells
+  new_region%num_verts = region%num_verts
+  new_region%grid_type = region%grid_type
   if (associated(region%coordinates)) then
     allocate(new_region%coordinates(size(region%coordinates)))
     do icount = 1, size(new_region%coordinates)
@@ -196,6 +206,11 @@ function RegionCreateWithRegion(region)
   if (associated(region%faces)) then
     allocate(new_region%faces(new_region%num_cells))
     new_region%faces(1:new_region%num_cells) = region%faces(1:region%num_cells)
+  endif
+  if (associated(region%vert_ids)) then
+    allocate(new_region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts))
+    new_region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts) = &
+    region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts)
   endif
   
   RegionCreateWithRegion => new_region
@@ -357,6 +372,19 @@ subroutine RegionRead(region,input,option)
           case('TOP')
             region%iface = TOP_FACE
         end select
+    case('GRID')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'GRID','REGION')
+        call StringToUpper(word)
+        select case(trim(word))
+          case('STRUCTURED')
+            region%grid_type = STRUCTURED_GRID
+          case('UNSTRUCTURED')
+            region%grid_type = UNSTRUCTURED_GRID
+          case default
+            option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
+          call printErrMsg(option)
+      end select
       case default
         option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
         call printErrMsg(option)
@@ -456,12 +484,12 @@ subroutine RegionReadFromFileId(region,input,option)
 
   do
     call InputReadFlotranString(input,option)
-	if (InputError(input)) exit
-	call InputReadInt(input,option,temp_int)
-	if (.not.InputError(input)) then
-	  count = count + 1
-	  temp_int_array(count) = temp_int
-	endif
+    if (InputError(input)) exit
+    call InputReadInt(input,option,temp_int)
+    if (.not.InputError(input)) then
+      count = count + 1
+      temp_int_array(count) = temp_int
+    endif
     if (count+1 > max_size) then ! resize temporary array
       call reallocateIntArray(temp_int_array,max_size)
     endif
@@ -574,6 +602,7 @@ subroutine RegionDestroy(region)
   if (associated(region%faces)) deallocate(region%faces)
   nullify(region%faces)
   nullify(region%next)
+  if (associated(region%vert_ids)) deallocate(region%vert_ids)
   
   deallocate(region)
   nullify(region)

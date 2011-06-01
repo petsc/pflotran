@@ -14,6 +14,7 @@ type, public :: Flash2_auxvar_elem_type
     PetscReal , pointer :: sat(:)
     PetscReal , pointer :: den(:)
     PetscReal , pointer :: avgmw(:)
+    PetscReal , pointer :: vis(:)
     PetscReal , pointer :: h(:)
     PetscReal , pointer :: u(:)
     PetscReal , pointer :: pc(:)
@@ -22,7 +23,6 @@ type, public :: Flash2_auxvar_elem_type
     PetscReal , pointer :: diff(:)
     PetscReal , pointer :: hysdat(:)
     PetscReal :: zco2
-!     PetscReal :: vis
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
@@ -146,6 +146,7 @@ subroutine Flash2AuxVarInit(aux_var,option)
      allocate ( aux_var%aux_var_elem(nvar)%sat(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%den(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%avgmw(option%nphase))
+     allocate ( aux_var%aux_var_elem(nvar)%vis(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%h(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
@@ -160,6 +161,7 @@ subroutine Flash2AuxVarInit(aux_var,option)
      aux_var%aux_var_elem(nvar)%sat = 0.d0
      aux_var%aux_var_elem(nvar)%den = 0.d0
      aux_var%aux_var_elem(nvar)%avgmw = 0.d0
+     aux_var%aux_var_elem(nvar)%vis = 0.d0
      aux_var%aux_var_elem(nvar)%h = 0.d0
      aux_var%aux_var_elem(nvar)%u = 0.d0
      aux_var%aux_var_elem(nvar)%pc = 0.d0
@@ -505,8 +507,10 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-       aux_var%kvr(2)=kr(2)/visg     
+       aux_var%kvr(2) = kr(2)/visg     
        aux_var%kvr(1) = kr(1)/visl
+       aux_var%vis(2) = visg     
+       aux_var%vis(1) = visl
 
     end subroutine Flash2AuxVarCompute_NINC
 
@@ -561,16 +565,18 @@ subroutine Flash2AuxVarDestroy(aux_var)
 !  nullify(aux_var%diff)
   if (associated(aux_var%pc))deallocate(aux_var%pc)
   nullify(aux_var%pc)
- if (associated(aux_var%sat))deallocate(aux_var%sat)
+  if (associated(aux_var%sat))deallocate(aux_var%sat)
   nullify(aux_var%sat)
- if (associated(aux_var%u))deallocate(aux_var%u)
+  if (associated(aux_var%u))deallocate(aux_var%u)
   nullify(aux_var%u)
- if (associated(aux_var%h))deallocate(aux_var%h)
+  if (associated(aux_var%h))deallocate(aux_var%h)
   nullify(aux_var%h)
- if (associated(aux_var%den))deallocate(aux_var%den)
+  if (associated(aux_var%den))deallocate(aux_var%den)
   nullify(aux_var%den)
- if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%u)
+  if (associated(aux_var%den))deallocate(aux_var%vis)
+  nullify(aux_var%vis)
+  if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
+  nullify(aux_var%avgmw)
 end subroutine Flash2AuxVarDestroy
 
 ! ************************************************************************** !

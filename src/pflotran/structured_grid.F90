@@ -1017,9 +1017,12 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
   PetscReal :: r1, r2
-  type(connection_set_type), pointer :: connections
+  type(connection_set_type), pointer :: connections, connections_2
+
   PetscErrorCode :: ierr
   PetscReal, pointer :: radius(:)
+  PetscInt, pointer :: int_array1(:), int_array2(:),int_array3(:),int_array4(:),int_array5(:),index(:)
+  PetscInt :: count
 
   radius => xc
   
@@ -1292,8 +1295,72 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   end select
   endif
 
+#ifdef REARRANGE_CONN
+  allocate(int_array1(1:iconn))
+  allocate(int_array2(1:iconn))
+  allocate(int_array3(1:iconn))
+  allocate(int_array4(1:iconn))
+  allocate(int_array5(1:iconn))
+  allocate(index(1:iconn))
+
+  do i = 1,iconn
+    int_array1(i) = i
+    int_array2(i) = connections%id_up(i)
+  enddo
   
+  int_array1 = int_array1 - 1
+  call PetscSortIntWithPermutation(iconn, int_array2, int_array1,ierr)
+  int_array1 = int_array1 + 1
+
+  count = 0
+  i = 1
+  count = count + 1
+  int_array3(count) = int_array2(int_array1(i))
+  int_array4(count) = connections%id_dn(int_array1(i))
+
+  do i=2,iconn
+    if( int_array3(count).ne.int_array2(int_array1(i) )) then
+      do k = 1,count
+        int_array5(k) = k
+      enddo
+      int_array5 = int_array5 - 1
+      call PetscSortIntWithPermutation(count,int_array4,int_array5,ierr)
+      int_array5 = int_array5 + 1
+      do k = 1,count
+        index(i -count +k -1) = int_array1(i -count -1 + int_array5(k) )
+      enddo
+      count = 1
+      int_array3(count) = int_array2(int_array1(i))
+      int_array4(count) = connections%id_dn(int_array1(i))
+    else
+      count = count + 1
+      int_array3(count) = int_array2(int_array1(i))
+      int_array4(count) = connections%id_dn(int_array1(i))
+    endif
+  enddo
+    do k = 1,count
+      int_array5(k) = k
+    enddo
+    int_array5 = int_array5 - 1
+    call PetscSortIntWithPermutation(count,int_array4,int_array5,ierr)
+    int_array5 = int_array5 + 1
+    do k = 1,count
+      index(i -count +k -1) = int_array1(i -count -1 + int_array5(k) )
+    enddo
+  connections_2=> ConnectionCreate(nconn, &
+                                  option%nphase,INTERNAL_CONNECTION_TYPE)
+  do i=1,iconn
+    connections_2%local(i)     = connections%local(index(i))
+    connections_2%id_up(i)     = connections%id_up(index(i))
+    connections_2%id_dn(i)     = connections%id_dn(index(i))
+    connections_2%dist(-1:3,i) = connections%dist(-1:3,index(i))
+    connections_2%area(i)      = connections%area(index(i))
+    connections_2%cntr(1:3,i)  = connections%cntr(1:3,index(i))
+  enddo
+  StructGridComputeInternConnect => connections_2
+#else
   StructGridComputeInternConnect => connections
+#endif
 
 end function StructGridComputeInternConnect
 

@@ -36,6 +36,7 @@ module HDF5_module
             HDF5WriteStructDataSetFromVec, &
             HDF5WriteStructuredDataSet, &
             HDF5ReadRegionFromFile, &       
+            HDF5ReadUnstructuredGridRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, & 
             HDF5ReadCellIndexedRealArray
             
@@ -2454,6 +2455,219 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
 end subroutine HDF5ReadRegionFromFile
 
+! ************************************************************************** !
+!
+! HDF5ReadUnstructuredGridRegionFromFile: Reads a region from an hdf5 file
+!     for unstructured grid
+! author: Gautam Bisht
+! date: 5/31/11
+!
+! ************************************************************************** !
+subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+
+#if defined(PETSC_HAVE_HDF5)
+  use hdf5
+#endif
+  
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Region_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(realization_type)         :: realization
+  type(region_type)              :: region
+  character(len=MAXSTRINGLENGTH) :: filename
+
+  ! local
+  type(option_type), pointer :: option
+  PetscMPIInt       :: hdf5_err
+  PetscMPIInt       :: rank_mpi
+  PetscInt          :: ndims
+  PetscInt          :: remainder
+  PetscInt          :: istart, iend, ii, jj
+  PetscInt,pointer  :: int_buffer(:,:)
+  character(len=MAXSTRINGLENGTH) :: string
+
+#if defined(PETSC_HAVE_HDF5)
+  integer(HID_T) :: file_id
+  integer(HID_T) :: prop_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: data_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
+  integer(HSIZE_T) :: length(2), offset(2)
+#endif
+
+  option => realization%option
+
+  ! Initialize FOTRAN predefined datatypes
+  call h5open_f(hdf5_err)
+
+  ! Setup file access property with parallel I/O access
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+
+  ! Open the file collectively
+  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call h5pclose_f(prop_id,hdf5_err)
+  
+  ! Open dataset
+  string = 'Region/'//trim(region%name)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+
+  ! Get dataset's dataspace
+  call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
+  
+  ! Get number of dimensions and check
+  call h5sget_simple_extent_ndims_f(data_space_id,ndims,hdf5_err)
+  if ((ndims.gt.2).or.(ndims.lt.1)) then
+    option%io_buffer='Dimension of '//string//' dataset in ' // filename // &
+     ' is > 2 or < 1.'
+  call printErrMsg(option)
+  endif
+  
+  ! Allocate memory
+  allocate(dims_h5(ndims))
+  allocate(max_dims_h5(ndims))
+  
+  ! Get dimensions of dataset
+  call h5sget_simple_extent_dims_f(data_space_id,dims_h5,max_dims_h5,hdf5_err)
+  
+  !write(*,*), 'dims_h5: ',dims_h5(:)
+
+  select case(ndims)
+    case(1)
+    !
+    !                    Read Cell IDs
+    !
+    region%num_cells = dims_h5(1)/option%mycommsize
+      remainder = dims_h5(1) - region%num_cells*option%mycommsize
+    if(option%myrank.lt.remainder) region%num_cells = region%num_cells + 1
+    
+    ! Find istart and iend
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(region%num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+  
+    ! Determine the length and offset of data to be read by each processor
+    length(1) = iend-istart
+    offset(1) = istart
+
+    !
+    rank_mpi = 1
+    memory_space_id = -1
+  
+    ! Create data space for dataset
+    call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
+  
+    ! Select hyperslab
+    call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
+    call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
+  
+    ! Initialize data buffer
+    allocate(int_buffer(length(1),1))
+    
+    ! Create property list
+    call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdf5_err)
+#endif
+  
+    ! Read the dataset collectively
+    call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
+                   dims_h5,hdf5_err,memory_space_id,data_space_id)
+
+    ! allocate array to store vertices for each cell
+    allocate(region%cell_ids(region%num_cells))
+    region%cell_ids = 0
+  
+    do ii = 1,region%num_cells
+      region%cell_ids(ii) = int_buffer(ii,1)
+    !if(option%myrank.eq.0) write(*,*), ii, region%cell_ids(ii)
+  enddo
+    
+  case(2)
+    !
+    !                    Read Vertices
+    !
+    region%num_verts = dims_h5(2)/option%mycommsize
+      remainder = dims_h5(2) - region%num_verts*option%mycommsize
+
+     ! Find istart and iend
+     istart = 0
+     iend   = 0
+     call MPI_Exscan(region%num_verts,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+     call MPI_Scan(region%num_verts,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+  
+     ! Determine the length and offset of data to be read by each processor
+     length(1) = dims_h5(1)
+     length(2) = iend-istart
+     offset(1) = 0
+     offset(2) = istart
+  
+     !
+     rank_mpi = 2
+     memory_space_id = -1
+  
+     ! Create data space for dataset
+     call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
+  
+     ! Select hyperslab
+     call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
+     call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
+  
+     ! Initialize data buffer
+     allocate(int_buffer(length(1),length(2)))
+  
+     ! Create property list
+     call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+     call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdf5_err)
+#endif
+  
+     ! Read the dataset collectively
+     call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
+          dims_h5,hdf5_err,memory_space_id,data_space_id)
+  
+     ! allocate array to store vertices for each cell
+     allocate(region%vert_ids(0:MAX_VERT_PER_FACE,region%num_verts))
+     region%vert_ids = -1
+  
+     do ii = 1,region%num_verts
+       region%vert_ids(0,ii) = int_buffer(1,ii)
+         do jj = 2,int_buffer(1,ii)+1
+         region%vert_ids(jj-1,ii) = int_buffer(jj,ii)
+       enddo
+     enddo
+
+  end select
+    
+  deallocate(dims_h5)
+  deallocate(max_dims_h5)
+  deallocate(int_buffer)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+
+end subroutine HDF5ReadUnstructuredGridRegionFromFile
+
+
 #else
 
             
@@ -3092,4 +3306,41 @@ end subroutine HDF5WriteStructDataSetFromVec
 
 #endif
       
+! ************************************************************************** !
+!
+! HDF5ReadUnstructuredGridRegionFromFile: AMR stub
+! author: Gautam Bisht
+! date: 5/31/11
+!
+! ************************************************************************** !
+#if defined(SAMR_HAVE_HDF5)
+subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+
+#if defined(PETSC_HAVE_HDF5)
+  use hdf5
+#endif
+
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Region_module
+  use Patch_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(realization_type)         :: realization
+  type(region_type)              :: region
+  character(len=MAXSTRINGLENGTH) :: filename
+
+
+end subroutine
+
+#endif
+
 end module HDF5_module
+
+
+
