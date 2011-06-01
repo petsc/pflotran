@@ -828,33 +828,33 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                                   aux_vars(ghosted_id)%aux_var_elem(0),&
                                   global_aux_vars(ghosted_id), &
                                   iphase, &
-                                  realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                                   realization%fluid_properties,option, xphi)
 ! update global variables
-    if( associated(global_aux_vars))then
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+    if(associated(global_aux_vars))then
+      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
 !     global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
+      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
       
       mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
       if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
-      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
+      ynacl = mnacl/(1.d3/FMWH2O + mnacl)
+      global_aux_vars(ghosted_id)%xmass(1) = (1.d0-ynacl)&
                               *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
                               /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
                               +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
                               +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+      global_aux_vars(ghosted_id)%xmass(2) = aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
-      global_aux_vars(ghosted_id)%reaction_rate_store(:)=global_aux_vars(ghosted_id)%reaction_rate(:)
-      global_aux_vars(ghosted_id)%reaction_rate(:) = 0D0
+      global_aux_vars(ghosted_id)%reaction_rate_store(:) = global_aux_vars(ghosted_id)%reaction_rate(:)
+      global_aux_vars(ghosted_id)%reaction_rate(:) = 0.D0
 !     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
 !       global_aux_vars(ghosted_id)%pres(:)
 !     global_aux_vars(ghosted_id)%mass_balance 
@@ -3607,6 +3607,22 @@ function MphaseGetTecplotHeader(realization,icolumn)
     write(string2,'('',"'',i2,''-d(g)"'')') icolumn
   else
     write(string2,'('',"d(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-vis(l)"'')') icolumn
+  else
+    write(string2,'('',"vis(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-vis(g)"'')') icolumn
+  else
+    write(string2,'('',"vis(g)"'')')
   endif
   string = trim(string) // trim(string2)
     

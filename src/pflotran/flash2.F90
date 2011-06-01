@@ -4888,6 +4888,22 @@ function Flash2GetTecplotHeader(realization, icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-vis(l)"'')') icolumn
+  else
+    write(string2,'('',"vis(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-vis(g)"'')') icolumn
+  else
+    write(string2,'('',"vis(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-u(l)"'')') icolumn
   else
     write(string2,'('',"u(l)"'')')

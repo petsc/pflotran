@@ -1370,7 +1370,8 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF,STATE)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
+         SC_FUGA_COEFF,STATE)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1390,7 +1391,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,LIQUID_VISCOSITY,GAS_VISCOSITY) ! still need implementation
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = 0.d0
             enddo
@@ -1403,7 +1404,9 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%u
             enddo
         end select
+        
       else if (associated(patch%aux%Richards)) then
+      
         select case(ivar)
           case(TEMPERATURE)
             call printErrMsg(option,'TEMPERATURE not supported by Richards')
@@ -1419,6 +1422,10 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
+          case(LIQUID_VISCOSITY)
+            call printErrMsg(option,'LIQUID_VISCOSITY not supported by Richards')
+          case(GAS_VISCOSITY)
+            call printErrMsg(option,'GAS_VISCOSITY not supported by Richards')
           case(PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
@@ -1435,7 +1442,9 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
         end select
+        
       else if (associated(patch%aux%Flash2)) then
+      
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
@@ -1465,6 +1474,10 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2)
             enddo
+          case(GAS_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%vis(2)
+            enddo
           case(GAS_DENSITY) 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(2)
@@ -1485,13 +1498,20 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar)
             enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%vis(1)
+            enddo
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
             enddo
         end select
+        
       else if (associated(patch%aux%Mphase)) then
+        
         select case(ivar)
+        
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
@@ -1508,6 +1528,10 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%vis(1)
+            enddo
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(2)
@@ -1519,6 +1543,10 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
           case(GAS_ENERGY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2)
+            enddo
+          case(GAS_VISCOSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%vis(2)
             enddo
           case(GAS_DENSITY) 
             do local_id=1,grid%nlmax
@@ -1912,7 +1940,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF,STATE)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
+         SC_FUGA_COEFF,STATE)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1964,6 +1993,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
+          case(LIQUID_VISCOSITY)
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
           case(GAS_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(2)
           case(GAS_MOLE_FRACTION)
@@ -1974,6 +2005,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(2)
           case(GAS_DENSITY_MOL) 
             value = patch%aux%Global%aux_vars(ghosted_id)%den(2)
+          case(GAS_VISCOSITY) 
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(2)
           case(SC_FUGA_COEFF)
             value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
           case(LIQUID_MOLE_FRACTION)
@@ -1991,6 +2024,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
+          case(LIQUID_VISCOSITY)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%vis(1)
           case(GAS_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(2)
           case(GAS_MOLE_FRACTION)
@@ -1999,6 +2034,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
           case(GAS_DENSITY) 
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(2)
+          case(GAS_VISCOSITY) 
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%vis(2)
           case(GAS_DENSITY_MOL) 
             value = patch%aux%Global%aux_vars(ghosted_id)%den(2)
           case(SC_FUGA_COEFF)
@@ -2211,7 +2248,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,STATE)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY,STATE)
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -2255,6 +2292,8 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(LIQUID_VISCOSITY)
+          case(GAS_VISCOSITY)
           case(LIQUID_MOLE_FRACTION)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
@@ -2288,6 +2327,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by Richards')
           case(GAS_MOLE_FRACTION)
             call printErrMsg(option,'GAS_MOLE_FRACTION not supported by Richards')
+          case(LIQUID_VISCOSITY)
+            call printErrMsg(option,'LIQUID_VISCOSITY not supported by Richards')
+          case(GAS_VISCOSITY)
+            call printErrMsg(option,'GAS_VISCOSITY not supported by Richards')
           case(LIQUID_ENERGY)
             call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
