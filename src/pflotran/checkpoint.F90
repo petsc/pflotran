@@ -7,7 +7,7 @@
 
 ! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
 ! COMPATIBILITY ISSUES - geh.
-#define REVISION_NUMBER 4
+#define REVISION_NUMBER 5
 
 module Checkpoint_Header_module
   implicit none
@@ -379,14 +379,15 @@ subroutine Checkpoint(realization, &
 
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr)
+    ! create a global vec for writing below 
+    if (global_vec == 0) then
+      call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                      global_vec,GLOBAL,option)
+    endif
     if (realization%reaction%checkpoint_activity_coefs .and. &
         realization%reaction%act_coef_update_frequency /= &
         ACT_COEF_FREQUENCY_OFF) then
       ! allocated vector
-      if (global_vec == 0) then
-        call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                        global_vec,GLOBAL,option)
-      endif
       do i = 1, realization%reaction%naqcomp
         call RealizationGetDataset(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
@@ -398,6 +399,15 @@ subroutine Checkpoint(realization, &
         call VecView(global_vec,viewer,ierr)
       enddo
     endif
+    ! mineral volume fractions for kinetic minerals
+    if (realization%reaction%nkinmnrl > 0) then
+      do i = 1, realization%reaction%nkinmnrl
+        call RealizationGetDataset(realization,global_vec, &
+                                   MINERAL_VOLUME_FRACTION,i)
+        call VecView(global_vec,viewer,ierr)
+      enddo
+    endif
+    ! sorbed concentrations for multirate kinetic sorption
     if (realization%reaction%kinmr_nrate > 0 .and. &
         .not.option%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
@@ -659,12 +669,12 @@ subroutine Restart(realization, &
                                      field%tran_xx_loc,NTRANDOF)
     call VecCopy(field%tran_xx,field%tran_yy,ierr)
 
+    if (global_vec == 0) then
+      call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                      global_vec,GLOBAL,option)
+    endif    
     if (read_activity_coefs == ONE_INTEGER) then
       activity_coefs_read = PETSC_TRUE
-      if (global_vec == 0) then
-        call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                        global_vec,GLOBAL,option)
-      endif    
       call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
                                       LOCAL,option)
       do i = 1, realization%reaction%naqcomp
@@ -681,18 +691,29 @@ subroutine Restart(realization, &
         call RealizationSetDataset(realization,local_vec,LOCAL, &
                                    SECONDARY_ACTIVITY_COEF,i)
       enddo
-      if (realization%reaction%kinmr_nrate > 0 .and. &
-          .not.option%no_restart_kinetic_sorption) then
-        ! PETSC_FALSE flag indicates read from file
-        call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
-      endif
-      call VecDestroy(local_vec,ierr)
+    endif
+    ! mineral volume fractions for kinetic minerals
+    if (realization%reaction%nkinmnrl > 0) then
+      do i = 1, realization%reaction%nkinmnrl
+        call VecLoad(global_vec,viewer,ierr)
+        call RealizationSetDataset(realization,global_vec,GLOBAL, &
+                                   MINERAL_VOLUME_FRACTION,i)
+      enddo
+    endif
+    ! sorbed concentrations for multirate kinetic sorption
+    if (realization%reaction%kinmr_nrate > 0 .and. &
+        .not.option%no_restart_kinetic_sorption) then
+      ! PETSC_FALSE flag indicates read from file
+      call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
     endif
   endif
     
   ! We are finished, so clean up.
   if (global_vec /= 0) then
     call VecDestroy(global_vec,ierr)
+  endif
+  if (local_vec /= 0) then
+    call VecDestroy(local_vec,ierr)
   endif
   call PetscViewerDestroy(viewer, ierr)
   call PetscGetTime(tend,ierr) 
