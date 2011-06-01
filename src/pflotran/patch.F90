@@ -918,16 +918,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
                 case(G_MODE)
-                  coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
-                    flow_condition%pressure%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,1:num_connections) = &
-                    flow_condition%temperature%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(GENERAL_CONCENTRATION_DOF,1:num_connections) = &
-                    flow_condition%concentration%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(GENERAL_ENTHALPY_DOF,1:num_connections) = &
-                    flow_condition%concentration%dataset%cur_value(1)
-!                  coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
- !                   flow_condition%iphase
+                  do idof = 1, option%nflowdof
+                    coupler%flow_aux_real_var(idof,1:num_connections) = &
+                      flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                  enddo
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)

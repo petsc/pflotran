@@ -2961,7 +2961,7 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
   PetscInt :: apid, cpid, vpid
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: dummy, guess
-  PetscReal :: Ts
+  PetscReal :: Ps
   PetscBool :: flag
   PetscErrorCode :: ierr
 
@@ -2979,18 +2979,8 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
   
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
-      guess = gen_aux_var%temp
-      call Tsat(Ts,gen_aux_var%pres(vpid),dummy,guess,ierr)
-!geh      call psat(gen_aux_var%temp,Ps,ierr)
-      if (gen_aux_var%temp > Ts .and. &
-          gen_aux_var%pres(lid) > gen_aux_var%pres(vpid)) then
-        if (gen_aux_var%temp <= Ts) then
-          option%io_buffer = 'P > Psat, but T <= Tsat'
-          call printErrMsg(option)
-        else if (gen_aux_var%pres(gid) <= gen_aux_var%pres(vpid)) then
-          option%io_buffer = 'T > Tsat, but P <= Psat'
-          call printErrMsg(option)
-        endif
+      call psat(gen_aux_var%temp,Ps,ierr)
+      if (gen_aux_var%pres(vpid) <= Ps) then
         global_aux_var%istate = TWO_PHASE_STATE
         x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
         x(GENERAL_AIR_PRESSURE_DOF) = epsilon
@@ -2998,15 +2988,8 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
         flag = PETSC_TRUE
       endif
     case(GAS_STATE)
-      if (gen_aux_var%temp < Ts .or. &
-          gen_aux_var%pres(gid) < gen_aux_var%pres(vpid)) then
-        if (gen_aux_var%temp >= Ts) then
-          option%io_buffer = 'P < Psat, but T >= Tsat'
-          call printErrMsg(option)
-        else if (gen_aux_var%pres(gid) >= gen_aux_var%pres(vpid)) then
-          option%io_buffer = 'T < Tsat, but P >= Psat'
-          call printErrMsg(option)
-        endif
+      call psat(gen_aux_var%temp,Ps,ierr)
+      if (gen_aux_var%pres(vpid) >= Ps) then
         global_aux_var%istate = TWO_PHASE_STATE
         x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
@@ -3017,7 +3000,6 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
       if (gen_aux_var%sat(gid) < 0.d0) then
         ! convert to liquid state
         global_aux_var%istate = LIQUID_STATE
-!geh        call psat(gen_aux_var%temp,gen_aux_var%pres(vpid),ierr)
         x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
                                          gen_aux_var%pres(vpid)
         x(GENERAL_CONCENTRATION_DOF) = gen_aux_var%xmol(acid,lid)
@@ -3026,7 +3008,6 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
       else if (gen_aux_var%sat(gid) > 1.d0) then
         ! convert to gas state
         global_aux_var%istate = GAS_STATE
-!geh        call psat(gen_aux_var%temp,gen_aux_var%pres(vpid),ierr)
         x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
                                       gen_aux_var%pres(vpid)
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)

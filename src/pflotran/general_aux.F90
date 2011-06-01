@@ -185,7 +185,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: krg, visg, dkrg_Se
-  PetscReal :: K_H
+  PetscReal :: K_H, Ps
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid
   PetscErrorCode :: ierr
@@ -220,7 +220,11 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(lid) = 1.d0
       gen_aux_var%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,gen_aux_var%pres(vpid),ierr)
+      call psat(gen_aux_var%temp,Ps,ierr)
+      call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
+                             Ps,K_H)
+      gen_aux_var%pres(apid) = K_H*gen_aux_var%xmol(acid,lid)
+      gen_aux_var%pres(vpid) = gen_aux_var%pres(lid) - gen_aux_var%pres(apid)
 
     case(GAS_STATE)
       gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
