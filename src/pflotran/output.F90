@@ -3115,9 +3115,9 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   output_option => realization%output_option
 
 100 format(es14.6)
-101 format("i")
+101 format(i2)
 110 format(es14.6)
-111 format("i")
+111 format(i2)
 
   ghosted_id = grid%nL2G(local_id)
   ! write out coorindates
@@ -3229,8 +3229,8 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      i = int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
-      write(fid,111,advance="no") i
+      write(fid,111,advance="no") &
+        int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
   end select
 
   if (option%ntrandof > 0) then
@@ -3401,11 +3401,9 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   output_option => realization%output_option
 
 100 format(es14.6)
-!100 format(es16.9)
-101 format("i")
+101 format(i2)
 110 format(es14.6)
-!110 format(',',es16.9)
-111 format("i")
+111 format(i2)
 
 
   ! write out coorindates
@@ -3624,12 +3622,12 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      i = int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+     write(fid,111,advance="no") &
+       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
                                         region%coordinates(ONE_INTEGER)%x, &
                                         region%coordinates(ONE_INTEGER)%y, &
                                         region%coordinates(ONE_INTEGER)%z, &
                                         count,ghosted_ids))
-      write(fid,111,advance="no") i
   end select
 
   if (option%ntrandof > 0) then
@@ -3855,10 +3853,10 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
 
 100 format(es14.6)
 !100 format(es16.9)
-101 format("i")
+101 format(i2)
 110 format(es14.6)
 !110 format(',',es16.9)
-111 format("i")
+111 format(i2)
  
   iphase = 1
 
