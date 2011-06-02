@@ -5396,13 +5396,15 @@ end subroutine RTJacobianPatch2
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateAuxVars(realization,update_bcs,update_activity_coefs)
+subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
+                           update_activity_coefs)
 
   use Realization_module
   use Level_module
   use Patch_module
 
   type(realization_type) :: realization
+  PetscBool :: update_cells
   PetscBool :: update_bcs
   PetscBool :: update_activity_coefs
   
@@ -5417,7 +5419,7 @@ subroutine RTUpdateAuxVars(realization,update_bcs,update_activity_coefs)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       ! PETSC_TRUE to update cells
-      call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,update_bcs, &
+      call RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
                                 update_activity_coefs)
       cur_patch => cur_patch%next
     enddo

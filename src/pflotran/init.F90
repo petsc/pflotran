@@ -666,12 +666,12 @@ subroutine Init(simulation)
                                          option%initialize_transport_filename)
     endif
     ! PETSC_FALSE = no activity coefficients
-    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
     ! at this point the auxvars have been computed with activity coef = 1.d0
     ! to use intitial condition with activity coefs /= 1.d0, must update
     ! activity coefs and recompute auxvars
     if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE)
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
     endif
   endif
   

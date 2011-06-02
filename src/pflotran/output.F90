@@ -3229,8 +3229,8 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,111,advance="no") &
-        int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
+      i = int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
+      write(fid,111,advance="no") i
   end select
 
   if (option%ntrandof > 0) then
@@ -3624,18 +3624,12 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-!     write(fid,111,advance="no") &
-!       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
-!                                        region%coordinates(ONE_INTEGER)%x, &
-!                                        region%coordinates(ONE_INTEGER)%y, &
-!                                        region%coordinates(ONE_INTEGER)%z, &
-!                                        count,ghosted_ids))
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
-                                         region%coordinates(ONE_INTEGER)%x, &
-                                         region%coordinates(ONE_INTEGER)%y, &
-                                         region%coordinates(ONE_INTEGER)%z, &
-                                         count,ghosted_ids)
+      i = int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+                                        region%coordinates(ONE_INTEGER)%x, &
+                                        region%coordinates(ONE_INTEGER)%y, &
+                                        region%coordinates(ONE_INTEGER)%z, &
+                                        count,ghosted_ids))
+      write(fid,111,advance="no") i
   end select
 
   if (option%ntrandof > 0) then

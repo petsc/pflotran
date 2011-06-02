@@ -266,6 +266,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
+  use Reactive_Transport_module, only : RTUpdateAuxVars
 
   implicit none
   
@@ -342,6 +343,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     if (transport_read) then
       tran_stepper%target_time = option%tran_time
+      ! This is here since we need to recalculate the secondary complexes
+      ! if they exist.  DO NOT update activity coefficients!!! - geh
+      if (realization%reaction%use_full_geochemistry) then
+                                         ! cells     bcs        act coefs.
+        call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+      endif
     endif
 
   else if (master_stepper%init_to_steady_state) then
@@ -1621,7 +1628,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
     final_tran_time = option%tran_time + option%tran_dt
    
     if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 !       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE are passed
 !       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
     endif
@@ -1917,7 +1924,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   ! update time derivative on RHS
   call RTUpdateRHSCoefs(realization)
   ! calculate total component concentrations based on t0 densities
-  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
   call RTCalculateRHS_t0(realization)
     
   ! set densities and saturations to t+dt
@@ -2416,7 +2423,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT (STEADY STATE) ",32("="))')
 
   if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
   endif
 
   if (realization%reaction%use_log_formulation) then
