@@ -564,7 +564,7 @@ end subroutine MphaseUpdateMassBalancePatch
            exit
         endif
  
-! ******* Check 0<=sat/con<=1 **************************
+! ******* Check 0 <= sat/con <= 1 **************************
         select case(iipha)
         case (1)
            if(xx_p(n0 + 3) > 1.0D0)then
@@ -574,6 +574,9 @@ end subroutine MphaseUpdateMassBalancePatch
  !             if(xx_p(n0 + 3) > -1D-3)then
  !                xx_p(n0 + 3) =0.D0
  !             else  
+        
+ !        print *,'MPhaseUpdate: ',iipha,n,n0,option%nflowdof,xx_p(n0+3)
+          
                  re=0; exit
  !             endif          ! clu removed 05/02/2011
           endif
@@ -595,13 +598,13 @@ end subroutine MphaseUpdateMassBalancePatch
      end do
   
 !    if(re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
-    call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
-    call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
+     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
+     call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
-   endif
+  endif
   ! print *,' update reason', grid%myrank, re,n,grid%nlmax
- reason=re
+  reason=re
   
 end subroutine MPhaseUpdateReasonPatch
 

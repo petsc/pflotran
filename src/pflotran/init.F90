@@ -317,7 +317,7 @@ subroutine Init(simulation)
                                  realization,ierr)
         end select
       case(MPH_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
+        call SNESSetFunction(flow_solver%snes,field%flow_r,MphaseResidual, &
                              realization,ierr)
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
