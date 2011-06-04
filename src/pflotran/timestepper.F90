@@ -1629,7 +1629,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
    
     if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
       call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
-!       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE are passed
+!       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE,* are passed
 !       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
     endif
     if (realization%reaction%use_log_formulation) then

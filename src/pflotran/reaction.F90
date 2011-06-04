@@ -5496,7 +5496,7 @@ subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i
   
-  10 format(a20,':',10es13.5)
+  10 format(a20,':',10es19.11)
   20 format(a20,':',a20)
   30 format(/)
 

@@ -2559,7 +2559,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
         write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
       enddo
-      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+      string = trim(string) // '"Phase '// trim(cell_string) // '"'
     case (G_MODE)
       string = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &

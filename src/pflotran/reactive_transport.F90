@@ -5710,11 +5710,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       boundary_condition => boundary_condition%next
     enddo
 
-    patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE
-
     call PetscLogEventEnd(logging%event_rt_auxvars_bc,ierr)
 
   endif 
+
+  patch%aux%RT%aux_vars_up_to_date = update_cells .and. update_bcs
   
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
   icall = icall+ 1
