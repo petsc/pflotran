@@ -1646,12 +1646,12 @@ subroutine GridLocalizeRegionsForUnstructuredMesh(grid,region_list,option)
   PetscBool                       :: done,found
   PetscScalar                     :: aa(1)
   
-  Mat :: mat_vert2cell, mat_vert2cell_diag, mat_vert2cell_offdiag
+  Mat                 :: mat_vert2cell, mat_vert2cell_diag, mat_vert2cell_offdiag
+  Vec                 :: vec_vert2cell, vec_cell2facevert
+  Vec                 :: vec_vert2cell_reg_subset, vec_cell2facevert_reg_subset
+  PetscInt            :: vert_id_loc, vert_id_nat, counter1,counter2
+  PetscInt,pointer    :: cell_count(:),cell_ids(:),cell_ids_for_face(:),face_ids_for_face(:)
   PetscScalar,pointer :: vert2cell_array(:)
-  Vec :: vec_vert2cell, vec_cell2facevert
-  Vec :: vec_vert2cell_reg_subset, vec_cell2facevert_reg_subset
-  PetscInt :: vert_id_loc, vert_id_nat, counter1,counter2
-  PetscInt,pointer :: cell_count(:),cell_ids(:),cell_ids_for_face(:),face_ids_for_face(:)
   
   region => region_list%first
   
