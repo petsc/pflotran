@@ -1182,14 +1182,14 @@ subroutine InitReadInput(simulation)
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
                 select case(trim(word))
-                  case('KD_REACTION','KD_REACTIONS')
+                  case('ISOTHERM_REACTIONS')
                     do
                       call InputReadFlotranString(input,option)
                       call InputReadStringErrorMsg(input,option,card)
                       if (InputCheckExit(input,option)) exit
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,word, &
-                                         'CHEMISTRY,SORPTION,KD_REACTION') 
+                                         'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS') 
                       ! skip over remaining cards to end of each kd entry
                       call InputSkipToEnd(input,option,word)
                     enddo
