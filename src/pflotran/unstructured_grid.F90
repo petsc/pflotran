@@ -11,6 +11,9 @@ module Unstructured_Grid_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
+#if defined(PARALLELIO_LIB)
+  include "piof.h"
+#endif
 
   type, public :: unstructured_grid_type
     ! num_cells_ghosted =
@@ -95,6 +98,9 @@ module Unstructured_Grid_module
   public :: UnstructuredGridCreate, &
             UnstructuredGridRead, &
             UnstructuredGridReadHDF5, &
+#if defined(PARALLELIO_LIB)
+            UnstructuredGridReadHDF5ParallelIOLib, &
+#endif
             UnstructuredGridDecompose, &
             UGridComputeInternConnect, &
             UGridPopulateConnection, &
@@ -607,7 +613,6 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   group_name = "Domain"
   option%io_buffer = 'Opening group: ' // trim(group_name)
   call printMsg(option)
-  !call h5gopen_f(file_id,group_name,grp_id,hdf5_err)
 
   ! Open dataset
   call h5dopen_f(file_id,"Domain/Cells",data_set_id,hdf5_err)
@@ -788,6 +793,87 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   
   
 end subroutine UnstructuredGridReadHDF5
+
+! ************************************************************************** !
+!
+! UnstructuredGridReadHDF5ParallelIOLib: Reads an unstructured grid from HDF5
+! author: Gautam Bisht
+! date: 05/13/11
+!
+! ************************************************************************** !
+#if defined(PARALLELIO_LIB)
+
+subroutine UnstructuredGridReadHDF5ParallelIOLib(unstructured_grid,filename,option)
+
+#if defined(PETSC_HAVE_HDF5)
+  use hdf5
+#endif
+
+!#include "definitions.h"
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use Input_module
+  use Option_module
+  use HDF5_aux_module
+
+  implicit none
+
+  type(unstructured_grid_type)   :: unstructured_grid
+  type(option_type)              :: option
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  PetscInt,pointer  :: int_buffer(:,:)
+  PetscReal,pointer :: double_buffer(:,:)
+  PetscInt          :: ii, jj
+  PetscInt          :: dims(2), dataset_dims(2)
+
+  character(len=MAXSTRINGLENGTH) :: cell_dataset_name = '/Domain/Cells'//CHAR(0)
+  character(len=MAXSTRINGLENGTH) :: vert_dataset_name = '/Domain/Vertices'//CHAR(0)
+
+  ! Read Domain/Cells
+  call HDF5ReadDatasetInteger2D(filename,cell_dataset_name,NONUNIFORM_CONTIGUOUS_READ,&
+  option,int_buffer,dims, dataset_dims)
+
+  ! Allocate array to store vertices for each cell
+  unstructured_grid%num_cells_local  = dims(2)
+  unstructured_grid%num_cells_global = dataset_dims(2)
+  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL,unstructured_grid%num_cells_local))
+  unstructured_grid%cell_vertices_0 = 0
+
+  ! Fill the cell data structure
+  do ii = 1,unstructured_grid%num_cells_local
+    do jj = 2,int_buffer(1,ii)+1
+      unstructured_grid%cell_vertices_0(jj-1,ii) = int_buffer(jj,ii)
+    enddo
+  enddo
+
+  ! Read Vertices
+  call HDF5ReadDatasetReal2D(filename,vert_dataset_name,NONUNIFORM_CONTIGUOUS_READ,&
+  option,double_buffer,dims,dataset_dims)
+
+  unstructured_grid%num_vertices_local = dims(2)
+  unstructured_grid%num_vertices_global= dataset_dims(2)
+  allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
+
+  ! fill the vertices data structure
+  do ii = 1, unstructured_grid%num_vertices_local
+    unstructured_grid%vertices(ii)%id = 0
+    unstructured_grid%vertices(ii)%x = double_buffer(1,ii)
+    unstructured_grid%vertices(ii)%y = double_buffer(2,ii)
+    unstructured_grid%vertices(ii)%z = double_buffer(3,ii)
+  enddo
+
+end subroutine UnstructuredGridReadHDF5ParallelIOLib
+
+#endif
 
 ! ************************************************************************** !
 !

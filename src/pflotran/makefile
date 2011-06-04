@@ -71,7 +71,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  GAUTAM_FLAGS = -DOS_STATISTICS -DGLENN -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -DREARRANGE_CONN #-DGEH_DEBUG -DGB_DEBUG
+  GAUTAM_FLAGS = -DOS_STATISTICS -DGLENN -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -DREARRANGE_CONN #-DPARALLELIO_LIB #-DGEH_DEBUG -DGB_DEBUG
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
@@ -98,6 +98,10 @@ endif
 
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
+endif
+
+ifdef have_parallelio_lib
+LIBS += -L${PARALLELIO_LIB} -lparallelio
 endif
 
 ifdef tau

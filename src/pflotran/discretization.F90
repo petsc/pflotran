@@ -376,7 +376,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UnstructuredGridCreate()
             if (index(filename,'.h5') > 0) then
+#ifdef PARALLELIO_LIB
+              call UnstructuredGridReadHDF5ParallelIOLib(un_str_grid,filename,option)
+#else
               call UnstructuredGridReadHDF5(un_str_grid,filename,option)
+#endif
             else
               call UnstructuredGridRead(un_str_grid,filename,option)
             endif
