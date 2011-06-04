@@ -131,6 +131,9 @@ subroutine Init(simulation)
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
 
+  call InitReadHDF5CardsFromInput(realization)
+  call Create_IOGroups(option)
+
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 
@@ -172,9 +175,13 @@ subroutine Init(simulation)
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
-  
+
 
 #ifdef VAMSI_HDF5      
+  call Create_IOGroups(option)
+#endif    
+
+#if defined(PARALLELIO_LIB)
   call Create_IOGroups(option)
 #endif    
 
@@ -317,7 +324,7 @@ subroutine Init(simulation)
                                  realization,ierr)
         end select
       case(MPH_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
+        call SNESSetFunction(flow_solver%snes,field%flow_r,MphaseResidual, &
                              realization,ierr)
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
@@ -3237,10 +3244,75 @@ subroutine Create_IOGroups(option)
   use Option_module
   use Logging_module
 
+#if defined(PARALLELIO_LIB)
+  use hdf5
+#endif
+
   implicit none
 
   type(option_type) :: option
   PetscErrorCode :: ierr
+
+#if defined(PARALLELIO_LIB)
+
+  PetscMPIInt :: numiogroups
+
+  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
+
+  ! Initialize HDF interface to define global constants  
+  call h5open_f(ierr)
+
+  if (option%hdf5_read_group_size <= 0) then
+    write(option%io_buffer,& 
+          '("The keyword HDF5_READ_GROUP_SIZE & 
+            & in the input file (pflotran.in) is either not set or &
+            & its value is less than or equal to ZERO. &
+            & HDF5_READ_GROUP_SIZE =  ",i6)') &
+             option%hdf5_read_group_size
+    call printErrMsg(option)      
+  endif         
+ 
+  if (option%hdf5_write_group_size <= 0) then
+    write(option%io_buffer,& 
+          '("The keyword HDF5_WRITE_GROUP_SIZE & 
+            &in the input file (pflotran.in) is either not set or &
+            &its value is less than or equal to ZERO. &
+            &HDF5_WRITE_GROUP_SIZE =  ",i6)') &
+             option%hdf5_write_group_size
+    call printErrMsg(option)      
+  endif                    
+
+  if ( mod(option%mycommsize , option%hdf5_read_group_size) /= 0) then
+    write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
+                of HDF_READ_GROUP_SIZE = ", i6)')  option%hdf5_read_group_size
+    call printErrMsg(option)      
+  endif         
+
+  if ( mod(option%mycommsize , option%hdf5_write_group_size) /= 0) then
+    write(option%io_buffer, '("Number of MPI tasks should be an exact multiple &
+                of HDF_WRITE_GROUP_SIZE = ", i6)')  option%hdf5_write_group_size
+    call printErrMsg(option)      
+  endif         
+
+  ! create read IO groups
+  numiogroups = option%mycommsize/option%hdf5_read_group_size
+  call parallelio_iogroup_init(numiogroups, option%mycomm, option%ioread_group_id, ierr)
+
+  if ( option%hdf5_read_group_size == option%hdf5_write_group_size ) then
+    ! reuse read_group to use for writing too as both groups are same size
+    option%iowrite_group_id = option%ioread_group_id
+  else   
+      ! create write IO groups
+      numiogroups = option%mycommsize/option%hdf5_write_group_size
+      call parallelio_iogroup_init(numiogroups, option%mycomm, option%iowrite_group_id, ierr)
+  end if
+
+    write(option%io_buffer, '(" Read group id :  ", i6)') option%ioread_group_id
+    call printMsg(option)      
+    write(option%io_buffer, '(" Write group id :  ", i6)') option%iowrite_group_id
+    call printMsg(option)      
+  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
+#endif   ! PARALLELIO_LIB 
 
 #ifdef VAMSI_HDF5_READ  
   call PetscLogEventBegin(logging%event_create_iogroups,ierr)
@@ -3316,5 +3388,59 @@ subroutine Create_IOGroups(option)
 #endif
  
 end subroutine Create_IOGroups
+
+! ************************************************************************** !
+!
+! InitReadHDF5CardsFromInput: Reads from pflow input file cards related to
+!                             group size for HDF5 read and write.
+! author: Gautam Bisht
+! date: 05/12/11
+!
+! ************************************************************************** !
+subroutine InitReadHDF5CardsFromInput(realization)
+
+  use Simulation_module
+  use Option_module
+  use Input_module
+  use Realization_module
+  
+
+  implicit none
+  
+  type(simulation_type) :: simulation
+
+  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXSTRINGLENGTH) :: string
+
+  type(realization_type), pointer :: realization
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+
+  input => realization%input
+  option => realization%option
+
+!......................
+  string = "HDF5_READ_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+
+  if (.not.InputError(input)) then  
+    ! read in keyword 
+        call InputReadInt(input,option,option%hdf5_read_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+  endif
+
+!......................
+  string = "HDF5_WRITE_GROUP_SIZE"
+  call InputFindStringInFile(input,option,string)
+
+  if (.not.InputError(input)) then  
+    ! read in keyword 
+        call InputReadInt(input,option,option%hdf5_write_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+  endif
+
+end subroutine InitReadHDF5CardsFromInput
 
 end module Init_module

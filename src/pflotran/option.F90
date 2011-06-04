@@ -33,6 +33,10 @@ module Option_module
     
     PetscInt :: reactive_transport_coupling
 
+#if defined(PARALLELIO_LIB)
+    PetscMPIInt :: ioread_group_id, iowrite_group_id
+#endif
+
 #ifdef VAMSI_HDF5_READ
     MPI_Comm :: read_group, readers
     PetscMPIInt :: read_grp_size, read_grp_rank, readers_size, readers_rank 

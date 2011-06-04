@@ -24,7 +24,13 @@ module HDF5_aux_module
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
 
+#ifdef PARALLELIO_LIB
+  public :: HDF5ReadNDimRealArray, &
+            HDF5ReadDatasetInteger2D, &
+			HDF5ReadDatasetReal2D
+#else
   public :: HDF5ReadNDimRealArray
+#endif ! PARALLELIO_LIB
 
 contains
 
@@ -130,6 +136,176 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
                           
 end subroutine HDF5ReadNDimRealArray
 
+
+#if defined(PARALLELIO_LIB)
+
+! ************************************************************************** !
+!
+! HDF5ReadDatasetInteger2D: 
+! author: Gautam Bisht
+! date: 05/13/2010
+!
+! ************************************************************************** !
+
+subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
+           data,data_dims,dataset_dims)
+
+  use hdf5
+  use Option_module
+  
+  implicit none
+  
+#if defined(PARALLELIO_LIB)
+  include "piof.h"  
 #endif
+
+  ! in
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  integer                        :: read_option
+  type(option_type)              :: option
+  
+  ! out
+  PetscInt,pointer               :: data(:,:)
+  PetscInt                       :: data_dims(2)
+  PetscInt                       :: dataset_dims(2)
+  
+  ! local
+  PetscInt :: file_id
+  PetscInt :: ndims
+  PetscInt :: ii, remainder
+
+  PetscErrorCode :: ierr
+  
+  ! Open file collectively
+  filename = trim(filename) // CHAR(0)
+  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+
+  ! Get dataset dimnesions
+  call parallelIO_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
+  if (ndims.gt.2) then
+    option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
+	   ' is greater than to 2.'
+	call printErrMsg(option)
+  endif
+  
+  ! Get size of each dimension
+  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  
+  data_dims(1) = dataset_dims(1)/option%mycommsize
+  data_dims(2) = dataset_dims(2)
+
+  remainder = dataset_dims(1) - data_dims(1)*option%mycommsize
+  if (option%myrank < remainder) data_dims(1) = data_dims(1) + 1
+
+  
+  allocate(data(data_dims(2),dataset_dims(1)))
+  
+  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+
+  ! Read the dataset collectively
+  call parallelIO_read_dataset( data, PIO_INTEGER, ndims, dataset_dims, data_dims, & 
+            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+  
+  data_dims(1) = data_dims(1) + data_dims(2)
+  data_dims(2) = data_dims(1) - data_dims(2)
+  data_dims(1) = data_dims(1) - data_dims(2)
+  
+  dataset_dims(1) = dataset_dims(1) + dataset_dims(2)
+  dataset_dims(2) = dataset_dims(1) - dataset_dims(2)
+  dataset_dims(1) = dataset_dims(1) - dataset_dims(2)
+
+  ! Close file
+  call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
+
+end subroutine HDF5ReadDatasetInteger2D
+#endif ! PARALLELIO_LIB
+
+#if defined(PARALLELIO_LIB)
+
+! ************************************************************************** !
+!
+! : 
+! author: 
+! date: 
+!
+! ************************************************************************** !
+
+subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
+           data,data_dims,dataset_dims)
+
+  use hdf5
+  use Option_module
+  
+  implicit none
+  
+#if defined(PARALLELIO_LIB)
+  include "piof.h"  
+#endif
+
+  ! in
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  integer                        :: read_option
+  type(option_type)              :: option
+  
+  ! out
+  PetscReal,pointer              :: data(:,:)
+  PetscInt                       :: data_dims(2)
+  PetscInt                       :: dataset_dims(2)
+  
+  ! local
+  integer :: file_id
+  integer :: ndims
+  PetscInt :: ii, remainder
+
+  PetscErrorCode :: ierr
+  
+  ! Open file collectively
+  filename = trim(filename) // CHAR(0)
+  call parallelIO_open_file(filename, option%ioread_group_id, FILE_READONLY, file_id, ierr)
+
+  ! Get dataset dimnesions
+  call parallelIO_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
+  if (ndims.gt.2) then
+    option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
+	   ' is greater than to 2.'
+	call printErrMsg(option)
+  endif
+  
+  ! Get size of each dimension
+  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+  
+  data_dims(1) = dataset_dims(1)/option%mycommsize
+  data_dims(2) = dataset_dims(2)
+
+  remainder = dataset_dims(1) - data_dims(1)*option%mycommsize
+  if (option%myrank < remainder) data_dims(1) = data_dims(1) + 1
+
+  
+  allocate(data(data_dims(2),dataset_dims(1)))
+  
+  call parallelIO_get_dataset_dims(dataset_dims, file_id, dataset_name, option%ioread_group_id, ierr)
+
+  ! Read the dataset collectively
+  call parallelIO_read_dataset( data, PIO_DOUBLE, ndims, dataset_dims, data_dims, & 
+            file_id, dataset_name, option%ioread_group_id, NONUNIFORM_CONTIGUOUS_READ, ierr)
+  
+  data_dims(1) = data_dims(1) + data_dims(2)
+  data_dims(2) = data_dims(1) - data_dims(2)
+  data_dims(1) = data_dims(1) - data_dims(2)
+
+  dataset_dims(1) = dataset_dims(1) + dataset_dims(2)
+  dataset_dims(2) = dataset_dims(1) - dataset_dims(2)
+  dataset_dims(1) = dataset_dims(1) - dataset_dims(2)
+
+  ! Close file
+  call parallelIO_close_file( file_id, option%ioread_group_id, ierr)  
+
+end subroutine HDF5ReadDatasetReal2D
+#endif ! PARALLELIO_LIB
+
+
+#endif ! defined(PETSC_HAVE_HDF5)
 
 end module HDF5_aux_module
