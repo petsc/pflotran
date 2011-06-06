@@ -1,9 +1,7 @@
 #include <vector>
 #include "PflotranJacobianLevelOperator.h"
-#ifndef included_tbox_Pointer
 #include "tbox/Pointer.h"
 #include "tbox/Pointer.C"
-#endif
 #ifndef included_solv_SAMRAIVectorReal
 #include "SAMRAIVectorReal.h"
 #include "SAMRAIVectorReal.C"
