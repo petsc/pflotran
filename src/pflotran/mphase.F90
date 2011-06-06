@@ -2010,7 +2010,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     Qkco2 = henry*xphi 
     mco2 = (p - sat_pressure)*1.D-5 * Qkco2
    !  mco2=henry
-    xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl)
+    xco2eq = mco2/(1.D3/fmwh2o + mco2 + m_nacl)
 
     henry = 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
     wat_sat_x = sat_pressure/p 
@@ -2023,7 +2023,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
       select case(iipha)     
         case(1) ! liquid
           xmol(4) = xmol(2)*henry/p   
-          if(xmol(2) > xco2eq * 1.05D0) then
+          if(xmol(2) > xco2eq * 1.05d0) then
           
 !         if (xmol(4) > 1.05D0*co2_sat_x) then
 !         if (xmol(4) > 1.001D0*co2_sat_x .and. iipha==1) then
@@ -2051,7 +2051,10 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           endif
 
         case(2) ! gas
-          if (xmol(3) > wat_sat_x * 1.05) then
+        
+!         print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
+          
+          if (xmol(3) > wat_sat_x * 1.05d0) then
           
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
 !           write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
@@ -2087,7 +2090,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             iphase_loc_p(ghosted_id) = 2 ! 2ph -> Gas
 !           xx_p(dof_offset+3) = 1.D0 - 1.D-8
             xx_p(dof_offset+3) = 1.D0
-            ichange = 1  
+            ichange = 1
+            
           else if(satu(2) <= 0.D0) then
           
 !           write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
