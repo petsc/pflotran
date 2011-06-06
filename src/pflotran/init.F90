@@ -2631,7 +2631,11 @@ subroutine readRegionFiles(realization)
       if(region%grid_type.eq.STRUCTURED_GRID) then
         call HDF5ReadRegionFromFile(realization,region,region%filename)
     else
+#ifndef SAMR_HAVE_HDF5
       call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
+#else
+      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
+#endif      
     endif
       else
         call RegionReadFromFile(region,realization%option, &

@@ -379,8 +379,14 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
 #ifdef PARALLELIO_LIB
               call UnstructuredGridReadHDF5ParallelIOLib(un_str_grid,filename,option)
 #else
+#ifndef SAMR_HAVE_HDF5
               call UnstructuredGridReadHDF5(un_str_grid,filename,option)
-#endif
+#else
+              option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not '\\
+                'incorporated yet'
+              call printErrMsg(option)
+#endif ! #ifndef SAMR_HAVE_HDF5
+#endif ! #ifdef PARALLELIO_LIB
             else
               call UnstructuredGridRead(un_str_grid,filename,option)
             endif
