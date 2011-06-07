@@ -1,3 +1,6 @@
+#ifndef included_BoundaryConditionerStrategy_C
+#define included_BoundaryConditionerStrategy_C
+
 #include "BoundaryConditionStrategy.h"
 
 BoundaryConditionStrategy::BoundaryConditionStrategy(const int id)
@@ -15,3 +18,6 @@ void BoundaryConditionStrategy::setPhysicalBoundaryConditions(
                                   const hier::IntVector<NDIM>& ghost_width_to_fill)
 {
 }
+
+#endif
+

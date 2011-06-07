@@ -97,7 +97,9 @@ module Unstructured_Grid_module
 
   public :: UnstructuredGridCreate, &
             UnstructuredGridRead, &
+#ifndef SAMR_HAVE_HDF5
             UnstructuredGridReadHDF5, &
+#endif
 #if defined(PARALLELIO_LIB)
             UnstructuredGridReadHDF5ParallelIOLib, &
 #endif
@@ -536,6 +538,8 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
 
 end subroutine UnstructuredGridRead
 
+#ifndef SAMR_HAVE_HDF5
+
 ! ************************************************************************** !
 !
 ! UnstructuredGridReadHDF5: Reads an unstructured grid from HDF5
@@ -793,6 +797,8 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   
   
 end subroutine UnstructuredGridReadHDF5
+
+#endif
 
 ! ************************************************************************** !
 !
