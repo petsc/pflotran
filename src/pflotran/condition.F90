@@ -1008,8 +1008,8 @@ subroutine FlowConditionRead(condition,input,option)
       endif                         
 
       allocate(condition%itype(ONE_INTEGER))
-      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
       
       ! these are not used with richards
       if (associated(temperature)) call FlowSubConditionDestroy(temperature)
