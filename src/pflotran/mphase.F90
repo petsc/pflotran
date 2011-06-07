@@ -553,7 +553,7 @@ end subroutine MphaseUpdateMassBalancePatch
         iipha=int(iphase_loc_p(grid%nL2G(n)))
   
 ! ******** Too huge change in pressure ****************     
-        if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
+        if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (1000.0D0 * option%dpmxe))then
            re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
            exit
         endif
