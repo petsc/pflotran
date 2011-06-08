@@ -116,6 +116,7 @@ PetscInt, parameter :: CONCENTRATION_SS = 11
 PetscInt, parameter :: EQUILIBRIUM_SS = 12
 PetscInt, parameter :: CONDUCTANCE_BC = 13
 PetscInt, parameter :: UNIT_GRADIENT_BC = 14
+PetscInt, parameter :: SATURATION_BC = 15
 
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0

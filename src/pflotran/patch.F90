@@ -9,6 +9,7 @@ module Patch_module
   use Reaction_Aux_module
   use Material_module
   use Field_module
+  use Saturation_Function_module
   
   use Auxilliary_module
 
@@ -25,8 +26,7 @@ module Patch_module
     ! These arrays will be used by all modes, mode-specific arrays should
     ! go in the auxilliary data stucture for that mode
     PetscInt, pointer :: imat(:)
-      ! Integer array of material ids of size ngmax.
-    type(material_property_ptr_type), pointer :: material_property_array(:)
+    PetscInt, pointer :: sat_func_id(:)
 
 #ifdef SUBCONTINUUM_MODEL
     !These arrays will hold the no. of subcontinuum types at each cell 
@@ -54,6 +54,11 @@ module Patch_module
     type(coupler_list_type), pointer :: boundary_conditions
     type(coupler_list_type), pointer :: initial_conditions
     type(coupler_list_type), pointer :: source_sinks
+
+    type(material_property_type), pointer :: material_properties
+    type(material_property_ptr_type), pointer :: material_property_array(:)
+    type(saturation_function_type), pointer :: saturation_functions
+    type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
 
     ! pointer to field object in mother realization object
     type(field_type), pointer :: field 
@@ -109,7 +114,7 @@ function PatchCreate()
 
   patch%id = 0
   nullify(patch%imat)
-  nullify(patch%material_property_array)
+  nullify(patch%sat_func_id)
 #ifdef SUBCONTINUUM_MODEL
   nullify(patch%subcontinuum_count)
   nullify(patch%subcontinnuum_ids)
@@ -134,6 +139,11 @@ function PatchCreate()
   call CouplerInitList(patch%initial_conditions)
   allocate(patch%source_sinks)
   call CouplerInitList(patch%source_sinks)
+
+  nullify(patch%material_properties)
+  nullify(patch%material_property_array)
+  nullify(patch%saturation_functions)
+  nullify(patch%saturation_function_array)
 
   nullify(patch%field)
   allocate(patch%observation)
@@ -273,10 +283,8 @@ end subroutine PatchLocalizeRegions
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-!subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-!                                material_properties, subcontinuum_properties, option)
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                material_properties,option)
+                                option)
 
   use Option_module
   use Material_module
@@ -290,7 +298,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   implicit none
   
   type(patch_type) :: patch
-  type(material_property_type), pointer :: material_properties
 #ifdef SUBCONTINUUM_MODEL
   type(subcontinuum_property_type), pointer :: subcontinuum_properties
 #endif
@@ -305,8 +312,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   PetscInt :: temp_int, isub
   
-  call MaterialPropConvertListToArray(material_properties,patch%material_property_array,option)
 #ifdef SUBCONTINUUM_MODEL
+  option%io_buffer = 'Jitu, move the call to SubcontinuumPropConvertListToArray to RealProcessMatPropAndSatFunc -- Glenn'
+  call printErrMsg(option)
   call SubcontinuumPropConvertListToArray(subcontinuum_properties,patch%subcontinuum_property_array,option)
 #endif
   
@@ -709,7 +717,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
           (coupler%itype == INITIAL_COUPLER_TYPE .or. &
            coupler%itype == BOUNDARY_COUPLER_TYPE)) then
 
-        if (associated(coupler%flow_condition%pressure)) then
+        if (associated(coupler%flow_condition%pressure) .or. &
+            associated(coupler%flow_condition%concentration)) then
 
           ! allocate arrays that match the number of connections
           select case(option%iflowmode)
@@ -836,6 +845,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Option_module
   use Condition_module
   use Hydrostatic_module
+  use Saturation_module
 
   implicit none
   
@@ -929,6 +939,15 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            case(SATURATION_BC)
+          end select
+        endif
+        if (associated(flow_condition%concentration)) then
+          select case(option%iflowmode)
+            case(RICHARDS_MODE)
+              call SaturationUpdateCoupler(coupler,option,patch%grid, &
+                                           patch%saturation_function_array, &
+                                           patch%sat_func_id)
           end select
         endif
         if (associated(flow_condition%rate)) then
@@ -2886,6 +2905,8 @@ subroutine PatchDestroy(patch)
   
   if (associated(patch%imat)) deallocate(patch%imat)
   nullify(patch%imat)
+  if (associated(patch%sat_func_id)) deallocate(patch%sat_func_id)
+  nullify(patch%sat_func_id)
   if (associated(patch%internal_velocities)) deallocate(patch%internal_velocities)
   nullify(patch%internal_velocities)
   if (associated(patch%boundary_velocities)) deallocate(patch%boundary_velocities)
@@ -2898,6 +2919,17 @@ subroutine PatchDestroy(patch)
   nullify(patch%internal_tran_coefs)
   if (associated(patch%boundary_tran_coefs)) deallocate(patch%boundary_tran_coefs)
   nullify(patch%boundary_tran_coefs)
+
+  if (associated(patch%material_property_array)) &
+    deallocate(patch%material_property_array)
+  nullify(patch%material_property_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%material_properties)
+  if (associated(patch%saturation_function_array)) &
+    deallocate(patch%saturation_function_array)
+  nullify(patch%saturation_function_array)
+  ! Since this linked list will be destroyed by realization, just nullify here
+  nullify(patch%saturation_functions)
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)

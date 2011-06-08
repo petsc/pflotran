@@ -338,22 +338,26 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   type(connection_set_type), pointer :: connection_set
   type(region_type), pointer :: region
   type(coupler_type), pointer :: coupler
+  PetscBool :: nullify_connection_set
   PetscErrorCode :: ierr
 
   if (.not.associated(coupler)) return
   
+  nullify_connection_set = PETSC_FALSE
   select case(coupler%itype)
     case(INITIAL_COUPLER_TYPE)
       if (associated(coupler%flow_condition)) then
-        if (coupler%flow_condition%pressure%itype /= HYDROSTATIC_BC .and. &
-            coupler%flow_condition%pressure%itype /= SEEPAGE_BC .and. &
-            coupler%flow_condition%pressure%itype /= CONDUCTANCE_BC) then
-          nullify(coupler%connection_set)
-          return
+        if (associated(coupler%flow_condition%pressure)) then
+          if (coupler%flow_condition%pressure%itype /= HYDROSTATIC_BC .and. &
+              coupler%flow_condition%pressure%itype /= SEEPAGE_BC .and. &
+              coupler%flow_condition%pressure%itype /= CONDUCTANCE_BC) then
+            nullify_connection_set = PETSC_TRUE
+          endif
+        else if (associated(coupler%flow_condition%concentration)) then
+          ! need to calculate connection set
         endif
       else
-        nullify(coupler%connection_set)
-        return
+        nullify_connection_set = PETSC_TRUE
       endif
       connection_itype = INITIAL_CONNECTION_TYPE
     case(SRC_SINK_COUPLER_TYPE)
@@ -361,6 +365,11 @@ subroutine CouplerComputeConnections(grid,option,coupler)
     case(BOUNDARY_COUPLER_TYPE)
       connection_itype = BOUNDARY_CONNECTION_TYPE
   end select
+  
+  if (nullify_connection_set) then
+    nullify(coupler%connection_set)
+    return
+  endif
   
   region => coupler%region
 

@@ -548,10 +548,10 @@ subroutine Init(simulation)
   call RealizationLocalizeRegions(realization)
   call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
+  call RealProcessMatPropAndSatFunc(realization)
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
-  call RealProcessMatPropAndSatFunc(realization)
   call assignMaterialPropToRegions(realization)
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
@@ -2076,6 +2076,9 @@ subroutine assignMaterialPropToRegions(realization)
         allocate(cur_patch%imat(cur_patch%grid%ngmax))
         ! initialize to "unset"
         cur_patch%imat = -999
+        ! also allocate saturation function id
+        allocate(cur_patch%sat_func_id(cur_patch%grid%ngmax))
+        cur_patch%sat_func_id = -999
       endif
       cur_patch => cur_patch%next
     enddo
@@ -2218,6 +2221,7 @@ subroutine assignMaterialPropToRegions(realization)
           call printErrMsg(option)
         endif
         if (option%nflowdof > 0) then
+          patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
           icap_loc_p(ghosted_id) = material_property%saturation_function_id
           ithrm_loc_p(ghosted_id) = material_property%id
           perm_xx_p(local_id) = material_property%permeability(1,1)

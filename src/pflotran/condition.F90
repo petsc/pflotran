@@ -725,7 +725,7 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr => flux
             case('TEMPERATURE')
               sub_condition_ptr => temperature
-            case('CONCENTRATION')
+            case('CONCENTRATION','SATURATION')
               sub_condition_ptr => concentration
             case('ENTHALPY')
               sub_condition_ptr => enthalpy
@@ -803,7 +803,7 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr => flux
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
-            case('CONC','CONCENTRATION')
+            case('CONC','CONCENTRATION','SATURATION')
               sub_condition_ptr => concentration
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
@@ -835,7 +835,7 @@ subroutine FlowConditionRead(condition,input,option)
         call FlowConditionReadValues(input,option,word,string, &
                                      pressure%dataset, &
                                      pressure%units)
-      case('CONC','CONCENTRATION')
+      case('CONC','CONCENTRATION','SATURATION')
         call FlowConditionReadValues(input,option,word,string, &
                                      concentration%dataset, &
                                      concentration%units)
@@ -988,10 +988,14 @@ subroutine FlowConditionRead(condition,input,option)
       endif
     
     case(RICHARDS_MODE)
-      if (.not.associated(pressure) .and. .not.associated(rate)) then
-        option%io_buffer = 'pressure and rate condition null in ' // &
+      if (.not.associated(pressure) .and. .not.associated(rate) .and. &
+          .not.associated(concentration)) then
+        option%io_buffer = 'pressure, rate and saturation condition null in ' // &
                            'condition: ' // trim(condition%name)
         call printErrMsg(option)      
+      endif                         
+      if (associated(concentration)) then
+        condition%concentration => concentration
       endif                         
       if (associated(pressure)) then
         condition%pressure => pressure
@@ -1003,17 +1007,23 @@ subroutine FlowConditionRead(condition,input,option)
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
       if (associated(pressure)) then
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      elseif (associated(concentration)) then
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => concentration
       elseif (associated(rate)) then
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
       endif                         
 
       allocate(condition%itype(ONE_INTEGER))
-      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
+      if (associated(pressure)) then 
+        condition%itype(ONE_INTEGER) = pressure%itype
+      else if (associated(concentration)) then
+        condition%itype(ONE_INTEGER) = concentration%itype
+      else if (associated(rate)) then
+        condition%itype(ONE_INTEGER) = rate%itype
+      endif
       
       ! these are not used with richards
       if (associated(temperature)) call FlowSubConditionDestroy(temperature)
-      if (associated(concentration)) call FlowSubConditionDestroy(concentration)
       if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
       
   end select

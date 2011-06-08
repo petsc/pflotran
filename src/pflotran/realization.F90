@@ -681,7 +681,6 @@ subroutine RealizationProcessCouplers(realization)
       if (.not.associated(cur_patch)) exit
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
-                                realization%material_properties, &
                                 realization%option)
 !      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
 !                                realization%transport_conditions, &
@@ -737,6 +736,9 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   type(option_type), pointer :: option
   type(material_property_type), pointer :: cur_material_property
   character(len=MAXSTRINGLENGTH) :: string
+
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   
   option => realization%option
   
@@ -746,7 +748,28 @@ subroutine RealProcessMatPropAndSatFunc(realization)
                                       option)
   call SaturatFuncConvertListToArray(realization%saturation_functions, &
                                      realization%saturation_function_array, &
-                                     option) 
+                                     option)
+
+  ! set up mirrored pointer arrays within patches to saturation functions
+  ! and material properties
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      cur_patch%material_properties => realization%material_properties
+      call MaterialPropConvertListToArray(cur_patch%material_properties, &
+                                          cur_patch%material_property_array, &
+                                          option)
+      cur_patch%saturation_functions => realization%saturation_functions
+      call SaturatFuncConvertListToArray(cur_patch%saturation_functions, &
+                                         cur_patch%saturation_function_array, &
+                                         option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo 
     
   cur_material_property => realization%material_properties                            
   do                                      
