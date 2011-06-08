@@ -159,6 +159,7 @@ common_obj = ${common_src}option.o \
 	${common_src}grid.o \
 	${common_src}matrix_buffer.o \
 	${common_src}hydrostatic.o \
+	${common_src}saturation.o \
 	${common_src}patch.o \
         ${common_src}mfd.o\
 	${common_src}level.o \
@@ -253,11 +254,12 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 fluid.o saturation_function.o dataset.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
-          field.o
+          field.o saturation.o
 level.o : patch.o option.o
 strata.o : input.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
+saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o observation.o \
