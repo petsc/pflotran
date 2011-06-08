@@ -2051,10 +2051,10 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           endif
 
         case(2) ! gas
-        
-!         print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
           if (xmol(3) > wat_sat_x * 1.05d0) then
+        
+!           print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
 !           write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &

@@ -304,11 +304,71 @@ The governing mass conservation equation is given by
 \EN
 and
 \EQ
-\bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
+\bq = -\frac{kk_r(s)}{\mu}\bnabla\left(P-\rho g z\right).
 \EN
 Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water.
 
+\subsection{Capillary Pressure Relations}
+
+Capillary pressure is related to saturation by various 
+phenomenological relations, one of which is the van Genuchten 
+(1980) relation 
+\EQ\label{seff}
+s_l^{\rm eff} \eq \left[1+\left( \alpha |P_c| \right)^n 
+\right]^{-m}, 
+\EN 
+where $P_c$ represents the capillary pressure [Pa], and $s_l^{\rm 
+eff}$ is defined by 
+\EQ 
+s_l^{\rm eff} \eq \frac{s_l - s_l^r}{s_l^0 - s_l^r}, 
+\EN 
+where $s_l^r$ denotes the residual saturation, and $s_l^0$ denotes 
+the maximum saturation. The quantity $n$ is related to $m$ by 
+the expression 
+\EQ\label{lambda} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
+\EN 
+ 
+Relative permeability for the liquid phase is given by the expression \EQ\label{krl} 
+k_{rl} \eq \sqrt{s_l^{\rm eff}} \left\{1 - \left[1- \left( s_l^{\rm 
+eff} \right)^{1/m} \right]^m \right\}^2, 
+\EN 
+and for the gas phase by 
+\EQ 
+k_{rg} \eq 1 - k_{rl}. 
+\EN 
+
+\subsubsection{Brook-Corey Functions} 
+ 
+The Brook-Corey functions for relative permeability are defined by  
+\EQ\label{corey} 
+k_{rl} \eq s_*^4, \ \ \ k_{rg} \eq (1-s_*^2)(1-s_*)^2, \ \ \ s_* 
+\eq \frac{s_l - s_l^r}{1-s_l^r-s_g^r}. 
+\EN 
+Capillary pressure is not incorporated in the Brook-Corey functions. 
+ 
+\subsubsection{Linear} 
+ 
+The linear relation is defined by 
+\EQ\label{linear} 
+k_{rl} \eq s_*, \ \ \ k_{rg} \eq 1-k_{rl}, \ \ \ s_* \eq \frac{s_l 
+- s_l^r}{1-s_l^r}. 
+\EN 
+ 
+\subsection{Kelvin's Equations for Vapor Pressure Lowering} 
+ 
+Vapor pressure lowering resulting from capillary suction is 
+described by Kelvin's equation 
+\EQ\label{vplwr} 
+P_v \eq P_{\rm sat}(T) \e^{-P_c/n_l RT}, 
+\EN 
+where $P_v$ represents the vapor pressure, $P_{\rm sat}$ the 
+saturation pressure of pure water, $T$ denotes the absolute 
+temperature and $R$ denotes the gas constant. Note that the density 
+of the liquid phase, $n_l$, is represented on a molar basis. 
+
 \subsection{Mode: {\tt MPHASE}}
+
 Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
 \begin{subequations}
 \BA\label{mass_conservation_equation}
@@ -336,12 +396,102 @@ $\bq_\a$ denotes the Darcy flow rate defined by
 \EN
 where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat at wells, respectively. The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the density, heat capacity, and thermal conductivity of the porous rock.
 
-Additional constitutive relations are needed to account for capillary pressure, and changes in phase which are not discussed in detail here (see \cite{lichtner:pflotran07}).
+%Additional constitutive relations are needed to account for capillary pressure, and changes in phase which are not discussed in detail here (see \cite{lichtner:pflotran07}).
 In PFLOTRAN a variable switching approach is used to account for phase changes enforcing local equilibrium. According to the Gibbs phase rule there are a total of $N_C\!+\!1$ degrees of freedom where $N_C$ denotes the number of independent components. This can be seen by noting that the
 intensive
 degrees of freedom are equal to $N_{\rm int}\!=\!N_C \!-\! N_P \!+\!2$, where $N_P$ denotes the number of phases. The 
 extensive
 degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number of degrees of freedom $N_{\rm dof}\!=\!N_{\rm int}\!+\!N_{\rm ext}\!=\!N_C\!+\!1$, independent of the number of phases $N_P$ in the system.
+
+Primary variables for pure liquid, pure gas and two-phases systems are listed in Table~\ref{tvar}.
+
+\begin{table}\centering
+\caption{Choice of primary variables.}\label{tvar}
+
+\vspace{3mm}
+
+\begin{tabular}{lccc}
+\toprule
+State & $X_1$ & $X_2$ & $X_3$\\
+\midrule
+liquid & $p_l$ & $T$ & $X_\c^l$\\
+gas & $p_g$ & $T$ & $X_\c^g$\\
+two-phase & $p_g$ & $T$ & $s_g$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The conditions for phases to occur are considered in detail below.
+
+\subsubsection{Gas: $(p_g,\,T,\,X_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$}
+
+$\bullet$ gas $\rightarrow$ 2-ph: $X_\c^g \leq 1-\dfrac{P_{\rm sat}(T)}{p_g}$, \ or equivalently: $X_\w^g \geq \dfrac{P_{\rm sat}(T)}{p_g}$
+
+\subsubsection{Liquid: $(p_l,\,T,\,X_\c^l)$ $\rightarrow$ Two-phase: $(p_g,\,T,\,s_g^{})$}
+
+$\bullet$ liq $\rightarrow$ 2-ph: $X_\c^l \geq x_\c^{eq}$
+
+\noindent
+The equilibrium mole fraction $x_\c^{eq}$ is given by
+\EQ
+x_\c^{eq} \eq \frac{m_\c}{W_\w^{-1} + m_\c +  \sum_{l\ne \w,\,\c} m_l},
+\EN
+where the molality at equilibrium is given by
+\EQ
+m_\c^{eq} \eq \left(1-\dfrac{P_{\rm sat}(T)}{p}\right)\frac{\phi_c p}{K_\c \gamma_\c},
+\EN
+where it is assumed that 
+\EQ
+y_\c^{} \eq 1-\dfrac{P_{\rm sat}(T)}{p}.
+\EN
+
+\subsubsection{Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$ Liquid $(p_l,\,T,\,X_\c^l)$ or Gas $(p_g,\,T,\,X_\c^g)$}
+
+Equilibrium in a two-phase $\w$-$\c$ system is defined as the equality of chemical potentials between the two phases as expressed by the relation
+\EQ
+f_\c^{} \eq y_\c^{}\phi_\c^{} p_g^{} \eq K_\c^{} \big(\gamma_\c^{} m_\c^{}\big),
+\EN
+where
+\EQ
+y_\c^{} \eq X_\c^g, \ \ \ \ x_\c^{} \eq X_\c^l,
+\EN
+\EQ
+X_\w^g \eq \frac{P_{\rm sat}(T)}{p_g},
+\EN
+\EQ
+y_\c^{} \eq 1-X_\w^g \eq 1-\frac{P_{\rm sat}(T)}{p_g},
+\EN
+From these equations a Henry coefficient-like relation can be written as
+\EQ
+y_\c^{} \eq \widetilde K_\c^{} x_\c^{},
+\EN
+where
+\EQ
+\widetilde K_\c^{} \eq\frac{\gamma_\c^{} K_\c^{}}{\phi_\c^{} p_g}\frac{m_\c}{x_\c}.
+\EN
+
+\noindent
+$\bullet$ A phase change to single liquid or gas phase occurs if $s_g \leq 0$ or $s_g\geq 1$, respectively.
+
+Conversion relations between mole fraction $(x_i)$, mass fraction $(w_i)$ and molality $(m_i)$ are as follows:
+
+\noindent
+Molality--mole fraction:
+\EQ
+m_i \eq \frac{n_i}{M_\w} \eq \frac{n_i}{W_\w n_\w} \eq \frac{x_i}{W_\w x_\w} \eq \frac{x_i}{W_\w \big(1-\sum_{l\ne\w} x_l\big)}
+\EN
+Mole fraction--molality:
+\EQ
+x_i \eq \frac{n_i}{N} \eq \frac{n_i}{M_\w}\frac{M_\w}{N} \eq \frac{m_i}{\sum m_l} \eq \frac{W_\w m_i}{1+W_\w\sum_{l\ne\w} m_l}
+\EN
+Mole fraction--mass fraction:
+\EQ
+x_i \eq \frac{n_i}{N} \eq \frac{W_i^{-1} W_i n_i}{\sum W_l^{-1} W_l n_l} \eq \frac{W_i^{-1} w_i}{\sum W_l^{-1} w_l}
+\EN
+Mass fraction--mole fraction:
+\EQ
+w_i \eq \frac{M_i}{M} \eq \frac{W_i n_i}{\sum W_l n_l} \eq \frac{W_i x_i}{\sum W_l x_l}
+\EN
 
 \subsection{Mode: {\tt IMMIS}}
 
@@ -402,6 +552,15 @@ with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficien
 Q_w \eq \sum_i Q_i.
 \EN
 Additional constitutive relations are needed to close the set of governing equations.
+ 
+%\subsubsection{Thermal Conductivity} 
+ 
+Thermal conductivity is determined from the equation (Somerton et 
+al., 1974)  
+\EQ\label{cond} 
+\kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
+\EN 
+where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
 
 \subsection{Mode: Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
