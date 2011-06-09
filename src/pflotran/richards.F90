@@ -1189,7 +1189,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
    
        call RichardsAuxVarCompute(xx_loc_p(local_id:local_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
-                       patch%saturation_function_array((patch%sat_func_id(ghosted_id))%ptr, &
+                       patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(local_id),perm_xx_loc_p(local_id), &                       
                        option)
 
@@ -1226,7 +1226,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
       
       call RichardsAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         patch%saturation_function_array((patch%sat_func_id(ghosted_id))%ptr, &
+                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          option)
     enddo
