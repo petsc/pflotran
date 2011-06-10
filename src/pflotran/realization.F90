@@ -101,8 +101,9 @@ private
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
-            RealizatonPassFieldPtrToPatches
-            
+            RealizatonPassFieldPtrToPatches, &
+            RealLocalToLocalWithArray
+ 
 contains
   
 ! ************************************************************************** !
@@ -2464,7 +2465,77 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif  
   
 end subroutine RealizationUpdatePropertiesPatch
- 
+
+! ************************************************************************** !
+!
+! RealLocalToLocalWithArray: Takes an F90 array that is ghosted
+!                            and updates the ghosted values
+! author: Glenn Hammond
+! date: 06/09/11
+!
+! ************************************************************************** !
+subroutine RealLocalToLocalWithArray(realization,array_id)
+
+  use Grid_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  PetscInt :: array_id
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+
+  field => realization%field
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,field%work_loc, &
+                                         grid%ngmax)
+        case(SATURATION_FUNCTION_ID_ARRAY)
+          call GridCopyIntegerArrayToVec(grid, cur_patch%sat_func_id, &
+                                         field%work_loc, grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  call DiscretizationLocalToLocal(realization%discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+
+      call GridCopyVecToIntegerArray(grid,cur_patch%imat,field%work_loc, &
+                                          grid%ngmax)
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyVecToIntegerArray(grid, cur_patch%imat,field%work_loc, &
+                                         grid%ngmax)
+        case(SATURATION_FUNCTION_ID_ARRAY)
+          call GridCopyVecToIntegerArray(grid, cur_patch%sat_func_id, &
+                                         field%work_loc, grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealLocalToLocalWithArray
+
 ! ************************************************************************** !
 !
 ! RealizationCountCells: Counts # of active and inactive grid cells 
