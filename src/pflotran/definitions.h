@@ -300,4 +300,8 @@ PetscInt, parameter :: MAX_DUALS         = 6
 PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 
+! ids of non-petsc arrays
+PetscInt, parameter :: MATERIAL_ID_ARRAY = 1
+PetscInt, parameter :: SATURATION_FUNCTION_ID_ARRAY = 2
+
 #define HASH

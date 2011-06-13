@@ -2133,36 +2133,7 @@ subroutine assignMaterialPropToRegions(realization)
     
   if (update_ghosted_material_ids) then
     ! update ghosted material ids
-    cur_level => realization%level_list%first
-    do 
-      if (.not.associated(cur_level)) exit
-      cur_patch => cur_level%patch_list%first
-      do
-        if (.not.associated(cur_patch)) exit
-        grid => cur_patch%grid
-
-        call GridCopyIntegerArrayToVec(grid, cur_patch%imat,field%work_loc, &
-                                            grid%ngmax)
-        cur_patch => cur_patch%next
-      enddo
-      cur_level => cur_level%next
-    enddo
-    call DiscretizationLocalToLocal(discretization,field%work_loc, &
-                                    field%work_loc,ONEDOF)
-    cur_level => realization%level_list%first
-    do 
-      if (.not.associated(cur_level)) exit
-      cur_patch => cur_level%patch_list%first
-      do
-        if (.not.associated(cur_patch)) exit
-        grid => cur_patch%grid
-
-        call GridCopyVecToIntegerArray(grid,cur_patch%imat,field%work_loc, &
-                                            grid%ngmax)
-        cur_patch => cur_patch%next
-      enddo
-      cur_level => cur_level%next
-    enddo
+    call RealLocalToLocalWithArray(realization,MATERIAL_ID_ARRAY)
   endif
 
   ! set cell by cell material properties
@@ -2307,6 +2278,7 @@ subroutine assignMaterialPropToRegions(realization)
                                     field%icap_loc,ONEDOF)   
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                                     field%ithrm_loc,ONEDOF)
+    call RealLocalToLocalWithArray(realization,SATURATION_FUNCTION_ID_ARRAY)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &

@@ -266,7 +266,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
-  use Reactive_Transport_module, only : RTUpdateAuxVars
 
   implicit none
   
@@ -346,8 +345,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       ! This is here since we need to recalculate the secondary complexes
       ! if they exist.  DO NOT update activity coefficients!!! - geh
       if (realization%reaction%use_full_geochemistry) then
-                                         ! cells     bcs        act coefs.
-        call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+        call StepperUpdateTranAuxVars(realization)
       endif
     endif
 
@@ -2675,6 +2673,27 @@ subroutine StepperUpdateFlowAuxVars(realization)
   end select    
 
 end subroutine StepperUpdateFlowAuxVars
+
+! ************************************************************************** !
+!
+! StepperUpdateTranAuxVars: Updates the flow auxilliary variables
+! author: Glenn Hammond
+! date: 10/11/08 
+!
+! ************************************************************************** !
+subroutine StepperUpdateTranAuxVars(realization)
+  
+  use Reactive_Transport_module, only : RTUpdateAuxVars
+  use Realization_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+                                   ! cells     bcs        act coefs.
+  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+
+end subroutine StepperUpdateTranAuxVars
 
 ! ************************************************************************** !
 !
