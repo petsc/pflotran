@@ -1899,6 +1899,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
   PetscInt :: iflag
+  PetscInt :: idum
+  PetscReal :: min_value
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1911,7 +1913,18 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   option => realization%option
   field => realization%field
   global_aux_vars => patch%aux%Global%aux_vars
-  
+
+#if 0
+  option%force_newton_iteration = PETSC_FALSE
+  ! checking for negative saturation/mole fraction
+  call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr)
+  if (min_value < 0.d0) then
+    write(option%io_buffer,*) 'saturation or mole fraction below 0. at cell ', &
+      idum, min_value 
+    call printMsg(option)
+    option%force_newton_iteration = PETSC_TRUE
+  endif
+#endif
     
 ! mphase code need assemble 
   call GridVecGetArrayF90(grid,xx, xx_p, ierr); CHKERRQ(ierr)
