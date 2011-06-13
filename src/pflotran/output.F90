@@ -2550,7 +2550,11 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
-               '"Ug '// trim(cell_string) // '",'
+               '"Ug '// trim(cell_string) // '",' // &
+               '"d(l) '// trim(cell_string) // '",' // &
+               '"vis(l) '// trim(cell_string) // '",' // &
+               '"d(g) '// trim(cell_string) // '",' // &
+               '"vis(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -2828,7 +2832,11 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
-               '"Ug '// trim(cell_string) // '",'
+               '"Ug '// trim(cell_string) // '",' // &
+               '"d(l) '// trim(cell_string) // '",' // &
+               '"vis(l) '// trim(cell_string) // '",' // &
+               '"d(g) '// trim(cell_string) // '",' // &
+               '"vis(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
