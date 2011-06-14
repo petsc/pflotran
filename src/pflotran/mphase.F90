@@ -3601,14 +3601,6 @@ function MphaseGetTecplotHeader(realization,icolumn)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
-  else
-    write(string2,'('',"PHASE"'')')
-  endif
-  string = trim(string) // trim(string2)
-  
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-S(l)"'')') icolumn
   else
     write(string2,'('',"S(l)"'')')
@@ -3641,6 +3633,22 @@ function MphaseGetTecplotHeader(realization,icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
+  else
+    write(string2,'('',"u(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
+  else
+    write(string2,'('',"u(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-vis(l)"'')') icolumn
   else
     write(string2,'('',"vis(l)"'')')
@@ -3671,22 +3679,6 @@ function MphaseGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
     
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
-  else
-    write(string2,'('',"u(l)"'')')
-  endif
-  string = trim(string) // trim(string2)
-
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
-  else
-    write(string2,'('',"u(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
-  
   do i=1,option%nflowspec
     if (icolumn > -1) then
       icolumn = icolumn + 1
@@ -3706,6 +3698,14 @@ function MphaseGetTecplotHeader(realization,icolumn)
     endif
     string = trim(string) // trim(string2)
   enddo
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
+  else
+    write(string2,'('',"PHASE"'')')
+  endif
+  string = trim(string) // trim(string2)
   
   MphaseGetTecplotHeader = string
 
