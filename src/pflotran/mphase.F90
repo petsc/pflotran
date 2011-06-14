@@ -1918,7 +1918,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   ! checking for negative saturation/mole fraction
   call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr)
   if (min_value < 0.d0) then
-    write(option%io_buffer,*) 'saturation or mole fraction below 0. at cell ', &
+    write(option%io_buffer,*) 'saturation or mole fraction negative at cell ', &
       idum, min_value 
     call printMsg(option)
     option%force_newton_iteration = PETSC_TRUE
@@ -2039,10 +2039,10 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !         if (xmol(4) > 1.05D0*co2_sat_x) then
 !         if (xmol(4) > 1.001D0*co2_sat_x .and. iipha==1) then
 !         if (xmol(4) > (1.d0+1.d-6)*tmp .and. iipha==1) then
-!           write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
-!      &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
-!      &    '' 1-Ps/P='',1pe11.4)') &
-!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
+            write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
+       &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
+       &    '' Xco2eq='',1pe11.4)') &
+            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
 
             iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
         
@@ -2068,9 +2068,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !           print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
-!           write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
-!      &  '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
-!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
+            write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
+       &  '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
+            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
 
             iphase_loc_p(ghosted_id) = 3 ! Gas -> 2ph
 !           xx_p(dof_offset+3) = 1.D0-formeps
@@ -2094,9 +2094,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
           if(satu(2) >= 1.D0) then
           
-!           write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
-!      &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1p3e11.4)') &
-!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
+            write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
+       &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1pe11.4)') &
+            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3)
 
             iphase_loc_p(ghosted_id) = 2 ! 2ph -> Gas
 !           xx_p(dof_offset+3) = 1.D0 - 1.D-8
@@ -2105,9 +2105,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             
           else if(satu(2) <= 0.D0) then
           
-!           write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
-!     &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
-!           option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
+            write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
+      &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4)')  &
+            option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),xmol(2)
 
             iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
             ichange = 1
@@ -3652,6 +3652,22 @@ function MphaseGetTecplotHeader(realization,icolumn)
     write(string2,'('',"'',i2,''-vis(g)"'')') icolumn
   else
     write(string2,'('',"vis(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-kvr(l)"'')') icolumn
+  else
+    write(string2,'('',"kvr(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-kvr(g)"'')') icolumn
+  else
+    write(string2,'('',"kvr(g)"'')')
   endif
   string = trim(string) // trim(string2)
     

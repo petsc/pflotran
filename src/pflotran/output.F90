@@ -506,6 +506,22 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
+      ! liquid mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+     ! gas mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
       ! liquid energy
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1472,6 +1488,22 @@ subroutine OutputTecplotPoint(realization)
         select case(option%iflowmode)
           case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+        ! liquid mobility
+        select case(option%iflowmode)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+       ! gas mobility
+        select case(option%iflowmode)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_MOBILITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
@@ -2549,12 +2581,14 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
+               '"dl '// trim(cell_string) // '",' // &
+               '"dg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",' // &
-               '"d(l) '// trim(cell_string) // '",' // &
-               '"vis(l) '// trim(cell_string) // '",' // &
-               '"d(g) '// trim(cell_string) // '",' // &
-               '"vis(g) '// trim(cell_string) // '",'
+               '"visl '// trim(cell_string) // '",' // &
+               '"visg '// trim(cell_string) // '",' // &
+               '"kvrl '// trim(cell_string) // '",' // &
+               '"kvrg '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -2831,12 +2865,14 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
+               '"dl '// trim(cell_string) // '",' // &
+               '"dg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",' // &
-               '"d(l) '// trim(cell_string) // '",' // &
-               '"vis(l) '// trim(cell_string) // '",' // &
-               '"d(g) '// trim(cell_string) // '",' // &
-               '"vis(g) '// trim(cell_string) // '",'
+               '"visl '// trim(cell_string) // '",' // &
+               '"visg '// trim(cell_string) // '",'// &
+               '"kvrl '// trim(cell_string) // '",' // &
+               '"kvrg '// trim(cell_string) // '",' 
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -3189,25 +3225,11 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
 
-  ! liquid viscosity
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
-  end select
-
   ! gas density
   select case(option%iflowmode)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_DENSITY,ZERO_INTEGER,ghosted_id)
-  end select
-
-  ! gas viscosity
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid energy
@@ -3222,6 +3244,34 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_ENERGY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! liquid viscosity
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas viscosity
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! liquid mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_MOBILITY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid mole fractions
@@ -3565,6 +3615,17 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                      count,ghosted_ids)
   end select
 
+  ! liquid mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
   ! gas density
   select case(option%iflowmode)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -3581,6 +3642,17 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_VISCOSITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! gas mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,GAS_MOBILITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
@@ -5571,6 +5643,38 @@ subroutine OutputHDF5(realization)
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
           string = "Gas Viscosity"
+          if(.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! liquid mobility
+      select case(option%iflowmode)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
+          string = "Liquid Mobility"
+          if(.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! gas mobility
+      select case(option%iflowmode)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
+          string = "Gas Mobility"
           if(.not.(option%use_samr)) then
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
