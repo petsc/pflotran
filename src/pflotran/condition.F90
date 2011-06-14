@@ -179,6 +179,7 @@ function FlowConditionCreate(option)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
   nullify(condition%sub_condition_ptr)
+  nullify(condition%general)
   nullify(condition%itype)
   nullify(condition%next)
   condition%sync_time_with_update = PETSC_FALSE
