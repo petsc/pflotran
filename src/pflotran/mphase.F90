@@ -1914,6 +1914,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   field => realization%field
   global_aux_vars => patch%aux%Global%aux_vars
 
+#if 1
   option%force_newton_iteration = PETSC_FALSE
   ! checking for negative saturation/mole fraction
   call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr)
@@ -1921,8 +1922,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     write(option%io_buffer,*) 'saturation or mole fraction negative at cell ', &
       idum, min_value 
     call printMsg(option)
-    option%force_newton_iteration = PETSC_TRUE
+!   option%force_newton_iteration = PETSC_TRUE
   endif
+#endif
     
 ! mphase code need assemble 
   call GridVecGetArrayF90(grid,xx, xx_p, ierr); CHKERRQ(ierr)
