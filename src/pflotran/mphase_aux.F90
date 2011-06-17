@@ -315,9 +315,12 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !      if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
       aux_var%sat(1)=1.D0 - aux_var%sat(2)
       aux_var%pc(:)=0.D0
-      temp = 1D-2
+!     temp = 1D-2
+!     aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
+!     aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
       aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
-      aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
+      aux_var%xmol(3)=0.D0; aux_var%xmol(4)=1.D0
+
    end select
 ! ********************* Gas phase properties ***********************
     call PSAT(t, sat_pressure, ierr)

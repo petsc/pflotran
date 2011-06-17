@@ -2155,7 +2155,10 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
   call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
                           
-#else  ! non-Vamsi Write
+end subroutine HDF5WriteStructuredDataSet
+! End of Vamsi's HDF5 Write Mechanism
+
+#else
 ! Default HDF5 Write
 
   call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
@@ -2288,11 +2291,11 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
   call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
                           
-#endif ! VAMSI vs Default
-
-#endif ! PARALLELIO_LIB_WRITE vs previous
-
+#endif ! PARALLELIO_LIB_WRITE
+                          
 end subroutine HDF5WriteStructuredDataSet
+
+#endif
       
 ! End of Default HDF5 Write
 !GEH - Structured Grid Dependence - End

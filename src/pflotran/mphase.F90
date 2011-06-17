@@ -1199,7 +1199,7 @@ end subroutine MphaseAccumulation
 ! date: 05/12/08
 !
 ! ************************************************************************** !  
-subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
+subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
                             energy_flag, option)
 
   use Option_module
@@ -1214,29 +1214,38 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
 
   type(mphase_auxvar_elem_type) :: aux_var
   type(option_type) :: option
+  PetscReal, pointer :: mmsrc(:)
   PetscReal Res(1:option%nflowdof) 
-  PetscReal mmsrc(option%nflowspec), psrc(option%nphase),tsrc,hsrc 
-  PetscInt isrctype
+  PetscReal psrc(option%nphase),tsrc,hsrc 
+  PetscInt nsrcpara, isrctype
   PetscBool :: energy_flag
      
-  PetscReal :: msrc(option%nflowspec),dw_kg, dw_mol,dddt,dddp
+  PetscReal, allocatable :: msrc(:)
+  PetscReal :: dw_kg, dw_mol,dddt,dddp
   PetscReal :: enth_src_h2o, enth_src_co2 
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
+  PetscReal :: well_status, well_diameter
+  PetscReal :: pressure_bh, well_factor, pressure_max, pressure_min
+  PetscReal :: well_inj_water, well_inj_co2
   PetscInt  :: np
   PetscInt :: iflag
   PetscErrorCode :: ierr
   
   Res=0D0
+  allocate(msrc(nsrcpara))
+  msrc = mmsrc(1:nsrcpara)
  ! if (present(ireac)) iireac=ireac
   if (energy_flag) then
     Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
   endif         
  
+  !print *,'source/sink tpye:: ', isrctype, msrc
   select case(isrctype)
     case(MASS_RATE_SS)
-      msrc(:)=mmsrc(:)
-      if (msrc(1) > 0.d0) then ! H2O injection
+      msrc(1) =  msrc(1) / FMWH2O
+      msrc(2) =  msrc(2) / FMWCO2
+    if (msrc(1) > 0.d0) then ! H2O injection
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -1285,13 +1294,39 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
           enth_src_co2 *option%flow_dt
       endif
 
-    case(-1) ! production well
+    case(WELL_SS) ! production well
      !if node pessure is lower than the given extraction pressure, shut it down
-      Dq = psrc(2) ! well parameter, read in input file
-                      ! Take the place of 2nd parameter 
     ! Flow term
+!  well parameter explaination
+!   1. well status. 1 injection; -1 production; 0 shut in
+!                   2 rate controled injection ( same as rate_ss, with max pressure control, not down yet) 
+!                  -2 rate controled production(not implemented for now) 
+!
+!   2. well factor,  the effective permeability m^2/s
+!   3. bottomhole pressure:  Pa
+!   4. max pressure: Pa
+!   5. min pressure: Pa   
+!   6. preferred mass flux of water kg/s
+!   7. preferred mass flux of Co2 kg/s
+!   8. well diameter, not used now
+!   9. skin factor, not used now
+
+     well_status = msrc(1)
+     well_factor = msrc(2)
+     pressure_bh = msrc(3)
+     pressure_max = msrc(4)
+     pressure_min = msrc(5)
+     well_inj_water = msrc(6)
+     well_inj_co2 = msrc(7)
+    
+!    if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+
+    ! production well (well status = -1)
+    if( dabs(well_status + 1D0) < 1D-1) then 
+      if(aux_var%pres > pressure_min) then
+      Dq = well_factor 
       do np = 1, option%nphase
-        dphi = aux_var%pres - aux_var%pc(np)- psrc(1)
+        dphi = aux_var%pres - aux_var%pc(np)- pressure_bh
         if (dphi>=0.D0) then ! outflow only
           ukvr = aux_var%kvr(np)
           v_darcy=0D0
@@ -1302,34 +1337,42 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
             Res(2) = Res(2)- v_darcy* aux_var%den(np)* &
               aux_var%xmol((np-1)*option%nflowspec+2) 
             if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
+             ! print *, 'well:: ', Res
           endif
         endif
       enddo
-       ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
-         
-    case(1) ! injection well with constant pressure
-      Dq = psrc(2) ! well parameter, read in input file
+     endif
+    endif 
+     ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
+     
+    ! injection well (well status = 1)
+    if( dabs(well_status - 2D0) < 1D-1) then 
+             
+        Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
+      if( aux_var%pres < pressure_max)then  
       do np = 1, option%nphase
-        dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
+        dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
         if (dphi>=0.D0) then ! outflow only
           ukvr = aux_var%kvr(np)
           v_darcy=0.D0
           if (ukvr*Dq>floweps) then
             v_darcy = Dq * ukvr * dphi
-            Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
+            Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
               aux_var%xmol((np-1)*option%nflowspec+1) 
-            Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
+            Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
               aux_var%xmol((np-1)*option%nflowspec+2) 
-            if(energy_flag) Res(3) = Res(3) - v_darcy*aux_var%den(np)*aux_var%h(np)
+            if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)
           endif
         endif
-      enddo 
-    case default
-    print *,'Unrecognized Source/Sink condition: ', isrctype 
+      enddo
+     endif
+    endif    
+   case default
+     print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
-      
+  deallocate(msrc)     
 end subroutine MphaseSourceSink
 
 
@@ -1899,8 +1942,6 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
   PetscInt :: iflag
-  PetscInt :: idum
-  PetscReal :: min_value
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1913,18 +1954,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   option => realization%option
   field => realization%field
   global_aux_vars => patch%aux%Global%aux_vars
-
-#if 1
-  option%force_newton_iteration = PETSC_FALSE
-  ! checking for negative saturation/mole fraction
-  call VecStrideMin(xx,TWO_INTEGER,idum,min_value,ierr)
-  if (min_value < 0.d0) then
-    write(option%io_buffer,*) 'saturation or mole fraction negative at cell ', &
-      idum, min_value 
-    call printMsg(option)
-!   option%force_newton_iteration = PETSC_TRUE
-  endif
-#endif
+  
     
 ! mphase code need assemble 
   call GridVecGetArrayF90(grid,xx, xx_p, ierr); CHKERRQ(ierr)
@@ -2041,10 +2071,10 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !         if (xmol(4) > 1.05D0*co2_sat_x) then
 !         if (xmol(4) > 1.001D0*co2_sat_x .and. iipha==1) then
 !         if (xmol(4) > (1.d0+1.d-6)*tmp .and. iipha==1) then
-            write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
-       &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
-       &    '' Xco2eq='',1pe11.4)') &
-            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
+!           write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
+!      &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
+!      &    '' 1-Ps/P='',1pe11.4)') &
+!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
 
             iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
         
@@ -2070,9 +2100,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !           print *,'gas -> 2ph: ',xmol(3),wat_sat_x,xco2eq,sat_pressure
           
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
-            write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
-       &  '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
-            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
+!           write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
+!      &  '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
+!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
 
             iphase_loc_p(ghosted_id) = 3 ! Gas -> 2ph
 !           xx_p(dof_offset+3) = 1.D0-formeps
@@ -2096,9 +2126,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
           if(satu(2) >= 1.D0) then
           
-            write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
-       &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1pe11.4)') &
-            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3)
+!           write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
+!      &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1p3e11.4)') &
+!           option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
 
             iphase_loc_p(ghosted_id) = 2 ! 2ph -> Gas
 !           xx_p(dof_offset+3) = 1.D0 - 1.D-8
@@ -2107,9 +2137,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             
           else if(satu(2) <= 0.D0) then
           
-            write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
-      &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4)')  &
-            option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),xmol(2)
+!           write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
+!     &     '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
+!           option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
 
             iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
             ichange = 1
@@ -2203,9 +2233,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof), v_darcy(realization%option%nphase)
   PetscReal :: xxbc(realization%option%nflowdof)
-  PetscReal :: msrc(1:realization%option%nflowspec)
   PetscReal :: psrc(1:realization%option%nphase)
   PetscViewer :: viewer
+  PetscReal, pointer :: msrc(:)
 
 
   type(grid_type), pointer :: grid
@@ -2221,6 +2251,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
+  PetscInt :: nsrcpara
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
@@ -2372,7 +2403,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
-    !print *, 'RES s/s begin'
+    
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
     enthalpy_flag = PETSC_TRUE
@@ -2380,7 +2411,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
       
-    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+    if (associated(source_sink%flow_condition%pressure)) then
+      psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+    endif
 !   qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
@@ -2393,11 +2426,22 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 !geh remove
 !geh    msrc(:)= psrc(:)
 !geh add
-    msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+ !print *, 'RES s/s begin with type: ', source_sink%flow_condition%itype(1)
+   select case(source_sink%flow_condition%itype(1))
+   case(MASS_RATE_SS)
+     msrc => source_sink%flow_condition%rate%dataset%cur_value
+     nsrcpara= 2
+   case(WELL_SS)
+     
+     msrc => source_sink%flow_condition%well%dataset%cur_value
+     
+     nsrcpara = 7 + option%nflowspec 
+   case default
+     print *, 'mphase mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
+     stop  
+   end select
 !geh end change
-    msrc(1) =  msrc(1) / FMWH2O
-    msrc(2) =  msrc(2) / FMWCO2
-
+   
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
@@ -2406,7 +2450,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call MphaseSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
@@ -2420,6 +2464,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   !   else if (qsrc1 < 0.d0) then ! withdrawal
   !   endif
     enddo
+    nullify(msrc)
     source_sink => source_sink%next
   enddo
 #endif
@@ -2862,11 +2907,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
-  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscReal, pointer :: msrc(:)
   PetscReal :: psrc(1:realization%option%nphase)
   PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
                dvdp, xphi
-  PetscInt :: iphasebc                
+  PetscInt :: iphasebc
+  PetscInt :: nsrcpara                
   
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -2948,7 +2994,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
 
-    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+    if (associated(source_sink%flow_condition%pressure)) then
+      psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+    endif
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
  !   hsrc1=0.D0
@@ -2960,16 +3008,25 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !geh remove
 !geh      msrc(:)= psrc(:)
 !geh add
-      msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
 !geh end change
-      msrc(1) =  msrc(1) / FMWH2O
-      msrc(2) =  msrc(2) / FMWCO2
  
-      cur_connection_set => source_sink%connection_set
- 
-       do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
+   select case(source_sink%flow_condition%itype(1))
+   case(MASS_RATE_SS)
+     msrc => source_sink%flow_condition%rate%dataset%cur_value
+     nsrcpara= 2
+   case(WELL_SS)
+     msrc => source_sink%flow_condition%well%dataset%cur_value
+     nsrcpara = 7 + option%nflowspec 
+   case default
+     print *, 'mphase mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
+     stop  
+   end select
+
+   cur_connection_set => source_sink%connection_set
+
+   do iconn = 1, cur_connection_set%num_connections      
+     local_id = cur_connection_set%id_dn(iconn)
+     ghosted_id = grid%nL2G(local_id)
 
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
@@ -2978,7 +3035,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
      do nvar =1, option%nflowdof
-       call MphaseSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
+       call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,enthalpy_flag, option)
       
        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
@@ -3603,6 +3660,14 @@ function MphaseGetTecplotHeader(realization,icolumn)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
+  else
+    write(string2,'('',"PHASE"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-S(l)"'')') icolumn
   else
     write(string2,'('',"S(l)"'')')
@@ -3635,22 +3700,6 @@ function MphaseGetTecplotHeader(realization,icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
-  else
-    write(string2,'('',"u(l)"'')')
-  endif
-  string = trim(string) // trim(string2)
-
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
-  else
-    write(string2,'('',"u(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
-  
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-vis(l)"'')') icolumn
   else
     write(string2,'('',"vis(l)"'')')
@@ -3667,20 +3716,20 @@ function MphaseGetTecplotHeader(realization,icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-kvr(l)"'')') icolumn
+    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
   else
-    write(string2,'('',"kvr(l)"'')')
+    write(string2,'('',"u(l)"'')')
   endif
   string = trim(string) // trim(string2)
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-kvr(g)"'')') icolumn
+    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
   else
-    write(string2,'('',"kvr(g)"'')')
+    write(string2,'('',"u(g)"'')')
   endif
   string = trim(string) // trim(string2)
-    
+  
   do i=1,option%nflowspec
     if (icolumn > -1) then
       icolumn = icolumn + 1
@@ -3700,14 +3749,6 @@ function MphaseGetTecplotHeader(realization,icolumn)
     endif
     string = trim(string) // trim(string2)
   enddo
-  
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
-  else
-    write(string2,'('',"PHASE"'')')
-  endif
-  string = trim(string) // trim(string2)
   
   MphaseGetTecplotHeader = string
 

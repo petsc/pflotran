@@ -427,7 +427,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: ghosted_start, ghosted_end
   PetscInt :: iphasebc, iphase
-  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
@@ -443,6 +443,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
     
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
@@ -456,13 +457,13 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                        global_aux_vars(ghosted_id), &
-                       patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
       call GeneralUpdateState(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
-                              patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                               porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                               option)
     endif
@@ -481,25 +482,27 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
 
       do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
-      ! set this based on data given 
+      
       global_aux_vars_bc(sum_connection)%istate = &
         boundary_condition%flow_condition%iphase
       call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          option)
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
+
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
   
@@ -657,7 +660,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
 
   PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
-  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           accum_p(:), perm_xx_loc_p(:)
                           
@@ -673,6 +676,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   material_parameter => patch%aux%Material%material_parameter
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
@@ -690,8 +694,8 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
     call GeneralAuxVarCompute(xx_p(local_start:local_end), &
                               gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
-                              patch%saturation_function_array( &
-                                patch%sat_func_id(ghosted_id))%ptr, &
+                              realization%saturation_function_array( &
+                                int(icap_loc_p(ghosted_id)))%ptr, &
                               porosity_loc_p(ghosted_id), &
                               perm_xx_loc_p(ghosted_id), &                        
                               option)
@@ -704,6 +708,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
@@ -1619,6 +1624,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
+
   call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
@@ -1821,7 +1828,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: tort_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:), tort_loc_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:)
   PetscInt :: icap_up, icap_dn
@@ -1873,6 +1880,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
@@ -1950,8 +1958,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
 
-      icap_up = patch%sat_func_id(ghosted_id_up)
-      icap_dn = patch%sat_func_id(ghosted_id_dn)
+      icap_up = int(icap_loc_p(ghosted_id_up))
+      icap_dn = int(icap_loc_p(ghosted_id_dn))
    
       call GeneralFlux(gen_aux_vars(ZERO_INTEGER,ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
@@ -2041,7 +2049,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
 
-      icap_dn = patch%sat_func_id(ghosted_id)
+      icap_dn = int(icap_loc_p(ghosted_id))  
 
       call GeneralBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2123,6 +2131,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
 end subroutine GeneralResidualPatch1
@@ -2427,7 +2436,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   PetscReal, pointer :: porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: tort_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:), tort_loc_p(:)
   PetscInt :: icap,icap_up,icap_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
@@ -2473,6 +2482,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
   ! Perturb aux vars
@@ -2480,7 +2490,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
     call GeneralAuxVarPerturb(gen_aux_vars(:,ghosted_id), &
                               global_aux_vars(ghosted_id), &
-                              patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                               option)
   enddo  
   
@@ -2526,8 +2536,8 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
     
-      icap_up = patch%sat_func_id(ghosted_id_up)
-      icap_dn = patch%sat_func_id(ghosted_id_dn)
+      icap_up = int(icap_loc_p(ghosted_id_up))
+      icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
       call GeneralFluxDerivative(gen_aux_vars(:,ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
@@ -2600,7 +2610,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
 
-      icap_dn = patch%sat_func_id(ghosted_id)
+      icap_dn = int(icap_loc_p(ghosted_id))  
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                   boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2635,6 +2645,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
 end subroutine GeneralJacobianPatch1
@@ -2690,7 +2701,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   PetscErrorCode :: ierr
 
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), icap_loc_p(:)
   PetscReal :: qsrc
   PetscInt :: icap, imat
   PetscInt :: local_id, ghosted_id
@@ -2720,6 +2731,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   
   if (.not.option%steady_state) then
 
@@ -2729,7 +2741,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
-    icap = patch%sat_func_id(ghosted_id)
+    icap = int(icap_loc_p(ghosted_id))
     call GeneralAccumDerivative(gen_aux_vars(:,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               material_parameter%dencpr(imat), &
@@ -2788,6 +2800,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)

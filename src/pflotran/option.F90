@@ -181,7 +181,6 @@ module Option_module
     PetscBool :: steady_state
     
     PetscBool :: use_matrix_buffer
-    PetscBool :: force_newton_iteration
   
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
@@ -520,7 +519,6 @@ subroutine OptionInitRealization(option)
 
   option%use_matrix_buffer = PETSC_FALSE
   option%init_stage = PETSC_FALSE 
-  option%force_newton_iteration = PETSC_FALSE
 
   option%mimetic = PETSC_FALSE
  
