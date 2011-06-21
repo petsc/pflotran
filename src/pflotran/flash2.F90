@@ -5008,7 +5008,7 @@ subroutine Flash2CheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecLoad(viewer, global_var, ierr)
+  call VecLoad(global_var, viewer, ierr)
   call VecDestroy(global_var,ierr)
   
 end subroutine Flash2CheckpointRead

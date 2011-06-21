@@ -3755,11 +3755,11 @@ subroutine MphaseCheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecLoad(viewer, global_var, ierr)
+  call VecLoad(global_var, viewer, ierr)
   call VecDestroy(global_var,ierr)
   ! solid volume fraction
   if (mphase_option%rk > 0.d0) then
-    call VecLoad(viewer, mphase_field%phis, ierr)
+    call VecLoad(mphase_field%phis, viewer, ierr)
   endif  
   
 end subroutine MphaseCheckpointRead
