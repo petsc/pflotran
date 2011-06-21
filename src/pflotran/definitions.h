@@ -102,7 +102,6 @@ PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0
 PetscInt, parameter :: DIRICHLET_BC = 1
-PetscInt, parameter :: PRODUCTION_WELL = -1
 PetscInt, parameter :: NEUMANN_BC = 2
 PetscInt, parameter :: DIRICHLET_ZERO_GRADIENT_BC = 3
 PetscInt, parameter :: ZERO_GRADIENT_BC = 4
@@ -117,6 +116,7 @@ PetscInt, parameter :: EQUILIBRIUM_SS = 12
 PetscInt, parameter :: CONDUCTANCE_BC = 13
 PetscInt, parameter :: UNIT_GRADIENT_BC = 14
 PetscInt, parameter :: SATURATION_BC = 15
+PetscInt, parameter :: WELL_SS = 100
 
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0

@@ -234,6 +234,35 @@ subroutine reallocateRealArray(array,size)
 
 end subroutine reallocateRealArray
 
+! ************************************************************************** !
+!
+! reallocateRealArray: Reallocates a real array to a larger size and copies
+! author: Glenn Hammond
+! date: 10/29/07
+!
+! ************************************************************************** !
+#if 0
+subroutine reallocateRealArray2(array,size)
+
+  implicit none
+
+  PetscReal, pointer :: array(:,:)
+  PetscInt :: size
+  
+  PetscReal, allocatable :: array2(:,:)
+  
+  allocate(array2(size))
+  array2(1:size) = array(1:size)
+  deallocate(array)
+  allocate(array(2*size))
+  array = 0.d0
+  array(1:size) = array2(1:size)
+  size = 2*size
+  deallocate(array2)
+
+end subroutine reallocateRealArray
+#endif
+
 !* Given an NxN matrix A, with physical dimension NP, this routine replaces it
 !* by the LU decomposition of a rowwise permutation of itself.
 !* A and N are input. A is output; INDX is output vector which records the
