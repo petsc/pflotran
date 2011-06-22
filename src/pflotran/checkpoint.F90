@@ -705,7 +705,11 @@ subroutine Restart(realization, &
     endif
     ! sorbed concentrations for multirate kinetic sorption
     if (realization%reaction%kinmr_nrate > 0 .and. &
-        .not.option%no_checkpoint_kinetic_sorption) then
+        .not.option%no_checkpoint_kinetic_sorption .and. &
+        ! we need to fix this.  We need something to skip over the reading
+        ! of sorbed concentrations altogether if they do not exist in the
+        ! checkpoint file
+        .not.option%no_restart_kinetic_sorption) then
       ! PETSC_FALSE flag indicates read from file
       call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
     endif
