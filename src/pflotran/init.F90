@@ -1233,7 +1233,8 @@ subroutine InitReadInput(simulation)
               enddo
             case('MOLAL','MOLALITY', &
                  'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
-                 'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA')
+                 'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
+                 'NO_RESTART_MINERAL_VOL_FRAC')
               ! dummy placeholder
           end select
         enddo

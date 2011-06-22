@@ -146,6 +146,7 @@ module Option_module
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
     PetscBool :: no_restart_kinetic_sorption
+    PetscBool :: no_restart_mineral_vol_frac
         
 !   table lookup
     PetscInt :: itable
@@ -448,6 +449,7 @@ subroutine OptionInitRealization(option)
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE
   option%no_restart_kinetic_sorption = PETSC_FALSE
+  option%no_restart_mineral_vol_frac = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20
 

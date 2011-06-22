@@ -693,7 +693,8 @@ subroutine Restart(realization, &
       enddo
     endif
     ! mineral volume fractions for kinetic minerals
-    if (realization%reaction%nkinmnrl > 0) then
+    if (realization%reaction%nkinmnrl > 0 .and. &
+        .not.option%no_restart_mineral_vol_frac) then
       do i = 1, realization%reaction%nkinmnrl
         call VecLoad(global_vec,viewer,ierr)
         call RealizationSetDataset(realization,global_vec,GLOBAL, &

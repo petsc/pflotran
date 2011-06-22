@@ -698,6 +698,8 @@ subroutine ReactionRead(reaction,input,option)
         reaction%use_log_formulation = PETSC_TRUE        
       case('NO_CHECK_UPDATE')
         reaction%check_update = PETSC_FALSE       
+      case('NO_RESTART_MINERAL_VOL_FRAC')
+        option%no_restart_mineral_vol_frac = PETSC_TRUE
       case('NO_CHECKPOINT_ACT_COEFS')
         reaction%checkpoint_activity_coefs = PETSC_FALSE
       case('ACTIVITY_COEFFICIENTS')
