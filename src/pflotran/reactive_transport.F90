@@ -6277,12 +6277,14 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
               call VecView(field%work,viewer,ierr)
             else
               call VecLoad(field%work,viewer,ierr)
-              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-              do local_id = 1, grid%nlmax
-                rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate) = &
-                   vec_p(local_id)
-              enddo
-              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+              if (.not.option%no_restart_kinetic_sorption) then
+                call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+                do local_id = 1, grid%nlmax
+                  rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate) = &
+                     vec_p(local_id)
+                enddo
+                call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+              endif
             endif
           enddo
         endif

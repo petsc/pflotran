@@ -693,17 +693,19 @@ subroutine Restart(realization, &
       enddo
     endif
     ! mineral volume fractions for kinetic minerals
-    if (realization%reaction%nkinmnrl > 0 .and. &
-        .not.option%no_restart_mineral_vol_frac) then
+    if (realization%reaction%nkinmnrl > 0) then
       do i = 1, realization%reaction%nkinmnrl
+        ! have to load the vecs no matter what
         call VecLoad(global_vec,viewer,ierr)
-        call RealizationSetDataset(realization,global_vec,GLOBAL, &
-                                   MINERAL_VOLUME_FRACTION,i)
+        if (.not.option%no_restart_mineral_vol_frac) then
+          call RealizationSetDataset(realization,global_vec,GLOBAL, &
+                                     MINERAL_VOLUME_FRACTION,i)
+        endif
       enddo
     endif
     ! sorbed concentrations for multirate kinetic sorption
     if (realization%reaction%kinmr_nrate > 0 .and. &
-        .not.option%no_restart_kinetic_sorption) then
+        .not.option%no_checkpoint_kinetic_sorption) then
       ! PETSC_FALSE flag indicates read from file
       call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
     endif
