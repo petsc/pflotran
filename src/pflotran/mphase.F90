@@ -41,8 +41,6 @@ module Mphase_module
 
   PetscInt, parameter :: jh2o=1, jco2=2
 
-  PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
-  
   public MphaseResidual,MphaseJacobian, &
          MphaseUpdateFixedAccumulation,MphaseTimeCut,&
          MphaseSetup,MphaseUpdateReason,&
@@ -176,6 +174,7 @@ subroutine MphaseSetupPatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
+  type(mphase_type),pointer :: mphase
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
 
@@ -187,6 +186,7 @@ subroutine MphaseSetupPatch(realization)
   grid => patch%grid
   print *,' mph setup get patch'
   patch%aux%Mphase => MphaseAuxCreate()
+  mphase => patch%aux%Mphase
 
   print *,' mph setup get Aux 1'
   
@@ -197,25 +197,25 @@ subroutine MphaseSetupPatch(realization)
 
 ! mphase_parameters create *********************************************
 ! Sir
-  allocate(patch%aux%Mphase%Mphase_parameter%sir(option%nphase, &
+  allocate(mphase%Mphase_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
    print *,' mph setup get patch: sir, allocated'                                
   do ipara = 1, size(realization%saturation_function_array)
-    patch%aux%Mphase%mphase_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
+    mphase%mphase_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
       realization%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
   print *,' mph setup get patch: sir'
 ! dencpr  
-  allocate(patch%aux%Mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
+  allocate(mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
-    patch%aux%Mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
+    mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
       realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
       realization%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
-  allocate(patch%aux%Mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
+  allocate(mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
-    patch%aux%Mphase%mphase_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
+    mphase%mphase_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
       realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
   
@@ -229,13 +229,13 @@ subroutine MphaseSetupPatch(realization)
   do ghosted_id = 1, grid%ngmax
     call MphaseAuxVarInit(aux_vars(ghosted_id),option)
   enddo
-  patch%aux%Mphase%aux_vars => aux_vars
-  patch%aux%Mphase%num_aux = grid%ngmax
+  mphase%aux_vars => aux_vars
+  mphase%num_aux = grid%ngmax
   print *,' mph setup get Aux init'
 
-  allocate(delx(option%nflowdof, grid%ngmax))
-  allocate(Resold_AR(grid%nlmax,option%nflowdof))
-  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
+  allocate(mphase%delx(option%nflowdof, grid%ngmax))
+  allocate(mphase%res_old_AR(grid%nlmax,option%nflowdof))
+  allocate(mphase%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
   print *,' mph setup allocate app array'
    ! count the number of boundary connections and allocate
@@ -253,8 +253,8 @@ subroutine MphaseSetupPatch(realization)
   do iconn = 1, sum_connection
     call MphaseAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-  patch%aux%Mphase%aux_vars_bc => aux_vars_bc
-  patch%aux%Mphase%num_aux_bc = sum_connection
+  mphase%aux_vars_bc => aux_vars_bc
+  mphase%num_aux_bc = sum_connection
   option%numerical_derivatives = PETSC_TRUE
 
   print *,' mph setup get AuxBc point'
@@ -1409,13 +1409,13 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_up%h(np)
            uden = aux_var_up%den(np)
-           uxmol(1:option%nflowspec) = aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+           uxmol(1:option%nflowspec) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
         else
            ukvr = aux_var_dn%kvr(np)
            ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_dn%h(np)
            uden = aux_var_dn%den(np)
-           uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+           uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
         endif
         uden = density_ave ! debugging
 
@@ -2212,6 +2212,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(mphase_type), pointer :: mphase
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
@@ -2230,9 +2231,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  mphase_parameter => patch%aux%Mphase%mphase_parameter
-  aux_vars => patch%aux%Mphase%aux_vars
-  aux_vars_bc => patch%aux%Mphase%aux_vars_bc
+  mphase => patch%aux%Mphase
+  mphase_parameter => mphase%mphase_parameter
+  aux_vars => mphase%aux_vars
+  aux_vars_bc => mphase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -2297,43 +2299,43 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
      if (option%numerical_derivatives) then
-        delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+        mphase%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+        mphase%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
         select case (iphase)
         case (1)
            if(xx_loc_p((ng-1)*option%nflowdof+3) < 5D-5)then
-               delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3)
+               mphase%delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3)
            else
-               delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+               mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
-           if( delx(3,ng) < 1D-8 .and.  delx(3,ng)>=0.D0) delx(3,ng) =1D-8
-           if( delx(3,ng) >-1D-8 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-8
+           if( mphase%delx(3,ng) < 1D-8 .and.  mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
+           if( mphase%delx(3,ng) >-1D-8 .and.  mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
         case(2)  
            if(xx_loc_p((ng-1)*option%nflowdof+3) <0.9995)then
-               delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+               mphase%delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            else
-               delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+               mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
-           if( delx(3,ng) < 1D-8 .and.  delx(3,ng)>=0.D0) delx(3,ng) =1D-8
-           if( delx(3,ng) >-1D-8 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-8
+           if( mphase%delx(3,ng) < 1D-8 .and.  mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
+           if( mphase%delx(3,ng) >-1D-8 .and.  mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
         case(3)
            if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-              delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+              mphase%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            else
-              delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+              mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
            
-           if( delx(3,ng) < 1D-12 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-12
-           if( delx(3,ng) >-1D-12 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-12
+           if( mphase%delx(3,ng) < 1D-12 .and.  mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) = 1D-12
+           if( mphase%delx(3,ng) >-1D-12 .and.  mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-12
         
-           if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-              delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
+           if(( mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+              mphase%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
            endif
-           if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-              delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
+           if(( mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+              mphase%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
            endif
         end select
-       call MphaseAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
+       call MphaseAuxVarCompute_Winc(xx_loc_p(istart:iend),mphase%delx(:,ng),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),iphase,&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
@@ -2342,7 +2344,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 ! print *,'mphase resi patch: end numerical increments'
 #endif
 
-  Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
+  mphase%res_old_AR=0.D0; mphase%res_old_FL=0.D0; r_p = 0.d0
 
 #if 1
   ! Accumulation terms ------------------------------------
@@ -2364,7 +2366,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
  !   print *,'REs, acm: ', res
-    Resold_AR(local_id, :)= Res(1:option%nflowdof)
+    mphase%res_old_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
 #if 1
@@ -2411,11 +2413,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      Resold_AR(local_id,jh2o)= Resold_AR(local_id,jh2o) - Res(jh2o)    
-      Resold_AR(local_id,jco2)= Resold_AR(local_id,jco2) - Res(jco2)    
+      mphase%res_old_AR(local_id,jh2o)= mphase%res_old_AR(local_id,jh2o) - Res(jh2o)    
+      mphase%res_old_AR(local_id,jco2)= mphase%res_old_AR(local_id,jco2) - Res(jco2)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+        mphase%res_old_AR(local_id,option%nflowdof) = &
+             mphase%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
       endif 
   !   else if (qsrc1 < 0.d0) then ! withdrawal
   !   endif
@@ -2522,7 +2525,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-      Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      mphase%res_old_AR(local_id,1:option%nflowdof) = &
+           mphase%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
 
 #if 0
@@ -2603,7 +2607,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
           upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
-      Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+      mphase%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
       
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -2655,9 +2659,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
 
-  if (patch%aux%Mphase%inactive_cells_exist) then
-    do i=1,patch%aux%Mphase%n_zero_rows
-      r_p(patch%aux%Mphase%zero_rows_local(i)) = 0.d0
+  if (mphase%inactive_cells_exist) then
+    do i=1,mphase%n_zero_rows
+      r_p(mphase%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -2856,6 +2860,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
+  type(mphase_type), pointer :: mphase
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
@@ -2884,9 +2889,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  mphase_parameter => patch%aux%Mphase%mphase_parameter
-  aux_vars => patch%aux%Mphase%aux_vars
-  aux_vars_bc => patch%aux%Mphase%aux_vars_bc
+  mphase => patch%aux%Mphase
+  mphase_parameter => mphase%mphase_parameter
+  aux_vars => mphase%aux_vars
+  aux_vars_bc => mphase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
@@ -3043,13 +3049,13 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           if(idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-             delxbc(idof)=delx(idof,ghosted_id)
+             delxbc(idof)=mphase%delx(idof,ghosted_id)
           endif 
          case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
-          delxbc(idof)=delx(idof,ghosted_id)
+          delxbc(idof)=mphase%delx(idof,ghosted_id)
        end select
     enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
@@ -3084,7 +3090,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          vv_darcy,Res)
-       ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+       ResInc(local_id,1:option%nflowdof,nvar) = &
+            ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
     enddo
  enddo
     boundary_condition => boundary_condition%next
@@ -3102,7 +3109,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-ResOld_AR(local_id,neq))/delx(nvar,ghosted_id)
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-mphase%res_old_AR(local_id,neq)) &
+                /mphase%delx(nvar,ghosted_id)
            if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
@@ -3197,7 +3205,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_up)
+            ra(:,nvar)= (Res(:)-mphase%res_old_FL(iconn,:))/mphase%delx(nvar,ghosted_id_up)
 
          call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
                           tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
@@ -3207,7 +3215,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_dn)
+         ra(:,nvar+option%nflowdof)= (Res(:)-mphase%res_old_FL(iconn,:)) &
+              /mphase%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)
@@ -3307,10 +3316,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #endif
 
-  if (patch%aux%Mphase%inactive_cells_exist) then
+  if (mphase%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%aux%Mphase%n_zero_rows, &
-                          patch%aux%Mphase%zero_rows_local_ghosted,f_up, &
+    call MatZeroRowsLocal(A,mphase%n_zero_rows, &
+                          mphase%zero_rows_local_ghosted,f_up, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 

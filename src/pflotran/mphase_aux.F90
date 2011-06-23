@@ -62,6 +62,11 @@ type, public :: mphase_auxvar_elem_type
      PetscBool :: aux_vars_up_to_date
      PetscBool :: inactive_cells_exist
      PetscInt :: num_aux, num_aux_bc
+
+     PetscReal, pointer :: res_old_AR(:,:)
+     PetscReal, pointer :: res_old_FL(:,:)
+     PetscReal, pointer :: delx(:,:)
+  
      type(Mphase_parameter_type), pointer :: mphase_parameter
      type(Mphase_auxvar_type), pointer :: aux_vars(:)
      type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
@@ -108,6 +113,9 @@ function MphaseAuxCreate()
   nullify(aux%mphase_parameter%dencpr)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+  nullify(aux%res_old_AR)
+  nullify(aux%res_old_FL)
+  nullify(aux%delx)
 
   MphaseAuxCreate => aux
   
@@ -627,7 +635,10 @@ use option_module
     deallocate(aux%mphase_parameter)
   endif
   nullify(aux%mphase_parameter)
-    
+  if (associated(aux%res_old_AR)) deallocate(aux%res_old_AR)
+  if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
+  if (associated(aux%delx)) deallocate(aux%delx)
+
 end subroutine MphaseAuxDestroy
 
 
