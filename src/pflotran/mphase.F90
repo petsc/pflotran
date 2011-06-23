@@ -3119,7 +3119,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
