@@ -752,7 +752,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
                 
             case(G_MODE)
               allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
-              allocate(coupler%flow_aux_int_var(0,num_connections))
+              allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
                 
@@ -882,80 +882,86 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       flow_condition => coupler%flow_condition
 
       if (force_update_flag .or. FlowConditionIsTransient(flow_condition)) then
-        if (associated(flow_condition%pressure)) then
-          select case(flow_condition%pressure%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-!              do idof = 1, condition%num_sub_conditions
-!                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
-!                  coupler%flow_aux_real_var(idof,1:num_connections) = &
-!                    condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-!                endif
-!              enddo
-              select case(option%iflowmode)
-                case(FLASH2_MODE)
-                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                    flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                    flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                    flow_condition%iphase
-                case(MPH_MODE)
-                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                    flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                    flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                    flow_condition%iphase
-                case(IMS_MODE)
-                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                    flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                    flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                    flow_condition%iphase
-                case(THC_MODE)
-                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    flow_condition%pressure%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                    flow_condition%temperature%dataset%cur_value(1)
-                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                    flow_condition%concentration%dataset%cur_value(1)
-                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                    flow_condition%iphase
-                case(RICHARDS_MODE)
-                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    flow_condition%pressure%dataset%cur_value(1)
-                case(G_MODE)
-                  do idof = 1, option%nflowdof
-                    coupler%flow_aux_real_var(idof,1:num_connections) = &
-                      flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-                  enddo
-              end select
-            case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-              call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-            case(SATURATION_BC)
-          end select
-        endif
-        if (associated(flow_condition%concentration)) then
-          select case(option%iflowmode)
-            case(RICHARDS_MODE)
-              call SaturationUpdateCoupler(coupler,option,patch%grid, &
-                                           patch%saturation_function_array, &
-                                           patch%sat_func_id)
-          end select
-        endif
-        if (associated(flow_condition%rate)) then
-          select case(flow_condition%rate%itype)
-            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-              call PatchScaleSourceSink(patch,option)
-          end select
-        endif
+        if (option%iflowmode == G_MODE) then
+
+        else
+          if (associated(flow_condition%pressure)) then
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+  !              do idof = 1, condition%num_sub_conditions
+  !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
+  !                  coupler%flow_aux_real_var(idof,1:num_connections) = &
+  !                    condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+  !                endif
+  !              enddo
+                select case(option%iflowmode)
+                  case(FLASH2_MODE)
+                    coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                      flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                     coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                      flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                    coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                      flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                      flow_condition%iphase
+                  case(MPH_MODE)
+                    coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                      flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                     coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                      flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                    coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                      flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                      flow_condition%iphase
+                  case(IMS_MODE)
+                    coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                      flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                     coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                      flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                    coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                      flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                      flow_condition%iphase
+                  case(THC_MODE)
+                    coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                      flow_condition%pressure%dataset%cur_value(1)
+                    coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                      flow_condition%temperature%dataset%cur_value(1)
+                    coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                      flow_condition%concentration%dataset%cur_value(1)
+                    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                      flow_condition%iphase
+                  case(RICHARDS_MODE)
+                    coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                      flow_condition%pressure%dataset%cur_value(1)
+                  case(G_MODE)
+                    do idof = 1, option%nflowdof
+                      coupler%flow_aux_real_var(idof,1:num_connections) = &
+                        flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                    enddo
+                    coupler%flow_aux_int_var(ONE_INTEGER,1:num_connections) = &
+                      flow_condition%iphase
+                end select
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+              case(SATURATION_BC)
+            end select
+          endif
+          if (associated(flow_condition%concentration)) then
+            select case(option%iflowmode)
+              case(RICHARDS_MODE)
+                call SaturationUpdateCoupler(coupler,option,patch%grid, &
+                                             patch%saturation_function_array, &
+                                             patch%sat_func_id)
+            end select
+          endif
+          if (associated(flow_condition%rate)) then
+            select case(flow_condition%rate%itype)
+              case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                call PatchScaleSourceSink(patch,option)
+            end select
+          endif
+        endif ! option%iflowmode /= GMODE
       endif
      
     endif

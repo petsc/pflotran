@@ -1038,7 +1038,10 @@ subroutine FlowConditionRead(condition,input,option)
                               default_datum, default_gradient,PETSC_TRUE)
 
   select case(option%iflowmode)
-    case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
+    case(G_MODE)
+      option%io_buffer = 'General mode not supported in original FlowConditionRead.'
+      call printMsg(option)
+    case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
         option%io_buffer = 'pressure and rate condition null in ' // &
                            'condition: ' // trim(condition%name)
@@ -1074,36 +1077,20 @@ subroutine FlowConditionRead(condition,input,option)
         nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
 
-      if (option%iflowmode == G_MODE) then
-        if (associated(pressure)) condition%sub_condition_ptr(GENERAL_LIQUID_PRESSURE_DOF)%ptr => pressure
-        if (associated(rate)) condition%sub_condition_ptr(GENERAL_LIQUID_FLUX_DOF)%ptr => rate
-        condition%sub_condition_ptr(GENERAL_TEMPERATURE_DOF)%ptr => temperature
-        condition%sub_condition_ptr(GENERAL_CONCENTRATION_DOF)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(GENERAL_ENTHALPY_DOF)%ptr => enthalpy
+      ! must be in this order, which matches the dofs i problem
+      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
         
-        allocate(condition%itype(FOUR_INTEGER))
-        condition%itype = 0
-        if (associated(pressure)) condition%itype(GENERAL_LIQUID_PRESSURE_DOF) = pressure%itype
-        if (associated(rate)) condition%itype(GENERAL_LIQUID_FLUX_DOF) = rate%itype
-        condition%itype(GENERAL_TEMPERATURE_DOF) = temperature%itype
-        condition%itype(GENERAL_CONCENTRATION_DOF) = concentration%itype
-        if (associated(enthalpy)) condition%itype(GENERAL_ENTHALPY_DOF) = concentration%itype
-      else
-        ! must be in this order, which matches the dofs i problem
-        if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-        if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
-        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-        
-        allocate(condition%itype(FIVE_INTEGER))
-        condition%itype = 0
-        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-        if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
-        condition%itype(TWO_INTEGER) = temperature%itype
-        condition%itype(THREE_INTEGER) = concentration%itype
-        if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
-      endif
+      allocate(condition%itype(FIVE_INTEGER))
+      condition%itype = 0
+      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
+      condition%itype(TWO_INTEGER) = temperature%itype
+      condition%itype(THREE_INTEGER) = concentration%itype
+      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
     
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate) .and. &
@@ -1311,10 +1298,10 @@ subroutine FlowConditionRead(condition,input,option)
           case(G_MODE)
             sub_condition_ptr => FlowGeneralSubConditionPtr(word,general, &
                                                             option)
-          end select
-          call FlowConditionReadValues(input,option,word,string, &
-                                       sub_condition_ptr%dataset, &
-                                       sub_condition_ptr%units)
+        end select
+        call FlowConditionReadValues(input,option,word,string, &
+                                     sub_condition_ptr%dataset, &
+                                     sub_condition_ptr%units)
         select case(word)
           case('LIQUID_SATURATION') ! convert to gas saturation
             do i = 1, size(sub_condition_ptr%dataset%values)
@@ -1340,230 +1327,106 @@ subroutine FlowConditionRead(condition,input,option)
   if (default_gradient%interpolation_method == NULL) &
     default_gradient%interpolation_method = default_dataset%interpolation_method
 
-  select case(option%iflowmode)
-    case(G_MODE)
-      ! need mole fraction and some sort of saturation
-      if (associated(general%flux)) then
-        ! neumann or mass/volumetric flux
-        ! need temperature
-        if (.not.associated(general%mole_fraction)) then
-          option%io_buffer = 'General Phase rate condition must include ' // &
-            'mole fraction '
-          call printErrMsg(option)
-        endif
-        if (.not.associated(general%gas_saturation)) then
-          option%io_buffer = 'General Phase rate condition must include ' // &
-            'gas or liquid saturation'
-          call printErrMsg(option)
-        endif
-        if (.not.associated(general%temperature)) then
-          option%io_buffer = 'General Phase rate condition must include ' // &
-            'temperature'
-          call printErrMsg(option)
-        endif
-        if (associated(general%gas_saturation)) then
-          ! two phase condition
+  ! need mole fraction and some sort of saturation
+  if (associated(general%flux)) then
+    ! neumann or mass/volumetric flux
+    ! need temperature
 
-        else if (associated(general%mole_fraction)) then
+    condition%sub_condition_ptr(GENERAL_FLUX_DOF)%ptr => general%flux
+    if (.not.associated(general%mole_fraction)) then
+      option%io_buffer = 'General Phase rate condition must include ' // &
+        'mole fraction '
+      call printErrMsg(option)
+    endif
+    if (.not.associated(general%gas_saturation)) then
+      option%io_buffer = 'General Phase rate condition must include ' // &
+        'gas or liquid saturation'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(general%temperature)) then
+      option%io_buffer = 'General Phase rate condition must include ' // &
+        'temperature'
+      call printErrMsg(option)
+    endif
+  else
+    condition%num_sub_conditions = THREE_INTEGER
+    allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+    do idof = 1, condition%num_sub_conditions
+      nullify(condition%sub_condition_ptr(idof)%ptr)
+    enddo
 
-        else
-
-        endif
-      else
-        ! some sort of dirichlet-based pressure, temperature, etc.
-        if (.not.associated(general%liquid_pressure) .and. &
-            .not.associated(general%gas_pressure)) then
-          option%io_buffer = 'General Phase non-rate condition must include ' // &
-            'a liquid or gas pressure'
-          call printErrMsg(option)
-        endif
-        if (.not.associated(general%mole_fraction) .and. &
-            .not.associated(general%gas_saturation)) then
-          option%io_buffer = 'General Phase non-rate condition must include ' // &
-            'mole fraction or gas/liquid saturation'
-          call printErrMsg(option)
-        endif
-        if (.not.associated(general%temperature)) then
-          option%io_buffer = 'General Phase non-rate condition must include ' // &
-            'temperature'
-          call printErrMsg(option)
-        endif
-        if (associated(general%gas_saturation)) then
-          ! two phase condition
-        else if (associated(general%mole_fraction)) then
-
-        else
-
-        endif
-      endif
-  end select 
+    ! some sort of dirichlet-based pressure, temperature, etc.
+    if (.not.associated(general%liquid_pressure) .and. &
+        .not.associated(general%gas_pressure)) then
+      option%io_buffer = 'General Phase non-rate condition must include ' // &
+        'a liquid or gas pressure'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(general%mole_fraction) .and. &
+        .not.associated(general%gas_saturation)) then
+      option%io_buffer = 'General Phase non-rate condition must include ' // &
+        'mole fraction or gas/liquid saturation'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(general%temperature)) then
+      option%io_buffer = 'General Phase non-rate condition must include ' // &
+        'temperature'
+      call printErrMsg(option)
+    endif
+    if (associated(general%gas_pressure) .and. &
+        associated(general%gas_saturation)) then
+      ! two phase condition
+      condition%iphase = TWO_PHASE_STATE
+    else if (associated(general%liquid_pressure) .and. &
+              associated(general%mole_fraction)) then
+      ! liquid phase condition
+      condition%iphase = LIQUID_STATE
+    else if (associated(general%gas_pressure) .and. &
+              associated(general%mole_fraction)) then
+      ! gas phase condition
+      condition%iphase = GAS_STATE
+    else 
+      option%io_buffer = 'General Phase non-rate condition contains an ' // &
+        'unsupported combination of primary dependent variables.'
+      call printErrMsg(option)
+    endif
+  endif
     
-
-
-#if 0
-  ! check to ensure that a rate condition is not of type pressure   
-  if (associated(rate)) then
-    select case(rate%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC,UNIT_GRADIENT_BC, &
-           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
-        option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
-          'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
-          'seepage, or conductance".'
-        call printErrMsg(option)
-    end select
-  endif
-  ! check to ensure that a pressure condition is not of type rate   
-  if (associated(pressure)) then                          
-    select case(pressure%itype)
-      case(MASS_RATE_SS,SCALED_MASS_RATE_SS,VOLUMETRIC_RATE_SS, &
-           SCALED_VOLUMETRIC_RATE_SS,EQUILIBRIUM_SS,PRODUCTION_WELL)
-        option%io_buffer = 'PRESSURE or FLUX condition must not be of type: ' // &
-          'mass_rate, scaled_mass_rate, volumetric_rate, ' // &
-          'scaled_volumetric_rate, equilibrium, or production_well.'
-        call printErrMsg(option)
-    end select
-  endif
-
   ! verify the datasets
-  word = 'pressure/flux'
-  call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient, PETSC_TRUE)
-  word = 'rate'
-  call FlowSubConditionVerify(option,condition,word,rate,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient,PETSC_TRUE)
+  word = 'liquid pressure'
+  call FlowSubConditionVerify(option,condition,word,general%liquid_pressure, &
+                              default_time, default_ctype, default_itype, &
+                              default_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
+  word = 'gas pressure'
+  call FlowSubConditionVerify(option,condition,word,general%gas_pressure, &
+                              default_time, default_ctype, default_itype, &
+                              default_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
+  word = 'gas saturation'
+  call FlowSubConditionVerify(option,condition,word,general%gas_saturation, &
+                              default_time, default_ctype, default_itype, &
+                              default_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
+  word = 'mole fraction'
+  call FlowSubConditionVerify(option,condition,word,general%mole_fraction, &
+                              default_time, default_ctype, default_itype, &
+                              default_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
   word = 'temperature'
-  call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient,PETSC_TRUE)
-  word = 'concentration'
-  call FlowSubConditionVerify(option,condition,word,concentration,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient,PETSC_TRUE)
-  word = 'enthalpy'
-  call FlowSubConditionVerify(option,condition,word,enthalpy,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient,PETSC_TRUE)
+  call FlowSubConditionVerify(option,condition,word,general%temperature, &
+                              default_time, default_ctype, default_itype, &
+                              default_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
+  word = 'flux'
+  call FlowSubConditionVerify(option,condition,word,general%flux, &
+                              default_time, default_ctype, default_itype, &
+                              default_dataset, default_datum, &
+                              default_gradient, PETSC_TRUE)
 
-  select case(option%iflowmode)
-    case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
-      if (.not.associated(pressure) .and. .not.associated(rate)) then
-        option%io_buffer = 'pressure and rate condition null in ' // &
-                           'condition: ' // trim(condition%name)
-        call printErrMsg(option)
-      endif                         
-      if (associated(pressure)) then
-        condition%pressure => pressure
-      endif                         
-      if (associated(rate)) then
-        condition%rate => rate
-      endif                         
-      if (.not.associated(temperature)) then
-        option%io_buffer = 'temperature condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%temperature => temperature
-      if (.not.associated(concentration)) then
-        option%io_buffer = 'concentration condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%concentration => concentration
-      if (.not.associated(enthalpy)) then
-        option%io_buffer = 'enthalpy condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%enthalpy => enthalpy
-      condition%num_sub_conditions = 4
-      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      do idof = 1, 4
-        nullify(condition%sub_condition_ptr(idof)%ptr)
-      enddo
-
-      if (option%iflowmode == G_MODE) then
-        if (associated(pressure)) condition%sub_condition_ptr(GENERAL_LIQUID_PRESSURE_DOF)%ptr => pressure
-        if (associated(rate)) condition%sub_condition_ptr(GENERAL_LIQUID_FLUX_DOF)%ptr => rate
-        condition%sub_condition_ptr(GENERAL_TEMPERATURE_DOF)%ptr => temperature
-        condition%sub_condition_ptr(GENERAL_CONCENTRATION_DOF)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(GENERAL_ENTHALPY_DOF)%ptr => enthalpy
-        
-        allocate(condition%itype(FOUR_INTEGER))
-        condition%itype = 0
-        if (associated(pressure)) condition%itype(GENERAL_LIQUID_PRESSURE_DOF) = pressure%itype
-        if (associated(rate)) condition%itype(GENERAL_LIQUID_FLUX_DOF) = rate%itype
-        condition%itype(GENERAL_TEMPERATURE_DOF) = temperature%itype
-        condition%itype(GENERAL_CONCENTRATION_DOF) = concentration%itype
-        if (associated(enthalpy)) condition%itype(GENERAL_ENTHALPY_DOF) = concentration%itype
-      else
-        ! must be in this order, which matches the dofs i problem
-        if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-        if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
-        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-        
-        allocate(condition%itype(FIVE_INTEGER))
-        condition%itype = 0
-        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-        if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
-        condition%itype(TWO_INTEGER) = temperature%itype
-        condition%itype(THREE_INTEGER) = concentration%itype
-        if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
-      endif
-    
-    case(RICHARDS_MODE)
-      if (.not.associated(pressure) .and. .not.associated(rate) .and. &
-          .not.associated(concentration)) then
-        option%io_buffer = 'pressure, rate and saturation condition null in ' // &
-                           'condition: ' // trim(condition%name)
-        call printErrMsg(option)      
-      endif                         
-      if (associated(concentration)) then
-        condition%concentration => concentration
-      endif                         
-      if (associated(pressure)) then
-        condition%pressure => pressure
-      endif                         
-      if (associated(rate)) then
-        condition%rate => rate
-      endif                         
-      condition%num_sub_conditions = 1
-      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      if (associated(pressure)) then
-        condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-      elseif (associated(concentration)) then
-        condition%sub_condition_ptr(ONE_INTEGER)%ptr => concentration
-      elseif (associated(rate)) then
-        condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
-      endif                         
-
-      allocate(condition%itype(ONE_INTEGER))
-      if (associated(pressure)) then 
-        condition%itype(ONE_INTEGER) = pressure%itype
-      else if (associated(concentration)) then
-        condition%itype(ONE_INTEGER) = concentration%itype
-      else if (associated(rate)) then
-        condition%itype(ONE_INTEGER) = rate%itype
-      endif
-      
-      ! these are not used with richards
-      if (associated(temperature)) call FlowSubConditionDestroy(temperature)
-      if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
-      
-  end select
-  
   call FlowConditionDatasetDestroy(default_dataset)
   call FlowConditionDatasetDestroy(default_datum)
   call FlowConditionDatasetDestroy(default_gradient)
-#endif
     
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 

@@ -213,7 +213,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
       gen_aux_var%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
-      gen_aux_var%xmol(acid,lid) = x(GENERAL_CONCENTRATION_DOF)
+      gen_aux_var%xmol(acid,lid) = x(GENERAL_MOLE_FRACTION_DOF)
       gen_aux_var%temp = x(GENERAL_TEMPERATURE_DOF)
 
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)

@@ -175,10 +175,10 @@ PetscInt, parameter :: GENERAL_GAS_SATURATION_DOF = 3
 PetscInt, parameter :: GENERAL_LIQUID_FLUX_DOF = 1
 PetscInt, parameter :: GENERAL_GAS_FLUX_DOF = 1
 PetscInt, parameter :: GENERAL_TEMPERATURE_DOF = 3
-PetscInt, parameter :: GENERAL_CONCENTRATION_DOF = 2
-PetscInt, parameter :: GENERAL_ENTHALPY_DOF = 4
+PetscInt, parameter :: GENERAL_MOLE_FRACTION_DOF = 2
 PetscInt, parameter :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
 PetscInt, parameter :: GENERAL_GAS_CONDUCTANCE_DOF = -2
+PetscInt, parameter :: GENERAL_FLUX_DOF = 4
 
 ! output definitions
 PetscInt, parameter :: X_COORDINATE =             1

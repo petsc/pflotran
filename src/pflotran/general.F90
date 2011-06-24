@@ -831,10 +831,10 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
        x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_CONCENTRATION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
+       x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
        pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_CONCENTRATION_DOF) = perturbation_tolerance*x(GENERAL_CONCENTRATION_DOF)
+       pert(GENERAL_MOLE_FRACTION_DOF) = perturbation_tolerance*x(GENERAL_MOLE_FRACTION_DOF)
        pert(GENERAL_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
@@ -2989,7 +2989,7 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
         global_aux_var%istate = LIQUID_STATE
         x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
                                          gen_aux_var%pres(vpid)
-        x(GENERAL_CONCENTRATION_DOF) = gen_aux_var%xmol(acid,lid)
+        x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var%xmol(acid,lid)
         x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
         flag = PETSC_TRUE
       else if (gen_aux_var%sat(gid) > 1.d0) then
