@@ -540,7 +540,6 @@ subroutine Init(simulation)
   if (OptionPrintToScreen(option)) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
-
   call PetscLogEventBegin(logging%event_setup,ierr)
   ! read any regions provided in external files
   call readRegionFiles(realization)
@@ -553,6 +552,7 @@ subroutine Init(simulation)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
+
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
   call assignSubcontinuumPropToRegions(realization)
@@ -566,7 +566,6 @@ subroutine Init(simulation)
     call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
-
   ! should we still support this
   if (option%use_generalized_grid) then 
     call printMsg(option,'Reading structured grid from hdf5')
@@ -592,10 +591,8 @@ subroutine Init(simulation)
   if (associated(tran_stepper)) then
     tran_stepper%cur_waypoint => realization%waypoints%first
   endif
-  
   ! initialize global auxilliary variable object
   call GlobalSetup(realization)
-  
   ! initialize FLOW
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
