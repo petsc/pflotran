@@ -1200,8 +1200,8 @@ end subroutine MphaseAccumulation
 ! date: 05/12/08
 !
 ! ************************************************************************** !  
-subroutine MphaseSourceSink(mmsrc, nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
-                            energy_flag, option)
+subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res, &
+                            energy_flag,option)
 
   use Option_module
   use water_eos_module
@@ -1217,7 +1217,7 @@ subroutine MphaseSourceSink(mmsrc, nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res,
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal, pointer :: mmsrc(:)
-  PetscReal psrc(option%nphase),tsrc,hsrc 
+  PetscReal psrc(option%nphase),tsrc,hsrc,csrc 
   PetscInt isrctype
   PetscInt nsrcpara
   PetscBool :: energy_flag
@@ -1252,10 +1252,9 @@ subroutine MphaseSourceSink(mmsrc, nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res,
           option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        Res(jh2o) = Res( jh2o) + msrc(1) *option%flow_dt
-        if (energy_flag) &
-          Res(option%nflowdof) = Res(option%nflowdof) + &
-            msrc(1)*enth_src_h2o*option%flow_dt
+        Res(jh2o) = Res(jh2o) + msrc(1) *option%flow_dt
+        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + &
+          msrc(1)*enth_src_h2o*option%flow_dt
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
@@ -1286,7 +1285,7 @@ subroutine MphaseSourceSink(mmsrc, nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res,
         else if(option%co2eos == EOS_MRK) then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
           call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-          enth_src_co2 = enth_src_co2*FMWCO2*option%scale
+            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
         else
           call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
         endif
@@ -1294,14 +1293,14 @@ subroutine MphaseSourceSink(mmsrc, nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res,
         Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
         if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
           enth_src_co2 *option%flow_dt
-      endif
+        endif
 
     case(WELL_SS) ! production well
      !if node pessure is lower than the given extraction pressure, shut it down
     ! Flow term
 !  well parameter explaination
 !   1. well status. 1 injection; -1 production; 0 shut in
-!                   2 rate controled injection ( same as rate_ss, with max pressure control, not down yet) 
+!                   2 rate controled injection (same as rate_ss, with max pressure control, not completed yet) 
 !                  -2 rate controled production(not implemented for now) 
 !
 !   2. well factor,  the effective permeability m^2/s
@@ -1313,66 +1312,72 @@ subroutine MphaseSourceSink(mmsrc, nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res,
 !   8. well diameter, not used now
 !   9. skin factor, not used now
 
-     well_status = msrc(1)
-     well_factor = msrc(2)
-     pressure_bh = msrc(3)
-     pressure_max = msrc(4)
-     pressure_min = msrc(5)
-     well_inj_water = msrc(6)
-     well_inj_co2 = msrc(7)
+      well_status = msrc(1)
+      well_factor = msrc(2)
+      pressure_bh = msrc(3)
+      pressure_max = msrc(4)
+      pressure_min = msrc(5)
+      well_inj_water = msrc(6)
+      well_inj_co2 = msrc(7)
     
-!    if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+!     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
-    if( dabs(well_status + 1D0) < 1D-1) then 
-      if(aux_var%pres > pressure_min) then
-      Dq = well_factor 
-      do np = 1, option%nphase
-        dphi = aux_var%pres - aux_var%pc(np)- pressure_bh
-        if (dphi>=0.D0) then ! outflow only
-          ukvr = aux_var%kvr(np)
-          v_darcy=0D0
-          if (ukvr*Dq>floweps) then
-            v_darcy = Dq * ukvr * dphi
-            Res(1) = Res(1)- v_darcy* aux_var%den(np)* &
-              aux_var%xmol((np-1)*option%nflowspec+1) *option%flow_dt
-            Res(2) = Res(2)- v_darcy* aux_var%den(np)* &
-              aux_var%xmol((np-1)*option%nflowspec+2) *option%flow_dt
-            if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)*option%flow_dt
-             ! print *, 'well:: ', Res
-          endif
+      if( dabs(well_status + 1D0) < 1D-1) then 
+        if(aux_var%pres > pressure_min) then
+          Dq = well_factor 
+          do np = 1, option%nphase
+            dphi = aux_var%pres - aux_var%pc(np)- pressure_bh
+            if (dphi>=0.D0) then ! outflow only
+            ukvr = aux_var%kvr(np)
+            v_darcy=0D0
+            if (ukvr*Dq>floweps) then
+              v_darcy = Dq * ukvr * dphi
+              Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
+                aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
+              Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
+                aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
+              if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)*aux_var%h(np)*option%flow_dt
+             !print *, 'well:: ', Res
+              endif
+            endif
+          enddo
         endif
-      enddo
-     endif
-    endif 
-     ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
+      endif 
+     !print *,'well-prod: ',  aux_var%pres,psrc(1), res
      
     ! injection well (well status = 2)
-    if( dabs(well_status - 2D0) < 1D-1) then 
-             
+      if( dabs(well_status - 2D0) < 1D-1) then 
+
+        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
+          option%scale,ierr)
+
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-      if( aux_var%pres < pressure_max)then  
-      do np = 1, option%nphase
-        dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
-        if (dphi>=0.D0) then ! outflow only
-          ukvr = aux_var%kvr(np)
-          v_darcy=0.D0
-          if (ukvr*Dq>floweps) then
-            v_darcy = Dq * ukvr * dphi
-            Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
-              aux_var%xmol((np-1)*option%nflowspec+1) *option%flow_dt
-            Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
-              aux_var%xmol((np-1)*option%nflowspec+2) *option%flow_dt
-            if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
-          endif
+        if( aux_var%pres < pressure_max)then  
+          do np = 1, option%nphase
+            dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
+            if (dphi>=0.D0) then ! outflow only
+              ukvr = aux_var%kvr(np)
+              v_darcy=0.D0
+              if (ukvr*Dq>floweps) then
+                v_darcy = Dq * ukvr * dphi
+                Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
+!                 aux_var%xmol((np-1)*option%nflowspec+1) * option%flow_dt
+                  (1.d0-csrc) * option%flow_dt
+                Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
+!                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
+                  csrc * option%flow_dt
+!               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*enth_src_h2o*option%flow_dt
+              endif
+            endif
+          enddo
         endif
-      enddo
-     endif
-    endif    
-   case default
-     print *,'Unrecognized Source/Sink condition: ', isrctype 
+      endif    
+    case default
+      print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
       
 end subroutine MphaseSourceSink
@@ -2437,6 +2442,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    
+!   print *,'src/sink: ',tsrc1,csrc1,hsrc1,psrc
+    
 !   hsrc1=0D0
 !   qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !   csrc1 = csrc1 / FMWCO2
@@ -2452,6 +2460,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
    case(WELL_SS)
      msrc => source_sink%flow_condition%well%dataset%cur_value
      nsrcpara = 7 + option%nflowspec 
+     
+!    print *,'src/sink: ',nsrcpara,msrc
    case default
      print *, 'mphase mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
      stop  
@@ -2467,7 +2477,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
@@ -3054,7 +3064,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
        do nvar =1, option%nflowdof
-         call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
+         call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,enthalpy_flag, option)
       
          ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
