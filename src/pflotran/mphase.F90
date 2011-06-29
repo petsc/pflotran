@@ -181,15 +181,15 @@ subroutine MphaseSetupPatch(realization)
   PetscInt :: ghosted_id, iconn, sum_connection, ipara
   type(Mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
 
-  print *,' mph setup begin'
+! print *,' mph setup begin'
   option => realization%option
   patch => realization%patch
   grid => patch%grid 
-  print *,' mph setup get patch'
+! print *,' mph setup get patch'
   patch%aux%Mphase => MphaseAuxCreate()
   mphase => patch%aux%Mphase
 
-  print *,' mph setup get Aux 1'
+! print *,' mph setup get Aux 1'
   
 !  option%io_buffer = 'Before Mphase can be run, the thc_parameter object ' // &
 !                     'must be initialized with the proper variables ' // &
@@ -200,12 +200,12 @@ subroutine MphaseSetupPatch(realization)
 ! Sir
   allocate(mphase%Mphase_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
-   print *,' mph setup get patch: sir, allocated'                                
+!  print *,' mph setup get patch: sir, allocated'                                
   do ipara = 1, size(realization%saturation_function_array)
     mphase%mphase_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
       realization%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
-  print *,' mph setup get patch: sir'
+! print *,' mph setup get patch: sir'
 ! dencpr  
   allocate(mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
@@ -223,22 +223,22 @@ subroutine MphaseSetupPatch(realization)
 
 ! mphase_parameters create_end *****************************************
   
-  print *,' mph setup get Aux'
+! print *,' mph setup get Aux'
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
-  print *,' mph setup get Aux alloc', grid%ngmax
+! print *,' mph setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
     call MphaseAuxVarInit(aux_vars(ghosted_id),option)
   enddo
   mphase%aux_vars => aux_vars
   mphase%num_aux = grid%ngmax
-  print *,' mph setup get Aux init'
+! print *,' mph setup get Aux init'
 
   allocate(mphase%delx(option%nflowdof, grid%ngmax))
   allocate(mphase%res_old_AR(grid%nlmax,option%nflowdof))
   allocate(mphase%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
-  print *,' mph setup allocate app array'
+! print *,' mph setup allocate app array'
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -250,7 +250,7 @@ subroutine MphaseSetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
   allocate(aux_vars_bc(sum_connection))
-  print *,' mph setup get AuxBc alloc', sum_connection
+! print *,' mph setup get AuxBc alloc', sum_connection
   do iconn = 1, sum_connection
     call MphaseAuxVarInit(aux_vars_bc(iconn),option)
   enddo
@@ -258,7 +258,7 @@ subroutine MphaseSetupPatch(realization)
   mphase%num_aux_bc = sum_connection
   option%numerical_derivatives = PETSC_TRUE
 
-  print *,' mph setup get AuxBc point'
+! print *,' mph setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call MphaseCreateZeroArray(patch,option)
@@ -3445,10 +3445,10 @@ subroutine MphaseCreateZeroArray(patch,option)
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
   endif
-  print *,'zero rows=', n_zero_rows
+! print *,'zero rows=', n_zero_rows
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
-  print *,'zero rows allocated' 
+! print *,'zero rows allocated' 
   zero_rows_local = 0
   zero_rows_local_ghosted = 0
   ncount = 0
@@ -3480,13 +3480,13 @@ subroutine MphaseCreateZeroArray(patch,option)
     enddo
 #endif
   endif
-print *,'zero rows point 1'
+!print *,'zero rows point 1'
   patch%aux%Mphase%n_zero_rows = n_zero_rows
-print *,'zero rows point 2'
+!print *,'zero rows point 2'
   patch%aux%Mphase%zero_rows_local => zero_rows_local
-print *,'zero rows point 3'  
+!print *,'zero rows point 3'  
   patch%aux%Mphase%zero_rows_local_ghosted => zero_rows_local_ghosted
-print *,'zero rows point 4'
+!print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Mphase%inactive_cells_exist = PETSC_TRUE
@@ -3495,7 +3495,7 @@ print *,'zero rows point 4'
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
- print *,'zero rows', flag
+! print *,'zero rows', flag
 end subroutine MphaseCreateZeroArray
 
 ! ************************************************************************** !
