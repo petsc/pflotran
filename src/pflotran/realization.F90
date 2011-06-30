@@ -2410,7 +2410,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
     endif
 
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity_loc, &
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                      field%tortuosity_loc,ONEDOF)
   endif
       
@@ -2428,7 +2428,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     call GridVecRestoreArrayF90(grid,field%tortuosity0,tortuosity0_p,ierr)  
     call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity_loc, &
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                      field%tortuosity_loc,ONEDOF)
   endif
       
@@ -2456,12 +2456,12 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     call GridVecRestoreArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
     call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
-    call DiscretizationGlobalToLocal(discretization,field%perm_xx_loc, &
-                                     field%perm_xx_loc,ONEDOF)
-    call DiscretizationGlobalToLocal(discretization,field%perm_yy_loc, &
-                                     field%perm_yy_loc,ONEDOF)
-    call DiscretizationGlobalToLocal(discretization,field%perm_zz_loc, &
-                                     field%perm_zz_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
+                                    field%perm_xx_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%perm_yy_loc, &
+                                    field%perm_yy_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%perm_zz_loc, &
+                                    field%perm_zz_loc,ONEDOF)
   endif  
   
 end subroutine RealizationUpdatePropertiesPatch
