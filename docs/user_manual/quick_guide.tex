@@ -297,8 +297,7 @@ PFLOTRAN solves a system of generally nonlinear partial differential equations d
 
 \subsection{Mode: {\tt RICHARDS}}
 
-{\tt RICHARDS} Mode applies to single phase, variably saturated, isothermal systems.
-The governing mass conservation equation is given by
+{\tt RICHARDS} Mode applies to single phase, variably saturated, isothermal systems. The governing mass conservation equation is given by
 \EQ
 \frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
 \EN
@@ -306,7 +305,11 @@ and
 \EQ
 \bq = -\frac{kk_r(s)}{\mu}\bnabla\left(P-\rho g z\right).
 \EN
-Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water.
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The source/sink term $Q_w$ has the form
+\EQ
+Q_w \eq \frac{q_M}{W} \delta(\br-\br_{ss}),
+\EN
+where $q_M$ denotes a mass rate in kg/s, $W$ denotes the formula weight of water, and $\br_{ss}$ denotes the location of the source/sink.
 
 \subsection{Capillary Pressure Relations}
 
@@ -372,14 +375,14 @@ of the liquid phase, $n_l$, is represented on a molar basis.
 Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
 \begin{subequations}
 \BA\label{mass_conservation_equation}
-\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\rho_\a^{} X_i^\a \bigg)
-+ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\rho_\a^{} X_i^\a 
- - \varphi s_\a^{} D_\a^{} \rho_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\eta_\a^{} X_i^\a \bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\eta_\a^{} X_i^\a 
+ - \varphi s_\a^{} D_\a^{} \eta_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
 \EA
 for the $i$th component, and
 \BA\label{energy_equation}
-\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\rho_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)
-+ \bnabla\cdot\sum_\a\bigg[\bq_\a\rho_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
+\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\eta_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a\eta_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
 \EA
 \end{subequations}
 for energy. 
@@ -389,21 +392,30 @@ species are designated by the subscript $i$
 $\varphi$ denotes the porosity of the geologic formation; 
 $s_\a$ denotes the phase saturation state; 
 $X_i^\a$ denotes the mole fraction of species $i$ ($\sum_i X_i^\alpha=1$); 
-$\rho_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
+$\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
 $\bq_\a$ denotes the Darcy flow rate defined by
 \EQ
-\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-W_\a^{}\rho_\a g \bz\big),
+\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-W_\a^{}\eta_\a g \bz\big),
 \EN
-where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat at wells, respectively. The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the density, heat capacity, and thermal conductivity of the porous rock.
+where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat capacity, and thermal conductivity of the porous rock. The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat at wells, respectively. Several different well models are available. The simplest is a mass injection/production well given by
+\EQ
+Q_i \eq \sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{ss}),
+\EN
+where $q_\a^M$ refers to the mass rate in kg/s, and $W_\a$ denotes the formula weight given by
+\EQ
+W_\a \eq \sum_i W_i^{} X_i^\a.
+\EN
+The position vector $\br_{ss}$ refers to the location of the source/sink.
 
 %Additional constitutive relations are needed to account for capillary pressure, and changes in phase which are not discussed in detail here (see \cite{lichtner:pflotran07}).
+
 In PFLOTRAN a variable switching approach is used to account for phase changes enforcing local equilibrium. According to the Gibbs phase rule there are a total of $N_C\!+\!1$ degrees of freedom where $N_C$ denotes the number of independent components. This can be seen by noting that the
 intensive
 degrees of freedom are equal to $N_{\rm int}\!=\!N_C \!-\! N_P \!+\!2$, where $N_P$ denotes the number of phases. The 
 extensive
 degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number of degrees of freedom $N_{\rm dof}\!=\!N_{\rm int}\!+\!N_{\rm ext}\!=\!N_C\!+\!1$, independent of the number of phases $N_P$ in the system.
-
-Primary variables for pure liquid, pure gas and two-phases systems are listed in Table~\ref{tvar}.
+Primary variables for liquid, gas and two-phase systems are listed in Table~\ref{tvar}.
+The conditions for phase changes to occur are considered in detail below.
 
 \begin{table}\centering
 \caption{Choice of primary variables.}\label{tvar}
@@ -421,7 +433,6 @@ two-phase & $p_g$ & $T$ & $s_g$\\
 \end{tabular}
 \end{table}
 
-The conditions for phases to occur are considered in detail below.
 
 \subsubsection{Gas: $(p_g,\,T,\,X_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$}
 
@@ -583,13 +594,17 @@ yielding
 C_i^\a \eq \frac{K_i^\a}{\gamma_i^\a} \prod_j \Big(\gamma_j^l C_j^l\Big)^{\nu_{ji}^\a},
 \EN
 with equilibrium constant $K_i^\a$, and activity coefficients $\gamma_k^\a$.
-
-The quantity $Q_j$ denotes a source/sink term and $S_j$ represents the sorbed concentration of the $j$th primary species. Diffusion is assumed to be species independent, but may be different for different phases, e.g. an aqueous electrolyte solution or gas phase. Dispersivity currently must be described through a diagonal dispersion tensor. The Darcy velocity $\bq_\a$ for phase $\a$ is given by
+Diffusion is assumed to be species independent, but may be different for different phases, e.g. an aqueous electrolyte solution or gas phase. Dispersivity currently must be described through a diagonal dispersion tensor. The Darcy velocity $\bq_\a$ for phase $\a$ is given by
 \EQ
 \bq_a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(p_\a -\rho_\a g z\big),
 \EN
 with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$.
-
+The quantity $Q_j$ denotes a source/sink term 
+\EQ
+Q_j \eq \frac{q_M}{\rho}\Psi_j \delta(\br-\br_{ss}),
+\EN
+where $q_M$ denotes a mass rate in units of kg/s, $\rho$ denotes the fluid density in kg/m$^3$, and $\br_{ss}$ refers to the location of the source/sink. The quantity $S_j$ represents the sorbed concentration of the $j$th primary species considered in more detail in the next section.
+ 
 \subsubsection{Sorption}
 
 Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surface complexation reactions for both equilibrium and multirate formulations.
