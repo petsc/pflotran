@@ -412,16 +412,16 @@ The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat cap
 The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat, respectively, for various well models. Several different well models are available. The simplest is a volume or mass rate injection/production well given by
 \begin{subequations}
 \BA
-Q_i &\eq \sum_\a q_\a^V \eta_\a X_i^\a \delta(\br-\br_{ss}),\\
-&\eq \sum_\a \frac{\eta_\a}{\rho_\a} q_\a^M X_i^\a \delta(\br-\br_{ss}),\\
-&\eq \sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{ss}),
+Q_i &\eq \sum_n\sum_\a q_\a^V \eta_\a X_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a \frac{\eta_\a}{\rho_\a} q_\a^M X_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{n}),
 \EA
 \end{subequations}
 where $q_\a^V$, $q_\a^M$ refer to volume and mass rates with units m$^3$/s, kg/s, respectively, related by
 \EQ
 q_\a^M \eq \rho_\a q_\a^V.
 \EN
-The position vector $\br_{ss}$ refers to the location of the source/sink.
+The position vector $\br_{n}$ refers to the location of the $n$th source/sink.
 
 A less simplistic approach is to specify the bottom well pressure to regulate the flow rate in the well. In this approach the mass flow rate is determined from the expression
 \EQ

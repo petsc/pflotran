@@ -427,7 +427,7 @@ subroutine Checkpoint(realization, &
 
   call PetscGetTime(tend,ierr) 
   write(option%io_buffer, &
-        '("      Seconds to write to checkpoint file: ", f6.2)') tend-tstart
+        '("      Seconds to write to checkpoint file: ", f10.2)') tend-tstart
   call printMsg(option)
 
   call PetscLogEventEnd(logging%event_checkpoint,ierr)  
