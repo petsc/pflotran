@@ -72,9 +72,12 @@ subroutine GlobalSetupPatch(realization)
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  type(global_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(global_auxvar_type), pointer :: aux_vars(:)
+  type(global_auxvar_type), pointer :: aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: aux_vars_ss(:)
   
   option => realization%option
   patch => realization%patch
@@ -115,6 +118,27 @@ subroutine GlobalSetupPatch(realization)
     patch%aux%Global%aux_vars_bc => aux_vars_bc
   endif
   patch%aux%Global%num_aux_bc = sum_connection
+
+  ! count the number of source/sink connections and allocate
+  ! aux_var data structures for them  
+  source_sink => patch%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
+    sum_connection = sum_connection + &
+                     source_sink%connection_set%num_connections
+    source_sink => source_sink%next
+  enddo
+
+  if (sum_connection > 0) then
+    option%iflag = 1 ! enable allocation of mass_balance array 
+    allocate(aux_vars_ss(sum_connection))
+    do iconn = 1, sum_connection
+      call GlobalAuxVarInit(aux_vars_ss(iconn),option)
+    enddo
+    patch%aux%Global%aux_vars_ss => aux_vars_ss
+  endif
+  patch%aux%Global%num_aux_ss = sum_connection
 
   option%iflag = 0
   

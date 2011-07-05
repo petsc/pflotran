@@ -45,10 +45,11 @@ module Richards_Aux_module
     PetscBool :: aux_vars_up_to_date
     PetscBool :: aux_vars_cell_pressures_up_to_date
     PetscBool :: inactive_cells_exist
-    PetscInt :: num_aux, num_aux_bc
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
     type(richards_parameter_type), pointer :: richards_parameter
     type(richards_auxvar_type), pointer :: aux_vars(:)
     type(richards_auxvar_type), pointer :: aux_vars_bc(:)
+    type(richards_auxvar_type), pointer :: aux_vars_ss(:)
 #ifdef GLENN
     type(matrix_buffer_type), pointer :: matrix_buffer
 #endif
@@ -84,8 +85,10 @@ function RichardsAuxCreate()
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
   aux%n_zero_rows = 0
   allocate(aux%richards_parameter)
   ! don't allocate richards_parameter%sir quite yet, since we don't know the
@@ -395,6 +398,13 @@ subroutine RichardsAuxDestroy(aux)
     deallocate(aux%aux_vars_bc)
   endif
   nullify(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_ss)) then
+    do iaux = 1, aux%num_aux_ss
+      call AuxVarDestroy(aux%aux_vars_ss(iaux))
+    enddo  
+    deallocate(aux%aux_vars_ss)
+  endif
+  nullify(aux%aux_vars_ss)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

@@ -158,7 +158,7 @@ module Reactive_Transport_Aux_module
   end type colloid_param_type
 
   type, public :: reactive_transport_type
-    PetscInt :: num_aux, num_aux_bc
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscInt :: n_zero_rows
     PetscBool :: aux_vars_up_to_date
@@ -166,6 +166,7 @@ module Reactive_Transport_Aux_module
     type(reactive_transport_param_type), pointer :: rt_parameter
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
+    type(reactive_transport_auxvar_type), pointer :: aux_vars_ss(:)
 #ifdef CHUNK
     type(react_tran_auxvar_chunk_type), pointer :: aux_var_chunk
 #endif
@@ -199,8 +200,10 @@ function RTAuxCreate(option)
   allocate(aux)  
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
 #ifdef CHUNK
   nullify(aux%aux_var_chunk)
 #endif  
@@ -719,6 +722,13 @@ subroutine RTAuxDestroy(aux)
     deallocate(aux%aux_vars_bc)
   endif
   nullify(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_ss)) then
+    do iaux = 1, aux%num_aux_ss
+      call RTAuxVarDestroy(aux%aux_vars_ss(iaux))
+    enddo  
+    deallocate(aux%aux_vars_ss)
+  endif
+  nullify(aux%aux_vars_ss)
 #ifdef CHUNK
   if (associated(aux%aux_var_chunk)) then
     call RTAuxVarChunkDestroy(aux%aux_var_chunk)
