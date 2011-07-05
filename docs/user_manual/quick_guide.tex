@@ -307,9 +307,9 @@ and
 \EN
 Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The source/sink term $Q_w$ has the form
 \EQ
-Q_w \eq \frac{q_M}{W} \delta(\br-\br_{ss}),
+Q_w \eq \frac{q_M}{W_w} \delta(\br-\br_{ss}),
 \EN
-where $q_M$ denotes a mass rate in kg/s, $W$ denotes the formula weight of water, and $\br_{ss}$ denotes the location of the source/sink.
+where $q_M$ denotes a mass rate in kg/s, $W_w$ denotes the formula weight of water, and $\br_{ss}$ denotes the location of the source/sink.
 
 \subsection{Capillary Pressure Relations}
 
@@ -386,28 +386,58 @@ for the $i$th component, and
 \EA
 \end{subequations}
 for energy. 
-In these equations $\a$ designates a fluid phase (e.g. H$_\textrm{2}$O, supercritical CO$_\textrm{2}$) at temperature $T$ and pressure $P_\a$ with the sums over all fluid phases present in the system; 
-species are designated by the subscript $i$ 
-(e.g. $w\!=\!\textrm{H}_\textrm{2}\textrm{O}$, $c\!=\!$~CO$_\textrm{2}$); 
-$\varphi$ denotes the porosity of the geologic formation; 
+In these equations $\a$ designates a fluid phase ($\a=\textrm{H}_\textrm{2}$O, supercritical CO$_\textrm{2}$) at temperature $T$ and pressure $P_\a$ with the sums over all fluid phases present in the system, and source/sink terms $Q_i$ and $Q_e$ described in more detail below. 
+Species are designated by the subscript $i$ 
+($i\!=\!\textrm{H}_\textrm{2}\textrm{O}$, $\textrm{CO}_\textrm{2}$); 
+$\varphi$ denotes the porosity of the porous medium; 
 $s_\a$ denotes the phase saturation state; 
 $X_i^\a$ denotes the mole fraction of species $i$ ($\sum_i X_i^\alpha=1$); 
 $\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
 $\bq_\a$ denotes the Darcy flow rate defined by
 \EQ
-\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-W_\a^{}\eta_\a g \bz\big),
+\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-\rho_\a g \bz\big),
 \EN
-where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat capacity, and thermal conductivity of the porous rock. The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat at wells, respectively. Several different well models are available. The simplest is a mass injection/production well given by
+where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The mass density $\rho_\a$ is related to the molar density by the expression
 \EQ
-Q_i \eq \sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{ss}),
+\rho_\a = W_\a \eta_\a, 
 \EN
-where $q_\a^M$ refers to the mass rate in kg/s, and $W_\a$ denotes the formula weight given by
+where the formula weight $W_\a$ is a function of composition according to the relation
 \EQ
-W_\a \eq \sum_i W_i^{} X_i^\a.
+W_\a \eq \frac{\rho_\a}{\eta_\a} \eq \sum_i W_i^{} X_i^\a.
 \EN
-The position vector $\br_{ss}$ refers to the location of the source/sink.
+The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the mass density, heat capacity, and thermal conductivity of the porous rock. 
 
-%Additional constitutive relations are needed to account for capillary pressure, and changes in phase which are not discussed in detail here (see \cite{lichtner:pflotran07}).
+\subsubsection{Source/Sink Terms}
+
+The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat, respectively, for various well models. Several different well models are available. The simplest is a volume or mass rate injection/production well given by
+\begin{subequations}
+\BA
+Q_i &\eq \sum_n\sum_\a q_\a^V \eta_\a X_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a \frac{\eta_\a}{\rho_\a} q_\a^M X_i^\a \delta(\br-\br_{n}),\\
+&\eq \sum_n\sum_\a W_\a^{-1} q_\a^M X_i^\a \delta(\br-\br_{n}),
+\EA
+\end{subequations}
+where $q_\a^V$, $q_\a^M$ refer to volume and mass rates with units m$^3$/s, kg/s, respectively, related by
+\EQ
+q_\a^M \eq \rho_\a q_\a^V.
+\EN
+The position vector $\br_{n}$ refers to the location of the $n$th source/sink.
+
+A less simplistic approach is to specify the bottom well pressure to regulate the flow rate in the well. In this approach the mass flow rate is determined from the expression
+\EQ
+q_\a^M \eq \Gamma \rho_\a \frac{k_\a}{\mu_\a} \big(p_\a-p_\a^{\rm bw}\big),
+\EN
+with bottom well pressure $p_\a^{\rm bw}$, and where $\Gamma$ denotes the well factor (production index) given by
+\EQ
+\Gamma \eq \frac{2\pi k \Delta z}{\ln\big(r_e/r_w\big) +  \sigma -1/2}.
+\EN
+In this expression $k$ denotes the permeability of the porous medium, $\Delta z$ refers to the layer thickness, $r_e$ denotes the grid block radius, $r_w$ denotes the well radius, and $\sigma$ refers to the skin thickness factor. For a rectangular grid block of area $A=\Delta x \Delta y$, $r_e$ can be obtained from the relation
+\EQ
+r_e \eq \sqrt{A/\pi}.
+\EN
+See Peaceman (1977) and Coats and Ramesh (1982) for more details.
+
+\subsubsection{Variable Switching}
 
 In PFLOTRAN a variable switching approach is used to account for phase changes enforcing local equilibrium. According to the Gibbs phase rule there are a total of $N_C\!+\!1$ degrees of freedom where $N_C$ denotes the number of independent components. This can be seen by noting that the
 intensive
@@ -434,11 +464,11 @@ two-phase & $p_g$ & $T$ & $s_g$\\
 \end{table}
 
 
-\subsubsection{Gas: $(p_g,\,T,\,X_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$}
+\paragraph{Gas: $(p_g,\,T,\,X_\c^g)$ $\rightarrow$ Two-Phase: $(p_g,\,T,\,s_g^{})$}
 
 $\bullet$ gas $\rightarrow$ 2-ph: $X_\c^g \leq 1-\dfrac{P_{\rm sat}(T)}{p_g}$, \ or equivalently: $X_\w^g \geq \dfrac{P_{\rm sat}(T)}{p_g}$
 
-\subsubsection{Liquid: $(p_l,\,T,\,X_\c^l)$ $\rightarrow$ Two-phase: $(p_g,\,T,\,s_g^{})$}
+\paragraph{Liquid: $(p_l,\,T,\,X_\c^l)$ $\rightarrow$ Two-phase: $(p_g,\,T,\,s_g^{})$}
 
 $\bullet$ liq $\rightarrow$ 2-ph: $X_\c^l \geq x_\c^{eq}$
 
@@ -456,7 +486,7 @@ where it is assumed that
 y_\c^{} \eq 1-\dfrac{P_{\rm sat}(T)}{p}.
 \EN
 
-\subsubsection{Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$ Liquid $(p_l,\,T,\,X_\c^l)$ or Gas $(p_g,\,T,\,X_\c^g)$}
+\paragraph{Two-Phase: $(p_g,\,T,\,s_g)$ $\rightarrow$ Liquid $(p_l,\,T,\,X_\c^l)$ or Gas $(p_g,\,T,\,X_\c^g)$}
 
 Equilibrium in a two-phase $\w$-$\c$ system is defined as the equality of chemical potentials between the two phases as expressed by the relation
 \EQ
@@ -5282,12 +5312,16 @@ TimerManager{
 
 \item Balay S, Eijkhout V, Gropp WD, McInnes LC and Smith BF (1997) Modern Software Tools in Scientific Computing, Eds. Arge E, Bruaset AM and Langtangen HP (Birkha\"user Press), pp. 163--202.
 
+\item Coats, K.H. and A.B. Ramesh (1982) Effects of Grid Type and Difference Scheme on Pattern Steamflood Simulation Results, paper SPE-11079, presented at the 57th Annual Fall Technical Conference and Exhibition of the Society of Petroleum Engineers, New Orleans, LA, September 1982.
+
 \item Goode, D.J. (1996) Direct simulation of groundwater age, Water Resources Research, 32, 289--296.
 
 \item Hammond, G.E., P.C. Lichtner, C. Lu, and R.T. Mills (2011) PFLOTRAN: Reactive Flow \& Transport Code for Use on Laptops to Leadership-Class Supercomputers, Editors: Zhang, F., G. T. Yeh, and J. C. Parker,
 {\em Ground Water Reactive Transport Models},
 Bentham Science Publishers.
 ISBN 978-1-60805-029-1. 
+
+\item Peaceman, D.W. (1977) Interpretation of Well-Block Pressures in Numerical Reservoir Simulation with Nonsquare Grid Blocks and Anisotropic Permeability, paper SPE-10528, presented at the Sixth SPE Symposium on Reservoir Simulation of the Society of Petroleum Engineers, New Orleans, LA, January 1982.  
 
 \item Somerton, W.H., A.H. El-Shaarani, and S.M. Mobarak (1974) 
 High temperature behavior of rocks associated with geothermal-type reservoirs. Paper SPE-4897. Proceedings of the 44th Annual 

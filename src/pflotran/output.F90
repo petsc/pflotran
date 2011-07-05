@@ -135,7 +135,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       if (option%myrank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
                                           writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
 #endif      
-      write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
+      write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
    
@@ -149,7 +149,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       endif
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
-      write(option%io_buffer,'(f6.2," Seconds to write to Tecplot file(s)")') &
+      write(option%io_buffer,'(f10.2," Seconds to write to Tecplot file(s)")') &
             tend-tstart
       call printMsg(option)        
     endif
@@ -161,7 +161,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
       call PetscLogEventEnd(logging%event_output_vtk,ierr)    
       call PetscGetTime(tend,ierr) 
-      write(option%io_buffer,'(f6.2," Seconds to write to VTK file(s)")') &
+      write(option%io_buffer,'(f10.2," Seconds to write to VTK file(s)")') &
             tend-tstart
       call printMsg(option) 
     endif
@@ -173,7 +173,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
       call PetscLogEventEnd(logging%event_output_mad,ierr)    
       call PetscGetTime(tend,ierr) 
-      write(option%io_buffer,'(f6.2," Seconds to write to MAD HDF5 file(s)")') &
+      write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
       call printMsg(option) 
     endif

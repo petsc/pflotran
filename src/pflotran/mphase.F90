@@ -350,7 +350,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    ! mass = volume*saturation*density
+    ! mass = volume * saturation * density * mole fraction
     do iphase = 1, option%nphase
       do ispec = 1, option%nflowspec
         mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
@@ -1239,9 +1239,9 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   msrc = mmsrc(1:nsrcpara)
 
  ! if (present(ireac)) iireac=ireac
-  if (energy_flag) then
-    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
-  endif         
+! if (energy_flag) then
+!   Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
+! endif         
  
   select case(isrctype)
     case(MASS_RATE_SS)
@@ -1252,9 +1252,12 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
           option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        Res(jh2o) = Res(jh2o) + msrc(1) *option%flow_dt
+        Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
+        Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
         if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + &
           msrc(1)*enth_src_h2o*option%flow_dt
+          
+!       print *,'soure/sink: ',msrc,csrc,enth_src_h2o,option%flow_dt,option%nflowdof
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
@@ -1303,12 +1306,12 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !                   2 rate controled injection (same as rate_ss, with max pressure control, not completed yet) 
 !                  -2 rate controled production(not implemented for now) 
 !
-!   2. well factor,  the effective permeability m^2/s
-!   3. bottomhole pressure:  Pa
-!   4. max pressure: Pa
-!   5. min pressure: Pa   
-!   6. preferred mass flux of water kg/s
-!   7. preferred mass flux of Co2 kg/s
+!   2. well factor [m^3],  the effective permeability [m^2/s]
+!   3. bottomhole pressure:  [Pa]
+!   4. max pressure: [Pa]
+!   5. min pressure: [Pa]   
+!   6. preferred mass flux of water [kg/s]
+!   7. preferred mass flux of Co2 [kg/s]
 !   8. well diameter, not used now
 !   9. skin factor, not used now
 
@@ -1327,18 +1330,19 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         if(aux_var%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
-            dphi = aux_var%pres - aux_var%pc(np)- pressure_bh
+            dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
-            ukvr = aux_var%kvr(np)
-            v_darcy=0D0
-            if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-              Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
-                aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
-              Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
-                aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
-              if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)*aux_var%h(np)*option%flow_dt
-             !print *, 'well:: ', Res
+              ukvr = aux_var%kvr(np)
+              v_darcy=0D0
+              if (ukvr*Dq>floweps) then
+                v_darcy = Dq * ukvr * dphi
+                Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
+                  aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
+                Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
+                  aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)* &
+                  aux_var%h(np)*option%flow_dt
+!               print *,'produce: ',np,v_darcy
               endif
             endif
           enddo
@@ -1370,7 +1374,10 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
                   csrc * option%flow_dt
 !               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
-                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*enth_src_h2o*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+                  enth_src_h2o*option%flow_dt
+                
+!               print *,'inject: ',np,v_darcy
               endif
             endif
           enddo
