@@ -2,7 +2,7 @@ module Richards_module
 
   use Richards_Aux_module
   use Global_Aux_module
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
   use Matrix_Buffer_module
 #endif
   
@@ -335,8 +335,8 @@ subroutine RichardsCheckMassBalancePatch(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(richards_parameter_type), pointer :: richards_parameter
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscReal :: mass_conserv, res(1)
@@ -3468,8 +3468,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(richards_parameter_type), pointer :: richards_parameter
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
@@ -3492,11 +3492,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   field => realization%field
   richards_parameter => patch%aux%Richards%richards_parameter
   rich_aux_vars => patch%aux%Richards%aux_vars
-  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
-  rich_aux_vars_ss => patch%aux%Richards%aux_vars_ss
   global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
   discretization => realization%discretization 
 
 !  call RichardsUpdateAuxVarsPatchMFD(realization)
@@ -3712,8 +3708,8 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(richards_parameter_type), pointer :: richards_parameter
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(coupler_type), pointer :: source_sink, boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection, bc_type, stride
@@ -3737,11 +3733,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   field => realization%field
   richards_parameter => patch%aux%Richards%richards_parameter
   rich_aux_vars => patch%aux%Richards%aux_vars
-  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
-  rich_aux_vars_ss => patch%aux%Richards%aux_vars_ss
   global_aux_vars => patch%aux%Global%aux_vars
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
 
 
@@ -4252,7 +4244,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
   if (option%use_matrix_buffer) then
     if (associated(patch%aux%Richards%matrix_buffer)) then
       call MatrixBufferZero(patch%aux%Richards%matrix_buffer)
@@ -4330,7 +4322,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   patch%saturation_function_array(icap_dn)%ptr,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
         if (option%use_matrix_buffer) then
           call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
                                ghosted_id_up,Jup(1,1))
@@ -4342,14 +4334,14 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                         Jup,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
                                         Jdn,ADD_VALUES,ierr)
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
         endif
 #endif
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
         if (option%use_matrix_buffer) then
           call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
                                ghosted_id_dn,Jdn(1,1))
@@ -4361,7 +4353,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                         Jdn,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
                                         Jup,ADD_VALUES,ierr)
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
         endif
 #endif
       endif
@@ -4422,7 +4414,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 patch%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then
         call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
                              ghosted_id,Jdn(1,1))
@@ -4430,7 +4422,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 #endif
         call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
                                ADD_VALUES,ierr)
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
       endif
 #endif
  
@@ -4553,7 +4545,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               patch%saturation_function_array(icap)%ptr,&
                               Jup) 
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
     if (option%use_matrix_buffer) then
       call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
                            ghosted_id,Jup(1,1))
@@ -4561,7 +4553,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 #endif
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                              ADD_VALUES,ierr)
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
     endif
 #endif
 !!$    if(option%use_samr) then
@@ -4608,14 +4600,14 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
             source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
 
       end select
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then
         call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
                              ghosted_id,Jup(1,1))
       else
 #endif
         call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
       endif
 #endif
 
@@ -4642,7 +4634,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
   if (option%use_matrix_buffer) then
     if (patch%aux%Richards%inactive_cells_exist) then
       call MatrixBufferZeroRows(patch%aux%Richards%matrix_buffer, &
@@ -4657,7 +4649,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
   if (.not.option%use_matrix_buffer) then
 #endif
     if (patch%aux%Richards%inactive_cells_exist) then
@@ -4666,7 +4658,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                             patch%aux%Richards%zero_rows_local_ghosted, &
                             qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
     endif
-#ifdef GLENN
+#ifdef BUFFER_MATRIX
   endif
 #endif
 

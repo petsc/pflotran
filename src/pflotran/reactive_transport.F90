@@ -2914,7 +2914,6 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -2950,7 +2949,6 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
   rt_aux_vars => patch%aux%RT%aux_vars
-  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   grid => patch%grid
   reaction => realization%reaction
 
@@ -3120,7 +3118,6 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_param_type), pointer :: rt_parameter
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -3158,7 +3155,6 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
   global_aux_vars => patch%aux%Global%aux_vars
   rt_parameter => patch%aux%RT%rt_parameter
   rt_aux_vars => patch%aux%RT%aux_vars
-  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   grid => patch%grid
 
   ! Get vectors
