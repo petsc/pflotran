@@ -5236,78 +5236,90 @@ subroutine OutputHDF5(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  first = hdf5_first
+  
+  if (output_option%print_single_h5_file) then 
+    first = hdf5_first
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
+  else
+    if (output_option%plot_number < 10) then
+      write(string,'("00",i1)') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(string,'("0",i2)') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(string,'(i3)') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(string,'(i4)') output_option%plot_number  
+    endif
+    first = PETSC_TRUE
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // '.h5'
+  endif
 
-  filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
-
-  if(.not.(option%use_samr)) then
+  if (.not.(option%use_samr)) then
      
      grid => patch%grid
 #if defined(PARALLELIO_LIB_WRITE)
- if (.not.first) then
-       filename = trim(filename) //CHAR(0)
-       call parallelio_open_file(filename, option%iowrite_group_id, &
-               FILE_READWRITE, file_id, ierr)
-       !call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-       if (file_id == -1) first = PETSC_TRUE
-     endif
-     if (first) then
-       filename = trim(filename) //CHAR(0)
-       call parallelio_open_file(filename, option%iowrite_group_id, &
-               FILE_CREATE, file_id, ierr)
-        !call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
-                         !H5P_DEFAULT_F,prop_id)
-     endif
+    if (.not.first) then
+      filename = trim(filename) // CHAR(0)
+      call parallelio_open_file(filename, option%iowrite_group_id, &
+                                FILE_READWRITE, file_id, ierr)
+      if (file_id == -1) first = PETSC_TRUE
+    endif
+    if (first) then
+      filename = trim(filename) // CHAR(0)
+      call parallelio_open_file(filename, option%iowrite_group_id, &
+                                FILE_CREATE, file_id, ierr)
+    endif
 
 #else  ! PARALLELIO_LIB_WRITE is not defined
 
      ! initialize fortran interface
-     call h5open_f(hdf5_err)
+    call h5open_f(hdf5_err)
 
 #ifdef VAMSI_HDF5_WRITE
-   if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
+    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
 
-     call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
 #ifdef VAMSI_HDF5_WRITE
-     call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
+      call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
 #else
-     call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
 #endif
-     if (.not.first) then
-       call h5eset_auto_f(OFF,hdf5_err)
-       call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-       if (hdf5_err /= 0) first = PETSC_TRUE
-       call h5eset_auto_f(ON,hdf5_err)
-     endif
-     if (first) then 
+      if (.not.first) then
+        call h5eset_auto_f(OFF,hdf5_err)
+        call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+        if (hdf5_err /= 0) first = PETSC_TRUE
+        call h5eset_auto_f(ON,hdf5_err)
+      endif
+      if (first) then 
         call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
                          H5P_DEFAULT_F,prop_id)
-     endif
-     call h5pclose_f(prop_id,hdf5_err)
+      endif
+      call h5pclose_f(prop_id,hdf5_err)
 #endif ! PARALLELIO_LIB_WRITE
 
-     if (first) then
-       option%io_buffer = '--> creating hdf5 output file: ' // filename
-     else
-       option%io_buffer = '--> appending to hdf5 output file: ' // filename
-     endif
-     call printMsg(option)
+      if (first) then
+        option%io_buffer = '--> creating hdf5 output file: ' // filename
+      else
+        option%io_buffer = '--> appending to hdf5 output file: ' // filename
+      endif
+      call printMsg(option)
 
 #if !defined(SAMR_HAVE_HDF5)
      
-     if (first) then
+      if (first) then
 
         ! create a group for the coordinates data set
 #if defined(PARALLELIO_LIB_WRITE)
-            string = "Coordinates" // CHAR(0)
-            call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                    option%iowrite_group_id, ierr)
+        string = "Coordinates" // CHAR(0)
+        call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+                                            option%iowrite_group_id, ierr)
             ! set grp_id here
             ! As we already created the group, we will use file_id as group_id
-            grp_id = file_id
+        grp_id = file_id
 #else
         string = "Coordinates"
         call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
@@ -5344,39 +5356,39 @@ subroutine OutputHDF5(realization)
         !GEH - Structured Grid Dependence - End
 
 #if defined(PARALLELIO_LIB_WRITE)
-            call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
-                    option%iowrite_group_id, ierr)
+        call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+                                            option%iowrite_group_id, ierr)
 #else
         call h5gclose_f(grp_id,hdf5_err)
 #endif
 
-     endif
+      endif
 
 #endif
         
      ! create a group for the data set
-     write(string,'(''Time:'',es12.4,x,a1)') &
-          option%time/output_option%tconv,output_option%tunit
-     if (len_trim(output_option%plot_name) > 2) then
+      write(string,'(''Time:'',es12.4,x,a1)') &
+            option%time/output_option%tconv,output_option%tunit
+      if (len_trim(output_option%plot_name) > 2) then
         string = trim(string) // ' ' // output_option%plot_name
-     endif
+      endif
 #if defined(PARALLELIO_LIB_WRITE)
-        string = trim(string) //CHAR(0)
+      string = trim(string) //CHAR(0)
         ! This opens existing dataset and creates it if needed
-        call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                 option%iowrite_group_id, ierr)
-        grp_id = file_id
+      call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+                                           option%iowrite_group_id, ierr)
+      grp_id = file_id
 #else
-     call h5eset_auto_f(OFF,hdf5_err)
-     call h5gopen_f(file_id,string,grp_id,hdf5_err)
-     if (hdf5_err /= 0) then
-       call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-     endif
-     call h5eset_auto_f(ON,hdf5_err)
+      call h5eset_auto_f(OFF,hdf5_err)
+      call h5gopen_f(file_id,string,grp_id,hdf5_err)
+      if (hdf5_err /= 0) then
+        call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+      endif
+      call h5eset_auto_f(ON,hdf5_err)
 #endif ! PARALLELIO_LIB_WRITE
 
 #ifdef VAMSI_HDF5_WRITE
-   endif
+    endif
 #endif
   
   else

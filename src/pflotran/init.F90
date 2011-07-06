@@ -1782,6 +1782,23 @@ subroutine InitReadInput(simulation)
               select case(trim(word))
                 case ('HDF5')
                   output_option%print_hdf5 = PETSC_TRUE
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputDefaultMsg(input,option, &
+                                       'OUTPUT,FORMAT,HDF5,# FILES')
+                  if (len_trim(word) > 1) then 
+                    call StringToUpper(word)
+                    select case(trim(word))
+                      case('SINGLE_FILE')
+                        output_option%print_single_h5_file = PETSC_TRUE
+                      case('MULTIPLE_FILES')
+                        output_option%print_single_h5_file = PETSC_FALSE
+                      case default
+                        option%io_buffer = 'HDF5 keyword (' // trim(word) // &
+                          ') not recongnized.  Use "SINGLE_FILE" or ' // &
+                          '"MULTIPLE_FILES".'
+                        call printErrMsg(option)
+                    end select
+                  endif
                 case ('MAD')
                   output_option%print_mad = PETSC_TRUE
                 case ('TECPLOT')
