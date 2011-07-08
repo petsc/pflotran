@@ -46,6 +46,7 @@ module Patch_module
     PetscReal, pointer :: boundary_fluxes(:,:,:)  
     PetscReal, pointer :: internal_tran_coefs(:,:)
     PetscReal, pointer :: boundary_tran_coefs(:,:)
+    PetscReal, pointer :: ss_fluid_fluxes(:,:)
 
     type(grid_type), pointer :: grid
 
@@ -127,6 +128,7 @@ function PatchCreate()
   nullify(patch%boundary_fluxes)
   nullify(patch%internal_tran_coefs)
   nullify(patch%boundary_tran_coefs)
+  nullify(patch%ss_fluid_fluxes)
 
   nullify(patch%grid)
 
@@ -621,24 +623,28 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   endif
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
-!#ifdef DASVYAT
-!    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
-                            patch%boundary_conditions, &
-                           option)
-!#endif
+                                                 patch%boundary_conditions, &
+                                                 option)
   else  
     temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   end if
-  allocate(patch%boundary_velocities(option%nphase,temp_int)) 
-  patch%boundary_velocities = 0.d0
-  allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
-  patch%boundary_tran_coefs = 0.d0
-  if (option%store_solute_fluxes) then
-    allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
-    patch%boundary_fluxes = 0.d0
+  if (temp_int > 0) then
+    allocate(patch%boundary_velocities(option%nphase,temp_int)) 
+    patch%boundary_velocities = 0.d0
+    allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
+    patch%boundary_tran_coefs = 0.d0
+    if (option%store_solute_fluxes) then
+      allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
+      patch%boundary_fluxes = 0.d0
+    endif
   endif
 
+  temp_int = CouplerGetNumConnectionsInList(patch%source_sinks)
+  if (temp_int > 0) then
+    allocate(patch%ss_fluid_fluxes(option%nphase,temp_int))
+    patch%ss_fluid_fluxes = 0.d0
+  endif
 
 end subroutine PatchProcessCouplers
 
@@ -3018,6 +3024,8 @@ subroutine PatchDestroy(patch)
   nullify(patch%internal_tran_coefs)
   if (associated(patch%boundary_tran_coefs)) deallocate(patch%boundary_tran_coefs)
   nullify(patch%boundary_tran_coefs)
+  if (associated(patch%ss_fluid_fluxes)) deallocate(patch%ss_fluid_fluxes)
+  nullify(patch%ss_fluid_fluxes)
 
   if (associated(patch%material_property_array)) &
     deallocate(patch%material_property_array)

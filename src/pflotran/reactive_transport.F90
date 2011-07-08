@@ -201,42 +201,19 @@ subroutine RTSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    sum_connection = sum_connection + &
-                     boundary_condition%connection_set%num_connections
-    boundary_condition => boundary_condition%next
-  enddo
-  
+  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   if (sum_connection > 0) then
     option%iflag = 1 ! enable allocation of mass_balance array 
     allocate(patch%aux%RT%aux_vars_bc(sum_connection))
     do iconn = 1, sum_connection
       call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
     enddo
-#ifdef DASVYAT
-!	write(*,*) 'sum_connection',sum_connection
-!    do iconn = 1, sum_connection
-!      write(*,*) "RTAuxVarInit ",patch%aux%RT%aux_vars_bc(iconn)%total(1,1)
-!    enddo
-!	read(*,*)
-#endif
   endif
   patch%aux%RT%num_aux_bc = sum_connection
 
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  source_sink => patch%source_sinks%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(source_sink)) exit
-    sum_connection = sum_connection + &
-                     source_sink%connection_set%num_connections
-    source_sink => source_sink%next
-  enddo
-  
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
   if (sum_connection > 0) then
     option%iflag = 1 ! enable allocation of mass_balance array 
     allocate(patch%aux%RT%aux_vars_ss(sum_connection))
@@ -1071,14 +1048,7 @@ subroutine RTUpdateTransportCoefsPatch(realization)
     cur_connection_set => cur_connection_set%next
   enddo    
   
-#ifdef DASVYAT
-!  write(*,*) "Before TDiffusionBC"
-!  read(*,*)
-#endif
-
 ! Boundary Flux Terms -----------------------------------
-
-
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -1096,15 +1066,13 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   
       if (option%mimetic) then
 #ifdef DASVYAT
-          ghosted_face_id = boundary_condition%faces_set(iconn)
-          cur_connection_set => grid%faces(ghosted_face_id)%conn_set_ptr
-
-          
-          id = grid%faces(ghosted_face_id)%id
-          local_id = grid%nG2L(cur_connection_set%id_dn(id))
+        ghosted_face_id = boundary_condition%faces_set(iconn)
+        cur_connection_set => grid%faces(ghosted_face_id)%conn_set_ptr
+        id = grid%faces(ghosted_face_id)%id
+        local_id = grid%nG2L(cur_connection_set%id_dn(id))
 #endif
       else
-         local_id = cur_connection_set%id_dn(iconn)
+        local_id = cur_connection_set%id_dn(iconn)
       end if
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -1121,12 +1089,6 @@ subroutine RTUpdateTransportCoefsPatch(realization)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
-#ifdef DASVYAT
-!  write(*,*) "After TDiffusionBC"
-!  read(*,*)
-#endif
-
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -4419,12 +4381,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     enddo
   endif
 
-#ifdef DASVYAT
-!  do iconn = 1, grid%nlmax
-!	  write(*,*) "r_p", r_p(iconn)
-!  end do
-!  stop
-#endif  
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
  
@@ -5657,12 +5613,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
     call PetscLogEventBegin(logging%event_rt_auxvars_bc,ierr)
 
-#ifdef DASVYAT
-!		do iconn=1,6
-! 			write(*,*) "total", iconn, patch%aux%RT%aux_vars_bc(iconn)%total(1,1)
-!        end do 
-#endif          
-
     boundary_condition => patch%boundary_conditions%first
     sum_connection = 0    
     do 
@@ -5682,9 +5632,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         sum_connection = sum_connection + 1
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
-#ifdef DASVYAT
-!		write(*,*) "basis_molarity_p",basis_molarity_p,"den_kg",patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)
-#endif
         
         if (patch%imat(ghosted_id) <= 0) cycle
 

@@ -165,14 +165,7 @@ subroutine RichardsSetupPatch(realization)
 
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    sum_connection = sum_connection + &
-                     boundary_condition%connection_set%num_connections
-    boundary_condition => boundary_condition%next
-  enddo
+  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   if (sum_connection > 0) then
     allocate(rich_aux_vars_bc(sum_connection))
     do iconn = 1, sum_connection
@@ -184,14 +177,7 @@ subroutine RichardsSetupPatch(realization)
   
   ! count the number of source/sink connections and allocate
   ! aux_var data structures for them  
-  source_sink => patch%source_sinks%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(source_sink)) exit
-    sum_connection = sum_connection + &
-                     source_sink%connection_set%num_connections
-    source_sink => source_sink%next
-  enddo
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
   if (sum_connection > 0) then
     allocate(rich_aux_vars_ss(sum_connection))
     do iconn = 1, sum_connection
@@ -3353,6 +3339,9 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           qsrc_mol
       endif
       r_p(local_id) = r_p(local_id) - qsrc_mol
+      ! fluid flux [m^3/sec] = qsrc_mol [kmol] / den [kmol/m^3]
+      patch%ss_fluid_fluxes(1,sum_connection) = qsrc_mol / &
+                                             global_aux_vars(ghosted_id)%den(1)
     enddo
     source_sink => source_sink%next
   enddo

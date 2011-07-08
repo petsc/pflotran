@@ -125,7 +125,9 @@ subroutine GeneralSetupPatch(realization)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, idof
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:,:) ! extra index for derivatives
+  type(general_auxvar_type), pointer :: gen_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars_ss(:)
   type(material_type), pointer :: material  
   
   option => realization%option
@@ -170,22 +172,29 @@ subroutine GeneralSetupPatch(realization)
   patch%aux%General%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    sum_connection = sum_connection + &
-                     boundary_condition%connection_set%num_connections
-    boundary_condition => boundary_condition%next
-  enddo
-  allocate(gen_aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%General%aux_vars_bc => gen_aux_vars_bc
+  ! aux_var data structures for them 
+  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  if (sum_connection > 0) then
+    allocate(gen_aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%General%aux_vars_bc => gen_aux_vars_bc
+  endif
   patch%aux%General%num_aux_bc = sum_connection
-  
+
+  ! count the number of source/sink connections and allocate
+  ! aux_var data structures for them  
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
+  if (sum_connection > 0) then
+    allocate(gen_aux_vars_ss(sum_connection))
+    do iconn = 1, sum_connection
+      call GeneralAuxVarInit(gen_aux_vars_ss(iconn),option)
+    enddo
+    patch%aux%General%aux_vars_ss => gen_aux_vars_ss
+  endif
+  patch%aux%General%num_aux_ss = sum_connection
+    
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call GeneralCreateZeroArray(patch,option)
