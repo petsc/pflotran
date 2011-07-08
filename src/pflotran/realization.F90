@@ -2519,8 +2519,6 @@ subroutine RealLocalToLocalWithArray(realization,array_id)
       if (.not.associated(cur_patch)) exit
       grid => cur_patch%grid
 
-      call GridCopyVecToIntegerArray(grid,cur_patch%imat,field%work_loc, &
-                                          grid%ngmax)
       select case(array_id)
         case(MATERIAL_ID_ARRAY)
           call GridCopyVecToIntegerArray(grid, cur_patch%imat,field%work_loc, &

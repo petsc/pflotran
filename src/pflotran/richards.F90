@@ -785,7 +785,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
 
       call RichardsAuxVarCopy(rich_aux_vars(ghosted_id), &
                               rich_aux_vars_ss(sum_connection),option)
-      call GlobalAuxVarCopy(global_aux_vars_bc(ghosted_id), &
+      call GlobalAuxVarCopy(global_aux_vars(ghosted_id), &
                             global_aux_vars_ss(sum_connection),option)
 
     enddo
