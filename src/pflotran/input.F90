@@ -1127,7 +1127,7 @@ function InputCheckExit(input,option)
     i=i+1
   enddo
 
-  if (input%buf(i:i) == '.' .or. input%buf(i:i) == '/' .or. &
+  if (input%buf(i:i) == '/' .or. &
       StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
     InputCheckExit = PETSC_TRUE
   else
