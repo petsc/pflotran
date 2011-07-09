@@ -3313,8 +3313,8 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       end select
       if (option%compute_mass_balance_new) then
         ! need to added global aux_var for src/sink
-        global_aux_vars_ss(ghosted_id)%mass_balance_delta(1,sum_connection) = &
-          global_aux_vars_ss(ghosted_id)%mass_balance_delta(1,sum_connection) - &
+        global_aux_vars_ss(sum_connection)%mass_balance_delta(1,1) = &
+          global_aux_vars_ss(sum_connection)%mass_balance_delta(1,1) - &
           qsrc_mol
       endif
       r_p(local_id) = r_p(local_id) - qsrc_mol
