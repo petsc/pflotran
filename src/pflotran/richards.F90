@@ -274,9 +274,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     ! mass = volume*saturation*density
     mass_balance = mass_balance + &
       global_aux_vars(ghosted_id)%den_kg* &
@@ -727,10 +725,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-
+    if (patch%imat(ghosted_id) <= 0) cycle
    
     call RichardsAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
@@ -882,9 +877,7 @@ subroutine RichardsInitialPressureReconstructionPatch(realization)
     ghosted_id = grid%nL2G(local_id)   
  
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     mfd_aux_var => grid%MFD%aux_vars(local_id)
     do j = 1, mfd_aux_var%numfaces
        ghost_face_id = mfd_aux_var%face_id_gh(j)
@@ -901,10 +894,8 @@ subroutine RichardsInitialPressureReconstructionPatch(realization)
  
         
         !geh - Ignore inactive cells with inactive materials
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-
+        if (patch%imat(ghosted_id) <= 0) cycle
+ 
         Res(1) = 0
 
         source_f = 0.
@@ -1029,9 +1020,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
     ghosted_id = grid%nL2G(local_id)   
  
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     mfd_aux_var => grid%MFD%aux_vars(local_id)
     do j = 1, mfd_aux_var%numfaces
        ghost_face_id = mfd_aux_var%face_id_gh(j)
@@ -1048,9 +1037,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
  
         
         !geh - Ignore inactive cells with inactive materials
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
+        if (patch%imat(ghosted_id) <= 0) cycle
         
 
        call RichardsAccumulation(rich_aux_vars(ghosted_id), &
@@ -1192,9 +1179,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
     ghosted_id = grid%nL2G(local_id)   
  
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     mfd_aux_var => grid%MFD%aux_vars(local_id)
     do j = 1, mfd_aux_var%numfaces
        ghost_face_id = mfd_aux_var%face_id_gh(j)
@@ -1206,9 +1191,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
  
         
         !geh - Ignore inactive cells with inactive materials
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
+        if (patch%imat(ghosted_id) <= 0) cycle
         call RichardsAccumulation(rich_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -1257,9 +1240,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
@@ -1584,9 +1565,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call GridVecGetArrayF90(grid,res,vec2_p,ierr)
   do icell = 1,grid%nlmax
-    if (associated(patch%imat)) then
-      if (patch%imat(grid%nL2G(icell)) <= 0) cycle
-    endif
+    if (patch%imat(grid%nL2G(icell)) <= 0) cycle
      idof = icell
 !    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
       call veccopy(xx,xx_pert,ierr)
@@ -3573,10 +3552,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
     ghosted_id = grid%nL2G(icell)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-
+      if (patch%imat(ghosted_id) <= 0) cycle
+ 
 
       PermTensor = 0.
       PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
@@ -3800,9 +3777,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
          
 
         !geh - Ignore inactive cells with inactive materials
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
+        if (patch%imat(ghosted_id) <= 0) cycle
         call RichardsAccumulation(rich_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -4925,14 +4900,12 @@ subroutine RichardsCreateZeroArray(patch,option)
   
   n_zero_rows = 0
 
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%nflowdof
-      endif
-    enddo
-  endif
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) then
+      n_zero_rows = n_zero_rows + option%nflowdof
+    endif
+  enddo
 
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
@@ -4941,18 +4914,16 @@ subroutine RichardsCreateZeroArray(patch,option)
   zero_rows_local_ghosted = 0
   ncount = 0
 
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        do idof = 1, option%nflowdof
-          ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
-        enddo
-      endif
-    enddo
-  endif
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) then
+      do idof = 1, option%nflowdof
+        ncount = ncount + 1
+        zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
+        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
+      enddo
+    endif
+  enddo
 
   patch%aux%Richards%zero_rows_local => zero_rows_local
   patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted

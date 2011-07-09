@@ -356,9 +356,7 @@ subroutine OutputTecplotBlock(realization)
     endif
 
     ! write material ids
-    if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
-    endif
+    string = trim(string) // ',"Material_ID"'
 
     write(IUNIT3,'(a)') trim(string)
   
@@ -704,11 +702,9 @@ subroutine OutputTecplotBlock(realization)
   endif
   
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -832,9 +828,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-        if (associated(patch%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -845,18 +839,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                    option%time/output_option%tconv, &
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
-      if (associated(patch%imat)) then
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-        endif
+      if (option%nphase > 1) then
+        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
       else
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-9]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-6]=CELLCENTERED)'
-        endif
+        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
       endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
@@ -921,11 +907,9 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   endif
 
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -1384,11 +1368,9 @@ subroutine OutputTecplotPoint(realization)
     endif
 
     ! write material ids
-    if (associated(patch%imat)) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-Material_ID"'')') icolumn
-      string = trim(string) // trim(string2)
-    endif
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Material_ID"'')') icolumn
+    string = trim(string) // trim(string2)
 
     write(IUNIT3,'(a)') trim(string)
   
@@ -1682,11 +1664,9 @@ subroutine OutputTecplotPoint(realization)
     endif
     
     ! material id
-    if (associated(patch%imat)) then
-      value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
-                                              ZERO_INTEGER,ghosted_id)
-      write(IUNIT3,1001,advance='no') int(value)
-    endif
+    value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
+                                            ZERO_INTEGER,ghosted_id)
+    write(IUNIT3,1001,advance='no') int(value)
     write(IUNIT3,1009) 
 
   enddo
@@ -1783,9 +1763,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-    if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
-    endif
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -1831,11 +1809,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') vec_ptr_vz(ghosted_id)
 
     ! material id
-    if (associated(patch%imat)) then
-      value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
-                                          ZERO_INTEGER,ghosted_id)
-      write(IUNIT3,1001,advance='no') int(value)
-    endif
+    value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
+                                        ZERO_INTEGER,ghosted_id)
+    write(IUNIT3,1001,advance='no') int(value)
   
     write(IUNIT3,1009)
     
@@ -1909,9 +1885,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
              '"Y [m]",' // &
              '"Z [m]",'
     string = trim(string) // '"' // trim(dataset_name) // '"'
-    if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
-    endif
+    string = trim(string) // ',"Material_ID"'
     write(fid,'(a)') trim(string)
   
     ! write zone header
@@ -1923,11 +1897,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
                                                 ! 4=dataset name, 5=material_id
-      if (associated(patch%imat)) then
-        string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
-      endif
+      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
@@ -1968,11 +1938,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -4527,12 +4495,10 @@ subroutine OutputVTK(realization)
   endif
   
   ! material id
-  if (associated(patch%imat)) then
-    word = 'Material_ID'
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
-  endif
+  word = 'Material_ID'
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -4661,9 +4627,7 @@ subroutine OutputVelocitiesVTK(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-        if (associated(patch%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -4674,18 +4638,10 @@ subroutine OutputVelocitiesVTK(realization)
                    option%time/output_option%tconv, &
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
-      if (associated(patch%imat)) then
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-        endif
+      if (option%nphase > 1) then
+        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
       else
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-9]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-6]=CELLCENTERED)'
-        endif
+        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
       endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
@@ -4736,11 +4692,9 @@ subroutine OutputVelocitiesVTK(realization)
   endif
 
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -5513,10 +5467,6 @@ subroutine OutputHDF5(realization)
 
      nviz_dof = nviz_flow+nviz_tran
 
-!!$     if (associated(patch%imat)) then
-!!$        nviz_dof = nviz_dof+1
-!!$     endif
-
      if(first) then
         call AMRGridCreateVector(discretization%amrgrid, nviz_dof, field%samr_viz_vec, &
              GLOBAL, PETSC_TRUE, option)
@@ -6086,19 +6036,17 @@ subroutine OutputHDF5(realization)
   
   ! material id
 
-  if(.not.(option%use_samr)) then
-     if(associated(patch%imat)) then
-        call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-        string = "Material_ID"
-        if(.not.(option%use_samr)) then
-           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-        else
-           call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-           if(first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-       endif
-       current_component=current_component+1
-    endif
+  if (.not.(option%use_samr)) then
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    string = "Material_ID"
+    if (.not.(option%use_samr)) then
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
+    else
+      call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+      if (first) then
+        call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+      endif
+      current_component=current_component+1
     endif
   endif
   
