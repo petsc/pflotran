@@ -1201,7 +1201,7 @@ end subroutine MphaseAccumulation
 !
 ! ************************************************************************** !  
 subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res, &
-                            energy_flag,option)
+                            qsrc_phase,energy_flag,option)
 
   use Option_module
   use water_eos_module
@@ -1221,6 +1221,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   PetscInt isrctype
   PetscInt nsrcpara
   PetscBool :: energy_flag
+  PetscReal :: qsrc_phase(:) ! volumetric rate of injection/extraction for each phase
      
   PetscReal, allocatable :: msrc(:)
   PetscReal :: dw_kg, dw_mol,dddt,dddp
@@ -1258,6 +1259,10 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
           msrc(1)*enth_src_h2o*option%flow_dt
           
 !       print *,'soure/sink: ',msrc,csrc,enth_src_h2o,option%flow_dt,option%nflowdof
+
+        ! store volumetric rate for ss_fluid_fluxes()
+        qsrc_phase(1) = msrc(1)/dw_mol
+
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
@@ -1285,6 +1290,10 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
           enth_src_co2 = enth_src_co2 * FMWCO2
           
+          ! store volumetric rate for ss_fluid_fluxes()
+          ! qsrc_phase [m^3/sec] = msrc [kmol/sec] / [kg/m^3] * [kg/kmol]  
+          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+
         else if(option%co2eos == EOS_MRK) then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
           call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
@@ -1336,6 +1345,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
+                ! store volumetric rate for ss_fluid_fluxes()
+                qsrc_phase(1) = v_darcy
                 Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
                   aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
                 Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
@@ -1367,6 +1378,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
               v_darcy=0.D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
+                ! store volumetric rate for ss_fluid_fluxes()
+                qsrc_phase(1) = v_darcy
                 Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
 !                 aux_var%xmol((np-1)*option%nflowspec+1) * option%flow_dt
                   (1.d0-csrc) * option%flow_dt
@@ -2484,8 +2497,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
-                           source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
+      call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1, &
+                            aux_vars(ghosted_id)%aux_var_elem(0),&
+                            source_sink%flow_condition%itype(1),Res, &
+                            ! fluid flux [m^3/sec] = Res [kmol/mol] / den [kmol/m^3]
+                            patch%ss_fluid_fluxes(:,sum_connection), &
+                            enthalpy_flag, option)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
@@ -2933,6 +2950,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: xxbc(1:realization%option%nflowdof), delxbc(1:realization%option%nflowdof)
   PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof,&
            realization%option%nflowdof)
+  PetscReal :: dummy_real_array(2)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
@@ -3071,8 +3089,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
        do nvar =1, option%nflowdof
-         call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
-                            source_sink%flow_condition%itype(1), Res,enthalpy_flag, option)
+         call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
+                               aux_vars(ghosted_id)%aux_var_elem(nvar),&
+                               source_sink%flow_condition%itype(1),Res, &
+                               dummy_real_array,enthalpy_flag,option)
       
          ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
          ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)

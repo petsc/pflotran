@@ -4518,7 +4518,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
 
-#ifndef SRC_SINK_NEW
+#ifdef SRC_SINK_OLD
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
@@ -4544,7 +4544,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
-#ifndef SRC_SINK_NEW
+#ifdef SRC_SINK_OLD
       if (associated(source_sink%flow_aux_real_var)) then
         scale = source_sink%flow_aux_real_var(1,iconn)
       else
@@ -5338,7 +5338,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
 
-#ifndef SRC_SINK_NEW
+#ifdef SRC_SINK_OLD
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
@@ -5362,7 +5362,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
-#ifndef SRC_SINK_NEW
+#ifdef SRC_SINK_OLD
       if (associated(source_sink%flow_aux_real_var)) then
         scale = source_sink%flow_aux_real_var(1,iconn)
       else

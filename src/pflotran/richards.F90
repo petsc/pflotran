@@ -3318,7 +3318,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           qsrc_mol
       endif
       r_p(local_id) = r_p(local_id) - qsrc_mol
-      ! fluid flux [m^3/sec] = qsrc_mol [kmol] / den [kmol/m^3]
+      ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
       patch%ss_fluid_fluxes(1,sum_connection) = qsrc_mol / &
                                              global_aux_vars(ghosted_id)%den(1)
     enddo
