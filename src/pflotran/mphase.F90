@@ -1348,7 +1348,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
                 ! store volumetric rate for ss_fluid_fluxes()
-                qsrc_phase(1) = v_darcy
+                qsrc_phase(1) = -1.d0*v_darcy
                 Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
                   aux_var%xmol((np-1)*option%nflowspec+1)*option%flow_dt
                 Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
