@@ -27,6 +27,7 @@ module Transport_module
             TFluxDerivative, &
             TFluxCoef, &
             TSrcSinkCoef, &
+            TSrcSinkCoefNew, &
             TFlux_CD, &
             TFluxDerivative_CD, &
             TFluxCoef_CD
@@ -829,4 +830,56 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
 
 end subroutine TSrcSinkCoef
   
+! ************************************************************************** !
+!
+! TSrcSinkCoefNew: Computes src/sink coefficients for transport matrix
+!                  Here qsrc [m^3/sec] provided by flow.
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine TSrcSinkCoefNew(option,qsrc,tran_src_sink_type,T_in,T_out)
+
+  use Option_module
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: qsrc
+  PetscInt :: tran_src_sink_type
+  PetscReal :: T_in ! coefficient that scales concentration at cell
+  PetscReal :: T_out ! concentration that scales external concentration
+      
+  T_in = 0.d0 
+  T_out = 0.d0
+     
+  select case(tran_src_sink_type)
+    case(EQUILIBRIUM_SS)
+      ! units should be mol/sec
+      ! 1.d-3 is a relatively large rate designed to equilibrate 
+      ! the aqueous concentration with the concentrations specified at
+      ! the src/sink
+      T_in = 1.d-3 ! units L water/sec
+      T_out = -1.d0*T_in
+    case(MASS_RATE_SS)
+      ! in this case, rt_auxvar_bc%total actually holds the mass rate
+      T_in = 0.d0
+      T_out = -1.d0
+    case default
+      ! qsrc always in m^3/sec
+      if (qsrc > 0.d0) then ! injection
+        T_in = 0.d0
+        T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
+      else
+        T_out = 0.d0
+        T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
+      endif
+  end select
+
+  ! Units of Tin & Tout should be L/s.  When multiplied by Total (M) you get
+  ! moles/sec, the units of the residual.  To get the units of the Jacobian
+  ! kg/sec, one must either scale by dtotal or den/1000. (kg/L).
+
+end subroutine TSrcSinkCoefNew
+
 end module Transport_module

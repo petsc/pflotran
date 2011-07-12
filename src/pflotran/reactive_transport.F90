@@ -4518,12 +4518,14 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
 
+#ifndef SRC_SINK_NEW
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
+#endif
       
     do iconn = 1, cur_connection_set%num_connections 
       sum_connection = sum_connection + 1     
@@ -4542,6 +4544,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
+#ifndef SRC_SINK_NEW
       if (associated(source_sink%flow_aux_real_var)) then
         scale = source_sink%flow_aux_real_var(1,iconn)
       else
@@ -4554,6 +4557,11 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
                         scale,coef_in,coef_out)
+#else
+      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      call TSrcSinkCoefNew(option,qsrc,source_sink%tran_condition%itype, &
+                           coef_in,coef_out)
+#endif
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
@@ -5273,7 +5281,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  PetscInt :: iconn
+  PetscInt :: iconn, sum_connection
   PetscReal :: qsrc, rdum
   PetscBool :: volumetric
   PetscInt :: flow_src_sink_type
@@ -5324,19 +5332,23 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   ! Source/Sink terms -------------------------------------
   call PetscLogEventBegin(logging%event_rt_jacobian_ss,ierr)   
   source_sink => patch%source_sinks%first 
+  sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
     
     cur_connection_set => source_sink%connection_set
 
+#ifndef SRC_SINK_NEW
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
       qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
+#endif
       
     do iconn = 1, cur_connection_set%num_connections      
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
@@ -5350,6 +5362,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
+#ifndef SRC_SINK_NEW
       if (associated(source_sink%flow_aux_real_var)) then
         scale = source_sink%flow_aux_real_var(1,iconn)
       else
@@ -5362,6 +5375,10 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                         volume_p(local_id), &
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
                         scale,coef_in,coef_out)
+#else
+      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      call TSrcSinkCoefNew(option,qsrc,source_sink%tran_condition%itype,coef_in,coef_out)
+#endif
       ! coef_in is non-zero
       if (dabs(coef_in-1.d20) > 0.d0) then
         Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)
