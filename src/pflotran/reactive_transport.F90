@@ -4592,10 +4592,13 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       do 
         if (.not.associated(source_sink)) exit
 
-!geh begin change
-!geh        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-        msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
-!geh end change
+        select case(source_sink%flow_condition%itype(1))
+          case(MASS_RATE_SS)
+            msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+          case default
+            msrc(:) = 0.d0
+        end select
+
         msrc(1) =  msrc(1) / FMWH2O*1D3
         msrc(2) =  msrc(2) / FMWCO2*1D3
         ! print *,'RT SC source'

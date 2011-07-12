@@ -1243,6 +1243,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 ! if (energy_flag) then
 !   Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
 ! endif         
+
+  qsrc_phase = 0.d0
  
   select case(isrctype)
     case(MASS_RATE_SS)
@@ -2445,6 +2447,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   ! Source/sink terms -------------------------------------
 ! print *, 'Mphase residual patch 2' 
   source_sink => patch%source_sinks%first 
+  sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
     !print *, 'RES s/s begin'
@@ -2492,6 +2495,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       if (associated(patch%imat)) then
