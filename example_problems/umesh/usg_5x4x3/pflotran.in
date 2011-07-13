@@ -42,6 +42,7 @@ ALPHA 1.d-4
 :=========================== output options ===================================
 OUTPUT
 FORMAT TECPLOT BLOCK
+HDF5_WRITE_GROUP_SIZE 1
 /
 
 :=========================== times ============================================
@@ -84,3 +85,4 @@ REGION all
 MATERIAL soil1
 END
 
+HDF5_READ_GROUP_SIZE 1
