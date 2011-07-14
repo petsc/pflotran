@@ -2684,7 +2684,7 @@ subroutine GridDestroy(grid)
   
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
   
-  call UnstructuredGridDestroy(grid%unstructured_grid)    
+  call UGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_set_list)

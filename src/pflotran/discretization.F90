@@ -374,7 +374,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         grid => GridCreate()
         select case(discretization%itype)
           case(UNSTRUCTURED_GRID)
-            un_str_grid => UnstructuredGridCreate()
+            un_str_grid => UGridCreate()
             if (index(filename,'.h5') > 0) then
 #if defined SAMR_HAVE_HDF5
               option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not ' // &
@@ -383,14 +383,14 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
 #else
 
 #ifdef PARALLELIO_LIB
-              call UnstructuredGridReadHDF5POLib(un_str_grid,filename,option)
+              call UGridReadHDF5POLib(un_str_grid,filename,option)
 #else
-              call UnstructuredGridReadHDF5(un_str_grid,filename,option)
+              call UGridReadHDF5(un_str_grid,filename,option)
 #endif ! #ifdef PARALLELIO_LIB
 
 #endif ! #ifndef SAMR_HAVE_HDF5
             else
-              call UnstructuredGridRead(un_str_grid,filename,option)
+              call UGridRead(un_str_grid,filename,option)
             endif
             grid%unstructured_grid => un_str_grid
             grid%nmax = un_str_grid%num_cells_global
@@ -455,8 +455,8 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
       discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
     case(UNSTRUCTURED_GRID)
-      call UnstructuredGridDecompose(discretization%grid%unstructured_grid, &
-                                     option)
+      call UGridDecompose(discretization%grid%unstructured_grid, &
+                          option)
     case(AMR_GRID)
   end select
 
@@ -521,8 +521,8 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
       call StructuredGridCreateDM(discretization%grid%structured_grid, &
                                   dm_ptr%sgdm,ndof,stencil_width,option)
     case(UNSTRUCTURED_GRID)
-      call UnstructuredGridCreateUGDM(discretization%grid%unstructured_grid, &
-                                      dm_ptr%ugdm,ndof,option)
+      call UGridCreateUGDM(discretization%grid%unstructured_grid, &
+                           dm_ptr%ugdm,ndof,option)
   end select
 
 end subroutine DiscretizationCreateDM
@@ -563,9 +563,9 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
           call DMDACreateNaturalVector(dm_ptr%sgdm,vector,ierr)
       end select
     case(UNSTRUCTURED_GRID)
-      call UGDMCreateVector(discretization%grid%unstructured_grid, &
-                            dm_ptr%ugdm,vector, &
-                            vector_type,option)
+      call UGridDMCreateVector(discretization%grid%unstructured_grid, &
+                               dm_ptr%ugdm,vector, &
+                               vector_type,option)
     case(AMR_GRID)
       select case(dm_index)
         case(ONEDOF)
@@ -718,8 +718,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(UNSTRUCTURED_GRID)
-      call UGDMCreateJacobian(discretization%grid%unstructured_grid, &
-                              dm_ptr%ugdm,mat_type,Jacobian,option)
+      call UGridDMCreateJacobian(discretization%grid%unstructured_grid, &
+                                 dm_ptr%ugdm,mat_type,Jacobian,option)
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(STRUCTURED_GRID_MIMETIC)
@@ -1565,11 +1565,11 @@ subroutine DiscretizationDestroy(discretization)
       endif
     case(UNSTRUCTURED_GRID)
       if (associated(discretization%dm_1dof%ugdm)) &
-        call UGDMDestroy(discretization%dm_1dof%ugdm)
+        call UGridDMDestroy(discretization%dm_1dof%ugdm)
       if (associated(discretization%dm_nflowdof%ugdm)) &
-        call UGDMDestroy(discretization%dm_nflowdof%ugdm)
+        call UGridDMDestroy(discretization%dm_nflowdof%ugdm)
       if (associated(discretization%dm_ntrandof%ugdm)) &
-        call UGDMDestroy(discretization%dm_ntrandof%ugdm)
+        call UGridDMDestroy(discretization%dm_ntrandof%ugdm)
   end select
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)

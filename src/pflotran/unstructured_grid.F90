@@ -95,25 +95,25 @@ module Unstructured_Grid_module
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
   !  PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 
-  public :: UnstructuredGridCreate, &
-            UnstructuredGridRead, &
+  public :: UGridCreate, &
+            UGridRead, &
 #ifndef SAMR_HAVE_HDF5
-            UnstructuredGridReadHDF5, &
+            UGridReadHDF5, &
 #endif
 #if defined(PARALLELIO_LIB)
-            UnstructuredGridReadHDF5PIOLib, &
+            UGridReadHDF5PIOLib, &
 #endif
-            UnstructuredGridDecompose, &
+            UGridDecompose, &
             UGridComputeInternConnect, &
             UGridPopulateConnection, &
             UGridComputeCoord, &
             UGridComputeVolumes, &
             UGridMapIndices, &
-            UGDMCreateJacobian, &
-            UGDMCreateVector, &
-            UnstructuredGridDestroy, &
-            UnstructuredGridCreateUGDM, &
-            UGDMDestroy
+            UGridDMCreateJacobian, &
+            UGridDMCreateVector, &
+            UGridDestroy, &
+            UGridCreateUGDM, &
+            UGridDMDestroy
 
 contains
 
@@ -155,16 +155,16 @@ end function UGDMCreate
 
 ! ************************************************************************** !
 !
-! UnstructuredGridCreate: Creates an unstructured grid object
+! UGridCreate: Creates an unstructured grid object
 ! author: Glenn Hammond
 ! date: 09/30/09
 !
 ! ************************************************************************** !
-function UnstructuredGridCreate()
+function UGridCreate()
 
   implicit none
   
-  type(unstructured_grid_type), pointer :: UnstructuredGridCreate
+  type(unstructured_grid_type), pointer :: UGridCreate
 
   type(unstructured_grid_type), pointer :: unstructured_grid
 
@@ -196,9 +196,9 @@ function UnstructuredGridCreate()
   unstructured_grid%num_hash = 100
   unstructured_grid%ao_natural_to_petsc = 0
 
-  UnstructuredGridCreate => unstructured_grid
+  UGridCreate => unstructured_grid
   
-end function UnstructuredGridCreate
+end function UGridCreate
 
   
 
@@ -324,12 +324,12 @@ end subroutine UnstructGridPrintHashTable
 
 ! ************************************************************************** !
 !
-! UnstructuredGridRead: Reads an unstructured grid
+! UGridRead: Reads an unstructured grid
 ! author: Glenn Hammond
 ! date: 09/30/09
 !
 ! ************************************************************************** !
-subroutine UnstructuredGridRead(unstructured_grid,filename,option)
+subroutine UGridRead(unstructured_grid,filename,option)
 
   use Input_module
   use Option_module
@@ -536,18 +536,18 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
 
   call InputDestroy(input)
 
-end subroutine UnstructuredGridRead
+end subroutine UGridRead
 
 #ifndef SAMR_HAVE_HDF5
 
 ! ************************************************************************** !
 !
-! UnstructuredGridReadHDF5: Reads an unstructured grid from HDF5
+! UGridReadHDF5: Reads an unstructured grid from HDF5
 ! author: Gautam Bisht
 ! date: 04/25/11
 !
 ! ************************************************************************** !
-subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
+subroutine UGridReadHDF5(unstructured_grid,filename,option)
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -802,20 +802,20 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   deallocate(max_dims_h5)
   
   
-end subroutine UnstructuredGridReadHDF5
+end subroutine UGridReadHDF5
 
 #endif
 
 ! ************************************************************************** !
 !
-! UnstructuredGridReadHDF5PIOLib: Reads an unstructured grid from HDF5
+! UGridReadHDF5PIOLib: Reads an unstructured grid from HDF5
 ! author: Gautam Bisht
 ! date: 05/13/11
 !
 ! ************************************************************************** !
 #if defined(PARALLELIO_LIB)
 
-subroutine UnstructuredGridReadHDF5PIOLib(unstructured_grid, filename, &
+subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
                                           option)
 
 #if defined(PETSC_HAVE_HDF5)
@@ -897,18 +897,18 @@ subroutine UnstructuredGridReadHDF5PIOLib(unstructured_grid, filename, &
     unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
   enddo
 
-end subroutine UnstructuredGridReadHDF5PIOLib
+end subroutine UGridReadHDF5PIOLib
 
 #endif
 
 ! ************************************************************************** !
 !
-! UnstructuredGridDecompose: Decomposes an unstructured grid across ranks
+! UGridDecompose: Decomposes an unstructured grid across ranks
 ! author: Glenn Hammond
 ! date: 09/30/09
 !
 ! ************************************************************************** !
-subroutine UnstructuredGridDecompose(unstructured_grid,option)
+subroutine UGridDecompose(unstructured_grid,option)
   
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
@@ -1751,17 +1751,17 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
 #endif
   
-end subroutine UnstructuredGridDecompose
+end subroutine UGridDecompose
 
 ! ************************************************************************** !
 !
-! UnstructuredGridCreateUGDM: Constructs mappings / scatter contexts for PETSc DM 
+! UGridCreateUGDM: Constructs mappings / scatter contexts for PETSc DM 
 !                                                  object
 ! author: Glenn Hammond
 ! date: 09/30/09
 !
 ! ************************************************************************** !
-subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
+subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   
   use Option_module
   use Utility_module, only: reallocateIntArray
@@ -2065,7 +2065,7 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
     
 #endif
   
-end subroutine UnstructuredGridCreateUGDM
+end subroutine UGridCreateUGDM
 
 ! ************************************************************************** !
 !
@@ -3340,13 +3340,13 @@ end subroutine GetPlaneIntercept
 
 ! ************************************************************************** !
 !
-! UGDMCreateJacobian: Creates a Jacobian matrix based on the unstructured
+! UGridDMCreateJacobian: Creates a Jacobian matrix based on the unstructured
 !                     grid dual
 ! author: Glenn Hammond
 ! date: 11/05/09
 !
 ! ************************************************************************** !
-subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
+subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 
   use Option_module
   
@@ -3398,7 +3398,7 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 !        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
         call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
       case default
-        option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
+        option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
         call printErrMsg(option)
     end select
 !  else
@@ -3411,7 +3411,7 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 !        call MatCreateSeqBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
 !                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
 !      case default
-!        option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
+!        option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
 !        call printErrMsg(option)
 !    end select
 !  endif
@@ -3419,16 +3419,16 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
   deallocate(d_nnz)
   deallocate(o_nnz)
   
-end subroutine UGDMCreateJacobian
+end subroutine UGridDMCreateJacobian
 
 ! ************************************************************************** !
 !
-! UGDMCreateVector: Creates a global vector with PETSc ordering
+! UGridDMCreateVector: Creates a global vector with PETSc ordering
 ! author: Glenn Hammond
 ! date: 11/06/09
 !
 ! ************************************************************************** !
-subroutine UGDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
+subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
 
   use Option_module
 
@@ -3462,7 +3462,7 @@ subroutine UGDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
       call VecSetBlockSize(vec,ugdm%ndof,ierr)
   end select
     
-end subroutine UGDMCreateVector
+end subroutine UGridDMCreateVector
 
 ! ************************************************************************** !
 !
@@ -3524,12 +3524,12 @@ end subroutine UGridMapIndices
 
 ! ************************************************************************** !
 !
-! UnstructuredGridDestroy: Deallocates a unstructured grid
+! UGridDestroy: Deallocates a unstructured grid
 ! author: Glenn Hammond
 ! date: 11/01/09
 !
 ! ************************************************************************** !
-subroutine UnstructuredGridDestroy(unstructured_grid)
+subroutine UGridDestroy(unstructured_grid)
 
   implicit none
   
@@ -3579,16 +3579,16 @@ subroutine UnstructuredGridDestroy(unstructured_grid)
   deallocate(unstructured_grid)
   nullify(unstructured_grid)
 
-end subroutine UnstructuredGridDestroy
+end subroutine UGridDestroy
 
 ! ************************************************************************** !
 !
-! UGDMDestroy: Deallocates a unstructured grid distributed mesh
+! UGridDMDestroy: Deallocates a unstructured grid distributed mesh
 ! author: Glenn Hammond
 ! date: 11/01/09
 !
 ! ************************************************************************** !
-subroutine UGDMDestroy(ugdm)
+subroutine UGridDMDestroy(ugdm)
 
   implicit none
   
@@ -3617,6 +3617,6 @@ subroutine UGDMDestroy(ugdm)
   deallocate(ugdm)
   nullify(ugdm)
 
-end subroutine UGDMDestroy
+end subroutine UGridDMDestroy
 
 end module Unstructured_Grid_module
