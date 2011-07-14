@@ -101,7 +101,7 @@ module Unstructured_Grid_module
             UnstructuredGridReadHDF5, &
 #endif
 #if defined(PARALLELIO_LIB)
-            UnstructuredGridReadHDF5ParallelIOLib, &
+            UnstructuredGridReadHDF5PIOLib, &
 #endif
             UnstructuredGridDecompose, &
             UGridComputeInternConnect, &
@@ -599,15 +599,15 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   call h5open_f(hdf5_err)
 
   ! Setup file access property with parallel I/O access
-  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+  call h5pcreate_f(H5P_FILE_ACCESS_F, prop_id, hdf5_err)
 
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm, MPI_INFO_NULL, hdf5_err)
 #endif
 
   ! Open the file collectively
-  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
-  call h5pclose_f(prop_id,hdf5_err)
+  call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, hdf5_err, prop_id)
+  call h5pclose_f(prop_id, hdf5_err)
   
   !
   ! Domain/Cells
@@ -619,14 +619,14 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   call printMsg(option)
 
   ! Open dataset
-  call h5dopen_f(file_id,"Domain/Cells",data_set_id,hdf5_err)
+  call h5dopen_f(file_id, "Domain/Cells", data_set_id, hdf5_err)
 
   ! Get dataset's dataspace
-  call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
   
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id,ndims,hdf5_err)
-  if (ndims.ne.2) then
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
+  if (ndims /= 2) then
     option%io_buffer='Dimension of Domain/Cells dataset in ' // filename // &
           ' is not equal to 2.'
     call printErrMsg(option)
@@ -637,7 +637,8 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   allocate(max_dims_h5(ndims))
   
   ! Get dimensions of dataset
-  call h5sget_simple_extent_dims_f(data_space_id,dims_h5,max_dims_h5,hdf5_err)
+  call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
+                                   hdf5_err)
   
   ! Determine the number of cells each that will be saved on each processor
   unstructured_grid%num_cells_global = dims_h5(2)
@@ -652,10 +653,10 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   ! Find istart and iend
   istart = 0
   iend   = 0
-  call MPI_Exscan(unstructured_grid%num_cells_local,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                  MPI_SUM,option%mycomm,ierr)
-  call MPI_Scan(unstructured_grid%num_cells_local,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                MPI_SUM,option%mycomm,ierr)
+  call MPI_Exscan(unstructured_grid%num_cells_local, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  call MPI_Scan(unstructured_grid%num_cells_local, iend, ONE_INTEGER_MPI, &
+                MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
   
   ! Determine the length and offset of data to be read by each processor
   length(1) = dims_h5(1)
@@ -671,33 +672,35 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
   
   ! Select hyperslab
-  call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
-  call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
+  call h5sselect_hyperslab_f(data_space_id, H5S_SELECT_SET_F, offset, length, &
+                             hdf5_err)
   
   ! Initialize data buffer
-  allocate(int_buffer(length(1),length(2)))
+  allocate(int_buffer(length(1), length(2)))
   
   ! Create property list
-  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdf5_err)
+  call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
 #endif
   
   ! Read the dataset collectively
-  call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
-                 dims_h5,hdf5_err,memory_space_id,data_space_id)
+  call h5dread_f(data_set_id, H5T_NATIVE_INTEGER, int_buffer, &
+                 dims_h5, hdf5_err, memory_space_id, data_space_id)
   
   ! allocate array to store vertices for each cell
-  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL,unstructured_grid%num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
+                                            unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices_0 = 0
   
-  do ii = 1,unstructured_grid%num_cells_local
-    do jj = 2,int_buffer(1,ii)+1
-      unstructured_grid%cell_vertices_0(jj-1,ii) = int_buffer(jj,ii)
+  do ii = 1, unstructured_grid%num_cells_local
+    do jj = 2, int_buffer(1,ii) + 1
+      unstructured_grid%cell_vertices_0(jj-1, ii) = int_buffer(jj, ii)
     enddo
   enddo
   
-  call h5dclose_f(data_set_id,hdf5_err)
+  call h5dclose_f(data_set_id, hdf5_err)
   
   deallocate(dims_h5)
   deallocate(max_dims_h5)
@@ -707,14 +710,14 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   !
   
   ! Open dataset
-  call h5dopen_f(file_id,"Domain/Vertices",data_set_id,hdf5_err)
+  call h5dopen_f(file_id, "Domain/Vertices", data_set_id, hdf5_err)
   
   ! Get dataset's dataspace
-  call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
   
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id,ndims,hdf5_err)
-  if (ndims.ne.2) then
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
+  if (ndims /= 2) then
     option%io_buffer='Dimension of Domain/Vertices dataset in ' // filename // &
           ' is not equal to 2.'
     call printErrMsg(option)
@@ -725,12 +728,14 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   allocate(max_dims_h5(ndims))
   
   ! Get dimensions of dataset
-  call h5sget_simple_extent_dims_f(data_space_id,dims_h5,max_dims_h5,hdf5_err)
+  call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
+                                   hdf5_err)
   
   ! Determine the number of cells each that will be saved on each processor
   unstructured_grid%num_vertices_global = dims_h5(2)
-  unstructured_grid%num_vertices_local  = unstructured_grid%num_vertices_global/ &
-                                      option%mycommsize 
+  unstructured_grid%num_vertices_local  = &
+                                       unstructured_grid%num_vertices_global/ &
+                                       option%mycommsize 
   num_cells_local_save = unstructured_grid%num_vertices_local
   remainder = unstructured_grid%num_vertices_global - &
               unstructured_grid%num_vertices_local*option%mycommsize
@@ -740,10 +745,10 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   ! Find istart and iend
   istart = 0
   iend   = 0
-  call MPI_Exscan(unstructured_grid%num_vertices_local,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                  MPI_SUM,option%mycomm,ierr)
-  call MPI_Scan(unstructured_grid%num_vertices_local,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                MPI_SUM,option%mycomm,ierr)
+  call MPI_Exscan(unstructured_grid%num_vertices_local, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  call MPI_Scan(unstructured_grid%num_vertices_local, iend, ONE_INTEGER_MPI, &
+                MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
   
   ! Determine the length and offset of data to be read by each processor
   length(1) = dims_h5(1)
@@ -759,25 +764,26 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
   
   ! Select hyperslab
-  call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
-  call h5sselect_hyperslab_f(data_space_id,H5S_SELECT_SET_F,offset,length,hdf5_err)
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
+  call h5sselect_hyperslab_f(data_space_id, H5S_SELECT_SET_F, offset, length, &
+                             hdf5_err)
   
   ! Initialize data buffer
-  allocate(double_buffer(length(1),length(2)))
+  allocate(double_buffer(length(1), length(2)))
   
   ! Create property list
-  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdf5_err)
+  call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
 #endif
   
   ! Read the dataset collectively
-  call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,double_buffer,&
-                 dims_h5,hdf5_err,memory_space_id,data_space_id)
+  call h5dread_f(data_set_id, H5T_NATIVE_DOUBLE, double_buffer, &
+                 dims_h5, hdf5_err, memory_space_id, data_space_id)
   
-  call h5dclose_f(data_set_id,hdf5_err)
-  !call h5gclose_f(grp_id,hdf5_err)
-  call h5fclose_f(file_id,hdf5_err)
+  call h5dclose_f(data_set_id, hdf5_err)
+  !call h5gclose_f(grp_id, hdf5_err)
+  call h5fclose_f(file_id, hdf5_err)
   call h5close_f(hdf5_err)
 
   
@@ -785,9 +791,9 @@ subroutine UnstructuredGridReadHDF5(unstructured_grid,filename,option)
   allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
   do ii = 1, unstructured_grid%num_vertices_local
     unstructured_grid%vertices(ii)%id = 0
-    unstructured_grid%vertices(ii)%x = double_buffer(1,ii)
-    unstructured_grid%vertices(ii)%y = double_buffer(2,ii)
-    unstructured_grid%vertices(ii)%z = double_buffer(3,ii)
+    unstructured_grid%vertices(ii)%x = double_buffer(1, ii)
+    unstructured_grid%vertices(ii)%y = double_buffer(2, ii)
+    unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
   enddo
   
   
@@ -802,14 +808,15 @@ end subroutine UnstructuredGridReadHDF5
 
 ! ************************************************************************** !
 !
-! UnstructuredGridReadHDF5ParallelIOLib: Reads an unstructured grid from HDF5
+! UnstructuredGridReadHDF5PIOLib: Reads an unstructured grid from HDF5
 ! author: Gautam Bisht
 ! date: 05/13/11
 !
 ! ************************************************************************** !
 #if defined(PARALLELIO_LIB)
 
-subroutine UnstructuredGridReadHDF5ParallelIOLib(unstructured_grid,filename,option)
+subroutine UnstructuredGridReadHDF5PIOLib(unstructured_grid, filename, &
+                                          option)
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -841,29 +848,42 @@ subroutine UnstructuredGridReadHDF5ParallelIOLib(unstructured_grid,filename,opti
   PetscInt          :: ii, jj
   PetscInt          :: dims(2), dataset_dims(2)
 
-  character(len=MAXSTRINGLENGTH) :: cell_dataset_name = '/Domain/Cells'//CHAR(0)
-  character(len=MAXSTRINGLENGTH) :: vert_dataset_name = '/Domain/Vertices'//CHAR(0)
+  character(len=MAXSTRINGLENGTH) :: cell_dataset_name = &
+                                                       '/Domain/Cells'//CHAR(0)
+  character(len=MAXSTRINGLENGTH) :: vert_dataset_name = &
+                                                    '/Domain/Vertices'//CHAR(0)
 
   ! Read Domain/Cells
-  call HDF5ReadDatasetInteger2D(filename,cell_dataset_name,NONUNIFORM_CONTIGUOUS_READ,&
-  option,int_buffer,dims, dataset_dims)
+  call HDF5ReadDatasetInteger2D(filename, 
+                                cell_dataset_name, &
+                                NONUNIFORM_CONTIGUOUS_READ, &
+                                option, &
+                                int_buffer, &
+                                dims, &
+                                dataset_dims)
 
   ! Allocate array to store vertices for each cell
   unstructured_grid%num_cells_local  = dims(2)
   unstructured_grid%num_cells_global = dataset_dims(2)
-  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL,unstructured_grid%num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
+                                            unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices_0 = 0
 
   ! Fill the cell data structure
-  do ii = 1,unstructured_grid%num_cells_local
-    do jj = 2,int_buffer(1,ii)+1
-      unstructured_grid%cell_vertices_0(jj-1,ii) = int_buffer(jj,ii)
+  do ii = 1, unstructured_grid%num_cells_local
+    do jj = 2, int_buffer(1, ii) + 1
+      unstructured_grid%cell_vertices_0(jj-1, ii) = int_buffer(jj, ii)
     enddo
   enddo
 
   ! Read Vertices
-  call HDF5ReadDatasetReal2D(filename,vert_dataset_name,NONUNIFORM_CONTIGUOUS_READ,&
-  option,double_buffer,dims,dataset_dims)
+  call HDF5ReadDatasetReal2D(filename, &
+                             vert_dataset_name, &
+                             NONUNIFORM_CONTIGUOUS_READ, &
+                             option, &
+                             double_buffer, &
+                             dims, &
+                             dataset_dims)
 
   unstructured_grid%num_vertices_local = dims(2)
   unstructured_grid%num_vertices_global= dataset_dims(2)
@@ -872,12 +892,12 @@ subroutine UnstructuredGridReadHDF5ParallelIOLib(unstructured_grid,filename,opti
   ! fill the vertices data structure
   do ii = 1, unstructured_grid%num_vertices_local
     unstructured_grid%vertices(ii)%id = 0
-    unstructured_grid%vertices(ii)%x = double_buffer(1,ii)
-    unstructured_grid%vertices(ii)%y = double_buffer(2,ii)
-    unstructured_grid%vertices(ii)%z = double_buffer(3,ii)
+    unstructured_grid%vertices(ii)%x = double_buffer(1, ii)
+    unstructured_grid%vertices(ii)%y = double_buffer(2, ii)
+    unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
   enddo
 
-end subroutine UnstructuredGridReadHDF5ParallelIOLib
+end subroutine UnstructuredGridReadHDF5PIOLib
 
 #endif
 
@@ -1018,7 +1038,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   do icell = 1, unstructured_grid%num_cells_local
     do ivertex = 1, max_vertex_count
 #ifdef MIXED_UMESH
-         if(unstructured_grid%cell_vertices_0(ivertex,icell).lt.0) exit
+         if(unstructured_grid%cell_vertices_0(ivertex, icell) < 0) exit
 #endif
       count = count + 1
       local_vertices(count) = unstructured_grid%cell_vertices_0(ivertex,icell)
@@ -2095,7 +2115,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt :: ivertex, ivertex2
   PetscInt :: vertex_id, vertex_id2
   PetscInt :: vertex_ids4(4)
-  PetscInt :: nfaces,nfaces2,nvertices,nvertices2,cell_type,cell_type2, face_type
+  PetscInt :: nfaces, nfaces2, nvertices, nvertices2, cell_type, cell_type2
+  PetscInt :: face_type
   PetscBool:: face_found, vertex_found
   
   PetscReal :: v1(3), v2(3), n1(3), n2(3), n_up_dn(3)
@@ -2111,7 +2132,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   character(len=MAXSTRINGLENGTH) :: string  
 
   type(connection_set_type), pointer :: connections
-
 
   !sp 
   PetscReal, pointer :: vec_p(:) !sp 
@@ -2789,8 +2809,8 @@ end function UGridComputeInternConnect
 ! date: 10/30/09
 !
 ! ************************************************************************** !
-subroutine UGridPopulateConnection(unstructured_grid,connection,iface,&
-                                   iconn,ghosted_id)
+subroutine UGridPopulateConnection(unstructured_grid, connection, iface, &
+                                   iconn, ghosted_id)
 
   use Connection_module
   use Utility_module, only : DotProduct
@@ -2814,7 +2834,7 @@ subroutine UGridPopulateConnection(unstructured_grid,connection,iface,&
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
     
-      select case (unstructured_grid%cell_vertices_0(0,ghosted_id))
+      select case (unstructured_grid%cell_vertices_0(0, ghosted_id))
         case(8)
 #if 0
           select case (iface)
@@ -2839,27 +2859,24 @@ subroutine UGridPopulateConnection(unstructured_grid,connection,iface,&
       end select
     
       ! Get face-centroid vector
-      face_id = unstructured_grid%cell_to_face_locindex(iface_cell,ghosted_id)
+      face_id = unstructured_grid%cell_to_face_locindex(iface_cell, ghosted_id)
       v1(1) = unstructured_grid%face_centroid(face_id)%x
       v1(2) = unstructured_grid%face_centroid(face_id)%y
       v1(3) = unstructured_grid%face_centroid(face_id)%z
       
       ! Compute cell centeroid
       v2 = 0d0
-      do ivert = 1,unstructured_grid%cell_vertices_0(0,ghosted_id)
-        vert_id = unstructured_grid%cell_vertices_0(ivert,ghosted_id) + 1
-        vertex_8(ivert)%x = &
-          unstructured_grid%vertices(vert_id)%x
-        vertex_8(ivert)%y = &
-          unstructured_grid%vertices(vert_id)%y
-        vertex_8(ivert)%z = &
-          unstructured_grid%vertices(vert_id)%z
+      do ivert = 1, unstructured_grid%cell_vertices_0(0, ghosted_id)
+        vert_id = unstructured_grid%cell_vertices_0(ivert, ghosted_id) + 1
+        vertex_8(ivert)%x = unstructured_grid%vertices(vert_id)%x
+        vertex_8(ivert)%y = unstructured_grid%vertices(vert_id)%y
+        vertex_8(ivert)%z = unstructured_grid%vertices(vert_id)%z
       enddo
-      select case (unstructured_grid%cell_vertices_0(0,ghosted_id))
+      select case (unstructured_grid%cell_vertices_0(0, ghosted_id))
         case(8)
-          v2 = ComputeCentroid(HEX_TYPE,vertex_8)
+          v2 = ComputeCentroid(HEX_TYPE, vertex_8)
         case(6)
-          v2 = ComputeCentroid(WEDGE_TYPE,vertex_8)
+          v2 = ComputeCentroid(WEDGE_TYPE, vertex_8)
       end select
 
       ! Compute distance vector: cell_center - face_centroid
@@ -2868,13 +2885,13 @@ subroutine UGridPopulateConnection(unstructured_grid,connection,iface,&
       v1(3) = v2(3) - v1(3)
       
       !
-      dist = sqrt(DotProduct(v1,v1))
-      n_dist = v1 / dist
-      connection%dist(0,iconn) = dist
-      connection%dist(1,iconn) = n_dist(1)
-      connection%dist(2,iconn) = n_dist(2)
-      connection%dist(3,iconn) = n_dist(3)
-      connection%area(iconn)   = unstructured_grid%face_area(face_id)
+      dist = sqrt(DotProduct(v1, v1))
+      n_dist = v1/dist
+      connection%dist(0, iconn) = dist
+      connection%dist(1, iconn) = n_dist(1)
+      connection%dist(2, iconn) = n_dist(2)
+      connection%dist(3, iconn) = n_dist(3)
+      connection%area(iconn)    = unstructured_grid%face_area(face_id)
       
   end select
   

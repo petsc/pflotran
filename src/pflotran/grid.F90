@@ -73,8 +73,10 @@ module Grid_module
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
-    PetscReal :: x_min_global, x_max_global, y_min_global, y_max_global, z_min_global, z_max_global
-    PetscReal :: x_min_local, x_max_local, y_min_local, y_max_local, z_min_local, z_max_local
+    PetscReal :: x_min_global, y_min_global, z_min_global
+    PetscReal :: x_max_global, y_max_global, z_max_global
+    PetscReal :: x_min_local, y_min_local, z_min_local
+    PetscReal :: x_max_local, y_max_local, z_max_local
 
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
