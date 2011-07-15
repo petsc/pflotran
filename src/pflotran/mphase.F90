@@ -1690,7 +1690,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: dist_gravity  ! distance along gravity vector
           
   PetscInt :: ispec, np
-  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy
+  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy, sat_ave
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
   
@@ -1698,6 +1698,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   fluxe = 0.d0
   v_darcy = 0.d0
   density_ave = 0.d0
+  sat_ave = 0.d0
   q = 0.d0
 
   ! Flow   
@@ -1718,6 +1719,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
               upweight=1.d0
            endif
            density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
+           sat_ave = upweight*aux_var_up%sat(np) + (1.D0-upweight)*aux_var_dn%sat(np)
            
            gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
                 (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
@@ -1744,14 +1746,16 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
            v_darcy = aux_vars(MPH_PRESSURE_DOF)
            if (v_darcy > 0.d0) then 
               density_ave = aux_var_up%den(np)
+              sat_ave = aux_var_up%sat(np)
            else 
               density_ave = aux_var_dn%den(np)
+              sat_ave = aux_var_dn%sat(np)
            endif
         endif
 
      end select
      
-     q = v_darcy * area
+     q = v_darcy * area * sat_ave
      vv_darcy(np) = v_darcy
      uh=0.D0
      uxmol=0.D0
@@ -2591,6 +2595,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
             global_aux_vars_bc(sum_connection), iphase,&
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
             realization%fluid_properties, option, xphi)
+
 #if 1
       if( associated(global_aux_vars_bc))then
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
@@ -2607,7 +2612,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   !     global_aux_vars(ghosted_id)%mass_balance_delta                   
       endif
 #endif
-
       call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
