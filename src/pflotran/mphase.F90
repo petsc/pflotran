@@ -1741,7 +1741,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      case(NEUMANN_BC)
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(np)
+           v_darcy = aux_vars(MPH_PRESSURE_DOF)
            if (v_darcy > 0.d0) then 
               density_ave = aux_var_up%den(np)
            else 
