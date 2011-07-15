@@ -41,8 +41,6 @@ module Immis_module
 
   PetscInt, parameter :: jh2o=1, jco2=2
 
-  PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
-  
   public ImmisResidual,ImmisJacobian, &
          ImmisUpdateFixedAccumulation,ImmisTimeCut,&
          ImmisSetup,ImmisUpdateReason,&
@@ -209,9 +207,9 @@ subroutine ImmisSetupPatch(realization)
   patch%aux%Immis%num_aux = grid%ngmax
   print *,' ims setup get Aux init'
 
-  allocate(delx(option%nflowdof, grid%ngmax))
-  allocate(Resold_AR(grid%nlmax,option%nflowdof))
-  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
+  allocate(patch%aux%Immis%delx(option%nflowdof, grid%ngmax))
+  allocate(patch%aux%Immis%res_old_AR(grid%nlmax,option%nflowdof))
+  allocate(patch%aux%Immis%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
   print *,' ims setup allocate app array'
    ! count the number of boundary connections and allocate
@@ -1473,25 +1471,25 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
           realization%fluid_properties,option)
 
      if (option%numerical_derivatives) then
-        delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+        patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+        patch%aux%Immis%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
         if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+           patch%aux%Immis%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
          else
-            delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+            patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
          endif
            
-         if( delx(3,ng) < 1D-12 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-12
-         if( delx(3,ng) >-1D-12 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-12
+         if( patch%aux%Immis%delx(3,ng) < 1D-12 .and.  patch%aux%Immis%delx(3,ng)>=0.D0) patch%aux%Immis%delx(3,ng) = 1D-12
+         if( patch%aux%Immis%delx(3,ng) >-1D-12 .and.  patch%aux%Immis%delx(3,ng)<0.D0) patch%aux%Immis%delx(3,ng) =-1D-12
         
-         if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
+         if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+            patch%aux%Immis%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
          endif
-         if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
+         if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+            patch%aux%Immis%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
          endif
-         call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
+         call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
@@ -1499,7 +1497,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
    enddo
 #endif
 
-   Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
+   patch%aux%Immis%res_old_AR=0.D0
+   patch%aux%Immis%res_old_FL=0.D0
+   r_p = 0.d0
 
 #if 1
   ! Accumulation terms ------------------------------------
@@ -1519,7 +1519,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                               option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    Resold_AR(local_id, :)= Res(1:option%nflowdof)
+    patch%aux%Immis%res_old_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
 #if 1
@@ -1561,11 +1561,14 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      Resold_AR(local_id,jh2o)= Resold_AR(local_id,jh2o) - Res(jh2o)    
-      Resold_AR(local_id,jco2)= Resold_AR(local_id,jco2) - Res(jco2)    
+      patch%aux%Immis%res_old_AR(local_id,jh2o)= patch%aux%Immis%res_old_AR(local_id,jh2o) &
+           - Res(jh2o)
+      patch%aux%Immis%res_old_AR(local_id,jco2)= patch%aux%Immis%res_old_AR(local_id,jco2) &
+           - Res(jco2)
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+        patch%aux%Immis%res_old_AR(local_id,option%nflowdof)= &
+             patch%aux%Immis%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -1644,7 +1647,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) = &
+         patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -1712,7 +1716,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                           upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
-      Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+      patch%aux%Immis%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
      if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -2110,7 +2114,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
-          delxbc(idof)=delx(idof,ghosted_id)
+          delxbc(idof)=patch%aux%Immis%delx(idof,ghosted_id)
        end select
     enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
@@ -2154,7 +2158,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-ResOld_AR(local_id,neq))/delx(nvar,ghosted_id)
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Immis%res_old_AR(local_id,neq))/patch%aux%Immis%delx(nvar,ghosted_id)
            if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
@@ -2248,7 +2252,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_up)
+            ra(:,nvar)= (Res(:)-patch%aux%Immis%res_old_FL(iconn,:))/patch%aux%Immis%delx(nvar,ghosted_id_up)
 
          call ImmisFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
@@ -2258,7 +2262,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_dn)
+         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Immis%res_old_FL(iconn,:))/patch%aux%Immis%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)
