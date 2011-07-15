@@ -1918,7 +1918,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for petsc numbering of local ghosted cells
   allocate(int_array(unstructured_grid%num_cells_ghosted))
   do icell = 1, unstructured_grid%num_cells_local
-    int_array(icell) = istart+(icell-1)*ndof
+    int_array(icell) = istart+(icell-1)
   enddo
   do icell = 1,unstructured_grid%num_ghost_cells
     !sp 
