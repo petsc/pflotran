@@ -393,7 +393,7 @@ $\varphi$ denotes the porosity of the porous medium;
 $s_\a$ denotes the phase saturation state; 
 $X_i^\a$ denotes the mole fraction of species $i$ ($\sum_i X_i^\alpha=1$); 
 $\eta_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
-$\bq_\a$ denotes the Darcy flow rate defined by
+$\bq_\a$ denotes the Darcy flow rate for phase $\a$ defined by
 \EQ
 \bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-\rho_\a g \bz\big),
 \EN
@@ -631,9 +631,9 @@ Diffusion is assumed to be species independent, but may be different for differe
 with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$.
 The quantity $Q_j$ denotes a source/sink term 
 \EQ
-Q_j \eq \frac{q_M}{\rho}\Psi_j \delta(\br-\br_{ss}),
+Q_j \eq \sum_n\frac{q_M}{\rho}\Psi_j \delta(\br-\br_{n}),
 \EN
-where $q_M$ denotes a mass rate in units of kg/s, $\rho$ denotes the fluid density in kg/m$^3$, and $\br_{ss}$ refers to the location of the source/sink. The quantity $S_j$ represents the sorbed concentration of the $j$th primary species considered in more detail in the next section.
+where $q_M$ denotes a mass rate in units of kg/s, $\rho$ denotes the fluid density in kg/m$^3$, and $\br_{n}$ refers to the location of the $n$th source/sink. The quantity $S_j$ represents the sorbed concentration of the $j$th primary species considered in more detail in the next section.
  
 \subsubsection{Sorption}
 
@@ -3011,7 +3011,15 @@ END
 \item[PERIODIC\_OBSERVATION \ TIMESTEP] \ {\tt <integer>}: \ output the results at observation points at specified time steps 
 \item[NO\_PRINT\_INITIAL:] \ the initial state of the system will not be printed to the output file if this card is activated
 \item[NO\_PRINT\_FINAL:] \ the final state of the system will not be printed to the output file if this card is activated
-\item[FORMAT] \ <file format>: \ specify the snapshot file type. Options available are TECPLOT BLOCK, TECPLOT POINT, HDF5, MAD, VTK
+\item[FORMAT] \ <file format>: \ specify the snapshot in time file type. Options available are: 
+\begin{deflist}{0000000000000000000000}
+\item[TECPLOT BLOCK]
+\item[TECPLOT POINT] -requires a single processor run
+\item[HDF5] -produces single HDF5 file {\tt pflotran.h5}
+\item[HDF5 MULTIPLE\_FILES] -produces a separate HDF5 file at each output time
+\item[MAD]
+\item[VTK] -not supported
+\end{deflist}
 %\item[FORMAT \ TECPLOT \ BLOCK]
 %\item[FORMAT \ HDF5]
 %\item[FORMAT \ MAD]
