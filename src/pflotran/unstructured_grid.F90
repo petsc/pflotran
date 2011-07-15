@@ -1817,14 +1817,22 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   
   ! IS for global numbering of local, non-ghosted cells
   call VecGetOwnershipRange(ugdm%global_vec,istart,iend,ierr)
-!  call ISCreateStride(option%mycomm,unstructured_grid%num_cells_local, &
-!                      istart,ndof,ugdm%is_local_petsc,ierr)
   allocate(int_array(unstructured_grid%num_cells_local))
   do icell = 1, unstructured_grid%num_cells_local
-    !sp 22/10/2010 not strided 
-!sp    int_array(icell) = (icell-1)*ndof+istart
     int_array(icell) = (icell-1)+istart
   enddo
+
+  ! arguments for ISCreateBlock():
+  ! option%mycomm  - the MPI communicator  
+  ! ndof  - number of elements in each block  
+  ! unstructured_grid%num_cells_local  - the length of the index set 
+  !                                      (the number of blocks)  
+  ! int_array  - the list of integers, one for each block and count !
+  !              of block not indices  
+  ! PETSC_COPY_VALUES  - see PetscCopyMode, only PETSC_COPY_VALUES and 
+  !                      PETSC_OWN_POINTER are supported in this routine  
+  ! ugdm%is_local_petsc - the new index set
+  ! ierr - PETScErrorCode
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_local_petsc,ierr)
   deallocate(int_array)
@@ -1838,14 +1846,10 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for local numbering of ghosts cells
   allocate(int_array(unstructured_grid%num_ghost_cells))
   do icell = 1, unstructured_grid%num_ghost_cells
-    ! sp 
-!    int_array(icell) = (icell+unstructured_grid%num_cells_local-1)*ndof
     int_array(icell) = (icell+unstructured_grid%num_cells_local-1)
   enddo
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_ghost_cells, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosts_local,ierr)
-!  call ISCreateGeneral(option%mycomm,unstructured_grid%num_ghost_cells, &
-!                       int_array,ugdm%is_ghosts_local,ierr)
   deallocate(int_array)
   
 #if GEH_DEBUG  
@@ -1861,14 +1865,10 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for local numbering of ghosts cells
   allocate(int_array(unstructured_grid%num_ghost_cells))
   do icell = 1, unstructured_grid%num_ghost_cells
-    !sp 
-!    int_array(icell) = (unstructured_grid%ghost_cell_ids_petsc(icell)-1)*ndof
     int_array(icell) = (unstructured_grid%ghost_cell_ids_petsc(icell)-1)
   enddo
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_ghost_cells, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosts_petsc,ierr)
-!  call ISCreateGeneral(option%mycomm,unstructured_grid%num_ghost_cells, &
-!                       int_array,ugdm%is_ghosts_petsc,ierr)
   deallocate(int_array)
   
 #if GEH_DEBUG
@@ -1880,14 +1880,10 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for local numbering of local, non-ghosted cells
   allocate(int_array(unstructured_grid%num_cells_local))
   do icell = 1, unstructured_grid%num_cells_local
-!sp 
-!    int_array(icell) = (icell-1)*ndof
     int_array(icell) = (icell-1)
   enddo
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_local_local,ierr)
-!  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_local, &
-!                       int_array,ugdm%is_local_local,ierr)
   deallocate(int_array)
   
 #if GEH_DEBUG  
@@ -1899,14 +1895,10 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for ghosted numbering of local ghosted cells
   allocate(int_array(unstructured_grid%num_cells_ghosted))
   do icell = 1, unstructured_grid%num_cells_ghosted
-    !sp 
-!    int_array(icell) = (icell-1)*ndof
     int_array(icell) = (icell-1)
   enddo
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_ghosted, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosted_local,ierr)
-!  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_ghosted, &
-!                       int_array,ugdm%is_ghosted_local,ierr)
   deallocate(int_array)
   
 #if GEH_DEBUG  
@@ -1921,15 +1913,11 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
     int_array(icell) = istart+(icell-1)
   enddo
   do icell = 1,unstructured_grid%num_ghost_cells
-    !sp 
     int_array(unstructured_grid%num_cells_local+icell) = &
       (unstructured_grid%ghost_cell_ids_petsc(icell)-1)
-!      (unstructured_grid%ghost_cell_ids_petsc(icell)-1)*ndof
   enddo
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_ghosted, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosted_petsc,ierr)
-!  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_ghosted, &
-!                       int_array,ugdm%is_ghosted_petsc,ierr)
   deallocate(int_array)
   
 #if GEH_DEBUG
@@ -2004,7 +1992,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call ISGetIndicesF90(ugdm%is_local_local,int_ptr,ierr)
   call VecScatterRemap(ugdm%scatter_ltol,int_ptr,PETSC_NULL_INTEGER,ierr)
   call ISRestoreIndicesF90(ugdm%is_local_local,int_ptr,ierr)
-!  call VecScatterCreate(local_vec,is_local_petsc,local_vec,is_ghosts_petsc,scatter_ltol,ierr)
 
 #if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltol.out',viewer,ierr)
@@ -2020,20 +2007,18 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecDestroy(vec_tmp,ierr)
   allocate(int_array(unstructured_grid%num_cells_local))
   do icell = 1, unstructured_grid%num_cells_local 
-!    int_array(icell) = (icell-1)*ndof+istart
     int_array(icell) = (icell-1)+istart
   enddo
   call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_local, &
-                       int_array,PETSC_COPY_VALUES,is_tmp,ierr) !sp 
+                       int_array,PETSC_COPY_VALUES,is_tmp,ierr) 
   deallocate(int_array)
   call AOPetscToApplicationIS(unstructured_grid%ao_natural_to_petsc, &
                               is_tmp,ierr)
-  ! remap for ndof > 1
+  ! remap for ndof > 1  !geh: no longer need to accommodate ndof > 1, but leave
+  ! alone for now.
   allocate(int_array(unstructured_grid%num_cells_local))
   call ISGetIndicesF90(is_tmp,int_ptr,ierr)
   do icell = 1, unstructured_grid%num_cells_local
-    !sp 
-!    int_array(icell) = int_ptr(icell)*ndof
     int_array(icell) = int_ptr(icell)
   enddo
   call ISRestoreIndicesF90(is_tmp,int_ptr,ierr)
