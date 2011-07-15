@@ -1690,7 +1690,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: dist_gravity  ! distance along gravity vector
           
   PetscInt :: ispec, np
-  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy, sat_ave
+  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
   
@@ -1698,7 +1698,6 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   fluxe = 0.d0
   v_darcy = 0.d0
   density_ave = 0.d0
-  sat_ave = 0.d0
   q = 0.d0
 
   ! Flow   
@@ -1719,7 +1718,6 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
               upweight=1.d0
            endif
            density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
-           sat_ave = upweight*aux_var_up%sat(np) + (1.D0-upweight)*aux_var_dn%sat(np)
            
            gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
                 (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
@@ -1743,19 +1741,17 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      case(NEUMANN_BC)
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
+           v_darcy = aux_vars(np)
            if (v_darcy > 0.d0) then 
               density_ave = aux_var_up%den(np)
-              sat_ave = aux_var_up%sat(np)
            else 
               density_ave = aux_var_dn%den(np)
-              sat_ave = aux_var_dn%sat(np)
            endif
         endif
 
      end select
      
-     q = v_darcy * area * sat_ave
+     q = v_darcy * area 
      vv_darcy(np) = v_darcy
      uh=0.D0
      uxmol=0.D0
