@@ -1703,102 +1703,102 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
-     select case(ibndtype(1))
+    select case(ibndtype(1))
         ! figure out the direction of flow
-     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
         Dq = perm_dn / dd_up
         ! Flow term
         ukvr=0.D0
         v_darcy=0.D0 
         if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-           upweight=1.D0
-           if (aux_var_up%sat(np) < eps) then 
-              upweight=0.d0
-           else if (aux_var_dn%sat(np) < eps) then 
-              upweight=1.d0
-           endif
-           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
+          upweight=1.D0
+          if (aux_var_up%sat(np) < eps) then 
+            upweight=0.d0
+          else if (aux_var_dn%sat(np) < eps) then 
+            upweight=1.d0
+          endif
+          density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
            
-           gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+          gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
                 (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
                 * dist_gravity
        
-           dphi = aux_var_up%pres - aux_var_dn%pres &
-                - aux_var_up%pc(np) + aux_var_dn%pc(np) &
-                + gravity
+          dphi = aux_var_up%pres - aux_var_dn%pres &
+                - aux_var_up%pc(np) + aux_var_dn%pc(np) + gravity
    
-           if (dphi>=0.D0) then
-              ukvr = aux_var_up%kvr(np)
-           else
-              ukvr = aux_var_dn%kvr(np)
-           endif
+          if (dphi>=0.D0) then
+            ukvr = aux_var_up%kvr(np)
+          else
+            ukvr = aux_var_dn%kvr(np)
+          endif
      
-           if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-           endif
+          if (ukvr*Dq>floweps) then
+            v_darcy = Dq * ukvr * dphi
+          endif
         endif
      
-     case(NEUMANN_BC)
+      case(NEUMANN_BC)
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
-           if (v_darcy > 0.d0) then 
-              density_ave = aux_var_up%den(np)
-           else 
-              density_ave = aux_var_dn%den(np)
-           endif
+          v_darcy = aux_vars(MPH_PRESSURE_DOF)
+          if (v_darcy > 0.d0) then 
+            density_ave = aux_var_up%den(np)
+          else 
+            density_ave = aux_var_dn%den(np)
+          endif
         endif
 
-     end select
+    end select
      
-     q = v_darcy * area 
-     vv_darcy(np) = v_darcy
-     uh=0.D0
-     uxmol=0.D0
+    q = v_darcy * area 
+    vv_darcy(np) = v_darcy
+    uh=0.D0
+    uxmol=0.D0
      
-     if (v_darcy >= 0.D0) then
-        !if(option%use_isothermal == PETSC_FALSE)&
-         uh = aux_var_up%h(np)
-        uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     else
-         !if(option%use_isothermal == PETSC_FALSE)&
-        uh = aux_var_dn%h(np)
-        uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     endif
+    if (v_darcy >= 0.D0) then
+!     if(option%use_isothermal == PETSC_FALSE)&
+      uh = aux_var_up%h(np)
+      uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+    else
+!     if(option%use_isothermal == PETSC_FALSE)&
+      uh = aux_var_dn%h(np)
+      uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+    endif
     
-     do ispec=1, option%nflowspec 
-        fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
-     enddo
+    do ispec=1, option%nflowspec 
+      fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+    enddo
       !if(option%use_isothermal == PETSC_FALSE) &
-      fluxe = fluxe + q*density_ave*uh
- !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
-   enddo
-     ! Diffusion term   
+    fluxe = fluxe + q*density_ave*uh
+!   print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
+  enddo
+  
+! Diffusion term   
   select case(ibndtype(3))
-  case(DIRICHLET_BC) 
-     !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-     !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
-        do np = 1, option%nphase
-          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
-              diff =diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
+    case(DIRICHLET_BC) 
+  ! if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
+     !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+      do np = 1, option%nphase
+        if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
+          diff =diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
                     (aux_var_up%den(np)+aux_var_up%den(np))
-           do ispec = 1, option%nflowspec
-              fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
+          do ispec = 1, option%nflowspec
+            fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
                    (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
                    -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
-           enddo
-          endif         
-        enddo
+          enddo
+        endif         
+      enddo
      
   end select
 
-  ! Conduction term
+! Conduction term
 ! if(option%use_isothermal == PETSC_FALSE) then
     select case(ibndtype(2))
-    case(DIRICHLET_BC, 4)
-       Dk =  Dk_dn / dd_up
-       cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
-       fluxe=fluxe + cond
+      case(DIRICHLET_BC, 4)
+        Dk =  Dk_dn / dd_up
+        cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
+        fluxe=fluxe + cond
     end select
 ! end if
 
