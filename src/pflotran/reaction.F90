@@ -899,6 +899,10 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
 !             read rate constant
               call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
               call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
+            case('ACTIVATION_ENERGY')
+!             read activation energy for Arrhenius law
+              call InputReadDouble(input,option,cur_mineral%tstrxn%activation_energy)
+              call InputErrorMsg(input,option,'activation','CHEMISTRY,MINERAL_KINETICS')
             case('AFFINITY_THRESHOLD')
 !             read affinity threshold for precipitation
               call InputReadDouble(input,option,cur_mineral%tstrxn%affinity_threshold)
@@ -4415,6 +4419,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
   PetscBool :: prefactor_exists
+  
+  PetscReal :: arrhenius_factor, rgas = 8.3147295d-3
 
   iphase = 1                         
 
@@ -4458,6 +4464,14 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       affinity_factor = 1.d0-QK**(1.d0/reaction%kinmnrl_Tempkin_const(imnrl))
     else
       affinity_factor = 1.d0-QK
+    endif
+    
+    ! Arrhenius factor
+    if (associated(reaction%kinmnrl_activation_energy)) then
+      arrhenius_factor = exp(reaction%kinmnrl_activation_energy(imnrl)/rgas &
+        *(1.d0/(global_auxvar%temp(iphase)+273.15d0)-1.d0/(25.d0+273.15d0)))
+    else
+      arrhenius_factor = 1.d0
     endif
     
     sign_ = sign(1.d0,affinity_factor)
@@ -4519,8 +4533,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! area = cm^2 mnrl/cm^3 bulk
       ! volume = m^3 bulk
       ! units = cm^2 mnrl/m^3 bulk
+      
       Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
+
+      Im_const = Im_const*arrhenius_factor
+      
       if (associated(reaction%kinmnrl_affinity_power)) then
         Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
       else
@@ -4554,6 +4572,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     else
       dIm_dQK = -Im_const*sum_prefactor_rate
     endif
+    
     if (associated(reaction%kinmnrl_Tempkin_const)) then
       dIm_dQK = dIm_dQK*(1.d0/reaction%kinmnrl_Tempkin_const(imnrl))/QK
     endif
