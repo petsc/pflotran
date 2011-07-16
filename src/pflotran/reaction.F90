@@ -4469,7 +4469,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     ! Arrhenius factor
     if (associated(reaction%kinmnrl_activation_energy)) then
       arrhenius_factor = exp(reaction%kinmnrl_activation_energy(imnrl)/rgas &
-        *(1.d0/(global_auxvar%temp(iphase)+273.15d0)-1.d0/(25.d0+273.15d0)))
+        *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
     else
       arrhenius_factor = 1.d0
     endif
