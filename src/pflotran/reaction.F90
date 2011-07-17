@@ -4467,7 +4467,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ! Arrhenius factor
-    if (associated(reaction%kinmnrl_activation_energy)) then
+    if (reaction%kinmnrl_activation_energy(imnrl) > 0.d0) then
       arrhenius_factor = exp(reaction%kinmnrl_activation_energy(imnrl)/rgas &
         *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
     else
@@ -4489,7 +4489,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       endif
     
 !     check for rate limiter for precipitation
-!     if (associated(reaction%kinmnrl_rate_limiter)) then
       if (reaction%kinmnrl_rate_limiter(imnrl) > 0.d0) then
         affinity_factor = affinity_factor/(1.d0+(1.d0-affinity_factor) &
           /reaction%kinmnrl_rate_limiter(imnrl))
