@@ -10,7 +10,7 @@ END
 
 :=========================== discretization ===================================
 GRID
-TYPE unstructured usg_5x4x3.h5
+TYPE unstructured hdf5/usg_5x4x3.h5
 END
 
 :=========================== fluid properties =================================
@@ -55,10 +55,40 @@ REFERENCE_PRESSURE 101325.
 
 :=========================== regions ==========================================
 
-REGION all
-FILE usg_5x4x3_region.dat 
+REGION All
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
 END 
 
+REGION Top_sidesets
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
+END 
+
+REGION Bottom_sidesets
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
+END 
+
+REGION North_sidesets
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
+END 
+
+REGION South_sidesets
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
+END 
+
+REGION East_sidesets
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
+END 
+
+REGION West_sidesets
+FILE hdf5/usg_5x4x3.h5
+GRID unstructured
+END 
 
 :=========================== flow conditions ==================================
 FLOW_CONDITION initial
@@ -70,18 +100,28 @@ DATUM 0.d0 0.d0 60.d0
 PRESSURE 101325.d0
 END
 
+FLOW_CONDITION rain_rate
+TYPE
+FLUX neumann
+/
+FLUX 5.5d-7
+END
+
 :=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
-:TRANSPORT_CONDITION initial_c
-REGION all
+REGION All
 END
 
+BOUNDARY_CONDITION rain
+  FLOW_CONDITION rain_rate
+  REGION Top_sidesets
+END
 
 :=========================== stratigraphy couplers ============================
 STRATA
-REGION all 
+REGION All 
 MATERIAL soil1
 END
 
