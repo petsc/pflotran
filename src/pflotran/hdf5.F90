@@ -3469,7 +3469,9 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
     
   case(2)
     !
-    !                    Read Vertices
+    !                  (i)  Read Vertices
+    !                       OR
+    !                  (ii) Cell IDs with face IDs
     !
     region%num_verts = dims_h5(2)/option%mycommsize
       remainder = dims_h5(2) - region%num_verts*option%mycommsize
@@ -3511,17 +3513,35 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
      ! Read the dataset collectively
      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
           dims_h5,hdf5_err,memory_space_id,data_space_id)
-  
-     ! allocate array to store vertices for each cell
-     allocate(region%vert_ids(0:MAX_VERT_PER_FACE,region%num_verts))
-     region%vert_ids = -1
-  
-     do ii = 1,region%num_verts
-       region%vert_ids(0,ii) = int_buffer(1,ii)
-         do jj = 2,int_buffer(1,ii)+1
-         region%vert_ids(jj-1,ii) = int_buffer(jj,ii)
+     
+     if(dims_h5(1) == 2) then
+       !
+       ! Input data is: Cell IDs + Face IDs
+       !
+       region%num_cells = region%num_verts
+       allocate(region%cell_ids(region%num_cells))
+       allocate(region%faces(region%num_cells))
+       region%num_verts = 0
+       
+       do ii = 1, region%num_cells
+         region%cell_ids(ii) = int_buffer(1,ii)
+         region%faces(ii) = int_buffer(2,ii)
        enddo
-     enddo
+     else
+       !
+       ! Input data is list of Vertices
+       !
+       ! allocate array to store vertices for each cell
+       allocate(region%vert_ids(0:MAX_VERT_PER_FACE,region%num_verts))
+       region%vert_ids = -1
+  
+       do ii = 1,region%num_verts
+         region%vert_ids(0,ii) = int_buffer(1,ii)
+           do jj = 2,int_buffer(1,ii)+1
+           region%vert_ids(jj-1,ii) = int_buffer(jj,ii)
+         enddo
+       enddo
+     endif
 
   end select
     
