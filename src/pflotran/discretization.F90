@@ -383,7 +383,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
 #else
 
 #ifdef PARALLELIO_LIB
-              call UGridReadHDF5POLib(un_str_grid,filename,option)
+              call UGridReadHDF5PIOLib(un_str_grid,filename,option)
 #else
               call UGridReadHDF5(un_str_grid,filename,option)
 #endif ! #ifdef PARALLELIO_LIB
