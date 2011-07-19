@@ -444,9 +444,26 @@ subroutine RegionReadFromFileId(region,input,option)
   character(len=1) :: backslash
 
   PetscInt, pointer :: temp_int_array(:)
+  PetscInt, pointer :: cell_ids_p(:)
+  PetscInt, pointer :: face_ids_p(:)
+  PetscInt, pointer :: vert_id_0_p(:)
+  PetscInt, pointer :: vert_id_1_p(:)
+  PetscInt, pointer :: vert_id_2_p(:)
+  PetscInt, pointer :: vert_id_3_p(:)
+  PetscInt, pointer :: vert_id_4_p(:)
   PetscInt :: max_size
-  PetscInt :: count, temp_int
+  PetscInt :: count
+  PetscInt :: temp_int
+  PetscInt :: input_data_type
+  PetscInt :: ii
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscInt :: remainder
   PetscErrorCode :: ierr
+
+  PetscInt, parameter :: CELL_IDS_ONLY = 1
+  PetscInt, parameter :: CELL_IDS_WITH_FACE_IDS = 2
+  PetscInt, parameter :: VERTEX_IDS = 3
 
   call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
 
@@ -455,7 +472,24 @@ subroutine RegionReadFromFileId(region,input,option)
                           ! is a double quote as in c/c++
   
   allocate(temp_int_array(max_size))
+  allocate(cell_ids_p(max_size))
+  allocate(face_ids_p(max_size))
+  allocate(vert_id_0_p(max_size))
+  allocate(vert_id_0_p(max_size))
+  allocate(vert_id_1_p(max_size))
+  allocate(vert_id_2_p(max_size))
+  allocate(vert_id_3_p(max_size))
+  allocate(vert_id_4_p(max_size))
+  
   temp_int_array = 0
+  cell_ids_p = 0
+  face_ids_p = 0
+  vert_id_0_p = 0
+  vert_id_1_p = -1
+  vert_id_2_p = -1
+  vert_id_3_p = -1
+  vert_id_4_p = -1
+  
   
   count = 0
 #if 0
@@ -482,6 +516,97 @@ subroutine RegionReadFromFileId(region,input,option)
   enddo
 #endif
 
+  ! Determine if region definition in the input data is one of the following:
+  !  1) Contains cell ids only : Only ONE entry per line
+  !  2) Contains cell ids and face ids: TWO entries per line
+  !  3) Contains vertex ids that make up the face: MORE than two entries per
+  !     line
+  count = 0
+  call InputReadFlotranString(input, option)
+  do 
+    call InputReadInt(input, option, temp_int)
+    if(InputError(input)) exit
+    count = count + 1
+    temp_int_array(count) = temp_int
+  enddo
+  write(*,*), 'count = ',count
+
+  if(count == 1) then
+    !
+    input_data_type = CELL_IDS_ONLY
+    cell_ids_p(1) = temp_int_array(1)
+    count = 1
+    write(*,*),count,cell_ids_p(count)
+    do
+      call InputReadFlotranString(input,option)
+      if (InputError(input)) exit
+      call InputReadInt(input,option,temp_int)
+      if (.not.InputError(input)) then
+        count = count + 1
+        cell_ids_p(count) = temp_int
+        write(*,*),count,temp_int
+      endif
+      if (count+1 > max_size) then ! resize temporary array
+        call reallocateIntArray(cell_ids_p,max_size)
+      endif
+    enddo
+
+    region%num_cells = count/option%mycommsize
+      remainder = count - region%num_cells*option%mycommsize
+    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(region%num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+
+    region%num_cells = iend - istart
+    write(*,*), istart, iend, region%num_cells
+    allocate(region%cell_ids(region%num_cells))
+    region%cell_ids(1:region%num_cells) = cell_ids_p(istart+1:iend)
+  else if(count == 2) then
+    input_data_type = CELL_IDS_WITH_FACE_IDS
+    cell_ids_p(1) = temp_int_array(1)
+    face_ids_p(1) = temp_int_array(2)
+    count = 1
+    write(*,*), 'cell_ids_p: ',cell_ids_p(count), face_ids_p(count)
+    do
+      call InputReadFlotranString(input,option)
+      if (InputError(input)) exit
+      do ii = 1, 2
+        count = count + 1
+        call InputReadInt(input,option,temp_int)
+        if(InputError(input)) exit
+        !  option%io_buffer = 'ERROR while reading the region from file'
+        !  call printErrMsg(option)
+        !endif
+        cell_ids_p(count) = temp_int
+        
+        call InputReadInt(input,option,temp_int)
+        if(InputError(input)) then
+          option%io_buffer = 'ERROR while reading the region from file'
+          call printErrMsg(option)
+        endif
+        face_ids_p(count) = temp_int
+        write(*,*), 'cell_ids_p: ',cell_ids_p(count), face_ids_p(count)
+      enddo
+      if (count+1 > max_size) then ! resize temporary array
+        call reallocateIntArray(cell_ids_p,max_size)
+        call reallocateIntArray(face_ids_p,max_size)
+      endif
+    enddo
+  else
+    input_data_type = VERTEX_IDS
+    vert_id_0_p(1) = temp_int_array(1)
+    vert_id_1_p(1) = temp_int_array(2)
+    vert_id_2_p(1) = temp_int_array(3)
+    vert_id_3_p(1) = temp_int_array(4)
+    if(vert_id_0_p(1) == 4 ) vert_id_4_p(1) = temp_int_array(5)
+  endif
+  
+#if 0  
+  count = 1
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
@@ -489,6 +614,7 @@ subroutine RegionReadFromFileId(region,input,option)
     if (.not.InputError(input)) then
       count = count + 1
       temp_int_array(count) = temp_int
+      write(*,*),count,temp_int
     endif
     if (count+1 > max_size) then ! resize temporary array
       call reallocateIntArray(temp_int_array,max_size)
@@ -503,7 +629,7 @@ subroutine RegionReadFromFileId(region,input,option)
     region%num_cells = 0
     nullify(region%cell_ids)
   endif
-
+#endif
   deallocate(temp_int_array) 
 
   call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
