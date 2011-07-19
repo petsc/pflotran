@@ -1831,8 +1831,8 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
       !
       call MatCreateMPIAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
                            ugrid%num_vertices_global, ugrid%num_cells_global, &
-                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL, &
-                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL, &
+                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
+                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
                            mat_vert2cell, ierr)
     
       do ghosted_id = 1, ugrid%num_cells_ghosted
