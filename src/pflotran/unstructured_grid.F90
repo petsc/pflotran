@@ -854,7 +854,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
                                                     '/Domain/Vertices'//CHAR(0)
 
   ! Read Domain/Cells
-  call HDF5ReadDatasetInteger2D(filename, 
+  call HDF5ReadDatasetInteger2D(filename, &
                                 cell_dataset_name, &
                                 NONUNIFORM_CONTIGUOUS_READ, &
                                 option, &
@@ -1823,14 +1823,14 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   enddo
 
   ! arguments for ISCreateBlock():
-  ! option%mycomm  - the MPI communicator  
-  ! ndof  - number of elements in each block  
-  ! unstructured_grid%num_cells_local  - the length of the index set 
-  !                                      (the number of blocks)  
-  ! int_array  - the list of integers, one for each block and count !
-  !              of block not indices  
-  ! PETSC_COPY_VALUES  - see PetscCopyMode, only PETSC_COPY_VALUES and 
-  !                      PETSC_OWN_POINTER are supported in this routine  
+  ! option%mycomm  - the MPI communicator
+  ! ndof  - number of elements in each block
+  ! unstructured_grid%num_cells_local  - the length of the index set
+  !                                      (the number of blocks
+  ! int_array  - the list of integers, one for each block and count
+  !              of block not indices
+  ! PETSC_COPY_VALUES  - see PetscCopyMode, only PETSC_COPY_VALUES and
+  !                      PETSC_OWN_POINTER are supported in this routine
   ! ugdm%is_local_petsc - the new index set
   ! ierr - PETScErrorCode
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
@@ -2131,7 +2131,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt, allocatable :: gtol(:)  
   !sp end 
   
-
   !sp extend cell_vertices_0 to include ghosted cells 
  
   allocate( ltog( unstructured_grid%num_vertices_local) )
@@ -2164,7 +2163,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     call VecGetArrayF90(local_vec2,vec_p,ierr)
 
     do icell = 1, unstructured_grid%num_cells_ghosted
-      cell_vertices_0(ivertex,icell)= vec_p(icell)  
+      cell_vertices_0(ivertex,icell)= vec_p(icell)
     enddo
     call VecRestoreArrayF90(local_vec2,vec_p,ierr)
 
@@ -2200,7 +2199,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
    do ivertex=0, max_vertex_count  
       unstructured_grid%cell_vertices_0(ivertex,icell)= cell_vertices_0(ivertex,icell) 
    end do 
-  end do 
+  end do
 
   call VecDestroy(local_vec1,ierr) 
   call VecDestroy(local_vec2,ierr) 
@@ -2573,7 +2572,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       vertex_to_cell(0,vertex_id) = count
     enddo
   enddo
-      
   
   nconn = 0
   do icell = 1, unstructured_grid%num_cells_local
