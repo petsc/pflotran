@@ -529,28 +529,77 @@ subroutine RegionReadFromFileId(region,input,option)
     count = count + 1
     temp_int_array(count) = temp_int
   enddo
-  write(*,*), 'count = ',count
 
   if(count == 1) then
+    !
+    ! Input data contains only cell ids
     !
     input_data_type = CELL_IDS_ONLY
     cell_ids_p(1) = temp_int_array(1)
     count = 1
-    write(*,*),count,cell_ids_p(count)
+
+    ! Read the data
     do
-      call InputReadFlotranString(input,option)
+      call InputReadFlotranString(input, option)
       if (InputError(input)) exit
-      call InputReadInt(input,option,temp_int)
+      call InputReadInt(input, option, temp_int)
       if (.not.InputError(input)) then
         count = count + 1
         cell_ids_p(count) = temp_int
-        write(*,*),count,temp_int
       endif
       if (count+1 > max_size) then ! resize temporary array
-        call reallocateIntArray(cell_ids_p,max_size)
+        call reallocateIntArray(cell_ids_p, max_size)
       endif
     enddo
 
+    ! Depending on processor rank, save only a portion of data
+    region%num_cells = count/option%mycommsize
+      remainder = count - region%num_cells*option%mycommsize
+    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_cells, istart, ONE_INTEGER_MPI, MPIU_INTEGER, &
+                    MPI_SUM, option%mycomm, ierr)
+    call MPI_Scan(region%num_cells, iend, ONE_INTEGER_MPI, MPIU_INTEGER, &
+                   MPI_SUM, option%mycomm, ierr)
+
+    ! Allocate memory and save the data
+    region%num_cells = iend - istart
+    allocate(region%cell_ids(region%num_cells))
+    region%cell_ids(1:region%num_cells) = cell_ids_p(istart+1:iend)
+    deallocate(cell_ids_p)
+
+  else if(count == 2) then
+    !
+    ! Input data contains cell ids + face ids
+    !
+    input_data_type = CELL_IDS_WITH_FACE_IDS
+    cell_ids_p(1) = temp_int_array(1)
+    face_ids_p(1) = temp_int_array(2)
+    count = 1 ! reset the counter to represent the num of rows read
+
+    ! Read the data
+    do
+      call InputReadFlotranString(input, option)
+      if (InputError(input)) exit
+      call InputReadInt(input, option, temp_int)
+      if(InputError(input)) exit
+      count = count + 1
+      cell_ids_p(count) = temp_int
+
+      call InputReadInt(input,option,temp_int)
+      if(InputError(input)) then
+        option%io_buffer = 'ERROR while reading the region from file'
+        call printErrMsg(option)
+      endif
+      face_ids_p(count) = temp_int
+      if (count+1 > max_size) then ! resize temporary array
+        call reallocateIntArray(cell_ids_p, max_size)
+        call reallocateIntArray(face_ids_p, max_size)
+      endif
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
     region%num_cells = count/option%mycommsize
       remainder = count - region%num_cells*option%mycommsize
     if(option%myrank < remainder) region%num_cells = region%num_cells + 1
@@ -561,48 +610,89 @@ subroutine RegionReadFromFileId(region,input,option)
     call MPI_Scan(region%num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
                    MPI_SUM,option%mycomm,ierr)
 
-    region%num_cells = iend - istart
-    write(*,*), istart, iend, region%num_cells
+    ! Allocate memory and save the data
     allocate(region%cell_ids(region%num_cells))
-    region%cell_ids(1:region%num_cells) = cell_ids_p(istart+1:iend)
-  else if(count == 2) then
-    input_data_type = CELL_IDS_WITH_FACE_IDS
-    cell_ids_p(1) = temp_int_array(1)
-    face_ids_p(1) = temp_int_array(2)
-    count = 1
-    write(*,*), 'cell_ids_p: ',cell_ids_p(count), face_ids_p(count)
-    do
-      call InputReadFlotranString(input,option)
-      if (InputError(input)) exit
-      do ii = 1, 2
-        count = count + 1
-        call InputReadInt(input,option,temp_int)
-        if(InputError(input)) exit
-        !  option%io_buffer = 'ERROR while reading the region from file'
-        !  call printErrMsg(option)
-        !endif
-        cell_ids_p(count) = temp_int
-        
-        call InputReadInt(input,option,temp_int)
-        if(InputError(input)) then
-          option%io_buffer = 'ERROR while reading the region from file'
-          call printErrMsg(option)
-        endif
-        face_ids_p(count) = temp_int
-        write(*,*), 'cell_ids_p: ',cell_ids_p(count), face_ids_p(count)
-      enddo
-      if (count+1 > max_size) then ! resize temporary array
-        call reallocateIntArray(cell_ids_p,max_size)
-        call reallocateIntArray(face_ids_p,max_size)
-      endif
-    enddo
+    allocate(region%faces(region%num_cells))
+    region%cell_ids(1:region%num_cells) = cell_ids_p(istart + 1:iend)
+    region%faces(1:region%num_cells) = face_ids_p(istart + 1:iend)
+    deallocate(cell_ids_p)
+    deallocate(face_ids_p)
+
   else
+    !
+    ! Input data contains vertices
+    !
     input_data_type = VERTEX_IDS
     vert_id_0_p(1) = temp_int_array(1)
     vert_id_1_p(1) = temp_int_array(2)
     vert_id_2_p(1) = temp_int_array(3)
     vert_id_3_p(1) = temp_int_array(4)
     if(vert_id_0_p(1) == 4 ) vert_id_4_p(1) = temp_int_array(5)
+    count = 1 ! reset the counter to represent the num of rows read
+
+    ! Read the data
+    do
+      call InputReadFlotranString(input,option)
+      if (InputError(input)) exit
+      call InputReadInt(input,option,temp_int)
+      if(InputError(input)) exit
+      count = count + 1
+      vert_id_0_p(count) = temp_int
+
+      vert_id_4_p(count) = -999
+      do ii = 1, vert_id_0_p(count)
+        call InputReadInt(input,option,temp_int)
+        if(InputError(input)) then
+          option%io_buffer = 'ERROR while reading the region from file'
+          call printErrMsg(option)
+        endif
+
+        select case(ii)
+          case(1)
+            vert_id_1_p(count) = temp_int
+          case(2)
+            vert_id_2_p(count) = temp_int
+          case(3)
+            vert_id_3_p(count) = temp_int
+          case(4)
+            vert_id_4_p(count) = temp_int
+        end select
+
+        if (count+1 > max_size) then ! resize temporary array
+          call reallocateIntArray(vert_id_0_p,max_size)
+          call reallocateIntArray(vert_id_1_p,max_size)
+          call reallocateIntArray(vert_id_2_p,max_size)
+          call reallocateIntArray(vert_id_3_p,max_size)
+          call reallocateIntArray(vert_id_4_p,max_size)
+        endif
+      enddo
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
+    region%num_verts = count/option%mycommsize
+      remainder = count - region%num_verts*option%mycommsize
+    if(option%myrank < remainder) region%num_verts = region%num_verts + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_verts,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(region%num_verts,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+
+    ! Allocate memory and save the data
+    region%num_verts = iend - istart
+    allocate(region%vert_ids(0:MAX_VERT_PER_FACE,1:region%num_verts))
+    region%vert_ids(0,1:region%num_verts) = vert_id_0_p(istart + 1: iend)
+    region%vert_ids(1,1:region%num_verts) = vert_id_1_p(istart + 1: iend)
+    region%vert_ids(2,1:region%num_verts) = vert_id_2_p(istart + 1: iend)
+    region%vert_ids(3,1:region%num_verts) = vert_id_3_p(istart + 1: iend)
+    region%vert_ids(4,1:region%num_verts) = vert_id_4_p(istart + 1: iend)
+    deallocate(vert_id_0_p)
+    deallocate(vert_id_1_p)
+    deallocate(vert_id_2_p)
+    deallocate(vert_id_3_p)
+    deallocate(vert_id_4_p)
+
   endif
   
 #if 0  
