@@ -118,14 +118,8 @@ module Option_module
     PetscReal :: gravity(3)
     
     PetscReal :: scale
- !   PetscReal, pointer :: dencpr(:),ckwet(:)
- !   PetscReal, pointer :: sir(:,:)
 
     PetscReal :: m_nacl
-!    PetscReal :: difaq, delhaq, eqkair, ret=1.d0, fc=1.d0
-!    PetscReal :: difsc
-!    PetscReal :: difgs
-!    PetscReal :: disp
     
     PetscInt :: ideriv
     PetscInt :: idt_switch
@@ -232,6 +226,8 @@ module Option_module
     
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
+
+    character(len=MAXWORDLENGTH), pointer :: plot_variables(:)
 
   end type output_option_type
 
@@ -926,6 +922,10 @@ subroutine OutputOptionDestroy(output_option)
   
   type(output_option_type), pointer :: output_option
   
+  if (associated(output_option%plot_variables)) &
+    deallocate(output_option%plot_variables)
+  nullify(output_option%plot_variables)
+
   deallocate(output_option)
   nullify(output_option)
   
@@ -947,16 +947,6 @@ subroutine OptionDestroy(option)
   ! all kinds of stuff needs to be added here.
 
   ! all the below should be placed somewhere other than option.F90
-#if 0
-  if (associated(option%dencpr)) deallocate(option%dencpr)
-  nullify(option%dencpr)
-  if (associated(option%ckwet)) deallocate(option%ckwet)
-  nullify(option%ckwet)
-  if (associated(option%sir)) deallocate(option%sir)
-  nullify(option%sir)
-  if (associated(option%tfac)) deallocate(option%tfac)
-  nullify(option%tfac)
-#endif  
   
   deallocate(option)
   nullify(option)
