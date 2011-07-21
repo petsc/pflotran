@@ -1603,8 +1603,8 @@ subroutine RTCalculateTransportMatrix(realization,T)
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(option%use_samr) then
-         call SAMRSetCurrentJacobianPatch(T, grid%structured_grid%p_samr_patch)
+      if (option%use_samr) then
+        call SAMRSetCurrentJacobianPatch(T, grid%structured_grid%p_samr_patch)
       endif
 
       call RTCalculateTranMatrixPatch1(realization,T)
@@ -1948,7 +1948,8 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   if(option%use_samr) then
      flow_pc = 1
      call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
-          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+            realization%discretization%amrgrid%p_application, &
+            grid%structured_grid%p_samr_patch)
   endif
   
 end subroutine RTCalculateTranMatrixPatch2
@@ -4737,9 +4738,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
-         call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
+      if (associated(grid%structured_grid)) then
+        if (.not.grid%structured_grid%p_samr_patch == 0) then
+          call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
+        endif
       endif
 
       call RTJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
@@ -4763,9 +4765,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
-         call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
+      if (associated(grid%structured_grid)) then
+        if (.not.grid%structured_grid%p_samr_patch == 0) then
+          call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
+        endif
       endif
 
       call RTJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
@@ -5472,7 +5475,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   if(option%use_samr) then
      tran_pc = 1
      call SAMRSetJacobianSrcCoeffsOnPatch(tran_pc, &
-          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+            realization%discretization%amrgrid%p_application, &
+            grid%structured_grid%p_samr_patch)
   endif
 
 end subroutine RTJacobianPatch2
