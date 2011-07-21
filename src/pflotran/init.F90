@@ -2818,21 +2818,13 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       if (material_property%vertical_anisotropy_ratio > 0.d0) then
         ratio = material_property%vertical_anisotropy_ratio
       endif
-      if (associated(patch%imat)) then
-        do local_id = 1, grid%nlmax
-          if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
-            perm_xx_p(local_id) = vec_p(local_id)
-            perm_yy_p(local_id) = vec_p(local_id)
-            perm_zz_p(local_id) = vec_p(local_id)*ratio
-          endif
-        enddo
-      else
-        do local_id = 1, grid%nlmax
+      do local_id = 1, grid%nlmax
+        if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
           perm_xx_p(local_id) = vec_p(local_id)
           perm_yy_p(local_id) = vec_p(local_id)
-          perm_zz_p(local_id) = vec_p(local_id)*ratio         
-        enddo
-      endif
+          perm_zz_p(local_id) = vec_p(local_id)*ratio
+        endif
+      enddo
       call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
     else
       do idirection = X_DIRECTION,Z_DIRECTION
@@ -2885,9 +2877,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
       call InputErrorMsg(input,option,'natural id','STRATA')
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) /= material_property%id) cycle
-        endif
+        if (patch%imat(ghosted_id) /= material_property%id) cycle
         local_id = grid%nG2L(ghosted_id)
         if (local_id > 0) then
           call InputReadDouble(input,option,permeability)
