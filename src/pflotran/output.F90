@@ -7080,9 +7080,9 @@ subroutine OutputMassBalanceNew(realization)
   type(grid_type), pointer :: grid
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option  
-  type(coupler_type), pointer :: boundary_condition
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
+  type(coupler_type), pointer :: coupler
+  type(global_auxvar_type), pointer :: global_aux_vars_bc_or_ss(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc_or_ss(:)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word
@@ -7103,6 +7103,7 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscMPIInt :: int_mpi
+  PetscBool :: bcs_done
   
   patch => realization%patch
   grid => patch%grid
@@ -7174,59 +7175,71 @@ subroutine OutputMassBalanceNew(realization)
         enddo
       endif
       
-      boundary_condition => patch%boundary_conditions%first
-      do 
-        if (.not.associated(boundary_condition)) exit
+      coupler => patch%boundary_conditions%first
+      bcs_done = PETSC_FALSE
+      do
+        if (.not.associated(coupler)) then
+          if (bcs_done) then
+            exit
+          else
+            bcs_done = PETSC_TRUE
+            if (associated(patch%source_sinks)) then
+              coupler => patch%source_sinks%first
+            else
+              exit
+            endif
+          endif
+        endif
 
         select case(option%iflowmode)
           case(RICHARDS_MODE)
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [kg]"'
+              trim(coupler%name) // ' Water Mass [kg]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [kg/' // &
+              trim(coupler%name) // ' Water Mass [kg/' // &
               trim(output_option%tunit) // ']"'
           case(G_MODE)
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [mol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Air Mass [mol]"'
+              trim(coupler%name) // ' Air Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Air Mass [mol/' // &
+              trim(coupler%name) // ' Air Mass [mol/' // &
               trim(output_option%tunit) // ']"'
           case(MPH_MODE)
 #if 0
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' CO2 Mass [mol]"'
+              trim(coupler%name) // ' CO2 Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [mol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' CO2 Mass [mol/' // &
+              trim(coupler%name) // ' CO2 Mass [mol/' // &
               trim(output_option%tunit) // ']"'
 #endif
         end select
@@ -7237,7 +7250,7 @@ subroutine OutputMassBalanceNew(realization)
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
               write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-                  trim(boundary_condition%name) // ' ' // &
+                  trim(coupler%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol]"'
             endif
           enddo
@@ -7247,13 +7260,13 @@ subroutine OutputMassBalanceNew(realization)
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
               write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-                  trim(boundary_condition%name) // ' ' // &
+                  trim(coupler%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol/' // &
                   trim(output_option%tunit) // ']"'
             endif
           enddo
         endif
-        boundary_condition => boundary_condition%next
+        coupler => coupler%next
       
       enddo
       
@@ -7292,11 +7305,6 @@ subroutine OutputMassBalanceNew(realization)
     write(fid,100,advance="no") option%time/output_option%tconv
   endif
 
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  if (option%ntrandof > 0) then
-    rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
-  endif    
-  
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
     select case(option%iflowmode)
@@ -7340,54 +7348,76 @@ subroutine OutputMassBalanceNew(realization)
     endif
   endif
   
-  boundary_condition => patch%boundary_conditions%first
+  coupler => patch%boundary_conditions%first
+  global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_bc
+  if (option%ntrandof > 0) then
+    rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_bc
+  endif    
+  bcs_done = PETSC_FALSE
   do 
-    if (.not.associated(boundary_condition)) exit
+    if (.not.associated(coupler)) then
+      if (bcs_done) then
+        exit
+      else
+        bcs_done = PETSC_TRUE
+        if (associated(patch%source_sinks)) then
+          coupler => patch%source_sinks%first
+          global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_ss
+          if (option%ntrandof > 0) then
+            rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_ss
+          endif    
+        else
+          exit
+        endif
+      endif
+    endif
 
-    offset = boundary_condition%connection_set%offset
+    offset = coupler%connection_set%offset
     
     if (option%nflowdof > 0) then
 
 #if 0
 ! compute the total area of the boundary condition
-      sum_area = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_area(1) = sum_area(1) + &
-          boundary_condition%connection_set%area(iconn)
-        if (global_aux_vars_bc(offset+iconn)%sat(1) >= 0.5d0) then
-          sum_area(2) = sum_area(2) + &
-            boundary_condition%connection_set%area(iconn)
-        endif
-        if (global_aux_vars_bc(offset+iconn)%sat(1) > 0.99d0) then
-          sum_area(3) = sum_area(3) + &
-            boundary_condition%connection_set%area(iconn)
-        endif
-        sum_area(4) = sum_area(4) + &
-          boundary_condition%connection_set%area(iconn)* &
-          global_aux_vars_bc(offset+iconn)%sat(1)
-      enddo
+      if (.not.bcs_done) then
+        sum_area = 0.d0
+        do iconn = 1, coupler%connection_set%num_connections
+          sum_area(1) = sum_area(1) + &
+            coupler%connection_set%area(iconn)
+          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) >= 0.5d0) then
+            sum_area(2) = sum_area(2) + &
+              coupler%connection_set%area(iconn)
+          endif
+          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) > 0.99d0) then
+            sum_area(3) = sum_area(3) + &
+              coupler%connection_set%area(iconn)
+          endif
+          sum_area(4) = sum_area(4) + &
+            coupler%connection_set%area(iconn)* &
+            global_aux_vars_bc_or_ss(offset+iconn)%sat(1)
+        enddo
 
-      call MPI_Reduce(sum_area,sum_area_global, &
-                      FOUR_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%mycomm,ierr)
+        call MPI_Reduce(sum_area,sum_area_global, &
+                        FOUR_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                        option%io_rank,option%mycomm,ierr)
                           
-      if (option%myrank == option%io_rank) then
-        print *
-        write(word,'(es16.6)') sum_area_global(1)
-        print *, 'Total area in ' // trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area_global(2)
-        print *, 'Total half-saturated area in '// &
-                 trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area_global(3)
-        print *, 'Total saturated area in '// trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area_global(4)
-        print *, 'Total saturation-weighted area [=sum(saturation*area)] in '//&
-                   trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        print *
+        if (option%myrank == option%io_rank) then
+          print *
+          write(word,'(es16.6)') sum_area_global(1)
+          print *, 'Total area in ' // trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          write(word,'(es16.6)') sum_area_global(2)
+          print *, 'Total half-saturated area in '// &
+                   trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          write(word,'(es16.6)') sum_area_global(3)
+          print *, 'Total saturated area in '// trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          write(word,'(es16.6)') sum_area_global(4)
+          print *, 'Total saturation-weighted area [=sum(saturation*area)] in '//&
+                     trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          print *
+        endif
       endif
 #endif
 
@@ -7395,8 +7425,8 @@ subroutine OutputMassBalanceNew(realization)
         case(RICHARDS_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
-          do iconn = 1, boundary_condition%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -7411,8 +7441,8 @@ subroutine OutputMassBalanceNew(realization)
 
           ! print out H2O flux
           sum_kg = 0.d0
-          do iconn = 1, boundary_condition%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
@@ -7434,8 +7464,8 @@ subroutine OutputMassBalanceNew(realization)
 
       ! print out cumulative boundary flux
       sum_mol = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
+      do iconn = 1, coupler%connection_set%num_connections
+        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -7456,8 +7486,8 @@ subroutine OutputMassBalanceNew(realization)
     
       ! print out boundary flux
       sum_mol = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
+      do iconn = 1, coupler%connection_set%num_connections
+        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta 
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -7478,7 +7508,7 @@ subroutine OutputMassBalanceNew(realization)
       endif
     endif
 
-    boundary_condition => boundary_condition%next
+    coupler => coupler%next
   
   enddo
 

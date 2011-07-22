@@ -2455,10 +2455,10 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
       if (option%compute_mass_balance_new) then
         ! contribution to boundary 
         rt_aux_vars_ss(sum_connection)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars_ss(sum_connection)%mass_balance_delta(:,iphase) - Res
+          rt_aux_vars_ss(sum_connection)%mass_balance_delta(:,iphase) + Res
         ! contribution to internal 
 !        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) - Res
         endif
     enddo
     source_sink => source_sink%next
@@ -4577,10 +4577,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       if (option%compute_mass_balance_new) then
         ! contribution to boundary 
         rt_aux_vars_ss(sum_connection)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars_ss(sum_connection)%mass_balance_delta(:,iphase) - Res
+          rt_aux_vars_ss(sum_connection)%mass_balance_delta(:,iphase) + Res
         ! contribution to internal 
 !        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) - Res
         endif
     enddo
     source_sink => source_sink%next
