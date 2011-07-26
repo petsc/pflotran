@@ -13,8 +13,8 @@ module General_Aux_module
     PetscReal, pointer :: den_kg(:) ! (iphase)
     PetscReal :: temp
     PetscReal, pointer :: xmol(:,:) ! (icomp,iphase)
-    PetscReal, pointer :: H(:)
-    PetscReal, pointer :: U(:)
+    PetscReal, pointer :: H(:) ! MJ/kmol
+    PetscReal, pointer :: U(:) ! MJ/kmol
 !    PetscReal, pointer :: dsat_dp(:,:)
 !    PetscReal, pointer :: dden_dp(:,:)
 !    PetscReal, pointer :: dsat_dt(:)
@@ -35,10 +35,11 @@ module General_Aux_module
 
     PetscBool :: aux_vars_up_to_date
     PetscBool :: inactive_cells_exist
-    PetscInt :: num_aux, num_aux_bc
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
     type(general_parameter_type), pointer :: general_parameter
     type(general_auxvar_type), pointer :: aux_vars(:,:)
     type(general_auxvar_type), pointer :: aux_vars_bc(:)
+    type(general_auxvar_type), pointer :: aux_vars_ss(:)
   end type general_type
 
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
@@ -72,8 +73,10 @@ function GeneralAuxCreate(option)
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
@@ -185,7 +188,7 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   PetscReal :: den_gp, den_gt, hgp, hgt, dgp, dgt, u
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: krg, visg, dkrg_Se
-  PetscReal :: K_H
+  PetscReal :: K_H, Ps
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid
   PetscErrorCode :: ierr
@@ -200,21 +203,31 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   wid = option%water_id
   eid = option%energy_id
   
-  
   gen_aux_var%H = 0.d0
   gen_aux_var%U = 0.d0
+  gen_aux_var%kvr = 0.d0
+  gen_aux_var%pres = 0.d0
+  gen_aux_var%temp = 0.d0
+  gen_aux_var%sat = 0.d0
+  gen_aux_var%den = 0.d0
+  gen_aux_var%den_kg = 0.d0
+  gen_aux_var%xmol = 0.d0
   
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
       gen_aux_var%pres(lid) = x(GENERAL_LIQUID_PRESSURE_DOF)
-      gen_aux_var%xmol(acid,lid) = x(GENERAL_CONCENTRATION_DOF)
+      gen_aux_var%xmol(acid,lid) = x(GENERAL_MOLE_FRACTION_DOF)
       gen_aux_var%temp = x(GENERAL_TEMPERATURE_DOF)
 
       gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
       gen_aux_var%sat(lid) = 1.d0
       gen_aux_var%sat(gid) = 0.d0
 
-      call psat(gen_aux_var%temp,gen_aux_var%pres(vpid),ierr)
+      call psat(gen_aux_var%temp,Ps,ierr)
+      call Henry_air_noderiv(gen_aux_var%pres(lid),gen_aux_var%temp, &
+                             Ps,K_H)
+      gen_aux_var%pres(apid) = K_H*gen_aux_var%xmol(acid,lid)
+      gen_aux_var%pres(vpid) = gen_aux_var%pres(lid) - gen_aux_var%pres(apid)
 
     case(GAS_STATE)
       gen_aux_var%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)
@@ -254,14 +267,18 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
 
   end select
 
+
   if (global_aux_var%istate == LIQUID_STATE .or. &
       global_aux_var%istate == TWO_PHASE_STATE) then
     call wateos_noderiv(gen_aux_var%temp,gen_aux_var%pres(lid), &
                         gen_aux_var%den_kg(lid),gen_aux_var%den(lid), &
                         gen_aux_var%H(lid),option%scale,ierr)
 
+    ! MJ/kmol comp
     gen_aux_var%U(lid) = gen_aux_var%H(lid) - &
-                         (gen_aux_var%pres(lid) / gen_aux_var%den(lid))
+                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                         (gen_aux_var%pres(lid) / gen_aux_var%den(lid) * &
+                          option%scale)
                          
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(lid),krl,dkrl_Se, &
                                   saturation_function,lid,PETSC_FALSE,option)
@@ -280,10 +297,13 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
     
     gen_aux_var%den(gid) = den_wat_vap + den_air
     gen_aux_var%den_kg(gid) = den_kg_wat_vap + den_air*FMWAIR
+    ! MJ/kmol
     gen_aux_var%H(gid) = gen_aux_var%xmol(wid,gid)*h_wat_vap + &
                          gen_aux_var%xmol(acid,gid)*h_air
     gen_aux_var%U(gid) = gen_aux_var%H(gid) - &
-                         (gen_aux_var%pres(gid) / gen_aux_var%den(gid))
+                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                         (gen_aux_var%pres(gid) / gen_aux_var%den(gid) * &
+                          option%scale)
 
     call SatFuncGetRelPermFromSat(gen_aux_var%sat(gid),krg,dkrg_Se, &
                                   saturation_function,gid,PETSC_FALSE,option)
@@ -358,6 +378,13 @@ subroutine GeneralAuxDestroy(aux)
     deallocate(aux%aux_vars_bc)
   endif
   nullify(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_ss)) then
+    do iaux = 1, aux%num_aux_ss
+      call GeneralAuxVarDestroy(aux%aux_vars_ss(iaux))
+    enddo  
+    deallocate(aux%aux_vars_ss)
+  endif
+  nullify(aux%aux_vars_ss)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

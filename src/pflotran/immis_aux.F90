@@ -64,6 +64,8 @@ type, public :: Immis_auxvar_elem_type
      type(Immis_parameter_type), pointer :: immis_parameter
      type(Immis_auxvar_type), pointer :: aux_vars(:)
      type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
+
+     PetscReal, pointer :: res_old_AR(:,:), res_old_FL(:,:), delx(:,:)
   end type Immis_type
 
   
@@ -107,6 +109,9 @@ function ImmisAuxCreate()
   nullify(aux%immis_parameter%dencpr)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+  nullify(aux%res_old_FL)
+  nullify(aux%res_old_AR)
+  nullify(aux%delx)
 
   ImmisAuxCreate => aux
   
@@ -509,6 +514,12 @@ use option_module
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+  if (associated(aux%res_old_AR)) deallocate(aux%res_old_AR)
+  nullify(aux%res_old_AR)
+  if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
+  nullify(aux%res_old_FL)
+  if (associated(aux%delx)) deallocate(aux%delx)
+  nullify(aux%delx)
   if (associated(aux%immis_parameter)) then
     if (associated(aux%immis_parameter%dencpr)) deallocate(aux%immis_parameter%dencpr)
     nullify(aux%immis_parameter%dencpr)

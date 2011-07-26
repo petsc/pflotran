@@ -266,7 +266,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
-  
+
   implicit none
   
 #include "finclude/petscdef.h"
@@ -294,7 +294,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscBool :: failure
   PetscLogDouble :: start_time, end_time
   PetscReal :: tran_dt_save, flow_t0
-  
+
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
 
@@ -342,6 +342,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     if (transport_read) then
       tran_stepper%target_time = option%tran_time
+      ! This is here since we need to recalculate the secondary complexes
+      ! if they exist.  DO NOT update activity coefficients!!! - geh
+      if (realization%reaction%use_full_geochemistry) then
+        call StepperUpdateTranAuxVars(realization)
+        !call StepperSandbox(realization)
+      endif
     endif
 
   else if (master_stepper%init_to_steady_state) then
@@ -831,12 +837,14 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
       if (dtt > flow_stepper%dt_max) dtt = flow_stepper%dt_max
-      ! for restarted simulations, we will give 5 time steps to get caught up
-!geh      if (option%restart_flag .and. flow_stepper%steps <= 5) then
-      if (option%restart_flag .or. flow_stepper%steps <= 5) then
+      ! geh: the issue here is that we do not want pflotran to cut the time step
+      ! (due to dt being large relative to time) if we restart the simulation 
+      ! setting the time back to zero.  the problem is that one cannot key 
+      ! off of option%restart_flag since that flag is also set when time is 
+      ! nonzero....  Therefore, must use option%restart_time
+      if (dabs(option%restart_time) < 1.d-40 .and. flow_stepper%steps <= 5) then
         ! do nothing
       else
-!geh        if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
         if (dtt>.25d0*time) dtt=.25d0*time
       endif
       dt = dtt
@@ -893,12 +901,10 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
       if (dtt > tran_stepper%dt_max) dtt = tran_stepper%dt_max
-      ! for restarted simulations, we will give 5 time steps to get caught up
-!geh      if (option%restart_flag .and. tran_stepper%steps <= 5) then
-      if (option%restart_flag .or. tran_stepper%steps <= 5) then
+      ! geh: see comment above under flow stepper
+      if (dabs(option%restart_time) < 1.d-40 .and. tran_stepper%steps <= 5) then
         ! do nothing
       else
-!geh        if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
         if (dtt>.25d0*time) dtt=.25d0*time
       endif
       dt = dtt
@@ -999,7 +1005,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
   if (target_time + tolerance*dt >= cur_waypoint%time .and. &
-      (cur_waypoint%update_srcs .or. &
+      (cur_waypoint%update_conditions .or. &
        cur_waypoint%print_output .or. &
        cur_waypoint%print_tr_output)) then
     ! decrement by time step size
@@ -1255,9 +1261,9 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           case(IMS_MODE)
             call ImmisUpdateReason(update_reason,realization)
           case(MPH_MODE)
-            call MPhaseUpdateReason(update_reason,realization)
+!           call MPhaseUpdateReason(update_reason,realization)
           case(FLASH2_MODE)
-            call Flash2UpdateReason(update_reason,realization)
+!           call Flash2UpdateReason(update_reason,realization)
           case(THC_MODE)
             update_reason=1
           case(RICHARDS_MODE,G_MODE)
@@ -1627,8 +1633,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
     final_tran_time = option%tran_time + option%tran_dt
    
     if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
-!       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE are passed
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+!       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE,* are passed
 !       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
     endif
     if (realization%reaction%use_log_formulation) then
@@ -1923,7 +1929,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   ! update time derivative on RHS
   call RTUpdateRHSCoefs(realization)
   ! calculate total component concentrations based on t0 densities
-  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
   call RTCalculateRHS_t0(realization)
     
   ! set densities and saturations to t+dt
@@ -2422,7 +2428,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT (STEADY STATE) ",32("="))')
 
   if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
   endif
 
   if (realization%reaction%use_log_formulation) then
@@ -2674,6 +2680,126 @@ subroutine StepperUpdateFlowAuxVars(realization)
   end select    
 
 end subroutine StepperUpdateFlowAuxVars
+
+! ************************************************************************** !
+!
+! StepperUpdateTranAuxVars: Updates the flow auxilliary variables
+! author: Glenn Hammond
+! date: 10/11/08 
+!
+! ************************************************************************** !
+subroutine StepperUpdateTranAuxVars(realization)
+  
+  use Reactive_Transport_module, only : RTUpdateAuxVars
+  use Realization_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+                                   ! cells     bcs        act coefs.
+  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+
+end subroutine StepperUpdateTranAuxVars
+
+! ************************************************************************** !
+!
+! StepperSandbox: Sandbox for temporary miscellaneous operations
+! author: Glenn Hammond
+! date: 06/27/11
+!
+! ************************************************************************** !
+subroutine StepperSandbox(realization)
+  
+  use Reactive_Transport_module, only : RTUpdateAuxVars
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Field_module
+  use Discretization_module
+  use Option_module
+  use Reaction_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use String_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(patch_type), pointer :: patch
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(reaction_type), pointer :: reaction
+  type(option_type), pointer :: option
+
+  PetscReal, pointer :: tran_xx_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: volume_p(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart, iend
+  PetscInt :: species_offset
+  PetscInt :: num_iterations
+  PetscErrorCode :: ierr
+
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  reaction => realization%reaction
+  option => realization%option
+
+  rt_aux_vars => patch%Aux%RT%aux_vars
+  global_aux_vars => patch%Aux%Global%aux_vars
+
+                                   ! cells     bcs        act coefs.
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+
+  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+
+  do species_offset = 1, reaction%naqcomp
+    if (StringCompare(reaction%primary_species_names(species_offset), &
+                      'UO2++',FIVE_INTEGER)) then
+      ! decrement
+      exit
+    endif
+  enddo
+  species_offset = species_offset - 1
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    
+    iend = local_id*reaction%naqcomp
+    istart = iend-reaction%naqcomp+1
+    
+    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%total(:,ONE_INTEGER)
+    ! scale uo2++ total concentration by 0.25
+    tran_xx_p(istart + species_offset) = 0.25d0 * &
+                                         tran_xx_p(istart + species_offset)
+
+    call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                tran_xx_p(istart:iend),volume_p(local_id), &
+                porosity_loc_p(ghosted_id), &
+                num_iterations,reaction,option)
+    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                   field%tran_xx_loc,NTRANDOF)
+
+                                   ! cells     bcs        act coefs.
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+
+end subroutine StepperSandbox
 
 ! ************************************************************************** !
 !

@@ -33,6 +33,10 @@ module Option_module
     
     PetscInt :: reactive_transport_coupling
 
+#if defined(PARALLELIO_LIB)
+    PetscMPIInt :: ioread_group_id, iowrite_group_id
+#endif
+
 #ifdef VAMSI_HDF5_READ
     MPI_Comm :: read_group, readers
     PetscMPIInt :: read_grp_size, read_grp_rank, readers_size, readers_rank 
@@ -114,14 +118,8 @@ module Option_module
     PetscReal :: gravity(3)
     
     PetscReal :: scale
- !   PetscReal, pointer :: dencpr(:),ckwet(:)
- !   PetscReal, pointer :: sir(:,:)
 
     PetscReal :: m_nacl
-!    PetscReal :: difaq, delhaq, eqkair, ret=1.d0, fc=1.d0
-!    PetscReal :: difsc
-!    PetscReal :: difgs
-!    PetscReal :: disp
     
     PetscInt :: ideriv
     PetscInt :: idt_switch
@@ -142,6 +140,7 @@ module Option_module
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
     PetscBool :: no_restart_kinetic_sorption
+    PetscBool :: no_restart_mineral_vol_frac
         
 !   table lookup
     PetscInt :: itable
@@ -177,6 +176,7 @@ module Option_module
     PetscBool :: steady_state
     
     PetscBool :: use_matrix_buffer
+    PetscBool :: force_newton_iteration
   
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
@@ -199,6 +199,7 @@ module Option_module
     PetscBool :: print_hdf5
     PetscBool :: print_hdf5_velocities
     PetscBool :: print_hdf5_flux_velocities
+    PetscBool :: print_single_h5_file
 
     PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
@@ -225,6 +226,8 @@ module Option_module
     
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
+
+    character(len=MAXWORDLENGTH), pointer :: plot_variables(:)
 
   end type output_option_type
 
@@ -443,6 +446,7 @@ subroutine OptionInitRealization(option)
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE
   option%no_restart_kinetic_sorption = PETSC_FALSE
+  option%no_restart_mineral_vol_frac = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20
 
@@ -515,6 +519,7 @@ subroutine OptionInitRealization(option)
 
   option%use_matrix_buffer = PETSC_FALSE
   option%init_stage = PETSC_FALSE 
+  option%force_newton_iteration = PETSC_FALSE
 
   option%mimetic = PETSC_FALSE
  
@@ -540,6 +545,7 @@ function OutputOptionCreate()
   output_option%print_hdf5 = PETSC_FALSE
   output_option%print_hdf5_velocities = PETSC_FALSE
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
+  output_option%print_single_h5_file = PETSC_TRUE
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
@@ -916,6 +922,10 @@ subroutine OutputOptionDestroy(output_option)
   
   type(output_option_type), pointer :: output_option
   
+  if (associated(output_option%plot_variables)) &
+    deallocate(output_option%plot_variables)
+  nullify(output_option%plot_variables)
+
   deallocate(output_option)
   nullify(output_option)
   
@@ -937,16 +947,6 @@ subroutine OptionDestroy(option)
   ! all kinds of stuff needs to be added here.
 
   ! all the below should be placed somewhere other than option.F90
-#if 0
-  if (associated(option%dencpr)) deallocate(option%dencpr)
-  nullify(option%dencpr)
-  if (associated(option%ckwet)) deallocate(option%ckwet)
-  nullify(option%ckwet)
-  if (associated(option%sir)) deallocate(option%sir)
-  nullify(option%sir)
-  if (associated(option%tfac)) deallocate(option%tfac)
-  nullify(option%tfac)
-#endif  
   
   deallocate(option)
   nullify(option)

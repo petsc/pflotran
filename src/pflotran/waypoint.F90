@@ -14,8 +14,7 @@ module Waypoint_module
     PetscBool :: print_output
     PetscBool :: print_tr_output
     type(output_option_type), pointer :: output_option
-    PetscBool :: update_bcs
-    PetscBool :: update_srcs
+    PetscBool :: update_conditions
     PetscReal :: dt_max
     PetscBool :: final  ! any waypoint after this will be deleted
     type(waypoint_type), pointer :: prev
@@ -37,7 +36,8 @@ module Waypoint_module
             WaypointListFillIn, &
             WaypointListRemoveExtraWaypnts, &
             WaypointConvertTimes, &
-            WaypointSkipToTime
+            WaypointSkipToTime, &
+            WaypointListPrint
 
 contains
 
@@ -63,8 +63,7 @@ function WaypointCreate()
   waypoint%final = PETSC_FALSE
 !  waypoint%output_option => OutputOptionCreate()
   nullify(waypoint%output_option)
-  waypoint%update_bcs = PETSC_FALSE
-  waypoint%update_srcs = PETSC_FALSE
+  waypoint%update_conditions = PETSC_FALSE
   waypoint%dt_max = 0.d0
   nullify(waypoint%next)
   nullify(waypoint%prev)
@@ -123,8 +122,11 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   waypoint => waypoint_list%first
   if (associated(waypoint)) then ! list exists
     ! if waypoint time matches another waypoint time, merge them
-    if (new_waypoint%time > 0.999999d0*waypoint%time .and. &
-        new_waypoint%time < 1.000001d0*waypoint%time) then ! same
+    if ((new_waypoint%time > 0.999999d0*waypoint%time .and. &
+         new_waypoint%time < 1.000001d0*waypoint%time) .or. &
+         ! need to account for waypoint%time = 0.d0
+        (new_waypoint%time < 1.d-40 .and. &
+         waypoint%time < 1.d-40)) then ! same
       call WaypointMerge(waypoint,new_waypoint)
       return
     else
@@ -392,16 +394,10 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%print_tr_output = PETSC_FALSE
   endif
 
-  if (old_waypoint%update_bcs .or. new_waypoint%update_bcs) then
-    old_waypoint%update_bcs = PETSC_TRUE
+  if (old_waypoint%update_conditions .or. new_waypoint%update_conditions) then
+    old_waypoint%update_conditions = PETSC_TRUE
   else
-    old_waypoint%update_bcs = PETSC_FALSE
-  endif
-
-  if (old_waypoint%update_srcs .or. new_waypoint%update_srcs) then
-    old_waypoint%update_srcs = PETSC_TRUE
-  else
-    old_waypoint%update_srcs = PETSC_FALSE
+    old_waypoint%update_conditions = PETSC_FALSE
   endif
 
   if (new_waypoint%dt_max > 0.d0) then
@@ -487,6 +483,113 @@ function WaypointSkipToTime(list,time)
   endif
 
 end function WaypointSkipToTime
+
+! ************************************************************************** !
+!
+! WaypointListPrint: Prints a waypoint
+! author: Glenn Hammond
+! date: 05/20/11
+!
+! ************************************************************************** !
+subroutine WaypointListPrint(list,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(waypoint_list_type), pointer :: list
+  type(option_type) :: option
+
+  type(waypoint_type), pointer :: cur_waypoint
+  PetscInt :: icount
+
+  100 format(/)
+  110 format(a)
+  20 format('  ',a20,':',10i6)
+
+  if (OptionPrintToScreen(option)) then
+    write(*,100)
+    write(*,110) 'List of Waypoints:'
+    write(*,100)
+  endif
+
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,100)
+    write(option%fid_out,110) 'List of Waypoints:'
+    write(option%fid_out,100)
+  endif
+
+  icount = 0
+  cur_waypoint => list%first
+  do 
+    if (.not.associated(cur_waypoint)) exit
+    call WaypointPrint(cur_waypoint,option)
+    icount = icount + 1
+    cur_waypoint => cur_waypoint%next
+  enddo
+
+  if (OptionPrintToScreen(option)) then
+    write(option%fid_out,20) 'Total Waypoints:', icount
+    write(*,100)
+  endif
+
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,20) 'Total Waypoints:', icount
+    write(option%fid_out,100)
+  endif
+
+end subroutine WaypointListPrint
+
+! ************************************************************************** !
+!
+! WaypointPrint: Prints a waypoint
+! author: Glenn Hammond
+! date: 05/20/11
+!
+! ************************************************************************** !
+subroutine WaypointPrint(waypoint,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(waypoint_type), pointer :: waypoint
+  type(option_type) :: option
+
+  10 format('  ',a20,':',10es13.5)
+  20 format('  ',a20,':',10i6)
+  30 format('  ',a20,':',10l)
+  40 format('  ',a20,':',a20)
+  100 format(/)
+  110 format(a)
+
+  if (OptionPrintToScreen(option)) then
+    write(*,110) 'Waypoint:'
+    write(*,10) 'Time', waypoint%time
+    write(*,30) 'Print Output', waypoint%print_output
+    write(*,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(*,30) 'Update Conditions', waypoint%update_conditions
+    write(*,30) 'Print Output', waypoint%print_output
+    write(*,10) 'Max DT', waypoint%dt_max
+    write(*,30) 'Final', waypoint%final
+    write(*,100)
+  endif
+
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,110) 'Waypoint:'
+    write(option%fid_out,10) 'Time', waypoint%time
+    write(option%fid_out,30) 'Print Output', waypoint%print_output
+    write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
+    write(option%fid_out,30) 'Update Conditions', waypoint%update_conditions
+    write(option%fid_out,30) 'Print Output', waypoint%print_output
+    write(option%fid_out,10) 'Max DT', waypoint%dt_max
+    write(option%fid_out,30) 'Final', waypoint%final
+    write(option%fid_out,100)
+  endif
+ 
+end subroutine WaypointPrint
+
+
 
 ! ************************************************************************** !
 !

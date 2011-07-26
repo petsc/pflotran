@@ -125,7 +125,9 @@ subroutine GeneralSetupPatch(realization)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, idof
-  type(general_auxvar_type), pointer :: gen_aux_vars(:,:), gen_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:,:) ! extra index for derivatives
+  type(general_auxvar_type), pointer :: gen_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars_ss(:)
   type(material_type), pointer :: material  
   
   option => realization%option
@@ -151,10 +153,11 @@ subroutine GeneralSetupPatch(realization)
   patch%aux%Material%material_parameter%dencpr = -999.d0
   do i = 1, size(realization%material_property_array)
     if (associated(realization%material_property_array(i)%ptr)) then
+      ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J
       patch%aux%Material%material_parameter% &
         dencpr(realization%saturation_function_array(i)%ptr%id) = &
         realization%material_property_array(i)%ptr%rock_density * &
-        realization%material_property_array(i)%ptr%specific_heat
+        realization%material_property_array(i)%ptr%specific_heat * option%scale
     endif
   enddo
 
@@ -169,22 +172,29 @@ subroutine GeneralSetupPatch(realization)
   patch%aux%General%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
-  ! aux_var data structures for them  
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    sum_connection = sum_connection + &
-                     boundary_condition%connection_set%num_connections
-    boundary_condition => boundary_condition%next
-  enddo
-  allocate(gen_aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%General%aux_vars_bc => gen_aux_vars_bc
+  ! aux_var data structures for them 
+  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  if (sum_connection > 0) then
+    allocate(gen_aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%General%aux_vars_bc => gen_aux_vars_bc
+  endif
   patch%aux%General%num_aux_bc = sum_connection
-  
+
+  ! count the number of source/sink connections and allocate
+  ! aux_var data structures for them  
+  sum_connection = CouplerGetNumConnectionsInList(patch%source_sinks)
+  if (sum_connection > 0) then
+    allocate(gen_aux_vars_ss(sum_connection))
+    do iconn = 1, sum_connection
+      call GeneralAuxVarInit(gen_aux_vars_ss(iconn),option)
+    enddo
+    patch%aux%General%aux_vars_ss => gen_aux_vars_ss
+  endif
+  patch%aux%General%num_aux_ss = sum_connection
+    
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call GeneralCreateZeroArray(patch,option)
@@ -381,8 +391,8 @@ subroutine GeneralUpdateAuxVars(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call GeneralUpdateAuxVarsPatch(realization)
+      realization%patch => cur_patch             ! do not update state
+      call GeneralUpdateAuxVarsPatch(realization,PETSC_FALSE)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -398,7 +408,7 @@ end subroutine GeneralUpdateAuxVars
 ! date: 03/10/11
 !
 ! ************************************************************************** !
-subroutine GeneralUpdateAuxVarsPatch(realization)
+subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
 
   use Realization_module
   use Patch_module
@@ -412,6 +422,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   implicit none
 
   type(realization_type) :: realization
+  PetscBool :: update_state
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -425,7 +436,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: ghosted_start, ghosted_end
   PetscInt :: iphasebc, iphase
-  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
@@ -441,7 +452,6 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
     
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
@@ -455,9 +465,16 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                        global_aux_vars(ghosted_id), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
+    if (update_state) then
+      call GeneralUpdateState(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
+                              global_aux_vars(ghosted_id), &
+                              patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
+                              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
+                              option)
+    endif
   enddo
 
   boundary_condition => patch%boundary_conditions%first
@@ -473,27 +490,25 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
 
       do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
-      
+      ! set this based on data given 
       global_aux_vars_bc(sum_connection)%istate = &
         boundary_condition%flow_condition%iphase
       call GeneralAuxVarCompute(xxbc,gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                         patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          option)
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
   
@@ -651,7 +666,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
 
   PetscInt :: ghosted_id, local_id, local_start, local_end
   PetscInt :: imat
-  PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           accum_p(:), perm_xx_loc_p(:)
                           
@@ -667,7 +682,6 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   material_parameter => patch%aux%Material%material_parameter
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
@@ -685,8 +699,8 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
     call GeneralAuxVarCompute(xx_p(local_start:local_end), &
                               gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
-                              realization%saturation_function_array( &
-                                int(icap_loc_p(ghosted_id)))%ptr, &
+                              patch%saturation_function_array( &
+                                patch%sat_func_id(ghosted_id))%ptr, &
                               porosity_loc_p(ghosted_id), &
                               perm_xx_loc_p(ghosted_id), &                        
                               option)
@@ -699,7 +713,6 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
@@ -827,10 +840,10 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
        x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
-       x(GENERAL_CONCENTRATION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
+       x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
        pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_CONCENTRATION_DOF) = perturbation_tolerance*x(GENERAL_CONCENTRATION_DOF)
+       pert(GENERAL_MOLE_FRACTION_DOF) = perturbation_tolerance*x(GENERAL_MOLE_FRACTION_DOF)
        pert(GENERAL_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
@@ -907,8 +920,8 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
   Res = 0.d0
   do icomp = 1, option%nflowspec
     do iphase = 1, option%nphase
-      ! Res[mol comp/m^3 void] = sat[m^3 phase/m^3 void] * den[mol phase/m^3 phase] * 
-      !                            xmol[mol comp/mol phase]
+      ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * den[kmol phase/m^3 phase] * 
+      !                          xmol[kmol comp/kmol phase]
       Res(icomp) = Res(icomp) + gen_aux_var%sat(iphase) * &
                                 gen_aux_var%den(iphase) * &
                                 gen_aux_var%xmol(icomp,iphase)
@@ -917,26 +930,26 @@ subroutine GeneralAccumulation(gen_aux_var,global_aux_var,dencpr,por,vol, &
   
   ! some all components into first dof
   do icomp = 2, option%nflowspec
-    ! Res[mol total/m^3 void] = sum(Res[mol comp/m^3 void])
+    ! Resk[mol total/m^3 void] = sum(Res[kmol comp/m^3 void])
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
   
   ! scale by porosity * volume / dt
-  ! Res[mol/sec] = Res[mol/m^3 void] * por[m^3 void/m^3 bulk] * 
-  !                  vol[m^3 bulk] / dt[sec]
+  ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
+  !                 vol[m^3 bulk] / dt[sec]
   Res(1:option%nflowspec) = Res(1:option%nflowspec) * por * v_over_t
   
   do iphase = 1, option%nphase
-    ! Res[J/m^3 void] = sat[m^3 phase/m^3 void] *
-    !                     den[mol phase/m^3 phase] * u[J/mol phase]
+    ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
+    !                    den[kmol phase/m^3 phase] * U[MJ/kmol phase]
     Res(energy_id) = Res(energy_id) + gen_aux_var%sat(iphase) * &
                                       gen_aux_var%den(iphase) * &
-                                      gen_aux_var%u(iphase)
+                                      gen_aux_var%U(iphase)
   enddo
-  ! Res[J/sec] = (Res[J/m^3 void] * por[m^3 void/m^3 bulk] + 
+  ! Res[MJ/sec] = (Res[MJ/m^3 void] * por[m^3 void/m^3 bulk] + 
   !                (1-por)[m^3 rock/m^3 bulk] * 
-  !                  dencpr[kg rock/m^3 rock * J/kg rock-K] * T[C]) &
-  !              vol[m^3 bulk] / dt[sec]
+  !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
+  !               vol[m^3 bulk] / dt[sec]
   Res(energy_id) = (Res(energy_id) * por + &
                     (1.d0 - por) * dencpr * gen_aux_var%temp) * v_over_t 
 
@@ -1053,6 +1066,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       endif    
       density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
+      ! MJ/kmol
       H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
               (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
 
@@ -1078,15 +1092,15 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
         v_darcy(iphase) = perm_ave_over_dist * ukvr * delta_pressure
         ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
         q = v_darcy(iphase) * area  
-        ! mole_flux[mol phase/sec] = q[m^3 phase/sec] * 
-        !                              density_ave[mol phase/m^3 phase]        
+        ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+        !                             density_ave[kmol phase/m^3 phase]        
         mole_flux = q*density_ave       
         do icomp = 1, option%nflowspec
-          ! Res[mol comp/sec] = mole_flux[mol phase/sec] * 
-          !                       xmol[mol comp/mol phase]
+          ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+          !                      xmol[kmol comp/kmol phase]
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
         enddo
-        ! Res[J/sec] = mole_flux[mol comp/sec] * H_ave[J/mol comp]
+        ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
         Res(energy_id) = Res(energy_id) + mole_flux * &
                                           gen_aux_var_dn%H(iphase)
         
@@ -1095,42 +1109,44 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   enddo
   
   do icomp = 2, option%nflowspec
-    ! Res[mol total/sec] = sum(Res[mol comp/sec])  
+    ! Res[kmol total/sec] = sum(Res[kmol comp/sec])  
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
 
-  ! add in gas component diffusion
-  iphase = option%gas_phase
-  theta = 1.d0
-  
-  if (gen_aux_var_up%sat(iphase) > eps .and. &
-      gen_aux_var_dn%sat(iphase) > eps) then
-    upweight_adj = upweight
-    if (gen_aux_var_up%sat(iphase) < eps) then 
-      upweight_adj=0.d0
-    else if (gen_aux_var_dn%sat(iphase) < eps) then 
-      upweight_adj=1.d0
-    endif         
-    stp_up = gen_aux_var_up%sat(iphase)*tor_up*por_up
-    stp_dn = gen_aux_var_dn%sat(iphase)*tor_dn*por_dn
-    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    temp_ave = upweight_adj*gen_aux_var_up%temp + &
-               (1.d0-upweight_adj)*gen_aux_var_dn%temp
-    density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
-                  (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)             
-    stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
-    delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
-                 gen_aux_var_dn%xmol(air_comp_id,iphase)
-    ! need to account for multiple phases
-    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    v_air = stp_ave * &
-            (temp_ave/273.15d0)**theta * &
-            option%reference_pressure / gen_aux_var_dn%pres(option%gas_phase) * &
-            general_parameter%diffusion_coefficient(iphase) * delta_xmol
-    q =  v_air * area
-    mole_flux = q * density_ave
-    Res(air_comp_id) = Res(air_comp_id) + mole_flux
-  endif  
+#if 1
+  ! add in gas component diffusion in gas and liquid phases
+  do iphase = 1, option%nphase
+    theta = 1.d0
+    if (gen_aux_var_up%sat(iphase) > eps .and. &
+        gen_aux_var_dn%sat(iphase) > eps) then
+      upweight_adj = upweight
+      if (gen_aux_var_up%sat(iphase) < eps) then 
+        upweight_adj=0.d0
+      else if (gen_aux_var_dn%sat(iphase) < eps) then 
+        upweight_adj=1.d0
+      endif         
+      stp_up = gen_aux_var_up%sat(iphase)*tor_up*por_up
+      stp_dn = gen_aux_var_dn%sat(iphase)*tor_dn*por_dn
+      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+      temp_ave = upweight_adj*gen_aux_var_up%temp + &
+                 (1.d0-upweight_adj)*gen_aux_var_dn%temp
+      density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
+                    (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)             
+      stp_ave = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
+      delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
+                   gen_aux_var_dn%xmol(air_comp_id,iphase)
+      ! need to account for multiple phases
+      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      v_air = stp_ave * &
+              (temp_ave/273.15d0)**theta * &
+              option%reference_pressure / gen_aux_var_dn%pres(iphase) * &
+              general_parameter%diffusion_coefficient(iphase) * delta_xmol
+      q =  v_air * area
+      mole_flux = q * density_ave
+      Res(air_comp_id) = Res(air_comp_id) + mole_flux
+    endif
+  enddo
+#endif
     
   ! add heat conduction flux
   k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
@@ -1318,6 +1334,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           endif    
           density_ave = upweight*gen_aux_var_up%den(iphase)+ &
                         (1.D0-upweight)*gen_aux_var_dn%den(iphase)
+          ! MJ/kmol
           H_ave = upweight*gen_aux_var_up%H(iphase)+ &
                   (1.D0-upweight)*gen_aux_var_dn%H(iphase)
 
@@ -1374,57 +1391,60 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
     if (dabs(v_darcy(iphase)) > 0.d0) then
       ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
       q = v_darcy(iphase) * area
-      ! mole_flux[mol phase/sec] = q[m^3 phase/sec] * 
-      !                              density_ave[mol phase/m^3 phase]
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                              density_ave[kmol phase/m^3 phase]
       mole_flux = q*density_ave       
       do icomp = 1, option%nflowspec
-        ! Res[mol comp/sec] = mole_flux[mol phase/sec] * 
-        !                       xmol[mol comp/mol phase]
+        ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+        !                      xmol[kmol comp/mol phase]
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
       enddo
-      ! Res[J/sec] = mole_flux[mol comp/sec] * H_ave[J/mol comp]
+      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
       Res(energy_id) = Res(energy_id) + mole_flux * H_ave
     endif
   enddo
   
   do icomp = 2, option%nflowspec
-    ! Res[mol total/sec] = sum(Res[mol comp/sec])
+    ! Res[kmol total/sec] = sum(Res[kmol comp/sec])
     Res(ONE_INTEGER) = Res(ONE_INTEGER) + Res(icomp)
   enddo
 
-  ! add in gas component diffusion
-  iphase = option%gas_phase
-  theta = 1.d0
+#if 1
+  ! add in gas component diffusion in gas and liquid phases
+  do iphase = 1, option%nphase
+    theta = 1.d0
   
-  if (gen_aux_var_up%sat(iphase) > eps .and. &
-      gen_aux_var_dn%sat(iphase) > eps) then
-    upweight = 1.d0
-    if (gen_aux_var_up%sat(iphase) < eps) then 
-      upweight=0.d0
-    else if (gen_aux_var_dn%sat(iphase) < eps) then 
-      upweight=1.d0
-    endif       
-    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    temp_ave = upweight*gen_aux_var_up%temp + &
-            (1.d0-upweight)*gen_aux_var_dn%temp
-    density_ave = upweight*gen_aux_var_up%den(iphase)+ &
-                  (1.D0-upweight)*gen_aux_var_dn%den(iphase)             
-!    stp_ave = tor_dn*por_dn*(gen_aux_var_up%sat(iphase)*gen_aux_var_dn%sat(iphase))/ &
-!              ((gen_aux_var_up%sat(iphase)+gen_aux_var_dn%sat(iphase))*dd_dn)
-    ! should saturation be distance weighted?
-    stp_ave = tor_dn*por_dn*gen_aux_var_dn%sat(iphase)/dd_dn
-    delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
-                 gen_aux_var_dn%xmol(air_comp_id,iphase)
-    ! need to account for multiple phases
-    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    v_air = stp_ave * &
-            (temp_ave/273.15d0)**theta * &
-            option%reference_pressure / gen_aux_var_dn%pres(option%gas_phase) * &
-            general_parameter%diffusion_coefficient(iphase) * delta_xmol
-    q =  v_air * area
-    mole_flux = q * density_ave
-    Res(air_comp_id) = Res(air_comp_id) + mole_flux
-  endif  
+    if (gen_aux_var_up%sat(iphase) > eps .and. &
+        gen_aux_var_dn%sat(iphase) > eps) then
+      upweight = 1.d0
+      if (gen_aux_var_up%sat(iphase) < eps) then 
+        upweight=0.d0
+      else if (gen_aux_var_dn%sat(iphase) < eps) then 
+        upweight=1.d0
+      endif       
+      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+      temp_ave = upweight*gen_aux_var_up%temp + &
+              (1.d0-upweight)*gen_aux_var_dn%temp
+      density_ave = upweight*gen_aux_var_up%den(iphase)+ &
+                    (1.D0-upweight)*gen_aux_var_dn%den(iphase)             
+  !    stp_ave = tor_dn*por_dn*(gen_aux_var_up%sat(iphase)*gen_aux_var_dn%sat(iphase))/ &
+  !              ((gen_aux_var_up%sat(iphase)+gen_aux_var_dn%sat(iphase))*dd_dn)
+      ! should saturation be distance weighted?
+      stp_ave = tor_dn*por_dn*gen_aux_var_dn%sat(iphase)/dd_dn
+      delta_xmol = gen_aux_var_up%xmol(air_comp_id,iphase) - &
+                   gen_aux_var_dn%xmol(air_comp_id,iphase)
+      ! need to account for multiple phases
+      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      v_air = stp_ave * &
+              (temp_ave/273.15d0)**theta * &
+              option%reference_pressure / gen_aux_var_dn%pres(iphase) * &
+              general_parameter%diffusion_coefficient(iphase) * delta_xmol
+      q =  v_air * area
+      mole_flux = q * density_ave
+      Res(air_comp_id) = Res(air_comp_id) + mole_flux
+    endif
+  enddo
+#endif
 
   ! add heat conduction flux
 !  k_eff_up = gen_aux_var_up%sat(option%liquid_phase) * &
@@ -1608,8 +1628,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! These 3 must be called before GeneralUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
-
   call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
@@ -1812,7 +1830,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: icap_loc_p(:), tort_loc_p(:)
+  PetscReal, pointer :: tort_loc_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:)
   PetscInt :: icap_up, icap_dn
@@ -1851,8 +1869,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   general_parameter => patch%aux%General%general_parameter
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-
-  call GeneralUpdateAuxVarsPatch(realization)
+                                             ! do update state
+  call GeneralUpdateAuxVarsPatch(realization,PETSC_TRUE)
   patch%aux%General%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
     call GeneralZeroMassBalDeltaPatch(realization)
@@ -1864,7 +1882,6 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
@@ -1942,8 +1959,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
 
-      icap_up = int(icap_loc_p(ghosted_id_up))
-      icap_dn = int(icap_loc_p(ghosted_id_dn))
+      icap_up = patch%sat_func_id(ghosted_id_up)
+      icap_dn = patch%sat_func_id(ghosted_id_dn)
    
       call GeneralFlux(gen_aux_vars(ZERO_INTEGER,ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
@@ -2033,7 +2050,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
 
-      icap_dn = int(icap_loc_p(ghosted_id))  
+      icap_dn = patch%sat_func_id(ghosted_id)
 
       call GeneralBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2115,7 +2132,6 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
 end subroutine GeneralResidualPatch1
@@ -2357,6 +2373,10 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     cur_level => cur_level%next
   enddo
 
+!  norm = 1.d0
+!  call MatZeroRowsLocal(A,1,1,norm,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+!  call MatZeroRowsLocal(A,1,2,norm,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
   if (realization%debug%matview_Jacobian) then
 #if 1  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Gjacobian.out', &
@@ -2416,7 +2436,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   PetscReal, pointer :: porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: icap_loc_p(:), tort_loc_p(:)
+  PetscReal, pointer :: tort_loc_p(:)
   PetscInt :: icap,icap_up,icap_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
@@ -2462,7 +2482,6 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
   ! Perturb aux vars
@@ -2470,7 +2489,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
     call GeneralAuxVarPerturb(gen_aux_vars(:,ghosted_id), &
                               global_aux_vars(ghosted_id), &
-                              realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                              patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                               option)
   enddo  
   
@@ -2516,8 +2535,8 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
     
-      icap_up = int(icap_loc_p(ghosted_id_up))
-      icap_dn = int(icap_loc_p(ghosted_id_dn))
+      icap_up = patch%sat_func_id(ghosted_id_up)
+      icap_dn = patch%sat_func_id(ghosted_id_dn)
                               
       call GeneralFluxDerivative(gen_aux_vars(:,ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
@@ -2590,7 +2609,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
 
-      icap_dn = int(icap_loc_p(ghosted_id))  
+      icap_dn = patch%sat_func_id(ghosted_id)
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                   boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2625,7 +2644,6 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tort_loc_p, ierr)
 
 end subroutine GeneralJacobianPatch1
@@ -2681,7 +2699,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   PetscErrorCode :: ierr
 
-  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), icap_loc_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:)
   PetscReal :: qsrc
   PetscInt :: icap, imat
   PetscInt :: local_id, ghosted_id
@@ -2711,7 +2729,6 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   
   if (.not.option%steady_state) then
 
@@ -2721,7 +2738,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
-    icap = int(icap_loc_p(ghosted_id))
+    icap = patch%sat_func_id(ghosted_id)
     call GeneralAccumDerivative(gen_aux_vars(:,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               material_parameter%dencpr(imat), &
@@ -2780,7 +2797,6 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2911,6 +2927,97 @@ subroutine GeneralMaxChange(realization)
   call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
 
 end subroutine GeneralMaxChange
+
+! ************************************************************************** !
+!
+! GeneralUpdateState: Updates the state and swaps primary variables
+! author: Glenn Hammond
+! date: 05/25/11
+!
+! ************************************************************************** !
+subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
+                              saturation_function,por,perm,option)
+
+  use Option_module
+  use Global_Aux_module
+  use water_eos_module
+  use Gas_Eos_module
+  use Saturation_Function_module
+  
+  implicit none
+
+  type(option_type) :: option
+  type(saturation_function_type) :: saturation_function
+  type(general_auxvar_type) :: gen_aux_var
+  type(global_auxvar_type) :: global_aux_var
+
+  PetscReal, parameter :: epsilon = 1.d-6
+  PetscReal :: x(option%nflowdof)
+  PetscReal :: por, perm
+  PetscInt :: apid, cpid, vpid
+  PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: dummy, guess
+  PetscReal :: Ps
+  PetscBool :: flag
+  PetscErrorCode :: ierr
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
+
+  flag = PETSC_FALSE
+  
+  select case(global_aux_var%istate)
+    case(LIQUID_STATE)
+      call psat(gen_aux_var%temp,Ps,ierr)
+      if (gen_aux_var%pres(vpid) <= Ps) then
+        global_aux_var%istate = TWO_PHASE_STATE
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
+        x(GENERAL_GAS_SATURATION_DOF) = epsilon
+        flag = PETSC_TRUE
+      endif
+    case(GAS_STATE)
+      call psat(gen_aux_var%temp,Ps,ierr)
+      if (gen_aux_var%pres(vpid) >= Ps) then
+        global_aux_var%istate = TWO_PHASE_STATE
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
+        flag = PETSC_TRUE
+      endif
+    case(TWO_PHASE_STATE)
+      if (gen_aux_var%sat(gid) < 0.d0) then
+        ! convert to liquid state
+        global_aux_var%istate = LIQUID_STATE
+        x(GENERAL_LIQUID_PRESSURE_DOF) = (1.d0+epsilon)* &
+                                         gen_aux_var%pres(vpid)
+        x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var%xmol(acid,lid)
+        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
+        flag = PETSC_TRUE
+      else if (gen_aux_var%sat(gid) > 1.d0) then
+        ! convert to gas state
+        global_aux_var%istate = GAS_STATE
+        x(GENERAL_GAS_PRESSURE_DOF) = (1.d0-epsilon)* &
+                                      gen_aux_var%pres(vpid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
+        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
+        flag = PETSC_TRUE
+      endif
+  end select
+  
+  if (flag) then
+    call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
+                              saturation_function,por,perm,option)
+  endif
+
+end subroutine GeneralUpdateState
 
 ! ************************************************************************** !
 !

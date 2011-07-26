@@ -13,6 +13,10 @@ module Output_module
 #include "finclude/petscdm.h90"
 #include "finclude/petsclog.h"
 
+#if defined(PARALLELIO_LIB_WRITE)
+  include "piof.h"
+#endif
+
   PetscInt, parameter :: TECPLOT_INTEGER = 0
   PetscInt, parameter :: TECPLOT_REAL = 1
 
@@ -123,11 +127,15 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       call OutputHDF5(realization)
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
+#ifdef PARALLELIO_LIB_WRITE
+      if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in & 
+                                          writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
+#endif
 #ifdef VAMSI_HDF5_WRITE
       if (option%myrank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
                                           writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
 #endif      
-      write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
+      write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
    
@@ -141,7 +149,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       endif
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
-      write(option%io_buffer,'(f6.2," Seconds to write to Tecplot file(s)")') &
+      write(option%io_buffer,'(f10.2," Seconds to write to Tecplot file(s)")') &
             tend-tstart
       call printMsg(option)        
     endif
@@ -153,7 +161,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
       call PetscLogEventEnd(logging%event_output_vtk,ierr)    
       call PetscGetTime(tend,ierr) 
-      write(option%io_buffer,'(f6.2," Seconds to write to VTK file(s)")') &
+      write(option%io_buffer,'(f10.2," Seconds to write to VTK file(s)")') &
             tend-tstart
       call printMsg(option) 
     endif
@@ -165,7 +173,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
       call PetscLogEventEnd(logging%event_output_mad,ierr)    
       call PetscGetTime(tend,ierr) 
-      write(option%io_buffer,'(f6.2," Seconds to write to MAD HDF5 file(s)")') &
+      write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
       call printMsg(option) 
     endif
@@ -348,9 +356,7 @@ subroutine OutputTecplotBlock(realization)
     endif
 
     ! write material ids
-    if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
-    endif
+    string = trim(string) // ',"Material_ID"'
 
     write(IUNIT3,'(a)') trim(string)
   
@@ -442,14 +448,6 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
-      ! phase
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-      end select
-
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -498,6 +496,38 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
+      ! liquid viscosity
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+     ! gas viscosity
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+      ! liquid mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+     ! gas mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
@@ -517,6 +547,15 @@ subroutine OutputTecplotBlock(realization)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           enddo
       end select 
+
+      ! phase
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+      end select
+
 #if 0      
       ! Volume Fraction
       if (option%rk > 0.d0) then
@@ -663,11 +702,9 @@ subroutine OutputTecplotBlock(realization)
   endif
   
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -791,9 +828,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-        if (associated(patch%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -804,18 +839,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                    option%time/output_option%tconv, &
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
-      if (associated(patch%imat)) then
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-        endif
+      if (option%nphase > 1) then
+        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
       else
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-9]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-6]=CELLCENTERED)'
-        endif
+        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
       endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
@@ -880,11 +907,9 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   endif
 
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -1343,11 +1368,9 @@ subroutine OutputTecplotPoint(realization)
     endif
 
     ! write material ids
-    if (associated(patch%imat)) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-Material_ID"'')') icolumn
-      string = trim(string) // trim(string2)
-    endif
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Material_ID"'')') icolumn
+    string = trim(string) // trim(string2)
 
     write(IUNIT3,'(a)') trim(string)
   
@@ -1396,14 +1419,6 @@ subroutine OutputTecplotPoint(realization)
             write(IUNIT3,1000,advance='no') value
         end select
 
-        ! phase
-        select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,PHASE, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(IUNIT3,1001,advance='no') int(value)
-        end select
-
         ! liquid saturation
         select case(option%iflowmode)
           case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1435,7 +1450,7 @@ subroutine OutputTecplotPoint(realization)
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
-      
+
         ! liquid energy
         select case(option%iflowmode)
           case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1452,6 +1467,38 @@ subroutine OutputTecplotPoint(realization)
             write(IUNIT3,1000,advance='no') value
         end select
 
+        ! liquid viscosity
+        select case(option%iflowmode)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+       ! gas viscosity
+        select case(option%iflowmode)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+        ! liquid mobility
+        select case(option%iflowmode)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+       ! gas mobility
+        select case(option%iflowmode)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_MOBILITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
         select case(option%iflowmode)
           case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
             ! liquid mole fractions
@@ -1471,6 +1518,14 @@ subroutine OutputTecplotPoint(realization)
               write(IUNIT3,1000,advance='no') value
             enddo
         end select 
+
+        ! phase
+        select case(option%iflowmode)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,PHASE, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1001,advance='no') int(value)
+        end select
 
       case default
     
@@ -1609,11 +1664,9 @@ subroutine OutputTecplotPoint(realization)
     endif
     
     ! material id
-    if (associated(patch%imat)) then
-      value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
-                                              ZERO_INTEGER,ghosted_id)
-      write(IUNIT3,1001,advance='no') int(value)
-    endif
+    value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
+                                            ZERO_INTEGER,ghosted_id)
+    write(IUNIT3,1001,advance='no') int(value)
     write(IUNIT3,1009) 
 
   enddo
@@ -1710,9 +1763,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-    if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
-    endif
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -1758,11 +1809,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') vec_ptr_vz(ghosted_id)
 
     ! material id
-    if (associated(patch%imat)) then
-      value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
-                                          ZERO_INTEGER,ghosted_id)
-      write(IUNIT3,1001,advance='no') int(value)
-    endif
+    value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
+                                        ZERO_INTEGER,ghosted_id)
+    write(IUNIT3,1001,advance='no') int(value)
   
     write(IUNIT3,1009)
     
@@ -1836,9 +1885,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
              '"Y [m]",' // &
              '"Z [m]",'
     string = trim(string) // '"' // trim(dataset_name) // '"'
-    if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
-    endif
+    string = trim(string) // ',"Material_ID"'
     write(fid,'(a)') trim(string)
   
     ! write zone header
@@ -1850,11 +1897,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
                                                 ! 4=dataset name, 5=material_id
-      if (associated(patch%imat)) then
-        string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
-      endif
+      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
@@ -1895,11 +1938,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -2362,6 +2403,10 @@ subroutine OutputObservationTecplot(realization)
           case(OBSERVATION_SCALAR)
             if (associated(observation%region%coordinates) .and. &
                 .not.observation%at_cell_center) then
+              option%io_buffer = 'Writing of data at coordinates not ' // &
+                'functioning properly for minerals.  Perhaps due to ' // &
+                'non-ghosting of vol frac....>? - geh'
+              call printErrMsg(option)
               call WriteObservationHeaderForCoord(fid,realization, &
                                                    observation%region, &
                                                    observation%print_velocities)
@@ -2454,7 +2499,8 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   PetscBool :: print_velocities
   
   PetscInt :: i, local_id
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXHEADERLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   character(len=2) :: free_mol_char, tot_mol_char
@@ -2501,7 +2547,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
-    case (MPH_MODE, FLASH2_MODE, G_MODE)
+    case (MPH_MODE, FLASH2_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
@@ -2509,8 +2555,33 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
+               '"dl '// trim(cell_string) // '",' // &
+               '"dg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
-               '"Ug '// trim(cell_string) // '",'
+               '"Ug '// trim(cell_string) // '",' // &
+               '"visl '// trim(cell_string) // '",' // &
+               '"visg '// trim(cell_string) // '",' // &
+               '"kvrl '// trim(cell_string) // '",' // &
+               '"kvrg '// trim(cell_string) // '",'
+      do i=1,option%nflowspec
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      do i=1,option%nflowspec
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      string = trim(string) // '"Phase '// trim(cell_string) // '"'
+    case (G_MODE)
+      string = ',"T [C] '// trim(cell_string) // '",' // &
+               '"P [Pa] '// trim(cell_string) // '",' // &
+               '"State [-] ' // trim(cell_string) // '",' // &
+               '"Sat(l) '// trim(cell_string) // '",' // &
+               '"Sat(g) '// trim(cell_string) // '",' // &
+               '"Rho(l) '// trim(cell_string) // '",' // &
+               '"Rho(g) '// trim(cell_string) // '",' // &
+               '"U(l) '// trim(cell_string) // '",' // &
+               '"U(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -2717,7 +2788,8 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   PetscBool :: print_velocities
   
   PetscInt :: i
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXHEADERLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
@@ -2760,7 +2832,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
-    case (MPH_MODE,FLASH2_MODE,G_MODE)
+    case (MPH_MODE,FLASH2_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
@@ -2768,8 +2840,33 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
+               '"dl '// trim(cell_string) // '",' // &
+               '"dg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
-               '"Ug '// trim(cell_string) // '",'
+               '"Ug '// trim(cell_string) // '",' // &
+               '"visl '// trim(cell_string) // '",' // &
+               '"visg '// trim(cell_string) // '",'// &
+               '"kvrl '// trim(cell_string) // '",' // &
+               '"kvrg '// trim(cell_string) // '",' 
+      do i=1,option%nflowspec
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      do i=1,option%nflowspec
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+    case (G_MODE)
+      string = ',"T [C] '// trim(cell_string) // '",' // &
+               '"P [Pa] '// trim(cell_string) // '",' // &
+               '"State [-] ' // trim(cell_string) // '",' // &
+               '"Sat(l) '// trim(cell_string) // '",' // &
+               '"Sat(g) '// trim(cell_string) // '",' // &
+               '"Rho(l) '// trim(cell_string) // '",' // &
+               '"Rho(g) '// trim(cell_string) // '",' // &
+               '"U(l) '// trim(cell_string) // '",' // &
+               '"U(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
         write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
@@ -3045,9 +3142,9 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   output_option => realization%output_option
 
 100 format(es14.6)
-101 format("i")
+101 format(i2)
 110 format(es14.6)
-111 format("i")
+111 format(i2)
 
   ghosted_id = grid%nL2G(local_id)
   ! write out coorindates
@@ -3073,6 +3170,13 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! state
+  select case(option%iflowmode)
+    case(G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,STATE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid saturation
@@ -3115,6 +3219,34 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_ENERGY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! liquid viscosity
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas viscosity
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! liquid mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_MOBILITY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid mole fractions
@@ -3310,11 +3442,9 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   output_option => realization%output_option
 
 100 format(es14.6)
-!100 format(es16.9)
-101 format("i")
+101 format(i2)
 110 format(es14.6)
-!110 format(',',es16.9)
-111 format("i")
+111 format(i2)
 
 
   ! write out coorindates
@@ -3404,6 +3534,17 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                      count,ghosted_ids)
   end select
 
+  ! state
+  select case(option%iflowmode)
+    case(G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,STATE,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
   ! liquid saturation
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -3471,6 +3612,50 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                      count,ghosted_ids)
   end select
 
+  ! liquid viscosity
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,LIQUID_VISCOSITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! gas viscosity
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,GAS_VISCOSITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! liquid mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! gas mobility
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,GAS_MOBILITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
   ! liquid mole fraction
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
@@ -3500,18 +3685,12 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   ! phase
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-!     write(fid,111,advance="no") &
-!       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
-!                                        region%coordinates(ONE_INTEGER)%x, &
-!                                        region%coordinates(ONE_INTEGER)%y, &
-!                                        region%coordinates(ONE_INTEGER)%z, &
-!                                        count,ghosted_ids))
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
-                                         region%coordinates(ONE_INTEGER)%x, &
-                                         region%coordinates(ONE_INTEGER)%y, &
-                                         region%coordinates(ONE_INTEGER)%z, &
-                                         count,ghosted_ids)
+     write(fid,111,advance="no") &
+       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+                                        region%coordinates(ONE_INTEGER)%x, &
+                                        region%coordinates(ONE_INTEGER)%y, &
+                                        region%coordinates(ONE_INTEGER)%z, &
+                                        count,ghosted_ids))
   end select
 
   if (option%ntrandof > 0) then
@@ -3737,10 +3916,10 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
 
 100 format(es14.6)
 !100 format(es16.9)
-101 format("i")
+101 format(i2)
 110 format(es14.6)
 !110 format(',',es16.9)
-111 format("i")
+111 format(i2)
  
   iphase = 1
 
@@ -4316,12 +4495,10 @@ subroutine OutputVTK(realization)
   endif
   
   ! material id
-  if (associated(patch%imat)) then
-    word = 'Material_ID'
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
-  endif
+  word = 'Material_ID'
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -4450,9 +4627,7 @@ subroutine OutputVelocitiesVTK(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-        if (associated(patch%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -4463,18 +4638,10 @@ subroutine OutputVelocitiesVTK(realization)
                    option%time/output_option%tconv, &
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
-      if (associated(patch%imat)) then
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-        endif
+      if (option%nphase > 1) then
+        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
       else
-        if (option%nphase > 1) then
-          string = trim(string) // ', VARLOCATION=([4-9]=CELLCENTERED)'
-        else
-          string = trim(string) // ', VARLOCATION=([4-6]=CELLCENTERED)'
-        endif
+        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
       endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
@@ -4525,11 +4692,9 @@ subroutine OutputVelocitiesVTK(realization)
   endif
 
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
-  endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -4977,6 +5142,15 @@ subroutine OutputHDF5(realization)
 
   type(realization_type) :: realization
 
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: realization_set_id
+  integer:: prop_id
+  PetscMPIInt :: rank
+  integer:: dims(3)
+#else
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
   integer(HID_T) :: file_space_id
@@ -4984,6 +5158,7 @@ subroutine OutputHDF5(realization)
   integer(HID_T) :: prop_id
   PetscMPIInt :: rank
   integer(HSIZE_T) :: dims(3)
+#endif
   
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
@@ -5015,54 +5190,94 @@ subroutine OutputHDF5(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  first = hdf5_first
+  
+  if (output_option%print_single_h5_file) then 
+    first = hdf5_first
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
+  else
+    if (output_option%plot_number < 10) then
+      write(string,'("00",i1)') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(string,'("0",i2)') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(string,'(i3)') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(string,'(i4)') output_option%plot_number  
+    endif
+    first = PETSC_TRUE
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // '.h5'
+  endif
 
-  filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
-
-  if(.not.(option%use_samr)) then
+  if (.not.(option%use_samr)) then
      
      grid => patch%grid
+#if defined(PARALLELIO_LIB_WRITE)
+    if (.not.first) then
+      filename = trim(filename) // CHAR(0)
+      call parallelio_open_file(filename, option%iowrite_group_id, &
+                                FILE_READWRITE, file_id, ierr)
+      if (file_id == -1) first = PETSC_TRUE
+    endif
+    if (first) then
+      filename = trim(filename) // CHAR(0)
+      call parallelio_open_file(filename, option%iowrite_group_id, &
+                                FILE_CREATE, file_id, ierr)
+    endif
+
+#else  ! PARALLELIO_LIB_WRITE is not defined
+
      ! initialize fortran interface
-     call h5open_f(hdf5_err)
+    call h5open_f(hdf5_err)
 
 #ifdef VAMSI_HDF5_WRITE
-   if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
+    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
 
-     call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
 #ifdef VAMSI_HDF5_WRITE
-     call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
+      call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
 #else
-     call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
 #endif
-     if (.not.first) then
-       call h5eset_auto_f(OFF,hdf5_err)
-       call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-       if (hdf5_err /= 0) first = PETSC_TRUE
-       call h5eset_auto_f(ON,hdf5_err)
-     endif
-     if (first) then 
+      if (.not.first) then
+        call h5eset_auto_f(OFF,hdf5_err)
+        call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+        if (hdf5_err /= 0) first = PETSC_TRUE
+        call h5eset_auto_f(ON,hdf5_err)
+      endif
+      if (first) then 
         call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
                          H5P_DEFAULT_F,prop_id)
-     endif
-     call h5pclose_f(prop_id,hdf5_err)
+      endif
+      call h5pclose_f(prop_id,hdf5_err)
+#endif ! PARALLELIO_LIB_WRITE
 
-     if (first) then
-       option%io_buffer = '--> creating hdf5 output file: ' // filename
-     else
-       option%io_buffer = '--> appending to hdf5 output file: ' // filename
-     endif
-     call printMsg(option)
+      if (first) then
+        option%io_buffer = '--> creating hdf5 output file: ' // filename
+      else
+        option%io_buffer = '--> appending to hdf5 output file: ' // filename
+      endif
+      call printMsg(option)
 
 #if !defined(SAMR_HAVE_HDF5)
      
-     if (first) then
+      if (first) then
 
         ! create a group for the coordinates data set
+#if defined(PARALLELIO_LIB_WRITE)
+        string = "Coordinates" // CHAR(0)
+        call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+                                            option%iowrite_group_id, ierr)
+            ! set grp_id here
+            ! As we already created the group, we will use file_id as group_id
+        grp_id = file_id
+#else
         string = "Coordinates"
         call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+#endif
 
         !GEH - Structured Grid Dependence - Begin
         ! write out coordinates in x, y, and z directions
@@ -5094,27 +5309,40 @@ subroutine OutputHDF5(realization)
         deallocate(array)
         !GEH - Structured Grid Dependence - End
 
+#if defined(PARALLELIO_LIB_WRITE)
+        call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+                                            option%iowrite_group_id, ierr)
+#else
         call h5gclose_f(grp_id,hdf5_err)
+#endif
 
-     endif
+      endif
 
 #endif
         
      ! create a group for the data set
-     write(string,'(''Time:'',es12.4,x,a1)') &
-          option%time/output_option%tconv,output_option%tunit
-     if (len_trim(output_option%plot_name) > 2) then
+      write(string,'(''Time:'',es12.4,x,a1)') &
+            option%time/output_option%tconv,output_option%tunit
+      if (len_trim(output_option%plot_name) > 2) then
         string = trim(string) // ' ' // output_option%plot_name
-     endif
-     call h5eset_auto_f(OFF,hdf5_err)
-     call h5gopen_f(file_id,string,grp_id,hdf5_err)
-     if (hdf5_err /= 0) then
-       call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-     endif
-     call h5eset_auto_f(ON,hdf5_err)
+      endif
+#if defined(PARALLELIO_LIB_WRITE)
+      string = trim(string) //CHAR(0)
+        ! This opens existing dataset and creates it if needed
+      call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+                                           option%iowrite_group_id, ierr)
+      grp_id = file_id
+#else
+      call h5eset_auto_f(OFF,hdf5_err)
+      call h5gopen_f(file_id,string,grp_id,hdf5_err)
+      if (hdf5_err /= 0) then
+        call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+      endif
+      call h5eset_auto_f(ON,hdf5_err)
+#endif ! PARALLELIO_LIB_WRITE
 
 #ifdef VAMSI_HDF5_WRITE
-   endif
+    endif
 #endif
   
   else
@@ -5125,9 +5353,11 @@ subroutine OutputHDF5(realization)
         case(RICHARDS_MODE)
            nviz_flow = 2
         case(FLASH2_MODE)
-           nviz_flow = 7+2*option%nflowspec
+!          nviz_flow = 7+2*option%nflowspec
+           nviz_flow = 9+2*option%nflowspec
         case(MPH_MODE)
-           nviz_flow = 7+2*option%nflowspec
+!          nviz_flow = 7+2*option%nflowspec
+           nviz_flow = 9+2*option%nflowspec
         case(IMS_MODE)
            nviz_flow = 2+4*option%nphase
         case(THC_MODE)
@@ -5236,10 +5466,6 @@ subroutine OutputHDF5(realization)
      endif
 
      nviz_dof = nviz_flow+nviz_tran
-
-!!$     if (associated(patch%imat)) then
-!!$        nviz_dof = nviz_dof+1
-!!$     endif
 
      if(first) then
         call AMRGridCreateVector(discretization%amrgrid, nviz_dof, field%samr_viz_vec, &
@@ -5354,6 +5580,70 @@ subroutine OutputHDF5(realization)
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
           string = "Gas Density"
+          if(.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! liquid viscosity
+      select case(option%iflowmode)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
+          string = "Liquid Viscosity"
+          if(.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! gas viscosity
+      select case(option%iflowmode)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
+          string = "Gas Viscosity"
+          if(.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! liquid mobility
+      select case(option%iflowmode)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
+          string = "Liquid Mobility"
+          if(.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! gas mobility
+      select case(option%iflowmode)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
+          string = "Gas Mobility"
           if(.not.(option%use_samr)) then
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -5746,19 +6036,17 @@ subroutine OutputHDF5(realization)
   
   ! material id
 
-  if(.not.(option%use_samr)) then
-     if(associated(patch%imat)) then
-        call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-        string = "Material_ID"
-        if(.not.(option%use_samr)) then
-           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-        else
-           call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-           if(first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-       endif
-       current_component=current_component+1
-    endif
+  if (.not.(option%use_samr)) then
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    string = "Material_ID"
+    if (.not.(option%use_samr)) then
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
+    else
+      call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+      if (first) then
+        call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+      endif
+      current_component=current_component+1
     endif
   endif
   
@@ -5840,6 +6128,12 @@ subroutine OutputHDF5(realization)
   call VecDestroy(global_vec,ierr)
 
   if(.not.(option%use_samr)) then
+
+#if defined(PARALLELIO_LIB_WRITE)
+    call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+            option%iowrite_group_id, ierr)
+    call parallelio_close_file(file_id, option%iowrite_group_id, ierr)
+#else
 #ifdef VAMSI_HDF5_WRITE
     if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
@@ -5849,6 +6143,7 @@ subroutine OutputHDF5(realization)
     endif
 #endif
      call h5close_f(hdf5_err)
+#endif !PARALLELIO_LIB_WRITE
   else
      call SAMRWritePlotData(app_ptr, option%time/output_option%tconv)
 !     call VecDestroy(field%samr_viz_vec,ierr)
@@ -6188,6 +6483,20 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   
   implicit none
   
+#if defined(PARALLELIO_LIB_WRITE)
+  character(len=32) :: name
+  type(option_type) :: option
+  PetscInt :: length
+  PetscReal :: array(:)
+  integer:: file_id
+
+  integer:: file_space_id
+  integer:: data_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  PetscMPIInt :: rank
+  integer:: globaldims(3)
+#else
   character(len=32) :: name
   type(option_type) :: option
   PetscInt :: length
@@ -6199,8 +6508,37 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   PetscMPIInt :: rank
+#endif
   
   call PetscLogEventBegin(logging%event_output_coordinates_hdf5,ierr) 
+#if defined(PARALLELIO_LIB_WRITE)
+
+  name = trim(name) // CHAR(0)
+  ! write out grid structure
+  rank = 1
+  dims = 0
+  globaldims = 0
+  ! x-direction
+
+  !if (option%myrank == option%io_rank) then
+  ! Only process 0 writes coordinates
+  if (option%myrank == 0 ) then
+     dims(1) = length
+     globaldims(1) = length
+  else
+     dims(1) = 0
+     globaldims(1) = length
+  endif
+
+ call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+ call parallelio_write_dataset(array, PIO_DOUBLE, rank, globaldims, dims, &
+      file_id, name, option%iowrite_group_id, NONUNIFORM_CONTIGUOUS_WRITE, ierr)
+ !call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
+                !hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
+ call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+#else
+!PARALLELIO_LIB_WRITE is not defined
 
 #ifdef VAMSI_HDF5_WRITE
   if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
@@ -6234,6 +6572,8 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
 #ifdef VAMSI_HDF5_WRITE
   endif
 #endif
+
+#endif ! PARALLELIO_LIB_WRITE
 
   call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
 
@@ -6740,9 +7080,9 @@ subroutine OutputMassBalanceNew(realization)
   type(grid_type), pointer :: grid
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option  
-  type(coupler_type), pointer :: boundary_condition
-  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
+  type(coupler_type), pointer :: coupler
+  type(global_auxvar_type), pointer :: global_aux_vars_bc_or_ss(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc_or_ss(:)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word
@@ -6763,6 +7103,7 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscMPIInt :: int_mpi
+  PetscBool :: bcs_done
   
   patch => realization%patch
   grid => patch%grid
@@ -6834,59 +7175,71 @@ subroutine OutputMassBalanceNew(realization)
         enddo
       endif
       
-      boundary_condition => patch%boundary_conditions%first
-      do 
-        if (.not.associated(boundary_condition)) exit
+      coupler => patch%boundary_conditions%first
+      bcs_done = PETSC_FALSE
+      do
+        if (.not.associated(coupler)) then
+          if (bcs_done) then
+            exit
+          else
+            bcs_done = PETSC_TRUE
+            if (associated(patch%source_sinks)) then
+              coupler => patch%source_sinks%first
+            else
+              exit
+            endif
+          endif
+        endif
 
         select case(option%iflowmode)
           case(RICHARDS_MODE)
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [kg]"'
+              trim(coupler%name) // ' Water Mass [kg]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [kg/' // &
+              trim(coupler%name) // ' Water Mass [kg/' // &
               trim(output_option%tunit) // ']"'
           case(G_MODE)
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [mol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Air Mass [mol]"'
+              trim(coupler%name) // ' Air Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Air Mass [mol/' // &
+              trim(coupler%name) // ' Air Mass [mol/' // &
               trim(output_option%tunit) // ']"'
           case(MPH_MODE)
 #if 0
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' CO2 Mass [mol]"'
+              trim(coupler%name) // ' CO2 Mass [mol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [mol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(boundary_condition%name) // ' CO2 Mass [mol/' // &
+              trim(coupler%name) // ' CO2 Mass [mol/' // &
               trim(output_option%tunit) // ']"'
 #endif
         end select
@@ -6897,7 +7250,7 @@ subroutine OutputMassBalanceNew(realization)
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
               write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-                  trim(boundary_condition%name) // ' ' // &
+                  trim(coupler%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol]"'
             endif
           enddo
@@ -6907,13 +7260,13 @@ subroutine OutputMassBalanceNew(realization)
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
               write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-                  trim(boundary_condition%name) // ' ' // &
+                  trim(coupler%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol/' // &
                   trim(output_option%tunit) // ']"'
             endif
           enddo
         endif
-        boundary_condition => boundary_condition%next
+        coupler => coupler%next
       
       enddo
       
@@ -6952,11 +7305,6 @@ subroutine OutputMassBalanceNew(realization)
     write(fid,100,advance="no") option%time/output_option%tconv
   endif
 
-  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  if (option%ntrandof > 0) then
-    rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
-  endif    
-  
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
     select case(option%iflowmode)
@@ -7000,54 +7348,76 @@ subroutine OutputMassBalanceNew(realization)
     endif
   endif
   
-  boundary_condition => patch%boundary_conditions%first
+  coupler => patch%boundary_conditions%first
+  global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_bc
+  if (option%ntrandof > 0) then
+    rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_bc
+  endif    
+  bcs_done = PETSC_FALSE
   do 
-    if (.not.associated(boundary_condition)) exit
+    if (.not.associated(coupler)) then
+      if (bcs_done) then
+        exit
+      else
+        bcs_done = PETSC_TRUE
+        if (associated(patch%source_sinks)) then
+          coupler => patch%source_sinks%first
+          global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_ss
+          if (option%ntrandof > 0) then
+            rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_ss
+          endif    
+        else
+          exit
+        endif
+      endif
+    endif
 
-    offset = boundary_condition%connection_set%offset
+    offset = coupler%connection_set%offset
     
     if (option%nflowdof > 0) then
 
 #if 0
 ! compute the total area of the boundary condition
-      sum_area = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_area(1) = sum_area(1) + &
-          boundary_condition%connection_set%area(iconn)
-        if (global_aux_vars_bc(offset+iconn)%sat(1) >= 0.5d0) then
-          sum_area(2) = sum_area(2) + &
-            boundary_condition%connection_set%area(iconn)
-        endif
-        if (global_aux_vars_bc(offset+iconn)%sat(1) > 0.99d0) then
-          sum_area(3) = sum_area(3) + &
-            boundary_condition%connection_set%area(iconn)
-        endif
-        sum_area(4) = sum_area(4) + &
-          boundary_condition%connection_set%area(iconn)* &
-          global_aux_vars_bc(offset+iconn)%sat(1)
-      enddo
+      if (.not.bcs_done) then
+        sum_area = 0.d0
+        do iconn = 1, coupler%connection_set%num_connections
+          sum_area(1) = sum_area(1) + &
+            coupler%connection_set%area(iconn)
+          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) >= 0.5d0) then
+            sum_area(2) = sum_area(2) + &
+              coupler%connection_set%area(iconn)
+          endif
+          if (global_aux_vars_bc_or_ss(offset+iconn)%sat(1) > 0.99d0) then
+            sum_area(3) = sum_area(3) + &
+              coupler%connection_set%area(iconn)
+          endif
+          sum_area(4) = sum_area(4) + &
+            coupler%connection_set%area(iconn)* &
+            global_aux_vars_bc_or_ss(offset+iconn)%sat(1)
+        enddo
 
-      call MPI_Reduce(sum_area,sum_area_global, &
-                      FOUR_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%mycomm,ierr)
+        call MPI_Reduce(sum_area,sum_area_global, &
+                        FOUR_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                        option%io_rank,option%mycomm,ierr)
                           
-      if (option%myrank == option%io_rank) then
-        print *
-        write(word,'(es16.6)') sum_area_global(1)
-        print *, 'Total area in ' // trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area_global(2)
-        print *, 'Total half-saturated area in '// &
-                 trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area_global(3)
-        print *, 'Total saturated area in '// trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area_global(4)
-        print *, 'Total saturation-weighted area [=sum(saturation*area)] in '//&
-                   trim(boundary_condition%name) // &
-                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        print *
+        if (option%myrank == option%io_rank) then
+          print *
+          write(word,'(es16.6)') sum_area_global(1)
+          print *, 'Total area in ' // trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          write(word,'(es16.6)') sum_area_global(2)
+          print *, 'Total half-saturated area in '// &
+                   trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          write(word,'(es16.6)') sum_area_global(3)
+          print *, 'Total saturated area in '// trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          write(word,'(es16.6)') sum_area_global(4)
+          print *, 'Total saturation-weighted area [=sum(saturation*area)] in '//&
+                     trim(coupler%name) // &
+                   ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+          print *
+        endif
       endif
 #endif
 
@@ -7055,8 +7425,8 @@ subroutine OutputMassBalanceNew(realization)
         case(RICHARDS_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
-          do iconn = 1, boundary_condition%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
           enddo
 
           int_mpi = option%nphase
@@ -7071,8 +7441,8 @@ subroutine OutputMassBalanceNew(realization)
 
           ! print out H2O flux
           sum_kg = 0.d0
-          do iconn = 1, boundary_condition%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
@@ -7094,8 +7464,8 @@ subroutine OutputMassBalanceNew(realization)
 
       ! print out cumulative boundary flux
       sum_mol = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
+      do iconn = 1, coupler%connection_set%num_connections
+        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -7116,8 +7486,8 @@ subroutine OutputMassBalanceNew(realization)
     
       ! print out boundary flux
       sum_mol = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
+      do iconn = 1, coupler%connection_set%num_connections
+        sum_mol = sum_mol + rt_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta 
       enddo
 
       int_mpi = option%nphase*option%ntrandof
@@ -7138,7 +7508,7 @@ subroutine OutputMassBalanceNew(realization)
       endif
     endif
 
-    boundary_condition => boundary_condition%next
+    coupler => coupler%next
   
   enddo
 

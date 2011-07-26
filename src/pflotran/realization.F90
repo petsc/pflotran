@@ -38,7 +38,7 @@ private
 
     type(input_type), pointer :: input
     type(field_type), pointer :: field
-    type(pflow_debug_type), pointer :: debug
+    type(flow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
 
     type(region_list_type), pointer :: regions
@@ -101,8 +101,9 @@ private
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
-            RealizatonPassFieldPtrToPatches
-            
+            RealizatonPassFieldPtrToPatches, &
+            RealLocalToLocalWithArray
+ 
 contains
   
 ! ************************************************************************** !
@@ -152,7 +153,7 @@ function RealizationCreate2(option)
   endif
   nullify(realization%input)
   realization%field => FieldCreate()
-  realization%debug => DebugCreatePflow()
+  realization%debug => DebugCreateFlow()
   realization%output_option => OutputOptionCreate()
 
   realization%level_list => LevelCreateList()
@@ -681,7 +682,6 @@ subroutine RealizationProcessCouplers(realization)
       if (.not.associated(cur_patch)) exit
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
-                                realization%material_properties, &
                                 realization%option)
 !      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
 !                                realization%transport_conditions, &
@@ -737,6 +737,9 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   type(option_type), pointer :: option
   type(material_property_type), pointer :: cur_material_property
   character(len=MAXSTRINGLENGTH) :: string
+
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   
   option => realization%option
   
@@ -746,7 +749,28 @@ subroutine RealProcessMatPropAndSatFunc(realization)
                                       option)
   call SaturatFuncConvertListToArray(realization%saturation_functions, &
                                      realization%saturation_function_array, &
-                                     option) 
+                                     option)
+
+  ! set up mirrored pointer arrays within patches to saturation functions
+  ! and material properties
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      cur_patch%material_properties => realization%material_properties
+      call MaterialPropConvertListToArray(cur_patch%material_properties, &
+                                          cur_patch%material_property_array, &
+                                          option)
+      cur_patch%saturation_functions => realization%saturation_functions
+      call SaturatFuncConvertListToArray(cur_patch%saturation_functions, &
+                                         cur_patch%saturation_function_array, &
+                                         option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo 
     
   cur_material_property => realization%material_properties                            
   do                                      
@@ -1976,61 +2000,11 @@ subroutine RealizationAddWaypointsToList(realization)
   type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
   PetscReal :: temp_real, final_time
+  PetscReal, pointer :: times(:)
 
   option => realization%option
   waypoint_list => realization%waypoints
-
-  cur_flow_condition => realization%flow_conditions%first
-  do
-    if (.not.associated(cur_flow_condition)) exit
-    if (cur_flow_condition%sync_time_with_update) then
-      do isub_condition = 1, cur_flow_condition%num_sub_conditions
-        sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
-        itime = 1
-        if (sub_condition%dataset%max_time_index == 1 .and. &
-            sub_condition%dataset%times(itime) > 1.d-40) then
-          waypoint => WaypointCreate()
-          waypoint%time = sub_condition%dataset%times(itime)
-          waypoint%update_bcs = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-          exit
-        endif
-      enddo
-    endif
-    cur_flow_condition => cur_flow_condition%next
-  enddo
-      
-  cur_tran_condition => realization%transport_conditions%first
-  do
-    if (.not.associated(cur_tran_condition)) exit
-    if (cur_tran_condition%sync_time_with_update .and. &
-        cur_tran_condition%is_transient) then
-      cur_constraint_coupler => cur_tran_condition%constraint_coupler_list
-      do
-        if (.not.associated(cur_constraint_coupler)) exit
-        if (cur_constraint_coupler%time > 1.d-40) then
-          waypoint => WaypointCreate()
-          waypoint%time = cur_constraint_coupler%time
-          waypoint%update_bcs = PETSC_TRUE
-          call WaypointInsertInList(waypoint,waypoint_list)
-        endif
-        cur_constraint_coupler => cur_constraint_coupler%next
-      enddo
-    endif
-    cur_tran_condition => cur_tran_condition%next
-  enddo
-
-  if (associated(realization%velocity_dataset)) then
-    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
-        size(realization%velocity_dataset%times) > 1) then
-      do itime = 1, size(realization%velocity_dataset%times)
-        waypoint => WaypointCreate()
-        waypoint%time = realization%velocity_dataset%times(itime)
-        waypoint%update_srcs = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-  endif
+  nullify(times)
   
   ! set flag for final output
   cur_waypoint => waypoint_list%first
@@ -2043,7 +2017,75 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_waypoint => cur_waypoint%next
   enddo
   ! use final time in conditional below
-  if (associated(cur_waypoint)) final_time = cur_waypoint%time
+  if (associated(cur_waypoint)) then
+    final_time = cur_waypoint%time
+  else
+    option%io_buffer = 'Final time not found in RealizationAddWaypointsToList'
+    call printErrMsg(option)
+  endif
+
+  ! add update of flow conditions
+  cur_flow_condition => realization%flow_conditions%first
+  do
+    if (.not.associated(cur_flow_condition)) exit
+    if (cur_flow_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_flow_condition%num_sub_conditions
+        sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
+        call FlowConditionDatasetGetTimes(option,sub_condition,final_time, &
+                                          times)
+        if (size(times) > 1000) then
+          option%io_buffer = 'For flow condition "' // &
+            trim(cur_flow_condition%name) // &
+            '" dataset "' // trim(sub_condition%name) // &
+            '", the number of times is excessive for synchronization ' // &
+            'with waypoints.'
+          call printErrMsg(option)
+        endif
+        do itime = 1, size(times)
+          waypoint => WaypointCreate()
+          waypoint%time = times(itime)
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        deallocate(times)
+        nullify(times)
+      enddo
+    endif
+    cur_flow_condition => cur_flow_condition%next
+  enddo
+      
+  ! add update of transport conditions
+  cur_tran_condition => realization%transport_conditions%first
+  do
+    if (.not.associated(cur_tran_condition)) exit
+    if (cur_tran_condition%is_transient) then
+      cur_constraint_coupler => cur_tran_condition%constraint_coupler_list
+      do
+        if (.not.associated(cur_constraint_coupler)) exit
+        if (cur_constraint_coupler%time > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = cur_constraint_coupler%time
+          waypoint%update_conditions = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        endif
+        cur_constraint_coupler => cur_constraint_coupler%next
+      enddo
+    endif
+    cur_tran_condition => cur_tran_condition%next
+  enddo
+
+  ! add update of velocity fields
+  if (associated(realization%velocity_dataset)) then
+    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
+        size(realization%velocity_dataset%times) > 1) then
+      do itime = 1, size(realization%velocity_dataset%times)
+        waypoint => WaypointCreate()
+        waypoint%time = realization%velocity_dataset%times(itime)
+        waypoint%update_conditions = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+  endif
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
@@ -2368,7 +2410,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
     endif
 
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity_loc, &
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                      field%tortuosity_loc,ONEDOF)
   endif
       
@@ -2386,7 +2428,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     call GridVecRestoreArrayF90(grid,field%tortuosity0,tortuosity0_p,ierr)  
     call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
-    call DiscretizationGlobalToLocal(discretization,field%tortuosity_loc, &
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
                                      field%tortuosity_loc,ONEDOF)
   endif
       
@@ -2414,16 +2456,84 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     call GridVecRestoreArrayF90(grid,field%perm_yy_loc,perm_yy_loc_p,ierr)
     call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
-    call DiscretizationGlobalToLocal(discretization,field%perm_xx_loc, &
-                                     field%perm_xx_loc,ONEDOF)
-    call DiscretizationGlobalToLocal(discretization,field%perm_yy_loc, &
-                                     field%perm_yy_loc,ONEDOF)
-    call DiscretizationGlobalToLocal(discretization,field%perm_zz_loc, &
-                                     field%perm_zz_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%perm_xx_loc, &
+                                    field%perm_xx_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%perm_yy_loc, &
+                                    field%perm_yy_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%perm_zz_loc, &
+                                    field%perm_zz_loc,ONEDOF)
   endif  
   
 end subroutine RealizationUpdatePropertiesPatch
- 
+
+! ************************************************************************** !
+!
+! RealLocalToLocalWithArray: Takes an F90 array that is ghosted
+!                            and updates the ghosted values
+! author: Glenn Hammond
+! date: 06/09/11
+!
+! ************************************************************************** !
+subroutine RealLocalToLocalWithArray(realization,array_id)
+
+  use Grid_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  PetscInt :: array_id
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+
+  field => realization%field
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,field%work_loc, &
+                                         grid%ngmax)
+        case(SATURATION_FUNCTION_ID_ARRAY)
+          call GridCopyIntegerArrayToVec(grid, cur_patch%sat_func_id, &
+                                         field%work_loc, grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  call DiscretizationLocalToLocal(realization%discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyVecToIntegerArray(grid, cur_patch%imat,field%work_loc, &
+                                         grid%ngmax)
+        case(SATURATION_FUNCTION_ID_ARRAY)
+          call GridCopyVecToIntegerArray(grid, cur_patch%sat_func_id, &
+                                         field%work_loc, grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealLocalToLocalWithArray
+
 ! ************************************************************************** !
 !
 ! RealizationCountCells: Counts # of active and inactive grid cells 

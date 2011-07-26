@@ -14,6 +14,7 @@ type, public :: mphase_auxvar_elem_type
     PetscReal , pointer :: sat(:)
     PetscReal , pointer :: den(:)
     PetscReal , pointer :: avgmw(:)
+    PetscReal , pointer :: vis(:)
     PetscReal , pointer :: h(:)
     PetscReal , pointer :: u(:)
     PetscReal , pointer :: pc(:)
@@ -22,7 +23,6 @@ type, public :: mphase_auxvar_elem_type
     PetscReal , pointer :: diff(:)
     PetscReal , pointer :: hysdat(:)
     PetscReal :: zco2
-!     PetscReal :: vis
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
@@ -62,6 +62,11 @@ type, public :: mphase_auxvar_elem_type
      PetscBool :: aux_vars_up_to_date
      PetscBool :: inactive_cells_exist
      PetscInt :: num_aux, num_aux_bc
+
+     PetscReal, pointer :: res_old_AR(:,:)
+     PetscReal, pointer :: res_old_FL(:,:)
+     PetscReal, pointer :: delx(:,:)
+  
      type(Mphase_parameter_type), pointer :: mphase_parameter
      type(Mphase_auxvar_type), pointer :: aux_vars(:)
      type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
@@ -108,6 +113,9 @@ function MphaseAuxCreate()
   nullify(aux%mphase_parameter%dencpr)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+  nullify(aux%res_old_AR)
+  nullify(aux%res_old_FL)
+  nullify(aux%delx)
 
   MphaseAuxCreate => aux
   
@@ -145,6 +153,7 @@ subroutine MphaseAuxVarInit(aux_var,option)
      allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%kvr(option%nphase))
+     allocate ( aux_var%aux_var_elem(nvar)%vis(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
      allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
      if(nvar>0)&
@@ -161,6 +170,7 @@ subroutine MphaseAuxVarInit(aux_var,option)
      aux_var%aux_var_elem(nvar)%kvr = 0.d0
      aux_var%aux_var_elem(nvar)%xmol = 0.d0
      aux_var%aux_var_elem(nvar)%diff = 0.d0
+     aux_var%aux_var_elem(nvar)%vis = 0.d0
 #if 0
      aux_var%aux_var_elem(nvar)%dsat_dp = 0.d0
      aux_var%aux_var_elem(nvar)%dden_dp = 0.d0
@@ -196,7 +206,7 @@ subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%pc = aux_var%pc
 !  aux_var2%kr = aux_var%kr
 !  aux_var2%dkr_dp = aux_var%dkr_dp
-!  aux_var2%vis = aux_var%vis
+  aux_var2%vis = aux_var%vis
 !  aux_var2%dvis_dp = aux_var%dvis_dp
   aux_var2%kvr = aux_var%kvr
 #if 0
@@ -251,17 +261,17 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal, optional :: xphico2
 
   PetscErrorCode :: ierr
-  PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal ::  p, t, temp, p2, err
-  PetscReal :: henry,lngamco2
-  PetscReal :: dg, dddp, dddt, m_na, m_cl,m_nacl
+  PetscReal :: pw, dw_kg, dw_mol, hw, sat_pressure, visl
+  PetscReal :: p, t, temp, p2, err
+  PetscReal :: henry, lngamco2
+  PetscReal :: dg, dddp, dddt, m_na, m_cl, m_nacl
   PetscReal :: fg, dfgdp, dfgdt, xphi
-  PetscReal :: eng,hg, dhdp, dhdt
+  PetscReal :: eng, hg, dhdp, dhdt
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
-  PetscReal :: Qkco2, mco2,xco2eq
+  PetscReal :: Qkco2, mco2, xco2eq
   PetscInt :: iflag
   
   aux_var%sat = 0.d0
@@ -322,7 +332,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     err=1.D0
     p2 = p
 
-    if(p2>=5d4)then
+    if(p2 >= 5.d4) then
        
       if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
@@ -499,8 +509,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-    aux_var%kvr(2)=kr(2)/visg     
+    aux_var%kvr(2) = kr(2)/visg     
     aux_var%kvr(1) = kr(1)/visl
+    aux_var%vis(2) = visg     
+    aux_var%vis(1) = visl
     select case(iphase)
       case(1)
         aux_var%pc =0.D0
@@ -563,16 +575,18 @@ subroutine MphaseAuxVarDestroy(aux_var)
   nullify(aux_var%diff)
   if (associated(aux_var%pc))deallocate(aux_var%pc)
   nullify(aux_var%pc)
- if (associated(aux_var%sat))deallocate(aux_var%sat)
+  if (associated(aux_var%sat))deallocate(aux_var%sat)
   nullify(aux_var%sat)
- if (associated(aux_var%u))deallocate(aux_var%u)
+  if (associated(aux_var%u))deallocate(aux_var%u)
   nullify(aux_var%u)
- if (associated(aux_var%h))deallocate(aux_var%h)
+  if (associated(aux_var%h))deallocate(aux_var%h)
   nullify(aux_var%h)
- if (associated(aux_var%den))deallocate(aux_var%den)
+  if (associated(aux_var%den))deallocate(aux_var%den)
   nullify(aux_var%den)
- if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%u)
+  if (associated(aux_var%den))deallocate(aux_var%vis)
+  nullify(aux_var%vis)
+  if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
+  nullify(aux_var%avgmw)
 end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
@@ -621,7 +635,10 @@ use option_module
     deallocate(aux%mphase_parameter)
   endif
   nullify(aux%mphase_parameter)
-    
+  if (associated(aux%res_old_AR)) deallocate(aux%res_old_AR)
+  if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
+  if (associated(aux%delx)) deallocate(aux%delx)
+
 end subroutine MphaseAuxDestroy
 
 

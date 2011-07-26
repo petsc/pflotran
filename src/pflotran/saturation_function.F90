@@ -700,6 +700,8 @@ subroutine SatFuncGetCapillaryPressure(capillary_pressure,saturation, &
   PetscReal :: pc_alpha_neg_lambda
   
   iphase = 1
+
+  Sr = saturation_function%Sr(iphase)
     
   ! compute saturation
   select case(saturation_function%saturation_function_itype)

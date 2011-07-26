@@ -62,7 +62,8 @@ function ObservationCreate1()
   observation%id = 0
   observation%itype = OBSERVATION_SCALAR
   observation%print_velocities = PETSC_FALSE
-  observation%at_cell_center = PETSC_FALSE
+!  observation%at_cell_center = PETSC_FALSE
+  observation%at_cell_center = PETSC_TRUE
   nullify(observation%region)
   nullify(observation%next)
   

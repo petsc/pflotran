@@ -21,6 +21,9 @@ module Region_module
     PetscInt :: num_cells
     PetscInt, pointer :: cell_ids(:)
     PetscInt, pointer :: faces(:)
+    PetscInt, pointer :: vert_ids(:,:) ! For Unstructured mesh
+    PetscInt :: num_verts              ! For Unstructured mesh
+    PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
     type(region_type), pointer :: next
   end type region_type
   
@@ -85,9 +88,14 @@ function RegionCreateWithNothing()
   region%k2 = 0
   region%iface = 0
   region%num_cells = 0
+  region%grid_type = STRUCTURED_GRID ! By default it is assumed that the region 
+                   ! is applicable to strucutred grid, unless
+                   ! explicitly stated in pflotran input file
+  region%num_verts = 0
   nullify(region%coordinates)
   nullify(region%cell_ids)
   nullify(region%faces)
+  nullify(region%vert_ids)
   nullify(region%next)
   
   RegionCreateWithNothing => region
@@ -181,6 +189,8 @@ function RegionCreateWithRegion(region)
   new_region%k2 = region%k2
   new_region%iface = region%iface
   new_region%num_cells = region%num_cells
+  new_region%num_verts = region%num_verts
+  new_region%grid_type = region%grid_type
   if (associated(region%coordinates)) then
     allocate(new_region%coordinates(size(region%coordinates)))
     do icount = 1, size(new_region%coordinates)
@@ -196,6 +206,11 @@ function RegionCreateWithRegion(region)
   if (associated(region%faces)) then
     allocate(new_region%faces(new_region%num_cells))
     new_region%faces(1:new_region%num_cells) = region%faces(1:region%num_cells)
+  endif
+  if (associated(region%vert_ids)) then
+    allocate(new_region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts))
+    new_region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts) = &
+    region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts)
   endif
   
   RegionCreateWithRegion => new_region
@@ -357,6 +372,19 @@ subroutine RegionRead(region,input,option)
           case('TOP')
             region%iface = TOP_FACE
         end select
+    case('GRID')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'GRID','REGION')
+        call StringToUpper(word)
+        select case(trim(word))
+          case('STRUCTURED')
+            region%grid_type = STRUCTURED_GRID
+          case('UNSTRUCTURED')
+            region%grid_type = UNSTRUCTURED_GRID
+          case default
+            option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
+          call printErrMsg(option)
+      end select
       case default
         option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
         call printErrMsg(option)
@@ -416,9 +444,26 @@ subroutine RegionReadFromFileId(region,input,option)
   character(len=1) :: backslash
 
   PetscInt, pointer :: temp_int_array(:)
+  PetscInt, pointer :: cell_ids_p(:)
+  PetscInt, pointer :: face_ids_p(:)
+  PetscInt, pointer :: vert_id_0_p(:)
+  PetscInt, pointer :: vert_id_1_p(:)
+  PetscInt, pointer :: vert_id_2_p(:)
+  PetscInt, pointer :: vert_id_3_p(:)
+  PetscInt, pointer :: vert_id_4_p(:)
   PetscInt :: max_size
-  PetscInt :: count, temp_int
+  PetscInt :: count
+  PetscInt :: temp_int
+  PetscInt :: input_data_type
+  PetscInt :: ii
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscInt :: remainder
   PetscErrorCode :: ierr
+
+  PetscInt, parameter :: CELL_IDS_ONLY = 1
+  PetscInt, parameter :: CELL_IDS_WITH_FACE_IDS = 2
+  PetscInt, parameter :: VERTEX_IDS = 3
 
   call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
 
@@ -427,7 +472,24 @@ subroutine RegionReadFromFileId(region,input,option)
                           ! is a double quote as in c/c++
   
   allocate(temp_int_array(max_size))
+  allocate(cell_ids_p(max_size))
+  allocate(face_ids_p(max_size))
+  allocate(vert_id_0_p(max_size))
+  allocate(vert_id_0_p(max_size))
+  allocate(vert_id_1_p(max_size))
+  allocate(vert_id_2_p(max_size))
+  allocate(vert_id_3_p(max_size))
+  allocate(vert_id_4_p(max_size))
+  
   temp_int_array = 0
+  cell_ids_p = 0
+  face_ids_p = 0
+  vert_id_0_p = 0
+  vert_id_1_p = -1
+  vert_id_2_p = -1
+  vert_id_3_p = -1
+  vert_id_4_p = -1
+  
   
   count = 0
 #if 0
@@ -454,14 +516,196 @@ subroutine RegionReadFromFileId(region,input,option)
   enddo
 #endif
 
+  ! Determine if region definition in the input data is one of the following:
+  !  1) Contains cell ids only : Only ONE entry per line
+  !  2) Contains cell ids and face ids: TWO entries per line
+  !  3) Contains vertex ids that make up the face: MORE than two entries per
+  !     line
+  count = 0
+  call InputReadFlotranString(input, option)
+  do 
+    call InputReadInt(input, option, temp_int)
+    if(InputError(input)) exit
+    count = count + 1
+    temp_int_array(count) = temp_int
+  enddo
+
+  if(count == 1) then
+    !
+    ! Input data contains only cell ids
+    !
+    input_data_type = CELL_IDS_ONLY
+    cell_ids_p(1) = temp_int_array(1)
+    count = 1
+
+    ! Read the data
+    do
+      call InputReadFlotranString(input, option)
+      if (InputError(input)) exit
+      call InputReadInt(input, option, temp_int)
+      if (.not.InputError(input)) then
+        count = count + 1
+        cell_ids_p(count) = temp_int
+      endif
+      if (count+1 > max_size) then ! resize temporary array
+        call reallocateIntArray(cell_ids_p, max_size)
+      endif
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
+    region%num_cells = count/option%mycommsize
+      remainder = count - region%num_cells*option%mycommsize
+    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_cells, istart, ONE_INTEGER_MPI, MPIU_INTEGER, &
+                    MPI_SUM, option%mycomm, ierr)
+    call MPI_Scan(region%num_cells, iend, ONE_INTEGER_MPI, MPIU_INTEGER, &
+                   MPI_SUM, option%mycomm, ierr)
+
+    ! Allocate memory and save the data
+    region%num_cells = iend - istart
+    allocate(region%cell_ids(region%num_cells))
+    region%cell_ids(1:region%num_cells) = cell_ids_p(istart+1:iend)
+    deallocate(cell_ids_p)
+
+  else if(count == 2) then
+    !
+    ! Input data contains cell ids + face ids
+    !
+    input_data_type = CELL_IDS_WITH_FACE_IDS
+    cell_ids_p(1) = temp_int_array(1)
+    face_ids_p(1) = temp_int_array(2)
+    count = 1 ! reset the counter to represent the num of rows read
+
+    ! Read the data
+    do
+      call InputReadFlotranString(input, option)
+      if (InputError(input)) exit
+      call InputReadInt(input, option, temp_int)
+      if(InputError(input)) exit
+      count = count + 1
+      cell_ids_p(count) = temp_int
+
+      call InputReadInt(input,option,temp_int)
+      if(InputError(input)) then
+        option%io_buffer = 'ERROR while reading the region from file'
+        call printErrMsg(option)
+      endif
+      face_ids_p(count) = temp_int
+      if (count+1 > max_size) then ! resize temporary array
+        call reallocateIntArray(cell_ids_p, max_size)
+        call reallocateIntArray(face_ids_p, max_size)
+      endif
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
+    region%num_cells = count/option%mycommsize
+      remainder = count - region%num_cells*option%mycommsize
+    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(region%num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+
+    ! Allocate memory and save the data
+    allocate(region%cell_ids(region%num_cells))
+    allocate(region%faces(region%num_cells))
+    region%cell_ids(1:region%num_cells) = cell_ids_p(istart + 1:iend)
+    region%faces(1:region%num_cells) = face_ids_p(istart + 1:iend)
+    deallocate(cell_ids_p)
+    deallocate(face_ids_p)
+
+  else
+    !
+    ! Input data contains vertices
+    !
+    input_data_type = VERTEX_IDS
+    vert_id_0_p(1) = temp_int_array(1)
+    vert_id_1_p(1) = temp_int_array(2)
+    vert_id_2_p(1) = temp_int_array(3)
+    vert_id_3_p(1) = temp_int_array(4)
+    if(vert_id_0_p(1) == 4 ) vert_id_4_p(1) = temp_int_array(5)
+    count = 1 ! reset the counter to represent the num of rows read
+
+    ! Read the data
+    do
+      call InputReadFlotranString(input,option)
+      if (InputError(input)) exit
+      call InputReadInt(input,option,temp_int)
+      if(InputError(input)) exit
+      count = count + 1
+      vert_id_0_p(count) = temp_int
+
+      vert_id_4_p(count) = -999
+      do ii = 1, vert_id_0_p(count)
+        call InputReadInt(input,option,temp_int)
+        if(InputError(input)) then
+          option%io_buffer = 'ERROR while reading the region from file'
+          call printErrMsg(option)
+        endif
+
+        select case(ii)
+          case(1)
+            vert_id_1_p(count) = temp_int
+          case(2)
+            vert_id_2_p(count) = temp_int
+          case(3)
+            vert_id_3_p(count) = temp_int
+          case(4)
+            vert_id_4_p(count) = temp_int
+        end select
+
+        if (count+1 > max_size) then ! resize temporary array
+          call reallocateIntArray(vert_id_0_p,max_size)
+          call reallocateIntArray(vert_id_1_p,max_size)
+          call reallocateIntArray(vert_id_2_p,max_size)
+          call reallocateIntArray(vert_id_3_p,max_size)
+          call reallocateIntArray(vert_id_4_p,max_size)
+        endif
+      enddo
+    enddo
+
+    ! Depending on processor rank, save only a portion of data
+    region%num_verts = count/option%mycommsize
+      remainder = count - region%num_verts*option%mycommsize
+    if(option%myrank < remainder) region%num_verts = region%num_verts + 1
+    istart = 0
+    iend   = 0
+    call MPI_Exscan(region%num_verts,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_SUM,option%mycomm,ierr)
+    call MPI_Scan(region%num_verts,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                   MPI_SUM,option%mycomm,ierr)
+
+    ! Allocate memory and save the data
+    region%num_verts = iend - istart
+    allocate(region%vert_ids(0:MAX_VERT_PER_FACE,1:region%num_verts))
+    region%vert_ids(0,1:region%num_verts) = vert_id_0_p(istart + 1: iend)
+    region%vert_ids(1,1:region%num_verts) = vert_id_1_p(istart + 1: iend)
+    region%vert_ids(2,1:region%num_verts) = vert_id_2_p(istart + 1: iend)
+    region%vert_ids(3,1:region%num_verts) = vert_id_3_p(istart + 1: iend)
+    region%vert_ids(4,1:region%num_verts) = vert_id_4_p(istart + 1: iend)
+    deallocate(vert_id_0_p)
+    deallocate(vert_id_1_p)
+    deallocate(vert_id_2_p)
+    deallocate(vert_id_3_p)
+    deallocate(vert_id_4_p)
+
+  endif
+  
+#if 0  
+  count = 1
   do
     call InputReadFlotranString(input,option)
-	if (InputError(input)) exit
-	call InputReadInt(input,option,temp_int)
-	if (.not.InputError(input)) then
-	  count = count + 1
-	  temp_int_array(count) = temp_int
-	endif
+    if (InputError(input)) exit
+    call InputReadInt(input,option,temp_int)
+    if (.not.InputError(input)) then
+      count = count + 1
+      temp_int_array(count) = temp_int
+      write(*,*),count,temp_int
+    endif
     if (count+1 > max_size) then ! resize temporary array
       call reallocateIntArray(temp_int_array,max_size)
     endif
@@ -475,7 +719,7 @@ subroutine RegionReadFromFileId(region,input,option)
     region%num_cells = 0
     nullify(region%cell_ids)
   endif
-
+#endif
   deallocate(temp_int_array) 
 
   call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
@@ -574,6 +818,7 @@ subroutine RegionDestroy(region)
   if (associated(region%faces)) deallocate(region%faces)
   nullify(region%faces)
   nullify(region%next)
+  if (associated(region%vert_ids)) deallocate(region%vert_ids)
   
   deallocate(region)
   nullify(region)

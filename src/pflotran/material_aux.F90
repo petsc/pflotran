@@ -8,12 +8,12 @@ module Material_Aux_module
  
   type, public :: material_auxvar_type
     PetscReal, pointer :: sir(:,:)
-    PetscReal, pointer :: dencpr(:)
+    PetscReal, pointer :: dencpr(:) ! MJ/kg rock-K
   end type material_auxvar_type
   
   type, public :: material_parameter_type
     PetscReal, pointer :: sir(:,:)
-    PetscReal, pointer :: dencpr(:)
+    PetscReal, pointer :: dencpr(:) ! MJ/kg rock-K
   end type material_parameter_type
 
   type, public :: material_type

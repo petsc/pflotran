@@ -1685,6 +1685,8 @@ subroutine BasisInit(reaction,option)
     reaction%kinmnrl_irreversible = 0
     allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
+    allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
+    reaction%kinmnrl_activation_energy = 0.d0
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
     reaction%kinmnrl_molar_vol = 0.d0
     allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
@@ -1763,6 +1765,8 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrl_rate_limiter(ikinmnrl) = cur_mineral%tstrxn%rate_limiter
         reaction%kinmnrl_irreversible(ikinmnrl) = cur_mineral%tstrxn%irreversible
         reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
+        reaction%kinmnrl_activation_energy(ikinmnrl) = &
+          cur_mineral%tstrxn%activation_energy
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight
         ikinmnrl = ikinmnrl + 1
@@ -2860,7 +2864,7 @@ subroutine BasisInit(reaction,option)
 
       enddo
     enddo
-    do imnrl = 1, reaction%nkinmrnl
+    do imnrl = 1, reaction%nkinmnrl
       write(86,'(a32)') reaction%kinmnrl_names(imnrl)
       write(86,'(40i4)') reaction%kinmnrlspecid(:,imnrl)
       write(86,'(40f6.2)') reaction%kinmnrlstoich(:,imnrl)
@@ -2869,7 +2873,7 @@ subroutine BasisInit(reaction,option)
       write(86,'(1es13.5)') reaction%kinmnrl_logK(imnrl)
       write(86,'(1es13.5)') reaction%kinmnrl_molar_vol(imnrl)
       write(86,'(1es13.5)') reaction%kinmnrl_molar_wt(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_rate(imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_rate(1,imnrl)
       write(86,'(1es13.5)') 1.d0 ! specific surface area 1 cm^2 / cm^3
     enddo
         close(86)

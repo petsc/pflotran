@@ -94,6 +94,7 @@ module Reaction_Aux_module
     PetscReal :: rate_limiter
     PetscInt :: irreversible
     PetscReal :: rate
+    PetscReal :: activation_energy
   end type transition_state_rxn_type
   
   type, public :: ion_exchange_rxn_type
@@ -382,6 +383,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_logK(:)
     PetscReal, pointer :: kinmnrl_logKcoef(:,:)
     PetscReal, pointer :: kinmnrl_rate(:,:)
+    PetscReal, pointer :: kinmnrl_activation_energy(:)
     PetscReal, pointer :: kinmnrl_molar_vol(:)
     PetscReal, pointer :: kinmnrl_molar_wt(:)
     PetscInt, pointer :: kinmnrl_num_prefactors(:)
@@ -679,6 +681,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_logK)
   nullify(reaction%kinmnrl_logKcoef)
   nullify(reaction%kinmnrl_rate)
+  nullify(reaction%kinmnrl_activation_energy)
   nullify(reaction%kinmnrl_molar_vol)
   nullify(reaction%kinmnrl_molar_wt)
   nullify(reaction%kinmnrl_num_prefactors)
@@ -940,6 +943,7 @@ function TransitionStateTheoryRxnCreate()
   tstrxn%affinity_threshold = 0.d0
   tstrxn%rate_limiter = 0.d0
   tstrxn%irreversible = 0
+  tstrxn%activation_energy = 0.d0
   tstrxn%rate = 0.d0
   
   TransitionStateTheoryRxnCreate => tstrxn
@@ -2606,6 +2610,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_threshold)) &
     deallocate(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_affinity_threshold)
+  if (associated(reaction%kinmnrl_activation_energy)) &
+    deallocate(reaction%kinmnrl_activation_energy)
+  nullify(reaction%kinmnrl_activation_energy)
   if (associated(reaction%kinmnrl_rate_limiter)) &
     deallocate(reaction%kinmnrl_rate_limiter)
   nullify(reaction%kinmnrl_rate_limiter)

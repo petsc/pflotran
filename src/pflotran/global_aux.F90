@@ -30,9 +30,10 @@ module Global_Aux_module
   end type global_auxvar_type
   
   type, public :: global_type
-    PetscInt :: num_aux, num_aux_bc
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
     type(global_auxvar_type), pointer :: aux_vars(:)
     type(global_auxvar_type), pointer :: aux_vars_bc(:)
+    type(global_auxvar_type), pointer :: aux_vars_ss(:)
   end type global_type
 
   public :: GlobalAuxCreate, GlobalAuxDestroy, &
@@ -62,8 +63,10 @@ function GlobalAuxCreate()
   allocate(aux) 
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
 
   GlobalAuxCreate => aux
   

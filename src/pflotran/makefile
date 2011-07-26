@@ -71,7 +71,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  GAUTAM_FLAGS = -DOS_STATISTICS -DGLENN -DENABLE_UNSTRUCTURED -DGEH_DEBUG -w -DMIXED_UMESH
+  GAUTAM_FLAGS = -DOS_STATISTICS -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -DREARRANGE_CONN #-DPARALLELIO_LIB #-DGEH_DEBUG -DGB_DEBUG
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
@@ -98,6 +98,10 @@ endif
 
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
+endif
+
+ifdef have_parallelio_lib
+LIBS += -L${PARALLELIO_LIB} -lparallelio
 endif
 
 ifdef tau
@@ -155,6 +159,7 @@ common_obj = ${common_src}option.o \
 	${common_src}grid.o \
 	${common_src}matrix_buffer.o \
 	${common_src}hydrostatic.o \
+	${common_src}saturation.o \
 	${common_src}patch.o \
         ${common_src}mfd.o\
 	${common_src}level.o \
@@ -249,11 +254,12 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 fluid.o saturation_function.o dataset.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
-          field.o
+          field.o saturation.o
 level.o : patch.o option.o
 strata.o : input.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
+saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o observation.o \

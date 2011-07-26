@@ -4681,10 +4681,10 @@ subroutine Flash2CreateZeroArray(patch,option)
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
   endif
-  print *,'zero rows=', n_zero_rows
+! print *,'zero rows=', n_zero_rows
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
-  print *,'zero rows allocated' 
+! print *,'zero rows allocated' 
   zero_rows_local = 0
   zero_rows_local_ghosted = 0
   ncount = 0
@@ -4716,13 +4716,13 @@ subroutine Flash2CreateZeroArray(patch,option)
     enddo
 #endif
   endif
-print *,'zero rows point 1'
+!print *,'zero rows point 1'
   patch%aux%Flash2%n_zero_rows = n_zero_rows
-print *,'zero rows point 2'
+!print *,'zero rows point 2'
   patch%aux%Flash2%zero_rows_local => zero_rows_local
-print *,'zero rows point 3'  
+!print *,'zero rows point 3'  
   patch%aux%Flash2%zero_rows_local_ghosted => zero_rows_local_ghosted
-print *,'zero rows point 4'
+!print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Flash2%inactive_cells_exist = PETSC_TRUE
@@ -4731,7 +4731,7 @@ print *,'zero rows point 4'
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
- print *,'zero rows', flag
+! print *,'zero rows', flag
 end subroutine Flash2CreateZeroArray
 
 ! ************************************************************************** !
@@ -4888,6 +4888,38 @@ function Flash2GetTecplotHeader(realization, icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-vis(l)"'')') icolumn
+  else
+    write(string2,'('',"vis(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-vis(g)"'')') icolumn
+  else
+    write(string2,'('',"vis(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-kvr(l)"'')') icolumn
+  else
+    write(string2,'('',"kvr(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-kvr(g)"'')') icolumn
+  else
+    write(string2,'('',"kvr(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-u(l)"'')') icolumn
   else
     write(string2,'('',"u(l)"'')')
@@ -4992,7 +5024,7 @@ subroutine Flash2CheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecLoad(viewer, global_var, ierr)
+  call VecLoad(global_var, viewer, ierr)
   call VecDestroy(global_var,ierr)
   
 end subroutine Flash2CheckpointRead

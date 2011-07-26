@@ -163,6 +163,9 @@ function UnitsConvert(unit,option)
       UnitsConvert = 1.d0
     case('M') ! one
       UnitsConvert = 1.d0
+    case('gpm') ! convert from gallons per minute to m^3/sec
+                !    l/gal     m^3/l   sec/min
+      UnitsConvert = 3.785d0 * 1.d-3 / 60.d0
     case default
        option%io_buffer = 'Unit "' // trim(unit) // '" not recognized.'
        call printErrMsg(option)

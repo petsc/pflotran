@@ -100,8 +100,8 @@ PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
 PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
 
 ! condition types
+PetscInt, parameter :: NULL_CONDITION = 0
 PetscInt, parameter :: DIRICHLET_BC = 1
-PetscInt, parameter :: PRODUCTION_WELL = -1
 PetscInt, parameter :: NEUMANN_BC = 2
 PetscInt, parameter :: DIRICHLET_ZERO_GRADIENT_BC = 3
 PetscInt, parameter :: ZERO_GRADIENT_BC = 4
@@ -115,6 +115,8 @@ PetscInt, parameter :: CONCENTRATION_SS = 11
 PetscInt, parameter :: EQUILIBRIUM_SS = 12
 PetscInt, parameter :: CONDUCTANCE_BC = 13
 PetscInt, parameter :: UNIT_GRADIENT_BC = 14
+PetscInt, parameter :: SATURATION_BC = 15
+PetscInt, parameter :: WELL_SS = 100
 
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0
@@ -173,54 +175,59 @@ PetscInt, parameter :: GENERAL_GAS_SATURATION_DOF = 3
 PetscInt, parameter :: GENERAL_LIQUID_FLUX_DOF = 1
 PetscInt, parameter :: GENERAL_GAS_FLUX_DOF = 1
 PetscInt, parameter :: GENERAL_TEMPERATURE_DOF = 3
-PetscInt, parameter :: GENERAL_CONCENTRATION_DOF = 2
-PetscInt, parameter :: GENERAL_ENTHALPY_DOF = 4
+PetscInt, parameter :: GENERAL_MOLE_FRACTION_DOF = 2
 PetscInt, parameter :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
 PetscInt, parameter :: GENERAL_GAS_CONDUCTANCE_DOF = -2
+PetscInt, parameter :: GENERAL_FLUX_DOF = 4
 
 ! output definitions
-PetscInt, parameter :: X_COORDINATE = 1
-PetscInt, parameter :: Y_COORDINATE = 2
-PetscInt, parameter :: Z_COORDINATE = 3
-PetscInt, parameter :: TEMPERATURE = 4
-PetscInt, parameter :: PRESSURE = 5
-PetscInt, parameter :: LIQUID_SATURATION = 6
-PetscInt, parameter :: GAS_SATURATION = 7
-PetscInt, parameter :: LIQUID_DENSITY = 8
-PetscInt, parameter :: GAS_DENSITY = 9
-PetscInt, parameter :: LIQUID_ENERGY = 10
-PetscInt, parameter :: GAS_ENERGY = 11
-PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
-PetscInt, parameter :: GAS_MOLE_FRACTION = 13
-PetscInt, parameter :: POROSITY = 14
-PetscInt, parameter :: PHASE = 15
-PetscInt, parameter :: MATERIAL_ID = 16
-PetscInt, parameter :: GAS_DENSITY_MOL = 17
+PetscInt, parameter :: X_COORDINATE =             1
+PetscInt, parameter :: Y_COORDINATE =             2
+PetscInt, parameter :: Z_COORDINATE =             3
+PetscInt, parameter :: TEMPERATURE =              4
+PetscInt, parameter :: PRESSURE =                 5
+PetscInt, parameter :: LIQUID_SATURATION =        6
+PetscInt, parameter :: GAS_SATURATION =           7
+PetscInt, parameter :: LIQUID_DENSITY =           8
+PetscInt, parameter :: LIQUID_DENSITY_MOL =       9
+PetscInt, parameter :: GAS_DENSITY =             10
+PetscInt, parameter :: GAS_DENSITY_MOL =         11
+PetscInt, parameter :: LIQUID_ENERGY =           12
+PetscInt, parameter :: GAS_ENERGY =              13
+PetscInt, parameter :: LIQUID_VISCOSITY =        14
+PetscInt, parameter :: GAS_VISCOSITY =           15
+PetscInt, parameter :: LIQUID_MOBILITY =         16
+PetscInt, parameter :: GAS_MOBILITY =            17
+PetscInt, parameter :: LIQUID_MOLE_FRACTION =    18
+PetscInt, parameter :: GAS_MOLE_FRACTION =       19
+PetscInt, parameter :: POROSITY =                20
+PetscInt, parameter :: PHASE =                   21
+PetscInt, parameter :: MATERIAL_ID =             22
 
-
-PetscInt, parameter :: PRIMARY_MOLALITY = 18
-PetscInt, parameter :: SECONDARY_MOLALITY = 19
-PetscInt, parameter :: TOTAL_MOLALITY = 20
-PetscInt, parameter :: PRIMARY_MOLARITY = 21
-PetscInt, parameter :: SECONDARY_MOLARITY = 22
-PetscInt, parameter :: TOTAL_MOLARITY = 23
-PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 24
-PetscInt, parameter :: MINERAL_RATE = 25
-PetscInt, parameter :: MINERAL_SURFACE_AREA = 26
-PetscInt, parameter :: PH = 27
-PetscInt, parameter :: SURFACE_CMPLX = 28
-PetscInt, parameter :: SURFACE_CMPLX_FREE = 29
-PetscInt, parameter :: KIN_SURFACE_CMPLX = 30
-PetscInt, parameter :: KIN_SURFACE_CMPLX_FREE = 31
-PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 32
-PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 33
-PetscInt, parameter :: SC_FUGA_COEFF = 34
-PetscInt, parameter :: PRIMARY_KD = 35
-PetscInt, parameter :: TOTAL_SORBED = 36
-PetscInt, parameter :: TOTAL_SORBED_MOBILE = 37
-PetscInt, parameter :: COLLOID_MOBILE = 38
-PetscInt, parameter :: COLLOID_IMMOBILE = 39
-PetscInt, parameter :: AGE = 40
+PetscInt, parameter :: PRIMARY_MOLALITY =        23
+PetscInt, parameter :: SECONDARY_MOLALITY =      24
+PetscInt, parameter :: TOTAL_MOLALITY =          25
+PetscInt, parameter :: PRIMARY_MOLARITY =        26
+PetscInt, parameter :: SECONDARY_MOLARITY =      27
+PetscInt, parameter :: TOTAL_MOLARITY =          28
+PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 29
+PetscInt, parameter :: MINERAL_RATE =            30
+PetscInt, parameter :: MINERAL_SURFACE_AREA =    31
+PetscInt, parameter :: PH =                      32
+PetscInt, parameter :: SURFACE_CMPLX =           33
+PetscInt, parameter :: SURFACE_CMPLX_FREE =      34
+PetscInt, parameter :: KIN_SURFACE_CMPLX =       35
+PetscInt, parameter :: KIN_SURFACE_CMPLX_FREE =  36
+PetscInt, parameter :: PRIMARY_ACTIVITY_COEF =   37
+PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 38
+PetscInt, parameter :: SC_FUGA_COEFF =           39
+PetscInt, parameter :: PRIMARY_KD =              40
+PetscInt, parameter :: TOTAL_SORBED =            41
+PetscInt, parameter :: TOTAL_SORBED_MOBILE =     42
+PetscInt, parameter :: COLLOID_MOBILE =          43
+PetscInt, parameter :: COLLOID_IMMOBILE =        44
+PetscInt, parameter :: AGE =                     45
+PetscInt, parameter :: STATE =                   46
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
@@ -282,5 +289,21 @@ PetscInt, parameter :: DATASET_HETEROGENEOUS = 4
 ! stencil type
 PetscInt, parameter :: STAR_STENCIL = 1
 PetscInt, parameter :: BOX_STENCIL = 2
+
+! grid cell type
+PetscInt, parameter :: HEX_TYPE          = 1
+PetscInt, parameter :: WEDGE_TYPE        = 2
+
+! grid cell properties
+PetscInt, parameter :: TRI_FACE_TYPE     = 1
+PetscInt, parameter :: QUAD_FACE_TYPE    = 2
+PetscInt, parameter :: MAX_VERT_PER_CELL = 8
+PetscInt, parameter :: MAX_DUALS         = 6
+PetscInt, parameter :: MAX_VERT_PER_FACE = 4
+PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
+
+! ids of non-petsc arrays
+PetscInt, parameter :: MATERIAL_ID_ARRAY = 1
+PetscInt, parameter :: SATURATION_FUNCTION_ID_ARRAY = 2
 
 #define HASH
