@@ -310,7 +310,7 @@ end subroutine MFDAuxGenerateStiffMatrix
 subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, &
                                        rich_aux_var, global_aux_var, Accum, &
                                        porosity, volume, pres, face_pres, bnd,&
-                                       sq_faces, option, rhs)
+                                       sq_faces, neig_den, option, rhs)
 
  use Option_module
  use Richards_Aux_module
@@ -322,7 +322,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   type(mfd_auxvar_type), pointer :: aux_var
   type(richards_auxvar_type) :: rich_aux_var
   type(global_auxvar_type) :: global_aux_var
-  PetscScalar :: sq_faces(:)
+  PetscScalar :: sq_faces(:), neig_den(:)
   type(option_type) :: option
   PetscScalar :: bc_g(:), rhs(:), bc_h(:), face_pres(:), bnd(:)
   PetscScalar :: Accum(1:option%nflowdof),source_f(1:option%nflowdof), pres(1:option%nflowdof)
@@ -348,6 +348,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 !  PetscScalar, pointer :: WB(:), Wg(:), CWCl(:),denB(:)
   PetscScalar :: WB(6), Wg(6), CWCl(6), f(6), dden_dp(6)
   PetscScalar :: dbeta_dp(6), den(6), beta(6), denB(6), gr(6)
+  PetscScalar :: upweight
 
 !  allocate(WB(numfaces))
 !  allocate(Wg(numfaces))
@@ -366,21 +367,32 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   dukvr_dp = rich_aux_var%dkvr_x_dp
   den_cntr = global_aux_var%den(1)
   dden_cntr_dp =  rich_aux_var%dden_dp 
+  upweight = 0.5
   
 
   do i = 1 , numfaces
      call MFDComputeDensity(global_aux_var, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
+ 
+     den(i) =  upweight*den_cntr + (1.D0-upweight)*neig_den(i)
+     dden_dp(i) = dden_cntr_dp
+
      beta(i) = ukvr*den(i)
      dbeta_dp(i) = dukvr_dp*den(i) + ukvr*dden_dp(i)
+
+!     dbeta_dp(i) = dukvr_dp*den(i) + ukvr*dden_cntr_dp  
+
      denB(i) = sq_faces(i)*den(i)
   end do
 
-!  write(*,*) "sq ", (sq_faces(iface),iface=1,6)
-!  write(*,*) "p ", (face_pres(iface) + bc_g(iface)/sq_faces(iface),iface=1,6)
-!  write(*,*) "den ", (den(iface),iface=1,6)
-!  write(*,*) "den_dp ", (dden_dp(iface),iface=1,6)
-!  write(*,*) "dbeta_dp ", ( dbeta_dp(i),i=1,6)
-!  write(*,*) "Accum ", Accum(1)
+   if (ghosted_cell_id==1) then
+     write(*,*) "cntr pressure", pres(1)
+     write(*,*) "sq ", (sq_faces(iface),iface=1,6)
+     write(*,*) "p ", (face_pres(iface) + bc_g(iface)/sq_faces(iface),iface=1,6)
+     write(*,*) "den ", (den(iface),iface=1,6)
+     write(*,*) "den_dp ", (dden_dp(iface),iface=1,6)
+     write(*,*) "dbeta_dp ", ( dbeta_dp(i),i=1,6)
+     write(*,*) "Accum ", Accum(1)
+  end if
 
 
 
@@ -915,8 +927,8 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
   dden_dp = dw_dp
 
  
-  den = 55.3d-0 
-  dden_dp = 0
+!  den = 55.3d-0 
+!  dden_dp = 0
  
 
 end subroutine MFDComputeDensity

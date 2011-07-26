@@ -2488,7 +2488,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 
-#ifdef DASVYAT_DEBUG
+#ifdef DASVYAT
    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
@@ -3659,10 +3659,10 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
 ! PetscReal, pointer :: sq_faces(:), rhs(:), bc_g(:), bc_h(:), face_pres(:), bnd(:)
-  PetscReal :: sq_faces(6), rhs(6), bc_g(6), bc_h(6), face_pres(6), bnd(6)
+  PetscReal :: sq_faces(6), rhs(6), bc_g(6), bc_h(6), face_pres(6), bnd(6), neig_den(6)
   PetscReal :: Accum(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3)
-  PetscInt :: icell, iface, jface, numfaces, ghost_face_id, ghost_face_jd
+  PetscInt :: icell, iface, jface, numfaces, ghost_face_id, ghost_face_jd, ghost_neig_id
   PetscScalar, pointer :: e2n_local(:)
   
 
@@ -3750,6 +3750,19 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
             stop
           end if
 
+          if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
+               neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+          else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
+                if (ghosted_id == conn%id_up(jface)) then
+                    ghost_neig_id = conn%id_dn(jface)
+                else 
+                    ghost_neig_id = conn%id_up(jface)
+                end if
+ 
+                neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
+          end if
+ 
+
         end do
          
 
@@ -3791,7 +3804,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                                  Accum, &
                                  porosity_loc_p(ghosted_id), volume_p(local_id),&
                                  flow_xx_p(local_id:local_id), face_pres, bnd,&                                 
-                                 sq_faces, option, rhs) 
+                                 sq_faces, neig_den, option, rhs) 
 
  
      
@@ -3814,8 +3827,10 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           end if
         end do
 !
-!		write(*,*) (rhs(iface),iface=1,6)
-!		write(*,*)
+        if (local_id==1) then
+          write(*,*) (rhs(iface),iface=1,6)
+          write(*,*)
+        end if
         
   enddo
 
