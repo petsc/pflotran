@@ -384,6 +384,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
      denB(i) = sq_faces(i)*den(i)
   end do
 
+#ifdef DASVYAT_DEBUG
    if (ghosted_cell_id==1) then
      write(*,*) "cntr pressure", pres(1)
      write(*,*) "sq ", (sq_faces(iface),iface=1,6)
@@ -393,7 +394,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
      write(*,*) "dbeta_dp ", ( dbeta_dp(i),i=1,6)
      write(*,*) "Accum ", Accum(1)
   end if
-
+#endif
 
 
   sat = global_aux_var%sat(1)

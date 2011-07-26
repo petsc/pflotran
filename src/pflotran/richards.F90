@@ -2515,7 +2515,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
@@ -3848,10 +3848,12 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           end if
         end do
 !
-        if (local_id==1) then
+#ifdef DASVYAT_DEBUG      
+     if (local_id==1) then
           write(*,*) (rhs(iface),iface=1,6)
           write(*,*)
         end if
+#endif
         
   enddo
 
