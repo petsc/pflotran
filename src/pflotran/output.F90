@@ -389,7 +389,7 @@ subroutine OutputTecplotBlock(realization)
       endif
     else
      !sp changed from structured to unstructured below 9/24/2010
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i4)') &
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
                    option%time/output_option%tconv, &
                    grid%ngmax
     endif
