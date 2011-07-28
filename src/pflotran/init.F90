@@ -1849,7 +1849,8 @@ subroutine InitReadInput(simulation)
         enddo
         if (num_plot_variables > 0) then
           allocate(output_option%plot_variables(num_plot_variables))
-          output_option%plot_variables = plot_variables
+          output_option%plot_variables(1:num_plot_variables) = &
+                                           plot_variables(1:num_plot_variables)
         endif
         if (velocities) then
           if (output_option%print_tecplot) &
