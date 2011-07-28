@@ -84,6 +84,9 @@ module Patch_module
     type(patch_type), pointer :: last
     type(patch_ptr_type), pointer :: array(:)
   end type patch_list_type
+
+  PetscInt, parameter, public :: INT_VAR = 0
+  PetscInt, parameter, public :: REAL_VAR = 1
     
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
@@ -92,7 +95,8 @@ module Patch_module
             PatchGetDataset, PatchGetDatasetValueAtCell, &
             PatchSetDataset, &
             PatchInitConstraints, &
-            PatchCountCells
+            PatchCountCells, PatchGetIvarsFromKeyword, &
+            PatchGetVarNameFromKeyword
 
 contains
 
@@ -1916,6 +1920,10 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
+    case(PROCESSOR_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = option%myrank
+      enddo
     case default
       call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')
   end select
@@ -2250,6 +2258,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
       call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
     case(MATERIAL_ID)
       value = patch%imat(ghosted_id)
+    case(PROCESSOR_ID)
+      value = option%myrank
   end select
 
   PatchGetDatasetValueAtCell = value
@@ -2920,6 +2930,9 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
       else if (vec_format == LOCAL) then
         patch%imat(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
       endif
+    case(PROCESSOR_ID)
+      call printErrMsg(option, &
+                       'Cannot set PROCESSOR_ID through PatchSetDataset()')
   end select
 
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
@@ -2957,6 +2970,72 @@ subroutine PatchCountCells(patch,total_count,active_count)
   enddo
 
 end subroutine PatchCountCells
+
+
+! ************************************************************************** !
+!
+! PatchGetVarNameFromKeyword: Returns the name of variable defined by keyword
+! author: Glenn Hammond
+! date: 07/28/11
+!
+! ************************************************************************** !
+function PatchGetVarNameFromKeyword(keyword,option)
+ 
+  use Option_module
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: keyword
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: PatchGetVarNameFromKeyword
+  character(len=MAXSTRINGLENGTH) :: var_name
+
+  select case(keyword)
+    case('PROCESSOR_ID')
+      var_name = 'Processor ID'
+    case default
+      option%io_buffer = 'Keyword "' // trim(keyword) // '" not ' // &
+                         'recognized in PatchGetIvarsFromKeyword()'
+      call printErrMsg(option)
+  end select
+
+  PatchGetVarNameFromKeyword = var_name
+
+end function PatchGetVarNameFromKeyword
+
+! ************************************************************************** !
+!
+! PatchGetIvarsFromKeyword: Returns the ivar and isubvars for extracting
+!                            datasets using PatchGet/PatchSet routines
+! author: Glenn Hammond
+! date: 07/28/11
+!
+! ************************************************************************** !
+subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
+ 
+  use Option_module
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: var_type
+  type(option_type) :: option
+
+  select case(keyword)
+    case('PROCESSOR_ID')
+      ivar = PROCESSOR_ID
+      isubvar = ZERO_INTEGER
+      var_type = INT_VAR
+    case default
+      option%io_buffer = 'Keyword "' // trim(keyword) // '" not ' // &
+                         'recognized in PatchGetIvarsFromKeyword()'
+      call printErrMsg(option)
+  end select
+
+end subroutine
 
 ! ************************************************************************** !
 !

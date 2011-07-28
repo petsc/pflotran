@@ -228,6 +228,7 @@ PetscInt, parameter :: COLLOID_MOBILE =          43
 PetscInt, parameter :: COLLOID_IMMOBILE =        44
 PetscInt, parameter :: AGE =                     45
 PetscInt, parameter :: STATE =                   46
+PetscInt, parameter :: PROCESSOR_ID =            47
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
