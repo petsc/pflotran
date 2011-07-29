@@ -851,11 +851,13 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: error_string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
   
   type(mineral_type), pointer :: cur_mineral
+  type(transition_state_rxn_type), pointer :: tstrxn, cur_tstrxn
   PetscBool :: found
   PetscInt :: imnrl,icount
 
@@ -884,8 +886,19 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
       if (StringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
         found = PETSC_TRUE
         cur_mineral%itype = MINERAL_KINETIC
+        tstrxn => TransitionStateTheoryRxnCreate()
         if (.not.associated(cur_mineral%tstrxn)) then
-          cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
+          cur_mineral%tstrxn => tstrxn
+        else ! append to end of list
+          cur_tstrxn => cur_mineral%tstrxn
+          do
+            if (.not.associated(cur_tstrxn%next)) then
+              cur_tstrxn%next => tstrxn
+              exit
+            else
+              cur_tstrxn => cur_tstrxn%next
+            endif
+          enddo
         endif
         
         do
@@ -893,28 +906,41 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'word','CHEMISTRY,MINERAL_KINETICS,MINERAL') 
+          error_string = 'CHEMISTRY,MINERAL_KINETICS'
+          call InputErrorMsg(input,option,'word',error_string) 
           select case(trim(word))
             case('RATE_CONSTANT')
 !             read rate constant
-              call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
-              call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
+              call InputReadDouble(input,option,tstrxn%rate)
+              call InputErrorMsg(input,option,'rate',error_string)
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
-              call InputReadDouble(input,option,cur_mineral%tstrxn%activation_energy)
-              call InputErrorMsg(input,option,'activation','CHEMISTRY,MINERAL_KINETICS')
+              call InputReadDouble(input,option,tstrxn%activation_energy)
+              call InputErrorMsg(input,option,'activation',error_string)
             case('AFFINITY_THRESHOLD')
 !             read affinity threshold for precipitation
-              call InputReadDouble(input,option,cur_mineral%tstrxn%affinity_threshold)
-              call InputErrorMsg(input,option,'threshold','CHEMISTRY,MINERAL_KINETICS')
+              call InputReadDouble(input,option,tstrxn%affinity_threshold)
+              call InputErrorMsg(input,option,'threshold',error_string)
             case('RATE_LIMITER')
 !             read rate limiter for precipitation
-              call InputReadDouble(input,option,cur_mineral%tstrxn%rate_limiter)
-              call InputErrorMsg(input,option,'rate_limiter','CHEMISTRY,MINERAL_KINETICS')
+              call InputReadDouble(input,option,tstrxn%rate_limiter)
+              call InputErrorMsg(input,option,'rate_limiter',error_string)
             case('IRREVERSIBLE')
 !             read flag for irreversible reaction
-              cur_mineral%tstrxn%irreversible = 1
-              call InputErrorMsg(input,option,'irreversible','CHEMISTRY,MINERAL_KINETICS')
+              tstrxn%irreversible = 1
+              call InputErrorMsg(input,option,'irreversible',error_string)
+            case('PREFACTOR_SPECIES')
+              call InputReadWord(input,option,tstrxn%prefactor_species,PETSC_TRUE)
+              call InputErrorMsg(input,option,'prefactor species name',error_string)
+            case('PREFACTOR_ALPHA')
+              call InputReadDouble(input,option,tstrxn%prefactor_alpha)
+              call InputErrorMsg(input,option,'prefactor alpha',error_string)
+            case('PREFACTOR_BETA')
+              call InputReadDouble(input,option,tstrxn%prefactor_beta)
+              call InputErrorMsg(input,option,'prefactor beta',error_string)
+            case('PREFACTOR_ATTENUATION_COEF')
+              call InputReadDouble(input,option,tstrxn%prefactor_attenuation_coef)
+              call InputErrorMsg(input,option,'prefactor attenuation coefficient',error_string)
             case default
               option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
                                  trim(word) // ' not recognized'
@@ -4419,6 +4445,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
   PetscBool :: prefactor_exists
+
+  PetscInt, parameter :: needs_to_be_fixed = 1
   
   PetscReal :: arrhenius_factor, rgas = 8.3147295d-3
 
@@ -4467,8 +4495,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ! Arrhenius factor
-    if (reaction%kinmnrl_activation_energy(imnrl) > 0.d0) then
-      arrhenius_factor = exp(reaction%kinmnrl_activation_energy(imnrl)/rgas &
+    if (reaction%kinmnrl_activation_energy(needs_to_be_fixed,imnrl) > 0.d0) then
+      arrhenius_factor = exp(reaction%kinmnrl_activation_energy(needs_to_be_fixed,imnrl)/rgas &
         *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
     else
       arrhenius_factor = 1.d0
@@ -4484,14 +4512,14 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     
 !     check for supersaturation threshold for precipitation
 !     if (associated(reaction%kinmnrl_affinity_threshold)) then
-      if (reaction%kinmnrl_affinity_threshold(imnrl) > 0.d0) then
-        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) cycle
+      if (reaction%kinmnrl_affinity_threshold(needs_to_be_fixed,imnrl) > 0.d0) then
+        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(needs_to_be_fixed,imnrl)) cycle
       endif
     
 !     check for rate limiter for precipitation
-      if (reaction%kinmnrl_rate_limiter(imnrl) > 0.d0) then
+      if (reaction%kinmnrl_rate_limiter(needs_to_be_fixed,imnrl) > 0.d0) then
         affinity_factor = affinity_factor/(1.d0+(1.d0-affinity_factor) &
-          /reaction%kinmnrl_rate_limiter(imnrl))
+          /reaction%kinmnrl_rate_limiter(needs_to_be_fixed,imnrl))
       endif
 
       ! compute prefactor
@@ -4501,6 +4529,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         sum_prefactor_rate = 0
         do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
           prefactor(ipref) = 1.d0
+#if 0
           do i = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
             icomp = reaction%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
             prefactor(ipref) = prefactor(ipref) * &
@@ -4521,6 +4550,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                 ln_sec_act(kcplx)))
             enddo
           endif
+#endif
           sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_rate(ipref,imnrl)
         enddo
       else
@@ -4539,7 +4569,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       Im_const = Im_const*arrhenius_factor
       
       if (associated(reaction%kinmnrl_affinity_power)) then
-        Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
+        Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(needs_to_be_fixed,imnrl)*sum_prefactor_rate
       else
         Im = Im_const*sign_*abs(affinity_factor)*sum_prefactor_rate
       endif
@@ -4567,7 +4597,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     ! calculate derivatives of rate with respect to free
     ! units = mol/sec
     if (associated(reaction%kinmnrl_affinity_power)) then
-      dIm_dQK = -Im*reaction%kinmnrl_affinity_power(imnrl)/abs(affinity_factor)
+      dIm_dQK = -Im*reaction%kinmnrl_affinity_power(needs_to_be_fixed,imnrl)/abs(affinity_factor)
     else
       dIm_dQK = -Im_const*sum_prefactor_rate
     endif
@@ -4577,7 +4607,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ! derivatives with respect to primary species in reaction quotient
-    if (reaction%kinmnrl_rate_limiter(imnrl) <= 0.d0) then
+    if (reaction%kinmnrl_rate_limiter(needs_to_be_fixed,imnrl) <= 0.d0) then
       do j = 1, ncomp
         jcomp = reaction%kinmnrlspecid(j,imnrl)
         ! unit = L water/mol
@@ -4595,7 +4625,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       
     else
 
-      den = 1.d0+(1.d0-affinity_factor)/reaction%kinmnrl_rate_limiter(imnrl)
+      den = 1.d0+(1.d0-affinity_factor)/reaction%kinmnrl_rate_limiter(needs_to_be_fixed,imnrl)
       do j = 1, ncomp
         jcomp = reaction%kinmnrlspecid(j,imnrl)
         ! unit = L water/mol
@@ -4608,7 +4638,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
           ! units = (mol/sec)*(kg water/mol) = kg water/sec
           Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
             reaction%kinmnrlstoich(i,imnrl)*dIm_dQK  &
-            *(1.d0 + QK/reaction%kinmnrl_rate_limiter(imnrl)/den)*dQK_dmj/den
+            *(1.d0 + QK/reaction%kinmnrl_rate_limiter(needs_to_be_fixed,imnrl)/den)*dQK_dmj/den
         enddo
       enddo
     endif
@@ -4616,7 +4646,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
       print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
       stop
-      
+#if 0      
       dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
       do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
         dIm_dprefactor_rate = dIm_dsum_prefactor_rate*reaction%kinmnrl_rate(ipref,imnrl)
@@ -4672,6 +4702,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
           enddo  ! loop over complexes
         endif
       enddo  ! loop over prefactors
+#endif
     endif
   enddo  ! loop over minerals
     
