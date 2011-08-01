@@ -7267,6 +7267,7 @@ subroutine OutputMassBalanceNew(realization)
             bcs_done = PETSC_TRUE
             if (associated(patch%source_sinks)) then
               coupler => patch%source_sinks%first
+              if (.not.associated(coupler)) exit
             else
               exit
             endif
@@ -7444,6 +7445,7 @@ subroutine OutputMassBalanceNew(realization)
         bcs_done = PETSC_TRUE
         if (associated(patch%source_sinks)) then
           coupler => patch%source_sinks%first
+          if (.not.associated(coupler)) exit
           global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_ss
           if (option%ntrandof > 0) then
             rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_ss
