@@ -4511,19 +4511,29 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   
-  PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp, ipref
-  PetscReal :: prefactor(10), sum_prefactor_rate
-  PetscReal :: dIm_dsum_prefactor_rate, dIm_dprefactor_rate
-  PetscReal :: dprefactor_dcomp_numerator, dprefactor_dcomp_denominator
+  PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp
+  PetscInt :: ipref, ipref_species
+  ! I am assuming a maximum of 10 prefactors and 5 species per prefactor
   PetscReal :: tempreal, tempreal2
   PetscReal :: affinity_factor, sign_
   PetscReal :: Im, Im_const, dIm_dQK
   PetscReal :: ln_conc(reaction%naqcomp)
-  PetscReal :: ln_sec(reaction%neqcplx)
+  PetscReal :: ln_sec(reaction%neqcplx) 
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
-  PetscBool :: prefactor_exists
+
+  PetscReal :: ln_spec_act, spec_act_coef, ln_spec_conc
+  PetscReal :: ln_prefactor, ln_numerator, ln_denominator
+  PetscReal :: prefactor(10), ln_prefactor_spec(5,10)
+  PetscReal :: sum_prefactor_rate
+  PetscReal :: dIm_dsum_prefactor_rate, dIm_dspec
+  PetscReal :: dprefactor_dprefactor_spec, dprefactor_spec_dspec
+  PetscReal :: dprefactor_spec_dspec_numerator
+  PetscReal :: dprefactor_spec_dspec_denominator
+  PetscReal :: denominator
+  PetscInt :: ipref_spec, icplx
+  PetscReal :: ln_gam_m_beta
 
   PetscInt, parameter :: needs_to_be_fixed = 1
   
@@ -4573,14 +4583,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       affinity_factor = 1.d0-QK
     endif
     
-    ! Arrhenius factor
-    if (reaction%kinmnrl_activation_energy(imnrl) > 0.d0) then
-      arrhenius_factor = exp(reaction%kinmnrl_activation_energy(imnrl)/rgas &
-        *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
-    else
-      arrhenius_factor = 1.d0
-    endif
-    
     sign_ = sign(1.d0,affinity_factor)
 
     if (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
@@ -4603,37 +4605,50 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
       ! compute prefactor
       if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then
-        print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
-        stop
         sum_prefactor_rate = 0
+        prefactor = 0.d0
+        ln_prefactor_spec = 0.d0
         do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
-          prefactor(ipref) = 1.d0
-#if 0
-          do i = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
-            icomp = reaction%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
-            prefactor(ipref) = prefactor(ipref) * &
-              exp(reaction%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
-              ln_act(icomp))/ &
-              (1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl)* &
-              exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
-              ln_act(icomp)))
+          ln_prefactor = 0.d0
+          do ipref_species = 1, reaction%kinmnrl_prefactor_id(0,ipref,imnrl)
+            icomp = reaction%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
+            if (icomp > 0) then ! primary species
+              ln_spec_act = ln_act(icomp)
+            else ! secondary species
+              ln_spec_act = ln_sec_act(-icomp)
+            endif
+            ln_numerator = &
+              reaction%kinmnrl_pref_alpha(ipref_species,ipref,imnrl)* &
+              ln_spec_act
+            ln_denominator = log(1.d0 + &
+              exp(log(reaction%kinmnrl_pref_atten_coef(ipref_species,ipref,imnrl)) + &
+                  reaction%kinmnrl_pref_beta(ipref_species,ipref,imnrl)* &
+                  ln_spec_act))
+            ln_prefactor = ln_prefactor + ln_numerator
+            ln_prefactor = ln_prefactor - ln_denominator
+            ln_prefactor_spec(ipref_species,ipref) = ln_numerator - ln_denominator
           enddo
-          if (reaction%neqcplx > 0) then
-            do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-              kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
-              prefactor(ipref) = prefactor(ipref) * &
-                exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                ln_sec_act(kcplx))/ &
-                (1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl)* &
-                exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                ln_sec_act(kcplx)))
-            enddo
+          prefactor(ipref) = exp(ln_prefactor)
+        ! Arrhenius factor
+          arrhenius_factor = 1.d0
+          if (reaction%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
+            arrhenius_factor = &
+              exp(reaction%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
+                  *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
+                                                273.15d0)))
           endif
-#endif
-          sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_pref_rate(ipref,imnrl)
+          sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)* &
+                               reaction%kinmnrl_pref_rate(ipref,imnrl)* &
+                               arrhenius_factor
         enddo
       else
-        sum_prefactor_rate = reaction%kinmnrl_rate(imnrl)
+        ! Arrhenius factor
+        arrhenius_factor = 1.d0
+        if (reaction%kinmnrl_activation_energy(imnrl) > 0.d0) then
+          arrhenius_factor = exp(reaction%kinmnrl_activation_energy(imnrl)/rgas &
+            *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
+        endif
+        sum_prefactor_rate = reaction%kinmnrl_rate(imnrl)*arrhenius_factor
       endif
 
       ! compute rate
@@ -4645,8 +4660,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
 
-      Im_const = Im_const*arrhenius_factor
-      
       if (associated(reaction%kinmnrl_affinity_power)) then
         Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
       else
@@ -4723,63 +4736,88 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
-      print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
-      stop
-#if 0      
+#if 1      
       dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
       do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
-        dIm_dprefactor_rate = dIm_dsum_prefactor_rate*reaction%kinmnrl_rate(ipref,imnrl)
-        do j = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
-          jcomp = reaction%kinmnrl_pri_prefactor_id(j,ipref,imnrl)
-          ! numerator
-          dprefactor_dcomp_numerator = reaction%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
-                                       prefactor(ipref)/rt_auxvar%pri_molal(jcomp) ! dR_dm
-          ! denominator
-          dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-            (1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
-            exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-            ln_act(jcomp)))* & 
-            reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-            reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
-            exp((reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
-            ln_act(jcomp))* & ! dR_da
-            rt_auxvar%pri_act_coef(jcomp) ! da_dc
-          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
-                     dprefactor_dcomp_denominator)*global_auxvar%den_kg(iphase)
-          do i = 1, ncomp
-            icomp = reaction%kinmnrlspecid(i,imnrl)
-            Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal
-          enddo  ! loop over col
-        enddo !loop over row
-        if (reaction%neqcplx > 0) then
-          do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-            kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
-            ! numerator
-            dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-              prefactor(ipref)/(rt_auxvar%sec_molal(kcplx)* &
-              rt_auxvar%sec_act_coef(kcplx)) ! dR_dax
-            ! denominator
-            dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-              (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-              exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                                ln_sec_act(kcplx)))* &
-              reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-              reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-              exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
-              ln_sec_act(kcplx)) ! dR_dax
-            tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
-                       dprefactor_dcomp_denominator)*global_auxvar%den_kg(iphase)
-            do j = 1, reaction%eqcplxspecid(0,kcplx)
-              jcomp = reaction%eqcplxspecid(j,kcplx)
-              tempreal2 = reaction%eqcplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc
-              do i = 1, ncomp
-                icomp = reaction%kinmnrlspecid(i,imnrl)
-                Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal* &
-                                                      tempreal2
-              enddo  ! loop over col
-            enddo  ! loop over row
-          enddo  ! loop over complexes
+        arrhenius_factor = 1.d0
+        if (reaction%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
+          arrhenius_factor = &
+            exp(reaction%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
+                *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
+                                              273.15d0)))
         endif
+        ln_prefactor = log(prefactor(ipref))
+        do ipref_species = 1, reaction%kinmnrl_prefactor_id(0,ipref,imnrl)
+          dprefactor_dprefactor_spec = ln_prefactor-ln_prefactor_spec(ipref_spec,ipref)
+          icomp = reaction%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
+          if (icomp > 0) then ! primary species
+            ln_spec_conc = ln_act(icomp)
+            spec_act_coef = rt_auxvar%pri_act_coef(icomp)
+          else ! secondary species
+            ln_spec_conc = ln_sec_act(-icomp)
+            spec_act_coef = rt_auxvar%sec_act_coef(-icomp)
+          endif
+          ! derivative of numerator in eq. 54
+          dprefactor_spec_dspec_numerator = &
+            reaction%kinmnrl_pref_alpha(ipref_species,ipref,imnrl) * &
+            exp(ln_prefactor_spec(ipref_spec,ipref) - ln_spec_act)
+          ln_gam_m_beta = reaction%kinmnrl_pref_beta(ipref_species,ipref,imnrl)* &
+                          ln_spec_act
+          ! denominator
+          denominator = 1.d0 + &
+              exp(log(reaction%kinmnrl_pref_atten_coef(ipref_species,ipref,imnrl)) + &
+                  ln_gam_m_beta)
+          ! derivative of denominator ni eq. 54
+          dprefactor_spec_dspec_denominator = -1.d0 * &
+            exp(ln_prefactor_spec(ipref_spec,ipref)) / denominator * &
+            reaction%kinmnrl_pref_atten_coef(ipref_species,ipref,imnrl) * &
+            reaction%kinmnrl_pref_beta(ipref_species,ipref,imnrl) * &
+            exp(ln_gam_m_beta - ln_spec_act)
+
+          dprefactor_spec_dspec = dprefactor_spec_dspec_numerator + &
+            dprefactor_spec_dspec_denominator
+
+          ! thus far the derivative is with respect to the activity, convert to with
+          ! respect to molality
+          dprefactor_spec_dspec = dprefactor_spec_dspec * spec_act_coef
+
+          dIm_dspec = dIm_dsum_prefactor_rate * dprefactor_dprefactor_spec * &
+                      dprefactor_spec_dspec * &
+                      reaction%kinmnrl_pref_rate(ipref,imnrl)* &
+                      arrhenius_factor
+
+          if (icomp > 0) then 
+            Jac(icomp,icomp) = Jac(icomp,icomp) + dIm_dspec
+          else ! secondary species
+            ! have to recalculate the reaction quotient (QK) for secondary species
+            icplx = -icomp
+
+            ! compute secondary species concentration
+            lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
+
+            ! activity of water
+            if (reaction%eqcplxh2oid(icplx) > 0) then
+              lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+            endif
+
+            ncomp = reaction%eqcplxspecid(0,icplx)
+            do i = 1, ncomp
+              icomp = reaction%eqcplxspecid(i,icplx)
+              lnQK = lnQK + reaction%eqcplxstoich(i,icplx)*ln_act(icomp)
+            enddo
+            ! add contribution to derivatives secondary prefactor with respect to free
+            do j = 1, ncomp
+              jcomp = reaction%eqcplxspecid(j,icplx)
+              tempreal = reaction%eqcplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))/ &
+                                                rt_auxvar%sec_act_coef(icplx)
+              do i = 1, ncomp
+                icomp = reaction%eqcplxspecid(i,icplx)
+                Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                  reaction%eqcplxstoich(i,icplx)*tempreal*dIm_dspec
+              enddo
+            enddo
+          endif
+        enddo
       enddo  ! loop over prefactors
 #endif
     endif
