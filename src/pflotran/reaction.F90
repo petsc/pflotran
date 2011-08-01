@@ -930,17 +930,29 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
               tstrxn%irreversible = 1
               call InputErrorMsg(input,option,'irreversible',error_string)
             case('PREFACTOR_SPECIES')
-              call InputReadWord(input,option,tstrxn%prefactor_species,PETSC_TRUE)
-              call InputErrorMsg(input,option,'prefactor species name',error_string)
-            case('PREFACTOR_ALPHA')
-              call InputReadDouble(input,option,tstrxn%prefactor_alpha)
-              call InputErrorMsg(input,option,'prefactor alpha',error_string)
-            case('PREFACTOR_BETA')
-              call InputReadDouble(input,option,tstrxn%prefactor_beta)
-              call InputErrorMsg(input,option,'prefactor beta',error_string)
-            case('PREFACTOR_ATTENUATION_COEF')
-              call InputReadDouble(input,option,tstrxn%prefactor_attenuation_coef)
-              call InputErrorMsg(input,option,'prefactor attenuation coefficient',error_string)
+              do
+                call InputReadFlotranString(input,option)
+                call InputReadStringErrorMsg(input,option,card)
+                if (InputCheckExit(input,option)) exit
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
+                call InputErrorMsg(input,option,'word',error_string) 
+                select case(trim(word))
+                  case('RATE_CONSTANT')
+                  case('SPECIES')
+                    call InputReadWord(input,option,tstrxn%prefactor_species,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'prefactor species name',error_string)
+                  case('PREFACTOR_ALPHA')
+                    call InputReadDouble(input,option,tstrxn%prefactor_alpha)
+                    call InputErrorMsg(input,option,'prefactor alpha',error_string)
+                  case('PREFACTOR_BETA')
+                    call InputReadDouble(input,option,tstrxn%prefactor_beta)
+                    call InputErrorMsg(input,option,'prefactor beta',error_string)
+                  case('PREFACTOR_ATTENUATION_COEF')
+                    call InputReadDouble(input,option,tstrxn%prefactor_attenuation_coef)
+                    call InputErrorMsg(input,option,'prefactor attenuation coefficient',error_string)
+                error_string = 'CHEMISTRY,MINERAL_KINETICS'
+              enddo
             case default
               option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
                                  trim(word) // ' not recognized'

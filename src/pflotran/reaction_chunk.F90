@@ -1284,7 +1284,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
     
 !     check for supersaturation threshold for precipitation
       if (associated(reaction%kinmnrl_affinity_threshold)) then
-        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(needs_to_be_fixed,imnrl)) cycle
+        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) cycle
       endif
 
       ! compute prefactor
@@ -1308,7 +1308,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
         enddo
 #endif
       else
-        sum_prefactor_rate = reaction%kinmnrl_rate(1,imnrl)
+        sum_prefactor_rate = reaction%kinmnrl_rate(imnrl)
       endif
 
       ! compute rate
@@ -1319,7 +1319,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
       Im_const = -auxvar%mnrl_area(ichunk,ithread,imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
-        Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(needs_to_be_fixed,imnrl)*sum_prefactor_rate
+        Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
       else
         Im = Im_const*sign_*abs(affinity_factor)*sum_prefactor_rate
       endif
@@ -1345,7 +1345,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
     ! calculate derivatives of rate with respect to free
     ! units = mol/sec
     if (associated(reaction%kinmnrl_affinity_power)) then
-      dIm_dQK = -Im*reaction%kinmnrl_affinity_power(needs_to_be_fixed,imnrl)/abs(affinity_factor)
+      dIm_dQK = -Im*reaction%kinmnrl_affinity_power(imnrl)/abs(affinity_factor)
     else
       dIm_dQK = -Im_const*sum_prefactor_rate
     endif
