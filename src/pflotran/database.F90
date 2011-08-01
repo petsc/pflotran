@@ -680,6 +680,8 @@ subroutine BasisInit(reaction,option)
   type(colloid_type), pointer :: cur_colloid
   type(database_rxn_type), pointer :: dbaserxn
   type(transition_state_rxn_type), pointer :: tstrxn
+  type(transition_state_prefactor_type), pointer :: cur_prefactor
+  type(ts_prefactor_species_type), pointer :: cur_prefactor_species
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -724,8 +726,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: forward_count, max_forward_count
   PetscInt :: backward_count, max_backward_count
   PetscInt :: midpoint
-  PetscInt :: max_num_prefactors
-  PetscInt :: itst
+  PetscInt :: max_num_prefactors, max_num_prefactor_species
   
   PetscBool :: compute_new_basis
   PetscBool :: found
@@ -1635,15 +1636,38 @@ subroutine BasisInit(reaction,option)
   igas_spec = -1 ! to catch bugs
 
   ! minerals
-!  reaction%nmnrl = GetMineralCount(reaction)
-  reaction%nkinmnrl = GetKineticMineralCount(reaction)
-
+  ! Count the number of kinetic mineral reactions, max number of prefactors in a
+  !   tst reaction, and the maximum number or species in a prefactor
+  reaction%nkinmnrl = 0
   max_num_prefactors = 0
+  max_num_prefactor_species = 0
   cur_mineral => reaction%mineral_list
+  !
   do
     if (.not.associated(cur_mineral)) exit
-    i = GetKineticMineralTSTRxnCount(cur_mineral)
-    if (i > max_num_prefactors) max_num_prefactors = i
+    if (cur_mineral%itype == MINERAL_KINETIC .and. &
+        associated(cur_mineral%tstrxn)) then
+      ! increment number of kinetic minerals
+      reaction%nkinmnrl = reaction%nkinmnrl + 1
+      cur_prefactor => cur_mineral%tstrxn%prefactor
+      ! zero number of prefactors
+      i = 0
+      do
+        if (.not.associated(cur_prefactor)) exit
+        i = i + 1
+        cur_prefactor_species => cur_prefactor%species
+        ! zero number of prefactor species
+        j = 0
+        do
+          if (.not.associated(cur_prefactor_species)) exit
+          j = j + 1
+          cur_prefactor_species => cur_prefactor_species%next
+        enddo
+        if (j > max_num_prefactor_species) max_num_prefactor_species = j
+        cur_prefactor => cur_prefactor%next
+      enddo
+      if (i > max_num_prefactors) max_num_prefactors = i
+    endif
     cur_mineral => cur_mineral%next
   enddo
 
@@ -1692,26 +1716,35 @@ subroutine BasisInit(reaction,option)
 #endif
 
     ! TST Rxn variables
-    allocate(reaction%kinmnrl_affinity_threshold(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
     reaction%kinmnrl_affinity_threshold = 0.d0
-    allocate(reaction%kinmnrl_rate_limiter(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
     reaction%kinmnrl_rate_limiter = 0.d0
-    allocate(reaction%kinmnrl_irreversible(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
     reaction%kinmnrl_irreversible = 0
-    allocate(reaction%kinmnrl_rate(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_rate(reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
-    allocate(reaction%kinmnrl_activation_energy(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
     reaction%kinmnrl_activation_energy = 0.d0
 
+    allocate(reaction%kinmnrl_pref_rate(max_num_prefactors,reaction%nkinmnrl))
+    reaction%kinmnrl_pref_rate = 0.d0
+    allocate(reaction%kinmnrl_pref_activation_energy(max_num_prefactors, &
+                                                     reaction%nkinmnrl))
+    reaction%kinmnrl_pref_activation_energy = 0.d0
     allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
     reaction%kinmnrl_num_prefactors = 0
-    allocate(reaction%kinmnrl_prefactor_id(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_prefactor_id(0:max_num_prefactor_species, &
+                                         max_num_prefactors,reaction%nkinmnrl))
     reaction%kinmnrl_prefactor_id = 0
-    allocate(reaction%kinmnrl_pref_alpha_stoich(max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_pref_alpha_stoich = 0.d0
-    allocate(reaction%kinmnrl_pref_beta_stoich(max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_pref_beta_stoich = 0.d0
-    allocate(reaction%kinmnrl_pref_atten_coef(max_num_prefactors,reaction%nkinmnrl))
+    allocate(reaction%kinmnrl_pref_alpha(max_num_prefactor_species, &
+                                         max_num_prefactors,reaction%nkinmnrl))
+    reaction%kinmnrl_pref_alpha = 0.d0
+    allocate(reaction%kinmnrl_pref_beta(max_num_prefactor_species, &
+                                         max_num_prefactors,reaction%nkinmnrl))
+    reaction%kinmnrl_pref_beta = 0.d0
+    allocate(reaction%kinmnrl_pref_atten_coef(max_num_prefactor_species, &
+                                         max_num_prefactors,reaction%nkinmnrl))
     reaction%kinmnrl_pref_atten_coef = 0.d0
 
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
@@ -1784,55 +1817,73 @@ subroutine BasisInit(reaction,option)
                          reaction%kinmnrl_logK(ikinmnrl))
 #endif
 
-        ! loop over transition state theory reactions/prefactors
-        tstrxn => cur_mineral%tstrxn
-        itst = 0
-        do
-          if (.not.associated(tstrxn)) exit
-          itst = itst + 1
+        tstrxn = cur_mineral%tstrxn
+        if (associated(tstrxn)) then
+          ! loop over transition state theory reactions/prefactors
+          cur_prefactor => cur_mineral%tstrxn%prefactor
+          i = 0
+          do
+            if (.not.associated(cur_prefactor)) exit
+            ! ith prefactor
+            i = i + 1
 
-          reaction%kinmnrl_affinity_threshold(itst,ikinmnrl) = &
+            reaction%kinmnrl_pref_rate(i,ikinmnrl) = cur_prefactor%rate
+            reaction%kinmnrl_pref_activation_energy(i,ikinmnrl) = &
+              cur_prefactor%activation_energy
+
+            cur_prefactor_species => cur_prefactor%species
+            j = 0
+            do
+              if (.not.associated(cur_prefactor_species)) exit
+              ! jth prefactor species
+              j = j + 1
+              ! find the prefactor species
+              do ispec = 1, reaction%naqcomp
+                if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                            cur_prefactor_species%name,MAXWORDLENGTH)) then
+                  cur_prefactor_species%id = ispec
+                  exit
+                endif
+              enddo
+              if (cur_prefactor_species%id == 0) then ! not found
+                ! negative prefactor_species_id denotes a secondary species
+                do ispec = 1, reaction%neqcplx
+                  if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
+                                              cur_prefactor_species%name,MAXWORDLENGTH)) then
+                    cur_prefactor_species%id = -ispec
+                    exit
+                  endif
+                enddo
+              endif
+              if (cur_prefactor_species%id == 0) then
+                option%io_buffer = 'Kinetic mineral prefactor species "' // &
+                  trim(cur_prefactor_species%name) // &
+                  '" not found among primary or secondary species.'
+                call printErrMsg(option)
+              endif
+              reaction%kinmnrl_prefactor_id(j,i,ikinmnrl) = cur_prefactor_species%id
+              reaction%kinmnrl_pref_alpha(j,i,ikinmnrl) = cur_prefactor_species%alpha
+              reaction%kinmnrl_pref_beta(j,i,ikinmnrl) = cur_prefactor_species%beta
+              reaction%kinmnrl_pref_atten_coef(j,i,ikinmnrl) = &
+                cur_prefactor_species%attenuation_coef
+            enddo
+            ! store the number of species
+            reaction%kinmnrl_prefactor_id(0,i,ikinmnrl) = j
+            cur_prefactor => cur_prefactor%next
+          enddo
+          reaction%kinmnrl_num_prefactors(ikinmnrl) = i
+
+          reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
             tstrxn%affinity_threshold
-          reaction%kinmnrl_rate_limiter(itst,ikinmnrl) = tstrxn%rate_limiter
-          reaction%kinmnrl_irreversible(itst,ikinmnrl) = tstrxn%irreversible
-          reaction%kinmnrl_rate(itst,ikinmnrl) = tstrxn%rate
-          reaction%kinmnrl_activation_energy(itst,ikinmnrl) = &
-            tstrxn%activation_energy
-
-          ! prefactors
-          ! find the prefactor species
-          if (len_trim(tstrxn%prefactor_species) > 0) then
-            do ispec = 1, reaction%naqcomp
-              if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                          tstrxn%prefactor_species,MAXWORDLENGTH)) then
-                tstrxn%prefactor_species_id = ispec
-              endif
-            enddo
-            if (tstrxn%prefactor_species_id /= 0) exit
-            ! negative prefactor_species_id denotes a secondary species
-            do ispec = 1, reaction%neqcplx
-              if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
-                                          tstrxn%prefactor_species,MAXWORDLENGTH)) then
-                tstrxn%prefactor_species_id = -ispec
-              endif
-            enddo
+          reaction%kinmnrl_rate_limiter(ikinmnrl) = tstrxn%rate_limiter
+          reaction%kinmnrl_irreversible(ikinmnrl) = tstrxn%irreversible
+          if (reaction%kinmnrl_num_prefactors(ikinmnrl) == 0) then
+            ! no prefactors, rates stored in upper level
+            reaction%kinmnrl_rate(ikinmnrl) = tstrxn%rate
+            reaction%kinmnrl_activation_energy(ikinmnrl) = &
+              tstrxn%activation_energy
           endif
-
-          if (tstrxn%prefactor_species_id /= 0) then
-            reaction%kinmnrl_prefactor_id(itst,ikinmnrl) = &
-              tstrxn%prefactor_species_id
-            reaction%kinmnrl_pref_alpha_stoich(itst,ikinmnrl) = &
-              tstrxn%prefactor_alpha
-            reaction%kinmnrl_pref_beta_stoich(itst,ikinmnrl) = &
-              tstrxn%prefactor_beta
-            reaction%kinmnrl_pref_atten_coef(itst,ikinmnrl) = &
-              tstrxn%prefactor_attenuation_coef
-            reaction%kinmnrl_num_prefactors(ikinmnrl) = &
-              reaction%kinmnrl_num_prefactors(ikinmnrl) + 1
-          endif
-
-          tstrxn => tstrxn%next
-        enddo
+        endif ! associated(tstrxn)
 
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight

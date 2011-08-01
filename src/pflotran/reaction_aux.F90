@@ -92,15 +92,21 @@ module Reaction_Aux_module
   end type transition_state_rxn_type
   
   type, public :: transition_state_prefactor_type
-    character(len=MAXWORDLENGTH) :: prefactor_species
-    PetscInt :: prefactor_species_id
-    PetscReal :: prefactor_alpha
-    PetscReal :: prefactor_beta
-    PetscReal :: prefactor_attenuation_coef
+    type(ts_prefactor_species_type), pointer :: species
+    ! these supercede the those above in transition_state_rxn_type
     PetscReal :: rate
     PetscReal :: activation_energy
     type(transition_state_prefactor_type), pointer :: next
   end type transition_state_prefactor_type
+
+  type, public :: ts_prefactor_species_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscInt :: id
+    PetscReal :: alpha
+    PetscReal :: beta
+    PetscReal :: attenuation_coef
+    type(ts_prefactor_species_type), pointer :: next
+  end type ts_prefactor_species_type
 
   type, public :: ion_exchange_rxn_type
     PetscInt :: id
@@ -393,11 +399,11 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_molar_wt(:)
     PetscInt, pointer :: kinmnrl_num_prefactors(:)
     PetscInt, pointer :: kinmnrl_prefactor_id(:,:,:)
-    PetscReal, pointer :: kinmnrl_pref_alpha_stoich(:,:,:)
-    PetscReal, pointer :: kinmnrl_pref_beta_stoich(:,:,:)
+    PetscReal, pointer :: kinmnrl_pref_alpha(:,:,:)
+    PetscReal, pointer :: kinmnrl_pref_beta(:,:,:)
     PetscReal, pointer :: kinmnrl_pref_atten_coef(:,:,:)
     PetscReal, pointer :: kinmnrl_pref_rate(:,:)
-    PetscReal, pointer :: kinmnrl_pref_activivation_energy(:,:)
+    PetscReal, pointer :: kinmnrl_pref_activation_energy(:,:)
     PetscReal, pointer :: kinmnrl_Tempkin_const(:)
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
@@ -449,15 +455,14 @@ module Reaction_Aux_module
             GetMineralCount, &
             GetMineralNames, &
             GetMineralIDFromName, &
-            GetKineticMineralCount, &
-            GetKineticMineralTSTRxnCount, &
-            GetTSTRxnPrefactorCount, &
             GetColloidCount, &
             GetColloidNames, &
             GetColloidIDFromName, &
             DatabaseRxnCreate, &
             DatabaseRxnDestroy, &
             TransitionStateTheoryRxnCreate, &
+            TransitionStatePrefactorCreate, &
+            TSPrefactorSpeciesCreate, &
             TransitionStateTheoryRxnDestroy, &
             SurfaceComplexationRxnCreate, &
             AqueousSpeciesCreate, &
@@ -692,9 +697,11 @@ function ReactionCreate()
 
   nullify(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_prefactor_id)
-  nullify(reaction%kinmnrl_pref_alpha_stoich)
-  nullify(reaction%kinmnrl_pref_beta_stoich)
+  nullify(reaction%kinmnrl_pref_alpha)
+  nullify(reaction%kinmnrl_pref_beta)
   nullify(reaction%kinmnrl_pref_atten_coef)
+  nullify(reaction%kinmnrl_pref_rate)
+  nullify(reaction%kinmnrl_pref_activation_energy)
 
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
@@ -962,18 +969,42 @@ function TransitionStatePrefactorCreate()
   type(transition_state_prefactor_type), pointer :: prefactor
 
   allocate(prefactor)
-  prefactor%prefactor_species = ''
-  prefactor%prefactor_species_id = 0
-  prefactor%prefactor_alpha = 0.d0
-  prefactor%prefactor_beta = 0.d0
-  prefactor%prefactor_attenuation_coef = 0.d0
   prefactor%rate = 0.d0
   prefactor%activation_energy = 0.d0
+  nullify(prefactor%species)
   nullify(prefactor%next)
   
   TransitionStatePrefactorCreate => prefactor
   
 end function TransitionStatePrefactorCreate
+
+! ************************************************************************** !
+!
+! TSPrefactorSpeciesCreate: Allocate and initialize a transition state
+!                           theory prefactor species
+! author: Glenn Hammond
+! date: 08/01/11
+!
+! ************************************************************************** !
+function TSPrefactorSpeciesCreate()
+
+  implicit none
+    
+  type(ts_prefactor_species_type), pointer :: TSPrefactorSpeciesCreate
+
+  type(ts_prefactor_species_type), pointer :: species
+
+  allocate(species)
+  species%name = ''
+  species%id = 0
+  species%alpha = 0.d0
+  species%beta = 0.d0
+  species%attenuation_coef = 0.d0
+  nullify(species%next)
+  
+  TSPrefactorSpeciesCreate => species
+  
+end function TSPrefactorSpeciesCreate
 
 ! ************************************************************************** !
 !
@@ -1564,90 +1595,6 @@ end function GetMineralCount
 
 ! ************************************************************************** !
 !
-! GetKineticMineralCount: Returns the number of kinetic minerals
-! author: Glenn Hammond
-! date: 11/04/08
-!
-! ************************************************************************** !
-function GetKineticMineralCount(reaction)
-
-  implicit none
-  
-  PetscInt :: GetKineticMineralCount
-  type(reaction_type) :: reaction
-
-  type(mineral_type), pointer :: mineral
-
-  GetKineticMineralCount = 0
-  mineral => reaction%mineral_list
-  do
-    if (.not.associated(mineral)) exit
-    if (mineral%itype == MINERAL_KINETIC) &
-      GetKineticMineralCount = GetKineticMineralCount + 1
-    mineral => mineral%next
-  enddo
-
-end function GetKineticMineralCount
-
-! ************************************************************************** !
-!
-! GetKineticMineralTSTRxnCount: Returns the number of tsts reactions in
-!                              a kinetic mineral reaction
-! author: Glenn Hammond
-! date: 07/29/11
-!
-! ************************************************************************** !
-function GetKineticMineralTSTRxnCount(mineral)
-
-  implicit none
-  
-  PetscInt :: GetKineticMineralTSTRxnCount
-  type(mineral_type), pointer :: mineral
-
-  type(transition_state_rxn_type), pointer :: tstrxn
-
-  GetKineticMineralTSTRxnCount = 0
-
-  if (mineral%itype == MINERAL_KINETIC) then
-    tstrxn => mineral%tstrxn
-    do
-      if (.not.associated(tstrxn)) exit
-      GetKineticMineralTSTRxnCount = GetKineticMineralTSTRxnCount + 1
-      tstrxn => tstrxn%next
-    enddo
-  endif
-
-end function GetKineticMineralTSTRxnCount
-
-! ************************************************************************** !
-!
-! GetTSTRxnPrefactorCount: Returns the number of prefactors in a tst reaction
-! author: Glenn Hammond
-! date: 07/29/11
-!
-! ************************************************************************** !
-function GetTSTRxnPrefactorCount(tstrxn)
-
-  implicit none
-  
-  PetscInt :: GetTSTRxnPrefactorCount
-  type(transition_state_rxn_type), pointer :: tstrxn
-
-  type(transition_state_prefactor_type), pointer :: prefactor
-
-  GetTSTRxnPrefactorCount = 0
-
-  prefactor => tstrxn%prefactor
-  do
-    if (.not.associated(prefactor)) exit
-    GetTSTRxnPrefactorCount = GetTSTRxnPrefactorCount + 1
-    prefactor => prefactor%next
-  enddo
-
-end function GetTSTRxnPrefactorCount
-
-! ************************************************************************** !
-!
 ! GetMineralIDFromName: Returns the id of mineral with the corresponding name
 ! author: Glenn Hammond
 ! date: 09/04/08
@@ -1963,11 +1910,34 @@ recursive subroutine TransitionStatePrefactorDestroy(prefactor)
   if (.not.associated(prefactor)) return
   
   call TransitionStatePrefactorDestroy(prefactor%next)
+  call TSPrefactorSpeciesDestroy(prefactor%species)
 
   deallocate(prefactor)  
   nullify(prefactor)
 
 end subroutine TransitionStatePrefactorDestroy
+
+! ************************************************************************** !
+!
+! TSPrefactorSpeciesDestroy: Deallocates a transition state prefactor
+! author: Glenn Hammond
+! date: 08/01/11
+!
+! ************************************************************************** !
+recursive subroutine TSPrefactorSpeciesDestroy(species)
+
+  implicit none
+    
+  type(ts_prefactor_species_type), pointer :: species
+
+  if (.not.associated(species)) return
+  
+  call TSPrefactorSpeciesDestroy(species%next)
+
+  deallocate(species)  
+  nullify(species)
+
+end subroutine TSPrefactorSpeciesDestroy
 
 ! ************************************************************************** !
 !
@@ -2663,21 +2633,29 @@ subroutine ReactionDestroy(reaction)
    if (associated(reaction%kinmnrl_molar_wt)) &
     deallocate(reaction%kinmnrl_molar_wt)
   nullify(reaction%kinmnrl_molar_wt)  
+
   if (associated(reaction%kinmnrl_num_prefactors)) &
     deallocate(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_num_prefactors)
   if (associated(reaction%kinmnrl_prefactor_id)) &
     deallocate(reaction%kinmnrl_prefactor_id)
   nullify(reaction%kinmnrl_prefactor_id)
-  if (associated(reaction%kinmnrl_pref_alpha_stoich)) &
-    deallocate(reaction%kinmnrl_pref_alpha_stoich)
-  nullify(reaction%kinmnrl_pref_alpha_stoich)
-  if (associated(reaction%kinmnrl_pref_beta_stoich)) &
-    deallocate(reaction%kinmnrl_pref_beta_stoich)
-  nullify(reaction%kinmnrl_pref_beta_stoich)
+  if (associated(reaction%kinmnrl_pref_alpha)) &
+    deallocate(reaction%kinmnrl_pref_alpha)
+  nullify(reaction%kinmnrl_pref_alpha)
+  if (associated(reaction%kinmnrl_pref_beta)) &
+    deallocate(reaction%kinmnrl_pref_beta)
+  nullify(reaction%kinmnrl_pref_beta)
   if (associated(reaction%kinmnrl_pref_atten_coef)) &
     deallocate(reaction%kinmnrl_pref_atten_coef)
   nullify(reaction%kinmnrl_pref_atten_coef)
+  if (associated(reaction%kinmnrl_pref_rate)) &
+    deallocate(reaction%kinmnrl_pref_rate)
+  nullify(reaction%kinmnrl_pref_rate)
+  if (associated(reaction%kinmnrl_pref_activation_energy)) &
+    deallocate(reaction%kinmnrl_pref_activation_energy)
+  nullify(reaction%kinmnrl_pref_activation_energy)
+
   if (associated(reaction%kinmnrl_Tempkin_const)) &
     deallocate(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_Tempkin_const)

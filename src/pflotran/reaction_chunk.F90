@@ -1298,10 +1298,10 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
           do i = 1, reaction%kinmnrl_prefactor_id(0,ipref,imnrl) ! primary contribution
             icomp = reaction%kinmnrl_prefactor_id(i,ipref,imnrl)
             prefactor(ipref) = prefactor(ipref) * &
-              exp(reaction%kinmnrl_pref_alpha_stoich(i,ipref,imnrl)* &
+              exp(reaction%kinmnrl_pref_alpha(i,ipref,imnrl)* &
               ln_act(icomp))/ &
               (1.d0+reaction%kinmnrl_pref_atten_coef(i,ipref,imnrl)* &
-              exp(reaction%kinmnrl_pref_beta_stoich(i,ipref,imnrl)* &
+              exp(reaction%kinmnrl_pref_beta(i,ipref,imnrl)* &
               ln_act(icomp)))
           enddo
           sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_rate(ipref,imnrl)
