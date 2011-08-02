@@ -4581,7 +4581,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: dprefactor_spec_dspec_numerator
   PetscReal :: dprefactor_spec_dspec_denominator
   PetscReal :: denominator
-  PetscInt :: ipref_spec, icplx
+  PetscInt ::  icplx
   PetscReal :: ln_gam_m_beta
 
   PetscInt, parameter :: needs_to_be_fixed = 1
@@ -4657,13 +4657,15 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         sum_prefactor_rate = 0
         prefactor = 0.d0
         ln_prefactor_spec = 0.d0
+        ! sum over parallel prefactors
         do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
           ln_prefactor = 0.d0
+          ! product of "monod" equations
           do ipref_species = 1, reaction%kinmnrl_prefactor_id(0,ipref,imnrl)
             icomp = reaction%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
             if (icomp > 0) then ! primary species
               ln_spec_act = ln_act(icomp)
-            else ! secondary species
+            else ! secondary species (given a negative id to differentiate)
               ln_spec_act = ln_sec_act(-icomp)
             endif
             ln_numerator = &
@@ -4787,6 +4789,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
 #if 1      
       dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
+      ! summation over parallel reactions (prefactors)
       do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
         arrhenius_factor = 1.d0
         if (reaction%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
@@ -4795,9 +4798,13 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                 *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
                                               273.15d0)))
         endif
+        ! prefactor() saved in residual calc above
         ln_prefactor = log(prefactor(ipref))
+        ! product of "monod" equations
         do ipref_species = 1, reaction%kinmnrl_prefactor_id(0,ipref,imnrl)
-          dprefactor_dprefactor_spec = ln_prefactor-ln_prefactor_spec(ipref_spec,ipref)
+          ! derivative of 54 with respect to a single "monod" equation
+          ! ln_prefactor_spec(,) saved in residual calc above
+          dprefactor_dprefactor_spec = ln_prefactor-ln_prefactor_spec(ipref_species,ipref)
           icomp = reaction%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
           if (icomp > 0) then ! primary species
             ln_spec_conc = ln_act(icomp)
@@ -4806,23 +4813,24 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
             ln_spec_conc = ln_sec_act(-icomp)
             spec_act_coef = rt_auxvar%sec_act_coef(-icomp)
           endif
-          ! derivative of numerator in eq. 54
+          ! derivative of numerator in eq. 54 with respect to species activity
           dprefactor_spec_dspec_numerator = &
             reaction%kinmnrl_pref_alpha(ipref_species,ipref,imnrl) * &
-            exp(ln_prefactor_spec(ipref_spec,ipref) - ln_spec_act)
+            exp(ln_prefactor_spec(ipref_species,ipref) - ln_spec_act)
           ln_gam_m_beta = reaction%kinmnrl_pref_beta(ipref_species,ipref,imnrl)* &
                           ln_spec_act
           ! denominator
           denominator = 1.d0 + &
               exp(log(reaction%kinmnrl_pref_atten_coef(ipref_species,ipref,imnrl)) + &
                   ln_gam_m_beta)
-          ! derivative of denominator ni eq. 54
+          ! derivative of denominator in eq. 54 with respect to species activity
           dprefactor_spec_dspec_denominator = -1.d0 * &
-            exp(ln_prefactor_spec(ipref_spec,ipref)) / denominator * &
+            exp(ln_prefactor_spec(ipref_species,ipref)) / denominator * &
             reaction%kinmnrl_pref_atten_coef(ipref_species,ipref,imnrl) * &
             reaction%kinmnrl_pref_beta(ipref_species,ipref,imnrl) * &
             exp(ln_gam_m_beta - ln_spec_act)
 
+          ! chain rule for derivative of "monod" equation
           dprefactor_spec_dspec = dprefactor_spec_dspec_numerator + &
             dprefactor_spec_dspec_denominator
 
@@ -4835,9 +4843,11 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                       reaction%kinmnrl_pref_rate(ipref,imnrl)* &
                       arrhenius_factor
 
+           
           if (icomp > 0) then 
+            ! add derivative for primary species
             Jac(icomp,icomp) = Jac(icomp,icomp) + dIm_dspec
-          else ! secondary species
+          else ! secondary species -- have to calculate the derivative
             ! have to recalculate the reaction quotient (QK) for secondary species
             icplx = -icomp
 

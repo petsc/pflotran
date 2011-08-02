@@ -1708,14 +1708,14 @@ subroutine BasisInit(reaction,option)
       reaction%kinmnrlh2ostoich = 0.d0
       allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
       reaction%kinmnrl_logK = 0.d0
-  #if TEMP_DEPENDENT_LOGK
+#if TEMP_DEPENDENT_LOGK
       allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
       reaction%kinmnrl_logKcoef = 0.d0
-  #else
+#else
       allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
                                          reaction%nkinmnrl))
       reaction%kinmnrl_logKcoef = 0.d0
-  #endif
+#endif
 
       ! TST Rxn variables
       allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
@@ -1870,6 +1870,7 @@ subroutine BasisInit(reaction,option)
               reaction%kinmnrl_pref_beta(j,i,ikinmnrl) = cur_prefactor_species%beta
               reaction%kinmnrl_pref_atten_coef(j,i,ikinmnrl) = &
                 cur_prefactor_species%attenuation_coef
+              cur_prefactor_species => cur_prefactor_species%next
             enddo
             ! store the number of species
             reaction%kinmnrl_prefactor_id(0,i,ikinmnrl) = j
