@@ -303,8 +303,31 @@ subroutine ReactionRead(reaction,input,option)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,name,PETSC_TRUE)
           call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
-          ! skip over remaining cards to end of each mineral entry
-          call InputSkipToEnd(input,option,word)
+          do
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword', &
+                                   'CHEMISTRY,MINERAL_KINETICS')
+            call StringToUpper(word)
+            select case(word)
+              case('PREFACTOR')
+                do 
+                  call InputReadFlotranString(input,option)
+                  call InputReadStringErrorMsg(input,option,card)
+                  if (InputCheckExit(input,option)) exit
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'keyword', &
+                                     'CHEMISTRY,MINERAL_KINETICS,PREFACTOR')
+                  call StringToUpper(word)
+                  select case(word)
+                    case('PREFACTOR_SPECIES')
+                      call InputSkipToEnd(input,option,word)
+                  end select
+                enddo
+            end select
+          enddo
         enddo
       case('COLLOIDS')
         nullify(prev_colloid)
@@ -891,6 +914,8 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
         found = PETSC_TRUE
         cur_mineral%itype = MINERAL_KINETIC
         tstrxn => TransitionStateTheoryRxnCreate()
+        ! initialize to -999 to ensure that it is set
+        tstrxn%rate = -999.d0
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
@@ -922,6 +947,9 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
             case('PREFACTOR')
               error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR'
               prefactor => TransitionStatePrefactorCreate()
+              ! Initialize to -999.d0 to check later whether they were set
+              prefactor%rate = -999.d0
+              prefactor%activation_energy = -999.d0
               do
                 call InputReadFlotranString(input,option)
                 call InputReadStringErrorMsg(input,option,card)
@@ -995,7 +1023,7 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
               if (.not.associated(tstrxn%prefactor)) then
                 tstrxn%prefactor => prefactor
               else ! append to end of list
-                cur_prefactor => cur_tstrxn%prefactor
+                cur_prefactor => tstrxn%prefactor
                 do
                   if (.not.associated(cur_prefactor%next)) then
                     cur_prefactor%next => prefactor
@@ -1011,6 +1039,26 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
                                  trim(word) // ' not recognized'
               call printErrMsg(option)
           end select
+        enddo
+        ! Loop over prefactors and set kinetic rates and activation energies
+        ! equal to the "outer" values if zero.  
+        cur_prefactor => tstrxn%prefactor
+        do
+          if (.not.associated(cur_prefactor)) exit
+          ! if not initialized
+          if (dabs(cur_prefactor%rate - -999.d0) < 1.d-40) then
+            cur_prefactor%rate = tstrxn%rate
+            if (dabs(cur_prefactor%rate - -999.d0) < 1.d-40) then
+              option%io_buffer = 'Both outer and inner prefactor rate ' // &
+                'constants uninitialized for kinetic mineral ' // &
+                cur_mineral%name // '.'
+              call printErrMsg(option)
+            endif
+          endif
+          if (dabs(cur_prefactor%activation_energy - -999.d0) < 1.d-40) then
+            cur_prefactor%activation_energy = tstrxn%activation_energy
+          endif
+          cur_prefactor => cur_prefactor%next
         enddo
         ! add tst rxn
         if (.not.associated(cur_mineral%tstrxn)) then
@@ -1041,6 +1089,7 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   
   ! allocate kinetic mineral names
   if (reaction%nkinmnrl > 0) then
+    if (associated(reaction%kinmnrl_names)) deallocate(reaction%kinmnrl_names)
     allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
     reaction%kinmnrl_names(reaction%nkinmnrl) = ''
   endif

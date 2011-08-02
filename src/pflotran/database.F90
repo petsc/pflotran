@@ -1692,65 +1692,69 @@ subroutine BasisInit(reaction,option)
                                     reaction%nmnrl))
     reaction%mnrl_logKcoef = 0.d0
 #endif
-    allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
-    reaction%kinmnrl_names = ''
-    allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
-    reaction%kinmnrl_print = PETSC_FALSE
-    allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
-    reaction%kinmnrlspecid = 0
-    allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
-    reaction%kinmnrlstoich = 0.d0
-    allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
-    reaction%kinmnrlh2oid = 0
-    allocate(reaction%kinmnrlh2ostoich(reaction%nkinmnrl))
-    reaction%kinmnrlh2ostoich = 0.d0
-    allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
-    reaction%kinmnrl_logK = 0.d0
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
-    reaction%kinmnrl_logKcoef = 0.d0
-#else
-    allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                       reaction%nkinmnrl))
-    reaction%kinmnrl_logKcoef = 0.d0
-#endif
 
-    ! TST Rxn variables
-    allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
-    reaction%kinmnrl_affinity_threshold = 0.d0
-    allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
-    reaction%kinmnrl_rate_limiter = 0.d0
-    allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
-    reaction%kinmnrl_irreversible = 0
-    allocate(reaction%kinmnrl_rate(reaction%nkinmnrl))
-    reaction%kinmnrl_rate = 0.d0
-    allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
-    reaction%kinmnrl_activation_energy = 0.d0
+    if (reaction%nkinmnrl > 0) then
+      allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
+      reaction%kinmnrl_names = ''
+      allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
+      reaction%kinmnrl_print = PETSC_FALSE
+      allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
+      reaction%kinmnrlspecid = 0
+      allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
+      reaction%kinmnrlstoich = 0.d0
+      allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
+      reaction%kinmnrlh2oid = 0
+      allocate(reaction%kinmnrlh2ostoich(reaction%nkinmnrl))
+      reaction%kinmnrlh2ostoich = 0.d0
+      allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
+      reaction%kinmnrl_logK = 0.d0
+  #if TEMP_DEPENDENT_LOGK
+      allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
+      reaction%kinmnrl_logKcoef = 0.d0
+  #else
+      allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                         reaction%nkinmnrl))
+      reaction%kinmnrl_logKcoef = 0.d0
+  #endif
 
-    allocate(reaction%kinmnrl_pref_rate(max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_pref_rate = 0.d0
-    allocate(reaction%kinmnrl_pref_activation_energy(max_num_prefactors, &
-                                                     reaction%nkinmnrl))
-    reaction%kinmnrl_pref_activation_energy = 0.d0
-    allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
-    reaction%kinmnrl_num_prefactors = 0
-    allocate(reaction%kinmnrl_prefactor_id(0:max_num_prefactor_species, &
-                                         max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_prefactor_id = 0
-    allocate(reaction%kinmnrl_pref_alpha(max_num_prefactor_species, &
-                                         max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_pref_alpha = 0.d0
-    allocate(reaction%kinmnrl_pref_beta(max_num_prefactor_species, &
-                                         max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_pref_beta = 0.d0
-    allocate(reaction%kinmnrl_pref_atten_coef(max_num_prefactor_species, &
-                                         max_num_prefactors,reaction%nkinmnrl))
-    reaction%kinmnrl_pref_atten_coef = 0.d0
+      ! TST Rxn variables
+      allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
+      reaction%kinmnrl_affinity_threshold = 0.d0
+      allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
+      reaction%kinmnrl_rate_limiter = 0.d0
+      allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
+      reaction%kinmnrl_irreversible = 0
+      allocate(reaction%kinmnrl_rate(reaction%nkinmnrl))
+      reaction%kinmnrl_rate = 0.d0
+      allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
+      reaction%kinmnrl_activation_energy = 0.d0
+      allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
+      reaction%kinmnrl_molar_vol = 0.d0
+      allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
+      reaction%kinmnrl_molar_wt = 0.d0
 
-    allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
-    reaction%kinmnrl_molar_vol = 0.d0
-    allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
-    reaction%kinmnrl_molar_wt = 0.d0
+      allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
+      reaction%kinmnrl_num_prefactors = 0
+      if (max_num_prefactors > 0) then
+        allocate(reaction%kinmnrl_pref_rate(max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_rate = 0.d0
+        allocate(reaction%kinmnrl_pref_activation_energy(max_num_prefactors, &
+                                                         reaction%nkinmnrl))
+        reaction%kinmnrl_pref_activation_energy = 0.d0
+        allocate(reaction%kinmnrl_prefactor_id(0:max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_prefactor_id = 0
+        allocate(reaction%kinmnrl_pref_alpha(max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_alpha = 0.d0
+        allocate(reaction%kinmnrl_pref_beta(max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_beta = 0.d0
+        allocate(reaction%kinmnrl_pref_atten_coef(max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_atten_coef = 0.d0
+      endif
+    endif
     
     cur_mineral => reaction%mineral_list
     imnrl = 1
@@ -1817,7 +1821,7 @@ subroutine BasisInit(reaction,option)
                          reaction%kinmnrl_logK(ikinmnrl))
 #endif
 
-        tstrxn = cur_mineral%tstrxn
+        tstrxn => cur_mineral%tstrxn
         if (associated(tstrxn)) then
           ! loop over transition state theory reactions/prefactors
           cur_prefactor => cur_mineral%tstrxn%prefactor

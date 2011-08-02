@@ -946,6 +946,7 @@ function TransitionStateTheoryRxnCreate()
   tstrxn%irreversible = 0
   tstrxn%activation_energy = 0.d0
   tstrxn%rate = 0.d0
+  nullify(tstrxn%prefactor)
   nullify(tstrxn%next)
   
   TransitionStateTheoryRxnCreate => tstrxn
