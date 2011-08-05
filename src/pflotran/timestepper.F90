@@ -1216,7 +1216,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#ifdef DASVYAT_DEBUG
+#ifdef DASVYAT
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
@@ -1224,16 +1224,22 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
        !     call VecView(field%flow_xx_faces, viewer, ierr)
             call VecView(field%flow_xx, viewer, ierr)
        !     call vecView(field%flow_r_faces, viewer, ierr)
+    call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
+
+    write(*,*) "MFD residual", tempreal
     else
             call VecView(field%flow_xx, viewer, ierr)
     end if
-    call PetscViewerDestroy(viewer,ierr)
 
     call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
 
+    call VecView(field%flow_r, viewer, ierr)
     call VecNorm(field%flow_r, NORM_2, tempreal, ierr)
 
+
     write(*,*) "FV residual", tempreal
+
+    call PetscViewerDestroy(viewer,ierr)
 
     write(*,*) "After SNESSolve" 
     read(*,*)   
