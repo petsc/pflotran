@@ -2294,10 +2294,9 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
                   * FMWH2O * dist_gravity
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
-#ifdef DASVYAT
 
+#ifdef DASVYAT_DEBUG
        write(*,*) "x_f", global_aux_var_up%pres(1), "x_c", global_aux_var_dn%pres(1)
-
 #endif
         
 
@@ -2331,8 +2330,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
+
+#ifdef DASVYAT_DEBUG
           write(*,*) "gravity ", gravity * Dq * ukvr, "density", density_ave
 !          write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
+#endif
         endif
       endif 
 
@@ -3010,7 +3012,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
 
      if (ghosted_id_up.eq.1.or.ghosted_id_dn.eq.1)  write(*,*) "int flux *********************", sum_connection, v_darcy
 #endif
@@ -3098,11 +3100,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id)
 
 
-      if (ghosted_id==1) then
-         write(*,*) "BC condition", boundary_condition%flow_aux_real_var(1,iconn)
-         write(*,*) "densityBC", global_aux_vars_bc(sum_connection)%den(1)  
-         write(*,*) "density", global_aux_vars(ghosted_id)%den(1)
-      end if
 
       call RichardsBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -3120,7 +3117,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%boundary_velocities(1,sum_connection) = v_darcy
 
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
        if (ghosted_id==1) then
           write(*,*) "bound flux ************************************", sum_connection, "fl",v_darcy
        end if 
@@ -3640,7 +3637,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   deallocate(face_pr)
   deallocate(neig_den)
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
   write(*,*) "richards 2822"
   write(*,*) "End RichardsResidualPatchMFD1"
   read(*,*)
@@ -3929,8 +3926,8 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
 
-  write(*,*) "End RichardsResidualPatchMFD2"
-  read(*,*)
+!  write(*,*) "End RichardsResidualPatchMFD2"
+!  read(*,*)
 
 !  stop 
 

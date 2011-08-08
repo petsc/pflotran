@@ -365,7 +365,7 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 !  allocate(gr(numfaces))
 
   ukvr = 0. !rich_aux_var%kvr_x
-  dukvr_dp = rich_aux_var%dkvr_x_dp
+  dukvr_dp = 0.!rich_aux_var%dkvr_x_dp
   den_cntr = global_aux_var%den(1)
   dden_cntr_dp =  rich_aux_var%dden_dp 
   
@@ -427,13 +427,13 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
     end if
 
-   if (v_darcy(i) > 0)  then
+!   if (v_darcy(i) > 0)  then
         ukvr(i) = rich_aux_var%kvr_x
         dukvr_dp(i) = rich_aux_var%dkvr_x_dp 
-   else 
-        ukvr(i) = neig_kvr(i)
-        dukvr_dp(i) = 0.!nieg_dkvr_dp(i)
-   end if
+!   else 
+!        ukvr(i) = neig_kvr(i)
+!        dukvr_dp(i) = 0.!nieg_dkvr_dp(i)
+!   end if
 
 !      ukvr(i) = upweight*rich_aux_var%kvr_x + (1.D0-upweight)*neig_kvr(i)
 !      dukvr_dp(i) = upweight*rich_aux_var%dkvr_x_dp + (1.D0-upweight)* nieg_dkvr_dp(i)    
@@ -545,7 +545,7 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 !     end if 
    end do
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
    if ((ghosted_cell_id == 1)) then
       write(*,*) "Rp ", aux_var%Rp
       write(*,*) "dRp_dp ", aux_var%dRp_dp
@@ -855,7 +855,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
      gr(i) = dot_product(Kg, conn%dist(1:3,iface)) * den(i)
      if (dot_product(dir_norm(1:3), conn%dist(1:3,iface)).lt.0) gr(i) =  gr(i) * NEG_ONE_INTEGER
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
      if (ghosted_cell_id==1) then
         write(*,*) "ghosted_cell_id: ", ghosted_cell_id, "xx", xx(1), "ukvr", ukvr, "den", den(i)
         write(*,*) "gr", gr(i), "lm", face_pr(i), "dir ", dir
@@ -877,12 +877,14 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
 
      end do
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
      if (ghosted_cell_id==1) write(*,*) "flux no gr", darcy_v, "gr",  ukvr*gr(i)
 #endif
      darcy_v = darcy_v + ukvr*gr(i)
 
+#ifdef DASVYAT_DEBUG
      if (ghosted_cell_id==1) write(*,*) "flux ", darcy_v
+#endif
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
         if (local_face_id > 0) then
