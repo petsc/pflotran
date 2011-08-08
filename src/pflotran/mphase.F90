@@ -468,7 +468,7 @@ end subroutine MphaseUpdateMassBalancePatch
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-  function  MphaseInitGuessCheck(realization)
+  function MphaseInitGuessCheck(realization)
  
   use Realization_module
   use Level_module
@@ -2627,16 +2627,16 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
            mphase%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
 
-#if 0
+!#if 0
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,:) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,:) - Res(:)
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) - Res(:)
         ! contribution to internal 
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
-#endif
+!#endif
 
     enddo
     boundary_condition => boundary_condition%next

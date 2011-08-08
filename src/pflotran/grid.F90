@@ -14,6 +14,8 @@ module Grid_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
 
   type, public :: grid_type 
   
@@ -1643,11 +1645,14 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
   PetscScalar,pointer             :: tmp_scl_array(:)
 
 
-  PetscInt                        :: ia(1),ja(1),n,rstart,rend,icol(1)
+  PetscInt, pointer               :: ia(:), ja(:)
+  PetscInt                        :: n,rstart,rend,icol(1)
   PetscInt                        :: index
   PetscOffset                     :: iia,jja,aaa,iicol
   PetscBool                       :: done,found
   PetscScalar                     :: aa(1)
+  ! PetscScalar, pointer            :: aa(:)
+  ! Would like to use the above, but I have to fix MatGetArrayF90() first. --RTM
   
   Mat                 :: mat_vert2cell, mat_vert2cell_diag, mat_vert2cell_offdiag
   Vec                 :: vec_vert2cell, vec_cell2facevert
@@ -1864,13 +1869,15 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
       if(option%mycommsize > 1) then
         call MatMPIAIJGetSeqAIJ(mat_vert2cell, mat_vert2cell_diag, &
                                 mat_vert2cell_offdiag, icol, iicol, ierr)
-        call MatGetRowIJ(mat_vert2cell_diag, 1, 0, 0, n, ia, iia, ja, jja, &
-                         done, ierr)
+        call MatGetRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, PETSC_FALSE, &
+                            n, ia, ja, done, ierr)
         call MatGetArray(mat_vert2cell_diag, aa, aaa, ierr)
+        ! call MatGetArrayF90(mat_vert2cell_diag, aa, ierr)
       else 
-        call MatGetRowIJ(mat_vert2cell, 1, 0, 0, n, ia, iia, ja, jja, done, &
-                         ierr)
+        call MatGetRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
+                            ia, ja, done, ierr)
         call MatGetArray(mat_vert2cell, aa, aaa, ierr)
+        !call MatGetArrayF90(mat_vert2cell, aa, ierr)
       endif
       
       !
@@ -1884,8 +1891,8 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
       allocate(vert2cell_array(1: (rend - rstart)*MAX_CELLS_SHARING_A_VERTEX))
       vert2cell_array = -1
       do ii = 1, n
-        count = ia(iia + ii + 1) - ia(iia + ii)
-        do jj = ia(iia + ii), ia(iia + ii + 1) - 1
+        count = ia(ii + 1) - ia(ii)
+        do jj = ia(ii), ia(ii + 1) - 1
           found = PETSC_FALSE
           do kk = 1, MAX_CELLS_SHARING_A_VERTEX
             index = (ii - 1)*MAX_CELLS_SHARING_A_VERTEX + kk
@@ -1899,23 +1906,29 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
               'MAX_CELLS_SHARING_A_VERTEX within the code.'
             call printErrMsg(option)
           endif
-          vert2cell_array(index) = aa(aaa + jj)
+          vert2cell_array(index) = aa(aaa+ jj)
         enddo
       enddo
       if(option%mycommsize > 1) then
-        call MatRestoreRowIJ(mat_vert2cell_diag, 1, 0, 0, n, ia, iia, ja, jja, &
-                             done, ierr)
+        call MatRestoreRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, &
+                                PETSC_FALSE, n, ia, ja, done, ierr)
+        call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
+        !call MatRestoreArrayF90(mat_vert2cell_diag, aa, ierr)
       else
-        call MatRestoreRowIJ(mat_vert2cell, 1, 0, 0, n, ia, iia, ja, jja, done, &
-                             ierr)
+        call MatRestoreRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
+                                ia, ja, done, ierr)
+        call MatRestoreArray(mat_vert2cell, aa, aaa, ierr)
+        ! call MatRestoreArrayF90(mat_vert2cell, aa, ierr)
       endif
       
       if(option%mycommsize > 1) then
-        call MatGetRowIJ(mat_vert2cell_offdiag,1,0,0,n,ia,iia,ja,jja,done,ierr)
+        call MatGetRowIJF90(mat_vert2cell_offdiag,1,PETSC_FALSE,PETSC_FALSE,n, &
+                            ia,ja,done,ierr)
         call MatGetArray(mat_vert2cell_offdiag,aa,aaa,ierr)
+        !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
         do ii=1, n
-          count = ia(iia+ii+1) - ia(iia+ii)
-          do jj=ia(iia+ii),ia(iia+ii+1)-1
+          count = ia(ii+1) - ia(ii)
+          do jj=ia(ii),ia(ii+1)-1
             found = PETSC_FALSE
             do kk = 1,MAX_CELLS_SHARING_A_VERTEX
               if(vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk).eq.-1) then
@@ -1932,7 +1945,10 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
               aa(aaa+jj)
           enddo
         enddo
-        call MatRestoreRowIJ(mat_vert2cell_offdiag,1,0,0,n,ia,iia,ja,jja,done,ierr)
+        call MatRestoreRowIJF90(mat_vert2cell_offdiag,1,PETSC_FALSE, &
+                                PETSC_FALSE,n, ia,ja,done,ierr)
+        call MatGetArray(mat_vert2cell_offdiag,aa,aaa,ierr)
+        !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
         call MatDestroy(mat_vert2cell, ierr)
       endif
             

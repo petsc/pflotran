@@ -628,7 +628,11 @@ Diffusion is assumed to be species independent, but may be different for differe
 \EQ
 \bq_a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(p_\a -\rho_\a g z\big),
 \EN
-with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$.
+with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$. The diffusivity/dispersivity tensor $\bD_\a$ is the sum of contributions from molecular diffusion and dispersion which for an isotropic medium has the form
+\EQ
+\bD_\a \eq \varphi s \Big(\tau D_0 + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v}\Big),
+\EN
+with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_0$ to the molecular diffusion coefficient.
 The quantity $Q_j$ denotes a source/sink term 
 \EQ
 Q_j \eq \sum_n\frac{q_M}{\rho}\Psi_j \delta(\br-\br_{n}),
@@ -2155,7 +2159,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
-\item[\tt Name]
+\item[\tt Name] $K$
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}

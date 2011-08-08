@@ -1097,8 +1097,12 @@ subroutine InitReadInput(simulation)
   type(velocity_dataset_type), pointer :: velocity_dataset
   type(dataset_type), pointer :: dataset
   type(input_type), pointer :: input
-  
-  
+
+  character(len=MAXWORDLENGTH) :: plot_variables(100)
+  PetscInt :: num_plot_variables
+
+  plot_variables = ''
+  num_plot_variables = 0
   nullify(flow_stepper)
   nullify(tran_stepper)
   nullify(flow_solver)
@@ -1834,26 +1838,34 @@ subroutine InitReadInput(simulation)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+            case('PROCESSOR_ID')
+              num_plot_variables = num_plot_variables + 1
+              plot_variables(num_plot_variables) = trim(word)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
               call printErrMsg(option)              
           end select
-       enddo
-       if (velocities) then
-         if (output_option%print_tecplot) &
-           output_option%print_tecplot_velocities = PETSC_TRUE
-         if (output_option%print_hdf5) &
-           output_option%print_hdf5_velocities = PETSC_TRUE
-         if (output_option%print_vtk) &
-           output_option%print_vtk_velocities = PETSC_TRUE
-       endif
-       if (fluxes) then
-         if (output_option%print_tecplot) &
-           output_option%print_tecplot_flux_velocities = PETSC_TRUE
-         if (output_option%print_hdf5) &
+        enddo
+        if (num_plot_variables > 0) then
+          allocate(output_option%plot_variables(num_plot_variables))
+          output_option%plot_variables(1:num_plot_variables) = &
+                                           plot_variables(1:num_plot_variables)
+        endif
+        if (velocities) then
+          if (output_option%print_tecplot) &
+            output_option%print_tecplot_velocities = PETSC_TRUE
+          if (output_option%print_hdf5) &
+            output_option%print_hdf5_velocities = PETSC_TRUE
+          if (output_option%print_vtk) &
+            output_option%print_vtk_velocities = PETSC_TRUE
+        endif
+        if (fluxes) then
+          if (output_option%print_tecplot) &
+            output_option%print_tecplot_flux_velocities = PETSC_TRUE
+          if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
-       endif
+        endif
             
 !.....................
       case ('TIME')
