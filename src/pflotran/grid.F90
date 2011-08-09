@@ -1990,21 +1990,29 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
       call VecCreateMPI(option%mycomm, PETSC_DECIDE, &
                         ugrid%num_cells_global*MAX_DUALS*MAX_VERT_PER_FACE, &
                         vec_cell2facevert, ierr)
-      
+
+      ! Initialize vector
+      call VecSet(vec_cell2facevert, -999.d0)
+      call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
+      call VecAssemblyEnd(  vec_cell2facevert, ierr) !
+            
       allocate(tmp_int_array(ugrid%num_cells_local))
       tmp_int_array = 0
       
       do ii = 1, MAX_DUALS*ugrid%num_cells_ghosted
         ghosted_id = ugrid%face_to_cell_locindex(1, ii)
+        if (ghosted_id < 0 ) exit
         local_id   = grid%nG2L(ghosted_id)
         if(local_id < 1) cycle
         natural_id = grid%nG2A(ghosted_id) ! 1-based
         do jj = 1, MAX_VERT_PER_FACE
-          call VecSetValues(vec_cell2facevert,1, &
+          if( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
+            call VecSetValues(vec_cell2facevert,1, &
                           (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
                           tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
                           ugrid%face_to_vertex_nindex(jj, ii) - 1.d0, &
                           INSERT_VALUES, ierr)
+          endif
         enddo 
         tmp_int_array(local_id) = tmp_int_array(local_id) + 1
       enddo
@@ -2156,37 +2164,54 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
         found  = PETSC_FALSE
         do ii = istart,iend,MAX_VERT_PER_FACE
           counter2 = counter2 + 1
-          if(v_loc_p(ii+3).ge.0) then
-            if((v_loc_p(ii  ) == region%vert_ids(1,jj)).and.&
-               (v_loc_p(ii+1) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii+2) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii+3) == region%vert_ids(4,jj)))      then
+          if(region%vert_ids(0, jj) == 4) then
+            if((v_loc_p(ii    ) == region%vert_ids(1,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(2,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(3,jj)).and.&
+               (v_loc_p(ii + 3) == region%vert_ids(4,jj)))      then
                found = PETSC_TRUE
                exit
             endif
-            if((v_loc_p(ii  ) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii+1) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii+2) == region%vert_ids(4,jj)).and.&
-               (v_loc_p(ii+3) == region%vert_ids(1,jj)))      then
+            if((v_loc_p(ii    ) == region%vert_ids(2,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(3,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(4,jj)).and.&
+               (v_loc_p(ii + 3) == region%vert_ids(1,jj)))      then
                found = PETSC_TRUE
                exit
             endif
-            if((v_loc_p(ii  ) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii+1) == region%vert_ids(4,jj)).and.&
-               (v_loc_p(ii+2) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii+3) == region%vert_ids(1,jj)))      then
+            if((v_loc_p(ii    ) == region%vert_ids(3,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(4,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(2,jj)).and.&
+               (v_loc_p(ii + 3) == region%vert_ids(1,jj)))      then
                found = PETSC_TRUE
                exit
             endif
-            if((v_loc_p(ii  ) == region%vert_ids(4,jj)).and.&
-               (v_loc_p(ii+1) == region%vert_ids(1,jj)).and.&
-               (v_loc_p(ii+2) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii+3) == region%vert_ids(3,jj)))      then
+            if((v_loc_p(ii    ) == region%vert_ids(4,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(1,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(2,jj)).and.&
+               (v_loc_p(ii + 3) == region%vert_ids(3,jj)))      then
                found = PETSC_TRUE
                exit
             endif
-          else
-        
+          elseif( v_loc_p(ii + 3) < 0 ) then
+            if((v_loc_p(ii    ) == region%vert_ids(1,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(2,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(3,jj)))      then
+               found = PETSC_TRUE
+               exit
+            endif
+            if((v_loc_p(ii    ) == region%vert_ids(2,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(3,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(1,jj)))      then
+               found = PETSC_TRUE
+               exit
+            endif
+            if((v_loc_p(ii    ) == region%vert_ids(3,jj)).and.&
+               (v_loc_p(ii + 1) == region%vert_ids(1,jj)).and.&
+               (v_loc_p(ii + 2) == region%vert_ids(2,jj)))      then
+               found = PETSC_TRUE
+               exit
+            endif
           endif
           
           if(counter2 == MAX_DUALS) then
