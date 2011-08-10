@@ -2714,7 +2714,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   do icell = 1, unstructured_grid%num_cells_local
     do iface = 1,MAX_DUALS
       face_id = cell_to_face(iface, icell)
-      if( unstructured_grid%face_centroid(face_id)%id.eq.-999) then
+      if (face_id == -999) cycle
+      if( unstructured_grid%face_centroid(face_id)%id == -999) then
         count = 0
         unstructured_grid%face_centroid(face_id)%x = 0.d0
         unstructured_grid%face_centroid(face_id)%y = 0.d0
@@ -2727,7 +2728,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         point1 = unstructured_grid%vertices(face_to_vertex(1,face_id))
         point2 = unstructured_grid%vertices(face_to_vertex(2,face_id))
         point3 = unstructured_grid%vertices(face_to_vertex(3,face_id))
-        if (face_type.eq.QUAD_FACE_TYPE) then
+        if (face_type == QUAD_FACE_TYPE) then
           point4 = unstructured_grid%vertices(face_to_vertex(4,face_id))
         else
           point4 = unstructured_grid%vertices(face_to_vertex(3,face_id))
@@ -2838,7 +2839,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface, &
           iface_cell = iface
 #endif
         case(6)
-          write(*,*), 'UGridPopulateConnection: Add code for WEDGE_TYPE'
+          iface_cell = iface
       end select
     
       ! Get face-centroid vector
