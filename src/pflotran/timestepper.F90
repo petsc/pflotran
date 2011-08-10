@@ -537,7 +537,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       endif
       do ! loop on transport until it reaches the target time
         if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-     !global implicit
+          !global implicit
           call StepperStepTransportDT_GI(realization,tran_stepper, &
                                       flow_t0,option%flow_time,failure)
         else
