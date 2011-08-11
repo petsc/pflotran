@@ -2549,6 +2549,7 @@ end subroutine RichardsResidual
 ! ************************************************************************** !
 subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
+  use Logging_module
   use Realization_module
   use Field_module
   use Patch_module
@@ -2584,6 +2585,9 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   field => realization%field
   discretization => realization%discretization
   option => realization%option
+
+
+  call PetscLogEventBegin(logging%event_r_residual,ierr)
 
   call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
   r_p = 0.
@@ -2702,6 +2706,9 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
  endif
+
+
+  call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 #ifdef DASVYAT_DEBUG
    write(*,*) "End RichardsResidualMFD"
@@ -3402,7 +3409,7 @@ end subroutine RichardsResidualPatch2
 subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   use water_eos_module
-
+  use Logging_module
   use Connection_module
   use Realization_module
   use Discretization_module
@@ -3466,6 +3473,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   PetscInt :: icell, iface, jface, i,j, numfaces, ghost_face_id, ghost_face_jd
   PetscInt :: ghost_neig_id
   PetscViewer :: viewer
+
+  call PetscLogEventBegin(logging%event_flow_residual_mfd1, ierr)
   
   patch => realization%patch
   grid => patch%grid
@@ -3591,10 +3600,14 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
       PermTensor(3,1) = PermTensor(1,3) 
       PermTensor(3,2) = PermTensor(2,3) 
 
+
+        call PetscLogEventBegin(logging%event_flow_flux_mfd, ierr)
+
       call MFDAuxFluxes(patch, grid, ghosted_id, xx_p(icell:icell), face_pr, aux_var, PermTensor, &
                         rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
                         sq_faces, neig_den, option)
-
+       
+        call PetscLogEventEnd(logging%event_flow_flux_mfd, ierr)
       
   end do
 
@@ -3644,6 +3657,9 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !  stop
 #endif
 
+  
+  call PetscLogEventEnd(logging%event_flow_residual_mfd1, ierr)
+
 #endif
 
 end subroutine RichardsResidualPatchMFD1
@@ -3659,7 +3675,7 @@ end subroutine RichardsResidualPatchMFD1
 subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
   use water_eos_module
-
+  use Logging_module
   use Connection_module
   use Realization_module
   use Patch_module
@@ -3721,6 +3737,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   
 
 
+  call PetscLogEventBegin(logging%event_flow_residual_mfd2, ierr)
   
   patch => realization%patch
   grid => patch%grid
@@ -3855,6 +3872,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
         PermTensor(2,1) = PermTensor(1,2)
         PermTensor(3,2) = PermTensor(2,3)
 
+        call PetscLogEventBegin(logging%event_flow_rhs_mfd, ierr)
  
 
         call MFDAuxGenerateRhs(patch, grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
@@ -3864,6 +3882,9 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                                  porosity_loc_p(ghosted_id), volume_p(local_id),&
                                  flow_xx_p(local_id:local_id), face_pres, bnd,&                                 
                                  sq_faces, neig_den, neig_kvr, nieg_dkvr_dp, option, rhs) 
+
+        call PetscLogEventEnd(logging%event_flow_rhs_mfd, ierr)
+ 
 
    !     stop
      
@@ -3930,6 +3951,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 !  read(*,*)
 
 !  stop 
+  call PetscLogEventEnd(logging%event_flow_residual_mfd2, ierr)
 
 #endif
 

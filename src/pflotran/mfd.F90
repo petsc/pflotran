@@ -222,6 +222,7 @@ subroutine MFDInitializeMassMatrices(grid, field, &
     aux_var => mfd_aux%aux_vars(icell)
     call MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id, aux_var, volume_p(icell), PermTensor, option)
     call MFDAuxInitResidDerivArrays(aux_var, option)
+    call MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTensor, option)
 !    call MFDAuxInitStiffMatrix(aux_var, option)
   end do
 
@@ -347,75 +348,20 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
   PetscScalar :: ukvr(6), dukvr_dp(6), ds_dp, porosity, volume, den_cntr, dden_cntr_dp
   PetscScalar :: PorVol_dt
   PetscScalar :: norm_len
-!  PetscScalar, pointer :: WB(:), Wg(:), CWCl(:),denB(:)
-  PetscScalar :: WB(6), Wg(6), WClm(6), CWCl(6), f(6), dden_dp(6), dir, v_darcy(6)
-  PetscScalar :: dbeta_dp(6), den(6), beta(6), denB(6), gr(6), Clm(6), Rgr(6), BAR(6), BdARdp(6)
+  PetscScalar :: Wg(6), WClm(6), CWCl(6), f(6), dden_dp(6), dir, v_darcy(6)
+  PetscScalar :: dbeta_dp(6), den(6), beta(6), denB(6), Clm(6), Rgr(6), BAR(6), BdARdp(6)
   PetscScalar :: BARWB, BARWClm, BdARdpWB, BdARdpWClm
   PetscScalar :: upweight, delta_p
 
-!  allocate(WB(numfaces))
-!  allocate(Wg(numfaces))
-!  allocate(CWCl(numfaces))
-!  allocate(f(option%nflowdof))
-!  allocate(dden_dp(numfaces))
-!  allocate(dbeta_dp(numfaces))
-!  allocate(den(numfaces))
-!  allocate(beta(numfaces))
-!  allocate(denB(numfaces))
-!  allocate(gr(numfaces))
 
   ukvr = 0. !rich_aux_var%kvr_x
   dukvr_dp = 0.!rich_aux_var%dkvr_x_dp
   den_cntr = global_aux_var%den(1)
   dden_cntr_dp =  rich_aux_var%dden_dp 
-  
-  Kg = matmul(PermTensor, option%gravity)
-
-  do i=1,3
-    Kg(i) = Kg(i) * FMWH2O
-  end do
-
-  do i = 1, numfaces
-
-     ghost_face_id = aux_var%face_id_gh(i)
-     local_face_id = grid%fG2L(ghost_face_id)
-     conn => grid%faces(ghost_face_id)%conn_set_ptr
-     iface = grid%faces(ghost_face_id)%id
-
-     
-      dir = 1
-
-     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id) dir = -1
-
-     if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
-        if (local_face_id > 0) then
-           bound_id = grid%fL2B(local_face_id)
-           if (bound_id>0) then
-              v_darcy(i) = - patch%boundary_velocities(option%nphase, bound_id)
-           end if
-        end if
-     else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
-       v_darcy(i) = dir*patch%internal_velocities(option%nphase, iface)
-     end if
- 
-
-     dir_norm(1) = conn%cntr(1, iface) - grid%x(ghosted_cell_id)       !direction to define outward normal
-     dir_norm(2) = conn%cntr(2, iface) - grid%y(ghosted_cell_id)  
-     dir_norm(3) = conn%cntr(3, iface) - grid%z(ghosted_cell_id)  
-
-     norm_len = sqrt(dir_norm(1)**2 + dir_norm(2)**2 + dir_norm(3)**2)
-
-     gr(i) = 0
-     do j = 1,3
-       dir_norm(j) = dir_norm(j)/norm_len
-       gr(i) = gr(i) + dir_norm(j) * Kg(j)
-     end do
-
-  end do
 
 
   upweight = 0.5
-  
+ 
 
   do i = 1 , numfaces
     if (bnd(i)==1) then 
@@ -475,21 +421,20 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
   E = 0.
   f(1) = Accum(1) - source_f(1)
 
-  WB = 0.
+ ! WB = 0.
   Wg = 0.
 
   do iface = 1, numfaces
      Clm(iface) = sq_faces(iface)*face_pres(iface) + bc_g(iface)
-     Rgr(iface) = den(iface)*gr(iface)
+     Rgr(iface) = den(iface)*aux_var%gr(iface)
   end do 
 
-  WB = matmul(aux_var%MassMatrixInv, sq_faces)
   Wg = matmul(aux_var%MassMatrixInv, bc_g)
   WClm = matmul(aux_var%MassMatrixInv, Clm)
 
-  BARWB = dot_product(WB, BAR)
+  BARWB = dot_product(aux_var%WB, BAR)
   BARWClm = dot_product(WClm, BAR)
-  BdARdpWB = dot_product(WB, BdARdp)
+  BdARdpWB = dot_product(aux_var%WB, BdARdp)
   BdARdpWClm = dot_product(WClm, BdARdp)
   div_grav_term = dot_product(Rgr, BAR)
   
@@ -505,7 +450,7 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
      aux_var%dRp_dp = aux_var%dRp_dp + & 
        sq_faces(iface)* &
      ( dukvr_dp(iface)*den(iface)*den(iface) + 2*den(iface)*ukvr(iface)*dden_dp(iface) ) &
-     * gr(iface) 
+     * aux_var%gr(iface) 
 
    end do
    aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
@@ -535,14 +480,13 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
    do iface = 1, aux_var%numfaces
 
-     aux_var%Rl(iface) = -sq_faces(iface)*WB(iface)*pres(1) &       
+     aux_var%Rl(iface) = -sq_faces(iface)*aux_var%WB(iface)*pres(1) &       
                                    + CWCl(iface)  & 
                                    + sq_faces(iface)*Wg(iface) & 
-                                   - sq_faces(iface)*den(iface)*gr(iface)&
+                                   - sq_faces(iface)*den(iface)*aux_var%gr(iface)&
                                    - bc_h(iface)/ukvr(iface)
      
-     aux_var%dRl_dp(iface) = -sq_faces(iface)*WB(iface) - sq_faces(iface)*dden_dp(iface)*gr(iface)
-!     end if 
+     aux_var%dRl_dp(iface) = -sq_faces(iface)*aux_var%WB(iface) - sq_faces(iface)*dden_dp(iface)*aux_var%gr(iface)
    end do
 
 #ifdef DASVYAT_DEBUG
@@ -574,23 +518,8 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
   do iface = 1, aux_var%numfaces
       rhs(iface) = -aux_var%dRl_dp(iface)*aux_var%Rp/aux_var%dRp_dp + aux_var%Rl(iface)
-!      write(*,*) "rhs" , rhs(iface), aux_var%face_id_gh(iface)
   end do
- !    read(*,*)
 
-!  write(*,*) ghosted_cell_id, "rhs", (ukvr(iface)*rhs(iface),iface=1,6)
-
-!  deallocate(WB)
-!  deallocate(Wg)
-!  deallocate(gr)
-!  deallocate(f)
-!
-!  deallocate(CWCl)
-!  deallocate(dden_dp)
-!  deallocate(dbeta_dp)
-!  deallocate(den)
-!  deallocate(beta)
-!  deallocate(denB)
 
 end subroutine MFDAuxGenerateRhs
 
@@ -863,12 +792,6 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 #endif
      if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id.and.local_id>0) cycle
 
-!     gr(i) = dot_product(Kg, conn%dist(1:3,iface))
-!     if (conn%id_dn(iface) == ghost_id) gr(i) =  gr(i) * NEG_ONE_INTEGER
-
-
-!     write(*,*) "M", aux_var%MassMatrixInv(i,i), "sq", sq_faces(i), "ukvr", ukvr
-!     write(*,*) "Dq", aux_var%MassMatrixInv(i,i)*sq_faces(i)
 
      darcy_v = 0.
      do j = 1, aux_var%numfaces
@@ -877,14 +800,9 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
 
      end do
-#ifdef DASVYAT_DEBUG
-     if (ghosted_cell_id==1) write(*,*) "flux no gr", darcy_v, "gr",  ukvr*gr(i)
-#endif
+
      darcy_v = darcy_v + ukvr*gr(i)
 
-#ifdef DASVYAT_DEBUG
-     if (ghosted_cell_id==1) write(*,*) "flux ", darcy_v
-#endif
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
         if (local_face_id > 0) then
@@ -968,6 +886,68 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
  
 
 end subroutine MFDComputeDensity
+
+
+subroutine MFDAuxComputeGeometricValues (grid, ghosted_cell_id, aux_var, PermTensor, option)
+
+
+ use Option_module
+ use Richards_Aux_module
+ use Global_Aux_module
+ use Patch_module
+
+  implicit none
+
+  type(grid_type) :: grid
+  type(mfd_auxvar_type), pointer :: aux_var
+  type(option_type) :: option
+  PetscScalar :: PermTensor(3,3)
+  PetscInt :: ghosted_cell_id
+
+
+
+  PetscScalar :: Kg(3), dir_norm(3)
+  PetscScalar :: sq_faces(6), norm_len
+!  PetscScalar , pointer :: gr(:), f(:)
+  PetscInt :: i, j, ghost_face_id
+  type(connection_set_type), pointer :: conn
+  PetscInt, parameter :: numfaces = 6
+
+
+
+  PetscInt :: iface, jface
+
+
+  Kg = matmul(PermTensor, option%gravity)
+
+  do i=1,3
+    Kg(i) = Kg(i) * FMWH2O
+  end do
+
+  do i = 1, numfaces
+
+     ghost_face_id = aux_var%face_id_gh(i)
+     conn => grid%faces(ghost_face_id)%conn_set_ptr
+     iface = grid%faces(ghost_face_id)%id
+     sq_faces(i) = conn%area(iface)
+
+     dir_norm(1) = conn%cntr(1, iface) - grid%x(ghosted_cell_id)       !direction to define outward normal
+     dir_norm(2) = conn%cntr(2, iface) - grid%y(ghosted_cell_id)  
+     dir_norm(3) = conn%cntr(3, iface) - grid%z(ghosted_cell_id)  
+
+     norm_len = sqrt(dir_norm(1)**2 + dir_norm(2)**2 + dir_norm(3)**2)
+
+     aux_var%gr(i) = 0
+     do j = 1,3
+       dir_norm(j) = dir_norm(j)/norm_len
+       aux_var%gr(i) = aux_var%gr(i) + dir_norm(j) * Kg(j)
+     end do
+
+  end do
+
+  aux_var%WB = matmul(aux_var%MassMatrixInv, sq_faces)
+
+end subroutine MFDAuxComputeGeometricValues
 
 ! ************************************************************************** !
 !
