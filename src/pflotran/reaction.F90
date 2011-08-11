@@ -2484,13 +2484,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       write(option%fid_out,127)
       write(option%fid_out,90)
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
-      do jcomp = 1, ncomp
-        icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        kd = rt_auxvar%eqionx_conc(icomp,irxn)/rt_auxvar%total(icomp,iphase) & 
+      do i = 1, ncomp
+        icomp = reaction%eqionx_rxn_cationid(i,irxn)
+        kd = rt_auxvar%eqionx_conc(i,irxn)/rt_auxvar%total(icomp,iphase) & 
                       /bulk_vol_to_fluid_vol
         write(option%fid_out,128) reaction%primary_species_names(icomp), &
-          reaction%eqionx_rxn_k(jcomp,irxn), & 
-          rt_auxvar%eqionx_conc(icomp,irxn), &
+          reaction%eqionx_rxn_k(i,irxn), & 
+          rt_auxvar%eqionx_conc(i,irxn), &
           kd
       enddo
     enddo
@@ -4104,7 +4104,7 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       tempreal1 = cation_X(i)*omega/reaction%primary_spec_Z(icomp)
       ! residual function entry
       
-      rt_auxvar%eqionx_conc(icomp,irxn) = rt_auxvar%eqionx_conc(icomp,irxn) + tempreal1
+      rt_auxvar%eqionx_conc(i,irxn) = rt_auxvar%eqionx_conc(i,irxn) + tempreal1
 
       rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + tempreal1
 
