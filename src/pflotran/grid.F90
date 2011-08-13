@@ -2802,6 +2802,8 @@ subroutine GridDestroy(grid)
   nullify(grid%fL2P)
   if (associated(grid%fL2B)) deallocate(grid%fL2B)
   nullify(grid%fL2B)
+
+  call MFDAuxDestroy(grid%MFD)
 #endif
 
   if (associated(grid%x)) deallocate(grid%x)

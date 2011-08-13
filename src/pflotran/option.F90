@@ -458,7 +458,7 @@ subroutine OptionInitRealization(option)
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
 
-  option%dpmxe = 5.d4
+  option%dpmxe = 5.d5
   option%dtmpmxe = 5.d0
   option%dsmxe = 0.5d0
   option%dcmxe = 1.d0

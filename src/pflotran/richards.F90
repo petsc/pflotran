@@ -1885,7 +1885,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 end subroutine RichardsFluxDerivative
 
 ! ************************************************************************** !
-!
+
 ! RichardsFlux: Computes the internal flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
@@ -1932,6 +1932,8 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     density_ave = upweight*global_aux_var_up%den(1)+ &
                   (1.D0-upweight)*global_aux_var_dn%den(1)
 
+!    write(*,*) "upweight", upweight, "density_ave", density_ave
+
     gravity = (upweight*global_aux_var_up%den(1) + &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
               * FMWH2O * dist_gravity
@@ -1964,9 +1966,9 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
 
-!      write(*,*) "Gravity Input", Dq*ukvr*gravity
-!	  write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
-!	  write(*,*) "Dq", Dq, "ukvr ", ukvr
+       !   write(*,*) "Gravity Input", Dq*ukvr*gravity
+       !   write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
+       !   write(*,*) "Dq", Dq, "ukvr ", ukvr, "density",density_ave 
    
       q = v_darcy * area
 
@@ -2293,6 +2295,9 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
+#ifdef DASVYAT_DEBUG
+       write(*,*) "x_f", global_aux_var_up%pres(1), "x_c", global_aux_var_dn%pres(1)
+#endif
         
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
@@ -2325,8 +2330,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-!          write(*,*) "gravity ", gravity * Dq * ukvr
+
+#ifdef DASVYAT_DEBUG
+          write(*,*) "gravity ", gravity * Dq * ukvr, "density", density_ave
 !          write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
+#endif
         endif
       endif 
 
@@ -2541,6 +2549,7 @@ end subroutine RichardsResidual
 ! ************************************************************************** !
 subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
+  use Logging_module
   use Realization_module
   use Field_module
   use Patch_module
@@ -2576,6 +2585,9 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   field => realization%field
   discretization => realization%discretization
   option => realization%option
+
+
+  call PetscLogEventBegin(logging%event_r_residual,ierr)
 
   call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
   r_p = 0.
@@ -2694,6 +2706,9 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
  endif
+
+
+  call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 #ifdef DASVYAT_DEBUG
    write(*,*) "End RichardsResidualMFD"
@@ -2988,6 +3003,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
+
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
@@ -3003,9 +3019,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
 
-!      write(*,*) "int flux ", sum_connection, v_darcy      
+     if (ghosted_id_up.eq.1.or.ghosted_id_dn.eq.1)  write(*,*) "int flux *********************", sum_connection, v_darcy
 #endif
 
       
@@ -3091,6 +3107,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id)
 
 
+
       call RichardsBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 rich_aux_vars_bc(sum_connection), &
@@ -3107,8 +3124,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%boundary_velocities(1,sum_connection) = v_darcy
 
 
-#ifdef DASVYAT
-!      write(*,*) "bound flux ", sum_connection, "fl",v_darcy, &
+#ifdef DASVYAT_DEBUG
+       if (ghosted_id==1) then
+          write(*,*) "bound flux ************************************", sum_connection, "fl",v_darcy
+       end if 
 !            "lm", boundary_condition%flow_aux_real_var(1, iconn), &
 !            "p", global_aux_vars(ghosted_id)%pres(1)
 !            cur_connection_set%cntr(1, iconn), &      
@@ -3390,7 +3409,7 @@ end subroutine RichardsResidualPatch2
 subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   use water_eos_module
-
+  use Logging_module
   use Connection_module
   use Realization_module
   use Discretization_module
@@ -3449,10 +3468,13 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
-  PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:)
+  PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:), neig_den(:)
   PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3), den, ukvr
   PetscInt :: icell, iface, jface, i,j, numfaces, ghost_face_id, ghost_face_jd
+  PetscInt :: ghost_neig_id
   PetscViewer :: viewer
+
+  call PetscLogEventBegin(logging%event_flow_residual_mfd1, ierr)
   
   patch => realization%patch
   grid => patch%grid
@@ -3514,6 +3536,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   numfaces = 6 ! hex only
   allocate(sq_faces(numfaces))
   allocate(face_pr(numfaces))
+  allocate(neig_den(numfaces))
 !  allocate(Smatrix(numfaces, numfaces))
 
   !write(*,*) "cell centered"
@@ -3529,6 +3552,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
     aux_var => grid%MFD%aux_vars(icell)
     do j = 1, aux_var%numfaces
+       ghosted_id = grid%nL2G(icell)
        ghost_face_id = aux_var%face_id_gh(j)
        conn => grid%faces(ghost_face_id)%conn_set_ptr
        jface = grid%faces(ghost_face_id)%id
@@ -3548,9 +3572,19 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !       xx_loc_faces_p(ghost_face_id) = conn%cntr(3,jface)     ! dasvyat test
 !       xx_loc_p(icell) = xx_loc_p(icell) + conn%cntr(3,jface)/6.
 !       write(*,*) conn%cntr(3,jface), xx_loc_faces_p(ghost_face_id)
+          if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
+               neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+          else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
+                if (ghosted_id == conn%id_up(jface)) then
+                    ghost_neig_id = conn%id_dn(jface)
+                else 
+                    ghost_neig_id = conn%id_up(jface)
+                end if
+ 
+                neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
+          end if
     end do
 
-    ghosted_id = grid%nL2G(icell)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
  
@@ -3566,10 +3600,14 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
       PermTensor(3,1) = PermTensor(1,3) 
       PermTensor(3,2) = PermTensor(2,3) 
 
+
+        call PetscLogEventBegin(logging%event_flow_flux_mfd, ierr)
+
       call MFDAuxFluxes(patch, grid, ghosted_id, xx_p(icell:icell), face_pr, aux_var, PermTensor, &
                         rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
-                        sq_faces, option)
-
+                        sq_faces, neig_den, option)
+       
+        call PetscLogEventEnd(logging%event_flow_flux_mfd, ierr)
       
   end do
 
@@ -3609,12 +3647,18 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   deallocate(sq_faces)
+  deallocate(face_pr)
+  deallocate(neig_den)
 
-#ifdef DASVYAT
-!  write(*,*) "richards 2822"
-!  write(*,*) "End RichardsResidualPatchMFD1"
+#ifdef DASVYAT_DEBUG
+  write(*,*) "richards 2822"
+  write(*,*) "End RichardsResidualPatchMFD1"
+  read(*,*)
 !  stop
 #endif
+
+  
+  call PetscLogEventEnd(logging%event_flow_residual_mfd1, ierr)
 
 #endif
 
@@ -3631,7 +3675,7 @@ end subroutine RichardsResidualPatchMFD1
 subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
   use water_eos_module
-
+  use Logging_module
   use Connection_module
   use Realization_module
   use Patch_module
@@ -3660,13 +3704,13 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   PetscInt :: local_id, ghosted_id
 
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:),  accum_p(:), bc_faces_p(:)
-  PetscReal, pointer ::  perm_xx_loc_p(:),  perm_yy_loc_p(:), perm_zz_loc_p(:), flow_xx_p(:)
-  PetscReal, pointer ::  perm_xz_loc_p(:),  perm_xy_loc_p(:), perm_yz_loc_p(:)
-  PetscReal, pointer :: xx_loc_faces_p(:)
+  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:),  accum_p(:), bc_faces_p(:)
+  PetscScalar, pointer ::  perm_xx_loc_p(:),  perm_yy_loc_p(:), perm_zz_loc_p(:), flow_xx_p(:)
+  PetscScalar, pointer ::  perm_xz_loc_p(:),  perm_xy_loc_p(:), perm_yz_loc_p(:)
+  PetscScalar, pointer :: xx_loc_faces_p(:)
 
 
-  PetscReal :: qsrc, qsrc_mol
+  PetscScalar :: qsrc, qsrc_mol
 
 
   type(grid_type), pointer :: grid
@@ -3684,14 +3728,16 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
 ! PetscReal, pointer :: sq_faces(:), rhs(:), bc_g(:), bc_h(:), face_pres(:), bnd(:)
-  PetscReal :: sq_faces(6), rhs(6), bc_g(6), bc_h(6), face_pres(6), bnd(6)
-  PetscReal :: Accum(realization%option%nflowdof), source_f(realization%option%nflowdof)
-  PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3)
-  PetscInt :: icell, iface, jface, numfaces, ghost_face_id, ghost_face_jd
+  PetscScalar :: sq_faces(6), rhs(6), bc_g(6), bc_h(6), face_pres(6), bnd(6)
+  PetscScalar :: neig_den(6), neig_kvr(6), nieg_dkvr_dp(6)
+  PetscScalar :: Accum(realization%option%nflowdof), source_f(realization%option%nflowdof)
+  PetscScalar :: Res(realization%option%nflowdof), PermTensor(3,3)
+  PetscInt :: icell, iface, jface, numfaces, ghost_face_id, ghost_face_jd, ghost_neig_id
   PetscScalar, pointer :: e2n_local(:)
   
 
 
+  call PetscLogEventBegin(logging%event_flow_residual_mfd2, ierr)
   
   patch => realization%patch
   grid => patch%grid
@@ -3758,7 +3804,9 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           jface = grid%faces(ghost_face_id)%id
           sq_faces(j) = conn%area(jface)
           face_pres(j) = xx_loc_faces_p(ghost_face_id)
-          
+         
+  !       write(*,*) "Face ", conn%itype, jface
+ 
   !        write(*,*) j, e2n_local(j + (local_id-1)*stride)
           if ( (e2n_local(j + (local_id-1)*stride) == -DIRICHLET_BC).or. &
                  (e2n_local(j + (local_id-1)*stride) == -HYDROSTATIC_BC))  then
@@ -3773,7 +3821,27 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
             stop
           end if
 
+          if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
+
+               neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+               neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr_x
+              nieg_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
+
+          else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
+                if (ghosted_id == conn%id_up(jface)) then
+                    ghost_neig_id = conn%id_dn(jface)
+                else 
+                    ghost_neig_id = conn%id_up(jface)
+                end if
+ 
+                neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
+                neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr_x 
+                nieg_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_x_dp
+          end if
+ 
+
         end do
+!          write(*,*) "neig_den", (neig_den(i),i=1,6)
          
 
         !geh - Ignore inactive cells with inactive materials
@@ -3804,17 +3872,21 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
         PermTensor(2,1) = PermTensor(1,2)
         PermTensor(3,2) = PermTensor(2,3)
 
+        call PetscLogEventBegin(logging%event_flow_rhs_mfd, ierr)
  
 
-        call MFDAuxGenerateRhs(grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
+        call MFDAuxGenerateRhs(patch, grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
                                  rich_aux_vars(ghosted_id),&
                                  global_aux_vars(ghosted_id),&
                                  Accum, &
                                  porosity_loc_p(ghosted_id), volume_p(local_id),&
                                  flow_xx_p(local_id:local_id), face_pres, bnd,&                                 
-                                 sq_faces, option, rhs) 
+                                 sq_faces, neig_den, neig_kvr, nieg_dkvr_dp, option, rhs) 
 
+        call PetscLogEventEnd(logging%event_flow_rhs_mfd, ierr)
  
+
+   !     stop
      
         do iface=1, aux_var%numfaces
 
@@ -3835,8 +3907,12 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           end if
         end do
 !
-!		write(*,*) (rhs(iface),iface=1,6)
-!		write(*,*)
+#ifdef DASVYAT_DEBUG      
+     if (local_id==1) then
+          write(*,*) (rhs(iface),iface=1,6)
+          write(*,*)
+        end if
+#endif
         
   enddo
 
@@ -3875,6 +3951,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 !  read(*,*)
 
 !  stop 
+  call PetscLogEventEnd(logging%event_flow_residual_mfd2, ierr)
 
 #endif
 

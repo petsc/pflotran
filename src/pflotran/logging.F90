@@ -92,6 +92,15 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     
     PetscLogEvent :: event_mass_balance
 
+#ifdef DASVYAT
+
+    PetscLogEvent :: event_flow_residual_mfd1
+    PetscLogEvent :: event_flow_residual_mfd2
+    PetscLogEvent :: event_flow_flux_mfd
+    PetscLogEvent :: event_flow_rhs_mfd
+
+#endif
+
   end type logging_type
   
   type(logging_type), pointer, public :: logging
@@ -321,6 +330,25 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('MassBalance', &
                              logging%class_pflotran, &
                              logging%event_mass_balance,ierr)
+
+#ifdef DASVYAT
+  
+  call PetscLogEventRegister('MFD_Residual1', &
+                             logging%class_pflotran, &
+                             logging%event_flow_residual_mfd1, ierr)
+  
+  
+  call PetscLogEventRegister('MFD_Residual2', &
+                             logging%class_pflotran, &
+                             logging%event_flow_residual_mfd2, ierr)
+
+  call PetscLogEventRegister('MFD_Flux', &
+                             logging%class_pflotran, &
+                             logging%event_flow_flux_mfd, ierr)
+  call PetscLogEventRegister('MFD_Rhs', &
+                             logging%class_pflotran, &
+                             logging%event_flow_rhs_mfd, ierr)
+#endif
   
 end subroutine LoggingCreate
 
