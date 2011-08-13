@@ -478,6 +478,7 @@ end subroutine RealizationCreateDiscretization
 subroutine RealizationLocalizeRegions(realization)
 
   use Option_module
+  use String_module
 
   implicit none
   
@@ -485,7 +486,28 @@ subroutine RealizationLocalizeRegions(realization)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type (region_type), pointer :: cur_region, cur_region2
+  type(option_type), pointer :: option
 
+  option => realization%option
+
+  ! check to ensure that region names are not duplicated
+  cur_region => realization%regions%first
+  do
+    if (.not.associated(cur_region)) exit
+    cur_region2 => cur_region%next
+    do
+      if (.not.associated(cur_region2)) exit
+      if (StringCompare(cur_region%name,cur_region2%name,MAXWORDLENGTH)) then
+        option%io_buffer = 'Duplicate region names: ' // trim(cur_region%name)
+        call printErrMsg(option)
+      endif
+      cur_region2 => cur_region2%next
+    enddo
+    cur_region => cur_region%next
+  enddo
+
+  ! localize the regions on each patch
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
