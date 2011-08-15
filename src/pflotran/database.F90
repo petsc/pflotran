@@ -2124,20 +2124,20 @@ subroutine BasisInit(reaction,option)
           reaction%kinsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
           reaction%kinsrfcplx_rxn_to_surf(irxn) = &
             GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
-          if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
+          if (reaction%kinsrfcplx_rxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
-                               'listed in surface complexation reaction not ' // &
-                               ' found in mineral list'
+                               'listed in kinetic surface complexation ' // &
+                               'reaction not found in mineral list'
             call printErrMsg(option)
           endif
         else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
           reaction%kinsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
           reaction%kinsrfcplx_rxn_to_surf(irxn) = &
             GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
-          if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
+          if (reaction%kinsrfcplx_rxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Colloid ' // trim(cur_srfcplx_rxn%colloid_name) // &
-                               'listed in surface complexation reaction not ' // &
-                               ' found in colloid list'
+                               'listed in kinetic surface complexation ' // &
+                               'reaction not found in colloid list'
             call printErrMsg(option)
           endif
           ! loop over primary species associated with colloid sorption and
@@ -2161,7 +2161,7 @@ subroutine BasisInit(reaction,option)
             'kinetic surface complexation reaction:' // &
             trim(adjustl(word))
           call printWrnMsg(option)
-          reaction%eqsrfcplx_rxn_surf_type(irxn) = NULL_SURFACE          
+          reaction%kinsrfcplx_rxn_surf_type(irxn) = NULL_SURFACE          
         endif
         reaction%kinsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               
