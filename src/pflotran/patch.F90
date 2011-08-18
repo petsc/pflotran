@@ -1716,6 +1716,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
+         KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
          
@@ -1925,7 +1926,9 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
         vec_ptr(local_id) = option%myrank
       enddo
     case default
-      call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')
+      write(option%io_buffer, &
+            '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
+      call printErrMsg(option)
   end select
 
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
@@ -2260,6 +2263,11 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
       value = option%myrank
+    case default
+      write(option%io_buffer, &
+            '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
+            ivar
+      call printErrMsg(option)
   end select
 
   PatchGetDatasetValueAtCell = value
