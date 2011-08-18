@@ -16,6 +16,7 @@ module Fluid_module
     character(len=MAXWORDLENGTH) :: phase_name
     PetscInt :: phase_id
     PetscReal :: diffusion_coefficient
+    PetscReal :: diffusion_activation_energy
     PetscReal :: nacl_concentration
     type(fluid_property_type), pointer :: next
   end type fluid_property_type
@@ -50,6 +51,7 @@ function FluidPropertyCreate()
   fluid_property%phase_name = ''
   fluid_property%phase_id = 0
   fluid_property%diffusion_coefficient = 0.d0
+  fluid_property%diffusion_activation_energy = 0.d0
   fluid_property%nacl_concentration = 0.d0
   nullify(fluid_property%next)
   FluidPropertyCreate => fluid_property
@@ -96,6 +98,9 @@ subroutine FluidPropertyRead(fluid_property,input,option)
       case('DIFFUSION_COEFFICIENT') 
         call InputReadDouble(input,option,fluid_property%diffusion_coefficient)
         call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
+      case('DIFFUSION_ACTIVATION_ENERGY') 
+        call InputReadDouble(input,option,fluid_property%diffusion_activation_energy)
+        call InputErrorMsg(input,option,'diffusion activation energy','FLUID_PROPERTY')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in fluid property'    

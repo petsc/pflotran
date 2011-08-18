@@ -62,14 +62,23 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
   PetscReal :: sat_up, sat_dn
   PetscReal :: stp_up, stp_dn
   PetscReal :: q
-  
-  diffusion(:) = 0.d0
 
+  PetscReal :: temp_up, temp_dn         ! variables to store temperature upstream and downstream
+  PetscReal :: weight_temp              ! variable to store the arithmetic weighted average temperature
+  PetscReal, parameter :: R_gas_constant = 8.3144621d-3 ! Gas constant in kJ/mol/K
+  PetscReal :: T_ref_inv
+
+  diffusion(:) = 0.d0
+  T_ref_inv = 1.d0/(25.d0+273.15d0)
+    
   iphase = 1
   q = velocity(iphase)
   
   sat_up = global_aux_var_up%sat(iphase)
   sat_dn = global_aux_var_dn%sat(iphase)
+
+  temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
+  temp_dn = global_aux_var_dn%temp(iphase)
   
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up 
@@ -80,7 +89,16 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
     diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
                         weight*rt_parameter%diffusion_coefficient(iphase)
-  endif
+! Add the effect of temperature on diffusivity, Satish Karra, 08/15/2011
+#ifdef TEMP_DEPENDENT_LOGK
+    weight_temp = (temp_up*dist_up + temp_dn*dist_dn)/(dist_dn + dist_up)     ! Arithmetic weighted mean by distances
+    diffusion(iphase) = diffusion(iphase) + &
+            weight*rt_parameter%diffusion_coefficient(iphase)* &
+            (exp(rt_parameter%diffusion_activation_energy(iphase) &
+            /R_gas_constant*(T_ref_inv-1.d0/(weight_temp+273.15d0))) - 1.d0)
+#endif
+    endif
+
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
@@ -93,7 +111,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
       q = velocity(iphase)
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
-  
+      temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
+      temp_dn = global_aux_var_dn%temp(iphase)
       if (sat_up > eps .and. sat_dn > eps) then
         stp_up = sat_up*tor_up*por_up 
         stp_dn = sat_dn*tor_dn*por_dn
@@ -103,6 +122,15 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         if(iphase ==2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
                                weight*rt_parameter%diffusion_coefficient(iphase)
+! Add the effect of temperature on diffusivity, Satish Karra, 08/15/2011
+#ifdef TEMP_DEPENDENT_LOGK
+    weight_temp = (temp_up*dist_up + temp_dn*dist_dn)/(dist_dn + dist_up)     ! Arithmetic weighted mean by distances
+    diffusion(iphase) = diffusion(iphase) + &
+            weight*rt_parameter%diffusion_coefficient(iphase)* &
+            (exp(rt_parameter%diffusion_activation_energy(iphase) &
+            /R_gas_constant*(T_ref_inv-1.d0/(weight_temp+273.15d0))) - 1.d0)
+#endif
+
       endif
     enddo
   endif
@@ -138,14 +166,22 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   PetscReal :: weight
   PetscReal :: q
   PetscReal :: sat_up, sat_dn
-  
+
+  PetscReal :: temp_up                  ! variable to store temperature at the boundary
+  PetscReal, parameter :: R_gas_constant = 8.3144621d-3 ! Gas constant in kJ/mol/K
+  PetscReal :: T_ref_inv
+
   diffusion(:) = 0.d0
+  T_ref_inv = 1.d0/(25.d0+273.15d0)
 
   iphase = 1
   q = velocity(iphase)
   
   sat_up = global_aux_var_up%sat(iphase)
   sat_dn = global_aux_var_dn%sat(iphase)
+
+  temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
+
 
   select case(ibndtype)
     case(DIRICHLET_BC)
@@ -156,7 +192,15 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                             weight*rt_parameter%diffusion_coefficient(iphase)
+#ifdef TEMP_DEPENDENT_LOGK    
+    diffusion(iphase) = diffusion(iphase) + &
+                        weight*rt_parameter%diffusion_coefficient(iphase)* &
+                        (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+                        R_gas_constant*(T_ref_inv-1.d0/(temp_up+273.15d0))) - 1.d0)
+#endif
+
       endif    
+
     case(DIRICHLET_ZERO_GRADIENT_BC)
       if (q >= 0.d0) then
         ! same as dirichlet above
@@ -167,6 +211,13 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
           diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
+#ifdef TEMP_DEPENDENT_LOGK    
+    diffusion(iphase) = diffusion(iphase) + &
+                        weight*rt_parameter%diffusion_coefficient(iphase)* &
+                        (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+                        R_gas_constant*(T_ref_inv-1.d0/(temp_up+273.15d0))) - 1.d0)
+#endif
+
         endif    
       endif
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -184,6 +235,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
       q = velocity(iphase)
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
+      temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
 
       select case(ibndtype)
         case(DIRICHLET_BC)
@@ -194,7 +246,16 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
             if( iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                                        weight*rt_parameter%diffusion_coefficient(iphase)
+#ifdef TEMP_DEPENDENT_LOGK    
+    diffusion(iphase) = diffusion(iphase) + &
+                        weight*rt_parameter%diffusion_coefficient(iphase)* &
+                        (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+                        R_gas_constant*(T_ref_inv-1.d0/(temp_up+273.15d0))) - 1.d0)
+#endif
+
+
           endif    
+          
         case(DIRICHLET_ZERO_GRADIENT_BC)
           if (q >= 0.d0) then
          ! same as dirichlet above
@@ -205,6 +266,14 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
               if(iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                                         weight*rt_parameter%diffusion_coefficient(iphase)
+#ifdef TEMP_DEPENDENT_LOGK    
+    diffusion(iphase) = diffusion(iphase) + &
+                        weight*rt_parameter%diffusion_coefficient(iphase)* &
+                        (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+                        R_gas_constant*(T_ref_inv-1.d0/(temp_up+273.15d0))) - 1.d0)
+#endif
+
+
             endif    
           endif
         case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)

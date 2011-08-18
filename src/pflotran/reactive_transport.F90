@@ -235,6 +235,8 @@ subroutine RTSetupPatch(realization)
     iphase = cur_fluid_property%phase_id
     patch%aux%RT%rt_parameter%diffusion_coefficient(iphase) = &
       cur_fluid_property%diffusion_coefficient
+    patch%aux%RT%rt_parameter%diffusion_activation_energy(iphase) = &
+      cur_fluid_property%diffusion_activation_energy
     cur_fluid_property => cur_fluid_property%next
   enddo
   
