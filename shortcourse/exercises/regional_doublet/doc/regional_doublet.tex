@@ -604,6 +604,7 @@ END
 \newpage
 
 \bluecomment{! Contents of river_stage.txt:}
+\bluecomment{!   Note: assumes SI units}
 
 \bluecomment{: time x y z}
 0.d0 5000.d0 0.d0 80.d0          \bluecomment{! 0 yr}
@@ -618,7 +619,16 @@ FLOW_CONDITION recharge
   TYPE
     FLUX neumann
   /
-  FLUX 7.927d-9  \bluecomment{! 25 cm/yr}
+  FLUX LIST
+    TIME_UNITS yr
+    DATA_UNITS cm/yr
+    0.d0 25.d0  
+    1.d0 23.d0
+    2.d0 27.d0
+    3.d0 22.d0
+    4.d0 24.d0
+    5.d0 29.d0
+  /
 END
 
 \newpage
@@ -626,16 +636,15 @@ FLOW_CONDITION injection
   TYPE                           \bluecomment{! volumetric flow}
     RATE scaled_volumetric_rate  \bluecomment{!   rate scaled by}
   /                              \bluecomment{!   f(permeability)}
-  RATE 1.157407d-1  \bluecomment{! flow rate [m^3/s]}
-END                 \bluecomment{!   10,000 m^3/day}
+  RATE 1.d5 m^3/day  \bluecomment{! flow rate 10,000 [m^3/day]}
+END    
 
 FLOW_CONDITION extraction
   TYPE
     RATE scaled_volumetric_rate
   /
-  RATE -1.157407d-1 \bluecomment{! negative rate = extraction}
-END
-
+  RATE -1.d5 m^3/day  \bluecomment{! flow rate -10,000 [m^3/day]}
+END                   \bluecomment{! negative rate = extraction}
 
 \end{semiverbatim}
 \end{frame}

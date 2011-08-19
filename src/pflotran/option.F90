@@ -463,6 +463,11 @@ subroutine OptionInitRealization(option)
   option%dsmxe = 0.5d0
   option%dcmxe = 1.d0
 
+  option%dpmax = 0.d0
+  option%dtmpmax = 0.d0
+  option%dsmax = 0.d0
+  option%dcmax = 0.d0
+
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file
 !  option%difaq = 0.d0

@@ -302,26 +302,27 @@ subroutine DatabaseRead(reaction,option)
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         endif
         ! read the number of aqueous species in mineral rxn
-        call InputReadInt(input,option,cur_mineral%tstrxn%dbaserxn%nspec)
+        cur_mineral%dbaserxn => DatabaseRxnCreate()
+        call InputReadInt(input,option,cur_mineral%dbaserxn%nspec)
         call InputErrorMsg(input,option,'Number of species in mineral reaction', &
                         'DATABASE')  
         ! allocate arrays for rxn
-        allocate(cur_mineral%tstrxn%dbaserxn%spec_name(cur_mineral%tstrxn%dbaserxn%nspec))
-        cur_mineral%tstrxn%dbaserxn%spec_name = ''
-        allocate(cur_mineral%tstrxn%dbaserxn%stoich(cur_mineral%tstrxn%dbaserxn%nspec))
-        cur_mineral%tstrxn%dbaserxn%stoich = 0.d0
-        allocate(cur_mineral%tstrxn%dbaserxn%logK(reaction%num_dbase_temperatures))
-        cur_mineral%tstrxn%dbaserxn%logK = 0.d0
+        allocate(cur_mineral%dbaserxn%spec_name(cur_mineral%dbaserxn%nspec))
+        cur_mineral%dbaserxn%spec_name = ''
+        allocate(cur_mineral%dbaserxn%stoich(cur_mineral%dbaserxn%nspec))
+        cur_mineral%dbaserxn%stoich = 0.d0
+        allocate(cur_mineral%dbaserxn%logK(reaction%num_dbase_temperatures))
+        cur_mineral%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
-        do ispec = 1, cur_mineral%tstrxn%dbaserxn%nspec
-          call InputReadDouble(input,option,cur_mineral%tstrxn%dbaserxn%stoich(ispec))
+        do ispec = 1, cur_mineral%dbaserxn%nspec
+          call InputReadDouble(input,option,cur_mineral%dbaserxn%stoich(ispec))
           call InputErrorMsg(input,option,'MINERAL species stoichiometry','DATABASE')            
-          call InputReadQuotedWord(input,option,cur_mineral%tstrxn%dbaserxn% &
+          call InputReadQuotedWord(input,option,cur_mineral%dbaserxn% &
                                    spec_name(ispec),PETSC_TRUE)
           call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_mineral%tstrxn%dbaserxn%logK(itemp))
+          call InputReadDouble(input,option,cur_mineral%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
         enddo
         ! read the molar weight
@@ -678,6 +679,9 @@ subroutine BasisInit(reaction,option)
   type(kd_rxn_type), pointer :: cur_kd_rxn
   type(colloid_type), pointer :: cur_colloid
   type(database_rxn_type), pointer :: dbaserxn
+  type(transition_state_rxn_type), pointer :: tstrxn
+  type(transition_state_prefactor_type), pointer :: cur_prefactor
+  type(ts_prefactor_species_type), pointer :: cur_prefactor_species
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -722,6 +726,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: forward_count, max_forward_count
   PetscInt :: backward_count, max_backward_count
   PetscInt :: midpoint
+  PetscInt :: max_num_prefactors, max_num_prefactor_species
   
   PetscBool :: compute_new_basis
   PetscBool :: found
@@ -1232,13 +1237,13 @@ subroutine BasisInit(reaction,option)
       if (associated(cur_mineral%tstrxn)) then
         ispec = 1
         do
-          if (ispec > cur_mineral%tstrxn%dbaserxn%nspec) exit
+          if (ispec > cur_mineral%dbaserxn%nspec) exit
           if (StringCompare(cur_gas_spec%name, &
-                              cur_mineral%tstrxn%dbaserxn%spec_name(ispec), &
+                              cur_mineral%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec%name, &
                                              cur_gas_spec%dbaserxn, &
-                                             cur_mineral%tstrxn)
+                                             cur_mineral%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1301,13 +1306,13 @@ subroutine BasisInit(reaction,option)
       if (associated(cur_mineral%tstrxn)) then
         ispec = 1
         do
-          if (ispec > cur_mineral%tstrxn%dbaserxn%nspec) exit
+          if (ispec > cur_mineral%dbaserxn%nspec) exit
           if (StringCompare(cur_sec_aq_spec%name, &
-                              cur_mineral%tstrxn%dbaserxn%spec_name(ispec), &
+                              cur_mineral%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec%name, &
                                              cur_sec_aq_spec%dbaserxn, &
-                                             cur_mineral%tstrxn)
+                                             cur_mineral%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1360,16 +1365,16 @@ subroutine BasisInit(reaction,option)
   cur_mineral => reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
-    if (.not.associated(cur_mineral%tstrxn%dbaserxn%spec_ids)) then
-      allocate(cur_mineral%tstrxn%dbaserxn%spec_ids(cur_mineral%tstrxn%dbaserxn%nspec))
-      cur_mineral%tstrxn%dbaserxn%spec_ids = 0
+    if (.not.associated(cur_mineral%dbaserxn%spec_ids)) then
+      allocate(cur_mineral%dbaserxn%spec_ids(cur_mineral%dbaserxn%nspec))
+      cur_mineral%dbaserxn%spec_ids = 0
     endif
 	
     call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
-                                cur_mineral%tstrxn%dbaserxn%nspec, &
-                                cur_mineral%tstrxn%dbaserxn%spec_name, &
-                                cur_mineral%tstrxn%dbaserxn%stoich, &
-                                cur_mineral%tstrxn%dbaserxn%spec_ids, &
+                                cur_mineral%dbaserxn%nspec, &
+                                cur_mineral%dbaserxn%spec_name, &
+                                cur_mineral%dbaserxn%stoich, &
+                                cur_mineral%dbaserxn%spec_ids, &
                                 cur_mineral%name,option)     
     cur_mineral => cur_mineral%next
   enddo  
@@ -1631,8 +1636,40 @@ subroutine BasisInit(reaction,option)
   igas_spec = -1 ! to catch bugs
 
   ! minerals
-!  reaction%nmnrl = GetMineralCount(reaction)
-  reaction%nkinmnrl = GetKineticMineralCount(reaction)
+  ! Count the number of kinetic mineral reactions, max number of prefactors in a
+  !   tst reaction, and the maximum number or species in a prefactor
+  reaction%nkinmnrl = 0
+  max_num_prefactors = 0
+  max_num_prefactor_species = 0
+  cur_mineral => reaction%mineral_list
+  !
+  do
+    if (.not.associated(cur_mineral)) exit
+    if (cur_mineral%itype == MINERAL_KINETIC .and. &
+        associated(cur_mineral%tstrxn)) then
+      ! increment number of kinetic minerals
+      reaction%nkinmnrl = reaction%nkinmnrl + 1
+      cur_prefactor => cur_mineral%tstrxn%prefactor
+      ! zero number of prefactors
+      i = 0
+      do
+        if (.not.associated(cur_prefactor)) exit
+        i = i + 1
+        cur_prefactor_species => cur_prefactor%species
+        ! zero number of prefactor species
+        j = 0
+        do
+          if (.not.associated(cur_prefactor_species)) exit
+          j = j + 1
+          cur_prefactor_species => cur_prefactor_species%next
+        enddo
+        if (j > max_num_prefactor_species) max_num_prefactor_species = j
+        cur_prefactor => cur_prefactor%next
+      enddo
+      if (i > max_num_prefactors) max_num_prefactors = i
+    endif
+    cur_mineral => cur_mineral%next
+  enddo
 
   if (reaction%nmnrl > 0) then
     allocate(reaction%mineral_names(reaction%nmnrl))
@@ -1655,44 +1692,69 @@ subroutine BasisInit(reaction,option)
                                     reaction%nmnrl))
     reaction%mnrl_logKcoef = 0.d0
 #endif
-    allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
-    reaction%kinmnrl_names = ''
-    allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
-    reaction%kinmnrl_print = PETSC_FALSE
-    allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
-    reaction%kinmnrlspecid = 0
-    allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
-    reaction%kinmnrlstoich = 0.d0
-    allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
-    reaction%kinmnrlh2oid = 0
-    allocate(reaction%kinmnrlh2ostoich(reaction%nkinmnrl))
-    reaction%kinmnrlh2ostoich = 0.d0
-    allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
-    reaction%kinmnrl_logK = 0.d0
+
+    if (reaction%nkinmnrl > 0) then
+      allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
+      reaction%kinmnrl_names = ''
+      allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
+      reaction%kinmnrl_print = PETSC_FALSE
+      allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
+      reaction%kinmnrlspecid = 0
+      allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
+      reaction%kinmnrlstoich = 0.d0
+      allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
+      reaction%kinmnrlh2oid = 0
+      allocate(reaction%kinmnrlh2ostoich(reaction%nkinmnrl))
+      reaction%kinmnrlh2ostoich = 0.d0
+      allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
+      reaction%kinmnrl_logK = 0.d0
 #if TEMP_DEPENDENT_LOGK
-    allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
-    reaction%kinmnrl_logKcoef = 0.d0
+      allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
+      reaction%kinmnrl_logKcoef = 0.d0
 #else
-    allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                       reaction%nkinmnrl))
-    reaction%kinmnrl_logKcoef = 0.d0
+      allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                         reaction%nkinmnrl))
+      reaction%kinmnrl_logKcoef = 0.d0
 #endif
-    allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
-    reaction%kinmnrl_affinity_threshold = 0.d0
-    allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
-    reaction%kinmnrl_rate_limiter = 0.d0
-    allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
-    reaction%kinmnrl_irreversible = 0
-    allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
-    reaction%kinmnrl_rate = 0.d0
-    allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
-    reaction%kinmnrl_activation_energy = 0.d0
-    allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
-    reaction%kinmnrl_molar_vol = 0.d0
-    allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
-    reaction%kinmnrl_molar_wt = 0.d0
-    allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
-    reaction%kinmnrl_num_prefactors = 0
+
+      ! TST Rxn variables
+      allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
+      reaction%kinmnrl_affinity_threshold = 0.d0
+      allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
+      reaction%kinmnrl_rate_limiter = 0.d0
+      allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
+      reaction%kinmnrl_irreversible = 0
+      allocate(reaction%kinmnrl_rate(reaction%nkinmnrl))
+      reaction%kinmnrl_rate = 0.d0
+      allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
+      reaction%kinmnrl_activation_energy = 0.d0
+      allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
+      reaction%kinmnrl_molar_vol = 0.d0
+      allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
+      reaction%kinmnrl_molar_wt = 0.d0
+
+      allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
+      reaction%kinmnrl_num_prefactors = 0
+      if (max_num_prefactors > 0) then
+        allocate(reaction%kinmnrl_pref_rate(max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_rate = 0.d0
+        allocate(reaction%kinmnrl_pref_activation_energy(max_num_prefactors, &
+                                                         reaction%nkinmnrl))
+        reaction%kinmnrl_pref_activation_energy = 0.d0
+        allocate(reaction%kinmnrl_prefactor_id(0:max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_prefactor_id = 0
+        allocate(reaction%kinmnrl_pref_alpha(max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_alpha = 0.d0
+        allocate(reaction%kinmnrl_pref_beta(max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_beta = 0.d0
+        allocate(reaction%kinmnrl_pref_atten_coef(max_num_prefactor_species, &
+                                             max_num_prefactors,reaction%nkinmnrl))
+        reaction%kinmnrl_pref_atten_coef = 0.d0
+      endif
+    endif
     
     cur_mineral => reaction%mineral_list
     imnrl = 1
@@ -1702,38 +1764,37 @@ subroutine BasisInit(reaction,option)
 
       reaction%mineral_names(imnrl) = cur_mineral%name
       ispec = 0
-      do i = 1, cur_mineral%tstrxn%dbaserxn%nspec
-        if (cur_mineral%tstrxn%dbaserxn%spec_ids(i) /= h2o_id) then
+      do i = 1, cur_mineral%dbaserxn%nspec
+        if (cur_mineral%dbaserxn%spec_ids(i) /= h2o_id) then
           ispec = ispec + 1
-          spec_id = cur_mineral%tstrxn%dbaserxn%spec_ids(i)
+          spec_id = cur_mineral%dbaserxn%spec_ids(i)
           if (spec_id > h2o_id) spec_id = spec_id - 1
           reaction%mnrlspecid(ispec,imnrl) = spec_id
           reaction%mnrlstoich(ispec,imnrl) = &
-            cur_mineral%tstrxn%dbaserxn%stoich(i)
+            cur_mineral%dbaserxn%stoich(i)
             
         else ! fill in h2o id and stoich
           reaction%mnrlh2oid(imnrl) = h2o_id
           reaction%mnrlh2ostoich(imnrl) = &
-            cur_mineral%tstrxn%dbaserxn%stoich(i)
+            cur_mineral%dbaserxn%stoich(i)
         endif
       enddo
       reaction%mnrlspecid(0,imnrl) = ispec
 
 #if TEMP_DEPENDENT_LOGK
       call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl), &
-                               cur_mineral%tstrxn%dbaserxn%logK, &
+                               cur_mineral%dbaserxn%logK, &
                                reaction%mineral_names(imnrl), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
-                                  cur_mineral%tstrxn%dbaserxn%logK, &
+                                  cur_mineral%dbaserxn%logK, &
                                   reaction%mnrl_logK(imnrl), &
                                   option,reaction)
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_mineral%tstrxn%dbaserxn%logK(itemp_high), &
-                       cur_mineral%tstrxn%dbaserxn%logK(itemp_low), &
+                       cur_mineral%dbaserxn%logK(itemp_high), &
+                       cur_mineral%dbaserxn%logK(itemp_low), &
                        reaction%mnrl_logK(imnrl))
-!      reaction%mnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
 #endif
   
       if (cur_mineral%itype == MINERAL_KINETIC) then
@@ -1746,27 +1807,89 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
 #if TEMP_DEPENDENT_LOGK
         call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                 cur_mineral%tstrxn%dbaserxn%logK, &
+                                 cur_mineral%dbaserxn%logK, &
                                  reaction%kinmnrl_names(ikinmnrl), &
                                  option,reaction)
         call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                    cur_mineral%tstrxn%dbaserxn%logK, &
+                                    cur_mineral%dbaserxn%logK, &
                                     reaction%kinmnrl_logK(ikinmnrl), &
                                     option,reaction)
 #else
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_mineral%tstrxn%dbaserxn%logK(itemp_high), &
-                       cur_mineral%tstrxn%dbaserxn%logK(itemp_low), &
-                       reaction%kinmnrl_logK(ikinmnrl))
-!      reaction%kinmnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
+        call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                         cur_mineral%dbaserxn%logK(itemp_high), &
+                         cur_mineral%dbaserxn%logK(itemp_low), &
+                         reaction%kinmnrl_logK(ikinmnrl))
 #endif
-        reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
-          cur_mineral%tstrxn%affinity_threshold
-        reaction%kinmnrl_rate_limiter(ikinmnrl) = cur_mineral%tstrxn%rate_limiter
-        reaction%kinmnrl_irreversible(ikinmnrl) = cur_mineral%tstrxn%irreversible
-        reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
-        reaction%kinmnrl_activation_energy(ikinmnrl) = &
-          cur_mineral%tstrxn%activation_energy
+
+        tstrxn => cur_mineral%tstrxn
+        if (associated(tstrxn)) then
+          ! loop over transition state theory reactions/prefactors
+          cur_prefactor => cur_mineral%tstrxn%prefactor
+          i = 0
+          do
+            if (.not.associated(cur_prefactor)) exit
+            ! ith prefactor
+            i = i + 1
+
+            reaction%kinmnrl_pref_rate(i,ikinmnrl) = cur_prefactor%rate
+            reaction%kinmnrl_pref_activation_energy(i,ikinmnrl) = &
+              cur_prefactor%activation_energy
+
+            cur_prefactor_species => cur_prefactor%species
+            j = 0
+            do
+              if (.not.associated(cur_prefactor_species)) exit
+              ! jth prefactor species
+              j = j + 1
+              ! find the prefactor species
+              do ispec = 1, reaction%naqcomp
+                if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                            cur_prefactor_species%name,MAXWORDLENGTH)) then
+                  cur_prefactor_species%id = ispec
+                  exit
+                endif
+              enddo
+              if (cur_prefactor_species%id == 0) then ! not found
+                ! negative prefactor_species_id denotes a secondary species
+                do ispec = 1, reaction%neqcplx
+                  if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
+                                              cur_prefactor_species%name,MAXWORDLENGTH)) then
+                    cur_prefactor_species%id = -ispec
+                    exit
+                  endif
+                enddo
+              endif
+              if (cur_prefactor_species%id == 0) then
+                option%io_buffer = 'Kinetic mineral prefactor species "' // &
+                  trim(cur_prefactor_species%name) // &
+                  '" not found among primary or secondary species.'
+                call printErrMsg(option)
+              endif
+              reaction%kinmnrl_prefactor_id(j,i,ikinmnrl) = cur_prefactor_species%id
+              reaction%kinmnrl_pref_alpha(j,i,ikinmnrl) = cur_prefactor_species%alpha
+              reaction%kinmnrl_pref_beta(j,i,ikinmnrl) = cur_prefactor_species%beta
+              reaction%kinmnrl_pref_atten_coef(j,i,ikinmnrl) = &
+                cur_prefactor_species%attenuation_coef
+              cur_prefactor_species => cur_prefactor_species%next
+            enddo
+            ! store the number of species
+            reaction%kinmnrl_prefactor_id(0,i,ikinmnrl) = j
+            cur_prefactor => cur_prefactor%next
+          enddo
+          reaction%kinmnrl_num_prefactors(ikinmnrl) = i
+
+          reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
+            tstrxn%affinity_threshold
+          reaction%kinmnrl_rate_limiter(ikinmnrl) = tstrxn%rate_limiter
+          reaction%kinmnrl_irreversible(ikinmnrl) = tstrxn%irreversible
+          if (reaction%kinmnrl_num_prefactors(ikinmnrl) == 0) then
+            ! no prefactors, rates stored in upper level
+            reaction%kinmnrl_rate(ikinmnrl) = tstrxn%rate
+            reaction%kinmnrl_activation_energy(ikinmnrl) = &
+              tstrxn%activation_energy
+          endif
+        endif ! associated(tstrxn)
+
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight
         ikinmnrl = ikinmnrl + 1
@@ -3135,15 +3258,15 @@ end subroutine BasisSubSpeciesInGasOrSecRxn
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInMineralRxn(name,dbaserxn,tstrxn)
+subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn)
 
   use String_module
   
   implicit none
   
   character(len=MAXWORDLENGTH) :: name
-  type(database_rxn_type) :: dbaserxn
-  type(transition_state_rxn_type) :: tstrxn
+  type(database_rxn_type) :: sec_dbaserxn
+  type(database_rxn_type) :: mnrl_dbaserxn
   
   PetscInt :: i, j, tempcount, prevcount
   character(len=MAXWORDLENGTH) :: tempnames(20)
@@ -3157,41 +3280,41 @@ subroutine BasisSubSpeciesInMineralRxn(name,dbaserxn,tstrxn)
   ! load species in reaction other than species 1 into new arrays
   scale = 1.d0
   tempcount = 0
-  do i=1,tstrxn%dbaserxn%nspec
+  do i=1,mnrl_dbaserxn%nspec
     if (.not.StringCompare(name, &
-                             tstrxn%dbaserxn%spec_name(i), &
-                             MAXWORDLENGTH)) then
+                           mnrl_dbaserxn%spec_name(i), &
+                           MAXWORDLENGTH)) then
       tempcount = tempcount + 1
-      tempnames(tempcount) = tstrxn%dbaserxn%spec_name(i)
-      tempstoich(tempcount) = tstrxn%dbaserxn%stoich(i)
+      tempnames(tempcount) = mnrl_dbaserxn%spec_name(i)
+      tempstoich(tempcount) = mnrl_dbaserxn%stoich(i)
     else
-      scale = tstrxn%dbaserxn%stoich(i)
+      scale = mnrl_dbaserxn%stoich(i)
     endif
   enddo
   
   ! search for duplicate species and add stoichs or add new species
   ! if not duplicated
-  do j=1,dbaserxn%nspec
+  do j=1,sec_dbaserxn%nspec
     found = PETSC_FALSE
-    do i=1,tstrxn%dbaserxn%nspec
+    do i=1,mnrl_dbaserxn%nspec
       if (StringCompare(tempnames(i), &
-                          dbaserxn%spec_name(j), &
-                          MAXWORDLENGTH)) then
-        tempstoich(i) = tempstoich(i) + scale*dbaserxn%stoich(j)
+                        sec_dbaserxn%spec_name(j), &
+                        MAXWORDLENGTH)) then
+        tempstoich(i) = tempstoich(i) + scale*sec_dbaserxn%stoich(j)
         found = PETSC_TRUE
         exit
       endif
     enddo
     if (.not.found) then
       tempcount = tempcount + 1
-      tempnames(tempcount) = dbaserxn%spec_name(j)
-      tempstoich(tempcount) = scale*dbaserxn%stoich(j)
+      tempnames(tempcount) = sec_dbaserxn%spec_name(j)
+      tempstoich(tempcount) = scale*sec_dbaserxn%stoich(j)
     endif
   enddo
   
   ! deallocate arrays
-  deallocate(tstrxn%dbaserxn%spec_name)
-  deallocate(tstrxn%dbaserxn%stoich)
+  deallocate(mnrl_dbaserxn%spec_name)
+  deallocate(mnrl_dbaserxn%stoich)
   
   ! check for zero stoichiometries due to cancelation
   prevcount = tempcount
@@ -3208,18 +3331,18 @@ subroutine BasisSubSpeciesInMineralRxn(name,dbaserxn,tstrxn)
   tempstoich(tempcount+1:) = 0.d0
     
   ! reallocate
-  allocate(tstrxn%dbaserxn%spec_name(tempcount))
-  allocate(tstrxn%dbaserxn%stoich(tempcount))
+  allocate(mnrl_dbaserxn%spec_name(tempcount))
+  allocate(mnrl_dbaserxn%stoich(tempcount))
   
   ! fill arrays in dbaserxn
-  tstrxn%dbaserxn%nspec = tempcount
+  mnrl_dbaserxn%nspec = tempcount
   do i=1,tempcount
-    tstrxn%dbaserxn%spec_name(i) = tempnames(i)
-    tstrxn%dbaserxn%stoich(i) = tempstoich(i)
+    mnrl_dbaserxn%spec_name(i) = tempnames(i)
+    mnrl_dbaserxn%stoich(i) = tempstoich(i)
   enddo
   
   ! adjust the equilibrium coefficient
-  tstrxn%dbaserxn%logK = tstrxn%dbaserxn%logK + scale*dbaserxn%logK
+  mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
 
 end subroutine BasisSubSpeciesInMineralRxn
 
@@ -3363,11 +3486,11 @@ subroutine BasisPrint(reaction,title,option)
       if (associated(cur_mineral%tstrxn)) then
         write(option%fid_out,100) '    Mineral Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
-        do ispec = 1, cur_mineral%tstrxn%dbaserxn%nspec
-          write(option%fid_out,120) '      ', cur_mineral%tstrxn%dbaserxn%stoich(ispec), &
-                          cur_mineral%tstrxn%dbaserxn%spec_name(ispec)
+        do ispec = 1, cur_mineral%dbaserxn%nspec
+          write(option%fid_out,120) '      ', cur_mineral%dbaserxn%stoich(ispec), &
+                          cur_mineral%dbaserxn%spec_name(ispec)
         enddo
-        write(option%fid_out,130) '      logK:', (cur_mineral%tstrxn%dbaserxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_mineral%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
       write(option%fid_out,*)
