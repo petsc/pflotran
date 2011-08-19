@@ -1420,9 +1420,17 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,LIQUID_VISCOSITY,GAS_VISCOSITY) ! still need implementation
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = 0.d0
+            enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%vis
+            enddo
+          case(LIQUID_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%kvr
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
@@ -2009,6 +2017,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
             value = patch%aux%THC%aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
             value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
+          case(LIQUID_VISCOSITY)
+            value = patch%aux%THC%aux_vars(ghosted_id)%vis
+          case(LIQUID_MOBILITY)
+            value = patch%aux%THC%aux_vars(ghosted_id)%kvr
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             value = 0.d0
           case(LIQUID_MOLE_FRACTION)

@@ -16,7 +16,7 @@ module THC_Aux_module
     PetscReal :: h
     PetscReal :: u
     PetscReal :: pc
-!    PetscReal :: vis
+    PetscReal :: vis
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
@@ -121,7 +121,7 @@ subroutine THCAuxVarInit(aux_var,option)
   aux_var%pc = 0.d0
 !  aux_var%kr = 0.d0
 !  aux_var%dkr_dp = 0.d0
-!  aux_var%vis = 0.d0
+  aux_var%vis = 0.d0
 !  aux_var%dvis_dp = 0.d0
   aux_var%kvr = 0.d0
   aux_var%dsat_dp = 0.d0
@@ -167,7 +167,7 @@ subroutine THCAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%pc = aux_var%pc
 !  aux_var2%kr = aux_var%kr
 !  aux_var2%dkr_dp = aux_var%dkr_dp
-!  aux_var2%vis = aux_var%vis
+  aux_var2%vis = aux_var%vis
 !  aux_var2%dvis_dp = aux_var%dvis_dp
   aux_var2%kvr = aux_var%kvr
   aux_var2%dsat_dp = aux_var%dsat_dp
@@ -278,7 +278,7 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
   aux_var%u = aux_var%h - pw / dw_mol * option%scale
   aux_var%kvr = kr/visl
   
-!  aux_var%vis = visl
+  aux_var%vis = visl
 !  aux_var%dvis_dp = dvis_dp
 !  aux_var%kr = kr
 !  aux_var%dkr_dp = dkr_dp

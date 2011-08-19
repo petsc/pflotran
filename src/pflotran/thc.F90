@@ -755,21 +755,22 @@ subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
 
   porXvol = por*vol
+  
+  ! X = {p, T, x_2}; R = {R_x1, R_x2, R_T}
       
-  J(1,1) = (aux_var%sat*aux_var%dden_dp+aux_var%dsat_dp*aux_var%den)*porXvol*aux_var%xmol(1)
-  J(1,2) = (aux_var%sat*aux_var%dden_dt)*porXvol*aux_var%xmol(1)
-  J(1,3) = 0.d0
-  J(2,1) = (aux_var%sat*aux_var%dden_dp+aux_var%dsat_dp*aux_var%den)*porXvol*aux_var%xmol(2)
-  J(2,2) = (aux_var%sat*aux_var%dden_dt)*porXvol*aux_var%xmol(2)
-  J(2,3) = (aux_var%sat*aux_var%den)*porXvol
-  J(3,1) = (aux_var%dsat_dp*aux_var%den*aux_var%u+ &
-            aux_var%sat*aux_var%dden_dp*aux_var%u+ &
-            aux_var%sat*aux_var%den*aux_var%du_dp)* &
-           porXvol
+  J(1,1) = (aux_var%sat*aux_var%dden_dp + aux_var%dsat_dp*aux_var%den)*porXvol*aux_var%xmol(1)
+  J(1,2) = aux_var%sat*aux_var%dden_dt*porXvol*aux_var%xmol(1)
+  J(1,3) = -aux_var%sat*aux_var%den*porXvol
+  J(2,1) = (aux_var%sat*aux_var%dden_dp + aux_var%dsat_dp*aux_var%den)*porXvol*aux_var%xmol(2)
+  J(2,2) = aux_var%sat*aux_var%dden_dt*porXvol*aux_var%xmol(2)
+  J(2,3) = aux_var%sat*aux_var%den*porXvol
+  J(3,1) = (aux_var%dsat_dp*aux_var%den*aux_var%u + &
+            aux_var%sat*aux_var%dden_dp*aux_var%u + &
+            aux_var%sat*aux_var%den*aux_var%du_dp)*porXvol
   J(3,2) = aux_var%sat* &
-           (aux_var%dden_dt*aux_var%u+ &  ! pull %sat outside
-            aux_var%den*aux_var%du_dt)* &
-           porXvol + (1.d0 - por)* vol * rock_dencpr 
+           (aux_var%dden_dt*aux_var%u + &  ! pull %sat outside
+            aux_var%den*aux_var%du_dt)*porXvol +  &
+           (1.d0 - por)*vol*rock_dencpr 
   J(3,3) = 0.d0 
 
   if (option%numerical_derivatives) then
@@ -2925,9 +2926,33 @@ function THCGetTecplotHeader(realization,icolumn)
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-denl"'')') icolumn
+  else
+    write(string2,'('',"denl"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-Ul"'')') icolumn
   else
     write(string2,'('',"Ul"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-visl"'')') icolumn
+  else
+    write(string2,'('',"visl"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-mobilityl"'')') icolumn
+  else
+    write(string2,'('',"mobilityl"'')')
   endif
   string = trim(string) // trim(string2)
 

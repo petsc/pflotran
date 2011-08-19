@@ -630,9 +630,15 @@ Diffusion is assumed to be species independent, but may be different for differe
 \EN
 with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$. The diffusivity/dispersivity tensor $\bD_\a$ is the sum of contributions from molecular diffusion and dispersion which for an isotropic medium has the form
 \EQ
-\bD_\a \eq \varphi s \Big(\tau D_0 + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v}\Big),
+\bD_\a \eq \varphi s \Big(\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v}\Big),
 \EN
-with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_0$ to the molecular diffusion coefficient.
+with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. The temperature dependence of the diffusion coefficient is defined through the relation
+\EQ
+D_m(T) \eq D_m^\circ\exp\left[\frac{A_D}{R}\left(\frac{1}{T_0}-\frac{1}{T}\right)\right],
+\EN
+with diffusion activation energy $A_D$ in kJ/mol. The quantity $D_m^\circ$ denotes the diffusion coefficient at the reference temperature $T_0$ taken as 25\degc\ and the quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K).
+The temperature $T$ is in Kelvin.
+
 The quantity $Q_j$ denotes a source/sink term 
 \EQ
 Q_j \eq \sum_n\frac{q_M}{\rho}\Psi_j \delta(\br-\br_{n}),
@@ -2115,12 +2121,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item[COMPLEX\_KINETICS] ~
 \begin{deflist}{000}
-\item[FORWARD\_RATE\_CONSTANT] {\tt Value} [mol/cm$^3$/s???]
-\item[BACKWARD\_RATE\_CONSTANT] {\tt Value} [mol/cm$^3$/s???]
+\item[FORWARD\_RATE\_CONSTANT] {\tt Value} [mol/cm$^2$/s]
+\item[BACKWARD\_RATE\_CONSTANT] {\tt Value} [mol/cm$^2$/s]
 \end{deflist}
 
 \item [SITE\_FRACTION] {\tt Value}[---] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [RATE, RATES] {\tt Value} [mol/cm$^3$/s?] (Continuation line `$\backslash$')
+\item [RATE, RATES] {\tt Value} [mol/cm$^2$/s] (Continuation line `$\backslash$')
 \item [MULTIRATE\_SCALE\_FACTOR] {\tt Value} [---]
 
 \item [MINERAL] {\tt Mineral Name}
@@ -2560,17 +2566,23 @@ PRESSURE 101325.d0
 \item[FLUID\_PROPERTY]~
 \begin{deflist}{000}
 \item[PHASE] \ {\tt <name>} \ (LIQUID\_PHASE, GAS\_PHASE) [Default: LIQUID\_PHASE]
-\item[DIFFUSION\_COEFFICIENT] \ {\tt <float>} [Default: $1\times 10^{-9}$ m$^2$/s]
+\item[DIFFUSION\_COEFFICIENT] \ {\tt <float> [m$^2$/s]} [Default: $0\times 10^{-9}$ m$^2$/s]
+\item[DIFFUSION\_ACTIVATION\_ENERGY] {\tt <float> [kJ/mol]} [Default: 0 kJ/mol]
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}
 
-\noindent{\bf Explanation:}
+\noindent{\bf Explanation:} Read in reference diffusion coefficient $D_m^\circ$ and diffusion activation energy $A_D$. Temperature dependence of diffusion coefficient is calculated from the expression:
+\EQ
+D_m(T) \eq D_m^\circ\exp\Big[\frac{A_D}{R}\Big(\frac{1}{T_0} -\frac{1}{T}\Big)\Big],
+\EN
+where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 25$\degc\ and $A_D$ denotes the diffusion activation energy.
 
 \noindent{\bf Example:}
 \begin{verbatim}
 FLUID_PROPERTY
-DIFFUSION_COEFFICIENT 1.d-9
+DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
+DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 /
 \end{verbatim}
 
