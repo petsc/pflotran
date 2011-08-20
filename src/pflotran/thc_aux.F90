@@ -110,11 +110,12 @@ subroutine THCAuxVarInit(aux_var,option)
   type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
   
-  aux_var%pres = 0.d0
-  aux_var%temp = 0.d0
-  aux_var%sat = 0.d0
-  aux_var%den = 0.d0
-  aux_var%den_kg = 0.d0
+! aux_var%pres = 0.d0
+! aux_var%temp = 0.d0
+! aux_var%sat = 0.d0
+! aux_var%den = 0.d0
+! aux_var%den_kg = 0.d0
+  
   aux_var%avgmw = 0.d0
   aux_var%h = 0.d0
   aux_var%u = 0.d0
@@ -156,11 +157,12 @@ subroutine THCAuxVarCopy(aux_var,aux_var2,option)
   type(thc_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
-  aux_var2%pres = aux_var%pres
-  aux_var2%temp = aux_var%temp
-  aux_var2%sat = aux_var%sat
-  aux_var2%den = aux_var%den
-  aux_var2%den_kg = aux_var%den_kg
+! aux_var2%pres = aux_var%pres
+! aux_var2%temp = aux_var%temp
+! aux_var2%sat = aux_var%sat
+! aux_var2%den = aux_var%den
+! aux_var2%den_kg = aux_var%den_kg
+  
   aux_var2%avgmw = aux_var%avgmw
   aux_var2%h = aux_var%h
   aux_var2%u = aux_var%u
@@ -191,10 +193,11 @@ end subroutine THCAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
-                                 por,perm,option)
+subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
+                            iphase,saturation_function,por,perm,option)
 
   use Option_module
+  use Global_Aux_module
   use water_eos_module
   use Saturation_Function_module  
   
@@ -204,6 +207,7 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(thc_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
   PetscReal :: por, perm
   PetscInt :: iphase
 
@@ -215,21 +219,28 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
   PetscReal :: dpw_dp
   PetscReal :: dpsat_dt
   
-  aux_var%sat = 0.d0
+! aux_var%sat = 0.d0
+! aux_var%den = 0.d0
+! aux_var%den_kg = 0.d0
+  global_aux_var%sat = 0.d0
+  global_aux_var%den = 0.d0
+  global_aux_var%den_kg = 0.d0
+
   aux_var%h = 0.d0
   aux_var%u = 0.d0
-  aux_var%den = 0.d0
-  aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%xmol = 0.d0
   aux_var%kvr = 0.d0
   aux_var%diff = 0.d0
   kr = 0.d0
  
-  aux_var%pres = x(1)  
-  aux_var%temp = x(2)
+! aux_var%pres = x(1)  
+! aux_var%temp = x(2)
+  global_aux_var%pres = x(1)  
+  global_aux_var%temp = x(2)
  
-  aux_var%pc = option%reference_pressure - aux_var%pres
+! aux_var%pc = option%reference_pressure - aux_var%pres
+  aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
   aux_var%xmol(1) = 1.d0
   if (option%nflowspec > 1) aux_var%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
@@ -242,8 +253,8 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
 !  if (aux_var%pc > 0.d0) then
   if (aux_var%pc > 1.d0) then
     iphase = 3
-    call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
-                                   ds_dp,dkr_dp, &
+    call SaturationFunctionCompute(global_aux_var%pres(1),global_aux_var%sat(1), &
+                                   kr,ds_dp,dkr_dp, &
                                    saturation_function, &
                                    por,perm, &
                                    option)
@@ -253,18 +264,21 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
     aux_var%pc = 0.d0
     aux_var%sat = 1.d0  
     kr = 1.d0    
-    pw = aux_var%pres
+!   pw = aux_var%pres
+    pw = global_aux_var%pres(1)
     dpw_dp = 1.d0
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(aux_var%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
               option%scale,ierr)
 
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(aux_var%temp,sat_pressure,dpsat_dt,ierr)
+  call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
+  
 !  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(aux_var%temp,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
+  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
+  
   dvis_dpsat = -dvis_dp 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
@@ -272,8 +286,11 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
     hw_dp = 0.d0
   endif
  
-  aux_var%den = dw_mol
-  aux_var%den_kg = dw_kg
+! aux_var%den = dw_mol
+! aux_var%den_kg = dw_kg
+  global_aux_var%den = dw_mol
+  global_aux_var%den_kg = dw_kg
+  
   aux_var%h = hw
   aux_var%u = aux_var%h - pw / dw_mol * option%scale
   aux_var%kvr = kr/visl

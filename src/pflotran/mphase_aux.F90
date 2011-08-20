@@ -274,10 +274,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: Qkco2, mco2, xco2eq
   PetscInt :: iflag
   
+  aux_var%den = 0.d0
   aux_var%sat = 0.d0
+  
   aux_var%h = 0.d0
   aux_var%u = 0.d0
-  aux_var%den = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%xmol = 0.d0
   aux_var%pc = 0.d0
@@ -288,8 +289,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   aux_var%pres = x(1)  
   aux_var%temp = x(2)
 
-  p= aux_var%pres
-  t= aux_var%temp
+  p = aux_var%pres
+  t = aux_var%temp
+  
   select case(iphase)
 !******* Only aqueous phase exist ***********  
     case(1)
