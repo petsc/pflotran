@@ -761,25 +761,6 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   
   ! X = {p, T, x_2}; R = {R_x1, R_x2, R_T}
 
-#if 0
-  J(1,1) = (thc_aux_var%sat*thc_aux_var%dden_dp + &
-           thc_aux_var%dsat_dp*thc_aux_var%den)*porXvol*thc_aux_var%xmol(1)
-  J(1,2) = thc_aux_var%sat*thc_aux_var%dden_dt*porXvol*thc_aux_var%xmol(1)
-  J(1,3) = -thc_aux_var%sat*thc_aux_var%den*porXvol
-  J(2,1) = (thc_aux_var%sat*thc_aux_var%dden_dp + &
-           thc_aux_var%dsat_dp*thc_aux_var%den)*porXvol*thc_aux_var%xmol(2)
-  J(2,2) = thc_aux_var%sat*thc_aux_var%dden_dt*porXvol*thc_aux_var%xmol(2)
-  J(2,3) = thc_aux_var%sat*thc_aux_var%den*porXvol
-  J(3,1) = (thc_aux_var%dsat_dp*thc_aux_var%den*thc_aux_var%u + &
-            thc_aux_var%sat*thc_aux_var%dden_dp*thc_aux_var%u + &
-            thc_aux_var%sat*thc_aux_var%den*thc_aux_var%du_dp)*porXvol
-  J(3,2) = thc_aux_var%sat* &
-           (thc_aux_var%dden_dt*thc_aux_var%u + &  ! pull %sat outside
-            thc_aux_var%den*thc_aux_var%du_dt)*porXvol +  &
-           (1.d0 - por)*vol*rock_dencpr 
-  J(3,3) = 0.d0 
-#endif
-
   J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
            thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol*thc_aux_var%xmol(1)
   J(1,2) = global_aux_var%sat(1)*thc_aux_var%dden_dt*porXvol*thc_aux_var%xmol(1)
@@ -870,15 +851,12 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   porXvol = por*vol
   do ispec=1, option%nflowspec  
     mol(ispec)=0.d0
-!   mol(ispec) = mol(ispec) + aux_var%sat * &
-!                             aux_var%den * &
     mol(ispec) = mol(ispec) + global_aux_var%sat(1) * &
                               global_aux_var%den(1) * &
                               aux_var%xmol(ispec)
     mol(ispec) = mol(ispec) * porXvol
 !  write(*,*)'nflowspec = ', option%nflowspec, ispec      
   enddo
-!  write(*,*) 'Test thcaccum 1' 
 
 !  write(*,*) 'sat den u prxvol ', global_aux_var%sat(1), &
 !    global_aux_var%den, aux_var%u, porXvol 
@@ -887,12 +865,10 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
 !  write(*,*) 'rrdencpr ', rock_dencpr
 !  write(*,*) 'temp ', global_aux_var%temp(1) 
 ! TechNotes, THC Mode: First term of Equation 9
-! eng = aux_var%sat * &
-!       aux_var%den * &
+
   eng = global_aux_var%sat(1) * &
         global_aux_var%den(1) * &
         aux_var%u * &
-!       porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp(1)
         porXvol + (1.d0 - por)* vol * rock_dencpr * global_aux_var%temp(1)
  
 ! Reaction terms here
