@@ -2011,7 +2011,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
-        call wateos_noderiv(tsrc1,aux_vars(ghosted_id)%pres, &
+        call wateos_noderiv(tsrc1,global_aux_vars(ghosted_id)%pres(1), &
                             dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
@@ -2481,7 +2481,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !      endif         
 
       if (qsrc1 > 0.d0) then ! injection
-        call wateos(tsrc1,aux_vars(ghosted_id)%pres,dw_kg,dw_mol,dw_dp,dw_dt, &
+        call wateos(tsrc1,global_aux_vars(ghosted_id)%pres(1),dw_kg,dw_mol,dw_dp,dw_dt, &
               enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)        
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
@@ -2884,6 +2884,7 @@ subroutine THCResidualToMass(realization)
   
   PetscReal, pointer :: mass_balance_p(:)
   type(thc_auxvar_type), pointer :: aux_vars(:) 
+  type(global_auxvar_type), pointer :: global_aux_vars(:) 
   PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart
@@ -2911,8 +2912,8 @@ subroutine THCResidualToMass(realization)
         
         istart = (ghosted_id-1)*option%nflowdof+1
         mass_balance_p(istart) = mass_balance_p(istart)/ &
-                                 aux_vars(ghosted_id)%den* &
-                                 aux_vars(ghosted_id)%den_kg
+                                 global_aux_vars(ghosted_id)%den(1)* &
+                                 global_aux_vars(ghosted_id)%den_kg(1)
       enddo
 
       call GridVecRestoreArrayF90(grid,field%flow_ts_mass_balance,mass_balance_p, ierr)

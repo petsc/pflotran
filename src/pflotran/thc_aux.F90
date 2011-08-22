@@ -7,10 +7,6 @@ module THC_Aux_module
 #include "definitions.h"
 
   type, public :: thc_auxvar_type
-    PetscReal :: pres
-    PetscReal :: temp
-    PetscReal :: den
-    PetscReal :: den_kg
     PetscReal :: avgmw
     PetscReal :: h
     PetscReal :: u
@@ -108,11 +104,6 @@ subroutine THCAuxVarInit(aux_var,option)
   
   type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
-  
-! aux_var%pres = 0.d0
-! aux_var%temp = 0.d0
-! aux_var%den = 0.d0
-! aux_var%den_kg = 0.d0
   
   aux_var%avgmw = 0.d0
   aux_var%h = 0.d0

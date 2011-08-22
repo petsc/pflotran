@@ -1406,11 +1406,11 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
             enddo
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
@@ -1418,7 +1418,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
             do local_id=1,grid%nlmax
@@ -2010,13 +2010,13 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%THC%aux_vars(ghosted_id)%temp
+            value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
           case(PRESSURE)
-            value = patch%aux%THC%aux_vars(ghosted_id)%pres
+            value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
-            value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
           case(LIQUID_VISCOSITY)
             value = patch%aux%THC%aux_vars(ghosted_id)%vis
           case(LIQUID_MOBILITY)
@@ -2338,21 +2338,21 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           case(TEMPERATURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
               enddo
             endif
           case(PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%pres = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%pres = vec_ptr(ghosted_id)
               enddo
             endif
           case(LIQUID_SATURATION)
@@ -2368,11 +2368,11 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           case(LIQUID_DENSITY)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
               enddo
             endif
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
