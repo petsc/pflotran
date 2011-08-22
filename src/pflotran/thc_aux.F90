@@ -9,7 +9,6 @@ module THC_Aux_module
   type, public :: thc_auxvar_type
     PetscReal :: pres
     PetscReal :: temp
-    PetscReal :: sat
     PetscReal :: den
     PetscReal :: den_kg
     PetscReal :: avgmw
@@ -112,7 +111,6 @@ subroutine THCAuxVarInit(aux_var,option)
   
 ! aux_var%pres = 0.d0
 ! aux_var%temp = 0.d0
-! aux_var%sat = 0.d0
 ! aux_var%den = 0.d0
 ! aux_var%den_kg = 0.d0
   
@@ -159,7 +157,6 @@ subroutine THCAuxVarCopy(aux_var,aux_var2,option)
 
 ! aux_var2%pres = aux_var%pres
 ! aux_var2%temp = aux_var%temp
-! aux_var2%sat = aux_var%sat
 ! aux_var2%den = aux_var%den
 ! aux_var2%den_kg = aux_var%den_kg
   
@@ -219,7 +216,6 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   PetscReal :: dpw_dp
   PetscReal :: dpsat_dt
   
-! aux_var%sat = 0.d0
 ! aux_var%den = 0.d0
 ! aux_var%den_kg = 0.d0
   global_aux_var%sat = 0.d0
@@ -262,7 +258,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   else
     iphase = 1
     aux_var%pc = 0.d0
-    aux_var%sat = 1.d0  
+    global_aux_var%sat(1) = 1.d0  
     kr = 1.d0    
 !   pw = aux_var%pres
     pw = global_aux_var%pres(1)

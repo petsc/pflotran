@@ -1414,7 +1414,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
@@ -2014,7 +2014,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
           case(PRESSURE)
             value = patch%aux%THC%aux_vars(ghosted_id)%pres
           case(LIQUID_SATURATION)
-            value = patch%aux%THC%aux_vars(ghosted_id)%sat
+            value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
             value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
           case(LIQUID_VISCOSITY)
@@ -2358,11 +2358,11 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           case(LIQUID_SATURATION)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%sat = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%sat = vec_ptr(ghosted_id)
               enddo
             endif
           case(LIQUID_DENSITY)
