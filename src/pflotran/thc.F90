@@ -1931,6 +1931,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
@@ -2396,6 +2398,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
 #if 0
 !  call THCNumericalJacobianTest(xx,realization)
