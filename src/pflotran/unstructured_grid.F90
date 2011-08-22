@@ -419,7 +419,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
 
   ! allocate array to store vertices for each cell
   allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL,unstructured_grid%num_cells_local))
-  unstructured_grid%cell_vertices_0 = 0
+  unstructured_grid%cell_vertices_0 = -1
 
   ! for now, read all cells from ASCII file through io_rank and communicate
   ! to other ranks
@@ -692,7 +692,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   ! allocate array to store vertices for each cell
   allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
                                             unstructured_grid%num_cells_local))
-  unstructured_grid%cell_vertices_0 = 0
+  unstructured_grid%cell_vertices_0 = -1
   
   do ii = 1, unstructured_grid%num_cells_local
     do jj = 2, int_buffer(1,ii) + 1
@@ -867,7 +867,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   unstructured_grid%num_cells_global = dataset_dims(2)
   allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
                                             unstructured_grid%num_cells_local))
-  unstructured_grid%cell_vertices_0 = 0
+  unstructured_grid%cell_vertices_0 = -1
 
   ! Fill the cell data structure
   do ii = 1, unstructured_grid%num_cells_local
