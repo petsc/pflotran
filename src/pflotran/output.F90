@@ -7550,7 +7550,6 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
@@ -7569,6 +7568,7 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
+
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
 !           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
 
