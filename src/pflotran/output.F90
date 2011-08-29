@@ -7305,26 +7305,24 @@ subroutine OutputMassBalanceNew(realization)
               trim(coupler%name) // ' Air Mass [mol/' // &
               trim(output_option%tunit) // ']"'
           case(MPH_MODE)
-!#if 0
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol]"'
+              trim(coupler%name) // ' CO2 Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol/' // &
+              trim(coupler%name) // ' CO2 Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
-!#endif
         end select
         
         if (option%ntrandof > 0) then
