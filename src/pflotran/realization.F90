@@ -2172,7 +2172,8 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call PatchGetDataset(cur_patch,realization%field,realization%option, &
+      call PatchGetDataset(cur_patch,realization%field, &
+         realization%reaction,realization%option, &
          realization%output_option,vec,ivar,isubvar,isubvar1)
       cur_patch => cur_patch%next
     enddo
@@ -2213,6 +2214,7 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id,isubvar
     do
       if (.not.associated(cur_patch)) exit
       value = PatchGetDatasetValueAtCell(cur_patch,realization%field, &
+                realization%reaction, &
                 realization%option,realization%output_option, &
                 ivar,isubvar,ghosted_id,isubvar1)
       cur_patch => cur_patch%next

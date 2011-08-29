@@ -1438,13 +1438,13 @@ subroutine BasisInit(reaction,option)
     reaction%primary_spec_molar_wt(ispec) = cur_pri_aq_spec%molar_weight
     reaction%primary_spec_a0(ispec) = cur_pri_aq_spec%a0
     reaction%primary_species_print(ispec) = cur_pri_aq_spec%print_me .or. &
-                                            reaction%print_all_species
+                                            reaction%print_all_primary_species
     reaction%kd_print(ispec) = (cur_pri_aq_spec%print_me .or. &
-                                reaction%print_all_species) .and. &
+                                reaction%print_all_primary_species) .and. &
                                 reaction%print_kd
     if (reaction%neqsorb > 0) then
       reaction%total_sorb_print(ispec) = (cur_pri_aq_spec%print_me .or. &
-                                  reaction%print_all_species) .and. &
+                                  reaction%print_all_primary_species) .and. &
                                   reaction%print_total_sorb
     endif
     ispec = ispec + 1
@@ -1506,7 +1506,7 @@ subroutine BasisInit(reaction,option)
       reaction%secondary_species_names(isec_spec) = &
         cur_sec_aq_spec%name
       reaction%secondary_species_print(isec_spec) = cur_sec_aq_spec%print_me .or. &
-                                            reaction%print_all_species
+                                            reaction%print_all_secondary_species
       ispec = 0
       do i = 1, cur_sec_aq_spec%dbaserxn%nspec
       
@@ -1591,7 +1591,7 @@ subroutine BasisInit(reaction,option)
 
       reaction%gas_species_names(igas_spec) = cur_gas_spec%name
       reaction%gas_species_print(igas_spec) = cur_gas_spec%print_me .or. &
-                                            reaction%print_all_species
+                                              reaction%print_all_gas_species
       ispec = 0
       do i = 1, cur_gas_spec%dbaserxn%nspec
         if (cur_gas_spec%dbaserxn%spec_ids(i) /= h2o_id) then
@@ -1684,6 +1684,8 @@ subroutine BasisInit(reaction,option)
     reaction%mnrlh2ostoich = 0.d0
     allocate(reaction%mnrl_logK(reaction%nmnrl))
     reaction%mnrl_logK = 0.d0
+    allocate(reaction%mnrl_print(reaction%nmnrl))
+    reaction%mnrl_print = PETSC_FALSE
 #if TEMP_DEPENDENT_LOGK
     allocate(reaction%mnrl_logKcoef(FIVE_INTEGER,reaction%nmnrl))
     reaction%mnrl_logKcoef = 0.d0
@@ -1796,11 +1798,13 @@ subroutine BasisInit(reaction,option)
                        cur_mineral%dbaserxn%logK(itemp_low), &
                        reaction%mnrl_logK(imnrl))
 #endif
-  
+      ! geh - for now, the user must specify they want each individual
+      !       mineral printed for non-kinetic reactions (e.g. for SI).
+      reaction%mnrl_print(imnrl) = cur_mineral%print_me
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
         reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
-                                            reaction%print_all_species
+                                           reaction%print_all_mineral_species
         reaction%kinmnrlspecid(:,ikinmnrl) = reaction%mnrlspecid(:,imnrl)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)

@@ -207,6 +207,10 @@ module Reaction_Aux_module
     PetscBool :: use_log_formulation ! flag for solving for the change in the log of the concentration
     PetscBool :: check_update
     PetscBool :: print_all_species
+    PetscBool :: print_all_primary_species
+    PetscBool :: print_all_secondary_species
+    PetscBool :: print_all_gas_species
+    PetscBool :: print_all_mineral_species
     PetscBool :: print_pH
     PetscBool :: print_kd
     PetscBool :: print_total_sorb
@@ -219,6 +223,7 @@ module Reaction_Aux_module
     PetscBool :: print_age
     PetscInt :: print_free_conc_type
     PetscInt :: print_tot_conc_type
+    PetscInt :: print_secondary_conc_type
     PetscInt :: num_dbase_temperatures
     PetscReal, pointer :: dbase_temperatures(:)
     
@@ -382,6 +387,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: mnrlh2ostoich(:)
     PetscReal, pointer :: mnrl_logK(:)
     PetscReal, pointer :: mnrl_logKcoef(:,:)
+    PetscBool, pointer :: mnrl_print(:)
     
       ! for kinetic reactions
     PetscInt :: nkinmnrl
@@ -517,7 +523,11 @@ function ReactionCreate()
   reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
   reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG
   reaction%checkpoint_activity_coefs = PETSC_TRUE
-  reaction%print_all_species = PETSC_TRUE
+  reaction%print_all_species = PETSC_FALSE
+  reaction%print_all_primary_species = PETSC_FALSE
+  reaction%print_all_secondary_species = PETSC_FALSE
+  reaction%print_all_gas_species = PETSC_FALSE
+  reaction%print_all_mineral_species = PETSC_FALSE
   reaction%print_pH = PETSC_FALSE
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE
@@ -537,6 +547,7 @@ function ReactionCreate()
   reaction%initialize_with_molality = PETSC_FALSE
   reaction%print_free_conc_type = 0
   reaction%print_tot_conc_type = 0
+  reaction%print_secondary_conc_type = 0
   
   nullify(reaction%species_idx)
 
@@ -570,6 +581,7 @@ function ReactionCreate()
   nullify(reaction%gas_species_print)
   nullify(reaction%eqsrfcplx_site_print)
   nullify(reaction%eqsrfcplx_print)
+  nullify(reaction%mnrl_print)
   nullify(reaction%kinsrfcplx_site_print)
   nullify(reaction%kinsrfcplx_print)
   nullify(reaction%kinmnrl_print)
@@ -2387,6 +2399,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%eqsrfcplx_print)) &
     deallocate(reaction%eqsrfcplx_print)
   nullify(reaction%eqsrfcplx_print)
+  if (associated(reaction%mnrl_print)) &
+    deallocate(reaction%mnrl_print)
+  nullify(reaction%mnrl_print)
   if (associated(reaction%kinsrfcplx_site_print)) &
     deallocate(reaction%kinsrfcplx_site_print)
   nullify(reaction%kinsrfcplx_site_print)
