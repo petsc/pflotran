@@ -7448,26 +7448,24 @@ subroutine OutputMassBalanceNew(realization)
               trim(coupler%name) // ' Air Mass [mol/' // &
               trim(output_option%tunit) // ']"'
           case(MPH_MODE)
-!#if 0
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol]"'
+              trim(coupler%name) // ' CO2 Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol/' // &
+              trim(coupler%name) // ' CO2 Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
-!#endif
         end select
         
         if (option%ntrandof > 0) then
@@ -7693,7 +7691,6 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
@@ -7712,6 +7709,7 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
+
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
 !           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
 

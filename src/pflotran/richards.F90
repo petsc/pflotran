@@ -58,6 +58,7 @@ subroutine RichardsTimeCut(realization)
   
   PetscErrorCode :: ierr
   PetscInt :: local_id
+  PetscViewer :: viewer
 
   option => realization%option
   field => realization%field
@@ -68,6 +69,12 @@ subroutine RichardsTimeCut(realization)
   if (option%mimetic) then
     call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr)
     call RichardsUpdateAuxVars(realization)
+    call VecCopy(field%flow_yy,field%flow_xx,ierr)
+
+
+ 
+!    read(*,*)    
+
   endif
 
   call RichardsInitializeTimestep(realization)  
@@ -1289,7 +1296,7 @@ end subroutine RichardsUpdateAuxVarsPatchMFD
 subroutine RichardsInitializeTimestep(realization)
 
   use Realization_module
-  use MFD_module
+  use Field_module 
   
   implicit none
   
@@ -1300,7 +1307,22 @@ subroutine RichardsInitializeTimestep(realization)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
+  type(field_type), pointer :: field
+
+
+  field => realization%field
+
+
   call RichardsUpdateFixedAccum(realization)
+
+!   call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy.out', &
+!                              viewer,ierr)
+!    call VecView(field%flow_xx_faces, viewer, ierr)
+!    call VecView(field%flow_yy, viewer, ierr)
+!
+!    call PetscViewerDestroy(viewer,ierr)
+!    write(*,*) "Flow_yy" 
+!    read(*,*)    
 
 end subroutine RichardsInitializeTimestep
 
