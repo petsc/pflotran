@@ -37,7 +37,7 @@ module Structured_Grid_module
     PetscInt :: ngmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
 
     PetscReal :: origin(3) ! local origin of non-ghosted grid
-    PetscReal :: bounds(3,3)
+    PetscReal :: bounds(3,2)
 
     ! grid spacing for each direction for global domain
     PetscReal, pointer :: dx_global(:), dy_global(:), dz_global(:)

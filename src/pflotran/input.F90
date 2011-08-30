@@ -43,6 +43,11 @@ module Input_module
     module procedure InputReadDouble2
   end interface
   
+  interface InputReadNDoubles
+    module procedure InputReadNDoubles1
+    module procedure InputReadNDoubles2
+  end interface
+  
   interface InputError
     module procedure InputError1
     module procedure InputError2
@@ -70,6 +75,7 @@ module Input_module
   
   public :: InputCreate, InputDestroy, InputReadFlotranString, &
             InputReadWord, InputReadDouble, InputReadInt, InputCheckExit, &
+            InputReadNDoubles, &
             InputSkipToEND, InputFindStringInFile, InputErrorMsg, &
             InputDefaultMsg, InputReadStringErrorMsg, &
             InputFindStringErrorMsg, InputError, &
@@ -120,7 +126,6 @@ function InputCreate(fid,filename)
   
 end function InputCreate
 
-#if 1
 ! ************************************************************************** !
 !
 ! InputDefaultMsg1: If ierr /= 0, informs user that default value will be used.
@@ -382,7 +387,56 @@ subroutine InputReadDouble2(string, option, double, ierr)
 
 end subroutine InputReadDouble2
 
-#endif
+! ************************************************************************** !
+!
+! InputReadNDoubles1: reads and removes "n" real value from a string
+! author: Glenn Hammond
+! date: 08/29/11
+!
+! ************************************************************************** !
+subroutine InputReadNDoubles1(input, option, double, n)
+
+  implicit none
+
+  type(input_type) :: input
+  type(option_type) :: option
+  PetscInt :: n
+  PetscReal :: double(n)
+
+  PetscInt :: i
+
+  do i = 1, n
+    call InputReadDouble(input,option,double(i))
+    if (InputError(input)) return
+  enddo
+
+end subroutine InputReadNDoubles1
+
+! ************************************************************************** !
+!
+! InputReadNDoubles2: reads and removes "n" real values from a string
+! author: Glenn Hammond
+! date: 08/29/11
+!
+! ************************************************************************** !
+subroutine InputReadNDoubles2(string, option, double, n, ierr)
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscInt :: n
+  PetscReal :: double(n)
+  PetscErrorCode :: ierr
+
+  PetscInt :: i
+
+  do i = 1, n
+    call InputReadDouble(string,option,double(i),ierr)
+    if (InputError(ierr)) return
+  enddo
+
+end subroutine InputReadNDoubles2
 
 #if 0
 ! ************************************************************************** !
