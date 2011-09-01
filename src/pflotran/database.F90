@@ -2297,9 +2297,19 @@ subroutine BasisInit(reaction,option)
           if (.not.associated(cur_srfcplx)) exit
           
           isrfcplx = isrfcplx + 1
-          
+
           reaction%kinsrfcplx_forward_rate(isrfcplx) = cur_srfcplx%forward_rate
-          reaction%kinsrfcplx_backward_rate(isrfcplx) = cur_srfcplx%backward_rate
+          if (cur_srfcplx%backward_rate < -998.d0) then
+            ! backward rate will be calculated based on Kb = Kf * Keq
+            call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                             cur_srfcplx%dbaserxn%logK(itemp_high), &
+                             cur_srfcplx%dbaserxn%logK(itemp_low), &
+                             value)
+            reaction%kinsrfcplx_backward_rate(isrfcplx) = value * &
+                                                          cur_srfcplx%forward_rate
+          else
+            reaction%kinsrfcplx_backward_rate(isrfcplx) = cur_srfcplx%backward_rate
+          endif
           ! set up integer pointers from site to complexes
           ! increment count for site
           reaction%kinsrfcplx_rxn_to_complex(0,irxn) = &

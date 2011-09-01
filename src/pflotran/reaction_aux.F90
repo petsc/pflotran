@@ -1074,7 +1074,7 @@ function SurfaceComplexCreate()
   srfcplx%Z = 0.d0
   srfcplx%free_site_stoich = 0.d0
   srfcplx%forward_rate = 0.d0
-  srfcplx%backward_rate = 0.d0
+  srfcplx%backward_rate = -999.d0
   srfcplx%print_me = PETSC_FALSE
   nullify(srfcplx%dbaserxn)
   nullify(srfcplx%next)
