@@ -2194,12 +2194,15 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
 \item[OUTPUT] ~
-\begin{deflist}{000}
+\begin{deflist}{000000000000000000000}
 \item[MOLALITY]
 \item[MOLARITY]
 \item[All]
-\item[\tt Species Name]
-\item[FREE\_ION]
+\item[\tt Species Name] Primary or secondary species
+\item[FREE\_ION] Output all primary species concentrations
+\item[SECONDARY\_SPECIES] Output all secondary species concentrations
+\item[MINERALS] Output all kinetic mineral volume fractions and reaction rates
+\item[\tt Mineral Name] Output mineral saturation index
 \item[pH]
 \item[TOTAL\_SORBED]
 \item[TOTAL\_SORBED\_MOBILE]
@@ -2230,6 +2233,56 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \midrule
 \bf Gas\_Species & List of gas species.\\
 \midrule
+\bf Output &
+To print secondary aqueous complex concentrations, either add the names of the secondary species of interest or the keyword ``SECONDARY\_SPECIES'' for all secondary species to the CHEMISTRY OUTPUT card:
+\end{tabularx}
+\end{center}
+
+\begin{verbatim}
+CHEMISTRY
+  ...
+  OUTPUT
+    ...
+    CO2(aq)   ! where co2(aq) is a secondary species
+    SECONDARY_SPECIES
+    ...
+  /
+  ...
+END
+\end{verbatim}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & By default, if ALL or MINERALS are listed under CHEMISTRY OUTPUT, the volume fractions and rates of kinetic minerals are printed.  To print out the saturation indices of minerals listed under the MINERAL keyword, add the name of the mineral to the OUTPUT specification.  In other words, if the following appears in the input deck:
+\end{tabularx}
+\end{center}
+
+\begin{verbatim}
+CHEMISTRY
+  ...
+  MINERALS
+    Quartz
+    Calcite
+    Gibbsite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.d-12
+    /
+  /
+  OUTPUT
+    ALL
+    Gibbsite
+  /
+  ...
+END
+\end{verbatim}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & volume fraction and reaction rate are printed for both calcite and gibbsite and saturation indices are printed for gibbsite.  Saturation indices are not printed when only ALL or MINERALS are specified since an input deck. Outputting tens to hundreds of minerals, most of which are simply considered, but not modeled through a kinetic precipitation-dissolution reaction, would overwhelm the output. \\
+
+\midrule
 \ldots & \\
 \bottomrule
 \end{tabularx}
@@ -2239,6 +2292,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \noindent
 {\bf Examples:}
+\begin{verbatim}
+...
+\end{verbatim}
 
 %========================================================================
 
