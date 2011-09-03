@@ -2305,7 +2305,7 @@ subroutine BasisInit(reaction,option)
                              cur_srfcplx%dbaserxn%logK(itemp_high), &
                              cur_srfcplx%dbaserxn%logK(itemp_low), &
                              value)
-            reaction%kinsrfcplx_backward_rate(isrfcplx) = value * &
+            reaction%kinsrfcplx_backward_rate(isrfcplx) = 10.d0**value * &
                                                           cur_srfcplx%forward_rate
           else
             reaction%kinsrfcplx_backward_rate(isrfcplx) = cur_srfcplx%backward_rate
