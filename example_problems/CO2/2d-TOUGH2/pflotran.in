@@ -31,7 +31,7 @@ END
 :=========================== times ============================================
 TIME
 FINAL_TIME 1.d6 y
-INITIAL_TIMESTEP_SIZE 1.d-2 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 50.d0 y
 MAXIMUM_TIMESTEP_SIZE 200.d0 y at 50. y
 MAXIMUM_TIMESTEP_SIZE 500.d0 y at 20000. y
@@ -42,6 +42,7 @@ MAXIMUM_TIMESTEP_SIZE 5000.d0 y at 100000. y
 :=========================== output options ===================================
 OUTPUT
 MASS_BALANCE
+PERIODIC_OBSERVATION TIMESTEP 1
 TIMES y 0.01 0.1 0.25 0.5 0.75 1.0 2.5 5. 7.5 10. \
 25. 50. 75. 100. 250. 500. 750. 1000. 2500. 5000. \
 7500. 1.e4 12500. 15000. 17500. 20000. 25000. 30000. 35000. 40000. \
@@ -98,6 +99,22 @@ REGION top
 FACE TOP
 COORDINATES
 0.d0 0.d0  51.d0
+321.d0 1.d0 51.d0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 51.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+321.d0 0.d0 0.d0
 321.d0 1.d0 51.d0
 /
 END
@@ -163,10 +180,22 @@ FLOW_CONDITION initial
 REGION all
 END
 
+skip
 : top boundary condition
 BOUNDARY_CONDITION top
 FLOW_CONDITION top
 REGION top
+END
+noskip
+
+BOUNDARY_CONDITION west
+FLOW_CONDITION initial
+REGION west
+END
+
+BOUNDARY_CONDITION east
+FLOW_CONDITION initial
+REGION east
 END
 
 SOURCE_SINK

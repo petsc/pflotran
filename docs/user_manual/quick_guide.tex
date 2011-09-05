@@ -2143,14 +2143,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item[KINETIC]
 
-\item[COMPLEX\_KINETICS] ~
-\begin{deflist}{000}
-\item[FORWARD\_RATE\_CONSTANT] {\tt Value} [mol/cm$^2$/s]
-\item[BACKWARD\_RATE\_CONSTANT] {\tt Value} [mol/cm$^2$/s]
-\end{deflist}
 
-\item [SITE\_FRACTION] {\tt Value}[---] \ \ \ \ \ (Continuation line `$\backslash$')
-\item [RATE, RATES] {\tt Value} [mol/cm$^2$/s] (Continuation line `$\backslash$')
+\item [SITE\_FRACTION] \ {\tt Value}[---] \ \ \ \ \ (Continuation line `$\backslash$')
+\item [RATE, RATES] \ {\tt Value} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
 \item [MULTIRATE\_SCALE\_FACTOR] {\tt Value} [---]
 
 \item [MINERAL] {\tt Mineral Name}
@@ -2159,6 +2154,13 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[COMPLEXES] ~
 \begin{deflist}{000}
 \item[\tt Complex Name]
+\end{deflist}
+\item [\keyend] ~
+\item[COMPLEX\_KINETICS] ~
+\begin{deflist}{000}
+\item[COMPLEX] {\tt name}
+\item[FORWARD\_RATE\_CONSTANT] {\tt Value} [1/s]
+\item[BACKWARD\_RATE\_CONSTANT] {\tt Value} [1/s] \ If value < $-$999 calculate backward rate constant from expression: $k_b \eq K_{\rm eq} k_f$, where $K_{\rm eq}$ is the corresponding equilibrium constant of the reaction.
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
