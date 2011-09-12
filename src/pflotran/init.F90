@@ -717,7 +717,7 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   if (debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoints,option)
+    call WaypointListPrint(realization%waypoints,option,realization%output_option)
   endif
 
 #ifdef OS_STATISTICS

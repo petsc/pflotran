@@ -954,4 +954,24 @@ function FileExists(filename)
 
 end function FileExists
 
+! ************************************************************************** !
+!
+! Equal: Returns PETSC_TRUE if values are equal
+! author: Glenn Hammond
+! date: 04/27/11
+!
+! ************************************************************************** !
+function Equal(value1, value2)
+
+  implicit none
+  
+  PetscBool :: Equal
+
+  PetscReal :: value1, value2
+
+  Equal = PETSC_FALSE
+  if (dabs(value1 - value2) <= 1.d-14 * dabs(value1))  Equal = PETSC_TRUE
+  
+end function Equal
+
 end module Utility_module

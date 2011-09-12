@@ -37,7 +37,8 @@ module Reaction_module
             RTAuxVarCompute, &
             RTAccumulation, &
             RTAccumulationDerivative, &
-            RTPrintAuxVar
+            RTPrintAuxVar, &
+            RMineralSaturationIndex
 
 contains
 
@@ -807,11 +808,11 @@ subroutine ReactionRead(reaction,input,option)
       reaction%print_tot_conc_type = TOTAL_MOLARITY
     endif
   endif
-  if (reaction%print_tot_conc_type == 0) then
+  if (reaction%print_secondary_conc_type == 0) then
     if (reaction%initialize_with_molality) then
-      reaction%print_tot_conc_type = TOTAL_MOLALITY
+      reaction%print_secondary_conc_type = SECONDARY_MOLALITY
     else
-      reaction%print_tot_conc_type = TOTAL_MOLARITY
+      reaction%print_secondary_conc_type = SECONDARY_MOLARITY
     endif
   endif
   if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl + &
@@ -2639,8 +2640,6 @@ subroutine ReactionReadOutput(reaction,input,option)
   nullify(cur_srfcplx)
   nullify(cur_srfcplx_rxn)
   
-  reaction%print_all_species = PETSC_FALSE
-
   input%ierr = 0
   do
   
@@ -2656,6 +2655,10 @@ subroutine ReactionReadOutput(reaction,input,option)
     select case(word)
       case('OFF')
         reaction%print_all_species = PETSC_FALSE
+        reaction%print_all_primary_species = PETSC_FALSE
+        reaction%print_all_secondary_species = PETSC_FALSE
+        reaction%print_all_gas_species = PETSC_FALSE
+        reaction%print_all_mineral_species = PETSC_FALSE
         reaction%print_pH = PETSC_FALSE
         reaction%print_kd = PETSC_FALSE
         reaction%print_total_sorb = PETSC_FALSE
@@ -2666,7 +2669,20 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_free_ion = PETSC_FALSE
       case('ALL')
         reaction%print_all_species = PETSC_TRUE
+        reaction%print_all_primary_species = PETSC_TRUE
+ !       reaction%print_all_secondary_species = PETSC_TRUE
+ !       reaction%print_all_gas_species = PETSC_TRUE
+        reaction%print_all_mineral_species = PETSC_TRUE
         reaction%print_pH = PETSC_TRUE
+      case('PRIMARY_SPECIES')
+        reaction%print_all_primary_species = PETSC_TRUE
+        reaction%print_pH = PETSC_TRUE
+      case('SECONDARY_SPECIES')
+        reaction%print_all_secondary_species = PETSC_TRUE
+      case('GASES')
+        reaction%print_all_gas_species = PETSC_TRUE
+      case('MINERALS')
+        reaction%print_all_mineral_species = PETSC_TRUE
       case('PH')
         reaction%print_pH = PETSC_TRUE
       case('KD')
@@ -4883,6 +4899,49 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   enddo  ! loop over minerals
     
 end subroutine RKineticMineral
+
+! ************************************************************************** !
+!
+! RMineralSaturationIndex: Calculates the mineral saturation index
+! author: Glenn Hammond
+! date: 08/29/11
+!
+! ************************************************************************** !
+function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  type(option_type) :: option
+  PetscInt :: imnrl
+  type(reaction_type) :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  
+  PetscReal :: RMineralSaturationIndex
+  PetscInt :: i, icomp
+  PetscReal :: lnQK
+  PetscInt, parameter :: iphase = 1
+
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                 global_auxvar%temp(iphase),reaction%nmnrl)
+  endif
+#endif  
+
+  ! compute saturation
+  lnQK = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
+  if (reaction%mnrlh2oid(imnrl) > 0) then
+    lnQK = lnQK + reaction%mnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
+  endif
+  do i = 1, reaction%mnrlspecid(0,imnrl)
+    icomp = reaction%mnrlspecid(i,imnrl)
+    lnQK = lnQK + reaction%mnrlstoich(i,imnrl)* &
+           log(rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp))
+  enddo
+  RMineralSaturationIndex = exp(lnQK)    
+
+end function RMineralSaturationIndex
 
 ! ************************************************************************** !
 !

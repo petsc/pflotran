@@ -616,6 +616,13 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
@@ -626,6 +633,13 @@ subroutine OutputTecplotBlock(realization)
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
@@ -1601,6 +1615,13 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo
         endif
+        do i=1,reaction%neqcplx
+          if (reaction%secondary_species_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,reaction%print_secondary_conc_type, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
         do i=1,reaction%nkinmnrl
           if (reaction%kinmnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
@@ -1611,6 +1632,13 @@ subroutine OutputTecplotPoint(realization)
         do i=1,reaction%nkinmnrl
           if (reaction%kinmnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_RATE, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%nmnrl
+          if (reaction%mnrl_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
@@ -2566,7 +2594,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2695,6 +2723,11 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     else
       tot_mol_char = 'M'
     endif   
+    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+      sec_mol_char = 'm'
+    else
+      sec_mol_char = 'M'
+    endif   
  
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
       if (reaction%species_idx%h_ion_id > 0) then
@@ -2729,6 +2762,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       enddo
     endif
     
+    do i=1,reaction%neqcplx
+      if (reaction%secondary_species_print(i)) then
+        write(fid,'('',"'',a,''_'',a,'' '',a,''"'')',advance="no") &
+          trim(reaction%secondary_species_names(i)), trim(sec_mol_char), trim(cell_string)
+      endif
+    enddo
+    
     do i=1,reaction%nkinmnrl
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_vf '',a,''"'')',advance="no") &
@@ -2740,6 +2780,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_rt '',a,''"'')',advance="no") &
           trim(reaction%kinmnrl_names(i)), trim(cell_string)  
+      endif
+    enddo
+    
+    do i=1,reaction%nmnrl
+      if (reaction%mnrl_print(i)) then
+        write(fid,'('',"'',a,''_si '',a,''"'')',advance="no") &
+          trim(reaction%mineral_names(i)), trim(cell_string)
       endif
     enddo
     
@@ -2856,7 +2903,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction  
@@ -2980,6 +3027,11 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     else
       tot_mol_char = 'M'
     endif 
+    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+      sec_mol_char = 'm'
+    else
+      sec_mol_char = 'M'
+    endif 
 
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
       if (reaction%species_idx%h_ion_id > 0) then
@@ -3014,6 +3066,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       enddo
     endif
     
+    do i=1,reaction%neqcplx
+      if (reaction%secondary_species_print(i)) then
+        write(fid,'('',"'',a,''_'',a,'' '',a,''"'')',advance="no") &
+          trim(reaction%secondary_species_names(i)), trim(sec_mol_char), trim(cell_string)
+      endif
+    enddo
+    
     do i=1,reaction%nkinmnrl
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_vf '',a,''"'')',advance="no") &
@@ -3025,6 +3084,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_rt '',a,''"'')',advance="no") &
           trim(reaction%kinmnrl_names(i)), trim(cell_string)  
+      endif
+    enddo
+    
+    do i=1,reaction%nmnrl
+      if (reaction%mnrl_print(i)) then
+        write(fid,'('',"'',a,''_si '',a,''"'')',advance="no") &
+          trim(reaction%mineral_names(i)), trim(cell_string)
       endif
     enddo
     
@@ -3371,6 +3437,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,reaction%print_secondary_conc_type,i,ghosted_id)
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
@@ -3381,6 +3453,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         if (reaction%kinmnrl_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,MINERAL_RATE,i,ghosted_id)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+           write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX,i,ghosted_id)
         endif
       enddo
       do i=1,reaction%neqsrfcplxrxn
@@ -3805,6 +3883,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,reaction%print_secondary_conc_type,i, &
+                                          region%coordinates(ONE_INTEGER)%x, &
+                                          region%coordinates(ONE_INTEGER)%y, &
+                                          region%coordinates(ONE_INTEGER)%z, &
+                                          count,ghosted_ids)
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
@@ -3819,6 +3907,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         if (reaction%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_RATE,i, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,MINERAL_SATURATION_INDEX,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
@@ -5238,7 +5336,7 @@ subroutine OutputHDF5(realization)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
@@ -5463,10 +5561,20 @@ subroutine OutputHDF5(realization)
                 endif
              end do
           endif
-!! for the next one we add two because the rate and volume fraction are to be plotted         
+          do i=1,reaction%neqcplx
+            if (reaction%secondary_species_print(i)) then
+                nviz_tran=nviz_tran+1
+            endif
+          end do
+ ! for the next one we add two because the rate and volume fraction are to be plotted         
           do i=1,reaction%nkinmnrl
               if (reaction%kinmnrl_print(i)) then
                     nviz_tran=nviz_tran+2
+             endif
+          end do
+          do i=1,reaction%nmnrl
+              if (reaction%mnrl_print(i)) then
+                    nviz_tran=nviz_tran+1
              endif
           end do
           do i=1,reaction%neqsrfcplxrxn
@@ -5827,6 +5935,11 @@ subroutine OutputHDF5(realization)
     else
       tot_mol_char = 'M'
     endif  
+    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
+    endif  
     if (associated(reaction)) then
       if (reaction%print_pH .and. associated(reaction%species_idx)) then
         if (reaction%species_idx%h_ion_id > 0) then
@@ -5894,6 +6007,21 @@ subroutine OutputHDF5(realization)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
+          write(string,'(a,a)') trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
@@ -5913,6 +6041,21 @@ subroutine OutputHDF5(realization)
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
           write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_rt'
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if(first) then
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
+          write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -7305,26 +7448,24 @@ subroutine OutputMassBalanceNew(realization)
               trim(coupler%name) // ' Air Mass [mol/' // &
               trim(output_option%tunit) // ']"'
           case(MPH_MODE)
-!#if 0
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol]"'
+              trim(coupler%name) // ' CO2 Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol/' // &
+              trim(coupler%name) // ' CO2 Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
-!#endif
         end select
         
         if (option%ntrandof > 0) then
@@ -7550,7 +7691,6 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
@@ -7569,6 +7709,7 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
+
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
 !           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
 

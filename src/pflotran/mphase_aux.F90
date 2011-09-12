@@ -61,7 +61,7 @@ type, public :: mphase_auxvar_elem_type
 
      PetscBool :: aux_vars_up_to_date
      PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc
+     PetscInt :: num_aux, num_aux_bc, num_aux_ss
 
      PetscReal, pointer :: res_old_AR(:,:)
      PetscReal, pointer :: res_old_FL(:,:)
@@ -70,6 +70,7 @@ type, public :: mphase_auxvar_elem_type
      type(Mphase_parameter_type), pointer :: mphase_parameter
      type(Mphase_auxvar_type), pointer :: aux_vars(:)
      type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
+	 type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)
   end type Mphase_type
 
   
@@ -104,8 +105,10 @@ function MphaseAuxCreate()
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
   aux%n_zero_rows = 0
   allocate(aux%mphase_parameter)
   nullify(aux%mphase_parameter%sir)
@@ -274,10 +277,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: Qkco2, mco2, xco2eq
   PetscInt :: iflag
   
+  aux_var%den = 0.d0
   aux_var%sat = 0.d0
+  
   aux_var%h = 0.d0
   aux_var%u = 0.d0
-  aux_var%den = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%xmol = 0.d0
   aux_var%pc = 0.d0
@@ -288,8 +292,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   aux_var%pres = x(1)  
   aux_var%temp = x(2)
 
-  p= aux_var%pres
-  t= aux_var%temp
+  p = aux_var%pres
+  t = aux_var%temp
+  
   select case(iphase)
 !******* Only aqueous phase exist ***********  
     case(1)
@@ -607,20 +612,27 @@ use option_module
   if (.not.associated(aux)) return
   
   do iaux = 1, aux%num_aux
-    do ielem= 0, option%nflowdof 
+    do ielem = 0, option%nflowdof 
       call MphaseAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
     enddo
   enddo  
   do iaux = 1, aux%num_aux_bc
-    do ielem= 0, option%nflowdof 
+    do ielem = 0, option%nflowdof 
       call MphaseAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
     enddo
-  enddo  
+  enddo 
+    do iaux = 1, aux%num_aux_bc
+    do ielem = 0, option%nflowdof 
+      call MphaseAuxVarDestroy(aux%aux_vars_ss(iaux)%aux_var_elem(ielem))
+    enddo
+  enddo
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   nullify(aux%aux_vars)
   if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
   nullify(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_ss)) deallocate(aux%aux_vars_ss)
+  nullify(aux%aux_vars_ss)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

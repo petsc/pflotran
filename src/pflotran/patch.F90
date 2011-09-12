@@ -1356,8 +1356,8 @@ end function PatchAuxVarsUpToDate
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
-  isubvar,isubvar1)
+subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
+                           isubvar,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1375,6 +1375,7 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
 #include "finclude/petscvec.h90"
 
   type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
@@ -1406,23 +1407,31 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
             enddo
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,LIQUID_VISCOSITY,GAS_VISCOSITY) ! still need implementation
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = 0.d0
+            enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%vis
+            enddo
+          case(LIQUID_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%kvr
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
@@ -1715,7 +1724,8 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
+         MINERAL_RATE,MINERAL_VOLUME_FRACTION,MINERAL_SATURATION_INDEX, &
+         SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
@@ -1795,6 +1805,14 @@ subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
         case(MINERAL_RATE)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_rate(isubvar)
+          enddo
+        case(MINERAL_SATURATION_INDEX)
+          do local_id = 1, grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = RMineralSaturationIndex(isubvar, &
+                                                  patch%aux%RT%aux_vars(ghosted_id), &
+                                                  patch%aux%Global%aux_vars(ghosted_id), &
+                                                  reaction,option)
           enddo
         case(SURFACE_CMPLX)
           do local_id=1,grid%nlmax
@@ -1943,7 +1961,8 @@ end subroutine PatchGetDataset
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
+function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
+                                    output_option, &
                                     ivar,isubvar,ghosted_id,isubvar1)
 
   use Grid_module
@@ -1963,6 +1982,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
 
   PetscReal :: PatchGetDatasetValueAtCell
   type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
@@ -2002,13 +2022,17 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%THC%aux_vars(ghosted_id)%temp
+            value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
           case(PRESSURE)
-            value = patch%aux%THC%aux_vars(ghosted_id)%pres
+            value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
-            value = patch%aux%THC%aux_vars(ghosted_id)%sat
+            value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
-            value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
+          case(LIQUID_VISCOSITY)
+            value = patch%aux%THC%aux_vars(ghosted_id)%vis
+          case(LIQUID_MOBILITY)
+            value = patch%aux%THC%aux_vars(ghosted_id)%kvr
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             value = 0.d0
           case(LIQUID_MOLE_FRACTION)
@@ -2165,7 +2189,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
@@ -2194,6 +2218,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
         case(MINERAL_RATE)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
+        case(MINERAL_SATURATION_INDEX)
+          value = RMineralSaturationIndex(isubvar,patch%aux%RT%aux_vars(ghosted_id), &
+                                          patch%aux%Global%aux_vars(ghosted_id), &
+                                          reaction,option)
         case(SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
@@ -2326,41 +2354,41 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           case(TEMPERATURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
               enddo
             endif
           case(PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%pres = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%pres = vec_ptr(ghosted_id)
               enddo
             endif
           case(LIQUID_SATURATION)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%sat = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%sat = vec_ptr(ghosted_id)
               enddo
             endif
           case(LIQUID_DENSITY)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
-                patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
               enddo
             else if (vec_format == LOCAL) then
               do ghosted_id=1,grid%ngmax
-                patch%aux%THC%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
+                patch%aux%Global%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
               enddo
             endif
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation

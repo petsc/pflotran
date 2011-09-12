@@ -5950,7 +5950,7 @@ function RTGetTecplotHeader(realization,icolumn)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: string, string2
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   PetscInt :: i
@@ -5972,7 +5972,13 @@ function RTGetTecplotHeader(realization,icolumn)
     tot_mol_char = 'M'
   endif
   
-  if (reaction%print_pH .and. associated(reaction%species_idx)) then
+  if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+    sec_mol_char = 'm'
+  else
+    sec_mol_char = 'M'
+  endif
+  
+if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%species_idx%h_ion_id > 0) then
       if (icolumn > -1) then
         icolumn = icolumn + 1
@@ -6031,6 +6037,20 @@ function RTGetTecplotHeader(realization,icolumn)
     enddo
   endif
   
+  do i=1,reaction%neqcplx
+    if (reaction%secondary_species_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_'',a,''"'')') icolumn, &
+          trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
+      else
+        write(string2,'('',"'',a,''_'',a,''"'')') &
+          trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
+      endif
+      string = trim(string) // trim(string2)
+    endif
+  enddo  
+    
   do i=1,reaction%nkinmnrl
     if (reaction%kinmnrl_print(i)) then
       if (icolumn > -1) then
@@ -6052,6 +6072,19 @@ function RTGetTecplotHeader(realization,icolumn)
           trim(reaction%kinmnrl_names(i))
       else
         write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
+      endif
+      string = trim(string) // trim(string2)
+    endif
+  enddo
+  
+  do i=1,reaction%nmnrl
+    if (reaction%mnrl_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_si"'')') icolumn, &
+          trim(reaction%mineral_names(i))
+      else
+        write(string2,'('',"'',a,''_si"'')') trim(reaction%mineral_names(i))    
       endif
       string = trim(string) // trim(string2)
     endif

@@ -474,6 +474,9 @@ contains
       xx = sqrt(xx)
     else
       write(*,*) 'Warning: negative term in density (wateos): ',t,p,xx
+#ifdef DASVYAT
+      stop
+#endif
       xx = 1.e-6               !set arbitrarily
     end if
     zz = yy + xx                                     
