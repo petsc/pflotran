@@ -272,8 +272,9 @@ subroutine OutputTecplotBlock(realization)
   
   PetscInt :: i, comma_count, quote_count
   PetscInt, parameter :: icolumn = -1
-  character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXHEADERLENGTH) :: string, string2
+  character(len=MAXSTRINGLENGTH) :: filename, string, string2
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
@@ -284,6 +285,7 @@ subroutine OutputTecplotBlock(realization)
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec
   Vec :: natural_vec
+  PetscInt :: ivar, isubvar, var_type
   
   discretization => realization%discretization
   patch => realization%patch
@@ -321,57 +323,66 @@ subroutine OutputTecplotBlock(realization)
                  option%time/output_option%tconv,output_option%tunit
 
     ! initial portion of header
-    string = 'VARIABLES=' // &
+    header = 'VARIABLES=' // &
              '"X [m]",' // &
              '"Y [m]",' // &
              '"Z [m]"'
 
     ! add porosity to header
     if (output_option%print_porosity) then
-      string = trim(string) // ',"Porosity"'
+      header = trim(string) // ',"Porosity"'
     endif
 
     ! write flow variables
-    string2 = ''
+    header2 = ''
     select case(option%iflowmode)
       case (IMS_MODE)
-        string2 = ImmisGetTecplotHeader(realization,icolumn)
+        header2 = ImmisGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
-        string2 = MphaseGetTecplotHeader(realization,icolumn)
+        header2 = MphaseGetTecplotHeader(realization,icolumn)
       case (FLASH2_MODE)
-        string2 = FLASH2GetTecplotHeader(realization,icolumn)
+        header2 = FLASH2GetTecplotHeader(realization,icolumn)
       case(THC_MODE)
-        string2 = THCGetTecplotHeader(realization,icolumn)
+        header2 = THCGetTecplotHeader(realization,icolumn)
       case(RICHARDS_MODE)
-       string2 = RichardsGetTecplotHeader(realization,icolumn)
+       header2 = RichardsGetTecplotHeader(realization,icolumn)
       case(G_MODE)
-       string2 = GeneralGetTecplotHeader(realization,icolumn)
+       header2 = GeneralGetTecplotHeader(realization,icolumn)
     end select
-    string = trim(string) // trim(string2)
+    header = trim(header) // trim(header2)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      string2 = RTGetTecplotHeader(realization,icolumn)
-      string = trim(string) // trim(string2)
+      header2 = RTGetTecplotHeader(realization,icolumn)
+      header = trim(header) // trim(header2)
     endif
 
     ! write material ids
-    string = trim(string) // ',"Material_ID"'
+    header = trim(header) // ',"Material_ID"'
 
-    write(IUNIT3,'(a)') trim(string)
+    if (associated(output_option%plot_variables)) then
+      do i = 1, size(output_option%plot_variables)
+        header = trim(header) // ',"' // &
+          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
+                                          option)) // &
+          '"'
+      enddo
+    endif
+
+    write(IUNIT3,'(a)') trim(header)
   
     ! write zone header
     if ((realization%discretization%itype == STRUCTURED_GRID).or. &
         (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
-      ! count vars in string
+      ! count vars in header
       quote_count = 0
       comma_count = 0
-      do i=1,len_trim(string)
+      do i=1,len_trim(header)
         ! 34 = '"'
-        if (iachar(string(i:i)) == 34) then
+        if (iachar(header(i:i)) == 34) then
           quote_count = quote_count + 1
         ! 44 = ','
-        else if (iachar(string(i:i)) == 44 .and. mod(quote_count,2) == 0) then
+        else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
           comma_count = comma_count + 1
         endif
       enddo
@@ -389,7 +400,7 @@ subroutine OutputTecplotBlock(realization)
       endif
     else
      !sp changed from structured to unstructured below 9/24/2010
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i4)') &
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
                    option%time/output_option%tconv, &
                    grid%ngmax
     endif
@@ -430,7 +441,7 @@ subroutine OutputTecplotBlock(realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
@@ -442,12 +453,20 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
+      ! state
+      select case(option%iflowmode)
+        case(G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,STATE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+      end select
+      
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -550,7 +569,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! phase
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
@@ -605,6 +624,13 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
@@ -615,6 +641,13 @@ subroutine OutputTecplotBlock(realization)
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
@@ -705,6 +738,16 @@ subroutine OutputTecplotBlock(realization)
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+
+  if (associated(output_option%plot_variables)) then
+    do i = 1, size(output_option%plot_variables)
+      call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
+                                    isubvar,var_type,option)
+      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+    enddo
+  endif
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -829,6 +872,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
     string = trim(string) // ',"Material_ID"'
+
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -1277,8 +1321,9 @@ subroutine OutputTecplotPoint(realization)
   
   PetscInt :: i, comma_count, quote_count
   PetscInt :: icolumn
-  character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXHEADERLENGTH) :: string, string2
+  character(len=MAXSTRINGLENGTH) :: filename, string
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
@@ -1292,6 +1337,7 @@ subroutine OutputTecplotPoint(realization)
   PetscReal :: value
   Vec :: global_vec
   Vec :: natural_vec
+  PetscInt :: ivar, isubvar, var_type
   
   discretization => realization%discretization
   patch => realization%patch
@@ -1330,7 +1376,7 @@ subroutine OutputTecplotPoint(realization)
                  option%time/output_option%tconv,output_option%tunit
 
     ! initial portion of header
-    string = 'VARIABLES=' // &
+    header = 'VARIABLES=' // &
              '"X [m]",' // &
              '"Y [m]",' // &
              '"Z [m]"'
@@ -1340,47 +1386,57 @@ subroutine OutputTecplotPoint(realization)
     ! add porosity to header
     if (output_option%print_porosity) then
       icolumn = icolumn + 1
-      string = trim(string) // ',"4-Porosity"'
+      header = trim(header) // ',"4-Porosity"'
     endif
         
     ! write flow variables
-    string2 = ''
+    header2 = ''
     select case(option%iflowmode)
       case (Flash2_MODE)
-        string2 = Flash2GetTecplotHeader(realization,icolumn)
+        header2 = Flash2GetTecplotHeader(realization,icolumn)
        case (IMS_MODE)
-        string2 = ImmisGetTecplotHeader(realization,icolumn)
+        header2 = ImmisGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
-        string2 = MphaseGetTecplotHeader(realization,icolumn)
+        header2 = MphaseGetTecplotHeader(realization,icolumn)
       case(THC_MODE)
-        string2 = THCGetTecplotHeader(realization,icolumn)
+        header2 = THCGetTecplotHeader(realization,icolumn)
       case(RICHARDS_MODE)
-       string2 = RichardsGetTecplotHeader(realization,icolumn)
+       header2 = RichardsGetTecplotHeader(realization,icolumn)
       case(G_MODE)
-       string2 = GeneralGetTecplotHeader(realization,icolumn)
+       header2 = GeneralGetTecplotHeader(realization,icolumn)
     end select
-    string = trim(string) // trim(string2)
+    header = trim(header) // trim(header2)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      string2 = RTGetTecplotHeader(realization,icolumn)
-      string = trim(string) // trim(string2)
+      header2 = RTGetTecplotHeader(realization,icolumn)
+      header = trim(header) // trim(header2)
     endif
 
     ! write material ids
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-Material_ID"'')') icolumn
-    string = trim(string) // trim(string2)
+    write(string,'('',"'',i2,''-Material_ID"'')') icolumn
+    header = trim(header) // trim(string)
 
-    write(IUNIT3,'(a)') trim(string)
+    if (associated(output_option%plot_variables)) then
+      do i = 1, size(output_option%plot_variables)
+        icolumn = icolumn + 1
+        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
+          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
+                                          option))
+        header = trim(header) // trim(string)
+      enddo
+    endif
+
+    write(IUNIT3,'(a)') trim(header)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
+    write(header,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
                    &'', K='',i5)') &
                    option%time/output_option%tconv,grid%structured_grid%nx, &
                    grid%structured_grid%ny,grid%structured_grid%nz 
-    string = trim(string) // ', DATAPACKING=POINT'
-    write(IUNIT3,'(a)') trim(string)
+    header = trim(header) // ', DATAPACKING=POINT'
+    write(IUNIT3,'(a)') trim(header)
   endif
   
 1000 format(es13.6,1x)
@@ -1567,6 +1623,13 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo
         endif
+        do i=1,reaction%neqcplx
+          if (reaction%secondary_species_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,reaction%print_secondary_conc_type, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
         do i=1,reaction%nkinmnrl
           if (reaction%kinmnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
@@ -1577,6 +1640,13 @@ subroutine OutputTecplotPoint(realization)
         do i=1,reaction%nkinmnrl
           if (reaction%kinmnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_RATE, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%nmnrl
+          if (reaction%mnrl_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
@@ -1667,6 +1737,35 @@ subroutine OutputTecplotPoint(realization)
     value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
                                             ZERO_INTEGER,ghosted_id)
     write(IUNIT3,1001,advance='no') int(value)
+
+    if (associated(output_option%plot_variables)) then
+      do i = 1, size(output_option%plot_variables)
+        call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
+                                      isubvar,var_type,option)
+        value = RealizGetDatasetValueAtCell(realization,ivar, &
+                                            isubvar,ghosted_id)
+        if (var_type == INT_VAR) then
+          if (abs(value) < 1.d1) then
+            write(IUNIT3,'(i3,1x)',advance='no') int(value)
+          else if (abs(value) < 1.d2) then
+            write(IUNIT3,'(i4,1x)',advance='no') int(value)
+          else if (abs(value) < 1.d3) then
+            write(IUNIT3,'(i5,1x)',advance='no') int(value)
+          else if (abs(value) < 1.d4) then
+            write(IUNIT3,'(i6,1x)',advance='no') int(value)
+          else if (abs(value) < 1.d5) then
+            write(IUNIT3,'(i7,1x)',advance='no') int(value)
+          else if (abs(value) < 1.d6) then
+            write(IUNIT3,'(i8,1x)',advance='no') int(value)
+          else
+            write(IUNIT3,'(i9,1x)',advance='no') int(value)
+          endif
+        else
+          write(IUNIT3,1000,advance='no') value
+        endif
+      enddo
+    endif
+
     write(IUNIT3,1009) 
 
   enddo
@@ -2499,11 +2598,11 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   PetscBool :: print_velocities
   
   PetscInt :: i, local_id
-  character(len=MAXHEADERLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: string2
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2538,20 +2637,20 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   
   select case(option%iflowmode)
     case (IMS_MODE)
-!      string = ',"X [m] '// trim(cell_string) // '",' // &
+!      header = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-      string = ',"T [C] '// trim(cell_string) // '",' // &
+      header = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
     case (MPH_MODE, FLASH2_MODE)
-!      string = ',"X [m] '// trim(cell_string) // '",' // &
+!      header = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-      string = ',"T [C] '// trim(cell_string) // '",' // &
+      header = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
@@ -2564,16 +2663,16 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"kvrl '// trim(cell_string) // '",' // &
                '"kvrg '// trim(cell_string) // '",'
       do i=1,option%nflowspec
-        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
       do i=1,option%nflowspec
-        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
-      string = trim(string) // '"Phase '// trim(cell_string) // '"'
+      header = trim(header) // '"Phase '// trim(cell_string) // '"'
     case (G_MODE)
-      string = ',"T [C] '// trim(cell_string) // '",' // &
+      header = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"State [-] ' // trim(cell_string) // '",' // &
                '"Sat(l) '// trim(cell_string) // '",' // &
@@ -2583,40 +2682,40 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"U(l) '// trim(cell_string) // '",' // &
                '"U(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
-        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
       do i=1,option%nflowspec
-        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
-      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+      string = trim(header) // ',"Phase '// trim(cell_string) // '"'
     case(THC_MODE,RICHARDS_MODE)
       if (option%iflowmode == THC_MODE) then
 !        string = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = ',"T [C] '// trim(cell_string) // '",' // &
+        header = ',"T [C] '// trim(cell_string) // '",' // &
                  '"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '",' // &
                  '"Ul '// trim(cell_string) // '"' 
       else
-!        string = ',"X [m] '// trim(cell_string) // '",' // &
+!        header = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = ',"P [Pa] '// trim(cell_string) // '",' // &
+        header = ',"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '"'
       endif
       if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
-          write(string2,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
-          string = trim(string) // trim(string2)
+          write(string,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
+          header = trim(header) // trim(string)
         enddo
       endif
     case default
-      string = ''
+      header = ''
   end select
-  write(fid,'(a)',advance="no") trim(string)
+  write(fid,'(a)',advance="no") trim(header)
 
   ! reactive transport
   if (option%ntrandof > 0) then
@@ -2631,6 +2730,11 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       tot_mol_char = 'm'
     else
       tot_mol_char = 'M'
+    endif   
+    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+      sec_mol_char = 'm'
+    else
+      sec_mol_char = 'M'
     endif   
  
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
@@ -2666,6 +2770,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       enddo
     endif
     
+    do i=1,reaction%neqcplx
+      if (reaction%secondary_species_print(i)) then
+        write(fid,'('',"'',a,''_'',a,'' '',a,''"'')',advance="no") &
+          trim(reaction%secondary_species_names(i)), trim(sec_mol_char), trim(cell_string)
+      endif
+    enddo
+    
     do i=1,reaction%nkinmnrl
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_vf '',a,''"'')',advance="no") &
@@ -2677,6 +2788,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_rt '',a,''"'')',advance="no") &
           trim(reaction%kinmnrl_names(i)), trim(cell_string)  
+      endif
+    enddo
+    
+    do i=1,reaction%nmnrl
+      if (reaction%mnrl_print(i)) then
+        write(fid,'('',"'',a,''_si '',a,''"'')',advance="no") &
+          trim(reaction%mineral_names(i)), trim(cell_string)
       endif
     enddo
     
@@ -2788,12 +2906,12 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   PetscBool :: print_velocities
   
   PetscInt :: i
-  character(len=MAXHEADERLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: string2
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction  
@@ -2823,20 +2941,20 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
 
   select case(option%iflowmode)
     case (IMS_MODE)
-!      string = ',"X [m] '// trim(cell_string) // '",' // &
+!      header = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-       string = ',"T [C] '// trim(cell_string) // '",' // &
+       header = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
     case (MPH_MODE,FLASH2_MODE)
-!      string = ',"X [m] '// trim(cell_string) // '",' // &
+!      header = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-       string = ',"T [C] '// trim(cell_string) // '",' // &
+       header = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
@@ -2849,16 +2967,16 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"kvrl '// trim(cell_string) // '",' // &
                '"kvrg '// trim(cell_string) // '",' 
       do i=1,option%nflowspec
-        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
       do i=1,option%nflowspec
-        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
-      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+      header = trim(header) // ',"Phase '// trim(cell_string) // '"'
     case (G_MODE)
-      string = ',"T [C] '// trim(cell_string) // '",' // &
+      header = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"State [-] ' // trim(cell_string) // '",' // &
                '"Sat(l) '// trim(cell_string) // '",' // &
@@ -2868,40 +2986,40 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"U(l) '// trim(cell_string) // '",' // &
                '"U(g) '// trim(cell_string) // '",'
       do i=1,option%nflowspec
-        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
       do i=1,option%nflowspec
-        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
-        string = trim(string) // trim(string2)
+        write(string,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
+        header = trim(header) // trim(string)
       enddo
-      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
+      header = trim(header) // ',"Phase '// trim(cell_string) // '"'
     case(THC_MODE,RICHARDS_MODE)
       if (option%iflowmode == THC_MODE) then
-!        string = ',"X [m] '// trim(cell_string) // '",' // &
+!        header = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = ',"T [C] '// trim(cell_string) // '",' // &
+        header = ',"T [C] '// trim(cell_string) // '",' // &
                  '"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '",' // &
                  '"Ul '// trim(cell_string) // '"' 
       else
-!        string = ',"X [m] '// trim(cell_string) // '",' // &
+!        header = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = ',"P [Pa] '// trim(cell_string) // '",' // &
+        header = ',"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '"'
       endif
       if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
-          write(string2,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
-          string = trim(string) // trim(string2)
+          write(string,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
+          header = trim(header) // trim(string)
         enddo
       endif
     case default
-      string = ''
+      header = ''
   end select
-  write(fid,'(a)',advance="no") trim(string)
+  write(fid,'(a)',advance="no") trim(header)
 
   ! reactive transport
   if (option%ntrandof > 0) then
@@ -2916,6 +3034,11 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       tot_mol_char = 'm'
     else
       tot_mol_char = 'M'
+    endif 
+    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+      sec_mol_char = 'm'
+    else
+      sec_mol_char = 'M'
     endif 
 
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
@@ -2951,6 +3074,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       enddo
     endif
     
+    do i=1,reaction%neqcplx
+      if (reaction%secondary_species_print(i)) then
+        write(fid,'('',"'',a,''_'',a,'' '',a,''"'')',advance="no") &
+          trim(reaction%secondary_species_names(i)), trim(sec_mol_char), trim(cell_string)
+      endif
+    enddo
+    
     do i=1,reaction%nkinmnrl
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_vf '',a,''"'')',advance="no") &
@@ -2962,6 +3092,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       if (reaction%kinmnrl_print(i)) then
         write(fid,'('',"'',a,''_rt '',a,''"'')',advance="no") &
           trim(reaction%kinmnrl_names(i)), trim(cell_string)  
+      endif
+    enddo
+    
+    do i=1,reaction%nmnrl
+      if (reaction%mnrl_print(i)) then
+        write(fid,'('',"'',a,''_si '',a,''"'')',advance="no") &
+          trim(reaction%mineral_names(i)), trim(cell_string)
       endif
     enddo
     
@@ -3308,6 +3445,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,reaction%print_secondary_conc_type,i,ghosted_id)
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
@@ -3318,6 +3461,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         if (reaction%kinmnrl_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,MINERAL_RATE,i,ghosted_id)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+           write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX,i,ghosted_id)
         endif
       enddo
       do i=1,reaction%neqsrfcplxrxn
@@ -3742,6 +3891,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,reaction%print_secondary_conc_type,i, &
+                                          region%coordinates(ONE_INTEGER)%x, &
+                                          region%coordinates(ONE_INTEGER)%y, &
+                                          region%coordinates(ONE_INTEGER)%z, &
+                                          count,ghosted_ids)
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
@@ -3756,6 +3915,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         if (reaction%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_RATE,i, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,MINERAL_SATURATION_INDEX,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
@@ -5174,7 +5343,8 @@ subroutine OutputHDF5(realization)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=2) :: free_mol_char, tot_mol_char
+  character(len=MAXWORDLENGTH) :: word
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
@@ -5182,6 +5352,7 @@ subroutine OutputHDF5(realization)
   PetscMPIInt, parameter :: ON=1, OFF=0
   PetscFortranAddr :: app_ptr
   PetscBool :: first
+  PetscInt :: ivar, isubvar, var_type
 
   discretization => realization%discretization
   patch => realization%patch
@@ -5398,10 +5569,20 @@ subroutine OutputHDF5(realization)
                 endif
              end do
           endif
-!! for the next one we add two because the rate and volume fraction are to be plotted         
+          do i=1,reaction%neqcplx
+            if (reaction%secondary_species_print(i)) then
+                nviz_tran=nviz_tran+1
+            endif
+          end do
+ ! for the next one we add two because the rate and volume fraction are to be plotted         
           do i=1,reaction%nkinmnrl
               if (reaction%kinmnrl_print(i)) then
                     nviz_tran=nviz_tran+2
+             endif
+          end do
+          do i=1,reaction%nmnrl
+              if (reaction%mnrl_print(i)) then
+                    nviz_tran=nviz_tran+1
              endif
           end do
           do i=1,reaction%neqsrfcplxrxn
@@ -5762,6 +5943,11 @@ subroutine OutputHDF5(realization)
     else
       tot_mol_char = 'M'
     endif  
+    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
+    endif  
     if (associated(reaction)) then
       if (reaction%print_pH .and. associated(reaction%species_idx)) then
         if (reaction%species_idx%h_ion_id > 0) then
@@ -5829,6 +6015,21 @@ subroutine OutputHDF5(realization)
           endif
         enddo
       endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
+          write(string,'(a,a)') trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
@@ -5848,6 +6049,21 @@ subroutine OutputHDF5(realization)
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
           write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_rt'
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if(first) then
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
+          write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -6048,6 +6264,23 @@ subroutine OutputHDF5(realization)
       endif
       current_component=current_component+1
     endif
+
+    if (associated(output_option%plot_variables)) then
+      do i = 1, size(output_option%plot_variables)
+        word = trim(output_option%plot_variables(i))
+        call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
+        call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+        string = PatchGetVarNameFromKeyword(word,option)
+        if (var_type == INT_VAR) then
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                             grp_id,HDF_NATIVE_INTEGER) 
+        else
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                             grp_id,H5T_NATIVE_DOUBLE) 
+        endif
+      enddo
+    endif
+  
   endif
   
   if(.not.(option%use_samr)) then
@@ -7185,6 +7418,7 @@ subroutine OutputMassBalanceNew(realization)
             bcs_done = PETSC_TRUE
             if (associated(patch%source_sinks)) then
               coupler => patch%source_sinks%first
+              if (.not.associated(coupler)) exit
             else
               exit
             endif
@@ -7222,26 +7456,24 @@ subroutine OutputMassBalanceNew(realization)
               trim(coupler%name) // ' Air Mass [mol/' // &
               trim(output_option%tunit) // ']"'
           case(MPH_MODE)
-#if 0
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol]"'
+              trim(coupler%name) // ' Water Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol]"'
+              trim(coupler%name) // ' CO2 Mass [kmol]"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' Water Mass [mol/' // &
+              trim(coupler%name) // ' Water Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
-              trim(coupler%name) // ' CO2 Mass [mol/' // &
+              trim(coupler%name) // ' CO2 Mass [kmol/' // &
               trim(output_option%tunit) // ']"'
-#endif
         end select
         
         if (option%ntrandof > 0) then
@@ -7362,6 +7594,7 @@ subroutine OutputMassBalanceNew(realization)
         bcs_done = PETSC_TRUE
         if (associated(patch%source_sinks)) then
           coupler => patch%source_sinks%first
+          if (.not.associated(coupler)) exit
           global_aux_vars_bc_or_ss => patch%aux%Global%aux_vars_ss
           if (option%ntrandof > 0) then
             rt_aux_vars_bc_or_ss => patch%aux%RT%aux_vars_ss
@@ -7456,6 +7689,49 @@ subroutine OutputMassBalanceNew(realization)
             ! change sign for positive in / negative out
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
+
+!#if 0
+        case(MPH_MODE)
+        ! print out cumulative H2O & CO2 fluxes
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+            enddo
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)
+            endif
+          enddo
+          
+        ! print out H2O & CO2 fluxes
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+            enddo
+
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+!           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
+
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
+            endif
+          enddo
+!#endif
         case(G_MODE)
       end select
     endif

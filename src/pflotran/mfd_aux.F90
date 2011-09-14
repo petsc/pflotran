@@ -20,6 +20,7 @@ module MFD_Aux_module
     PetscReal, pointer :: StiffMatrix(:,:)
     PetscReal :: Rp, dRp_dp
     PetscReal, pointer :: Rl(:), dRp_dl(:), dRl_dp(:)
+    PetscReal, pointer :: WB(:), gr(:)  
 
 
   end type mfd_auxvar_type
@@ -254,6 +255,8 @@ subroutine MFDAuxDestroy(aux)
     deallocate(aux%aux_vars)
   endif
   nullify(aux%aux_vars)
+  
+  
     
 end subroutine MFDAuxDestroy
 
@@ -276,6 +279,12 @@ use Option_module
   aux_var%Rl = 0.
   aux_var%dRl_dp = 0.
   aux_var%dRp_dl = 0.
+ 
+  allocate(aux_var%WB(aux_var%numfaces))
+  allocate(aux_var%gr(aux_var%numfaces))
+
+  aux_var%WB = 0.
+  aux_var%gr = 0.
 
 end subroutine MFDAuxInitResidDerivArrays
 

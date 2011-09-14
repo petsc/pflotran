@@ -458,10 +458,15 @@ subroutine OptionInitRealization(option)
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
 
-  option%dpmxe = 5.d4
+  option%dpmxe = 5.d5
   option%dtmpmxe = 5.d0
   option%dsmxe = 0.5d0
   option%dcmxe = 1.d0
+
+  option%dpmax = 0.d0
+  option%dtmpmax = 0.d0
+  option%dsmax = 0.d0
+  option%dcmax = 0.d0
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file

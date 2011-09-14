@@ -143,9 +143,13 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
+
+  character(len=MAXSTRINGLENGTH) :: string
+
   PetscInt :: structured_grid_itype
   PetscInt :: nx, ny, nz
   PetscInt :: i
+  PetscReal :: tempreal
 
   nx = 0
   ny = 0
@@ -274,63 +278,106 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
           select case(discretization%itype)
             case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
               grid => discretization%grid
-              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                  grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
-                  grid%structured_grid%itype == SPHERICAL_GRID) then
-                call InputReadFlotranString(input,option) ! x-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
+
+              ! read first line and we will split off the legacy approach vs. new
+              call InputReadFlotranString(input,option)
+              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or Min Coordinate')
+              string = input%buf
+
+              do i = 1, 3
+                call InputReadDouble(input,option,tempreal)
+                if (input%ierr /= 0) exit
+              enddo
+
+              input%ierr = 0
+              input%buf = string
+
+              if (i == 3) then ! only 2 successfully read
+                if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
+                    grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
+                    grid%structured_grid%itype == SPHERICAL_GRID) then
+!geh                  call InputReadFlotranString(input,option) ! x-direction
+!geh                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
+                  call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
+                  call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
+                  call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
+                  call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
+                endif
+                if (grid%structured_grid%itype == CARTESIAN_GRID) then
+                  call InputReadFlotranString(input,option) ! y-direction
+                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
+                  call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
+                  call InputErrorMsg(input,option,'Lower Y','BOUNDS')
+                  call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
+                  call InputErrorMsg(input,option,'Upper Y','BOUNDS')
+                else
+                  grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+                  grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+                endif
+                if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
+                    grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                  call InputReadFlotranString(input,option) ! z-direction
+                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+                  call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
+                  call InputErrorMsg(input,option,'Lower Z','BOUNDS')
+                  call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
+                  call InputErrorMsg(input,option,'Upper Z','BOUNDS')
+                else
+                  grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+                  grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
+                endif
+              else ! new min max coordinate approach
+                select case(grid%structured_grid%itype)
+                  case(CARTESIAN_GRID)
+                    i = 3
+                  case(CYLINDRICAL_GRID)
+                    i = 2
+                  case(SPHERICAL_GRID)
+                    i = 1
+                end select
+                call InputReadNDoubles(input,option, &
+                                       grid%structured_grid%bounds(:,LOWER), &
+                                       i)
+                call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
+                call InputReadFlotranString(input,option)
+                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,MAX COORDINATE')
+                call InputReadNDoubles(input,option, &
+                                       grid%structured_grid%bounds(:,UPPER), &
+                                       i)
+                call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
+                if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                  grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+                  grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+                endif
+                if (grid%structured_grid%itype == SPHERICAL_GRID) then
+                  grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+                  grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
+                endif
               endif
-              if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                call InputReadFlotranString(input,option) ! y-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower Y','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper Y','BOUNDS')
-              else
-                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-              endif
-              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                  grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                call InputReadFlotranString(input,option) ! z-direction
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
-                call InputErrorMsg(input,option,'Lower Z','BOUNDS')
-                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
-                call InputErrorMsg(input,option,'Upper Z','BOUNDS')
-              else
-                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-              endif
-              call InputReadFlotranString(input,option) ! z-direction
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+              call InputReadFlotranString(input,option)
+              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,END')
               if (.not.(InputCheckExit(input,option))) then
                 if (OptionPrintToScreen(option)) then
                   if (grid%structured_grid%itype == CARTESIAN_GRID) then
                     print *, 'BOUNDS card for a cartesian structured grid must include ' // &
-                             '5 lines.  I.e.'
+                             '4 lines.  I.e.'
                     print *, 'BOUNDS'
-                    print *, 'x_min, x_max'
-                    print *, 'y_min, y_max'
-                    print *, 'z_min, z_max'
+                    print *, '  x_min  y_min  z_min'
+                    print *, '  x_max  y_max  z_max'
                     print *, 'END'
                   else if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
                     print *, 'BOUNDS card for a cylindrical structured grid must include ' // &
                              '4 lines.  I.e.'
                     print *, 'BOUNDS'
-                    print *, 'r_min, r_max'
-                    print *, 'z_min, z_max'
+                    print *, '  r_min  z_min'
+                    print *, '  r_max  z_max'
                     print *, 'END'
                   else if (grid%structured_grid%itype == SPHERICAL_GRID) then
                     print *, 'BOUNDS card for a spherical structured grid must include ' // &
-                             '3 lines.  I.e.'
+                             '4 lines.  I.e.'
                     print *, 'BOUNDS'
-                    print *, 'r_min, r_max'
+                    print *, '  r_min'
+                    print *, '  r_max'
                     print *, 'END'
                   endif
                 endif

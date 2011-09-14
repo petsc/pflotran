@@ -1223,6 +1223,7 @@ subroutine FlowConditionRead(condition,input,option)
   select case(option%iflowmode)
     case(G_MODE)
       general => FlowGeneralConditionCreate(option)
+      condition%general => general
   end select
   
   default_ctype = 'dirichlet'
@@ -1376,11 +1377,12 @@ subroutine FlowConditionRead(condition,input,option)
       call printErrMsg(option)
     endif
   else
-    condition%num_sub_conditions = THREE_INTEGER
-    allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-    do idof = 1, condition%num_sub_conditions
-      nullify(condition%sub_condition_ptr(idof)%ptr)
-    enddo
+  
+!geh    condition%num_sub_conditions = THREE_INTEGER
+!geh    allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+!geh    do idof = 1, condition%num_sub_conditions
+!geh      nullify(condition%sub_condition_ptr(idof)%ptr)
+!geh    enddo
 
     ! some sort of dirichlet-based pressure, temperature, etc.
     if (.not.associated(general%liquid_pressure) .and. &

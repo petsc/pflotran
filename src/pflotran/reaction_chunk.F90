@@ -1233,6 +1233,8 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
   PetscBool :: prefactor_exists
 
+  PetscInt, parameter :: needs_to_be_fixed = 1
+
   PetscInt :: ichunk
 
   do ichunk = 1, vector_length
@@ -1289,33 +1291,24 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
       if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then
         print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
         stop
+#if 0
         sum_prefactor_rate = 0
         do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
           prefactor(ipref) = 1.d0
-          do i = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
-            icomp = reaction%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
+          do i = 1, reaction%kinmnrl_prefactor_id(0,ipref,imnrl) ! primary contribution
+            icomp = reaction%kinmnrl_prefactor_id(i,ipref,imnrl)
             prefactor(ipref) = prefactor(ipref) * &
-              exp(reaction%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
+              exp(reaction%kinmnrl_pref_alpha(i,ipref,imnrl)* &
               ln_act(icomp))/ &
-              (1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl)* &
-              exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
+              (1.d0+reaction%kinmnrl_pref_atten_coef(i,ipref,imnrl)* &
+              exp(reaction%kinmnrl_pref_beta(i,ipref,imnrl)* &
               ln_act(icomp)))
           enddo
-          if (reaction%neqcplx > 0) then
-            do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-              kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
-              prefactor(ipref) = prefactor(ipref) * &
-                exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                ln_sec_act(kcplx))/ &
-                (1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl)* &
-                exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                ln_sec_act(kcplx)))
-            enddo
-          endif
           sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_rate(ipref,imnrl)
         enddo
+#endif
       else
-        sum_prefactor_rate = reaction%kinmnrl_rate(1,imnrl)
+        sum_prefactor_rate = reaction%kinmnrl_rate(imnrl)
       endif
 
       ! compute rate
@@ -1380,62 +1373,6 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
       print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
       stop
       
-      dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
-      do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
-        dIm_dprefactor_rate = dIm_dsum_prefactor_rate*reaction%kinmnrl_rate(ipref,imnrl)
-        do j = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
-          jcomp = reaction%kinmnrl_pri_prefactor_id(j,ipref,imnrl)
-          ! numerator
-          dprefactor_dcomp_numerator = reaction%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
-                                       prefactor(ipref)/auxvar%pri_molal(ichunk,ithread,jcomp) ! dR_dm
-          ! denominator
-          dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-            (1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
-            exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-            ln_act(jcomp)))* & 
-            reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-            reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
-            exp((reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
-            ln_act(jcomp))* & ! dR_da
-            auxvar%pri_act_coef(ichunk,ithread,jcomp) ! da_dc
-          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
-                     dprefactor_dcomp_denominator)*auxvar%den(ichunk,ithread,iphase)
-          do i = 1, ncomp
-            icomp = reaction%kinmnrlspecid(i,imnrl)
-            Jac(ichunk,ithread,icomp,jcomp) = Jac(ichunk,ithread,icomp,jcomp) + &
-              reaction%kinmnrlstoich(i,imnrl)*tempreal
-          enddo  ! loop over col
-        enddo !loop over row
-        if (reaction%neqcplx > 0) then
-          do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-            kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
-            ! numerator
-            dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-              prefactor(ipref)/(auxvar%sec_molal(ichunk,ithread,kcplx)* &
-              auxvar%sec_act_coef(ichunk,ithread,kcplx)) ! dR_dax
-            ! denominator
-            dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-              (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-              exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                                ln_sec_act(kcplx)))* &
-              reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-              reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-              exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
-              ln_sec_act(kcplx)) ! dR_dax
-            tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
-                       dprefactor_dcomp_denominator)*auxvar%den(ichunk,ithread,iphase)
-            do j = 1, reaction%eqcplxspecid(0,kcplx)
-              jcomp = reaction%eqcplxspecid(j,kcplx)
-              tempreal2 = reaction%eqcplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc
-              do i = 1, ncomp
-                icomp = reaction%kinmnrlspecid(i,imnrl)
-                Jac(ichunk,ithread,icomp,jcomp) = Jac(ichunk,ithread,icomp,jcomp) + &
-                  reaction%kinmnrlstoich(i,imnrl)*tempreal*tempreal2
-              enddo  ! loop over col
-            enddo  ! loop over row
-          enddo  ! loop over complexes
-        endif
-      enddo  ! loop over prefactors
     endif
   enddo  ! loop over minerals
   

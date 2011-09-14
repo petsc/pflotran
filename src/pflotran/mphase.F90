@@ -177,9 +177,12 @@ subroutine MphaseSetupPatch(realization)
   type(mphase_type),pointer :: mphase
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
 
   PetscInt :: ghosted_id, iconn, sum_connection, ipara
-  type(Mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(Mphase_auxvar_type), pointer :: aux_vars(:)
+  type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
+  type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)  
 
 ! print *,' mph setup begin'
   option => realization%option
@@ -256,6 +259,23 @@ subroutine MphaseSetupPatch(realization)
   enddo
   mphase%aux_vars_bc => aux_vars_bc
   mphase%num_aux_bc = sum_connection
+  
+ ! Allocate source /sink  
+  source_sink => patch%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
+    sum_connection = sum_connection + &
+                     source_sink%connection_set%num_connections
+    source_sink => source_sink%next
+  enddo
+  allocate(aux_vars_ss(sum_connection))
+  do iconn = 1, sum_connection
+    call MphaseAuxVarInit(aux_vars_ss(iconn),option)
+  enddo
+  mphase%aux_vars_ss => aux_vars_ss
+  mphase%num_aux_ss = sum_connection
+  
   option%numerical_derivatives = PETSC_TRUE
 
 ! print *,' mph setup get AuxBc point'
@@ -388,6 +408,7 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
 
   PetscInt :: iconn
 
@@ -395,6 +416,7 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
   patch => realization%patch
 
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
   do iconn = 1, patch%aux%Mphase%num_aux
@@ -407,6 +429,12 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
   if (patch%aux%Mphase%num_aux_bc > 0) then
     do iconn = 1, patch%aux%Mphase%num_aux_bc
       global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+  
+  if (patch%aux%Mphase%num_aux_ss > 0) then
+    do iconn =1, patch%aux%Mphase%num_aux_ss
+      global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
 
@@ -433,6 +461,7 @@ subroutine MphaseUpdateMassBalancePatch(realization)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
 
   PetscInt :: iconn
 
@@ -440,6 +469,7 @@ subroutine MphaseUpdateMassBalancePatch(realization)
   patch => realization%patch
 
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
   do iconn = 1, patch%aux%Mphase%num_aux
@@ -459,6 +489,14 @@ subroutine MphaseUpdateMassBalancePatch(realization)
         global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
     enddo
   endif
+  
+  if (patch%aux%Mphase%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%Mphase%num_aux_ss
+      global_aux_vars_ss(iconn)%mass_balance = &
+        global_aux_vars_ss(iconn)%mass_balance + &
+        global_aux_vars_ss(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
 
 end subroutine MphaseUpdateMassBalancePatch
 
@@ -468,7 +506,7 @@ end subroutine MphaseUpdateMassBalancePatch
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-  function  MphaseInitGuessCheck(realization)
+  function MphaseInitGuessCheck(realization)
  
   use Realization_module
   use Level_module
@@ -790,9 +828,14 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  type(Mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  type(Mphase_auxvar_type), pointer :: aux_vars(:)
+  type(Mphase_auxvar_type), pointer :: aux_vars_bc(:) 
+  type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -808,8 +851,11 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
+  aux_vars_ss => patch%aux%Mphase%aux_vars_ss
+
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
   
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -944,6 +990,28 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   enddo
 
 
+! source/sinks
+  source_sink => patch%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
+    cur_connection_set => source_sink%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      call MphaseAuxVarCopy(aux_vars(ghosted_id)%aux_var_elem(0), &
+                              aux_vars_ss(sum_connection)%aux_var_elem(0),option)
+      call GlobalAuxVarCopy(global_aux_vars(ghosted_id), &
+                            global_aux_vars_ss(sum_connection),option)
+
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
@@ -981,20 +1049,65 @@ end subroutine MphaseInitializeTimestep
 subroutine MphaseUpdateSolution(realization)
 
   use Realization_module
+  use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
+  
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
 
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  
+  field => realization%field
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
   call VecCopy(realization%field%iphas_loc,realization%field%iphas_old_loc,ierr)
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+        do 
+          if (.not.associated(cur_patch)) exit
+          realization%patch => cur_patch
+          call MphaseUpdateSolutionPatch(realization)
+          cur_patch => cur_patch%next
+          enddo
+      cur_level => cur_level%next
+  enddo
 
 ! make room for hysteric s-Pc-kr
 
 end subroutine MphaseUpdateSolution
 
+! ************************************************************************** !
+!
+! MphaseUpdateSolutionPatch: Updates data in module after a successful time 
+!                             step 
+! author: Satish Karra
+! written based on RichardsUpdateSolutionPatch
+! date: 08/23/11
+!
+! ************************************************************************** !
+subroutine MphaseUpdateSolutionPatch(realization)
+
+  use Realization_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+
+  if (realization%option%compute_mass_balance_new) then
+    call MphaseUpdateMassBalancePatch(realization)
+  endif
+
+end subroutine MphaseUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
@@ -1194,8 +1307,7 @@ end subroutine MphaseAccumulation
 
 ! ************************************************************************** !
 !
-! MphaseAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
+! MphaseSourceSink: Computes the source/sink portion for the residual
 ! author: Chuan Lu
 ! date: 05/12/08
 !
@@ -1264,7 +1376,6 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 
         ! store volumetric rate for ss_fluid_fluxes()
         qsrc_phase(1) = msrc(1)/dw_mol
-
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
@@ -1355,14 +1466,13 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
                   aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
                 if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)* &
                   aux_var%h(np)*option%flow_dt
-!               print *,'produce: ',np,v_darcy
+              ! print *,'produce: ',np,v_darcy
               endif
             endif
           enddo
         endif
       endif 
      !print *,'well-prod: ',  aux_var%pres,psrc(1), res
-     
     ! injection well (well status = 2)
       if( dabs(well_status - 2D0) < 1D-1) then 
 
@@ -2285,9 +2395,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(mphase_type), pointer :: mphase
   type(mphase_parameter_type), pointer :: mphase_parameter
-  type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
-  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(mphase_auxvar_type), pointer :: aux_vars(:)
+  type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
+  type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscReal, pointer :: msrc(:)
@@ -2309,12 +2424,18 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   mphase_parameter => mphase%mphase_parameter
   aux_vars => mphase%aux_vars
   aux_vars_bc => mphase%aux_vars_bc
+  aux_vars_ss => mphase%aux_vars_ss
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%MphaseAux%aux_vars_up_to_date = PETSC_FALSE 
+ 
+  if (option%compute_mass_balance_new) then
+    call MphaseZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -2493,7 +2614,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 !clu end change
 
     cur_connection_set => source_sink%connection_set
-    
     do iconn = 1, cur_connection_set%num_connections      
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -2507,11 +2627,18 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                             ! fluid flux [m^3/sec] = Res [kmol/mol] / den [kmol/m^3]
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
- 
+
+  ! included by SK, 08/23/11 to print mass fluxes at source/sink						
+      if (option%compute_mass_balance_new) then
+        global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+          Res(:)/option%flow_dt
+      endif
+  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      mphase%res_old_AR(local_id,jh2o)= mphase%res_old_AR(local_id,jh2o) - Res(jh2o)    
-      mphase%res_old_AR(local_id,jco2)= mphase%res_old_AR(local_id,jco2) - Res(jco2)    
+      mphase%res_old_AR(local_id,jh2o) = mphase%res_old_AR(local_id,jh2o) - Res(jh2o)    
+      mphase%res_old_AR(local_id,jco2) = mphase%res_old_AR(local_id,jco2) - Res(jco2)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
         mphase%res_old_AR(local_id,option%nflowdof) = &
@@ -2627,16 +2754,16 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
            mphase%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
 
-#if 0
+!#if 0
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,:) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,:) - Res(:)
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) - Res(:)/option%flow_dt 
         ! contribution to internal 
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
-#endif
+!#endif
 
     enddo
     boundary_condition => boundary_condition%next
@@ -2762,6 +2889,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       r_p(mphase%zero_rows_local(i)) = 0.d0
     enddo
   endif
+  
+ 
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)

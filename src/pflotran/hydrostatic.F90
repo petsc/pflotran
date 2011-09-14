@@ -69,21 +69,33 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   temperature_at_datum = option%reference_temperature
   concentration_at_datum = 0.d0
   
-  
-  ! for now, just set it; in future need to account for a different temperature datum
-  if (associated(condition%temperature)) then
-    temperature_at_datum = condition%temperature%dataset%cur_value(1)
-    temperature_gradient(1:3) = condition%temperature%gradient%cur_value(1:3)
-  endif
-  if (associated(condition%temperature)) then
-    concentration_at_datum = condition%concentration%dataset%cur_value(1)
-    concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
-  endif
+  select case(option%iflowmode)
+    case(G_MODE)
+      temperature_at_datum = condition%general%temperature%dataset%cur_value(1)
+      temperature_gradient(1:3) = condition%general%temperature%gradient%cur_value(1:3)
+      concentration_at_datum = condition%general%mole_fraction%dataset%cur_value(1)
+      concentration_gradient(1:3) = condition%general%mole_fraction%gradient%cur_value(1:3)
+      datum(1:3) = condition%general%liquid_pressure%datum%cur_value(1:3)
+      pressure_at_datum = condition%general%liquid_pressure%dataset%cur_value(1)    
+      ! gradient is in m/m; needs conversion to Pa/m
+      piezometric_head_gradient(1:3) = condition%general%liquid_pressure%gradient%cur_value(1:3)
+    case default
+      ! for now, just set it; in future need to account for a different temperature datum
+      if (associated(condition%temperature)) then
+        temperature_at_datum = condition%temperature%dataset%cur_value(1)
+        temperature_gradient(1:3) = condition%temperature%gradient%cur_value(1:3)
+      endif
+      if (associated(condition%concentration)) then
+        concentration_at_datum = condition%concentration%dataset%cur_value(1)
+        concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
+      endif
 
-  datum(1:3) = condition%pressure%datum%cur_value(1:3)
-  pressure_at_datum = condition%pressure%dataset%cur_value(1)
-  ! gradient is in m/m; needs conversion to Pa/m
-  piezometric_head_gradient(1:3) = condition%pressure%gradient%cur_value(1:3)
+      datum(1:3) = condition%pressure%datum%cur_value(1:3)
+      pressure_at_datum = condition%pressure%dataset%cur_value(1)
+      ! gradient is in m/m; needs conversion to Pa/m
+      piezometric_head_gradient(1:3) = condition%pressure%gradient%cur_value(1:3)
+  end select      
+      
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
   rho = dw_kg * 1.d3
   
@@ -285,6 +297,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_int_var(1,iconn) = condition%iphase
 
       case(G_MODE)
+        temperature = temperature_at_datum + &
+                    temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
+                    temperature_gradient(Y_DIRECTION)*dist_y + &
+                    temperature_gradient(Z_DIRECTION)*dist_z 
+        coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,iconn) = temperature
+        coupler%flow_aux_real_var(GENERAL_MOLE_FRACTION_DOF,iconn) = concentration_at_datum
+
+        coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = condition%iphase
+        coupler%flow_aux_int_var(1,iconn) = condition%iphase
       case default
         coupler%flow_aux_int_var(1,iconn) = 1
     end select
