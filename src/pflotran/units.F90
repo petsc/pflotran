@@ -123,11 +123,11 @@ function UnitsConvert(unit,option)
     case('m^3')
       UnitsConvert = 1.d0
     ! convert times to seconds
-    case('s','sec')
+    case('s','sec','second')
       UnitsConvert = 1.d0
-    case('min')
+    case('min','minute')
       UnitsConvert = 60.d0
-    case('h','hr')
+    case('h','hr','hour')
       UnitsConvert = 3600.d0
     case('d','day')
       UnitsConvert = 24.d0*3600.d0 
