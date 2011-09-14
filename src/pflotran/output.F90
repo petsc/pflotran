@@ -517,7 +517,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! liquid viscosity
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -525,7 +525,7 @@ subroutine OutputTecplotBlock(realization)
     
      ! gas viscosity
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -533,7 +533,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -541,7 +541,7 @@ subroutine OutputTecplotBlock(realization)
     
      ! gas mobility
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1475,6 +1475,14 @@ subroutine OutputTecplotPoint(realization)
             write(IUNIT3,1000,advance='no') value
         end select
 
+        ! state
+        select case(option%iflowmode)
+          case(G_MODE)
+            value = RealizGetDatasetValueAtCell(realization,STATE, &
+                                                ZERO_INTEGER,ghosted_id)
+           write(IUNIT3,1001,advance='no') int(value)
+        end select
+
         ! liquid saturation
         select case(option%iflowmode)
           case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1525,7 +1533,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid viscosity
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1533,7 +1541,7 @@ subroutine OutputTecplotPoint(realization)
       
        ! gas viscosity
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1541,7 +1549,7 @@ subroutine OutputTecplotPoint(realization)
       
         ! liquid mobility
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1549,7 +1557,7 @@ subroutine OutputTecplotPoint(realization)
       
        ! gas mobility
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_MOBILITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1577,7 +1585,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! phase
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,PHASE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1001,advance='no') int(value)

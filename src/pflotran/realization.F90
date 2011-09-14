@@ -1425,61 +1425,61 @@ subroutine RealizAssignFlowInitCond(realization)
                 call printErrMsg(option)
               endif
               
-            general => initial_condition%flow_condition%general
+              general => initial_condition%flow_condition%general
               
-            string = 'in flow condition "' // &
-              trim(initial_condition%flow_condition%name) // &
-              '" within initial condition "' // &
-              trim(initial_condition%flow_condition%name) // &
-              '" must be of type Dirichlet or Hydrostatic'
-            ! error checking.  the data must match the state
-            select case(initial_condition%flow_condition%iphase)
-              case(TWO_PHASE_STATE)  
-                if (.not. &
-                    (general%gas_pressure%itype == DIRICHLET_BC .or. &
-                     general%gas_pressure%itype == HYDROSTATIC_BC)) then
-                  option%io_buffer = 'Gas pressure ' // trim(string)
-                  call printErrMsg(option)
-                endif
-                if (.not. &
-                    (general%gas_saturation%itype == DIRICHLET_BC .or. &
-                     general%gas_saturation%itype == HYDROSTATIC_BC)) then
-                  option%io_buffer = 'Gas saturation ' // trim(string)
-                  call printErrMsg(option)
-                endif
-              case(LIQUID_STATE)
-                if (.not. &
-                    (general%liquid_pressure%itype == DIRICHLET_BC .or. &
-                     general%liquid_pressure%itype == HYDROSTATIC_BC)) then
-                  option%io_buffer = 'Liquid pressure ' // trim(string)
-                  call printErrMsg(option)
-                endif
-                if (.not. &
-                    (general%mole_fraction%itype == DIRICHLET_BC .or. &
-                     general%mole_fraction%itype == HYDROSTATIC_BC)) then
-                  option%io_buffer = 'Mole fraction ' // trim(string)
-                  call printErrMsg(option)
-                endif
-              case(GAS_STATE)
-                if (.not. &
-                    (general%gas_pressure%itype == DIRICHLET_BC .or. &
-                     general%gas_pressure%itype == HYDROSTATIC_BC)) then
-                  option%io_buffer = 'Gas pressure ' // trim(string)
-                  call printErrMsg(option)
-                endif
-                if (.not. &
-                    (general%mole_fraction%itype == DIRICHLET_BC .or. &
-                     general%mole_fraction%itype == HYDROSTATIC_BC)) then
-                  option%io_buffer = 'Gas saturation ' // trim(string)
-                  call printErrMsg(option)
-                endif
-            end select
-            if (.not. &
-                (general%temperature%itype == DIRICHLET_BC .or. &
-                 general%temperature%itype == HYDROSTATIC_BC)) then
-              option%io_buffer = 'Temperature ' // trim(string)
-              call printErrMsg(option)
-            endif                              
+              string = 'in flow condition "' // &
+                trim(initial_condition%flow_condition%name) // &
+                '" within initial condition "' // &
+                trim(initial_condition%flow_condition%name) // &
+                '" must be of type Dirichlet or Hydrostatic'
+              ! error checking.  the data must match the state
+              select case(initial_condition%flow_condition%iphase)
+                case(TWO_PHASE_STATE)  
+                  if (.not. &
+                      (general%gas_pressure%itype == DIRICHLET_BC .or. &
+                       general%gas_pressure%itype == HYDROSTATIC_BC)) then
+                    option%io_buffer = 'Gas pressure ' // trim(string)
+                    call printErrMsg(option)
+                  endif
+                  if (.not. &
+                      (general%gas_saturation%itype == DIRICHLET_BC .or. &
+                       general%gas_saturation%itype == HYDROSTATIC_BC)) then
+                    option%io_buffer = 'Gas saturation ' // trim(string)
+                    call printErrMsg(option)
+                  endif
+                case(LIQUID_STATE)
+                  if (.not. &
+                      (general%liquid_pressure%itype == DIRICHLET_BC .or. &
+                       general%liquid_pressure%itype == HYDROSTATIC_BC)) then
+                    option%io_buffer = 'Liquid pressure ' // trim(string)
+                    call printErrMsg(option)
+                  endif
+                  if (.not. &
+                      (general%mole_fraction%itype == DIRICHLET_BC .or. &
+                       general%mole_fraction%itype == HYDROSTATIC_BC)) then
+                    option%io_buffer = 'Mole fraction ' // trim(string)
+                    call printErrMsg(option)
+                  endif
+                case(GAS_STATE)
+                  if (.not. &
+                      (general%gas_pressure%itype == DIRICHLET_BC .or. &
+                       general%gas_pressure%itype == HYDROSTATIC_BC)) then
+                    option%io_buffer = 'Gas pressure ' // trim(string)
+                    call printErrMsg(option)
+                  endif
+                  if (.not. &
+                      (general%mole_fraction%itype == DIRICHLET_BC .or. &
+                       general%mole_fraction%itype == HYDROSTATIC_BC)) then
+                    option%io_buffer = 'Gas saturation ' // trim(string)
+                    call printErrMsg(option)
+                  endif
+              end select
+              if (.not. &
+                  (general%temperature%itype == DIRICHLET_BC .or. &
+                   general%temperature%itype == HYDROSTATIC_BC)) then
+                option%io_buffer = 'Temperature ' // trim(string)
+                call printErrMsg(option)
+              endif                              
               
               
               do icell=1,initial_condition%region%num_cells
