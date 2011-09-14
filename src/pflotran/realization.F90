@@ -1360,6 +1360,7 @@ subroutine RealizAssignFlowInitCond(realization)
   use Condition_module
   use Grid_module
   use Patch_module
+  use water_eos_module
 #ifdef DASVYAT
   use MFD_module, only :MFDInitializeMassMatrices
 #endif
@@ -1376,6 +1377,9 @@ subroutine RealizAssignFlowInitCond(realization)
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:), xx_faces_p(:)
   PetscErrorCode :: ierr
   
+  PetscReal :: temperature, p_sat
+  character(len=MAXSTRINGLENGTH) :: string
+  
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   type(patch_type), pointer :: patch
@@ -1384,6 +1388,7 @@ subroutine RealizAssignFlowInitCond(realization)
   type(coupler_type), pointer :: initial_condition
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(flow_general_condition_type), pointer :: general
 
   option => realization%option
   discretization => realization%discretization
@@ -1401,134 +1406,267 @@ subroutine RealizAssignFlowInitCond(realization)
       grid => cur_patch%grid
 
       select case(option%iflowmode)
-        case(RICHARDS_MODE)
-        case(THC_MODE)
-        case(MPH_MODE)
-        case(IMS_MODE)
-        case(FLASH2_MODE)
-!            call pflow_mphase_setupini(realization)
-        case(G_MODE)
-      end select 
+      
+        case(G_MODE) ! general phase mode
 
-      ! assign initial conditions values to domain
-      if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-        call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
-        call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr); CHKERRQ(ierr)        
-      else
-        call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
-      end if
-      call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+          call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+          call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
       
-      xx_p = -999.d0
+          xx_p = -999.d0
       
-      initial_condition => cur_patch%initial_conditions%first
-      do
+          initial_condition => cur_patch%initial_conditions%first
+          do
       
-        if (.not.associated(initial_condition)) exit
+            if (.not.associated(initial_condition)) exit
 
-        if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            if (.not.associated(initial_condition%flow_aux_real_var)) then
+              if (.not.associated(initial_condition%flow_condition)) then
+                option%io_buffer = 'Flow condition is NULL in initial condition'
+                call printErrMsg(option)
+              endif
+              
+            general => initial_condition%flow_condition%general
+              
+            string = 'in flow condition "' // &
+              trim(initial_condition%flow_condition%name) // &
+              '" within initial condition "' // &
+              trim(initial_condition%flow_condition%name) // &
+              '" must be of type Dirichlet or Hydrostatic'
+            ! error checking.  the data must match the state
+            select case(initial_condition%flow_condition%iphase)
+              case(TWO_PHASE_STATE)  
+                if (.not. &
+                    (general%gas_pressure%itype == DIRICHLET_BC .or. &
+                     general%gas_pressure%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Gas pressure ' // trim(string)
+                  call printErrMsg(option)
+                endif
+                if (.not. &
+                    (general%gas_saturation%itype == DIRICHLET_BC .or. &
+                     general%gas_saturation%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Gas saturation ' // trim(string)
+                  call printErrMsg(option)
+                endif
+              case(LIQUID_STATE)
+                if (.not. &
+                    (general%liquid_pressure%itype == DIRICHLET_BC .or. &
+                     general%liquid_pressure%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Liquid pressure ' // trim(string)
+                  call printErrMsg(option)
+                endif
+                if (.not. &
+                    (general%mole_fraction%itype == DIRICHLET_BC .or. &
+                     general%mole_fraction%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Mole fraction ' // trim(string)
+                  call printErrMsg(option)
+                endif
+              case(GAS_STATE)
+                if (.not. &
+                    (general%gas_pressure%itype == DIRICHLET_BC .or. &
+                     general%gas_pressure%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Gas pressure ' // trim(string)
+                  call printErrMsg(option)
+                endif
+                if (.not. &
+                    (general%mole_fraction%itype == DIRICHLET_BC .or. &
+                     general%mole_fraction%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Gas saturation ' // trim(string)
+                  call printErrMsg(option)
+                endif
+            end select
+            if (.not. &
+                (general%temperature%itype == DIRICHLET_BC .or. &
+                 general%temperature%itype == HYDROSTATIC_BC)) then
+              option%io_buffer = 'Temperature ' // trim(string)
+              call printErrMsg(option)
+            endif                              
+              
+              
+              do icell=1,initial_condition%region%num_cells
+                local_id = initial_condition%region%cell_ids(icell)
+                ghosted_id = grid%nL2G(local_id)
+                iend = local_id*option%nflowdof
+                ibegin = iend-option%nflowdof+1
+                if (cur_patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  iphase_loc_p(ghosted_id) = 0
+                  cycle
+                endif
+                select case(initial_condition%flow_condition%iphase)
+                  case(TWO_PHASE_STATE)
+                    xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF-1) = &
+                      general%gas_pressure%dataset%cur_value(1)
+                    xx_p(ibegin+GENERAL_GAS_SATURATION_DOF-1) = &
+                      general%gas_saturation%dataset%cur_value(1)
+                    temperature = general%temperature%dataset%cur_value(1)
+                    call psat(temperature,p_sat,ierr)
+                    ! p_a = p_g - p_s(T)
+                    xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF-1) = &
+                      general%gas_pressure%dataset%cur_value(1) - &
+                      p_sat
+                  case(LIQUID_STATE)
+                    xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF-1) = &
+                      general%liquid_pressure%dataset%cur_value(1)
+                    xx_p(ibegin+GENERAL_MOLE_FRACTION_DOF-1) = &
+                      general%mole_fraction%dataset%cur_value(1)
+                    xx_p(ibegin+GENERAL_TEMPERATURE_DOF-1) = &
+                      general%temperature%dataset%cur_value(1)
+                  case(GAS_STATE)
+                    xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF-1) = &
+                      general%gas_pressure%dataset%cur_value(1)
+                    xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF-1) = &
+                      general%gas_pressure%dataset%cur_value(1) * &
+                      general%mole_fraction%dataset%cur_value(1)
+                    xx_p(ibegin+GENERAL_TEMPERATURE_DOF-1) = &
+                      general%temperature%dataset%cur_value(1)
+                end select
+                iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
+                cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                  initial_condition%flow_condition%iphase
+              enddo
+            else
+              do iconn=1,initial_condition%connection_set%num_connections
+                local_id = initial_condition%connection_set%id_dn(iconn)
+                ghosted_id = grid%nL2G(local_id)
+                iend = local_id*option%nflowdof
+                ibegin = iend-option%nflowdof+1
+                if (cur_patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  iphase_loc_p(ghosted_id) = 0
+                  cycle
+                endif
+                xx_p(ibegin:iend) = &
+                      initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+                      iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+                cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                  iphase_loc_p(ghosted_id)
+              enddo
+            endif
+            initial_condition => initial_condition%next
+          enddo
+     
+          call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+          call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+              
+        case default
+          ! assign initial conditions values to domain
+          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+            call VecGetArrayF90(field%flow_xx_faces, xx_faces_p, ierr); CHKERRQ(ierr)        
+          else
+            call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+          end if
+          call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+      
+          xx_p = -999.d0
+      
+          initial_condition => cur_patch%initial_conditions%first
+          do
+      
+            if (.not.associated(initial_condition)) exit
+
+            if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
-           if (.not.associated(initial_condition%flow_aux_real_var)) then
-             do icell=1,initial_condition%region%num_cells
-               local_id = initial_condition%region%cell_ids(icell)
-               ghosted_id = grid%nL2G(local_id)
-               if (associated(cur_patch%imat)) then
-                 if (cur_patch%imat(ghosted_id) <= 0) then
-                   iphase_loc_p(ghosted_id) = 0
-                   cycle
-                 endif
-               endif
-               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-             enddo
-           else
-               do iface=1,initial_condition%numfaces_set
-                   ghosted_id = initial_condition%faces_set(iface)
-                   local_id = grid%fG2L(ghosted_id)
-                   if (local_id > 0) then
+               if (.not.associated(initial_condition%flow_aux_real_var)) then
+                 do icell=1,initial_condition%region%num_cells
+                   local_id = initial_condition%region%cell_ids(icell)
+                   ghosted_id = grid%nL2G(local_id)
+                   if (associated(cur_patch%imat)) then
+                     if (cur_patch%imat(ghosted_id) <= 0) then
+                       iphase_loc_p(ghosted_id) = 0
+                       cycle
+                     endif
+                   endif
+                   iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+                 enddo
+               else
+                   do iface=1,initial_condition%numfaces_set
+                       ghosted_id = initial_condition%faces_set(iface)
+                       local_id = grid%fG2L(ghosted_id)
+                       if (local_id > 0) then
+                          iend = local_id*option%nflowdof
+                          ibegin = iend-option%nflowdof+1
+                          xx_faces_p(ibegin:iend) = &
+                          initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
+                       end if
+                    end do
+
+                    do iconn=1,initial_condition%connection_set%num_connections
+                         local_id = initial_condition%region%cell_ids(iconn)
+                         ghosted_id = grid%nL2G(local_id)
+                         iend = local_id*option%nflowdof
+                         ibegin = iend-option%nflowdof+1
+                         if (associated(cur_patch%imat)) then
+                              if (cur_patch%imat(ghosted_id) <= 0) then
+                                    xx_p(ibegin:iend) = 0.d0
+                                    iphase_loc_p(ghosted_id) = 0
+                                    cycle
+                              endif
+                         endif
+                         xx_p(ibegin:iend) = &
+                         initial_condition%flow_aux_real_var(1:option%nflowdof,iconn + initial_condition%numfaces_set)
+                         iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn  + initial_condition%numfaces_set)
+                    enddo
+               end if
+#endif
+            else 
+               if (.not.associated(initial_condition%flow_aux_real_var)) then
+                   if (.not.associated(initial_condition%flow_condition)) then
+                        option%io_buffer = 'Flow condition is NULL in initial condition'
+                        call printErrMsg(option)
+                   endif
+                   do icell=1,initial_condition%region%num_cells
+                      local_id = initial_condition%region%cell_ids(icell)
+                      ghosted_id = grid%nL2G(local_id)
                       iend = local_id*option%nflowdof
                       ibegin = iend-option%nflowdof+1
-                      xx_faces_p(ibegin:iend) = &
-                      initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
-                   end if
-                end do
-
-                do iconn=1,initial_condition%connection_set%num_connections
-                     local_id = initial_condition%region%cell_ids(iconn)
-                     ghosted_id = grid%nL2G(local_id)
-                     iend = local_id*option%nflowdof
-                     ibegin = iend-option%nflowdof+1
-                     if (associated(cur_patch%imat)) then
-                          if (cur_patch%imat(ghosted_id) <= 0) then
-                                xx_p(ibegin:iend) = 0.d0
-                                iphase_loc_p(ghosted_id) = 0
-                                cycle
-                          endif
-                     endif
-                     xx_p(ibegin:iend) = &
-                     initial_condition%flow_aux_real_var(1:option%nflowdof,iconn + initial_condition%numfaces_set)
-                     iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn  + initial_condition%numfaces_set)
-                enddo
-           end if
-#endif
-        else 
-           if (.not.associated(initial_condition%flow_aux_real_var)) then
-               if (.not.associated(initial_condition%flow_condition)) then
-                    option%io_buffer = 'Flow condition is NULL in initial condition'
-                    call printErrMsg(option)
-               endif
-               do icell=1,initial_condition%region%num_cells
-                  local_id = initial_condition%region%cell_ids(icell)
-                  ghosted_id = grid%nL2G(local_id)
-                  iend = local_id*option%nflowdof
-                  ibegin = iend-option%nflowdof+1
-                  if (associated(cur_patch%imat)) then
-                     if (cur_patch%imat(ghosted_id) <= 0) then
-                        xx_p(ibegin:iend) = 0.d0
-                        iphase_loc_p(ghosted_id) = 0
-                        cycle
-                     endif
-                  endif
-                  do idof = 1, option%nflowdof
-                     xx_p(ibegin+idof-1) = &
-                         initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-                  enddo
-                  iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-                  if (option%iflowmode == G_MODE) then
-                      cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                          iphase_loc_p(ghosted_id)
-                  endif
-                enddo
-            else
-                do iconn=1,initial_condition%connection_set%num_connections
-                    local_id = initial_condition%connection_set%id_dn(iconn)
-                    ghosted_id = grid%nL2G(local_id)
-                    iend = local_id*option%nflowdof
-                    ibegin = iend-option%nflowdof+1
-                    if (associated(cur_patch%imat)) then
-                        if (cur_patch%imat(ghosted_id) <= 0) then
-                             xx_p(ibegin:iend) = 0.d0
-                             iphase_loc_p(ghosted_id) = 0
-                             cycle
-                        endif
-                    endif
-                    xx_p(ibegin:iend) = &
-                          initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-                          iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
-                    if (option%iflowmode == G_MODE) then
+                      if (associated(cur_patch%imat)) then
+                         if (cur_patch%imat(ghosted_id) <= 0) then
+                            xx_p(ibegin:iend) = 0.d0
+                            iphase_loc_p(ghosted_id) = 0
+                            cycle
+                         endif
+                      endif
+                      do idof = 1, option%nflowdof
+                         xx_p(ibegin+idof-1) = &
+                             initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                      enddo
+                      iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+                      if (option%iflowmode == G_MODE) then
                           cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                          iphase_loc_p(ghosted_id)
-                    endif
-                 enddo
-             endif
-        end if
-        initial_condition => initial_condition%next
-      enddo
+                              iphase_loc_p(ghosted_id)
+                      endif
+                    enddo
+                else
+                    do iconn=1,initial_condition%connection_set%num_connections
+                        local_id = initial_condition%connection_set%id_dn(iconn)
+                        ghosted_id = grid%nL2G(local_id)
+                        iend = local_id*option%nflowdof
+                        ibegin = iend-option%nflowdof+1
+                        if (associated(cur_patch%imat)) then
+                            if (cur_patch%imat(ghosted_id) <= 0) then
+                                 xx_p(ibegin:iend) = 0.d0
+                                 iphase_loc_p(ghosted_id) = 0
+                                 cycle
+                            endif
+                        endif
+                        xx_p(ibegin:iend) = &
+                              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+                              iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+                        if (option%iflowmode == G_MODE) then
+                              cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                              iphase_loc_p(ghosted_id)
+                        endif
+                     enddo
+                 endif
+            end if
+            initial_condition => initial_condition%next
+          enddo
      
- 
-      call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-      call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+          call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+          call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
 
-      
+      end select 
    
       cur_patch => cur_patch%next
     enddo

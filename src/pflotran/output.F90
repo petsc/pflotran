@@ -441,7 +441,7 @@ subroutine OutputTecplotBlock(realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
@@ -453,12 +453,20 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
+      ! state
+      select case(option%iflowmode)
+        case(G_MODE)
+          call OutputGetVarFromArray(realization,global_vec,STATE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+      end select
+      
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -561,7 +569,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! phase
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)

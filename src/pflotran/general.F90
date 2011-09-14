@@ -488,6 +488,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
+! right now, hardware to Dirichlet or Hydrostatic
+#if 0      
       do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
@@ -496,6 +498,11 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
+#endif
+      do idof = 1, option%nflowdof
+        xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+      enddo
+
       ! set this based on data given 
       global_aux_vars_bc(sum_connection)%istate = &
         boundary_condition%flow_condition%iphase
@@ -1299,12 +1306,15 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   
   do iphase = 1, option%nphase
   
+#if 0  
     select case(iphase)
       case(LIQUID_PHASE)
         bc_type = ibndtype(GENERAL_LIQUID_PRESSURE_DOF)
       case(GAS_PHASE)
         bc_type = ibndtype(GENERAL_GAS_PRESSURE_DOF)
     end select
+#endif
+    bc_type = DIRICHLET_BC
 
     select case(bc_type)
       ! figure out the direction of flow
