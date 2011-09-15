@@ -484,7 +484,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
       call GeneralUpdateState(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
+                              porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
+                              ghosted_id, &  ! for debugging
                               option)
     endif
   enddo
@@ -839,7 +840,8 @@ end subroutine GeneralNumericalJacTest
 !
 ! ************************************************************************** !
 subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
-                                saturation_function,option)
+                                saturation_function,ghosted_id, &
+                                option)
 
   use Option_module
   use Saturation_Function_module
@@ -847,6 +849,7 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   implicit none
 
   type(option_type) :: option
+  PetscInt :: ghosted_id
   type(general_auxvar_type) :: gen_aux_var(0:)
   type(global_auxvar_type) :: global_aux_var
   type(saturation_function_type) :: saturation_function
@@ -856,14 +859,21 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   PetscInt :: idof
 
+#ifdef DEBUG_GENERAL
+  type(global_auxvar_type) :: global_aux_var_debug
+  type(general_auxvar_type) :: general_aux_var_debug
+  call GlobalAuxVarInit(global_aux_var_debug,option)
+  call GeneralAuxVarInit(general_aux_var_debug,option)
+#endif
+
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
        x(GENERAL_LIQUID_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%liquid_phase)
        x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var(ZERO_INTEGER)%xmol(option%air_id,option%liquid_phase)
        x(GENERAL_TEMPERATURE_DOF) = gen_aux_var(ZERO_INTEGER)%temp
        pert(GENERAL_LIQUID_PRESSURE_DOF) = 1.d0
-       pert(GENERAL_MOLE_FRACTION_DOF) = perturbation_tolerance*x(GENERAL_MOLE_FRACTION_DOF)
-       pert(GENERAL_TEMPERATURE_DOF) = perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
+       pert(GENERAL_MOLE_FRACTION_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_MOLE_FRACTION_DOF)
+       pert(GENERAL_TEMPERATURE_DOF) = -1.d0*perturbation_tolerance*x(GENERAL_TEMPERATURE_DOF)
     case(GAS_STATE)
        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%gas_phase)
        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var(ZERO_INTEGER)%pres(option%air_pressure_id)
@@ -898,6 +908,18 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
     x_pert(idof) = x(idof) + pert(idof)
     call GeneralAuxVarCompute(x_pert,gen_aux_var(idof),global_aux_var, &
                               saturation_function,0.d0,0.d0,option)
+#ifdef DEBUG_GENERAL
+    call GlobalAuxVarCopy(global_aux_var,global_aux_var_debug,option)
+    call GeneralAuxVarCopy(gen_aux_var(idof),general_aux_var_debug,option)
+    call GeneralUpdateState(general_aux_var_debug,global_aux_var,&
+                            saturation_function,0.d0,0.d0,ghosted_id,option)
+    if (global_aux_var%istate /= global_aux_var_debug%istate) then
+      write(option%io_buffer,'(''Change in state: '',i3,'' -> '',i3)') &
+        global_aux_var%istate, global_aux_var_debug%istate
+      call printMsg(option)
+    endif
+#endif
+
   enddo
   
 end subroutine GeneralAuxVarPerturb
@@ -2264,7 +2286,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     call GeneralAuxVarPerturb(gen_aux_vars(:,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
-                              option)
+                              ghosted_id,option)
   enddo  
   
   ! Interior Flux Terms -----------------------------------  
@@ -2682,8 +2704,8 @@ end subroutine GeneralMaxChange
 ! date: 05/25/11
 !
 ! ************************************************************************** !
-subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
-                              saturation_function,por,perm,option)
+subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
+                              saturation_function,por,perm,ghosted_id,option)
 
   use Option_module
   use Global_Aux_module
@@ -2694,6 +2716,7 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
   implicit none
 
   type(option_type) :: option
+  PetscInt :: ghosted_id
   type(saturation_function_type) :: saturation_function
   type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
@@ -2729,6 +2752,10 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
         x(GENERAL_AIR_PRESSURE_DOF) = epsilon
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''Liquid -> 2 Phase at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
       endif
     case(GAS_STATE)
       call psat(gen_aux_var%temp,Ps,ierr)
@@ -2738,6 +2765,10 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''Gas -> 2 Phase at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
       endif
     case(TWO_PHASE_STATE)
       if (gen_aux_var%sat(gid) < 0.d0) then
@@ -2748,6 +2779,10 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
         x(GENERAL_MOLE_FRACTION_DOF) = gen_aux_var%xmol(acid,lid)
         x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
         flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''2 Phase -> Liquid at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
       else if (gen_aux_var%sat(gid) > 1.d0) then
         ! convert to gas state
         global_aux_var%istate = GAS_STATE
@@ -2756,6 +2791,10 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var,&
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_TEMPERATURE_DOF) = gen_aux_var%temp
         flag = PETSC_TRUE
+#ifdef DEBUG_GENERAL
+        write(option%io_buffer,'(''2 Phase -> Gas at Cell '',i11)') ghosted_id
+        call printMsg(option)
+#endif        
       endif
   end select
   
