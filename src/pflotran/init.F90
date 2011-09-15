@@ -1305,7 +1305,11 @@ subroutine InitReadInput(simulation)
         call InputReadWord(input,option,flow_condition%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'FLOW_CONDITION','name') 
         call printMsg(option,flow_condition%name)
-        call FlowConditionRead(flow_condition,input,option)
+        if (option%iflowmode == G_MODE) then
+          call FlowConditionGeneralRead(flow_condition,input,option)
+        else
+          call FlowConditionRead(flow_condition,input,option)
+        endif
         call FlowConditionAddToList(flow_condition,realization%flow_conditions)
         nullify(flow_condition)
         

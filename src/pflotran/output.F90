@@ -1440,7 +1440,7 @@ subroutine OutputTecplotPoint(realization)
   endif
   
 1000 format(es13.6,1x)
-1001 format(i11,1x)
+1001 format(i4,1x)
 1009 format('')
 
   do local_id = 1, grid%nlmax
@@ -1901,7 +1901,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
 
   ! write points
 1000 format(es13.6,1x)
-1001 format(i11,1x)
+1001 format(i4,1x)
 1002 format(3(es13.6,1x))
 1009 format('')
 
@@ -7553,6 +7553,8 @@ subroutine OutputMassBalanceNew(realization)
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(G_MODE)
+        option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
+        call printErrMsg(option)
         call GeneralComputeMassBalance(realization,sum_kg(1,:))
     end select
     int_mpi = option%nflowspec*option%nphase

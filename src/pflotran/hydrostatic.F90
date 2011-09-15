@@ -276,15 +276,22 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     if (pressure < option%minimum_hydrostatic_pressure) &
       pressure = option%minimum_hydrostatic_pressure
 
-    if (condition%pressure%itype == SEEPAGE_BC) then
-      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
-    else if (condition%pressure%itype == CONDUCTANCE_BC) then
-      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
-      coupler%flow_aux_real_var(2,iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
-    else
-      coupler%flow_aux_real_var(1,iconn) = pressure
-    endif
+    ! assign pressure
+    select case(option%iflowmode)
+      case(G_MODE)
+        coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = pressure
+      case default
+        if (condition%pressure%itype == SEEPAGE_BC) then
+          coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+        else if (condition%pressure%itype == CONDUCTANCE_BC) then
+          coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+          coupler%flow_aux_real_var(2,iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
+        else
+          coupler%flow_aux_real_var(1,iconn) = pressure
+        endif
+    end select
 
+    ! assign other dofs
     select case(option%iflowmode)
       case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
         temperature = temperature_at_datum + &
@@ -305,7 +312,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_real_var(GENERAL_MOLE_FRACTION_DOF,iconn) = concentration_at_datum
 
         coupler%flow_aux_int_var(GENERAL_LIQUID_PRESSURE_DOF,iconn) = condition%iphase
-        coupler%flow_aux_int_var(1,iconn) = condition%iphase
       case default
         coupler%flow_aux_int_var(1,iconn) = 1
     end select

@@ -141,6 +141,7 @@ module Condition_module
   end type tran_constraint_coupler_type
       
   public :: FlowConditionCreate, FlowConditionDestroy, FlowConditionRead, &
+            FlowConditionGeneralRead, &
             FlowConditionAddToList, FlowConditionInitList, FlowConditionDestroyList, &
             FlowConditionGetPtrFromList, FlowConditionUpdate, &
             FlowConditionPrint, &
@@ -700,7 +701,6 @@ subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
  
 end subroutine FlowConditionDatasetGetTimes
 
-#ifndef GLENN
 ! ************************************************************************** !
 !
 ! FlowConditionRead: Reads a condition from the input file
@@ -1168,15 +1168,15 @@ subroutine FlowConditionRead(condition,input,option)
 
 end subroutine FlowConditionRead
 
-#else
 ! ************************************************************************** !
 !
-! FlowConditionRead: Reads a condition from the input file
+! FlowConditionGeneralRead: Reads a condition from the input file for
+!                           general mode
 ! author: Glenn Hammond
-! date: 10/31/07
+! date: 09/14/11
 !
 ! ************************************************************************** !
-subroutine FlowConditionRead(condition,input,option)
+subroutine FlowConditionGeneralRead(condition,input,option)
 
   use Option_module
   use Input_module
@@ -1459,8 +1459,7 @@ subroutine FlowConditionRead(condition,input,option)
     
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
-end subroutine FlowConditionRead
-#endif
+end subroutine FlowConditionGeneralRead
 
 ! ************************************************************************** !
 !

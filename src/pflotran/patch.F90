@@ -930,24 +930,38 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     dof3 = PETSC_TRUE
                 end select
               case(LIQUID_STATE)
-                select case(general%liquid_pressure%itype)
-                  case(DIRICHLET_BC)
-                    coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
-                      general%liquid_pressure%dataset%cur_value(1)
-                    dof1 = PETSC_TRUE
-                end select
-                select case(general%mole_fraction%itype)
-                  case(DIRICHLET_BC)
-                    coupler%flow_aux_real_var(GENERAL_MOLE_FRACTION_DOF,1:num_connections) = &
-                      general%mole_fraction%dataset%cur_value(1)
-                    dof2 = PETSC_TRUE
-                end select
-                select case(general%temperature%itype)
-                  case(DIRICHLET_BC)
-                    coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,1:num_connections) = &
-                      general%temperature%dataset%cur_value(1)
-                    dof3 = PETSC_TRUE
-                end select
+                if (general%liquid_pressure%itype == HYDROSTATIC_BC) then
+                  if (general%mole_fraction%itype /= DIRICHLET_BC) then
+                    option%io_buffer = 'Hydrostatic liquid state pressure bc for flow condition "' // &
+                      trim(flow_condition%name) // '" requires a mole fraction bc of type dirichlet'
+                    call printErrMsg(option)
+                  endif
+                  if (general%temperature%itype /= DIRICHLET_BC) then
+                    option%io_buffer = 'Hydrostatic liquid state pressure bc for flow condition "' // &
+                      trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                    call printErrMsg(option)
+                  endif
+                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+                else
+                  select case(general%liquid_pressure%itype)
+                    case(DIRICHLET_BC)
+                      coupler%flow_aux_real_var(GENERAL_LIQUID_PRESSURE_DOF,1:num_connections) = &
+                        general%liquid_pressure%dataset%cur_value(1)
+                      dof1 = PETSC_TRUE
+                  end select
+                  select case(general%mole_fraction%itype)
+                    case(DIRICHLET_BC)
+                      coupler%flow_aux_real_var(GENERAL_MOLE_FRACTION_DOF,1:num_connections) = &
+                        general%mole_fraction%dataset%cur_value(1)
+                      dof2 = PETSC_TRUE
+                  end select
+                  select case(general%temperature%itype)
+                    case(DIRICHLET_BC)
+                      coupler%flow_aux_real_var(GENERAL_TEMPERATURE_DOF,1:num_connections) = &
+                        general%temperature%dataset%cur_value(1)
+                      dof3 = PETSC_TRUE
+                  end select
+                endif
               case(GAS_STATE)
                 select case(general%gas_pressure%itype)
                   case(DIRICHLET_BC)
