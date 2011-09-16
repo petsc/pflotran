@@ -3380,8 +3380,8 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
-!        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ugdm%mapping_ltog,ierr)
+!        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
       case default
         option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
         call printErrMsg(option)
