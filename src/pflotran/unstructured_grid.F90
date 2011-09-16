@@ -1055,7 +1055,7 @@ subroutine UGridDecompose(unstructured_grid,option)
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
   ! create an adjacency matrix for calculating the duals (connnections)
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call printMsg(option,'Adjacency matrix')
 #endif
 
@@ -1067,13 +1067,13 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! do not free local_vertices; MatAdjDestroy will do it
   ! do not free local_vertex_offset; MatAdjDestroy will do it
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Adj.out',viewer,ierr)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Dual matrix')
 #endif
 
@@ -1083,13 +1083,13 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(local_vertices)
   deallocate(local_vertex_offset)
   
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Dual.out',viewer,ierr)
   call MatView(Dual_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Partitioning')
 #endif
 
@@ -1105,7 +1105,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call MatPartitioningApply(Part,is_new,ierr)
   call MatPartitioningDestroy(Part,ierr)
 
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is.out',viewer,ierr)
   call ISView(is_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)  
@@ -1217,7 +1217,7 @@ subroutine UGridDecompose(unstructured_grid,option)
                           ja_ptr,success,ierr)
   call MatDestroy(Dual_mat,ierr)
  
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Before element scatter')
 #endif
 
@@ -1229,7 +1229,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecScatterEnd(vec_scatter,elements_old,elements_natural,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'After element scatter')
   call PetscViewerASCIIOpen(option%mycomm,'elements_old.out',viewer,ierr)
   call VecView(elements_old,viewer,ierr)
@@ -1238,7 +1238,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   
   call VecDestroy(elements_old,ierr)
 
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_natural.out',viewer,ierr)
   call VecView(elements_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1264,7 +1264,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecDuplicate(elements_natural,elements_petsc,ierr)
   call VecCopy(elements_natural,elements_petsc,ierr)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Lists of ids')
 #endif
 
@@ -1296,7 +1296,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! make cell_ids_natural 1-based again
   unstructured_grid%cell_ids_natural = unstructured_grid%cell_ids_natural + 1
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'ao.out',viewer,ierr)
   call AOView(unstructured_grid%ao_natural_to_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1332,7 +1332,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   enddo
   call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Application ordering')
 #endif
 
@@ -1342,7 +1342,7 @@ subroutine UGridDecompose(unstructured_grid,option)
                             int_array,ierr)
   int_array = int_array + 1                
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'PETSc-ordered duals')
 #endif
 
@@ -1372,7 +1372,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array)
   call VecDestroy(elements_natural,ierr)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1431,7 +1431,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call printMsg(option,'Glenn: Add code that adds all ghost cells and removed duplicates')
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_local_unsorted.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1490,7 +1490,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
 
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_local.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1621,7 +1621,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array2)
   deallocate(int_array4)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_vert_local.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1698,7 +1698,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     unstructured_grid%vertices(ivertex)%z = 0.d0
   enddo
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_scatter.out',viewer,ierr)
   call ISView(is_scatter,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1717,7 +1717,7 @@ subroutine UGridDecompose(unstructured_grid,option)
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
 
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old.out',viewer,ierr)
   call VecView(vertices_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1735,7 +1735,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   enddo
   call VecRestoreArrayF90(vertices_new,vec_ptr,ierr)
   
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   write(string,*) option%myrank
   string = 'vertex_coord_new' // trim(adjustl(string)) // '.out'
   call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
@@ -1748,6 +1748,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%nlmax = unstructured_grid%num_cells_local
   unstructured_grid%ngmax = unstructured_grid%num_cells_local + &
        unstructured_grid%num_ghost_cells
+
 
 #endif
   
@@ -1802,7 +1803,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ugdm => UGDMCreate()
   ugdm%ndof = ndof
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Vectors')
 #endif
 
@@ -1837,7 +1838,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_local_petsc,ierr)
   deallocate(int_array)
   
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_local_petsc.out',viewer,ierr)
   call ISView(ugdm%is_local_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1852,13 +1853,13 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosts_local,ierr)
   deallocate(int_array)
   
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_local.out',viewer,ierr)
   call ISView(ugdm%is_ghosts_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
   
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'Index Sets')
 #endif
 
@@ -1871,7 +1872,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosts_petsc,ierr)
   deallocate(int_array)
   
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_petsc.out',viewer,ierr)
   call ISView(ugdm%is_ghosts_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1886,7 +1887,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_local_local,ierr)
   deallocate(int_array)
   
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_local_local.out',viewer,ierr)
   call ISView(ugdm%is_local_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1901,7 +1902,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosted_local,ierr)
   deallocate(int_array)
   
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_local.out',viewer,ierr)
   call ISView(ugdm%is_ghosted_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1920,41 +1921,41 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosted_petsc,ierr)
   deallocate(int_array)
   
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)
   call ISView(ugdm%is_ghosted_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
                  
   ! create a local to global mapping
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'ISLocalToGlobalMapping')
 #endif
 
   call ISLocalToGlobalMappingCreateIS(ugdm%is_ghosted_petsc, &
                                       ugdm%mapping_ltog,ierr)
 
-#if GEH_DEBUG                                      
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'mapping_ltog.out',viewer,ierr)
   call ISLocalToGlobalMappingView(ugdm%mapping_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
                
   ! create a block local to global mapping 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'ISLocalToGlobalMappingBlock')
 #endif
 
   call ISLocalToGlobalMappingBlock(ugdm%mapping_ltog,ndof, &
                                    ugdm%mapping_ltogb,ierr)
                                       
-#if GEH_DEBUG                                      
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'mapping_ltogb.out',viewer,ierr)
   call ISLocalToGlobalMappingView(ugdm%mapping_ltogb,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-#if GEH_DEBUG                            
+#if UGRID_DEBUG
   call printMsg(option,'local to global')
 #endif
 
@@ -1962,13 +1963,13 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterCreate(ugdm%local_vec,ugdm%is_local_local,ugdm%global_vec, &
                         ugdm%is_local_petsc,ugdm%scatter_ltog,ierr)
                         
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltog.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'global to local')
 #endif
 
@@ -1976,13 +1977,13 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterCreate(ugdm%global_vec,ugdm%is_ghosted_petsc,ugdm%local_vec, &
                         ugdm%is_ghosted_local,ugdm%scatter_gtol,ierr)
                         
-#if GEH_DEBUG                        
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_gtol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call printMsg(option,'local to local')
 #endif
   
@@ -1993,7 +1994,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterRemap(ugdm%scatter_ltol,int_ptr,PETSC_NULL_INTEGER,ierr)
   call ISRestoreIndicesF90(ugdm%is_local_local,int_ptr,ierr)
 
-#if GEH_DEBUG
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltol.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_ltol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -2027,7 +2028,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                      int_array,PETSC_COPY_VALUES,ugdm%is_local_natural,ierr)
   deallocate(int_array)
 
-#if GEH_DEBUG  
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_local_natural.out',viewer,ierr)
   call ISView(ugdm%is_local_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -2040,7 +2041,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                         ugdm%is_local_natural,ugdm%scatter_gton,ierr)
   call VecDestroy(vec_tmp,ierr)
 
-#if GEH_DEBUG                        
+#if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_gton.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_gton,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
