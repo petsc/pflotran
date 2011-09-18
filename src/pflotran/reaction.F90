@@ -38,7 +38,8 @@ module Reaction_module
             RTAccumulation, &
             RTAccumulationDerivative, &
             RTPrintAuxVar, &
-            RMineralSaturationIndex
+            RMineralSaturationIndex, &
+            DoubleLayer
 
 contains
 
@@ -1047,16 +1048,16 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
         do
           if (.not.associated(cur_prefactor)) exit
           ! if not initialized
-          if (dabs(cur_prefactor%rate - -999.d0) < 1.d-40) then
+          if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
             cur_prefactor%rate = tstrxn%rate
-            if (dabs(cur_prefactor%rate - -999.d0) < 1.d-40) then
+            if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
               option%io_buffer = 'Both outer and inner prefactor rate ' // &
                 'constants uninitialized for kinetic mineral ' // &
                 cur_mineral%name // '.'
               call printErrMsg(option)
             endif
           endif
-          if (dabs(cur_prefactor%activation_energy - -999.d0) < 1.d-40) then
+          if (dabs(cur_prefactor%activation_energy - (-999.d0)) < 1.d-40) then
             cur_prefactor%activation_energy = tstrxn%activation_energy
           endif
           cur_prefactor => cur_prefactor%next
@@ -2474,6 +2475,11 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
     123 format(/,'  primary species  retardation')  
     124 format(2x,a12,4x,1pe12.4)
+
+#ifdef DOUBLE_LAYER
+    call DoubleLayer (constraint_coupler,reaction,option)
+#endif
+
   endif
   
   ! Ion Exchange
@@ -2602,6 +2608,101 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   endif
 
 end subroutine ReactionPrintConstraint
+
+! ************************************************************************** !
+!
+! DoubleLayer: Calculates double layer potential, surface charge, and
+!              sorbed surface complex concentrations
+! author: Peter C. Lichtner
+! date: 10/28/08
+!
+! ************************************************************************** !
+subroutine DoubleLayer(constraint_coupler,reaction,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Condition_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(tran_constraint_coupler_type) :: constraint_coupler
+  type(reaction_type), pointer :: reaction
+
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  type(global_auxvar_type), pointer :: global_auxvar
+
+  PetscReal, parameter :: rgas = 8.3144621d0
+  PetscReal, parameter :: tk = 273.15d0
+  PetscReal, parameter :: epsilon = 78.5d0
+  PetscReal, parameter :: epsilon0 = 8.854187817d-12
+  PetscReal, parameter :: faraday = 96485.d0
+  
+  PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
+               charge_balance, potential, tempk, debye_length
+
+  PetscInt :: iphase
+  PetscInt :: i, icomp, icplx, irxn, ncplx
+
+    rt_auxvar => constraint_coupler%rt_auxvar
+    global_auxvar => constraint_coupler%global_auxvar
+
+    iphase = 1
+    global_auxvar%temp(iphase) = option%reference_temperature
+    tempk = tk + global_auxvar%temp(iphase)
+    
+    potential = 0.1d0 ! initial guess
+    boltzmann = exp(-faraday*potential/(rgas*tempk))
+        
+    fac = sqrt(epsilon*epsilon0*rgas*tempk)
+    
+    ionic_strength = 0.d0
+    charge_balance = 0.d0
+    dbl_charge = 0.d0
+    do icomp = 1, reaction%naqcomp      
+      charge_balance = charge_balance + reaction%primary_spec_Z(icomp)* &
+                       rt_auxvar%total(icomp,1)
+                                        
+      ionic_strength = ionic_strength + reaction%primary_spec_Z(icomp)**2* &
+                       rt_auxvar%pri_molal(icomp)
+      dbl_charge = dbl_charge + rt_auxvar%pri_molal(icomp)* &
+                   (boltzmann**reaction%primary_spec_Z(icomp) - 1.d0)
+    enddo
+    
+    if (reaction%neqcplx > 0) then    
+      do i = 1, reaction%neqcplx
+        ionic_strength = ionic_strength + reaction%eqcplx_Z(i)**2* &
+                         rt_auxvar%sec_molal(i)
+        dbl_charge = dbl_charge + rt_auxvar%sec_molal(i)* &
+                     (boltzmann**reaction%eqcplx_Z(i) - 1.d0)
+      enddo
+    endif
+    ionic_strength = 0.5d0*ionic_strength
+    if (dbl_charge > 0.d0) then
+      dbl_charge = fac*sqrt(2.d0*dbl_charge)
+    else
+      print *,'neg. dbl_charge: ',dbl_charge
+      dbl_charge = fac*sqrt(2.d0*(-dbl_charge))
+    endif
+    
+    surface_charge = 0.d0
+    do irxn = 1, reaction%neqsrfcplxrxn
+      ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
+      do i = 1, ncplx
+        icplx = reaction%eqsrfcplx_rxn_to_complex(i,irxn)
+        surface_charge = surface_charge + reaction%eqsrfcplx_Z(icplx)* &
+                         rt_auxvar%eqsrfcplx_conc(icplx)
+      enddo
+    enddo
+    surface_charge = faraday*surface_charge
+    
+    debye_length = sqrt(fac/(2.d0*ionic_strength*1.d3))/faraday
+    
+    print *,'dbl: ',debye_length,dbl_charge,surface_charge,ionic_strength, &
+                    charge_balance,tempk,boltzmann
+
+end subroutine DoubleLayer
 
 ! ************************************************************************** !
 !
@@ -4602,7 +4703,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
   PetscInt, parameter :: needs_to_be_fixed = 1
   
-  PetscReal :: arrhenius_factor, rgas = 8.3147295d-3
+  PetscReal :: arrhenius_factor, rgas = 8.3144621d-3
 
   iphase = 1                         
 

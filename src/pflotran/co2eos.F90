@@ -565,7 +565,7 @@ contains
       d = a7 + (a8 + a9*tr1)*tr2
       e = a10 + (a11 + a12*tr1)*tr2
 
-      rgas = 0.08314467 !bar dm**3 / k
+      rgas = 0.083144621 !bar dm**3 / k
       vc = rgas*tc/pc
 
 !-----solve
@@ -836,7 +836,7 @@ contains
 
 !-----Poynting term
 !     vid = 3.5d-5
-!     rgas = 8.3147295D0
+!     rgas = 8.3144621D0
 !     call sat(tx,ps)
  
 !     poyn = exp(-(VID*(PCX-PS))/(Rgas*Tk))
