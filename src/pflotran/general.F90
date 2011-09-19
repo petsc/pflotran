@@ -481,7 +481,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
-      call GeneralUpdateState(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
+      call GeneralUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
+                              gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                               porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
@@ -911,7 +912,7 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_debug,option)
     call GeneralAuxVarCopy(gen_aux_var(idof),general_aux_var_debug,option)
-    call GeneralUpdateState(general_aux_var_debug,global_aux_var,&
+    call GeneralUpdateState(x_pert,general_aux_var_debug,global_aux_var,&
                             saturation_function,0.d0,0.d0,ghosted_id,option)
     if (global_aux_var%istate /= global_aux_var_debug%istate) then
       write(option%io_buffer,'(''Change in state: '',i3,'' -> '',i3)') &
@@ -2704,7 +2705,7 @@ end subroutine GeneralMaxChange
 ! date: 05/25/11
 !
 ! ************************************************************************** !
-subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
+subroutine GeneralUpdateState(x,gen_aux_var,global_aux_var, &
                               saturation_function,por,perm,ghosted_id,option)
 
   use Option_module
@@ -2748,8 +2749,11 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
       call psat(gen_aux_var%temp,Ps,ierr)
       if (gen_aux_var%pres(vpid) <= Ps) then
         global_aux_var%istate = TWO_PHASE_STATE
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
+!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+!geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
+        ! vapor pressure needs to be >= epsilon
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(lid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(lid) - Ps
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
@@ -2761,7 +2765,8 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
       call psat(gen_aux_var%temp,Ps,ierr)
       if (gen_aux_var%pres(vpid) >= Ps) then
         global_aux_var%istate = TWO_PHASE_STATE
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE

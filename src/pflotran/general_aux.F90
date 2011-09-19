@@ -203,15 +203,26 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
   wid = option%water_id
   eid = option%energy_id
   
+  !geh gen_aux_var%temp = 0.d0
+#ifdef DEBUG_GENERAL  
+  gen_aux_var%H = -999.d0
+  gen_aux_var%U = -999.d0
+  gen_aux_var%kvr = -999.d0
+  gen_aux_var%pres = -999.d0
+  gen_aux_var%sat = -999.d0
+  gen_aux_var%den = -999.d0
+  gen_aux_var%den_kg = -999.d0
+  gen_aux_var%xmol = -999.d0
+#else
   gen_aux_var%H = 0.d0
   gen_aux_var%U = 0.d0
   gen_aux_var%kvr = 0.d0
   gen_aux_var%pres = 0.d0
-  gen_aux_var%temp = 0.d0
   gen_aux_var%sat = 0.d0
   gen_aux_var%den = 0.d0
   gen_aux_var%den_kg = 0.d0
   gen_aux_var%xmol = 0.d0
+#endif  
   
   select case(global_aux_var%istate)
     case(LIQUID_STATE)
@@ -248,6 +259,9 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
       gen_aux_var%sat(lid) = 1.d0 - gen_aux_var%sat(gid)
       gen_aux_var%pres(vpid) = gen_aux_var%pres(gid) - gen_aux_var%pres(apid)
       
+      guess = gen_aux_var%temp
+      call Tsat(gen_aux_var%temp,gen_aux_var%pres(vpid),dummy,guess,ierr)
+
       call SatFuncGetCapillaryPressure(gen_aux_var%pres(cpid), &
                                        gen_aux_var%sat(lid), &
                                        saturation_function,option)      
@@ -258,12 +272,9 @@ subroutine GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                              gen_aux_var%pres(vpid),K_H)
       gen_aux_var%xmol(acid,lid) = gen_aux_var%pres(apid) / &
                                   (gen_aux_var%pres(gid)*K_H)
-      gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(apid,lid)
+      gen_aux_var%xmol(wid,lid) = 1.d0 - gen_aux_var%xmol(acid,lid)
       gen_aux_var%xmol(acid,gid) = gen_aux_var%pres(apid) / gen_aux_var%pres(gid)
       gen_aux_var%xmol(wid,gid) = 1.d0 - gen_aux_var%xmol(acid,gid)
-
-      guess = gen_aux_var%temp
-      call Tsat(gen_aux_var%temp,gen_aux_var%pres(vpid),dummy,guess,ierr)
 
   end select
 
