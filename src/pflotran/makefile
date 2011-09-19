@@ -35,7 +35,7 @@ CHUAN_FLAG = -DCHUAN_CO2
 endif
 
 ifdef scott 
-SCOTT_FLAGS = -DENABLE_UNSTRUCTURED -DGEH_DEBUG -fbounds-check
+SCOTT_FLAGS = -DDEBUG_GENERAL
 endif 
 
 ifdef coll
