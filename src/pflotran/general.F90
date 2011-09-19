@@ -1064,6 +1064,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscReal :: area
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: upweight
+  PetscReal :: uH
   type(general_parameter_type) :: general_parameter
   PetscReal :: Res(option%nflowdof)
 
@@ -1109,8 +1110,8 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
       ! MJ/kmol
-      H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
-              (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
+ !geh     H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
+ !geh             (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
 
       gravity = (upweight_adj*gen_aux_var_up%den(iphase) + &
                 (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
@@ -1123,9 +1124,11 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       if (delta_pressure >= 0.D0) then
         ukvr = gen_aux_var_up%kvr(iphase)
         xmol(:) = gen_aux_var_up%xmol(:,iphase)
+        uH = gen_aux_var_up%H(iphase)
       else
         ukvr = gen_aux_var_dn%kvr(iphase)
         xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+        uH = gen_aux_var_dn%H(iphase)
       endif      
 
       if (ukvr > floweps) then
@@ -1143,9 +1146,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
         enddo
         ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-        Res(energy_id) = Res(energy_id) + mole_flux * &
-                                          gen_aux_var_dn%H(iphase)
-        
+        Res(energy_id) = Res(energy_id) + mole_flux * uH
       endif                   
     endif ! sat > eps
   enddo
@@ -1325,7 +1326,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave
-  PetscReal :: H_ave
+  PetscReal :: H_ave, uH
   PetscReal :: perm_ave_over_dist
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity
@@ -1387,8 +1388,8 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           density_ave = upweight*gen_aux_var_up%den(iphase)+ &
                         (1.D0-upweight)*gen_aux_var_dn%den(iphase)
           ! MJ/kmol
-          H_ave = upweight*gen_aux_var_up%H(iphase)+ &
-                  (1.D0-upweight)*gen_aux_var_dn%H(iphase)
+!geh          H_ave = upweight*gen_aux_var_up%H(iphase)+ &
+!geh                  (1.D0-upweight)*gen_aux_var_dn%H(iphase)
 
           gravity = (upweight*gen_aux_var_up%den(iphase) + &
                     (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
@@ -1410,9 +1411,11 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           if (delta_pressure >= 0.D0) then
             ukvr = gen_aux_var_up%kvr(iphase)
             xmol(:) = gen_aux_var_up%xmol(:,iphase)
+            uH = gen_aux_var_up%H(iphase)
           else
             ukvr = gen_aux_var_dn%kvr(iphase)
             xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+            uH = gen_aux_var_dn%H(iphase)
           endif      
 
           if (ukvr > floweps) then
@@ -1452,7 +1455,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
       enddo
       ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-      Res(energy_id) = Res(energy_id) + mole_flux * H_ave
+      Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
     endif
   enddo
   
