@@ -481,7 +481,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     if (update_state) then
-      call GeneralUpdateState(gen_aux_vars(ZERO_INTEGER,ghosted_id), &
+      call GeneralUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
+                              gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                               porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
@@ -911,7 +912,7 @@ subroutine GeneralAuxVarPerturb(gen_aux_var,global_aux_var, &
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_debug,option)
     call GeneralAuxVarCopy(gen_aux_var(idof),general_aux_var_debug,option)
-    call GeneralUpdateState(general_aux_var_debug,global_aux_var,&
+    call GeneralUpdateState(x_pert,general_aux_var_debug,global_aux_var,&
                             saturation_function,0.d0,0.d0,ghosted_id,option)
     if (global_aux_var%istate /= global_aux_var_debug%istate) then
       write(option%io_buffer,'(''Change in state: '',i3,'' -> '',i3)') &
@@ -1063,6 +1064,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
   PetscReal :: area
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: upweight
+  PetscReal :: uH
   type(general_parameter_type) :: general_parameter
   PetscReal :: Res(option%nflowdof)
 
@@ -1108,8 +1110,8 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       density_ave = upweight_adj*gen_aux_var_up%den(iphase)+ &
                     (1.D0-upweight_adj)*gen_aux_var_dn%den(iphase)
       ! MJ/kmol
-      H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
-              (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
+ !geh     H_ave = upweight_adj*gen_aux_var_up%H(iphase)+ &
+ !geh             (1.D0-upweight_adj)*gen_aux_var_dn%H(iphase)
 
       gravity = (upweight_adj*gen_aux_var_up%den(iphase) + &
                 (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
@@ -1122,9 +1124,11 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
       if (delta_pressure >= 0.D0) then
         ukvr = gen_aux_var_up%kvr(iphase)
         xmol(:) = gen_aux_var_up%xmol(:,iphase)
+        uH = gen_aux_var_up%H(iphase)
       else
         ukvr = gen_aux_var_dn%kvr(iphase)
         xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+        uH = gen_aux_var_dn%H(iphase)
       endif      
 
       if (ukvr > floweps) then
@@ -1142,9 +1146,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
           Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
         enddo
         ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-        Res(energy_id) = Res(energy_id) + mole_flux * &
-                                          gen_aux_var_dn%H(iphase)
-        
+        Res(energy_id) = Res(energy_id) + mole_flux * uH
       endif                   
     endif ! sat > eps
   enddo
@@ -1324,7 +1326,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   PetscReal :: fmw_phase(option%nphase)
   PetscReal :: xmol(option%nflowspec)  
   PetscReal :: density_ave
-  PetscReal :: H_ave
+  PetscReal :: H_ave, uH
   PetscReal :: perm_ave_over_dist
   PetscReal :: delta_pressure, delta_xmol, delta_temp
   PetscReal :: gravity
@@ -1386,8 +1388,8 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           density_ave = upweight*gen_aux_var_up%den(iphase)+ &
                         (1.D0-upweight)*gen_aux_var_dn%den(iphase)
           ! MJ/kmol
-          H_ave = upweight*gen_aux_var_up%H(iphase)+ &
-                  (1.D0-upweight)*gen_aux_var_dn%H(iphase)
+!geh          H_ave = upweight*gen_aux_var_up%H(iphase)+ &
+!geh                  (1.D0-upweight)*gen_aux_var_dn%H(iphase)
 
           gravity = (upweight*gen_aux_var_up%den(iphase) + &
                     (1.D0-upweight)*gen_aux_var_dn%den(iphase)) &
@@ -1409,9 +1411,11 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
           if (delta_pressure >= 0.D0) then
             ukvr = gen_aux_var_up%kvr(iphase)
             xmol(:) = gen_aux_var_up%xmol(:,iphase)
+            uH = gen_aux_var_up%H(iphase)
           else
             ukvr = gen_aux_var_dn%kvr(iphase)
             xmol(:) = gen_aux_var_dn%xmol(:,iphase)
+            uH = gen_aux_var_dn%H(iphase)
           endif      
 
           if (ukvr > floweps) then
@@ -1451,7 +1455,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
       enddo
       ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
-      Res(energy_id) = Res(energy_id) + mole_flux * H_ave
+      Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
     endif
   enddo
   
@@ -2704,7 +2708,7 @@ end subroutine GeneralMaxChange
 ! date: 05/25/11
 !
 ! ************************************************************************** !
-subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
+subroutine GeneralUpdateState(x,gen_aux_var,global_aux_var, &
                               saturation_function,por,perm,ghosted_id,option)
 
   use Option_module
@@ -2748,8 +2752,11 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
       call psat(gen_aux_var%temp,Ps,ierr)
       if (gen_aux_var%pres(vpid) <= Ps) then
         global_aux_var%istate = TWO_PHASE_STATE
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
-        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
+!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+!geh        x(GENERAL_AIR_PRESSURE_DOF) = epsilon
+        ! vapor pressure needs to be >= epsilon
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(lid)
+        x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(lid) - Ps
         x(GENERAL_GAS_SATURATION_DOF) = epsilon
         flag = PETSC_TRUE
 #ifdef DEBUG_GENERAL
@@ -2761,7 +2768,8 @@ subroutine GeneralUpdateState(gen_aux_var,global_aux_var, &
       call psat(gen_aux_var%temp,Ps,ierr)
       if (gen_aux_var%pres(vpid) >= Ps) then
         global_aux_var%istate = TWO_PHASE_STATE
-        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+!geh        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)
+        x(GENERAL_GAS_PRESSURE_DOF) = gen_aux_var%pres(vpid)+gen_aux_var%pres(apid)
         x(GENERAL_AIR_PRESSURE_DOF) = gen_aux_var%pres(apid)
         x(GENERAL_GAS_SATURATION_DOF) = 1.d0 - epsilon
         flag = PETSC_TRUE

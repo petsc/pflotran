@@ -2011,12 +2011,12 @@ subroutine setFlowMode(option)
     case('GENERAL')
       option%iflowmode = G_MODE
       option%nphase = 2
-      option%liquid_phase = 1      
-      option%gas_phase = 2 
+      option%liquid_phase = 1  ! liquid_pressure
+      option%gas_phase = 2     ! gas_pressure
 
-      option%air_pressure_id = 2
-      option%capillary_pressure_id = 3
-      option%vapor_pressure_id = 4
+      option%air_pressure_id = 3
+      option%capillary_pressure_id = 4
+      option%vapor_pressure_id = 5
 
       option%water_id = 1
       option%air_id = 2
