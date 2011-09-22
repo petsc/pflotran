@@ -129,7 +129,7 @@ END
 
 :=========================== flow conditions ==================================
 FLOW_CONDITION initial
-UNITS Pa,C,M,yr
+:UNITS Pa,C,M,yr
 TYPE
 PRESSURE hydrostatic
 TEMPERATURE zero_gradient
@@ -144,7 +144,7 @@ ENTHALPY 0.d0 0.d0
 /
 
 FLOW_CONDITION top
-UNITS Pa,C,M,yr
+:UNITS Pa,C,M,yr
 TYPE
 PRESSURE dirichlet
 TEMPERATURE zero_gradient
@@ -159,7 +159,7 @@ ENTHALPY 0.d0 0.d0
 /
 
 FLOW_CONDITION source
-UNITS Pa,C,M,yr
+:UNITS Pa,C,M,yr
 SYNC_TIMESTEP_WITH_UPDATE
 TYPE
 RATE mass_rate
