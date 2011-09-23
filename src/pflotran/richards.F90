@@ -2525,20 +2525,20 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rresidual.bin',FILE_MODE_WRITE,&
-                              viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+!geh    call PetscViewerBinaryOpen(realization%option%mycomm,'Rresidual.bin',FILE_MODE_WRITE,&
+!geh                              viewer,ierr)
+!geh    call VecView(r,viewer,ierr)
+!geh    call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rxx.bin',FILE_MODE_WRITE,&
-                              viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+!geh    call PetscViewerBinaryOpen(realization%option%mycomm,'Rxx.bin',FILE_MODE_WRITE,&
+!geh                              viewer,ierr)
+!geh    call VecView(xx,viewer,ierr)
+!geh    call PetscViewerDestroy(viewer,ierr)
 
   endif
 
