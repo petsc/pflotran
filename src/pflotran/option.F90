@@ -85,6 +85,8 @@ module Option_module
 
     PetscInt :: ntrandof
   
+    PetscBool :: variables_swapped
+    
     PetscInt :: iflag
     PetscBool :: init_stage
     PetscBool :: print_screen_flag
@@ -528,6 +530,7 @@ subroutine OptionInitRealization(option)
 
   option%mimetic = PETSC_FALSE
  
+  option%variables_swapped = PETSC_FALSE
 
 end subroutine OptionInitRealization
 

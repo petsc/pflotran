@@ -532,7 +532,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
-  
+
   patch%aux%General%aux_vars_up_to_date = PETSC_TRUE
 
 end subroutine GeneralUpdateAuxVarsPatch
@@ -1675,6 +1675,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   
+  option%variables_swapped = PETSC_FALSE
   ! pass #1 for internal and boundary flux terms
   cur_level => realization%level_list%first
   do
@@ -1688,6 +1689,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+  
+  if (option%variables_swapped) then
+    call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx,NFLOWDOF)
+  endif
 
   ! pass #2 for everything else
   cur_level => realization%level_list%first
@@ -2809,6 +2814,7 @@ subroutine GeneralUpdateState(x,gen_aux_var,global_aux_var, &
   if (flag) then
     call GeneralAuxVarCompute(x,gen_aux_var, global_aux_var,&
                               saturation_function,por,perm,option)
+    option%variables_swapped = PETSC_TRUE
   endif
 
 end subroutine GeneralUpdateState
