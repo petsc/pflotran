@@ -45,12 +45,17 @@ subroutine GeneralTimeCut(realization)
   use Realization_module
   use Option_module
   use Field_module
+  use Level_module
+  use Patch_module
  
   implicit none
   
   type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
   
   PetscErrorCode :: ierr
   PetscInt :: local_id
@@ -60,8 +65,66 @@ subroutine GeneralTimeCut(realization)
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
   call GeneralInitializeTimestep(realization)  
+  
+  ! loop over patches
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call GeneralTimeCutPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo  
  
 end subroutine GeneralTimeCut
+
+! ************************************************************************** !
+!
+! GeneralTimeCutPatch: Resets arrays for time step cut
+! author: Glenn Hammond
+! date: 09/26/11
+!
+! ************************************************************************** !
+subroutine GeneralTimeCutPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Patch_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  
+  PetscInt :: local_id, ghosted_id
+  PetscReal, pointer :: iphas_loc_p(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  global_aux_vars => patch%aux%Global%aux_vars
+  
+  ! restore stored state
+  call GridVecGetArrayF90(grid,field%iphas_loc,iphas_loc_p, ierr)
+  do ghosted_id = 1, grid%ngmax
+    global_aux_vars(ghosted_id)%istate = iphas_loc_p(ghosted_id)
+  enddo
+  call GridVecRestoreArrayF90(grid,field%iphas_loc,iphas_loc_p, ierr)  
+ 
+end subroutine GeneralTimeCutPatch
 
 ! ************************************************************************** !
 !
@@ -570,6 +633,7 @@ subroutine GeneralUpdateSolution(realization)
   use Field_module
   use Level_module
   use Patch_module
+  use Discretization_module
   
   implicit none
   
@@ -597,6 +661,12 @@ subroutine GeneralUpdateSolution(realization)
     cur_level => cur_level%next
   enddo
   
+  ! update ghosted iphase_loc values (must come after 
+  ! GeneralUpdateSolutionPatch)
+  call DiscretizationLocalToLocal(realization%discretization, &
+                                  field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
+  
 end subroutine GeneralUpdateSolution
 
 
@@ -611,14 +681,44 @@ end subroutine GeneralUpdateSolution
 subroutine GeneralUpdateSolutionPatch(realization)
 
   use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Patch_module
     
   implicit none
   
   type(realization_type) :: realization
 
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(general_auxvar_type), pointer :: gen_aux_vars(:,:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  
+  PetscInt :: local_id, ghosted_id
+  PetscReal, pointer :: iphas_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  gen_aux_vars => patch%aux%General%aux_vars  
+  global_aux_vars => patch%aux%Global%aux_vars
+  
   if (realization%option%compute_mass_balance_new) then
     call GeneralUpdateMassBalancePatch(realization)
   endif
+  
+  ! update stored state
+  call GridVecGetArrayF90(grid,field%iphas_loc,iphas_loc_p,ierr)
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    iphas_loc_p(ghosted_id) = global_aux_vars(ghosted_id)%istate
+  enddo
+  call GridVecRestoreArrayF90(grid,field%iphas_loc,iphas_loc_p,ierr)
 
 end subroutine GeneralUpdateSolutionPatch
 
