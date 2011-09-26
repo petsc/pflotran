@@ -737,6 +737,8 @@ subroutine ReactionRead(reaction,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           if (input%ierr /= 0) exit
           select case(trim(word))
+            case('OFF')
+              reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
             case('LAG')
               reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG    
             case('NEWTON')

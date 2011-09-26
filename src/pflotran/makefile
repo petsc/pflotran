@@ -268,7 +268,7 @@ waypoint.o : option.o
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o observation.o \
            reactive_transport.o \
-           thc.o richards.o mphase.o flash2.o \
+           thc.o richards.o mphase.o flash2.o general.o \
            discretization.o logging.o amrgrid.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
@@ -302,7 +302,7 @@ immis_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 flash2_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
 		saturation_function.o
-timestepper.o : thc.o richards.o mphase.o flash2.o \
+timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 mass_balance.o input.o string.o reactive_transport.o
