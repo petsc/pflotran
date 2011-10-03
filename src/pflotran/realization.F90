@@ -202,6 +202,7 @@ subroutine RealizationCreateDiscretization(realization)
   use AMR_Grid_module
   use MFD_module
   use Coupler_module
+  use Discretization_module
   
   implicit none
   
@@ -214,10 +215,13 @@ subroutine RealizationCreateDiscretization(realization)
   type(coupler_type), pointer :: boundary_condition
   PetscErrorCode :: ierr
   PetscInt, allocatable :: int_tmp(:)
-  PetscInt :: test,j
+  PetscInt :: test,j, num_LP_dof
   PetscOffset :: i_da
   PetscReal, pointer :: real_tmp(:)
-  
+  type(dm_ptr_type), pointer :: dm_ptr
+
+
+
   option => realization%option
   field => realization%field
  
@@ -225,6 +229,8 @@ subroutine RealizationCreateDiscretization(realization)
   discretization => realization%discretization
   
   call DiscretizationCreateDMs(discretization,option)
+
+
 
   option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
@@ -416,8 +422,10 @@ subroutine RealizationCreateDiscretization(realization)
    if (discretization%itype==STRUCTURED_GRID_MIMETIC) then
 
      if (option%nflowdof > 0) then
+
+       num_LP_dof = (grid%nlmax_faces + grid%nlmax)*option%nflowdof
    
-       call VecCreateMPI(option%mycomm,grid%nlmax_faces*option%nflowdof, &
+       call VecCreateMPI(option%mycomm, num_LP_dof, &
                     PETSC_DETERMINE,field%flow_xx_faces,ierr)
 
 
@@ -434,7 +442,7 @@ subroutine RealizationCreateDiscretization(realization)
                                                         field%flow_yy_faces)
 
 
-       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
+       call VecCreateSeq(PETSC_COMM_SELF, (grid%ngmax_faces + grid%ngmax)*option%nflowdof, field%flow_xx_loc_faces, ierr)
        call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof,ierr)
 
 !       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
@@ -456,7 +464,8 @@ subroutine RealizationCreateDiscretization(realization)
 
      end if
 
-     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
+     dm_ptr => DiscretizationGetDMPtrFromIndex(discretization, NFLOWDOF)
+     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, dm_ptr%sgdm, NFLOWDOF, option)
   
    end if
 #endif
@@ -478,6 +487,7 @@ end subroutine RealizationCreateDiscretization
 subroutine RealizationLocalizeRegions(realization)
 
   use Option_module
+  use String_module
 
   implicit none
   
@@ -485,7 +495,28 @@ subroutine RealizationLocalizeRegions(realization)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type (region_type), pointer :: cur_region, cur_region2
+  type(option_type), pointer :: option
 
+  option => realization%option
+
+  ! check to ensure that region names are not duplicated
+  cur_region => realization%regions%first
+  do
+    if (.not.associated(cur_region)) exit
+    cur_region2 => cur_region%next
+    do
+      if (.not.associated(cur_region2)) exit
+      if (StringCompare(cur_region%name,cur_region2%name,MAXWORDLENGTH)) then
+        option%io_buffer = 'Duplicate region names: ' // trim(cur_region%name)
+        call printErrMsg(option)
+      endif
+      cur_region2 => cur_region2%next
+    enddo
+    cur_region => cur_region%next
+  enddo
+
+  ! localize the regions on each patch
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
@@ -1422,6 +1453,8 @@ subroutine RealizAssignFlowInitCond(realization)
                do iface=1,initial_condition%numfaces_set
                    ghosted_id = initial_condition%faces_set(iface)
                    local_id = grid%fG2L(ghosted_id)
+!  if (option%myrank == 0) write(*,*) iface, ghosted_id, local_id,&
+!                                initial_condition%flow_aux_real_var(1:option%nflowdof,iface)                        
                    if (local_id > 0) then
                       iend = local_id*option%nflowdof
                       ibegin = iend-option%nflowdof+1
@@ -1444,6 +1477,7 @@ subroutine RealizAssignFlowInitCond(realization)
                      endif
                      xx_p(ibegin:iend) = &
                      initial_condition%flow_aux_real_var(1:option%nflowdof,iconn + initial_condition%numfaces_set)
+                     xx_faces_p(grid%nlmax_faces + ibegin:grid%nlmax_faces + iend) = xx_p(ibegin:iend) ! for LP -formulation
                      iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn  + initial_condition%numfaces_set)
                 enddo
            end if
@@ -1504,7 +1538,8 @@ subroutine RealizAssignFlowInitCond(realization)
      
  
       call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-      call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+      
+     
 
       
    
@@ -1515,6 +1550,8 @@ subroutine RealizAssignFlowInitCond(realization)
    
   ! update dependent vectors
   call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+  
+
   call VecCopy(field%flow_xx, field%flow_yy, ierr)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
@@ -1522,16 +1559,22 @@ subroutine RealizAssignFlowInitCond(realization)
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
 
-    
+
+!    if (option%myrank==0) then
+!        do local_id = 1, grid%nlmax_faces
+!            write(*,*) "RealizAssignFlowInitCond ", local_id, xx_faces_p(local_id)
+!        end do
+!        read(*,*)
+!    end if
+
+
     call VecRestoreArrayF90(field%flow_xx_faces,xx_faces_p, ierr)
 
     call RealizationSetUpBC4Faces(realization)
 
-
-
-
-    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
-
+  
+    !call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+    call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
     call MFDInitializeMassMatrices(realization%discretization%grid,&
                                   realization%field, &

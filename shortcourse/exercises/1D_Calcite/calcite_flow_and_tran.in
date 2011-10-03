@@ -75,7 +75,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION default
 END
 
-:=========================== saturation functions =============================
+:=========================== material properties ==============================
 SATURATION_FUNCTION default
 END
 
@@ -147,7 +147,7 @@ TRANSPORT_CONDITION inlet
   /
 END
 
-:=========================== transport constraints ============================
+:=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
     H+     1.d-8      F

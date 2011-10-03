@@ -537,7 +537,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       endif
       do ! loop on transport until it reaches the target time
         if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-     !global implicit
+          !global implicit
           call StepperStepTransportDT_GI(realization,tran_stepper, &
                                       flow_t0,option%flow_time,failure)
         else
@@ -801,6 +801,10 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(RICHARDS_MODE)
           fac = 0.5d0
+          write(*,*) "flow_stepper%num_newton_iterations", flow_stepper%num_newton_iterations
+          write(*,*) "flow_stepper%iaccel", flow_stepper%iaccel
+          write(*,*) "option%dpmxe", option%dpmxe
+          write(*,*) "option%dpmax", option%dpmax
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
@@ -809,6 +813,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             ut = up
           endif
           dtt = fac * dt * (1.d0 + ut)
+!              write(*,*) "dtt", dtt
         case(G_MODE)   
           fac = 0.5d0
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
@@ -1090,6 +1095,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Option_module
   use Solver_module
   use Field_module
+  use Richards_module
   
   implicit none
 
@@ -1167,6 +1173,11 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       endif
     endif
 
+#ifdef DASVYAT
+!     write(*,*) "Flow begins"
+!     read(*,*)
+#endif
+
     if (option%ntrandof > 0) then ! store initial saturations for transport
       call GlobalUpdateAuxVars(realization,TIME_T)
     endif
@@ -1185,6 +1196,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       case(G_MODE)
         call GeneralInitializeTimestep(realization)
     end select
+
     
     do
       
@@ -1215,22 +1227,34 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#ifdef DASVYAT_DEBUG
+#if 1
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            call VecView(field%flow_xx_faces, viewer, ierr)
-            call VecView(field%flow_xx, viewer, ierr)
-            call vecView(field%flow_r_faces, viewer, ierr)
+!             call VecView(field%flow_xx_faces, viewer, ierr)
+     !       call VecView(field%flow_xx, viewer, ierr)
+!             call VecView(field%flow_r_faces, viewer, ierr)
+              call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
+
+             write(*,*) "MFD residual", tempreal
     else
             call VecView(field%flow_xx, viewer, ierr)
     end if
-    write(*,*) "VecView error", ierr
+
+    call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
+
+    call VecView(field%flow_r, viewer, ierr)
+    call VecNorm(field%flow_r, NORM_2, tempreal, ierr)
+
+
+    write(*,*) "FV residual", tempreal
+
     call PetscViewerDestroy(viewer,ierr)
 
     write(*,*) "After SNESSolve" 
-    read(*,*)   
+!     stop
+!      read(*,*)   
      
 #endif
 

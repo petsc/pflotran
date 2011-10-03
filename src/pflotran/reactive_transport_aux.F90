@@ -128,6 +128,7 @@ module Reactive_Transport_Aux_module
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
+    PetscReal, pointer :: diffusion_activation_energy(:)
 #ifdef OS_STATISTICS
 ! use PetscReal for large counts
     PetscInt :: newton_call_count
@@ -215,7 +216,9 @@ function RTAuxCreate(option)
 
   allocate(aux%rt_parameter)
   allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
+  allocate(aux%rt_parameter%diffusion_activation_energy(option%nphase))
   aux%rt_parameter%diffusion_coefficient = 0.d0
+  aux%rt_parameter%diffusion_activation_energy = 0.d0
   aux%rt_parameter%dispersivity = 0.d0
   aux%rt_parameter%ncomp = 0
   aux%rt_parameter%naqcomp = 0
@@ -742,6 +745,9 @@ subroutine RTAuxDestroy(aux)
     if (associated(aux%rt_parameter%diffusion_coefficient)) &
       deallocate(aux%rt_parameter%diffusion_coefficient)
     nullify(aux%rt_parameter%diffusion_coefficient)
+    if (associated(aux%rt_parameter%diffusion_activation_energy)) &
+      deallocate(aux%rt_parameter%diffusion_activation_energy)
+    nullify(aux%rt_parameter%diffusion_activation_energy)
     if (associated(aux%rt_parameter%pri_spec_to_coll_spec)) &
       deallocate(aux%rt_parameter%pri_spec_to_coll_spec)
     nullify(aux%rt_parameter%pri_spec_to_coll_spec)

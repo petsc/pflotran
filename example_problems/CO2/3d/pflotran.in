@@ -108,7 +108,6 @@ TYPE
 PRESSURE hydrostatic
 TEMPERATURE zero_gradient
 CONCENTRATION zero_gradient
-ENTHALPY dirichlet
 /
 IPHASE 1
 PRESSURE 2D7 2D7
@@ -123,7 +122,6 @@ TYPE
 PRESSURE dirichlet
 TEMPERATURE zero_gradient
 CONCENTRATION zero_gradient
-ENTHALPY dirichlet
 /
 IPHASE 1
 PRESSURE 2D7 2D7
@@ -139,7 +137,6 @@ RATE mass_rate
 PRESSURE dirichlet
 TEMPERATURE dirichlet
 CONCENTRATION dirichlet
-ENTHALPY dirichlet
 /
 RATE file c2i.txt  ! kg/s
 PRESSURE 2.d7 2.d7

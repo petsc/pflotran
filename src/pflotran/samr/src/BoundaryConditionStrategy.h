@@ -1,6 +1,6 @@
 
-#ifndef included_BoundaryConditionStrategy_H_
-#define included_BoundaryConditionStrategy_H_
+#ifndef included_boundary_condition_strategy
+#define included_boundary_condition_strategy
 
 #ifndef included_SAMRAI_config
 #include "SAMRAI_config.h"

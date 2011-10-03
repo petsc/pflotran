@@ -293,6 +293,7 @@ subroutine Init(simulation)
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
                                       option)
+
     call MatSetOptionsPrefix(flow_solver%Jpre,"flow_",ierr)
 
     if (flow_solver%J_mat_type /= MATMFFD) then
@@ -316,7 +317,7 @@ subroutine Init(simulation)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
-                                 RichardsResidualMFD, &
+                                 RichardsResidualMFDLP, &
                                  realization,ierr)
           case default
             call SNESSetFunction(flow_solver%snes,field%flow_r, &
@@ -349,7 +350,7 @@ subroutine Init(simulation)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             RichardsJacobianMFD,realization,ierr)
+                             RichardsJacobianMFDLP,realization,ierr)
 !sp          case(STRUCTURED_GRID,AMR_GRID)
           case default !sp 
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
@@ -756,7 +757,6 @@ subroutine Init(simulation)
 
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
-  
   call PetscLogEventEnd(logging%event_init,ierr)
 
 end subroutine Init

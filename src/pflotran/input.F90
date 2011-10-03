@@ -556,7 +556,7 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   character(len=MAXWORDLENGTH) :: word
   PetscBool :: return_blank_error
   
-  PetscInt :: i, begins, ends
+  PetscInt :: i, begins, ends, lenword
   character(len=1) :: tab, backslash
 
   if (InputError(input)) return
@@ -565,7 +565,8 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   backslash = achar(92)
 
   ! Initialize character string to blank.
-  do i=1,len_trim(word)
+  lenword = len_trim(word)
+  do i=1,lenword
     word(i:i) = ' '
   enddo
 
