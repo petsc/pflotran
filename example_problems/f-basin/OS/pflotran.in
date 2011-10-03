@@ -699,7 +699,7 @@ TYPE
 FLUX neumann
 :FLUX dirichlet
 /
-FLUX 6.02486d-7 !kg/s (19 m/y)
+FLUX 6.02486d-7 !m/s (19 m/y)
 :INTERPOLATION linear
 :FLUX FILE f-basin.src !6.02486d-7 !m/s (19 m/y a la Flach: 1955-88)
 /
@@ -710,7 +710,7 @@ TYPE
 FLUX neumann
 :FLUX dirichlet
 /
-FLUX 1.18398d-8 !kg/s (0.37338 m/y)
+FLUX 1.18398d-8 !m/s (0.37338 m/y)
 /
 
 FLOW_CONDITION Upgradient

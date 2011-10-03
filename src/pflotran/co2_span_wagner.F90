@@ -60,6 +60,7 @@
       character*1 :: tab
       
       PetscReal :: temparray(15)
+      PetscInt :: status
       
       tab = char(9)
       q = '","'
@@ -405,7 +406,11 @@
     if (iitable == 1) then
       print *,'Writing Table lookup file ...'
       if (myrank==0) print *,'--> open co2data.dat'
-      open(unit=122,file='co2data.dat',status='unknown')
+      open(unit=122,file='co2data.dat',status='old',iostat=status)
+      if (status /= 0) then
+        print *, 'file: co2data.dat not found.  Copy from pflotran/database directory.'
+        stop
+      endif
       write(122,'(''TITLE= "'',''co2data.dat'',''"'')')
       write(122,'(''VARIABLES= "'',a6,100(a3,a6))') &
           'p',q,'T',q,'d',q,'dddT',q,'dddp',q,'fg',q,'dfgdp',q,'dfgdT',q, &

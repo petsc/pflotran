@@ -537,11 +537,8 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
      dbeta_dp(i) = dukvr_dp(i)*den(i) + ukvr(i)*dden_dp(i)
 
 
-     denB(i) = sq_faces(i)*den(i)
      BAR(i) = sq_faces(i)*ukvr(i)*den(i)
      BdARdp(i) = sq_faces(i)*dbeta_dp(i)
-  end do
-
 #ifdef DASVYAT_DEBUG
    if (ghosted_cell_id==1) then
      write(*,*) "cntr pressure", pres(1)
@@ -554,14 +551,23 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
   end if
 #endif
 
+    end if
 
-  sat = global_aux_var%sat(1)
-  ds_dp = rich_aux_var%dsat_dp
-  PorVol_dt = porosity*volume/option%flow_dt
+!   if (v_darcy(i) > 0)  then
+        ukvr(i) = rich_aux_var%kvr_x
+        dukvr_dp(i) = rich_aux_var%dkvr_x_dp 
+!   else 
+!        ukvr(i) = neig_kvr(i)
+!        dukvr_dp(i) = 0.!nieg_dkvr_dp(i)
+!   end if
 
-!  write(*,*) "Sat", global_aux_var%sat(1), Accum(1)
+!      ukvr(i) = upweight*rich_aux_var%kvr_x + (1.D0-upweight)*neig_kvr(i)
+!      dukvr_dp(i) = upweight*rich_aux_var%dkvr_x_dp + (1.D0-upweight)* nieg_dkvr_dp(i)    
 
+!     dukvr_dp = rich_aux_var%dkvr_x_dp
 
+     beta(i) = ukvr(i)*den(i)
+     dbeta_dp(i) = dukvr_dp(i)*den(i) + ukvr(i)*dden_dp(i)
 
 
   E = 0.
@@ -601,6 +607,17 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
    end do
    aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
 
+#ifdef DASVYAT_DEBUG
+   if (ghosted_cell_id==1) then
+     write(*,*) "cntr pressure", pres(1)
+     write(*,*) "sq ", (sq_faces(iface),iface=1,6)
+     write(*,*) "p ", (face_pres(iface) + bc_g(iface)/sq_faces(iface),iface=1,6)
+     write(*,*) "den ", (den(iface),iface=1,6)
+     write(*,*) "den_dp ", (dden_dp(iface),iface=1,6)
+     write(*,*) "dbeta_dp ", ( dbeta_dp(i),i=1,6)
+     write(*,*) "Accum ", Accum(1)
+  end if
+#endif
 
    do iface = 1, aux_var%numfaces
           aux_var%dRp_dl(iface) = 0.
@@ -610,22 +627,18 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
          end do
    end do
     
-
-
-
+  ds_dp = rich_aux_var%dsat_dp
+  PorVol_dt = porosity*volume/option%flow_dt
     aux_var%Rl = 0
     aux_var%dRl_dp = 0
     CWCl = 0
-
    do iface = 1, aux_var%numfaces
      do jface = 1, aux_var%numfaces
        CWCl(iface) = CWCl(iface) + sq_faces(iface)*aux_var%MassMatrixInv(iface, jface) * &
                                    sq_faces(jface)*face_pres(jface)
      end do
    end do
-
    do iface = 1, aux_var%numfaces
-
      aux_var%Rl(iface) = -sq_faces(iface)*aux_var%WB(iface)*pres(1) &       
                                    + CWCl(iface)  & 
                                    + sq_faces(iface)*Wg(iface) & 
@@ -638,7 +651,6 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
      ! write(36,*)  aux_var%Rl(iface), bc_h(iface), ukvr(iface), den(iface), pres(1)
    end do
-
 #ifdef DASVYAT_DEBUG
 !   if ((ghosted_cell_id == 1)) then
 !      write(40,*) "Rp ", aux_var%Rp
@@ -669,7 +681,6 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
   do iface = 1, aux_var%numfaces
       rhs(iface) = -aux_var%dRl_dp(iface)*aux_var%Rp/aux_var%dRp_dp + aux_var%Rl(iface)
  !     write(36,*) "rhs", rhs(iface), -aux_var%dRl_dp(iface), aux_var%Rp, aux_var%dRp_dp , aux_var%Rl(iface)
-  end do
 
 
 end subroutine MFDAuxGenerateRhs
@@ -729,9 +740,14 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 
   upweight = 0.5
  
+  do iface = 1, numfaces
+     Clm(iface) = sq_faces(iface)*face_pres(iface) + bc_g(iface)
+     Rgr(iface) = den(iface)*aux_var%gr(iface)
+  end do 
 
+  WClm = matmul(aux_var%MassMatrixInv, Clm)
 
-  do i = 1 , numfaces
+  BARWClm = dot_product(WClm, BAR)
     if (bnd(i)==1) then 
         call MFDComputeDensity(global_aux_var, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
     else  
@@ -783,7 +799,6 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
      denB(i) = sq_faces(i)*den(i)
      BAR(i) = sq_faces(i)*ukvr(i)*den(i)
      BdARdp(i) = sq_faces(i)*dbeta_dp(i)
-  end do
 
 
 
@@ -800,7 +815,6 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 
   Wg = 0.
 
-  do iface = 1, numfaces
      Clm(iface) = sq_faces(iface)*face_pres(iface) + bc_g(iface)
      Rgr(iface) = den(iface)*aux_var%gr(iface)
   end do 
@@ -814,6 +828,7 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
   BdARdpWClm = dot_product(WClm, BdARdp)
   div_grav_term = dot_product(Rgr, BAR)
   
+!   write(*,*) "aux_var%Rp", aux_var%Rp, BARWB*pres(1), BARWClm, f(1),  div_grav_term
 
    aux_var%Rp = BARWB*pres(1) - BARWClm  + f(1) + div_grav_term
 
@@ -894,8 +909,7 @@ aux_var%dRp_dneig(iface)=aux_var%dRp_dneig(iface) + sq_faces(iface)*den(iface)*d
                                    + sq_faces(iface)*Wg(iface) & 
                                    - sq_faces(iface)*den(iface)*aux_var%gr(iface)&
                                    - bc_h(iface)/ukvr(iface)
-
-
+     
      
      aux_var%dRl_dp(iface) = -sq_faces(iface)*aux_var%WB(iface) - sq_faces(iface)*dden_dp(iface)*aux_var%gr(iface)
 
@@ -951,8 +965,8 @@ aux_var%dRp_dneig(iface)=aux_var%dRp_dneig(iface) + sq_faces(iface)*den(iface)*d
   end do
   rhs(aux_var%numfaces + 1) = aux_var%Rp
 
-
 end subroutine MFDAuxGenerateRhs_LP
+
 
 
 
@@ -1316,8 +1330,6 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
      end if
 #endif
     
-
-
      darcy_v = 0.
      do j = 1, aux_var%numfaces
         darcy_v = darcy_v + ukvr(i)*aux_var%MassMatrixInv(i, j)* &
@@ -1334,6 +1346,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
     DIV = DIV + den(i)*darcy_v*sq_faces(i)
 
     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id.and.local_id>0) cycle
+
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
         if (local_face_id > 0) then
@@ -1417,6 +1430,9 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
 ! TEST CONST DEN 
 !   den = 55.3d-0 
 !   dden_dp = 0
+ 
+!  den = 55.3d-0 
+!  dden_dp = 0
  
 
 end subroutine MFDComputeDensity

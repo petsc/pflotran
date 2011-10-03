@@ -106,6 +106,8 @@ end function WaypointListCreate
 ! ************************************************************************** !
 subroutine WaypointInsertInList(new_waypoint,waypoint_list)
 
+  use Utility_module
+
   type(waypoint_type), pointer :: new_waypoint
   type(waypoint_list_type) :: waypoint_list
 
@@ -122,9 +124,10 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   waypoint => waypoint_list%first
   if (associated(waypoint)) then ! list exists
     ! if waypoint time matches another waypoint time, merge them
-    if ((new_waypoint%time > 0.999999d0*waypoint%time .and. &
-         new_waypoint%time < 1.000001d0*waypoint%time) .or. &
+!geh    if ((new_waypoint%time > 0.999999d0*waypoint%time .and. &
+!geh         new_waypoint%time < 1.000001d0*waypoint%time) .or. &
          ! need to account for waypoint%time = 0.d0
+    if (Equal(new_waypoint%time,waypoint%time) .or. &
         (new_waypoint%time < 1.d-40 .and. &
          waypoint%time < 1.d-40)) then ! same
       call WaypointMerge(waypoint,new_waypoint)
@@ -139,8 +142,9 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
         ! find its location in the list
         do
           if (associated(waypoint)) then 
-            if (new_waypoint%time > 0.999999d0*waypoint%time .and. &
-                new_waypoint%time < 1.000001d0*waypoint%time) then ! same
+            if (Equal(new_waypoint%time,waypoint%time)) then
+!geh            if (new_waypoint%time > 0.999999d0*waypoint%time .and. &
+!geh                new_waypoint%time < 1.000001d0*waypoint%time) then ! same
               call WaypointMerge(waypoint,new_waypoint)
               return
             else if (associated(waypoint%next)) then 
@@ -491,7 +495,7 @@ end function WaypointSkipToTime
 ! date: 05/20/11
 !
 ! ************************************************************************** !
-subroutine WaypointListPrint(list,option)
+subroutine WaypointListPrint(list,option,output_option)
 
   use Option_module
 
@@ -499,6 +503,7 @@ subroutine WaypointListPrint(list,option)
   
   type(waypoint_list_type), pointer :: list
   type(option_type) :: option
+  type(output_option_type) :: output_option
 
   type(waypoint_type), pointer :: cur_waypoint
   PetscInt :: icount
@@ -523,7 +528,7 @@ subroutine WaypointListPrint(list,option)
   cur_waypoint => list%first
   do 
     if (.not.associated(cur_waypoint)) exit
-    call WaypointPrint(cur_waypoint,option)
+    call WaypointPrint(cur_waypoint,option,output_option)
     icount = icount + 1
     cur_waypoint => cur_waypoint%next
   enddo
@@ -547,7 +552,7 @@ end subroutine WaypointListPrint
 ! date: 05/20/11
 !
 ! ************************************************************************** !
-subroutine WaypointPrint(waypoint,option)
+subroutine WaypointPrint(waypoint,option,output_option)
 
   use Option_module
 
@@ -555,6 +560,9 @@ subroutine WaypointPrint(waypoint,option)
   
   type(waypoint_type), pointer :: waypoint
   type(option_type) :: option
+  type(output_option_type) :: output_option
+
+  character(len=MAXSTRINGLENGTH) :: string
 
   10 format('  ',a20,':',10es13.5)
   20 format('  ',a20,':',10i6)
@@ -565,24 +573,28 @@ subroutine WaypointPrint(waypoint,option)
 
   if (OptionPrintToScreen(option)) then
     write(*,110) 'Waypoint:'
-    write(*,10) 'Time', waypoint%time
+    write(string,*) 'Time [' // trim(adjustl(output_option%tunit)) // ']'
+    write(*,10) trim(string), waypoint%time/output_option%tconv
     write(*,30) 'Print Output', waypoint%print_output
     write(*,30) 'Print Tr. Output', waypoint%print_tr_output
     write(*,30) 'Update Conditions', waypoint%update_conditions
     write(*,30) 'Print Output', waypoint%print_output
-    write(*,10) 'Max DT', waypoint%dt_max
+    write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
+    write(*,10) trim(string), waypoint%dt_max/output_option%tconv
     write(*,30) 'Final', waypoint%final
     write(*,100)
   endif
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,110) 'Waypoint:'
-    write(option%fid_out,10) 'Time', waypoint%time
+    write(string,*) 'Time [' // trim(adjustl(output_option%tunit)) // ']'
+    write(option%fid_out,10) trim(string), waypoint%time/output_option%tconv
     write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
     write(option%fid_out,30) 'Update Conditions', waypoint%update_conditions
     write(option%fid_out,30) 'Print Output', waypoint%print_output
-    write(option%fid_out,10) 'Max DT', waypoint%dt_max
+    write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
+    write(option%fid_out,10) trim(string), waypoint%dt_max/output_option%tconv
     write(option%fid_out,30) 'Final', waypoint%final
     write(option%fid_out,100)
   endif

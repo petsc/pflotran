@@ -37,7 +37,9 @@ module Reaction_module
             RTAuxVarCompute, &
             RTAccumulation, &
             RTAccumulationDerivative, &
-            RTPrintAuxVar
+            RTPrintAuxVar, &
+            RMineralSaturationIndex, &
+            DoubleLayer
 
 contains
 
@@ -735,6 +737,8 @@ subroutine ReactionRead(reaction,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           if (input%ierr /= 0) exit
           select case(trim(word))
+            case('OFF')
+              reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
             case('LAG')
               reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG    
             case('NEWTON')
@@ -807,11 +811,11 @@ subroutine ReactionRead(reaction,input,option)
       reaction%print_tot_conc_type = TOTAL_MOLARITY
     endif
   endif
-  if (reaction%print_tot_conc_type == 0) then
+  if (reaction%print_secondary_conc_type == 0) then
     if (reaction%initialize_with_molality) then
-      reaction%print_tot_conc_type = TOTAL_MOLALITY
+      reaction%print_secondary_conc_type = SECONDARY_MOLALITY
     else
-      reaction%print_tot_conc_type = TOTAL_MOLARITY
+      reaction%print_secondary_conc_type = SECONDARY_MOLARITY
     endif
   endif
   if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl + &
@@ -1046,16 +1050,16 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
         do
           if (.not.associated(cur_prefactor)) exit
           ! if not initialized
-          if (dabs(cur_prefactor%rate - -999.d0) < 1.d-40) then
+          if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
             cur_prefactor%rate = tstrxn%rate
-            if (dabs(cur_prefactor%rate - -999.d0) < 1.d-40) then
+            if (dabs(cur_prefactor%rate - (-999.d0)) < 1.d-40) then
               option%io_buffer = 'Both outer and inner prefactor rate ' // &
                 'constants uninitialized for kinetic mineral ' // &
                 cur_mineral%name // '.'
               call printErrMsg(option)
             endif
           endif
-          if (dabs(cur_prefactor%activation_energy - -999.d0) < 1.d-40) then
+          if (dabs(cur_prefactor%activation_energy - (-999.d0)) < 1.d-40) then
             cur_prefactor%activation_energy = tstrxn%activation_energy
           endif
           cur_prefactor => cur_prefactor%next
@@ -2473,6 +2477,11 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
     123 format(/,'  primary species  retardation')  
     124 format(2x,a12,4x,1pe12.4)
+
+#ifdef DOUBLE_LAYER
+    call DoubleLayer (constraint_coupler,reaction,option)
+#endif
+
   endif
   
   ! Ion Exchange
@@ -2604,6 +2613,101 @@ end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
 !
+! DoubleLayer: Calculates double layer potential, surface charge, and
+!              sorbed surface complex concentrations
+! author: Peter C. Lichtner
+! date: 10/28/08
+!
+! ************************************************************************** !
+subroutine DoubleLayer(constraint_coupler,reaction,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Condition_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(tran_constraint_coupler_type) :: constraint_coupler
+  type(reaction_type), pointer :: reaction
+
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  type(global_auxvar_type), pointer :: global_auxvar
+
+  PetscReal, parameter :: rgas = 8.3144621d0
+  PetscReal, parameter :: tk = 273.15d0
+  PetscReal, parameter :: epsilon = 78.5d0
+  PetscReal, parameter :: epsilon0 = 8.854187817d-12
+  PetscReal, parameter :: faraday = 96485.d0
+  
+  PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
+               charge_balance, potential, tempk, debye_length
+
+  PetscInt :: iphase
+  PetscInt :: i, icomp, icplx, irxn, ncplx
+
+    rt_auxvar => constraint_coupler%rt_auxvar
+    global_auxvar => constraint_coupler%global_auxvar
+
+    iphase = 1
+    global_auxvar%temp(iphase) = option%reference_temperature
+    tempk = tk + global_auxvar%temp(iphase)
+    
+    potential = 0.1d0 ! initial guess
+    boltzmann = exp(-faraday*potential/(rgas*tempk))
+        
+    fac = sqrt(epsilon*epsilon0*rgas*tempk)
+    
+    ionic_strength = 0.d0
+    charge_balance = 0.d0
+    dbl_charge = 0.d0
+    do icomp = 1, reaction%naqcomp      
+      charge_balance = charge_balance + reaction%primary_spec_Z(icomp)* &
+                       rt_auxvar%total(icomp,1)
+                                        
+      ionic_strength = ionic_strength + reaction%primary_spec_Z(icomp)**2* &
+                       rt_auxvar%pri_molal(icomp)
+      dbl_charge = dbl_charge + rt_auxvar%pri_molal(icomp)* &
+                   (boltzmann**reaction%primary_spec_Z(icomp) - 1.d0)
+    enddo
+    
+    if (reaction%neqcplx > 0) then    
+      do i = 1, reaction%neqcplx
+        ionic_strength = ionic_strength + reaction%eqcplx_Z(i)**2* &
+                         rt_auxvar%sec_molal(i)
+        dbl_charge = dbl_charge + rt_auxvar%sec_molal(i)* &
+                     (boltzmann**reaction%eqcplx_Z(i) - 1.d0)
+      enddo
+    endif
+    ionic_strength = 0.5d0*ionic_strength
+    if (dbl_charge > 0.d0) then
+      dbl_charge = fac*sqrt(2.d0*dbl_charge)
+    else
+      print *,'neg. dbl_charge: ',dbl_charge
+      dbl_charge = fac*sqrt(2.d0*(-dbl_charge))
+    endif
+    
+    surface_charge = 0.d0
+    do irxn = 1, reaction%neqsrfcplxrxn
+      ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
+      do i = 1, ncplx
+        icplx = reaction%eqsrfcplx_rxn_to_complex(i,irxn)
+        surface_charge = surface_charge + reaction%eqsrfcplx_Z(icplx)* &
+                         rt_auxvar%eqsrfcplx_conc(icplx)
+      enddo
+    enddo
+    surface_charge = faraday*surface_charge
+    
+    debye_length = sqrt(fac/(2.d0*ionic_strength*1.d3))/faraday
+    
+    print *,'dbl: ',debye_length,dbl_charge,surface_charge,ionic_strength, &
+                    charge_balance,tempk,boltzmann
+
+end subroutine DoubleLayer
+
+! ************************************************************************** !
+!
 ! ReactionReadOutput: Reads species to be printed in output
 ! author: Glenn Hammond
 ! date: 01/24/09
@@ -2639,8 +2743,6 @@ subroutine ReactionReadOutput(reaction,input,option)
   nullify(cur_srfcplx)
   nullify(cur_srfcplx_rxn)
   
-  reaction%print_all_species = PETSC_FALSE
-
   input%ierr = 0
   do
   
@@ -2656,6 +2758,10 @@ subroutine ReactionReadOutput(reaction,input,option)
     select case(word)
       case('OFF')
         reaction%print_all_species = PETSC_FALSE
+        reaction%print_all_primary_species = PETSC_FALSE
+        reaction%print_all_secondary_species = PETSC_FALSE
+        reaction%print_all_gas_species = PETSC_FALSE
+        reaction%print_all_mineral_species = PETSC_FALSE
         reaction%print_pH = PETSC_FALSE
         reaction%print_kd = PETSC_FALSE
         reaction%print_total_sorb = PETSC_FALSE
@@ -2666,7 +2772,20 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_free_ion = PETSC_FALSE
       case('ALL')
         reaction%print_all_species = PETSC_TRUE
+        reaction%print_all_primary_species = PETSC_TRUE
+ !       reaction%print_all_secondary_species = PETSC_TRUE
+ !       reaction%print_all_gas_species = PETSC_TRUE
+        reaction%print_all_mineral_species = PETSC_TRUE
         reaction%print_pH = PETSC_TRUE
+      case('PRIMARY_SPECIES')
+        reaction%print_all_primary_species = PETSC_TRUE
+        reaction%print_pH = PETSC_TRUE
+      case('SECONDARY_SPECIES')
+        reaction%print_all_secondary_species = PETSC_TRUE
+      case('GASES')
+        reaction%print_all_gas_species = PETSC_TRUE
+      case('MINERALS')
+        reaction%print_all_mineral_species = PETSC_TRUE
       case('PH')
         reaction%print_pH = PETSC_TRUE
       case('KD')
@@ -4571,6 +4690,19 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
+  PetscReal :: ln_spec_act, spec_act_coef, ln_spec_conc
+  PetscReal :: ln_prefactor, ln_numerator, ln_denominator
+  PetscReal :: prefactor(10), ln_prefactor_spec(5,10)
+  PetscReal :: sum_prefactor_rate
+  PetscReal :: dIm_dsum_prefactor_rate, dIm_dspec
+  PetscReal :: dprefactor_dprefactor_spec, dprefactor_spec_dspec
+  PetscReal :: dprefactor_spec_dspec_numerator
+  PetscReal :: dprefactor_spec_dspec_denominator
+  PetscReal :: denominator
+  PetscInt ::  icplx
+  PetscReal :: ln_gam_m_beta
+
+  PetscInt, parameter :: needs_to_be_fixed = 1
 
   PetscReal :: ln_spec_act, spec_act_coef, ln_spec_conc
   PetscReal :: ln_prefactor, ln_numerator, ln_denominator
@@ -4586,7 +4718,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
   PetscInt, parameter :: needs_to_be_fixed = 1
   
-  PetscReal :: arrhenius_factor, rgas = 8.3147295d-3
+  PetscReal :: arrhenius_factor, rgas = 8.3144621d-3
 
   iphase = 1                         
 
@@ -4883,6 +5015,49 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   enddo  ! loop over minerals
     
 end subroutine RKineticMineral
+
+! ************************************************************************** !
+!
+! RMineralSaturationIndex: Calculates the mineral saturation index
+! author: Glenn Hammond
+! date: 08/29/11
+!
+! ************************************************************************** !
+function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  type(option_type) :: option
+  PetscInt :: imnrl
+  type(reaction_type) :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  
+  PetscReal :: RMineralSaturationIndex
+  PetscInt :: i, icomp
+  PetscReal :: lnQK
+  PetscInt, parameter :: iphase = 1
+
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                 global_auxvar%temp(iphase),reaction%nmnrl)
+  endif
+#endif  
+
+  ! compute saturation
+  lnQK = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
+  if (reaction%mnrlh2oid(imnrl) > 0) then
+    lnQK = lnQK + reaction%mnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
+  endif
+  do i = 1, reaction%mnrlspecid(0,imnrl)
+    icomp = reaction%mnrlspecid(i,imnrl)
+    lnQK = lnQK + reaction%mnrlstoich(i,imnrl)* &
+           log(rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp))
+  enddo
+  RMineralSaturationIndex = exp(lnQK)    
+
+end function RMineralSaturationIndex
 
 ! ************************************************************************** !
 !

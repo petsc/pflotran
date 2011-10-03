@@ -85,6 +85,8 @@ module Option_module
 
     PetscInt :: ntrandof
   
+    PetscBool :: variables_swapped
+    
     PetscInt :: iflag
     PetscBool :: init_stage
     PetscBool :: print_screen_flag
@@ -170,7 +172,7 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: initialize_transport_filename
         
-    character(len=MAXWORDLENGTH) :: global_prefix
+    character(len=MAXSTRINGLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
     
     PetscBool :: steady_state
@@ -528,6 +530,7 @@ subroutine OptionInitRealization(option)
 
   option%mimetic = PETSC_FALSE
  
+  option%variables_swapped = PETSC_FALSE
 
 end subroutine OptionInitRealization
 

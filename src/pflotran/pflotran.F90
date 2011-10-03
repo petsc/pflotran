@@ -94,6 +94,9 @@
   string = '-file_output'
   call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
 
+  string = '-output_prefix'
+  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
+
   string = '-v'
   call InputGetCommandLineTruth(string,truth,option_found,option)
   if (option_found) option%verbosity = 1

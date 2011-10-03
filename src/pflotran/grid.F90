@@ -2691,7 +2691,11 @@ subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
   
   call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   do i=1,num_values
-    array(i) = int(vec_ptr(i)+1.d-4)
+    if (vec_ptr(i) > 0.d0) then
+      array(i) = int(vec_ptr(i)+1.d-4)
+    else
+      array(i) = int(vec_ptr(i)-1.d-4)
+    endif
   enddo
   call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   

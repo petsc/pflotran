@@ -1,0 +1,278 @@
+: 3D CO2 injection by Hannah
+MODE MPHASE
+
+:CHECKPOINT 100
+:RESTART pflotran.chk500
+
+:=====define the grid======
+GRID
+  TYPE structured
+:  GRAVITY 0.d0 0.d0 -9.81d0
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 51 1 100 
+  BOUNDS
+    0. 2000.
+    0. 100.
+    0. 1000.
+  /
+END
+
+:
+:=======define solver======
+TIMESTEPPER
+  TS_ACCELERATION 8
+/
+
+NEWTON_SOLVER FLOW
+MAXIT 10
+END
+
+:=====times======
+TIME
+  FINAL_TIME 250.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d-6 y
+:  MAXIMUM_TIMESTEP_SIZE 1.d-2 y
+  MAXIMUM_TIMESTEP_SIZE 1.0 y
+  MAXIMUM_TIMESTEP_SIZE 5.0 y at 10 y
+/
+
+:======output options====
+OUTPUT
+  TIMES y 0.5 1. 1.5 2 2.5 3 3.5 4. 4.5 5 5.5 6. 6.5 7 7.5 8 8.5 9 9.5 
+  PERIODIC TIME 5. y
+  SCREEN PERIODIC 10
+  :PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT HDF5
+:  FORMAT TECPLOT POINT
+  VELOCITIES
+/
+
+:=====fluid properties=====
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:====== material properties=====
+MATERIAL_PROPERTY sandstone
+  ID 1
+  POROSITY 0.10d0 
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.84E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5 
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf2
+  PERMEABILITY
+    PERM_X 1.d-13
+    PERM_Y 1.d-13
+    PERM_Z 1.d-13
+  /
+/
+
+MATERIAL_PROPERTY shale
+  ID 2
+  POROSITY 0.01d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.84E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf2
+  PERMEABILITY
+    PERM_X 1.d-16
+    PERM_Y 1.d-16
+    PERM_Z 1.d-16
+  /
+/
+MATERIAL_PROPERTY int
+  ID 3
+  POROSITY 0.05d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.84E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SATURATION_FUNCTION sf2
+  PERMEABILITY
+    PERM_X 1.d-13
+    PERM_Y 1.d-13
+    PERM_Z 1.d-13
+  /
+END
+
+:======saturation functions
+SATURATION_FUNCTION sf2
+  PERMEABILITY_FUNCTION_TYPE MUALEM
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION LIQUID_PHASE 0.1
+  RESIDUAL_SATURATION GAS_PHASE 0.00
+  LAMBDA 0.457
+  ALPHA 5.1d-5
+  MAX_CAPILLARY_PRESSURE 1.d6
+/
+
+:=======regions===
+
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2000.d0 100.d0 1000.d0
+  /
+END
+
+REGION sstop
+  COORDINATES
+    0.d0 0.d0 600.d0
+    2000.d0 100.d0 1000.d0
+  /
+END
+
+REGION shale
+  COORDINATES
+    0.d0 0.d0 400.d0
+    2000.d0 100.d0 600.d0
+  /
+END
+
+REGION ssbottom
+  COORDINATES 
+    0.d0 0.d0 0.d0
+    2000.d0 100.d0 400.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 1000.d0
+    2000.d0 100.d0 1000.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2000.d0 100.d0 0.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 100.d0 1000.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    2000.d0 0.d0 0.d0
+    2000.d0 100.d0 1000.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2000.d0 0.d0 1000.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 100.d0 0.d0 
+    2000.d0 100.d0 1000.d0
+  /
+END
+
+REGION well
+  COORDINATES
+    1000.d0 50.d0 200.d0
+    1000.d0 50.d0 200.d0
+  /
+END
+
+:====flow conditions====
+FLOW_CONDITION initial
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    TEMPERATURE zero_gradient
+    CONCENTRATION zero_gradient
+    ENTHALPY dirichlet
+  /
+  IPHASE 1
+  DATUM 0.d0 0.d0 200.d0
+  PRESSURE 2.5d7 2.5d7
+  TEMPERATURE 62 C
+  CONCENTRATION 1.d-6
+  ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION source
+  UNITS Pa,C,M,yr
+  TYPE
+    RATE mass_rate
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+: PRESSURE 2.5d7 2.5d7
+  RATE file c2i.txt ! kg/s
+  TEMPERATURE 62.d0
+  CONCENTRATION 0.d0 
+  ENTHALPY 0.d0 0.d0
+/
+
+:==== condition couplers=====
+
+INITIAL_CONDITION dol
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION dol_north
+  FLOW_CONDITION initial
+  REGION north
+END
+
+BOUNDARY_CONDITION dol_south
+  FLOW_CONDITION initial
+  REGION south
+END
+
+BOUNDARY_CONDITION dol_east
+  FLOW_CONDITION initial
+  REGION east
+END
+
+BOUNDARY_CONDITION dol_west
+  FLOW_CONDITION initial
+  REGION west
+END
+
+SOURCE_SINK
+  FLOW_CONDITION source
+  REGION well
+END
+
+:==== stratigraphy couplers ==
+STRATA
+  REGION sstop
+  MATERIAL sandstone
+END
+
+STRATA
+  REGION shale
+  MATERIAL shale
+END
+
+STRATA
+  REGION ssbottom
+  MATERIAL sandstone
+END
+

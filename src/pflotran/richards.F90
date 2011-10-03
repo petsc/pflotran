@@ -71,7 +71,10 @@ subroutine RichardsTimeCut(realization)
     call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr)
     call RichardsUpdateAuxVars(realization)
     call VecCopy(field%flow_yy,field%flow_xx,ierr)
-!     read(*,*) 
+
+ 
+!    read(*,*)    
+
   endif
 
   call RichardsInitializeTimestep(realization)  
@@ -2494,20 +2497,20 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rresidual.bin',FILE_MODE_WRITE,&
-                              viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+!geh    call PetscViewerBinaryOpen(realization%option%mycomm,'Rresidual.bin',FILE_MODE_WRITE,&
+!geh                              viewer,ierr)
+!geh    call VecView(r,viewer,ierr)
+!geh    call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rxx.bin',FILE_MODE_WRITE,&
-                              viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+!geh    call PetscViewerBinaryOpen(realization%option%mycomm,'Rxx.bin',FILE_MODE_WRITE,&
+!geh                              viewer,ierr)
+!geh    call VecView(xx,viewer,ierr)
+!geh    call PetscViewerDestroy(viewer,ierr)
 
   endif
 
@@ -3168,7 +3171,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
-!       write(*,*) "upweight", upweight
 
 !       if (ghosted_id_up.eq.15.or.ghosted_id_dn.eq.15)  write(*,*) "dddddddddddddddddddddddddddd"
 
@@ -3643,7 +3645,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
-  PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:)
+  PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:), neig_den(:)
    PetscScalar, pointer :: neig_den(:), neig_kvr(:), neig_pres(:), bnd(:)
   PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3), den, ukvr
   PetscInt :: icell, iface, jface, i,j, numfaces, ghost_face_id, ghost_face_jd
@@ -4070,6 +4072,9 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
         call PetscLogEventEnd(logging%event_flow_rhs_mfd, ierr)
  
+        call PetscLogEventEnd(logging%event_flow_rhs_mfd, ierr)
+
+   !     stop
 
    !     stop
      
@@ -4092,6 +4097,10 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           end if
         end do
     
+          write(*,*) (rhs(iface),iface=1,6)
+          write(*,*)
+        end if
+#endif
        
   enddo
 
