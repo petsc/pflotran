@@ -3386,12 +3386,6 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%y(ghosted_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
 
-  ! porosity
-  if (output_option%print_porosity) then
-    write(fid,110,advance="no") &
-      RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
-  endif  
-
   ! temperature
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -3507,6 +3501,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
       write(fid,111,advance="no") &
         int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
   end select
+
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
+  endif  
 
   if (option%ntrandof > 0) then
     reaction => realization%reaction
@@ -3747,16 +3747,6 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       enddo
     enddo
   enddo
-
-  ! porosity
-  if (output_option%print_porosity) then
-    write(fid,110,advance="no") &
-      OutputGetVarFromArrayAtCoord(realization,POROSITY,ZERO_INTEGER, &
-                                   region%coordinates(ONE_INTEGER)%x, &
-                                   region%coordinates(ONE_INTEGER)%y, &
-                                   region%coordinates(ONE_INTEGER)%z, &
-                                   count,ghosted_ids)
-  endif
   
   ! temperature
   select case(option%iflowmode)
@@ -3938,6 +3928,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                         region%coordinates(ONE_INTEGER)%z, &
                                         count,ghosted_ids))
   end select
+
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      OutputGetVarFromArrayAtCoord(realization,POROSITY,ZERO_INTEGER, &
+                                   region%coordinates(ONE_INTEGER)%x, &
+                                   region%coordinates(ONE_INTEGER)%y, &
+                                   region%coordinates(ONE_INTEGER)%z, &
+                                   count,ghosted_ids)
+  endif
 
   if (option%ntrandof > 0) then
     reaction => realization%reaction
