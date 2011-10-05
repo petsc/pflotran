@@ -647,6 +647,11 @@ where $q_M$ denotes a mass rate in units of kg/s, $\rho$ denotes the fluid densi
 
 \subsubsection{Mineral Precipitation and Dissolution}
 
+Mineral concentrations are calculated from the mass transfer relation
+\EQ
+\frac{\p \varphi_m}{\p t} \eq \overline V_m I_m,
+\EN
+where $\overline V_m$ refers to the mineral molar volume.
 The reaction rate $I_m$ is based on transition state theory with the form
 \EQ\label{Im}
 I_m \eq -a_m\left(\sum_l k_{ml}(T) \P_{ml}\right) \Big(1-K_m Q_m\Big),
@@ -918,6 +923,14 @@ the solution is updated according to the equation
 \EQ
 \by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\!\ln\by^{(i+1)}}.
 \EN
+
+\subsubsection{Mineral Reactions}
+
+Mineral concentrations are updated using an explicit finite difference formulation given by
+\EQ
+\varphi_{mn}(t+\Delta t) \eq \varphi_{mn}(t)+\Delta t \overline V_m I_{mn}(t+\Delta t),
+\EN
+at the $n$th node. The reaction rate $I_m$ is obtained by first solving the primary species transport equations. It should be noted, however, that this approach can lead to mass balance errors in the solution because of the updated volume fraction becoming negative at a propagating reaction front.
 
 \subsubsection{Multirate Sorption}
 
