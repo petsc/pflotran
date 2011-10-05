@@ -2642,10 +2642,26 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
   PetscReal, parameter :: faraday = 96485.d0
   
   PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
-               charge_balance, potential, tempk, debye_length
+               charge_balance, potential, tempk, debye_length, &
+               srfchrg_capacitance_model
+               
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
+
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
 
   PetscInt :: iphase
-  PetscInt :: i, icomp, icplx, irxn, ncplx
+  PetscInt :: i, j, icomp, icplx, irxn, ncomp, ncplx
+
+  PetscReal :: site_density(2)
+  PetscReal :: mobile_fraction
+  PetscInt :: num_types_of_sites
+  PetscInt :: isite
+
+  PetscBool :: one_more
 
     rt_auxvar => constraint_coupler%rt_auxvar
     global_auxvar => constraint_coupler%global_auxvar
@@ -2688,6 +2704,9 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
       dbl_charge = fac*sqrt(2.d0*(-dbl_charge))
     endif
     
+    srfchrg_capacitance_model = faraday*potential* &
+      sqrt(2.d0*epsilon*epsilon0*ionic_strength/(rgas*tempk))
+    
     surface_charge = 0.d0
     do irxn = 1, reaction%neqsrfcplxrxn
       ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
@@ -2701,8 +2720,85 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
     
     debye_length = sqrt(fac/(2.d0*ionic_strength*1.d3))/faraday
     
-    print *,'dbl: ',debye_length,dbl_charge,surface_charge,ionic_strength, &
-                    charge_balance,tempk,boltzmann
+    print *,'========================='
+    print *,'dbl: debye_length = ',debye_length
+    print *,'surface charge = ',dbl_charge,surface_charge, &
+      srfchrg_capacitance_model
+    print *,'ionic strength = ',ionic_strength
+    print *,'chrg bal. = ',charge_balance,' Tk = ',tempk,' Boltz. = ',boltzmann
+    print *,'srfcmplx: ',rt_auxvar%eqsrfcplx_conc
+    print *,'========================='
+
+!   compute surface complex concentrations  
+    ln_conc = log(rt_auxvar%pri_molal)
+    ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef, &
+      reaction%eqsrfcplx_logK, &
+      global_auxvar%temp(iphase),reaction%neqsrfcplx)
+  endif
+#endif  
+
+  do irxn = 1, reaction%neqsrfcplxrxn
+  
+    ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
+    
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
+
+    site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
+    num_types_of_sites = 1
+    
+    do isite = 1, num_types_of_sites
+      ! isite == 1 - immobile (colloids, minerals, etc.)
+      ! isite == 2 - mobile (colloids)
+    
+      if (site_density(isite) < 1.d-40) cycle
+    
+      ! get a pointer to the first complex (there will always be at least 1)
+      ! in order to grab free site conc
+      one_more = PETSC_FALSE
+      do
+        total = free_site_conc
+        ln_free_site = log(free_site_conc)
+        do j = 1, ncplx
+          icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN &
+                 + reaction%eqsrfcplx_Z(icplx)*faraday*potential &
+                 /(rgas*tempk)/LOG_TO_LN
+
+          ! activity of water
+          if (reaction%eqsrfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + reaction%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          endif
+
+          lnQK = lnQK + reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = reaction%eqsrfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = reaction%eqsrfcplxspecid(i,icplx)
+            lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          srfcplx_conc(icplx) = exp(lnQK)
+          total = total + reaction%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
+          
+        enddo
+        
+        if (one_more) exit
+        
+        total = total / free_site_conc
+        free_site_conc = site_density(isite) / total  
+          
+        one_more = PETSC_TRUE 
+
+      enddo ! generic do
+    enddo
+  enddo
+  
+  print *,'srfcmplx1: ',srfcplx_conc
 
 end subroutine DoubleLayer
 

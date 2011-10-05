@@ -1362,7 +1362,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
     case(MASS_RATE_SS)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
-      if (msrc(1) > 0.d0) then ! H2O injection
+      if (msrc(1) /= 0.d0) then ! H2O injection
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -2218,11 +2218,12 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
       select case(iipha)     
         case(1) ! liquid
           xmol(4) = xmol(2)*henry/p   
-          if(xmol(2) > xco2eq * 1.10d0) then
+
+!         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
+
+!         if(xmol(2) > xco2eq * 1.10d0) then
+          if(xmol(2) > xco2eq) then
           
-!         if (xmol(4) > 1.05D0*co2_sat_x) then
-!         if (xmol(4) > 1.001D0*co2_sat_x .and. iipha==1) then
-!         if (xmol(4) > (1.d0+1.d-6)*tmp .and. iipha==1) then
             write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
        &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
        &    '' Xco2eq='',1pe11.4)') &
