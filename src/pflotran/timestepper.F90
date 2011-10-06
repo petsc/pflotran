@@ -968,8 +968,12 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   ! this flag allows one to take a shorter or slightly larger step than normal
   ! in order to synchronize with the waypoint time
   if (option%match_waypoint) then
-    if (associated(flow_stepper)) option%flow_dt = flow_stepper%prev_dt
-    if (associated(tran_stepper)) option%tran_dt = tran_stepper%prev_dt
+    ! if the maximum time step size decreased in the past step, need to set
+    ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
+    if (associated(flow_stepper)) option%flow_dt = min(flow_stepper%prev_dt, &
+                                                       flow_stepper%dt_max)
+    if (associated(tran_stepper)) option%tran_dt = min(tran_stepper%prev_dt, &
+                                                       tran_stepper%dt_max)
     option%match_waypoint = PETSC_FALSE
   endif
 
