@@ -1051,7 +1051,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
           dt <= (1.d0+tolerance)*option%tran_dt) then
         option%tran_dt = dt
       endif
-      ! else leave it alone
+      !geh: Need to ensure that tran_dt <= flow_dt
+      if (option%tran_dt > option%flow_dt) option%tran_dt = option%flow_dt
     else ! transport only
       option%tran_dt = dt
     endif
