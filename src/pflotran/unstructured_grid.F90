@@ -2750,8 +2750,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         v2(2) = point3%y-point4%y
         v2(3) = point3%z-point4%z
         n2 = CrossProduct(v1,v2)
-        area2 = 0.5d0*DotProduct(n2,n2)
-        unstructured_grid%face_area(face_id) = area1 + area1
+        area2 = 0.5d0*sqrt(DotProduct(n2,n2))
+        unstructured_grid%face_area(face_id) = area1 + area2
         
         do ivert = 1,MAX_VERT_PER_FACE
           vertex_id = face_to_vertex(ivert,face_id)
