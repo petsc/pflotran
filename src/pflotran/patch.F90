@@ -96,7 +96,8 @@ module Patch_module
             PatchSetDataset, &
             PatchInitConstraints, &
             PatchCountCells, PatchGetIvarsFromKeyword, &
-            PatchGetVarNameFromKeyword
+            PatchGetVarNameFromKeyword, &
+            PatchCalculateCFL1Timestep
 
 contains
 
@@ -3096,6 +3097,109 @@ subroutine PatchCountCells(patch,total_count,active_count)
 
 end subroutine PatchCountCells
 
+! ************************************************************************** !
+!
+! PatchCalculateCFL1Timestep: Calculates largest time step to preserves a 
+!                                CFL # of 1 in a patch
+! author: Glenn Hammond
+! date: 10/06/11
+!
+! ************************************************************************** !
+subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
+
+  use Option_module
+  use Connection_module
+  use Coupler_module
+  use Field_module
+  
+  implicit none
+  
+  type(patch_type) :: patch
+  type(option_type) :: option
+  PetscReal :: max_dt_cfl_1
+  
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+!  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: porosity_ave, v_darcy, v_pore
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: iphase
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal :: dt_cfl_1
+  PetscErrorCode :: ierr
+
+  field => patch%field
+!  global_aux_vars => patch%aux%Global%aux_vars
+!  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+
+  max_dt_cfl_1 = 1.d20
+  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
+      distance = cur_connection_set%dist(0,iconn)
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      !           (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
+      !            global_aux_vars(ghosted_id_up)%sat(iphase) + &
+      !            (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
+      !            global_aux_vars(ghosted_id_dn)%sat(iphase))
+      porosity_ave = fraction_upwind*porosity_loc_p(ghosted_id_up) + &
+                     (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)
+      do iphase = 1, option%nphase
+        v_darcy = patch%internal_velocities(iphase,sum_connection)
+        v_pore = v_darcy / porosity_ave
+        dt_cfl_1 = distance / dabs(v_pore)
+        max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
+      enddo
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id_dn = cur_connection_set%id_dn(iconn)
+      ghosted_id_dn = grid%nL2G(local_id_dn)
+      if (patch%imat(ghosted_id_dn) <= 0) cycle
+      distance = cur_connection_set%dist(0,iconn)
+      porosity_ave = porosity_loc_p(ghosted_id_dn)
+      do iphase = 1, option%nphase
+        v_darcy = patch%boundary_velocities(iphase,sum_connection)
+        v_pore = v_darcy / porosity_ave
+        dt_cfl_1 = distance / dabs(v_pore)
+        max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
+      enddo
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+
+end subroutine PatchCalculateCFL1Timestep
 
 ! ************************************************************************** !
 !
