@@ -1726,6 +1726,9 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
     Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
 
+    print *,'richards acc: ',res(1)*option%flow_dt,global_aux_var%sat(1), &
+      global_aux_var%den(1)
+    
 end subroutine RichardsAccumulation
 
 ! ************************************************************************** !
@@ -1960,9 +1963,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
               * FMWH2O * dist_gravity
 
-
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
-
 
     if (dphi>=0.D0) then
 !      ukvr = rich_aux_var_up%kvr
@@ -1987,6 +1988,9 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
+      
+      print *,'rich_flux: ',v_darcy,Dq,ukvr,dphi,global_aux_var_up%pres(1), &
+        global_aux_var_dn%pres(1), gravity
 
        !   write(*,*) "Gravity Input", Dq*ukvr*gravity
        !   write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
@@ -2397,6 +2401,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   q = v_darcy * area
 
   fluxm = q*density_ave
+  
+  print *,'richardsbcflux: ',fluxm
 
   Res(1)=fluxm
 

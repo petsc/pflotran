@@ -1635,7 +1635,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   !if(option%use_isothermal == PETSC_FALSE) then     
      Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
      cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
+     fluxe = fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then

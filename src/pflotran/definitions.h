@@ -154,9 +154,11 @@ PetscInt, parameter :: SRC_SINK_CONNECTION_TYPE = 4
 
 ! dofs for each mode
 PetscInt, parameter :: THC_PRESSURE_DOF = 1
-PetscInt, parameter :: THC_MASS_RATE_DOF = 2
-PetscInt, parameter :: THC_TEMPERATURE_DOF = 3
-PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
+!PetscInt, parameter :: THC_MASS_RATE_DOF = 2
+PetscInt, parameter :: THC_MASS_RATE_DOF = 4
+PetscInt, parameter :: THC_TEMPERATURE_DOF = 2
+!PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
+PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
 PetscInt, parameter :: THC_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1

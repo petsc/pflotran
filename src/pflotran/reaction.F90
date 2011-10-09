@@ -2762,9 +2762,15 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
       do
         total = free_site_conc
         ln_free_site = log(free_site_conc)
+        
+!       call srfcmplx(irxn,icplx,lnQK,reaction%eqsrfcplx_logK,reaction%eqsrfcplx_Z,potential, &
+!               tempk,ln_act,rt_auxvar%ln_act_h2o,ln_free_site,srfcplx_conc)
+
+#if 0
         do j = 1, ncplx
           icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
-          ! compute secondary species concentration
+          
+          ! compute ion activity product
           lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN &
                  + reaction%eqsrfcplx_Z(icplx)*faraday*potential &
                  /(rgas*tempk)/LOG_TO_LN
@@ -2783,10 +2789,11 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
             lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
           enddo
           srfcplx_conc(icplx) = exp(lnQK)
+          
           total = total + reaction%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
           
         enddo
-        
+#endif
         if (one_more) exit
         
         total = total / free_site_conc
@@ -2801,6 +2808,55 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
   print *,'srfcmplx1: ',srfcplx_conc
 
 end subroutine DoubleLayer
+
+#if 0
+subroutine srfcmplx(irxn,icplx,lnQK,logK,Z,potential,tempk, &
+                ln_act,ln_act_h2o,ln_free_site,srfcplx_conc)
+
+implicit none
+
+  PetscReal, parameter :: rgas = 8.3144621d0
+  PetscReal, parameter :: tk = 273.15d0
+  PetscReal, parameter :: faraday = 96485.d0
+  
+  PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
+               charge_balance, potential, tempk, debye_length, &
+               srfchrg_capacitance_model
+               
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
+
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site, ln_act_h2o
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
+
+  PetscInt :: i, j, icomp, icplx, irxn, ncomp, ncplx
+
+        do j = 1, ncplx
+          icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -logK(icplx)*LOG_TO_LN &
+                 + Z(icplx)*faraday*potential &
+                 /(rgas*tempk)/LOG_TO_LN
+
+          ! activity of water
+          if (reaction%eqsrfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + reaction%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          endif
+
+          lnQK = lnQK + reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = reaction%eqsrfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = reaction%eqsrfcplxspecid(i,icplx)
+            lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          srfcplx_conc(icplx) = exp(lnQK)
+        enddo
+end subroutine srfcmplx
+#endif
 
 ! ************************************************************************** !
 !

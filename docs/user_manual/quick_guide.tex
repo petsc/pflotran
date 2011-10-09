@@ -586,7 +586,7 @@ U \eq H -\frac{P}{\rho}.
 \EN
 Nonreactive solute transport equations representing e.g. NaCl have the form
 \EQ
-\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\Big(\bq \rho x_i -\varphi D \rho\bnabla x_i\Big) \eq Q_i,
+\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\Big(\bq \rho x_i -\varphi s D \rho\bnabla x_i\Big) \eq Q_i,
 \EN
 with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.\eqref{masseqn} with
 \EQ
@@ -678,13 +678,13 @@ Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surfac
 
 \paragraph{Ion Exchange}
 
-Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
+Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/m$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
 \EQ
-\omega_\a \eq \frac{N_{\rm site}}{V} \eq \frac{N_{\rm site}}{M_s} \frac{M_s}{V_s} \frac{V_s}{V} \eq Q_\a \rho_s (1-\phi).
+\omega_\a \eq \frac{N_{\rm site}}{V} \eq \frac{N_{\rm site}}{M_s} \frac{M_s}{V_s} \frac{V_s}{V} \eq Q_\a \rho_s (1-\varphi).
 \EN
 The cation exchange capacity associated with the $m$th mineral is defined on a molar basis as
 \EQ
-\omega_m^{\rm CEC} \eq \frac{N_m}{V} \eq \frac{N_m}{M_m} \frac{M_m}{V_m} \frac{V_m}{V} \eq Q_m^{\rm CEC} \rho_m \phi_m.
+\omega_m^{\rm CEC} \eq \frac{N_m}{V} \eq \frac{N_m}{M_m} \frac{M_m}{V_m} \frac{V_m}{V} \eq Q_m^{\rm CEC} \rho_m \varphi_m.
 \EN
 
 In PFLOTRAN ion exchange reactions are expressed in the form
@@ -694,7 +694,7 @@ z_i \A_j + z_j X_{z_i}^\a\A_i \arrows z_j \A_i + z_i X_{z_j}^\a\A_j,
 with valencies $z_j$, $z_i$ of cations $\A_j$ and $\A_i$, respectively. The reference cation is denoted by $\A_j$ and $\A_i, \,i\!\ne\! j$ represents all other cations. 
 The corresponding mass action equation is given by
 \EQ\label{ionexmassact}
-K_{ji}^\a \eq \frac{(k_j^\a)^{z_i}}{(k_i^\a)^{z_j}} \eq \left(\frac{X_j^\a}{a_j}\right)^{z_i} \left(\frac{a_i}{X_i^\a}\right)^{z_j}.
+K_{ji}^\a \eq \frac{\big(k_j^\a\big)^{z_i}}{\big(k_i^\a\big)^{z_j}} \eq \left(\frac{X_j^\a}{a_j}\right)^{z_i} \left(\frac{a_i}{X_i^\a}\right)^{z_j}.
 \EN
 Using the Gaines-Thomas convention, the equivalent fractions $X_k^\a$ are defined by
 \EQ
@@ -721,7 +721,7 @@ An alternative form of reactions \ref{ex1} often found in the literature is
 obtained by dividing reaction \ref{ex1} through by the product $z_i z_j$.  In addition the reaction may be written in reverse order.
 The mass action equations corresponding to reactions \ref{rxn2} have the form
 \EQ
-{K'}_{ji}^\a \eq \frac{({k'}_j^\a)^{1/z_j}}{({k'}_i^\a)^{1/z_i}} \eq \left(\frac{X_j^\a}{a_j}\right)^{1/z_j} \left(\frac{a_i}{X_i^\a}\right)^{1/z_i}.
+{K'}_{ji}^\a \eq \frac{\big({k'}_j^\a\big)^{1/z_j}}{\big({k'}_i^\a\big)^{1/z_i}} \eq \left(\frac{X_j^\a}{a_j}\right)^{1/z_j} \left(\frac{a_i}{X_i^\a}\right)^{1/z_i}.
 \EN
 The selectivity coefficients corresponding to the two forms are related by the expression
 \EQ
@@ -798,10 +798,10 @@ Q_i\eq\prod_j\big(\gamma_jC_j\big)^{\nu_{ji}}.
 \EN
 The site concentration $\omega_\a$ satisfies the relation
 \EQ\label{totsite}
-\omega_\a \eq S_\a + \sum_i S_{i\a}.
+\omega_\a \eq S_\a + \sum_i S_{i\a},
 \EN
-and is constant.
-The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
+for both equilibrium and kinetic reactions and is presumed constant (although it may change through mineral precipitation/dissolution reactions in a mineral specific description).
+The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ referenced to the $j$th primary species is defined as
 \EQ\label{qeq}
 S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
 \EN
