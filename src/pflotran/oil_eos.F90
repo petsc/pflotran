@@ -14,7 +14,7 @@ module oil_eos_module
 
   
   
-  subroutine Vis_oil(p,t,viso, ierr)
+subroutine Vis_oil(p,t,viso, ierr)
    implicit none
    
    PetscReal, intent(in) :: p,t
@@ -22,16 +22,16 @@ module oil_eos_module
    PetscErrorCode :: ierr
    
   viso= vis0 
-  end subroutine Vis_oil
+end subroutine Vis_oil
  
 
-  subroutine PSAT_oil(t,psat,ierr)
+subroutine PSAT_oil(t,psat,ierr)
   PetscReal t,psat
   PetscErrorCode :: ierr
-  end subroutine PSAT_oil
+end subroutine PSAT_oil
 
 
-  SUBROUTINE oil_eos(t,p, x_mid, x_heavy, denoil, h, scale, ierr)
+subroutine oil_eos(t,p, x_mid, x_heavy, denoil, h, scale, ierr)
     implicit none
 
     PetscReal, intent(in) :: t   ! Temperature in centigrade
@@ -64,10 +64,10 @@ module oil_eos_module
   denoil = denoil/ fmwoil
   h =100.D0
 
-  end subroutine oil_eos
+end subroutine oil_eos
 
 
-  subroutine Meth_Eos
-  end subroutine Meth_Eos
+subroutine Meth_Eos
+end subroutine Meth_Eos
 
   end module oil_eos_module

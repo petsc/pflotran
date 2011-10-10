@@ -5378,15 +5378,15 @@ subroutine OutputHDF5(realization)
 
   interface
 
-     subroutine SAMRCopyVecToVecComponent(vec,svec, component)
+subroutine SAMRCopyVecToVecComponent(vec,svec, component)
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec, svec
        PetscInt :: component
-     end subroutine SAMRCopyVecToVecComponent
+end subroutine SAMRCopyVecToVecComponent
 
-     subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
+subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
        use ISO_C_BINDING
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -5396,13 +5396,13 @@ subroutine OutputHDF5(realization)
        PetscInt :: component
        character(kind=C_CHAR), dimension(*) :: namestr 
        
-     end subroutine SAMRRegisterForViz
+end subroutine SAMRRegisterForViz
        
-     subroutine SAMRWritePlotData(ptr, time)
+subroutine SAMRWritePlotData(ptr, time)
 #include "finclude/petscsysdef.h"
        PetscFortranAddr :: ptr
        PetscReal :: time
-     end subroutine SAMRWritePlotData
+end subroutine SAMRWritePlotData
 
   end interface
 

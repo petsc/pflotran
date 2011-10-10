@@ -25,7 +25,7 @@ module mixture_module
 ! will:: call other EOS mod to obtain pure fluid properties
 !        apply mixing rules
 
-  subroutine mixture_eos_noderiv (p,t,xga,sg,energyscale,num_phase,num_spec,&
+subroutine mixture_eos_noderiv (p,t,xga,sg,energyscale,num_phase,num_spec,&
                     num_pricomp,ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,sat_pressure,den,avgmw,h, &
                     u,diff,hen,xphi,pc,kvr,ierr,itable)
@@ -259,7 +259,7 @@ end subroutine mixture_eos_noderiv
  
 !*************************************************************
   
-  subroutine mixture_eos(p,t,xga,sg,energyscale,num_phase,num_spec, &
+subroutine mixture_eos(p,t,xga,sg,energyscale,num_phase,num_spec, &
     num_pricomp,ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,pckr_m, &
     pckr_pcmax,pckr_betac,pckr_pwr,sat_pressure,den,den_p,den_t,den_c,den_s, &
     avgmw,avgmw_c, &
@@ -689,6 +689,6 @@ end subroutine mixture_eos_noderiv
 !_________________________________________________________________
  end if
 ! print *,'mix: ',p,t, xga, u(1), den(2),h(2),u(2),u_p(2),u_t(2),u_c(2)
-  end subroutine mixture_eos
+end subroutine mixture_eos
 
 end module mixture_module

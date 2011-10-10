@@ -1936,8 +1936,8 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -1945,7 +1945,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
      
-  end interface
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -2936,16 +2936,16 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
-  end interface
+end subroutine SAMRSetCurrentJacobianPatch
+end interface
 
   SNES :: snes
   Vec :: xx

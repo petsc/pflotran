@@ -94,7 +94,7 @@ contains
 
 
 
-     subroutine VISW_FLO (t,dw,vw)
+subroutine VISW_FLO (t,dw,vw)
        implicit none
 !c=======================================================================
 !c  This subroutine calculates water and steam viscosities in range of:
@@ -249,7 +249,7 @@ contains
  
   end subroutine PSAT1_NEW
 
-  subroutine PSAT_orig (T, P, ierr)
+subroutine PSAT_orig (T, P, ierr)
 
     implicit none
 
@@ -282,7 +282,7 @@ contains
 
   end subroutine PSAT_orig  
  
-  subroutine PSATgeh (T, psat, dpsat_dt, ierr)
+subroutine PSATgeh (T, psat, dpsat_dt, ierr)
 
     implicit none
 
@@ -328,7 +328,7 @@ contains
   end subroutine PSATgeh  
  
 
-  subroutine PSAT1(T, Ps, tsp, ierr)
+subroutine PSAT1(T, Ps, tsp, ierr)
 
     implicit none
   
@@ -386,7 +386,7 @@ contains
 
 
 
-  SUBROUTINE wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
+subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
 
     implicit none
   
@@ -592,7 +592,7 @@ contains
 
   end subroutine wateos
 
-  SUBROUTINE wateos_noderiv (t,p,dw,dwmol,hw,scale,ierr)
+subroutine wateos_noderiv (t,p,dw,dwmol,hw,scale,ierr)
 
     implicit none
     
@@ -797,7 +797,7 @@ contains
 
   end subroutine wateos_noderiv
 
-  subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
+subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
  ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
     implicit none
   
@@ -1094,7 +1094,7 @@ contains
   
   end subroutine steameos
 
-  subroutine COWAT (TC,PP,D,U, ierr)
+subroutine COWAT (TC,PP,D,U, ierr)
 
     implicit none
   
@@ -1164,7 +1164,7 @@ contains
 
   end subroutine cowat
 
-  subroutine density (tc,p,d)
+subroutine density (tc,p,d)
 
     implicit none
 

@@ -7,7 +7,7 @@ module Gas_Eos_Module
  
 contains
 
-  subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
+subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
     
     PetscReal,intent(in):: p,tc,energyscale
    PetscReal, intent(out):: d,h,u
@@ -23,10 +23,10 @@ contains
     u= (Cpg- Rg) * t * energyscale*1D3
 
    
-  end subroutine ideal_gaseos_noderiv
+end subroutine ideal_gaseos_noderiv
 
  
-  subroutine ideal_gaseos(p,tc,energyscale,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
+subroutine ideal_gaseos(p,tc,energyscale,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
     
     PetscReal, intent(in):: p,tc,energyscale
     PetscReal, intent(out):: d,d_p,d_t,h,h_p,h_t,u,u_p,u_t
@@ -48,7 +48,7 @@ contains
     u_t= (Cpg- Rg) * energyscale*1D3
 
 !print *,'ideal gas ',energyscale,h,h_p,h_t,u,u_p,u_t
-  end subroutine ideal_gaseos
+end subroutine ideal_gaseos
 
 
 
@@ -77,7 +77,7 @@ contains
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
- subroutine visgas_noderiv(t,pa,p,ds,visg)
+subroutine visgas_noderiv(t,pa,p,ds,visg)
       PetscReal  t,pa,p,ds,visg
       PetscReal  fair,fwat,cair,cwat
 
@@ -129,11 +129,11 @@ contains
           visg  = (1.d0+z3)/(z1+z2)*.1d0
            
       return
-    end subroutine visgas_noderiv
+end subroutine visgas_noderiv
 
 
 
-  subroutine Henry_air_noderiv(p,tc,ps,Henry)
+subroutine Henry_air_noderiv(p,tc,ps,Henry)
 ! Calculate Henry Coefficient for N2
 ! t in K
 ! Henry have the same unit as p and ps, then make it dimensionless by
@@ -154,10 +154,10 @@ contains
     Henry=exp(tmp)*ps
 
    return 
-  end subroutine Henry_air_noderiv
+end subroutine Henry_air_noderiv
 
 
- subroutine Henry_air(p,tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
+subroutine Henry_air(p,tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    implicit none
     PetscReal,intent(in) ::  p,tc,ps,ps_p,ps_t
     PetscReal,intent(out)::  Henry,Henry_p,Henry_t
@@ -180,6 +180,6 @@ contains
 
   
    return 
- end subroutine Henry_air
+end subroutine Henry_air
 
 end module Gas_Eos_Module

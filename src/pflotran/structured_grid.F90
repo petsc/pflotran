@@ -253,10 +253,10 @@ end subroutine StructuredGridCreateDM
 ! ************************************************************************** !
 subroutine StructGridComputeLocalBounds(structured_grid,da)
 
-  implicit none
+implicit none
 
-  interface
-     subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+interface
+subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
        implicit none
        
 #include "finclude/petscsysdef.h"
@@ -264,9 +264,9 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
        PetscFortranAddr :: p_patch
        PetscInt :: nxs, nys, nzs, nlx, nly, nlz
 
-     end subroutine samr_patch_get_corners
+end subroutine samr_patch_get_corners
      
-     subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
        implicit none
        
 #include "finclude/petscsysdef.h"
@@ -676,10 +676,10 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
 
   use Option_module
   
-  implicit none
+implicit none
 
-  interface
-     subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
+interface
+subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
        implicit none
 #include "finclude/petscsysdef.h"
        PetscFortranAddr, intent(inout) :: p_patch
@@ -2173,8 +2173,8 @@ subroutine StructuredGridVecGetMaskArrayCellF90(structured_grid, vec, f90ptr, ie
 
  implicit none 
 
- interface
-    subroutine samrvecgetmaskarraycellf90(patch, petscvec, f90wrap)
+interface
+subroutine samrvecgetmaskarraycellf90(patch, petscvec, f90wrap)
       implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -2224,8 +2224,8 @@ subroutine StructuredGridVecGetArrayCellF90(structured_grid, vec, f90ptr, ierr)
 
  implicit none 
 
- interface
-    subroutine samr_vecgetarraycellf90(patch, petscvec, f90wrap)
+interface
+subroutine samr_vecgetarraycellf90(patch, petscvec, f90wrap)
       implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -2275,8 +2275,8 @@ subroutine StructuredGridVecGetArraySideF90(structured_grid, axis, vec, f90ptr, 
 
  implicit none 
 
- interface
-    subroutine samr_vecgetarraysidef90(patch, axis, petscvec, f90wrap)
+interface
+subroutine samr_vecgetarraysidef90(patch, axis, petscvec, f90wrap)
       implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"

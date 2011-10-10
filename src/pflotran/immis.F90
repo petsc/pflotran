@@ -293,7 +293,7 @@ end subroutine ImmisSetupPatch
 ! date: 10/10/08
 !
 ! ************************************************************************** !
- subroutine ImmisUpdateReasonPatch(reason,realization)
+subroutine ImmisUpdateReasonPatch(reason,realization)
    use Realization_module
    use Patch_module
    use Field_module
@@ -358,7 +358,7 @@ end subroutine ImmisSetupPatch
 
    endif
   
- end subroutine ImmisUpdateReasonPatch
+end subroutine ImmisUpdateReasonPatch
 
 
 ! ************************************************************************** !
@@ -862,7 +862,7 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
       Res(1:option%nphase)=mol(:)
       Res(option%nflowdof)=eng
   ! endif
-  end subroutine ImmisAccumulation
+end subroutine ImmisAccumulation
 
 ! ************************************************************************** !
 !
@@ -994,7 +994,7 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
         print *,'Unrecognized Source/Sink condition: ', isrctype 
    end select      
       
- end subroutine ImmisSourceSink
+end subroutine ImmisSourceSink
 
 
 ! ************************************************************************** !
@@ -1114,7 +1114,7 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-   end subroutine ImmisFlux
+end subroutine ImmisFlux
 
 ! ************************************************************************** !
 !
@@ -1279,16 +1279,16 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
        implicit none
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
-     end subroutine samrpetscobjectstateincrease
+end subroutine samrpetscobjectstateincrease
      
-  end interface
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -1816,8 +1816,8 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsys.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"

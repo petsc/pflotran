@@ -12,7 +12,7 @@ define(TT,6)dnl
 include(SAMRAI_FORTDIR/pdat_m4arrdim3d.i)dnl
 c
 c
-      subroutine samrapply7ptstencil3d(
+subroutine samrapply7ptstencil3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencil,
      & ufirst0,ufirst1,ufirst2,ulast0,ulast1,ulast2,
@@ -63,7 +63,7 @@ c
 
 c
 c
-      subroutine samrapply7ptblkstencil3d(
+subroutine samrapply7ptblkstencil3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & ndof, 
      & stencil,
@@ -114,7 +114,7 @@ c not coded efficiently
       return
       end
       
-      subroutine pflotranpcflux3d(
+subroutine pflotranpcflux3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & ufirst0,ufirst1,ufirst2,ulast0,ulast1,ulast2,
      & stencilsize,
@@ -200,7 +200,7 @@ c     we are forced to adjust the upper face differently
       return
       end
 
-      subroutine pflotranpcapply3d(
+subroutine pflotranpcapply3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & ufirst0,ufirst1,ufirst2,ulast0,ulast1,ulast2,
      & ffirst0,ffirst1,ffirst2,flast0,flast1,flast2,
@@ -256,7 +256,7 @@ c
       return
       end
 
-      subroutine samrsetjacobiansrccoeffs3d(
+subroutine samrsetjacobiansrccoeffs3d(
      &     ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      &     depth,
      &     stencil,
