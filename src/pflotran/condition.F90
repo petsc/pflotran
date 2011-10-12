@@ -889,8 +889,14 @@ subroutine FlowConditionRead(condition,input,option)
                   case('perm')
                     sub_condition_ptr%isubtype = SCALE_BY_PERM
                   case default
-                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                    option%io_buffer = 'scaled_mass_rate type: ' // &
+                      trim(word) // &
+                      'not recognized for flow condition "' // &
+                      trim(condition%name) // '".'
+                    call printErrMsg(option)
                 end select
+              else
+                sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
               endif
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
@@ -918,8 +924,14 @@ subroutine FlowConditionRead(condition,input,option)
                   case('perm')
                     sub_condition_ptr%isubtype = SCALE_BY_PERM
                   case default
-                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                    option%io_buffer = 'scaled_volumetric_rate type: ' // &
+                      trim(word) // &
+                      'not recognized for flow condition "' // &
+                      trim(condition%name) // '".'
+                    call printErrMsg(option)
                 end select
+              else
+                sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
               endif
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
