@@ -34,6 +34,8 @@ module THC_Aux_module
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
     PetscReal, pointer :: sir(:,:)
+    PetscReal, pointer :: diffusion_coefficient(:)
+    PetscReal, pointer :: diffusion_activation_energy(:)
   end type thc_parameter_type
   
   type, public :: thc_type
@@ -62,12 +64,13 @@ contains
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-function THCAuxCreate()
+function THCAuxCreate(option)
 
   use Option_module
 
   implicit none
   
+  type(option_type) :: option
   type(thc_type), pointer :: THCAuxCreate
   
   type(thc_type), pointer :: aux
@@ -84,6 +87,11 @@ function THCAuxCreate()
   nullify(aux%thc_parameter%sir)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+
+  allocate(aux%thc_parameter%diffusion_coefficient(option%nphase))
+  allocate(aux%thc_parameter%diffusion_activation_energy(option%nphase))
+  aux%thc_parameter%diffusion_coefficient = 0.d0
+  aux%thc_parameter%diffusion_activation_energy = 0.d0
 
   THCAuxCreate => aux
   
@@ -126,7 +134,7 @@ subroutine THCAuxVarInit(aux_var,option)
   allocate(aux_var%xmol(option%nflowspec))
   aux_var%xmol = 0.d0
   allocate(aux_var%diff(option%nflowspec))
-  aux_var%diff = 0.d0
+  aux_var%diff = 1.d-9
 
 end subroutine THCAuxVarInit
 
@@ -357,6 +365,12 @@ subroutine THCAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
   if (associated(aux%thc_parameter)) then
+    if (associated(aux%thc_parameter%diffusion_coefficient)) &
+      deallocate(aux%thc_parameter%diffusion_coefficient)
+    nullify(aux%thc_parameter%diffusion_coefficient)
+    if (associated(aux%thc_parameter%diffusion_activation_energy)) &
+      deallocate(aux%thc_parameter%diffusion_activation_energy)
+    nullify(aux%thc_parameter%diffusion_activation_energy)
     if (associated(aux%thc_parameter%dencpr)) deallocate(aux%thc_parameter%dencpr)
     nullify(aux%thc_parameter%dencpr)
     if (associated(aux%thc_parameter%ckwet)) deallocate(aux%thc_parameter%ckwet)
