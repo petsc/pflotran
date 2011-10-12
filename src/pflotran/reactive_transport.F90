@@ -1570,16 +1570,16 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
-  end interface
+end subroutine SAMRSetCurrentJacobianPatch
+end interface
       
   type(realization_type) :: realization
   Mat :: T
@@ -1816,16 +1816,16 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
 
   implicit none
  
-  interface
+interface
 
-     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
 #include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
-     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-  end interface
+end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+end interface
  
   type(realization_type) :: realization
   Mat :: T
@@ -1975,16 +1975,16 @@ subroutine RTReact(realization)
 
   implicit none
       
-  interface
-     subroutine SAMRCoarsenVector(p_application, vec)
+interface
+subroutine SAMRCoarsenVector(p_application, vec)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: vec
-      end subroutine SAMRCoarsenVector
-  end interface 
+end subroutine SAMRCoarsenVector
+end interface 
 
   type(realization_type) :: realization
   type(discretization_type), pointer :: discretization
@@ -2488,15 +2488,15 @@ subroutine RTTransportResidual(realization,solution_loc,residual,idof)
   use Discretization_module
   use Option_module
       
-  interface
-  subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
   implicit none
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   Vec :: vec
-  end subroutine samrpetscobjectstateincrease
-  end interface
+end subroutine samrpetscobjectstateincrease
+end interface
 
   type(realization_type) :: realization
   Vec :: solution_loc
@@ -3275,24 +3275,24 @@ subroutine RTTransportMatVec(mat, x, y)
   implicit none
 
 #ifndef PC_BUG
-  interface
-    subroutine SAMRGetRealization(p_application, realization) 
+interface
+subroutine SAMRGetRealization(p_application, realization) 
       use Realization_module
 #include "finclude/petscsys.h"
       PetscFortranAddr :: p_application
       type(realization_type), pointer :: realization
-      end subroutine SAMRGetRealization
+end subroutine SAMRGetRealization
 
-     subroutine SAMRGetPetscTransportMatrix(p_application, transportMat) 
+subroutine SAMRGetPetscTransportMatrix(p_application, transportMat) 
       use Realization_module
 #include "finclude/petscsys.h"
 #include "finclude/petscmat.h"
       
       PetscFortranAddr :: p_application
       Mat :: transportMat
-      end subroutine SAMRGetPetscTransportMatrix      
+end subroutine SAMRGetPetscTransportMatrix      
 
-  end interface
+end interface
 #endif
 
   Mat, intent(in) :: mat    
@@ -3575,15 +3575,15 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 
   implicit none
   
-  interface
-  subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
   implicit none
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   Vec :: vec
-  end subroutine samrpetscobjectstateincrease
-  end interface
+end subroutine samrpetscobjectstateincrease
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -5252,15 +5252,15 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
-  interface
-     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+interface
+subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
 #include "finclude/petscsys.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
-     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-  end interface
+end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+end interface
   SNES :: snes
   Vec :: xx
   Mat :: A, B

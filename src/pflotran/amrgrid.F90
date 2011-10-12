@@ -86,8 +86,8 @@ function AMRGridCreateLevelPatchLists(amrgrid)
   type(patch_type), pointer :: patch 
   type(amrgrid_type), pointer :: amrgrid
 
-  interface
-     PetscInt function hierarchy_number_levels(p_hierarchy)
+interface
+   PetscInt function hierarchy_number_levels(p_hierarchy)
      PetscFortranAddr, intent(inout) :: p_hierarchy
    end function hierarchy_number_levels
 
@@ -108,13 +108,13 @@ function AMRGridCreateLevelPatchLists(amrgrid)
      PetscInt, intent(in) :: pn
    end function hierarchy_get_patch
    
-   subroutine samr_physical_dimensions(p_hierarchy, nx, ny, nz)
+subroutine samr_physical_dimensions(p_hierarchy, nx, ny, nz)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      PetscInt, intent(inout) :: nx
      PetscInt, intent(inout) :: ny
      PetscInt, intent(inout) :: nz
-   end subroutine samr_physical_dimensions
-  end interface
+end subroutine samr_physical_dimensions
+end interface
 
 #include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
@@ -288,8 +288,8 @@ subroutine AMRGridInitialize(amrgrid)
 
   type(amrgrid_type), pointer :: amrgrid
 
-  interface
-     PetscInt function hierarchy_number_levels(p_hierarchy)
+interface
+   PetscInt function hierarchy_number_levels(p_hierarchy)
      PetscFortranAddr, intent(inout) :: p_hierarchy
    end function hierarchy_number_levels
 
@@ -310,28 +310,28 @@ subroutine AMRGridInitialize(amrgrid)
      PetscInt, intent(in) :: pn
    end function hierarchy_get_patch
    
-   subroutine samr_physical_dimensions(p_hierarchy, nx, ny, nz)
+subroutine samr_physical_dimensions(p_hierarchy, nx, ny, nz)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      PetscInt, intent(inout) :: nx
      PetscInt, intent(inout) :: ny
      PetscInt, intent(inout) :: nz
-   end subroutine samr_physical_dimensions
+end subroutine samr_physical_dimensions
 
-   subroutine samr_get_origin(p_hierarchy, x0, y0, z0)
+subroutine samr_get_origin(p_hierarchy, x0, y0, z0)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      PetscReal, intent(inout) :: x0
      PetscReal, intent(inout) :: y0
      PetscReal, intent(inout) :: z0
-   end subroutine samr_get_origin
+end subroutine samr_get_origin
 
-   subroutine samr_get_upper_corner(p_hierarchy, x1, y1, z1)
+subroutine samr_get_upper_corner(p_hierarchy, x1, y1, z1)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      PetscReal, intent(inout) :: x1
      PetscReal, intent(inout) :: y1
      PetscReal, intent(inout) :: z1
-   end subroutine samr_get_upper_corner
+end subroutine samr_get_upper_corner
 
-  end interface
+end interface
 
 #include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
@@ -415,8 +415,8 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
 
   implicit none
 
-  interface
-     subroutine create_samrai_vec(p_application, dof, centering, use_ghost, use_components, vec)
+interface
+subroutine create_samrai_vec(p_application, dof, centering, use_ghost, use_components, vec)
        use Option_module
        implicit none
        

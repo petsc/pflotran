@@ -68,14 +68,14 @@ module Checkpoint_module
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
-  Interface PetscBagGetData
-    Subroutine PetscBagGetData(bag,ctx,ierr)
+Interface PetscBagGetData
+Subroutine PetscBagGetData(bag,ctx,ierr)
       use Checkpoint_Header_module
       PetscBag bag
       type(checkpoint_header_type), pointer :: ctx
       PetscErrorCode ierr
-    End Subroutine
-  End Interface PetscBagGetData
+End Subroutine
+End Interface PetscBagGetData
 
 contains
 

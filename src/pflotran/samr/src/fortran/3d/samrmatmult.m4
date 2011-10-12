@@ -11,7 +11,7 @@ define(TT,6)dnl
 include(SAMRAI_FORTDIR/pdat_m4arrdim3d.i)dnl
 c
 c
-      subroutine samrccellmatmult3d(
+subroutine samrccellmatmult3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencilsize,
      & ndof,
@@ -67,7 +67,7 @@ c
 
 c
 c
-      subroutine samrccellmatdiagscale3d(
+subroutine samrccellmatdiagscale3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencilsize,
      & ndof,
@@ -97,7 +97,7 @@ c
       end
 c
 c
-      subroutine samrccellmatdiagscalelocal3d(
+subroutine samrccellmatdiagscalelocal3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencilsize,
      & offsets,
@@ -146,7 +146,7 @@ c
       return
       end
 
-      subroutine samrcellsd7s3d(
+subroutine samrcellsd7s3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencil,
      & sgcw,
@@ -194,7 +194,7 @@ c     &                   +stencil(TT,i,j,k)*src(i,j,k+1)
       return
       end
 
-      subroutine samrcellmd7s3d(
+subroutine samrcellmd7s3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & ndof,
      & stencil,

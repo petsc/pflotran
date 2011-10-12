@@ -37,7 +37,7 @@ module co2_sw_module
  
  
 ! prepare data table for interpolation 
-     subroutine initialize_sw_interp(itable,myrank)
+subroutine initialize_sw_interp(itable,myrank)
       use span_wagner_module, only: co2_span_wagner, vappr
         
         implicit none
@@ -278,12 +278,12 @@ module co2_sw_module
         close (122)
      end select
       
-    end subroutine initialize_sw_interp 
+end subroutine initialize_sw_interp 
      
 
  
      
-  PetscReal  function co2_prop_spwag(ip,it,iv)
+PetscReal function co2_prop_spwag(ip,it,iv)
      implicit none 
  !    PetscReal co2_prop_spwag
      PetscInt ip,it,iv
@@ -299,7 +299,7 @@ module co2_sw_module
            
                      
  ! 2-d function interpolation     
-  subroutine interp(x1,x2,y)
+subroutine interp(x1,x2,y)
 
       use span_wagner_module, only: vappr, co2_span_wagner
       implicit none 
@@ -466,10 +466,10 @@ module co2_sw_module
         y(9),y(10),y(11),y(12),y(13),y(14),y(15),ZERO_INTEGER,iflag)
        
       endif  
-    end subroutine 
+end subroutine 
 
 
-      subroutine co2_sw_interp(p,tc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+subroutine co2_sw_interp(p,tc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
         eng,ent,dhdt,dhdp,visc,dvdt,dvdp,itable)
          
        implicit none
@@ -502,7 +502,7 @@ module co2_sw_module
       dvdp = prop(15)
   
 !  contains
-  end subroutine co2_sw_interp 
+end subroutine co2_sw_interp 
 
       
 end module co2_sw_module     

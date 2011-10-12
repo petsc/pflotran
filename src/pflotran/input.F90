@@ -1050,7 +1050,7 @@ end subroutine InputReadPath
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-  subroutine InputFindStringInFile1(input, option, string)
+subroutine InputFindStringInFile1(input, option, string)
 
   use String_module
 
@@ -1062,7 +1062,7 @@ end subroutine InputReadPath
   
   call InputFindStringInFile2(input, option, string, PETSC_TRUE)
   
-  end subroutine InputFindStringInFile1
+end subroutine InputFindStringInFile1
 
 ! ************************************************************************** !
 !
@@ -1073,7 +1073,7 @@ end subroutine InputReadPath
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-  subroutine InputFindStringInFile2(input, option, string, print_warning)
+subroutine InputFindStringInFile2(input, option, string, print_warning)
 
   use String_module
 
@@ -1129,7 +1129,7 @@ end subroutine InputReadPath
     input%ierr = 1
   endif
   
-  end subroutine InputFindStringInFile2
+end subroutine InputFindStringInFile2
 
 ! ************************************************************************** !
 !

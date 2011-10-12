@@ -89,7 +89,11 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
     diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
                         weight*rt_parameter%diffusion_coefficient(iphase)
+                        
 ! Add the effect of temperature on diffusivity, Satish Karra, 08/15/2011
+! Below is not applicable to variable diffusion coefficient caused by temperature 
+! with variable grid spacing---should add D to harmonic weighting (stpd)-pcl
+
 #ifdef TEMP_DEPENDENT_LOGK
     !geh - temperature-dependent diffusion should use harmonic average
     weight_temp = (temp_up*dist_up + temp_dn*dist_dn)/(dist_dn + dist_up)     ! Arithmetic weighted mean by distances

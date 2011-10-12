@@ -512,7 +512,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
        aux_var%vis(2) = visg     
        aux_var%vis(1) = visl
 
-    end subroutine Flash2AuxVarCompute_NINC
+end subroutine Flash2AuxVarCompute_NINC
 
 
 

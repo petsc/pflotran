@@ -1725,7 +1725,7 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
 
     Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
-
+    
 end subroutine RichardsAccumulation
 
 ! ************************************************************************** !
@@ -1960,9 +1960,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
               * FMWH2O * dist_gravity
 
-
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
-
 
     if (dphi>=0.D0) then
 !      ukvr = rich_aux_var_up%kvr
@@ -2420,16 +2418,16 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Logging_module
 
   implicit none
-  interface
-     subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
-     end subroutine samrpetscobjectstateincrease
+end subroutine samrpetscobjectstateincrease
      
-     subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -2437,8 +2435,8 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
        PetscFortranAddr :: p_application
        Vec :: vec
        PetscErrorCode :: ierr
-     end subroutine SAMRCoarsenFaceFluxes
-  end interface
+end subroutine SAMRCoarsenFaceFluxes
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -3999,16 +3997,16 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
-  end interface
+end subroutine SAMRSetCurrentJacobianPatch
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -4143,16 +4141,16 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
-  end interface
+end subroutine SAMRSetCurrentJacobianPatch
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -4534,8 +4532,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
   implicit none
 
-  interface
-     subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
+interface
+subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
 #include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
@@ -4543,16 +4541,16 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
        PetscReal :: val
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
-     end subroutine SAMRSetJacobianSourceOnPatch
+end subroutine SAMRSetJacobianSourceOnPatch
 
-     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
 #include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
-     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-  end interface
+end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+end interface
 
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx

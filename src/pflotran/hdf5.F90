@@ -930,7 +930,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: num_indices
   PetscInt :: integer_array(:)
 
-  end subroutine HDF5ReadIntegerArray
+end subroutine HDF5ReadIntegerArray
       
 #else
       
@@ -2652,7 +2652,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
 #endif
 #endif ! PARALLELIO_LIB
   
-  end subroutine HDF5ReadIndices
+end subroutine HDF5ReadIndices
 
 
 ! ************************************************************************** !
