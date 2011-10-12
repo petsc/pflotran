@@ -1059,7 +1059,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-                  call PatchScaleSourceSink(patch,option)
+                  call PatchScaleSourceSink(patch,coupler,option)
               end select
             endif
         end select
@@ -1081,7 +1081,7 @@ end subroutine PatchUpdateCouplerAuxVars
 ! date: 01/12/11
 !
 ! ************************************************************************** !
-subroutine PatchScaleSourceSink(patch,option)
+subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   use Option_module
   use Field_module
@@ -1096,12 +1096,12 @@ subroutine PatchScaleSourceSink(patch,option)
 #include "finclude/petscvec.h90"
   
   type(patch_type) :: patch
+  type(coupler_type) :: source_sink
   type(option_type) :: option
   
   PetscErrorCode :: ierr
   
   type(grid_type), pointer :: grid
-  type(coupler_type), pointer :: cur_source_sink
   type(connection_set_type), pointer :: cur_connection_set
   type(field_type), pointer :: field
   
@@ -1111,6 +1111,7 @@ subroutine PatchScaleSourceSink(patch,option)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
+  PetscInt :: iscale_type
   PetscReal :: scale, sum
   PetscInt :: icount, x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
@@ -1124,86 +1125,87 @@ subroutine PatchScaleSourceSink(patch,option)
 
   grid => patch%grid
 
-  cur_source_sink => patch%source_sinks%first
-  do
-    if (.not.associated(cur_source_sink)) exit
+  call VecZeroEntries(field%work,ierr)
+  call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
 
-    call VecZeroEntries(field%work,ierr)
-    call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+  cur_connection_set => source_sink%connection_set
 
-    cur_connection_set => cur_source_sink%connection_set
-
-    do iconn = 1, cur_connection_set%num_connections
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      select case(option%iflowmode)
-        case(RICHARDS_MODE,G_MODE)
-           call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
-                                        x_width,y_width,z_width, &
-                                        x_count,y_count,z_count, &
-                                        ghosted_neighbors,option)
-           ! ghosted neighbors is ordered first in x, then, y, then z
-           icount = 0
-           sum = 0.d0
-           ! x-direction
-           do while (icount < x_count)
-             icount = icount + 1
-             neighbor_ghosted_id = ghosted_neighbors(icount)
-             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                         grid%structured_grid%dy(neighbor_ghosted_id)* &
-                         grid%structured_grid%dz(neighbor_ghosted_id)
+  iscale_type = source_sink%flow_condition%rate%isubtype
+  
+  select case(iscale_type)
+    case(SCALE_BY_VOLUME)
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + vol_ptr(local_id)
+      enddo
+    case(SCALE_BY_PERM)
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        vec_ptr(local_id) = vec_ptr(local_id) + perm_loc_ptr(ghosted_id) * &
+                                                vol_ptr(local_id)
+      enddo
+    case(SCALE_BY_NEIGHBOR_PERM)
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+                                    x_width,y_width,z_width, &
+                                    x_count,y_count,z_count, &
+                                    ghosted_neighbors,option)
+        ! ghosted neighbors is ordered first in x, then, y, then z
+        icount = 0
+        sum = 0.d0
+        ! x-direction
+        do while (icount < x_count)
+          icount = icount + 1
+          neighbor_ghosted_id = ghosted_neighbors(icount)
+          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                      grid%structured_grid%dy(neighbor_ghosted_id)* &
+                      grid%structured_grid%dz(neighbor_ghosted_id)
              
-           enddo
-           ! y-direction
-           do while (icount < x_count + y_count)
-             icount = icount + 1
-             neighbor_ghosted_id = ghosted_neighbors(icount)                 
-             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                         grid%structured_grid%dx(neighbor_ghosted_id)* &
-                         grid%structured_grid%dz(neighbor_ghosted_id)
+        enddo
+        ! y-direction
+        do while (icount < x_count + y_count)
+          icount = icount + 1
+          neighbor_ghosted_id = ghosted_neighbors(icount)                 
+          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                      grid%structured_grid%dx(neighbor_ghosted_id)* &
+                      grid%structured_grid%dz(neighbor_ghosted_id)
              
-           enddo
-           ! z-direction
-           do while (icount < x_count + y_count + z_count)
-             icount = icount + 1
-             neighbor_ghosted_id = ghosted_neighbors(icount)                 
-             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                         grid%structured_grid%dx(neighbor_ghosted_id)* &
-                         grid%structured_grid%dy(neighbor_ghosted_id)
-           enddo
-           vec_ptr(local_id) = vec_ptr(local_id) + sum
-        case(THC_MODE)
-        case(MPH_MODE)
-        case(IMS_MODE)
-        case(FLASH2_MODE)
-      end select 
+        enddo
+        ! z-direction
+        do while (icount < x_count + y_count + z_count)
+          icount = icount + 1
+          neighbor_ghosted_id = ghosted_neighbors(icount)                 
+          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                      grid%structured_grid%dx(neighbor_ghosted_id)* &
+                      grid%structured_grid%dy(neighbor_ghosted_id)
+        enddo
+        vec_ptr(local_id) = vec_ptr(local_id) + sum
+      enddo
+  end select
 
-    enddo
-    
-    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
-    call VecNorm(field%work,NORM_1,scale,ierr)
-    scale = 1.d0/scale
-    call VecScale(field%work,scale,ierr)
+  call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+  call VecNorm(field%work,NORM_1,scale,ierr)
+  scale = 1.d0/scale
+  call VecScale(field%work,scale,ierr)
 
-    call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      select case(option%iflowmode)
-        case(RICHARDS_MODE,G_MODE)
-          cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
-            vec_ptr(local_id)
-        case(THC_MODE)
-        case(MPH_MODE)
-        case(IMS_MODE)
-        case(FLASH2_MODE)
-      end select 
+  call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+  do iconn = 1, cur_connection_set%num_connections      
+    local_id = cur_connection_set%id_dn(iconn)
+    select case(option%iflowmode)
+      case(RICHARDS_MODE,G_MODE)
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          vec_ptr(local_id)
+      case(THC_MODE)
+      case(MPH_MODE)
+      case(IMS_MODE)
+      case(FLASH2_MODE)
+    end select 
 
-    enddo
-    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
-    
-    cur_source_sink => cur_source_sink%next
   enddo
+  call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
 
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
   call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)

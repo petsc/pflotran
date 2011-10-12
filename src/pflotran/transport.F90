@@ -91,6 +91,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
                         weight*rt_parameter%diffusion_coefficient(iphase)
 ! Add the effect of temperature on diffusivity, Satish Karra, 08/15/2011
 #ifdef TEMP_DEPENDENT_LOGK
+    !geh - temperature-dependent diffusion should use harmonic average
     weight_temp = (temp_up*dist_up + temp_dn*dist_dn)/(dist_dn + dist_up)     ! Arithmetic weighted mean by distances
     diffusion(iphase) = diffusion(iphase) + &
             weight*rt_parameter%diffusion_coefficient(iphase)* &

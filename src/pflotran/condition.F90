@@ -60,6 +60,7 @@ module Condition_module
     
   type, public :: flow_sub_condition_type
     PetscInt :: itype                  ! integer describing type of condition
+    PetscInt :: isubtype
     character(len=MAXWORDLENGTH) :: ctype ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: units      ! units
     character(len=MAXWORDLENGTH) :: name
@@ -426,6 +427,7 @@ function FlowSubConditionCreate(ndof)
   allocate(sub_condition)
   sub_condition%units = ''
   sub_condition%itype = 0
+  sub_condition%isubtype = 0
   sub_condition%ctype = ''
   sub_condition%name = ''
 
@@ -875,6 +877,21 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = MASS_RATE_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                end select
+              endif
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('conductance')
@@ -889,6 +906,21 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                end select
+              endif
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case('unit_gradient')

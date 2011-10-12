@@ -118,6 +118,11 @@ PetscInt, parameter :: UNIT_GRADIENT_BC = 14
 PetscInt, parameter :: SATURATION_BC = 15
 PetscInt, parameter :: WELL_SS = 100
 
+! source/sink scaling options
+PetscInt, parameter :: SCALE_BY_PERM = 1
+PetscInt, parameter :: SCALE_BY_NEIGHBOR_PERM = 2
+PetscInt, parameter :: SCALE_BY_VOLUME = 3
+
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0
 PetscInt, parameter :: CONSTRAINT_FREE = 1
