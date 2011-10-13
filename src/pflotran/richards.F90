@@ -1820,6 +1820,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
 
     if (dphi>=0.D0) then
+#ifdef USE_ANISOTROPIC_MOBILITY
       if (dabs(norm(1))==1) then
         ukvr = rich_aux_var_up%kvr_x
         dukvr_dp_up = rich_aux_var_up%dkvr_x_dp
@@ -1830,7 +1831,12 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
         ukvr = rich_aux_var_up%kvr_z
         dukvr_dp_up = rich_aux_var_up%dkvr_z_dp
       end if
+#else
+      ukvr = rich_aux_var_up%kvr
+      dukvr_dp_up = rich_aux_var_up%dkvr_dp
+#endif
     else
+#ifdef USE_ANISOTROPIC_MOBILITY    
       if (dabs(norm(1))==1) then
         ukvr = rich_aux_var_dn%kvr_x
         dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
@@ -1841,6 +1847,10 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
         ukvr = rich_aux_var_dn%kvr_z
         dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
       end if
+#else
+      ukvr = rich_aux_var_dn%kvr
+      dukvr_dp_up = rich_aux_var_dn%dkvr_dp
+#endif
     endif      
    
     if (ukvr>floweps) then
@@ -1963,7 +1973,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
     if (dphi>=0.D0) then
-!      ukvr = rich_aux_var_up%kvr
+#ifdef USE_ANISOTROPIC_MOBILITY       
       if (dabs(dabs(norm(1))-1) < 1e-6) then
         ukvr = rich_aux_var_up%kvr_x
       else if (dabs(dabs(norm(2))-1) < 1e-6) then
@@ -1971,8 +1981,11 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
       else if (dabs(dabs(norm(3))-1) < 1e-6) then
         ukvr = rich_aux_var_up%kvr_z
       end if
+#else
+      ukvr = rich_aux_var_up%kvr
+#endif
     else
-!      ukvr = rich_aux_var_dn%kvr
+#ifdef USE_ANISOTROPIC_MOBILITY       
       if (dabs(dabs(norm(1))-1) < 1e-6) then
         ukvr = rich_aux_var_dn%kvr_x
       else if (dabs(dabs(norm(2))-1) < 1e-6) then
@@ -1980,6 +1993,9 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
       else if (dabs(dabs(norm(3))-1) < 1e-6) then
         ukvr = rich_aux_var_dn%kvr_z
       end if
+#else
+      ukvr = rich_aux_var_dn%kvr
+#endif
     endif      
    
 
@@ -2115,7 +2131,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         endif
         
         if (dphi>=0.D0) then
-!          ukvr = rich_aux_var_up%kvr
+#ifdef USE_ANISOTROPIC_MOBILITY  
           if (dabs(dabs(dist(1))-1) < 1e-6) then
             ukvr = rich_aux_var_up%kvr_x
           else if (dabs(dabs(dist(2))-1) < 1e-6) then
@@ -2123,9 +2139,11 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
           else if (dabs(dabs(dist(3))-1) < 1e-6) then
             ukvr = rich_aux_var_up%kvr_z
           end if
+#else
+          ukvr = rich_aux_var_up%kvr
+#endif
         else
-!          ukvr = rich_aux_var_dn%kvr
-!          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+#ifdef USE_ANISOTROPIC_MOBILITY
           if (dabs(dabs(dist(1))-1) < 1e-6) then
             ukvr = rich_aux_var_dn%kvr_x
             dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
@@ -2136,7 +2154,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
             ukvr = rich_aux_var_dn%kvr_z
             dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
           end if
-
+#else
+          ukvr = rich_aux_var_dn%kvr
+          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+#endif
         endif      
      
         if (ukvr*Dq>floweps) then
@@ -2169,6 +2190,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         dden_ave_dp_dn = rich_aux_var_dn%dden_dp
 
         ! since boundary auxvar is meaningless (no pressure specified there), only use cell
+#ifdef USE_ANISOTROPIC_MOBILITY
         if (dabs(dabs(dist(1))-1) < 1e-6) then
           ukvr = rich_aux_var_dn%kvr_x
           dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
@@ -2179,6 +2201,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
           ukvr = rich_aux_var_dn%kvr_z
           dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
         end if
+#else
+        ukvr = rich_aux_var_dn%kvr
+        dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+#endif
      
         if (ukvr*perm_dn>floweps) then
           v_darcy = perm_dn * ukvr * dphi
@@ -2329,7 +2355,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
         endif
    
        if (dphi>=0.D0) then
-!        ukvr = rich_aux_var_up%kvr
+#ifdef USE_ANISOTROPIC_MOBILITY       
          if (dabs(dabs(dist(1))-1) < 1e-6) then
            ukvr = rich_aux_var_up%kvr_x
          else if (dabs(dabs(dist(2))-1) < 1e-6) then
@@ -2337,8 +2363,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
          else if (dabs(dabs(dist(3))-1) < 1e-6) then
            ukvr = rich_aux_var_up%kvr_z
          end if
+#else
+         ukvr = rich_aux_var_up%kvr
+#endif
        else
-!        ukvr = rich_aux_var_dn%kvr
+#ifdef USE_ANISOTROPIC_MOBILITY
          if (dabs(dabs(dist(1))-1) < 1e-6) then
            ukvr = rich_aux_var_dn%kvr_x
          else if (dabs(dabs(dist(2))-1) < 1e-6) then
@@ -2346,7 +2375,10 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
          else if (dabs(dabs(dist(3))-1) < 1e-6) then
            ukvr = rich_aux_var_dn%kvr_z
          end if
-       endif      
+#else
+         ukvr = rich_aux_var_dn%kvr
+#endif
+       endif
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
@@ -2374,6 +2406,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
       density_ave = global_aux_var_dn%den(1)
 
       ! since boundary auxvar is meaningless (no pressure specified there), only use cell
+#ifdef USE_ANISOTROPIC_MOBILITY
       if (dabs(dabs(dist(1))-1) < 1e-6) then
         ukvr = rich_aux_var_dn%kvr_x
       else if (dabs(dabs(dist(2))-1) < 1e-6) then
@@ -2381,6 +2414,9 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
       else if (dabs(dabs(dist(3))-1) < 1e-6) then
         ukvr = rich_aux_var_dn%kvr_z
       end if
+#else
+      ukvr = rich_aux_var_dn%kvr
+#endif
      
       if (ukvr*perm_dn>floweps) then
         v_darcy = perm_dn * ukvr * dphi
@@ -3844,8 +3880,13 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
 
                neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY
                neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr_x
               nieg_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
+#else
+               neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr
+              nieg_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
+#endif
 
           else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
                 if (ghosted_id == conn%id_up(jface)) then
@@ -3855,8 +3896,13 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                 end if
  
                 neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY
                 neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr_x 
                 nieg_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_x_dp
+#else
+                neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr
+                nieg_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_dp
+#endif
           end if
  
 
@@ -4840,8 +4886,13 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 !     numfaces = aux_var%numfaces
 
      ghosted_id = grid%nL2G(local_id)
+#ifdef USE_ANISOTROPIC_MOBILITY         
      ukvr = rich_aux_vars(ghosted_id)%kvr_x 
      dkvr_x_dp = rich_aux_vars(ghosted_id)%dkvr_x_dp
+#else
+     ukvr = rich_aux_vars(ghosted_id)%kvr
+     dkvr_x_dp = rich_aux_vars(ghosted_id)%dkvr_dp
+#endif
      dden_dp = rich_aux_vars(ghosted_id)%dden_dp
      den =  global_aux_vars(ghosted_id)%den(1)
 
