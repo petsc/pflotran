@@ -801,10 +801,10 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(RICHARDS_MODE)
           fac = 0.5d0
-          write(*,*) "flow_stepper%num_newton_iterations", flow_stepper%num_newton_iterations
-          write(*,*) "flow_stepper%iaccel", flow_stepper%iaccel
-          write(*,*) "option%dpmxe", option%dpmxe
-          write(*,*) "option%dpmax", option%dpmax
+!          write(*,*) "flow_stepper%num_newton_iterations", flow_stepper%num_newton_iterations
+!          write(*,*) "flow_stepper%iaccel", flow_stepper%iaccel
+!          write(*,*) "option%dpmxe", option%dpmxe
+!          write(*,*) "option%dpmax", option%dpmax
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
@@ -1118,7 +1118,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   PetscInt :: sum_newton_iterations, sum_linear_iterations
   PetscInt :: num_newton_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
-  PetscReal :: tempreal
+  PetscReal :: tempreal, tempreal2
   Vec :: update_vec
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
@@ -1207,7 +1207,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
                               viewer,ierr)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
             call VecView(field%flow_xx_faces, viewer, ierr)
-            call VecView(field%flow_xx, viewer, ierr)
+!            call VecView(field%flow_xx, viewer, ierr)
             call vecView(field%flow_r_faces, viewer, ierr)
     else
             call VecView(field%flow_xx, viewer, ierr)
@@ -1215,7 +1215,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     write(*,*) "VecView error", ierr
     call PetscViewerDestroy(viewer,ierr)
     write(*,*) "Before SNESSolve" 
-    read(*,*)    
+!    read(*,*)    
 #endif
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1227,14 +1227,14 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#if 1
+#if 0
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
 !             call VecView(field%flow_xx_faces, viewer, ierr)
      !       call VecView(field%flow_xx, viewer, ierr)
-!             call VecView(field%flow_r_faces, viewer, ierr)
+     !        call VecView(field%flow_r_faces, viewer, ierr)
               call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
 
              write(*,*) "MFD residual", tempreal
@@ -1242,17 +1242,22 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call VecView(field%flow_xx, viewer, ierr)
     end if
 
+!    stop
+
     call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
 
     call VecView(field%flow_r, viewer, ierr)
-    call VecNorm(field%flow_r, NORM_2, tempreal, ierr)
+    call VecNorm(field%flow_r, NORM_2, tempreal2, ierr)
 
 
-    write(*,*) "FV residual", tempreal
+    write(*,*) "FV residual", tempreal2
 
     call PetscViewerDestroy(viewer,ierr)
 
     write(*,*) "After SNESSolve" 
+
+    if (tempreal2/tempreal > 1e+7) stop
+
 !     stop
 !      read(*,*)   
      

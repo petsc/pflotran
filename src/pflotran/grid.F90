@@ -555,10 +555,8 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     Vec :: ghosted_e2f
     Vec :: ghosted_e2n
-    Vec :: vec_LP_cell_id
-    Vec :: vec_LP_cell_id_loc
-
-    IS :: is_test
+!    Vec :: vec_LP_cell_id
+!    Vec :: vec_LP_cell_id_loc
 
 
 
@@ -586,18 +584,18 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     PetscInt, pointer :: int_ptr(:)
 
-    PetscReal, pointer :: e2f_local_values(:)
-    PetscReal, pointer :: e2n_local_values(:)
-    PetscReal, pointer :: lp_cell_ids(:), lp_cell_ids_loc(:)
+    PetscScalar, pointer :: e2f_local_values(:)
+    PetscScalar, pointer :: e2n_local_values(:)
+!    PetscScalar, pointer :: lp_cell_ids(:), lp_cell_ids_loc(:)
 
-    PetscReal, pointer :: e2f_ghosted_values(:)
-    PetscReal, pointer :: e2n_ghosted_values(:)
+    PetscScalar, pointer :: e2f_ghosted_values(:)
+    PetscScalar, pointer :: e2n_ghosted_values(:)
    
-    PetscReal, pointer :: vec_ptr_e2f(:)
-    PetscReal, pointer :: vec_ptr_e2n(:)
+    PetscScalar, pointer :: vec_ptr_e2f(:)
+    PetscScalar, pointer :: vec_ptr_e2n(:)
     
-    PetscReal, pointer :: vec_ptr_e2f_gh(:)
-    PetscReal, pointer :: vec_ptr_e2n_gh(:)
+    PetscScalar, pointer :: vec_ptr_e2f_gh(:)
+    PetscScalar, pointer :: vec_ptr_e2n_gh(:)
 
     VecScatter :: VC_global2ghosted
 
@@ -618,17 +616,16 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     allocate(grid%fL2P(grid%nlmax_faces))
     allocate(grid%fG2P(grid%ngmax_faces))
-    allocate(grid%nG2LP(grid%ngmax))
 
     global_offset = 0
-    grid%global_faces_offset = 0
-    grid%global_cell_offset = 0
-
-    call MPI_Exscan(grid%nlmax_faces, grid%global_faces_offset, &
-                      ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-
-    call MPI_Exscan(grid%nlmax, grid%global_cell_offset, &
-                      ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+!    grid%global_faces_offset = 0
+!    grid%global_cell_offset = 0
+!
+!    call MPI_Exscan(grid%nlmax_faces, grid%global_faces_offset, &
+!                      ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+!
+!    call MPI_Exscan(grid%nlmax, grid%global_cell_offset, &
+!                      ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
 
 
     do iface = 1,grid%nlmax_faces
@@ -637,7 +634,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     global_offset = grid%global_faces_offset + grid%global_cell_offset
 
-    write(*,*) option%myrank, global_offset, grid%global_faces_offset, grid%global_cell_offset
+!    write(*,*) option%myrank, global_offset, grid%global_faces_offset, grid%global_cell_offset
 
 
     stride = 6                ! Only for hexagons
@@ -648,14 +645,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     call VecDuplicate(grid%e2f, grid%e2n, ierr)
 
-    call VecCreate(option%mycomm, vec_LP_cell_id, ierr)
-    call VecSetSizes(vec_LP_cell_id,  grid%nlmax, PETSC_DECIDE, ierr)
-    call VecSetFromOptions(vec_LP_cell_id, ierr)
-
 
     call VecGetArrayF90(grid%e2f, e2f_local_values, ierr)
     call VecGetArrayF90(grid%e2n, e2n_local_values, ierr)
-    call VecGetArrayF90(vec_LP_cell_id, lp_cell_ids, ierr)
 
 
     e2f_local_values = 0
@@ -663,8 +655,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     do icell = 1, grid%nlmax
       aux_var => MFD_aux%aux_vars(icell) 
-      grid%nG2LP(grid%nL2G(icell)) = global_offset + grid%nlmax_faces + icell - 1 
-      lp_cell_ids(icell) = global_offset + grid%nlmax_faces + icell
       do icount = 1, aux_var%numfaces
          ghost_face_id = aux_var%face_id_gh(icount)
          local_face_id = grid%fG2L(ghost_face_id)
@@ -708,11 +698,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
       end do
    end do
 
-  
 
    call VecRestoreArrayF90(grid%e2f, e2f_local_values, ierr)
    call VecRestoreArrayF90(grid%e2n, e2n_local_values, ierr)
-   call VecRestoreArrayF90(vec_LP_cell_id, lp_cell_ids, ierr)
 
 
 !   call PetscViewerASCIIOpen(option%mycomm,'vec_e2f_before.out',viewer,ierr)
@@ -751,7 +739,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
         call VecCreateSeq(PETSC_COMM_SELF, num_ghosted_upd*stride, ghosted_e2f, ierr)
         call VecCreateSeq(PETSC_COMM_SELF, num_ghosted_upd*stride, ghosted_e2n, ierr)
-        call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax, vec_LP_cell_id_loc, ierr)
          
         allocate(strided_indices_local(num_ghosted_upd))
         allocate(strided_indices_ghosted(num_ghosted_upd))
@@ -772,7 +759,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
         call ISDestroy(is_local_bl, ierr)
         call ISDestroy(is_a2g_bl, ierr)
 
-        call DMGlobalToLocalBegin(sgdm, vec_LP_cell_id, INSERT_VALUES, vec_LP_cell_id_loc, ierr)
         call VecScatterBegin(VC_global2ghosted, grid%e2f, ghosted_e2f, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr) 
         call VecScatterEnd(VC_global2ghosted, grid%e2f, ghosted_e2f, &
@@ -783,20 +769,11 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
                               INSERT_VALUES,SCATTER_FORWARD,ierr) 
         call VecScatterEnd(VC_global2ghosted, grid%e2n, ghosted_e2n, &
                               INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call DMGlobalToLocalEnd(sgdm, vec_LP_cell_id, INSERT_VALUES, vec_LP_cell_id_loc, ierr)
+        
 
        
         call VecGetArrayF90(ghosted_e2n, vec_ptr_e2n_gh, ierr)
         call VecGetArrayF90(ghosted_e2f, vec_ptr_e2f_gh, ierr)
-        call VecGetArrayF90(vec_LP_cell_id_loc, lp_cell_ids_loc, ierr)
-
-
-!     if (option%myrank==0) then
-!        do icell = 1, grid%ngmax
-!           write(*,*) icell, lp_cell_ids_loc(icell)
-!        end do
-!     end if
-
 
 
    
@@ -856,10 +833,10 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 !      write(*,*) option%myrank, iface, grid%fG2P(iface)
 !    end do
 
-    do icell = 1, grid%ngmax
-      grid%nG2LP(icell) = lp_cell_ids_loc(icell) - 1
-!      write(*,*) option%myrank, icell, grid%nG2LP(icell)
-    end do
+!    do icell = 1, grid%ngmax
+!      grid%nG2LP(icell) = lp_cell_ids_loc(icell) - 1
+!      if (option%myrank == 0) write(*,*) option%myrank, icell, grid%nG2LP(icell)
+!    end do
 
 
 
@@ -869,7 +846,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
     call VecRestoreArrayF90(ghosted_e2n, vec_ptr_e2n_gh, ierr)
     call VecRestoreArrayF90(ghosted_e2f, vec_ptr_e2f_gh, ierr)
 
-    call VecRestoreArrayF90(vec_LP_cell_id_loc, lp_cell_ids_loc, ierr)
   
 !    call PetscViewerASCIIOpen(option%mycomm,'vec_e2f_after.out',viewer,ierr)
 !    call VecView(grid%e2f,viewer,ierr)
@@ -882,8 +858,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     call VecDestroy(ghosted_e2n, ierr)
     call VecDestroy(ghosted_e2f, ierr)
-    call VecDestroy(vec_LP_cell_id_loc, ierr)
-    call VecDestroy(vec_LP_cell_id, ierr)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
@@ -894,6 +868,8 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
     deallocate(ghosted_ids)
     deallocate(strided_indices_local)
     deallocate(strided_indices_ghosted)
+!    stop
+
 
 #endif
 
@@ -956,8 +932,6 @@ subroutine CreateMFDStruct4Faces(grid, MFD_aux, ndof, option)
   call ISCreateBlock(option%mycomm, ndof, grid%nlmax_faces, &
                      int_array, PETSC_COPY_VALUES, MFD_aux%is_local_petsc_faces, ierr)
 
-!  call ISCreateGeneral(option%mycomm,  grid%nlmax_faces, &
-!                     int_array, PETSC_COPY_VALUES, is_test, ierr)
   deallocate(int_array)
 
 
@@ -1096,7 +1070,8 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
     NL = grid%nlmax_faces + grid%nlmax
 
 
-!     write(*,*) " Numbers", option%myrank, grid%nmax_faces, grid%ngmax_faces, grid%nlmax_faces
+!     write(*,*) "Faces", option%myrank, "ngmax_faces", grid%ngmax_faces, "nlmax_faces", grid%nlmax_faces
+!     write(*,*) "Cells", option%myrank, "ngmax", grid%ngmax, "nlmax", grid%nlmax
 !     write(*,*) 'NG', NG, 'NL', NL
 
     ! create global vec_LP
@@ -1181,9 +1156,9 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
     call ISLocalToGlobalMappingBlock(MFD_aux%mapping_ltog_LP, ndof, &
                                    MFD_aux%mapping_ltogb_LP, ierr)
 
-   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc_LP.out',viewer,ierr)
-   call ISView(MFD_aux%is_ghosted_petsc_LP,viewer,ierr)
-   call PetscViewerDestroy(viewer,ierr)
+!   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc_LP.out',viewer,ierr)
+!   call ISView(MFD_aux%is_ghosted_petsc_LP,viewer,ierr)
+!   call PetscViewerDestroy(viewer,ierr)
 
 
 !   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)
@@ -1205,9 +1180,9 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
 
 
     
-   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol_LP.out',viewer,ierr)
-   call VecScatterView(MFD_aux%scatter_gtol_LP,viewer,ierr)
-   call PetscViewerDestroy(viewer,ierr)
+!   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol_LP.out',viewer,ierr)
+!   call VecScatterView(MFD_aux%scatter_gtol_LP,viewer,ierr)
+!   call PetscViewerDestroy(viewer,ierr)
 
  ! Create local to local scatter.  Essentially remap the global to local as
  ! PETSc does in daltol.c

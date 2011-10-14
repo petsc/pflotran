@@ -4690,19 +4690,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
-  PetscReal :: ln_spec_act, spec_act_coef, ln_spec_conc
-  PetscReal :: ln_prefactor, ln_numerator, ln_denominator
-  PetscReal :: prefactor(10), ln_prefactor_spec(5,10)
-  PetscReal :: sum_prefactor_rate
-  PetscReal :: dIm_dsum_prefactor_rate, dIm_dspec
-  PetscReal :: dprefactor_dprefactor_spec, dprefactor_spec_dspec
-  PetscReal :: dprefactor_spec_dspec_numerator
-  PetscReal :: dprefactor_spec_dspec_denominator
-  PetscReal :: denominator
-  PetscInt ::  icplx
-  PetscReal :: ln_gam_m_beta
-
-  PetscInt, parameter :: needs_to_be_fixed = 1
 
   PetscReal :: ln_spec_act, spec_act_coef, ln_spec_conc
   PetscReal :: ln_prefactor, ln_numerator, ln_denominator

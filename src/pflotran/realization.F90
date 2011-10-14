@@ -464,6 +464,9 @@ subroutine RealizationCreateDiscretization(realization)
 
      end if
 
+     call RealizationCreatenG2LP(realization)
+
+
      dm_ptr => DiscretizationGetDMPtrFromIndex(discretization, NFLOWDOF)
      call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, dm_ptr%sgdm, NFLOWDOF, option)
   
@@ -609,6 +612,132 @@ subroutine RealizationAddCoupler(realization,coupler)
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
+
+
+subroutine RealizationCreatenG2LP(realization)
+
+    use Grid_module
+
+    implicit none
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+
+#include "definitions.h"
+
+#include "finclude/petscsnes.h"
+#include "finclude/petscpc.h"
+
+   
+    type(realization_type) :: realization  
+
+
+    type(option_type), pointer :: option
+    type(discretization_type), pointer :: discretization 
+    type(grid_type), pointer :: grid
+    PetscInt :: DOF, global_offset, icell, num_ghosted
+    PetscErrorCode :: ierr
+
+    Vec :: vec_LP_cell_id
+    Vec :: vec_LP_cell_id_loc
+
+    IS :: is_ghosted, is_global
+    VecScatter :: VC_global2ghosted 
+
+    PetscScalar, pointer :: lp_cell_ids(:), lp_cell_ids_loc(:) 
+    PetscInt, pointer :: int_tmp_gh(:), int_tmp_gl(:)
+
+    option => realization%option
+    discretization => realization%discretization
+    grid => discretization%grid
+  
+    global_offset = 0
+    grid%global_faces_offset = 0
+    grid%global_cell_offset = 0
+
+    allocate(grid%nG2LP(grid%ngmax))
+
+    call MPI_Exscan(grid%nlmax_faces, grid%global_faces_offset, &
+                      ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+    call MPI_Exscan(grid%nlmax, grid%global_cell_offset, &
+                      ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+
+    global_offset = grid%global_faces_offset + grid%global_cell_offset
+
+    call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id, &
+                                      GLOBAL,option)
+
+    call DiscretizationCreateVector(discretization,ONEDOF,vec_LP_cell_id_loc, &
+                                      LOCAL,option)
+
+    call VecGetArrayF90(vec_LP_cell_id, lp_cell_ids, ierr)     
+
+     do icell = 1, grid%nlmax
+        grid%nG2LP(grid%nL2G(icell)) = global_offset + grid%nlmax_faces + icell - 1
+        lp_cell_ids(icell) = global_offset + grid%nlmax_faces + icell
+     end do
+          
+    call VecRestoreArrayF90(vec_LP_cell_id, lp_cell_ids, ierr)     
+
+    allocate(int_tmp_gh(grid%ngmax - grid%nlmax))
+    allocate(int_tmp_gl(grid%ngmax - grid%nlmax))
+
+    num_ghosted = 1
+    do icell = 1, grid%ngmax
+       if (grid%nG2L(icell) < 1) then
+          int_tmp_gh(num_ghosted) = icell - 1
+          int_tmp_gl(num_ghosted) = grid%nG2P(icell)
+          num_ghosted = num_ghosted + 1
+       end if
+    end do
+
+
+    call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
+                     int_tmp_gh, PETSC_COPY_VALUES, is_ghosted, ierr)
+    call ISCreateBlock(option%mycomm, ONEDOF, grid%ngmax - grid%nlmax, &
+                     int_tmp_gl, PETSC_COPY_VALUES, is_global, ierr)
+
+
+
+    call VecScatterCreate(vec_LP_cell_id, is_global, vec_LP_cell_id_loc, is_ghosted, VC_global2ghosted, ierr) 
+
+    deallocate(int_tmp_gh)
+    deallocate(int_tmp_gl)
+
+    call VecScatterBegin(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
+                              INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(VC_global2ghosted, vec_LP_cell_id, vec_LP_cell_id_loc, &
+                              INSERT_VALUES,SCATTER_FORWARD,ierr)
+ 
+
+!    call DiscretizationGlobalToLocal(discretization, vec_LP_cell_id, vec_LP_cell_id_loc, ONEDOF)
+
+    call VecGetArrayF90(vec_LP_cell_id_loc, lp_cell_ids_loc, ierr)
+
+
+     do icell = 1, grid%ngmax
+      if (grid%nG2L(icell) < 1) grid%nG2LP(icell) = lp_cell_ids_loc(icell) - 1
+    end do
+
+    call VecRestoreArrayF90(vec_LP_cell_id_loc, lp_cell_ids_loc, ierr)
+
+
+    call VecDestroy(vec_LP_cell_id, ierr)
+    call VecDestroy(vec_LP_cell_id_loc, ierr)
+
+!    call MPI_Barrier(PETSC_COMM_WORLD, ierr)
+
+end subroutine
+
 
 ! ************************************************************************** !
 !
@@ -2856,9 +2985,6 @@ subroutine RealizationSetUpBC4Faces(realization)
   end do
 
 
-
-
-
   call VecRestoreArrayF90(field%flow_xx_faces, xx_faces_p, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
 
@@ -3024,31 +3150,31 @@ subroutine RealizationPrintGridStatistics(realization)
   endif
   if (OptionPrintToFile(option)) then
     write(option%fid_out,'(/," Grid Stats:",/, &
-                "                       Global # cells: ",i12,/, &
-                "                Global # active cells: ",i12,/, &
-                "                              # cores: ",i12,/, &
-                "         Processor core decomposition: ",3i6,/, &
-                "               Maximum # cells / core: ",i12,/, &
-                "               Minimum # cells / core: ",i12,/, &
-                "               Average # cells / core: ",1pe12.4,/, &
-                "               Std Dev # cells / core: ",1pe12.4,/, &
-                "        Maximum # active cells / core: ",i12,/, &
-                "        Minimum # active cells / core: ",i12,/, &
-                "        Average # active cells / core: ",1pe12.4,/, &
-                "        Std Dev # active cells / core: ",1pe12.4,/,/, &
-                "        % cores with % active cells =       0%: ",1f7.2,/, &
-                "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
-                "        % cores with % active cells =   10-20%: ",1f7.2,/, &
-                "        % cores with % active cells =   20-30%: ",1f7.2,/, &
-                "        % cores with % active cells =   30-40%: ",1f7.2,/, &
-                "        % cores with % active cells =   40-50%: ",1f7.2,/, &
-                "        % cores with % active cells =   50-60%: ",1f7.2,/, &
-                "        % cores with % active cells =   60-70%: ",1f7.2,/, &
-                "        % cores with % active cells =   70-80%: ",1f7.2,/, &
-                "        % cores with % active cells =   80-90%: ",1f7.2,/, &
-                "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
-                "        % cores with % active cells =     100%: ",1f7.2,/, &
-                "                                        Check : ",1f7.2,/)') &
+               & "                       Global # cells: ",i12,/, &
+               & "                Global # active cells: ",i12,/, &
+               & "                              # cores: ",i12,/, &
+               & "         Processor core decomposition: ",3i6,/, &
+               & "               Maximum # cells / core: ",i12,/, &
+               & "               Minimum # cells / core: ",i12,/, &
+               & "               Average # cells / core: ",1pe12.4,/, &
+               & "               Std Dev # cells / core: ",1pe12.4,/, &
+               & "        Maximum # active cells / core: ",i12,/, &
+               & "        Minimum # active cells / core: ",i12,/, &
+               & "        Average # active cells / core: ",1pe12.4,/, &
+               & "        Std Dev # active cells / core: ",1pe12.4,/,/, &
+               & "        % cores with % active cells =       0%: ",1f7.2,/, &
+               & "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
+               & "        % cores with % active cells =   10-20%: ",1f7.2,/, &
+               & "        % cores with % active cells =   20-30%: ",1f7.2,/, &
+               & "        % cores with % active cells =   30-40%: ",1f7.2,/, &
+               & "        % cores with % active cells =   40-50%: ",1f7.2,/, &
+               & "        % cores with % active cells =   50-60%: ",1f7.2,/, &
+               & "        % cores with % active cells =   60-70%: ",1f7.2,/, &
+               & "        % cores with % active cells =   70-80%: ",1f7.2,/, &
+               & "        % cores with % active cells =   80-90%: ",1f7.2,/, &
+               & "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
+               & "        % cores with % active cells =     100%: ",1f7.2,/, &
+               & "                                        Check : ",1f7.2,/)') &
            global_total_count, &
            global_active_count, &
            option%mycommsize, &
