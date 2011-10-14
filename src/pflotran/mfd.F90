@@ -763,8 +763,8 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
     dphi = pres(1) - neig_pres(i) + gravity
  
 !   if (aux_var%gr(i) > 1e-16)  then
-!    if (aux_var%gr(i) >=0 )  then
-     if (dphi >= 0) then
+    if (aux_var%gr(i) >=0 )  then
+!     if (dphi >= 0) then
 
 #ifdef USE_ANISOTROPIC_MOBILITY
         if (rich_aux_var%kvr_x < 1e-10 ) then
@@ -795,8 +795,8 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 !        end if
 
 !   else if (aux_var%gr(i) < -1e-16)  then
-!    else if (aux_var%gr(i) < 0)  then
-    else if (dphi < 0)  then
+    else if (aux_var%gr(i) < 0)  then
+!    else if (dphi < 0)  then
 
         if (neig_kvr(i) < 1e-10) then
             ukvr(i) = 1e-10
@@ -818,6 +818,18 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
   end do
 
 
+!  if (ghosted_cell_id < 5) then
+!     write(*,*) "gr", (aux_var%gr(i),i=1,6)
+!     write(*,*) xx(1)
+!     write(*,*) "pres", (neig_pres(i),i=1,6)
+!     write(*,*) "neig", (neig_kvr(i),i=1,6)
+!     write(*,*) "ukvr", (ukvr(i),i=1,6)
+!     write(*,*) "dukvr_dp", (dukvr_dp(i),i=1,6)
+!     write(*,*) "dkvr_dp_neig", (dkvr_dp_neig(i),i=1,6)
+!     write(*,*) den_cntr
+!     write(*,*) "den", (neigh_den(i),i=1,6) 
+!     write(*,*) "bnd", (bnd(i),i=1,6) 
+!  end if
 
   sat = global_aux_var%sat(1)
   ds_dp = rich_aux_var%dsat_dp
@@ -1038,6 +1050,8 @@ subroutine MFDAuxJacobianLocal( grid, aux_var, &
 
 !   write(*,*) (J(iface + (iface - 1)*aux_var%numfaces), iface = 1,6)
 !   write(*,*)
+
+    aux_var%dRp_dneig = 0
 
 #ifdef DASVYAT_DEBUG
    do iface = 1, aux_var%numfaces
@@ -1314,8 +1328,8 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
     
 
 !  if (aux_var%gr(i) > 1e-16)  then
-!    if (aux_var%gr(i) >= 0)  then
-   if (dphi >=0 ) then
+    if (aux_var%gr(i) >= 0)  then
+!   if (dphi >=0 ) then
 
 #ifdef USE_ANISOTROPIC_MOBILITY
         if (rich_aux_var%kvr_x < 1e-10 ) then
@@ -1340,8 +1354,8 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 !        end if
 
 !   else if (aux_var%gr(i) < -1e-16)  then
-!    else if (aux_var%gr(i) < 0)  then
-   else if (dphi < 0) then
+    else if (aux_var%gr(i) < 0)  then
+!   else if (dphi < 0) then
         if (neig_kvr(i) < 1e-10 ) then
             ukvr(i) = 1e-10
         else 
@@ -1745,9 +1759,7 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      end do
    end do
 
-#endif
-
-#if 1
+#else
 
   do i = 1, aux_var%numfaces
      do j = 1, 3

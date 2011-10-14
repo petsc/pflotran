@@ -4662,7 +4662,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
                   neig_dkvr_dp(j) = test_rich_aux_vars%dkvr_x_dp
 #else
                   neig_kvr(j) = test_rich_aux_vars%kvr
-                  neig_dkvr_dp(j) = test_rich_aux_vars%dkvr_dp
+!                  neig_dkvr_dp(j) =  rich_aux_vars(ghosted_id)%dkvr_dp
+                  neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
 #endif
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
@@ -5185,6 +5186,9 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
   endif
 
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
+
+!  write(*,*) "Exit RichardsJacobianMFDLP"
+!  stop
 
 end subroutine RichardsJacobianMFDLP
                 
@@ -5912,9 +5916,9 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 #endif
 
 #ifdef DASVYAT
-  write(*,*) "EXIT MFD JACOBIAN"
-  write(*,*) "richard 4587"
-  stop
+!  write(*,*) "EXIT MFD JACOBIAN"
+!  write(*,*) "richard 4587"
+!  stop
 #endif
 
 end subroutine RichardsJacobianPatchMFD
