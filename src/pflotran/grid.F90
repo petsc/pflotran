@@ -2189,7 +2189,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
                         vec_cell2facevert, ierr)
 
       ! Initialize vector
-      call VecSet(vec_cell2facevert, -999.d0)
+      call VecSet(vec_cell2facevert, -999.d0, ierr)
       call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
       call VecAssemblyEnd(  vec_cell2facevert, ierr) !
             

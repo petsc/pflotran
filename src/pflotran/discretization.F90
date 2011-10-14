@@ -716,9 +716,9 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   
   implicit none
   
-  interface
+interface
 
-     subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
+subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
 #include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
@@ -727,7 +727,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        PetscInt :: stencilsize
        PetscInt :: flowortransport
        Mat :: p_matrix
-     end subroutine SAMRCreateMatrix
+end subroutine SAMRCreateMatrix
      
      PetscInt function hierarchy_number_levels(p_hierarchy)
        PetscFortranAddr, intent(inout) :: p_hierarchy
@@ -744,7 +744,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        PetscInt, intent(in) :: pn
      end function is_local_patch
      
-  end interface
+end interface
 
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
@@ -967,8 +967,8 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
 
   implicit none
   
-  interface
-     subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
+interface
+subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -979,9 +979,9 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
        PetscInt :: ndof
        PetscErrorCode :: ierr
        
-     end subroutine SAMRGlobalToLocal
+end subroutine SAMRGlobalToLocal
 
-  end interface
+end interface
 
   type(discretization_type) :: discretization
   Vec :: global_vec
@@ -1113,8 +1113,8 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
 
   implicit none
   
-  interface
-     subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
+interface
+subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -1125,9 +1125,9 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
        PetscInt :: ndof
        PetscErrorCode :: ierr
        
-     end subroutine SAMRLocalToLocal
+end subroutine SAMRLocalToLocal
 
-  end interface
+end interface
   type(discretization_type) :: discretization
   Vec :: local_vec1
   Vec :: local_vec2

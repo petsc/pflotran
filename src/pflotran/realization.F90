@@ -102,7 +102,8 @@ private
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
             RealizatonPassFieldPtrToPatches, &
-            RealLocalToLocalWithArray
+            RealLocalToLocalWithArray, &
+            RealizationCalculateCFL1Timestep
  
 contains
   
@@ -3201,6 +3202,40 @@ subroutine RealizationPrintGridStatistics(realization)
   endif
 
 end subroutine RealizationPrintGridStatistics
+
+! ************************************************************************** !
+!
+! RealizationCalculateCFL1Timestep: Calculates largest time step that  
+!                                   preserves aCFL # of 1 in a realization
+! author: Glenn Hammond
+! date: 10/07/11
+!
+! ************************************************************************** !
+subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
+
+  type(realization_type) realization
+  PetscReal :: max_dt_cfl_1
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  PetscReal :: max_dt_cfl_1_patch
+  
+  max_dt_cfl_1 = 1.d20
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchCalculateCFL1Timestep(cur_patch,realization%option, &
+                                      max_dt_cfl_1_patch)
+      max_dt_cfl_1 = min(max_dt_cfl_1,max_dt_cfl_1_patch)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo  
+
+end subroutine RealizationCalculateCFL1Timestep
 
 ! ************************************************************************** !
 !

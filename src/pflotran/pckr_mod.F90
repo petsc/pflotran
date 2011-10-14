@@ -12,7 +12,7 @@ private
 
 !------------------------------------------------------------------------
 
-    subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
+subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
               pckr_m ,pckr_pcmax,sg,pc,pc_s,kr,kr_s,pckr_beta,pckr_pwr) 
        
       implicit none

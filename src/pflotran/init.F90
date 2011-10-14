@@ -92,7 +92,7 @@ subroutine Init(simulation)
       
   interface
 
-     subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
+subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
 #include "finclude/petscsysdef.h"
 #include "finclude/petscpc.h"
        PC :: pc
@@ -100,7 +100,7 @@ subroutine Init(simulation)
        PetscInt :: which_pc
      end subroutine SAMRInitializePreconditioner
 
-  end interface
+end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,ierr)

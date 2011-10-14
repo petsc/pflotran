@@ -516,12 +516,16 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
     end if
 
 !   if (v_darcy(i) > 0)  then
-        if (rich_aux_var%kvr_x < 1e-10 ) then
+#ifdef USE_ANISOTROPIC_MOBILITY
             ukvr(i) = 1e-10
         else 
             ukvr(i) = rich_aux_var%kvr_x
         end if
         dukvr_dp(i) = rich_aux_var%dkvr_x_dp 
+#else
+        ukvr(i) = rich_aux_var%kvr
+        dukvr_dp(i) = rich_aux_var%dkvr_dp 
+#endif
 !   else 
 !        ukvr(i) = neig_kvr(i)
 !        dukvr_dp(i) = 0.!neig_dkvr_dp(i)
@@ -998,8 +1002,11 @@ subroutine MFDAuxJacobianLocal( grid, aux_var, &
   PetscInt :: iface, jface
   PetscScalar :: ukvr
 
-
+#ifdef USE_ANISOTROPIC_MOBILITY
   ukvr = rich_aux_var%kvr_x
+#else
+  ukvr = rich_aux_var%kvr
+#endif
 
   J = 0.
 
@@ -1134,8 +1141,11 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
   E = 0
 
+#ifdef USE_ANISOTROPIC_MOBILITY
   ukvr = rich_aux_var%kvr_x
-
+#else
+  ukvr = rich_aux_var%kvr
+#endif
 
   do iface = 1, aux_var%numfaces
     MB(iface) = 0.
@@ -1256,14 +1266,15 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 !  allocate(dden_dp(numfaces))
 
 
-!  if (option%myrank==1) then
+#ifdef USE_ANISOTROPIC_MOBILITY
 !       write(*,*) "MFDFL", "rank ", option%myrank, ghosted_cell_id, grid%nG2LP(ghosted_cell_id), xx(1)
 !       write(*,*) option%myrank, grid%nG2LP(ghosted_cell_id), (face_pr(i), i=1,6) 
 !  end if
 
-
   ukvr = rich_aux_var%kvr_x
-  den_cntr = global_aux_var%den(1)
+#else
+  ukvr = rich_aux_var%kvr
+#endif
   upweight = 0.5
 
 

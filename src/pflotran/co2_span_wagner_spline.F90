@@ -19,7 +19,7 @@
   public sw_spline_read, sw_prop
   
   contains
-  subroutine sw_spline_read
+subroutine sw_spline_read
 
   use spline_module
 
@@ -117,10 +117,10 @@
   enddo
 
   return
-  end subroutine sw_spline_read
+end subroutine sw_spline_read
   
   
-  subroutine sw_prop(tx,px,rho,h,u,fg)
+subroutine sw_prop(tx,px,rho,h,u,fg)
       
        use spline_module
 
@@ -199,6 +199,6 @@
 !         print *,'density: ',tx,px,ipx,jpx,p_tab(ipx+1),p_tab(ipx),rtab(ipx+1),rtab(ipx),rho
 !************************************************************************************
     return
-    end subroutine sw_prop
+end subroutine sw_prop
     
-  end module span_wagner_spline_module
+end module span_wagner_spline_module

@@ -415,7 +415,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
        aux_var%kvr(2)=kr(2)/visg     
        aux_var%kvr(1) = kr(1)/visl
 
-    end subroutine ImmisAuxVarCompute_NINC
+end subroutine ImmisAuxVarCompute_NINC
 
 
 

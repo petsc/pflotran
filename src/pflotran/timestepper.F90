@@ -30,6 +30,8 @@ module Timestepper_module
     PetscReal :: dt_min
     PetscReal :: dt_max
     PetscReal :: prev_dt
+    PetscReal :: cfl_limiter
+    PetscReal :: cfl_limiter_ts
     
     PetscBool :: init_to_steady_state
     PetscBool :: run_as_steady_state
@@ -96,6 +98,8 @@ function TimestepperCreate()
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
   stepper%prev_dt = 0.d0
+  stepper%cfl_limiter = -999.d0
+  stepper%cfl_limiter_ts = 1.d20
   
   stepper%time_step_cut_flag = PETSC_FALSE
 
@@ -152,6 +156,8 @@ subroutine TimestepperReset(stepper,dt_min)
 
   stepper%dt_min = dt_min
   stepper%prev_dt = 0.d0
+  stepper%cfl_limiter = -999.d0
+  stepper%cfl_limiter_ts = 1.d20
 
   stepper%time_step_cut_flag = PETSC_FALSE
 
@@ -208,6 +214,10 @@ subroutine TimestepperRead(stepper,input,option)
       case('MAX_TS_CUTS')
         call InputReadInt(input,option,stepper%max_time_step_cuts)
         call InputDefaultMsg(input,option,'max_time_step_cuts')
+        
+      case('CFL_LIMITER')
+        call InputReadDouble(input,option,stepper%cfl_limiter)
+        call InputDefaultMsg(input,option,'cfl limiter')
         
       case('DT_FACTOR')
         string='time_step_factor'
@@ -294,6 +304,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscBool :: failure
   PetscLogDouble :: start_time, end_time
   PetscReal :: tran_dt_save, flow_t0
+  PetscReal :: dt_cfl_1, flow_to_tran_ts_ratio
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -529,10 +540,26 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       tran_dt_save = -999.d0
+      ! reset transpor time step if flow time step is cut
       if (associated(flow_stepper)) then
         if (flow_stepper%time_step_cut_flag) then
           tran_stepper%target_time = flow_stepper%target_time
           option%tran_dt = min(option%tran_dt,option%flow_dt)
+        endif
+      endif
+      ! CFL Limiting
+      if (tran_stepper%cfl_limiter > 0.d0) then
+        call TimestepperCheckCFLLimit(tran_stepper,realization)
+        call TimestepperEnforceCFLLimit(tran_stepper,option,output_option)
+      endif
+      ! if transport time step is less than flow step, but greater than
+      ! half the flow time step, might as well cut it down to half the 
+      ! flow time step size
+      if (associated(flow_stepper)) then
+        flow_to_tran_ts_ratio = option%flow_dt / option%tran_dt
+        if (flow_to_tran_ts_ratio > 1.d0 .and. &
+            flow_to_tran_ts_ratio < 2.d0) then
+          option%tran_dt = option%flow_dt * 0.5d0
         endif
       endif
       do ! loop on transport until it reaches the target time
@@ -561,7 +588,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         
         ! if still stepping, update the time step size based on convergence
         ! criteria
-        call StepperUpdateDT(null_stepper,tran_stepper,option) 
+        call StepperUpdateDT(null_stepper,tran_stepper,option)
+        ! check CFL limit if turned on
+        if (tran_stepper%cfl_limiter > 0.d0) then
+          call TimestepperEnforceCFLLimit(tran_stepper,option,output_option)
+        endif         
         ! if current step exceeds (factoring in tolerance) exceeds the target
         ! time, set the step size to the difference
         if ((option%tran_time + &
@@ -973,16 +1004,21 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   ! this flag allows one to take a shorter or slightly larger step than normal
   ! in order to synchronize with the waypoint time
   if (option%match_waypoint) then
-    if (associated(flow_stepper)) option%flow_dt = flow_stepper%prev_dt
-    if (associated(tran_stepper)) option%tran_dt = tran_stepper%prev_dt
+    ! if the maximum time step size decreased in the past step, need to set
+    ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
+    if (associated(flow_stepper)) option%flow_dt = min(flow_stepper%prev_dt, &
+                                                       flow_stepper%dt_max)
+    if (associated(tran_stepper)) option%tran_dt = min(tran_stepper%prev_dt, &
+                                                       tran_stepper%dt_max)
     option%match_waypoint = PETSC_FALSE
   endif
 
   if (flag) then ! flow stepper will govern the target time
 !    time = option%flow_time + option%flow_dt
     dt = option%flow_dt
-    dt_max = flow_stepper%dt_max
+    ! dt_max must be set from current waypoint and not updated below
     cur_waypoint => flow_stepper%cur_waypoint
+    dt_max = cur_waypoint%dt_max
     cumulative_time_steps = flow_stepper%steps
     max_time_step = flow_stepper%max_time_step
     tolerance = flow_stepper%time_step_tolerance
@@ -990,8 +1026,9 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   else
 !    time = option%tran_time + option%tran_dt
     dt = option%tran_dt
-    dt_max = tran_stepper%dt_max
     cur_waypoint => tran_stepper%cur_waypoint
+    ! dt_max must be set from current waypoint and not updated below
+    dt_max = cur_waypoint%dt_max
     cumulative_time_steps = tran_stepper%steps
     max_time_step = tran_stepper%max_time_step
     tolerance = tran_stepper%time_step_tolerance
@@ -1026,13 +1063,9 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
       if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
       option%match_waypoint = PETSC_TRUE
       cur_waypoint => cur_waypoint%next
-      if (associated(cur_waypoint)) &
-        dt_max = cur_waypoint%dt_max
     endif
   else if (target_time > cur_waypoint%time) then
     cur_waypoint => cur_waypoint%next
-    if (associated(cur_waypoint)) &
-      dt_max = cur_waypoint%dt_max
   endif
   ! subtract 1 from max_time_steps since we still have to complete the current
   ! time step
@@ -1056,7 +1089,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
           dt <= (1.d0+tolerance)*option%tran_dt) then
         option%tran_dt = dt
       endif
-      ! else leave it alone
+      !geh: Need to ensure that tran_dt <= flow_dt
+      if (option%tran_dt > option%flow_dt) option%tran_dt = option%flow_dt
     else ! transport only
       option%tran_dt = dt
     endif
@@ -1095,7 +1129,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Richards_module
   
   implicit none
 
@@ -3017,6 +3050,60 @@ subroutine TimestepperSetTranWeights(option,flow_t0, flow_t1)
                           (flow_t1-flow_t0)
 
 end subroutine TimestepperSetTranWeights
+
+! ************************************************************************** !
+!
+! TimestepperCheckCFLLimit: Checks CFL limit specified by the user
+! author: Glenn Hammond
+! date: 01/17/11
+!
+! ************************************************************************** !
+subroutine TimestepperCheckCFLLimit(stepper,realization)
+
+  use Realization_module
+  
+  implicit none
+
+  type(stepper_type) :: stepper
+  type(realization_type) :: realization
+  
+  PetscReal :: dt_cfl_1
+  
+  call RealizationCalculateCFL1Timestep(realization,dt_cfl_1)
+  stepper%cfl_limiter_ts = dt_cfl_1*stepper%cfl_limiter
+ 
+end subroutine TimestepperCheckCFLLimit
+
+! ************************************************************************** !
+!
+! TimestepperEnforceCFLLimit: Enforces a CFL limit specified by the user
+! author: Glenn Hammond
+! date: 01/17/11
+!
+! ************************************************************************** !
+subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
+
+  use Option_module
+
+  implicit none
+
+  type(stepper_type) :: stepper
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+  
+  if (stepper%cfl_limiter_ts < option%tran_dt) then
+    option%tran_dt = stepper%cfl_limiter_ts
+    if (OptionPrintToScreen(option)) then
+      write(*,'(" CFL Limiting: ",1pe12.4," [",a1,"]")') &
+            stepper%cfl_limiter_ts/output_option%tconv,output_option%tunit
+    endif
+    if (OptionPrintToFile(option)) then
+      write(option%fid_out,'(/," CFL Limiting: ",1pe12.4," [",a1,"]",/)') &
+            stepper%cfl_limiter_ts/output_option%tconv,output_option%tunit
+    endif        
+  endif    
+
+end subroutine TimestepperEnforceCFLLimit
 
 ! ************************************************************************** !
 !

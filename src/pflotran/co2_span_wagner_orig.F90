@@ -26,7 +26,7 @@
 
       contains
     
-      subroutine initialize_span_wagner(itable,myrank)
+subroutine initialize_span_wagner(itable,myrank)
 
       implicit none
       integer, optional:: itable
@@ -301,9 +301,9 @@
     enddo
   endif
 
-  end subroutine initialize_span_wagner      
+end subroutine initialize_span_wagner      
       
-  subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
       eng,ent,dhdt,dhdp,visc,dvdt,dvdp,itable)
       
   use co2_sw_rtsafe_module
@@ -534,11 +534,11 @@
       dvdt = dvdt*1d-6
       dvdp = dvdp*1d-6
       
-  end subroutine co2_span_wagner
+end subroutine co2_span_wagner
 
 
 
-  subroutine guess(lguess,uguess)
+subroutine guess(lguess,uguess)
 
       implicit none
 
@@ -633,9 +633,9 @@
          lguess = 50.d0
       endif
 
-  end subroutine guess
+end subroutine guess
 
-  subroutine co2den(den,f,df)
+subroutine co2den(den,f,df)
      
 	  IMPLICIT NONE
       real*8 :: den,tau1,del1
@@ -650,9 +650,9 @@
       df = 1.d0+(2.d0*del1*f1)+(del1*del1*df1)
 
       return
-      end subroutine co2den
+end subroutine co2den
 
-      double precision function psi(i,del2,tau2)
+double precision function psi(i,del2,tau2)
       implicit none
 !     real*8 :: psi
 !     real*8 aco2(4),bco2(4),capa(5),capb(5),capc(5),capd(5)
@@ -684,9 +684,9 @@
       enddo
       dr = derti_helm
 
-      end subroutine dphiodtau
+end subroutine dphiodtau
 
-      subroutine dphiodtautau(dr,del2,tau2)
+subroutine dphiodtautau(dr,del2,tau2)
 
       implicit none
       
@@ -704,9 +704,9 @@
       enddo
       dr = dihelm_dtautau
 
-      end subroutine dphiodtautau
+end subroutine dphiodtautau
 
-      subroutine phir(r_helm,del2,tau2)
+subroutine phir(r_helm,del2,tau2)
 
 !     residual helmholtz energy: Span & Wagner (1996), p. 1544, eq. (6.5)
 !     Table 32
@@ -840,9 +840,9 @@
       enddo
 
       return
-      end subroutine phir
+end subroutine phir
 
-      subroutine dphirddel(dr,del2,tau2)
+subroutine dphirddel(dr,del2,tau2)
 
 !     Span & Wagner (1996) Table 32
 
@@ -984,9 +984,9 @@
 
       dr = derdr_helm
       
-      end subroutine dphirddel
+end subroutine dphirddel
 
-      subroutine dphirdddel(dpdd,del2,tau2)
+subroutine dphirdddel(dpdd,del2,tau2)
       implicit none
       integer :: i
       real*8 :: del2,tau2,derdr_helm
@@ -1183,9 +1183,9 @@
       
       dpdd = derdr_helm
       
-      end subroutine dphirdddel
+end subroutine dphirdddel
       
-      subroutine dphirdtau(dpdtau,del2,tau2)
+subroutine dphirdtau(dpdtau,del2,tau2)
 
       implicit none
       integer :: i
@@ -1222,9 +1222,9 @@
       enddo
       dpdtau = derdr_helm
       
-      end subroutine dphirdtau
+end subroutine dphirdtau
 
-      subroutine dphirdtautau(dpdtt,del2,tau2)
+subroutine dphirdtautau(dpdtt,del2,tau2)
 
       implicit none
       integer :: i
@@ -1267,9 +1267,9 @@
       
       dpdtt = derdr_helm
       
-      end subroutine dphirdtautau
+end subroutine dphirdtautau
 
-      subroutine dphirddeldtau(dpddt,del2,tau2)
+subroutine dphirddeldtau(dpddt,del2,tau2)
 
       implicit none
       integer :: i
@@ -1315,9 +1315,9 @@
       
       dpddt = derdr_helm
       
-      end subroutine dphirddeldtau
+end subroutine dphirddeldtau
 
-      function dpsiddel(i,del2,tau2)
+function dpsiddel(i,del2,tau2)
       implicit none
       real*8 :: dpsiddel
       real*8 del2,tau2,psi1
@@ -1502,9 +1502,9 @@
     
       d2delbiddeltau=tmp3
 
-      end function d2delbiddeltau
+end function d2delbiddeltau
 
-      subroutine vappr(tm,ps,dertp,derpt,ifl1)
+subroutine vappr(tm,ps,dertp,derpt,ifl1)
 
       implicit none
       
@@ -1559,9 +1559,9 @@
         derpt=1/derpt
       endif
       
-      end subroutine vappr
+end subroutine vappr
       
-      subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
+subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
 
       implicit none
       real*8 :: p, t, rho
@@ -1632,9 +1632,9 @@
 
       dmudp = dp_zerodenmu + (dp_excessmu*drhodp)
 
-      end subroutine viscosity
+end subroutine viscosity
 
-      subroutine dissco2(p,t,mco2,fg,mol)
+subroutine dissco2(p,t,mco2,fg,mol)
 
       implicit none
       real*8 p, t, mco2, fg, mol
@@ -1678,6 +1678,6 @@
 
       p = p*0.1d0
 
-      end subroutine dissco2
+end subroutine dissco2
 
-  end module span_wagner_module
+end module span_wagner_module
