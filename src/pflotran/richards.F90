@@ -4060,10 +4060,10 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                neig_den(j) = global_aux_vars(ghosted_id)%den(1)
 #ifdef USE_ANISOTROPIC_MOBILITY
                neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr_x
-              neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
+               neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
 #else
                neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr
-              nieg_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
+               neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
 #endif
 
           else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
@@ -4079,7 +4079,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                 neig_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_x_dp
 #else
                 neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr
-                nieg_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_dp
+                neig_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_dp
 #endif
           end if
  
@@ -4388,10 +4388,19 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
                        option)
 
                   neig_den(j) = test_global_aux_vars%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY                 
                   neig_ukvr(j) = test_rich_aux_vars%kvr_x
+#else
+                  neig_ukvr(j) = test_rich_aux_vars%kvr
+#endif
+
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY
                   neig_ukvr(j) = rich_aux_vars(ghosted_id)%kvr_x
+#else
+                  neig_ukvr(j) = rich_aux_vars(ghosted_id)%kvr
+#endif
                 end if
  
 
@@ -4403,8 +4412,12 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
                 end if
  
                 neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
-                neig_ukvr(j) = rich_aux_vars(ghost_neig_id)%kvr_x
                 neig_pres(j) = xx_loc_faces_p(grid%ngmax_faces + ghost_neig_id)
+#ifdef USE_ANISOTROPIC_MOBILITY
+                neig_ukvr(j) = rich_aux_vars(ghost_neig_id)%kvr_x
+#else
+                neig_ukvr(j) = rich_aux_vars(ghost_neig_id)%kvr
+#endif
           end if
     end do
 
@@ -4644,12 +4657,22 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
                        option)
 
                   neig_den(j) = test_global_aux_vars%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY
                   neig_kvr(j) = test_rich_aux_vars%kvr_x
                   neig_dkvr_dp(j) = test_rich_aux_vars%dkvr_x_dp
+#else
+                  neig_kvr(j) = test_rich_aux_vars%kvr
+                  neig_dkvr_dp(j) = test_rich_aux_vars%dkvr_dp
+#endif
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY
                   neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
                   neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr_x
+#else
+                  neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
+                  neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr
+#endif
                 end if
 
           else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
@@ -4660,8 +4683,13 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
                 end if
  
                 neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
+#ifdef USE_ANISOTROPIC_MOBILITY
                 neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr_x 
                 neig_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_x_dp
+#else
+                neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr 
+                neig_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_dp
+#endif
                 neig_pres(j) = xx_loc_faces_p(grid%ngmax_faces + ghost_neig_id)
           end if
  

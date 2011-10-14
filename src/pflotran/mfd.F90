@@ -517,6 +517,7 @@ subroutine MFDAuxGenerateRhs(patch, grid, ghosted_cell_id, PermTensor, bc_g, sou
 
 !   if (v_darcy(i) > 0)  then
 #ifdef USE_ANISOTROPIC_MOBILITY
+        if (rich_aux_var%kvr_x < 1e-10) then
             ukvr(i) = 1e-10
         else 
             ukvr(i) = rich_aux_var%kvr_x
@@ -765,12 +766,22 @@ subroutine MFDAuxGenerateRhs_LP(patch, grid, ghosted_cell_id, PermTensor, bc_g, 
 !    if (aux_var%gr(i) >=0 )  then
      if (dphi >= 0) then
 
+#ifdef USE_ANISOTROPIC_MOBILITY
         if (rich_aux_var%kvr_x < 1e-10 ) then
             ukvr(i) = 1e-10
         else 
             ukvr(i) = rich_aux_var%kvr_x
         end if
         dukvr_dp(i) = rich_aux_var%dkvr_x_dp 
+#else
+        if (rich_aux_var%kvr < 1e-10 ) then
+            ukvr(i) = 1e-10
+        else 
+            ukvr(i) = rich_aux_var%kvr
+        end if
+        dukvr_dp(i) = rich_aux_var%dkvr_dp 
+
+#endif
 
 !   else if (abs(aux_var%gr(i)) <=1e-16) then
 !
@@ -1064,8 +1075,11 @@ subroutine MFDAuxJacobianLocal_LP( grid, aux_var, &
   PetscInt :: iface, jface
   PetscScalar :: ukvr
 
-
+#ifdef USE_ANISOTROPIC_MOBILITY
   ukvr = rich_aux_var%kvr_x
+#else
+  ukvr = rich_aux_var%kvr
+#endif
 
   J = 0.
 
@@ -1267,10 +1281,6 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
 
 #ifdef USE_ANISOTROPIC_MOBILITY
-!       write(*,*) "MFDFL", "rank ", option%myrank, ghosted_cell_id, grid%nG2LP(ghosted_cell_id), xx(1)
-!       write(*,*) option%myrank, grid%nG2LP(ghosted_cell_id), (face_pr(i), i=1,6) 
-!  end if
-
   ukvr = rich_aux_var%kvr_x
 #else
   ukvr = rich_aux_var%kvr
@@ -1302,17 +1312,24 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
     dphi = xx(1) - neig_pres(i) + gravity
     
-!    if (ghosted_cell_id==555) write(*,*) "dphi", dphi
 
 !  if (aux_var%gr(i) > 1e-16)  then
 !    if (aux_var%gr(i) >= 0)  then
    if (dphi >=0 ) then
 
+#ifdef USE_ANISOTROPIC_MOBILITY
         if (rich_aux_var%kvr_x < 1e-10 ) then
             ukvr(i) = 1e-10
         else 
             ukvr(i) = rich_aux_var%kvr_x
         end if
+#else
+        if (rich_aux_var%kvr < 1e-10 ) then
+            ukvr(i) = 1e-10
+        else 
+            ukvr(i) = rich_aux_var%kvr
+        end if
+#endif
 
 !   else if (abs(aux_var%gr(i)) <=1e-16) then
 !

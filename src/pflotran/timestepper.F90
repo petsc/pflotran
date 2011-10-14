@@ -1116,7 +1116,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
   use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
-                             RichardsTimeCut
+                             RichardsTimeCut, RichardsResidual
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
   use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
                              GeneralTimeCut
@@ -1235,21 +1235,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       
       call PetscGetTime(log_start_time, ierr)
 
-#ifdef DASVYAT_DEBUG
-    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_before.out', &
-                              viewer,ierr)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            call VecView(field%flow_xx_faces, viewer, ierr)
-!            call VecView(field%flow_xx, viewer, ierr)
-            call vecView(field%flow_r_faces, viewer, ierr)
-    else
-            call VecView(field%flow_xx, viewer, ierr)
-    end if
-    write(*,*) "VecView error", ierr
-    call PetscViewerDestroy(viewer,ierr)
-    write(*,*) "Before SNESSolve" 
-!    read(*,*)    
-#endif
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
@@ -1260,7 +1245,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#if 0
+#if DASVYAT_DEBUG
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
@@ -1289,7 +1274,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
     write(*,*) "After SNESSolve" 
 
-    if (tempreal2/tempreal > 1e+7) stop
+    if (tempreal2/tempreal > 1e+4) stop
 
 !     stop
 !      read(*,*)   
