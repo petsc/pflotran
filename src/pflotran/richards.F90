@@ -1849,7 +1849,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
       end if
 #else
       ukvr = rich_aux_var_dn%kvr
-      dukvr_dp_up = rich_aux_var_dn%dkvr_dp
+      dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
 #endif
     endif      
    
