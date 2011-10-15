@@ -2272,7 +2272,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[RATE] \ {\tt [mass\_rate, volumetric\_rate, scaled\_volumetric\_rate]}: \ specifies an injection/extraction rate in mass [kg/s], volume [m$^3$/s], and a volumetric injection/extraction rate [m$^3$/s] that is scaled across a well screen, weighted as a function of the interfacial area and permeability of neighboring cells (in $x$, $y$).
 
 \item[FLUX] {\tt [dirichlet, neumann, mass\_rate, hydrostatic, conductance,  \linebreak zero\_gradient, production\_well, seepage, volumetric, \linebreak volumetric\_rate, equilibrium]}
-\item[TEMPERATURE] {\tt [dirichlet, hydrostatic, zero\_gradient]}
+\item[TEMPERATURE] {\tt [dirichlet, neumann, hydrostatic, zero\_gradient]}: \ heat flux [W/m$^2$] can be specified with  {\tt{neumann}} type
 \item[CONCENTRATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \item[ENTHALPY (H)] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \end{deflist}
@@ -2429,7 +2429,7 @@ where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 2
 \begin{verbatim}
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
-DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
+DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/mol
 /
 \end{verbatim}
 
@@ -2648,7 +2648,7 @@ END
 \item[ID] \ {\tt float}
 \item[SATURATION\_FUNCTION] \ {\tt Name}
 \item[ROCK\_DENSITY] \ {\tt float} \ [kg/m$^3$]
-\item[SPECIFIC\_HEAT] \ {\tt float} \ [kJ/(kg K)]
+\item[SPECIFIC\_HEAT] \ {\tt float} \ [J/(kg K)]
 \item[LONGITUDINAL\_DISPERSIVITY] \ {\tt float} \ [m]
 \item[TRANSVERSE\_DISPERSIVITY] \ (not implemented) \ [m]
 \item[THERMAL\_CONDUCTIVITY\_DRY] \ {\tt float} \ [W/(m K)]

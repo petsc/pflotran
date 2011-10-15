@@ -167,10 +167,8 @@ PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
 PetscInt, parameter :: THC_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1
-PetscInt, parameter :: MPH_MASS_RATE_DOF = 2
-PetscInt, parameter :: MPH_TEMPERATURE_DOF = 3
-PetscInt, parameter :: MPH_CONCENTRATION_DOF = 4
-PetscInt, parameter :: MPH_ENTHALPY_DOF = 5
+PetscInt, parameter :: MPH_TEMPERATURE_DOF = 2
+PetscInt, parameter :: MPH_CONCENTRATION_DOF = 3
 
 PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
 PetscInt, parameter :: RICHARDS_CONDUCTANCE_DOF = 2

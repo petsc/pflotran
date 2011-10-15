@@ -991,70 +991,267 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
             endif
             
-          case default
-      
-            if (associated(flow_condition%pressure)) then
-              select case(flow_condition%pressure%itype)
-                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-    !              do idof = 1, condition%num_sub_conditions
-    !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
-    !                  coupler%flow_aux_real_var(idof,1:num_connections) = &
-    !                    condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-    !                endif
-    !              enddo
-                  select case(option%iflowmode)
-                    case(FLASH2_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                       coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+          case(MPH_MODE) ! Mphase mode, added by Satish Karra, 10/11/11
+            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                         flow_condition%iphase
-                    case(MPH_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                       coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(IMS_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                       coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(THC_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
                         flow_condition%pressure%dataset%cur_value(1)
-                      coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then                      
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+         !	  case(SATURATION_BC)
+            end select
+            select case(flow_condition%temperature%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
                         flow_condition%temperature%dataset%cur_value(1)
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            select case(flow_condition%concentration%itype)
+              case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
                         flow_condition%concentration%dataset%cur_value(1)
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(RICHARDS_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)
-                  end select
-                case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-                case(SATURATION_BC)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
               end select
             endif
+  
+          case(FLASH2_MODE) ! Flash mode, added by Satish Karra, 10/11/11
+            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                        flow_condition%iphase
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
+                        flow_condition%pressure%dataset%cur_value(1)
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then                      
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+         !	  case(SATURATION_BC)
+            end select
+            select case(flow_condition%temperature%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                        flow_condition%temperature%dataset%cur_value(1)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            select case(flow_condition%concentration%itype)
+              case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                        flow_condition%concentration%dataset%cur_value(1)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
+              end select
+            endif
+
+          case(IMS_MODE) ! Immiscible mode, added by Satish Karra, 10/11/11
+            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                        flow_condition%iphase
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
+                        flow_condition%pressure%dataset%cur_value(1)
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then                      
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+         !	  case(SATURATION_BC)
+            end select
+            select case(flow_condition%temperature%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                        flow_condition%temperature%dataset%cur_value(1)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            select case(flow_condition%concentration%itype)
+              case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                        flow_condition%concentration%dataset%cur_value(1)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
+              end select
+            endif
+
+          case(THC_MODE) ! THC mode, added by Satish Karra, 10/11/11
+            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                        flow_condition%iphase
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(THC_PRESSURE_DOF,1:num_connections) = &
+                        flow_condition%pressure%dataset%cur_value(1)
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then                      
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic pressure bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+         !	  case(SATURATION_BC)
+            end select
+            select case(flow_condition%temperature%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(THC_TEMPERATURE_DOF,1:num_connections) = &
+                        flow_condition%temperature%dataset%cur_value(1)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%concentration%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a concentration bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            select case(flow_condition%concentration%itype)
+              case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(THC_CONCENTRATION_DOF,1:num_connections) = &
+                        flow_condition%concentration%dataset%cur_value(1)
+              case(HYDROSTATIC_BC)
+                if (flow_condition%pressure%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a pressure bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                if (flow_condition%temperature%itype /= DIRICHLET_BC) then
+                  option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
+                    trim(flow_condition%name) // '" requires a temperature bc of type dirichlet'
+                  call printErrMsg(option)
+                endif
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+            end select
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
+              end select
+            endif
+
+          case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF,1:num_connections) = &
+                        flow_condition%pressure%dataset%cur_value(1)
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+         !	  case(SATURATION_BC)
+            end select
             if (associated(flow_condition%concentration)) then
-              select case(option%iflowmode)
-                case(RICHARDS_MODE)
-                  call SaturationUpdateCoupler(coupler,option,patch%grid, &
+              call SaturationUpdateCoupler(coupler,option,patch%grid, &
                                                patch%saturation_function_array, &
                                                patch%sat_func_id)
-              end select
             endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
@@ -1062,6 +1259,9 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   call PatchScaleSourceSink(patch,coupler,option)
               end select
             endif
+          
+        case default
+      
         end select
       endif
     endif

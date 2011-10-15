@@ -2647,8 +2647,8 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-sl '// trim(cell_string) // '",' // &
                '"5-sg '// trim(cell_string) // '",' // &
-               '"6-Ul '// trim(cell_string) // '",' // &
-               '"7-Ug '// trim(cell_string) // '",'
+               '"6-Ul [KJ/mol] '// trim(cell_string) // '",' // &
+               '"7-Ug [KJ/mol]'// trim(cell_string) // '",'
       icolumn = 7
     case (MPH_MODE, FLASH2_MODE)
 !      header = ',"X [m] '// trim(cell_string) // '",' // &
