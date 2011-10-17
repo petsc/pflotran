@@ -174,7 +174,8 @@ module Reaction_Aux_module
     PetscReal, pointer :: basis_molarity(:)
     PetscInt, pointer :: constraint_type(:)
     PetscInt, pointer :: constraint_spec_id(:)
-    character(len=MAXWORDLENGTH), pointer :: constraint_spec_name(:)
+    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
+    PetscBool, pointer :: external_dataset(:)
   end type aq_species_constraint_type
 
   type, public :: mineral_constraint_type
@@ -1221,8 +1222,10 @@ function AqueousSpeciesConstraintCreate(reaction,option)
   constraint%constraint_spec_id = 0
   allocate(constraint%constraint_type(reaction%naqcomp))
   constraint%constraint_type = 0
-  allocate(constraint%constraint_spec_name(reaction%naqcomp))
-  constraint%constraint_spec_name = ''
+  allocate(constraint%constraint_aux_string(reaction%naqcomp))
+  constraint%constraint_aux_string = ''
+  allocate(constraint%external_dataset(reaction%naqcomp))
+  constraint%external_dataset = PETSC_FALSE
 
   AqueousSpeciesConstraintCreate => constraint
 
@@ -2117,9 +2120,12 @@ subroutine AqueousSpeciesConstraintDestroy(constraint)
   if (associated(constraint%constraint_spec_id)) &
     deallocate(constraint%constraint_spec_id)
   nullify(constraint%constraint_spec_id)
-  if (associated(constraint%constraint_spec_name)) &
-    deallocate(constraint%constraint_spec_name)
-  nullify(constraint%constraint_spec_name)
+  if (associated(constraint%constraint_aux_string)) &
+    deallocate(constraint%constraint_aux_string)
+  nullify(constraint%constraint_aux_string)
+  if (associated(constraint%constraint_aux_string)) &
+    deallocate(constraint%constraint_aux_string)
+  nullify(constraint%constraint_aux_string)
 
   deallocate(constraint)
   nullify(constraint)

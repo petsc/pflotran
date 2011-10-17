@@ -578,6 +578,8 @@ function OutputOptionCreate()
   
   output_option%tconv = 1.d0
   output_option%tunit = 's'
+  
+  nullify(output_option%plot_variables)
 
   OutputOptionCreate => output_option
   

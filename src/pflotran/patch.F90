@@ -1533,9 +1533,6 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%colloids, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
-      ! turn on flag indicating constraint has not yet been used
-
-      cur_constraint_coupler%iflag = ONE_INTEGER
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
     cur_coupler => cur_coupler%next

@@ -3259,9 +3259,6 @@ end subroutine RTTransportMatVecPatch2
 
 subroutine RTTransportMatVec(mat, x, y)
 
-!  use Simulation_module
-!  use Timestepper_module
-!  use Solver_module
   use Realization_module
   use Discretization_module
   use Level_module

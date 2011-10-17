@@ -112,6 +112,7 @@ module Condition_module
     type(mineral_constraint_type), pointer :: minerals
     type(srfcplx_constraint_type), pointer :: surface_complexes
     type(colloid_constraint_type), pointer :: colloids
+    PetscBool :: requires_equilibration
     type(tran_constraint_type), pointer :: next    
   end type tran_constraint_type
   
@@ -130,7 +131,6 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: constraint_name   
     PetscReal :: time
     PetscInt :: num_iterations
-    PetscInt :: iflag
     character(len=MAXWORDLENGTH) :: time_units
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
@@ -256,7 +256,8 @@ function TranConstraintCreate(option)
   nullify(constraint%next)
   constraint%id = 0
   constraint%name = ''
-
+  constraint%requires_equilibration = PETSC_FALSE
+  
   TranConstraintCreate => constraint
 
 end function TranConstraintCreate
@@ -287,7 +288,6 @@ function TranConstraintCouplerCreate(option)
   nullify(coupler%colloids)
   
   coupler%num_iterations = 0
-  coupler%iflag = 0
   nullify(coupler%rt_auxvar)
   nullify(coupler%global_auxvar)
   
@@ -1761,9 +1761,11 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           option%io_buffer = 'Constraint Species: ' // &
                              trim(aq_species_constraint%names(icomp))
           call printMsg(option)
+          
           call InputReadDouble(input,option,aq_species_constraint%constraint_conc(icomp))
           call InputErrorMsg(input,option,'concentration', &
                           'CONSTRAINT, CONCENTRATIONS')          
+          
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputDefaultMsg(input,option, &
                             'CONSTRAINT, CONCENTRATION, constraint_type')
@@ -1794,13 +1796,27 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                          ' not recognized in constraint,concentration'
                 call printErrMsg(option)
             end select 
+            
             if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS .or.&
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_SUPERCRIT_CO2) then
-              call InputReadWord(input,option,aq_species_constraint%constraint_spec_name(icomp), &
-                             PETSC_FALSE)
+              call InputReadWord(input,option,aq_species_constraint%constraint_aux_string(icomp), &
+                                 PETSC_TRUE)
               call InputErrorMsg(input,option,'constraint name', &
                               'CONSTRAINT, CONCENTRATIONS') 
+            else
+              call InputReadWord(input,option,word,PETSC_FALSE)
+              if (input%ierr == 0) then
+                call StringToUpper(word)
+                select case(word)
+                  case('DATASET')
+                    call InputReadWord(input,option,aq_species_constraint% &
+                                       constraint_aux_string(icomp),PETSC_TRUE)
+                    call InputErrorMsg(input,option,'dataset name', &
+                                    'CONSTRAINT, CONCENTRATIONS,')
+                    aq_species_constraint%external_dataset = PETSC_TRUE
+                end select
+              endif
             endif
           else
             aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
@@ -1813,6 +1829,12 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                    'Number of concentration constraints is less than ' // &
                    'number of primary species in aqueous constraint.'
           call printErrMsg(option)        
+        endif
+        if (icomp > reaction%naqcomp) then
+          option%io_buffer = &
+                   'Number of concentration constraints is greater than ' // &
+                   'number of primary species in aqueous constraint.'
+          call printWrnMsg(option)        
         endif
         
         if (associated(constraint%aqueous_species)) &
