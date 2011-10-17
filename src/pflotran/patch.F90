@@ -1014,8 +1014,12 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             end select
             select case(flow_condition%temperature%itype)
               case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)
+                if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                    (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                     flow_condition%temperature%itype /= DIRICHLET_BC)) then
+                  coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                          flow_condition%temperature%dataset%cur_value(1)
+                endif
               case(HYDROSTATIC_BC)
                 if (flow_condition%pressure%itype /= DIRICHLET_BC) then
                   option%io_buffer = 'Hydrostatic temperature bc for flow condition "' // &
@@ -1031,8 +1035,12 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             end select
             select case(flow_condition%concentration%itype)
               case(DIRICHLET_BC,ZERO_GRADIENT_BC)
-                coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)
+                if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                    (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                     flow_condition%concentration%itype /= DIRICHLET_BC)) then
+                  coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                          flow_condition%concentration%dataset%cur_value(1)
+                endif
               case(HYDROSTATIC_BC)
                 if (flow_condition%pressure%itype /= DIRICHLET_BC) then
                   option%io_buffer = 'Hydrostatic concentration bc for flow condition "' // &
