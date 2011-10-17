@@ -1875,6 +1875,7 @@ subroutine RealizAssignTransportInitCond(realization)
   use Reaction_Aux_module
   use Global_Aux_module
   use Reaction_module
+!  use HDF5_module
   
   implicit none
 
@@ -1886,7 +1887,7 @@ subroutine RealizAssignTransportInitCond(realization)
   PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite
-  PetscReal, pointer :: xx_p(:)
+  PetscReal, pointer :: xx_p(:), xx_loc_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -1900,9 +1901,16 @@ subroutine RealizAssignTransportInitCond(realization)
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
- 
+  type(tran_constraint_coupler_type), pointer :: constraint_coupler
+
   PetscInt :: iphase
   PetscInt :: offset
+  PetscBool :: re_equilibrate_at_each_cell
+  character(len=MAXSTRINGLENGTH) :: string
+  type(dataset_type), pointer :: dataset
+  PetscInt :: dataset_to_idof(20)
+  PetscInt :: idataset, num_datasets
+  PetscBool :: use_dataset
   
   option => realization%option
   discretization => realization%discretization
@@ -1911,6 +1919,8 @@ subroutine RealizAssignTransportInitCond(realization)
   reaction => realization%reaction
   
   iphase = 1
+  re_equilibrate_at_each_cell = PETSC_FALSE
+  use_dataset = PETSC_FALSE
   
   cur_level => realization%level_list%first
   do 
@@ -1932,111 +1942,138 @@ subroutine RealizAssignTransportInitCond(realization)
       do
       
         if (.not.associated(initial_condition)) exit
+        
+        constraint_coupler => initial_condition%tran_condition%cur_constraint_coupler
 
-!        if (.not.associated(initial_condition%tran_aux_real_var)) then
-          do icell=1,initial_condition%region%num_cells
-            local_id = initial_condition%region%cell_ids(icell)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%ntrandof
-            ibegin = iend-option%ntrandof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 1.d-200
-                cycle
-              endif
-            endif
-            if (.not.option%use_isothermal) then
-              if (icell == 1) then
-                call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-                  global_aux_vars(ghosted_id),reaction, &
-                  initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-                  initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-                  initial_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
-                  initial_condition%tran_condition%cur_constraint_coupler%colloids, &
-                  initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
-                  PETSC_TRUE,option)
-              else
-                call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
-                  rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
-                  option)
-                call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-                  global_aux_vars(ghosted_id),reaction, &
-                  initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-                  initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-                  initial_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
-                  initial_condition%tran_condition%cur_constraint_coupler%colloids, &
-                  initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
-                  PETSC_FALSE,option)
-              endif
-            endif
-            offset = ibegin + reaction%offset_aq - 1
-            do idof = 1, reaction%naqcomp ! primary aqueous concentrations
-              xx_p(offset+idof) = &
-                initial_condition%tran_condition%cur_constraint_coupler% &
-                aqueous_species%basis_molarity(idof) / &
-                global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
-            enddo
-            ! colloids fractions
-            if (associated(initial_condition%tran_condition%cur_constraint_coupler%colloids)) then
-              offset = ibegin + reaction%offset_coll - 1
-              do idof = 1, reaction%ncoll ! primary aqueous concentrations
-                xx_p(offset+idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  colloids%basis_conc_mob(idof) / &
-                  global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
-                rt_aux_vars(ghosted_id)%colloid%conc_imb(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  colloids%basis_conc_imb(idof)
+#if 0
+        num_datasets = 0
+        dataset_to_idof = 0
+        do idof = 1, reaction%naqcomp ! primary aqueous concentrations
+          if (constraint_coupler%aqueous_species%external_dataset(idof)) then
+            num_datasets = num_datasets + 1
+            dataset_to_idof(num_datasets) = idof
+            re_equilibrate_at_each_cell = PETSC_TRUE
+            use_dataset = PETSC_TRUE
+            string = 'constraint ' // trim(constraint_coupler%constraint_name)
+            dataset => DatasetGetPointer(realization%datasets, &
+                         constraint_coupler%aqueous_species%constraint_aux_string(idof), &
+                         string,option)
+            string = '' ! group name
+ !           call HDF5ReadCellIndexedRealArray(realization,field%work,string, &
+ !                                             dataset%name, &
+ !                                             dataset%realization_dependent)
+            call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc,ONEDOF)
+            call VecStrideScatter(field%work_loc,idof-1,field%tran_xx_loc, &
+                                  INSERT_VALUES,ierr)
+          endif
+        enddo
+#endif
+        if (.not.option%use_isothermal) then
+          re_equilibrate_at_each_cell = PETSC_TRUE
+        endif
+        
+        if (use_dataset) then
+          call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
+        endif
+        
+        do icell=1,initial_condition%region%num_cells
+          local_id = initial_condition%region%cell_ids(icell)
+          ghosted_id = grid%nL2G(local_id)
+          iend = local_id*option%ntrandof
+          ibegin = iend-option%ntrandof+1
+          if (cur_patch%imat(ghosted_id) <= 0) then
+            xx_p(ibegin:iend) = 1.d-200
+            cycle
+          endif
+          if (re_equilibrate_at_each_cell) then
+            if (use_dataset) then
+              do idataset = 1, num_datasets
+                ! remember that xx_loc_p holds the data set values that were read in
+                constraint_coupler%aqueous_species%constraint_conc(dataset_to_idof(idataset)) = &
+                  xx_loc_p(ibegin+idataset-1)
               enddo
             endif
-            ! mineral volume fractions
-            if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, reaction%nkinmnrl
-                rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  minerals%basis_vol_frac(idof)
-                rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  minerals%basis_vol_frac(idof)
-                rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  minerals%basis_area(idof)
-                rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  minerals%basis_area(idof)
-              enddo
+            if (icell == 1) then
+              call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
+                global_aux_vars(ghosted_id),reaction, &
+                constraint_coupler%constraint_name, &
+                constraint_coupler%aqueous_species, &
+                constraint_coupler%surface_complexes, &
+                constraint_coupler%colloids, &
+                constraint_coupler%num_iterations, &
+                PETSC_TRUE,option)
+            else
+              call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
+                rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
+                option)
+              call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
+                global_aux_vars(ghosted_id),reaction, &
+                constraint_coupler%constraint_name, &
+                constraint_coupler%aqueous_species, &
+                constraint_coupler%surface_complexes, &
+                constraint_coupler%colloids, &
+                constraint_coupler%num_iterations, &
+                PETSC_FALSE,option)
             endif
-            ! kinetic surface complexes
-            if (associated(initial_condition%tran_condition%cur_constraint_coupler%surface_complexes)) then
-              do idof = 1, reaction%nkinsrfcplx
-                rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  surface_complexes%basis_conc(idof)
-              enddo
-              do irxn = 1, reaction%nkinsrfcplxrxn
-                isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-                rt_aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isite) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                  surface_complexes%basis_free_site_conc(isite)
-              enddo
-            endif
-            ! this is for the multi-rate surface complexation model
-            if (reaction%kinmr_nrate > 0) then
-              ! copy over total sorbed concentration
-              rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
-                initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%kinmr_total_sorb
-              ! copy over free site concentration
-              rt_aux_vars(ghosted_id)%eqsrfcplx_free_site_conc = &
-                initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%eqsrfcplx_free_site_conc
-              ! copy over surface complex concentrations
-              rt_aux_vars(ghosted_id)%eqsrfcplx_conc = &
-                initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%eqsrfcplx_conc
-            endif
+          endif
+          offset = ibegin + reaction%offset_aq - 1
+          do idof = 1, reaction%naqcomp ! primary aqueous concentrations
+            xx_p(offset+idof) = &
+              constraint_coupler%aqueous_species%basis_molarity(idof) / &
+              global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
           enddo
-!        endif
+          ! colloids fractions
+          if (associated(constraint_coupler%colloids)) then
+            offset = ibegin + reaction%offset_coll - 1
+            do idof = 1, reaction%ncoll ! primary aqueous concentrations
+              xx_p(offset+idof) = &
+                constraint_coupler%colloids%basis_conc_mob(idof) / &
+                global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
+              rt_aux_vars(ghosted_id)%colloid%conc_imb(idof) = &
+                constraint_coupler%colloids%basis_conc_imb(idof)
+            enddo
+          endif
+          ! mineral volume fractions
+          if (associated(constraint_coupler%minerals)) then
+            do idof = 1, reaction%nkinmnrl
+              rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
+                constraint_coupler%minerals%basis_vol_frac(idof)
+              rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                constraint_coupler%minerals%basis_vol_frac(idof)
+              rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
+                constraint_coupler%minerals%basis_area(idof)
+              rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
+                constraint_coupler%minerals%basis_area(idof)
+            enddo
+          endif
+          ! kinetic surface complexes
+          if (associated(constraint_coupler%surface_complexes)) then
+            do idof = 1, reaction%nkinsrfcplx
+              rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof) = &
+                constraint_coupler%surface_complexes%basis_conc(idof)
+            enddo
+            do irxn = 1, reaction%nkinsrfcplxrxn
+              isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+              rt_aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isite) = &
+                constraint_coupler%surface_complexes%basis_free_site_conc(isite)
+            enddo
+          endif
+          ! this is for the multi-rate surface complexation model
+          if (reaction%kinmr_nrate > 0) then
+            ! copy over total sorbed concentration
+            rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
+              constraint_coupler%rt_auxvar%kinmr_total_sorb
+            ! copy over free site concentration
+            rt_aux_vars(ghosted_id)%eqsrfcplx_free_site_conc = &
+              constraint_coupler%rt_auxvar%eqsrfcplx_free_site_conc
+            ! copy over surface complex concentrations
+            rt_aux_vars(ghosted_id)%eqsrfcplx_conc = &
+              constraint_coupler%rt_auxvar%eqsrfcplx_conc
+          endif
+        enddo
+        if (use_dataset) then
+          call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
+        endif
         initial_condition => initial_condition%next
       enddo
       
