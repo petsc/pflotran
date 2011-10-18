@@ -2717,12 +2717,14 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                  '"3-P [Pa] '// trim(cell_string) // '",' // &
                  '"4-sl '// trim(cell_string) // '",' // &
                  '"5-Ul '// trim(cell_string) // '"' 
+        icolumn = 6
       else
 !        header = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
         header = ',"2-P [Pa] '// trim(cell_string) // '",' // &
                  '"3-sl '// trim(cell_string) // '"'
+        icolumn = 4
       endif
       if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec

@@ -81,15 +81,17 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       piezometric_head_gradient(1:3) = condition%general%liquid_pressure%gradient%cur_value(1:3)
     case default
       ! for now, just set it; in future need to account for a different temperature datum
-      if (associated(condition%temperature) .and. &
-          condition%temperature%itype == DIRICHLET_BC) then
-        temperature_at_datum = condition%temperature%dataset%cur_value(1)
-        temperature_gradient(1:3) = condition%temperature%gradient%cur_value(1:3)
+      if (associated(condition%temperature)) then
+        if (condition%temperature%itype == DIRICHLET_BC) then
+          temperature_at_datum = condition%temperature%dataset%cur_value(1)
+          temperature_gradient(1:3) = condition%temperature%gradient%cur_value(1:3)
+        endif
       endif
-      if (associated(condition%concentration) .and. &
-          condition%temperature%itype == DIRICHLET_BC) then
-        concentration_at_datum = condition%concentration%dataset%cur_value(1)
-        concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
+      if (associated(condition%concentration)) then
+        if (condition%temperature%itype == DIRICHLET_BC) then
+          concentration_at_datum = condition%concentration%dataset%cur_value(1)
+          concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
+        endif
       endif
 
       datum(1:3) = condition%pressure%datum%cur_value(1:3)
