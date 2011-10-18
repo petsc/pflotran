@@ -184,7 +184,8 @@ common_obj = ${common_src}option.o \
 	${common_src}thc.o\
 	${common_src}richards.o\
 	${common_src}general.o\
-	${common_src}mass_balance.o\
+	${common_src}condition_control.o \
+	${common_src}mass_balance.o \
 	${common_src}general_grid.o \
 	${common_src}checkpoint.o \
 	${common_src}convergence.o \
@@ -251,6 +252,9 @@ observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
 	      string.o hdf5_aux.F90
+condition_control.o : realization.o discretization.o region.o option.o grid.o \
+	              field.o coupler.o condition.o connection.o reaction.o \
+		      hdf5.o mdf.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \

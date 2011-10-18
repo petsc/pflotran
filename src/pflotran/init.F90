@@ -47,6 +47,7 @@ subroutine Init(simulation)
   use Logging_module  
   use Database_module
   use Input_module
+  use Condition_Control_module
   
   use Flash2_module
   use MPHASE_module
@@ -613,7 +614,7 @@ end interface
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
-    call RealizAssignFlowInitCond(realization)
+    call CondControlAssignFlowInitCond(realization)
 
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%initialize_flow_filename) > 1) then
@@ -664,7 +665,7 @@ end interface
     endif
 
     ! initial concentrations must be assigned after densities are set !!!
-    call RealizAssignTransportInitCond(realization)
+    call CondControlAssignTranInitCond(realization)
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%initialize_transport_filename) > 1) then
       call readTransportInitialCondition(realization, &

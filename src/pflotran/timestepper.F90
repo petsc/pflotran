@@ -276,6 +276,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
+  use Condition_Control_module
 
   implicit none
   
@@ -406,7 +407,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   if (transport_read .and. option%overwrite_restart_transport) then
-    call RealizAssignTransportInitCond(realization)  
+    call CondControlAssignTranInitCond(realization)  
   endif
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
