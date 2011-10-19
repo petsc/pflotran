@@ -53,7 +53,7 @@ contains
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE CO2(TX,PCX,DC,FC,PHI,HC)
+subroutine CO2(TX,PCX,DC,FC,PHI,HC)
       
       implicit none
       
@@ -168,10 +168,10 @@ contains
       print*, PCX,T,V,Y,DV
       
       RETURN
-      END subroutine CO2
+end subroutine CO2
       
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE MRK(Y,T,PCX,V,DV,AT)
+subroutine MRK(Y,T,PCX,V,DV,AT)
       
       implicit none
 
@@ -261,10 +261,10 @@ contains
            -(B2/(8.D0*V3))-(B/(4.D0*V2))))/(V*((1.D0-Y)**3.D0))) &
            -(AT/(DSQRT(T)*V*(V+B))))
       RETURN
-      END subroutine MRK
+end subroutine MRK
       
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE FUGACITY(Y,T,V,Z,PHI)
+subroutine FUGACITY(Y,T,V,Z,PHI)
       
       implicit none
 
@@ -355,10 +355,10 @@ contains
       PHI = DEXP(PHI)
 
       RETURN
-      END subroutine FUGACITY
+end subroutine FUGACITY
       
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE ENTHALPY(T,V,Z,H)
+subroutine ENTHALPY(T,V,Z,H)
 
       implicit none
 !
@@ -501,7 +501,7 @@ contains
 !    Calculate molar enthalpy (H):
       H = (URES+Z-(TREF/T)) * R * T + 8.1858447D5*.044D0
       RETURN
-      END subroutine ENTHALPY
+end subroutine ENTHALPY
       
 !********1*********2*********3*********4*********5*********6*********7**
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -519,7 +519,7 @@ contains
 ! 8000 bar. Geochimica Cosmochimica Acta, 56, 2605-2617.
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
-      subroutine duanco2 (tt,p,dc,fc,phi)
+subroutine duanco2 (tt,p,dc,fc,phi)
 
       implicit none
       
@@ -640,9 +640,9 @@ contains
 
       return
 
-      end subroutine duanco2
+end subroutine duanco2
 !----------------------------------------------
-  subroutine Henry_duan_sun_0NaCl (p,tc,henry)
+subroutine Henry_duan_sun_0NaCl (p,tc,henry)
 
   implicit none
 
@@ -668,10 +668,10 @@ contains
   henry = exp(-muco2)
 
   return
-  end subroutine Henry_duan_sun_0NaCl
+end subroutine Henry_duan_sun_0NaCl
   
 
-  subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
+subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   
 ! t[c], p[bar], mco2[mol/Kg-H2O], mc[cation: mol/kg-H2O], 
 ! ma[anion: mol/kg-H2O], psat[bars]
@@ -725,9 +725,9 @@ contains
   mco2 = exp(-tmp) ! = K_co2 * gamco2
   !print *, 'mco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
   return
-  end subroutine Henry_duan_sun
+end subroutine Henry_duan_sun
   
-  subroutine duan_sun_param(t,p,c,par)
+subroutine duan_sun_param(t,p,c,par)
   
   implicit none
   
@@ -741,7 +741,7 @@ contains
   + C(10) * p * p * fac * fac + c(11) * t * log(p)
 
   return
-  end subroutine duan_sun_param
+end subroutine duan_sun_param
 
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -762,7 +762,7 @@ contains
 ! Chemical Reference Data, 20(3), 575-589.
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
-      SUBROUTINE HENRY_co2_noderiv(xmole,x1m,tx,pcx,xphi,rkh,poyn)
+subroutine HENRY_co2_noderiv(xmole,x1m,tx,pcx,xphi,rkh,poyn)
 
 !     input:
 !     tx   [C]  temperature
@@ -849,9 +849,9 @@ contains
 !     print *,'henry_co2_noderiv: ',pcx,tx,xmole,x1m,xphi,rkh
 
       RETURN
-    END subroutine HENRY_CO2_NODERIV
+end subroutine HENRY_CO2_NODERIV
       
-      SUBROUTINE HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
+subroutine HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
 
       implicit none
 
@@ -929,10 +929,10 @@ contains
       X1M = (XMWC*XCO2) / (((1.D0-XCO2)*XMWW)+(XCO2*XMWC))
 
       RETURN
-      END subroutine HENRY_sullivan
+end subroutine HENRY_sullivan
       
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE SOLUT(PCX,TX,HSOL)
+subroutine SOLUT(PCX,TX,HSOL)
       implicit none
       
       PetscReal :: PCX,TX,HSOL
@@ -951,10 +951,10 @@ contains
              2.7882D-1*T3 + 4.2579D-2*T4
       HSOL = HSOL * 1.D6
       RETURN
-      END subroutine SOLUT
+end subroutine SOLUT
       
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE DENMIX(TX,DW,X1M,D1M)
+subroutine DENMIX(TX,DW,X1M,D1M)
       implicit none
       
       PetscReal :: TX,DW,X1M,D1M
@@ -1005,10 +1005,10 @@ contains
       D1M = (DW*DC) / (X1M*DW + X2M*DC)
 
       RETURN
-      END subroutine DENMIX
+end subroutine DENMIX
       
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE VISCO2(TX,DC,VC)
+subroutine VISCO2(TX,DC,VC)
       implicit none
 !
 !     This subroutine calculates the viscosity of pure CO2 as a function 
@@ -1089,10 +1089,10 @@ contains
 !    Convert viscosity from muPa-s to Pa-s:
       VC = VC * 1.0D-06
       RETURN
-      END subroutine VISCO2
+end subroutine VISCO2
                   
 !********1*********2*********3*********4*********5*********6*********7**
-      SUBROUTINE SAT(T,P)
+subroutine SAT(T,P)
 !--------- Fast SAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 !
       implicit none
@@ -1120,9 +1120,9 @@ contains
       WRITE(6,1) ' ',T
     1 FORMAT(A1,'TEMPERATURE = ',E12.6,'  OUT OF RANGE IN SAT ')
       RETURN
-      END subroutine SAT
+end subroutine SAT
       
-      SUBROUTINE COWAT0(TF,PP,D,U)
+subroutine COWAT0(TF,PP,D,U)
 !--------- Fast COWAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 
       implicit none
@@ -1223,9 +1223,9 @@ contains
   100 FORMAT(1H ,5X,A6,2X,E20.10)
   102 FORMAT(1H ,5X,A6,5X,I2,2X,E20.10)
       RETURN
-      END subroutine COWAT0
+end subroutine COWAT0
       
-      SUBROUTINE SUPST(T,P,D,U)
+subroutine SUPST(T,P,D,U)
 !--------- Fast SUPST M.J.O'Sullivan - 17 SEPT 1990 ---------
 ! SUPST    1.0 S     1 February  1991
 ! VAPOR DENSITY AND INTERNAL ENERGY AS FUNCTION OF TEMPERATURE AND 
@@ -1374,9 +1374,9 @@ contains
       H=EPS2*70120.4
       U=H-P*V
       RETURN
-      END subroutine SUPST
+end subroutine SUPST
 
-      SUBROUTINE TSAT(PX,TX00,TS)
+subroutine TSAT(PX,TX00,TS)
       implicit none
       
 !     SATURATION TEMPERATURE TS AT PRESSURE PX.
@@ -1407,9 +1407,9 @@ contains
 
       goto 1
       
-      END subroutine TSAT
+end subroutine TSAT
       
-      SUBROUTINE SIGMA(T,ST)
+subroutine SIGMA(T,ST)
       implicit none
 !
 !-----COMPUTE SURFACE TENSION OF WATER, USING THE
@@ -1426,9 +1426,9 @@ contains
     1 CONTINUE
       ST=0.
       RETURN
-      END subroutine SIGMA
+end subroutine SIGMA
       
-      SUBROUTINE VIS(T,P,D,VW,VS,PS)
+subroutine VIS(T,P,D,VW,VS,PS)
       implicit none
       
 !     VISCOSITY OF LIQUID WATER AND VAPOR AS FUNCTION OF
@@ -1446,9 +1446,9 @@ contains
       IF(T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
       IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
       RETURN
-      END subroutine VIS
+end subroutine VIS
       
-      SUBROUTINE VISW0(T,P,PS,VW)
+subroutine VISW0(T,P,PS,VW)
       implicit none
 
 !     VISCOSITY OF LIQUID WATER AS FUNCTION OF
@@ -1463,9 +1463,9 @@ contains
       VW=1.E-7*AM*241.4*10.**EX
 
       RETURN
-      END subroutine VISW0
+end subroutine VISW0
       
-      SUBROUTINE VISS(T,P,D,VS)
+subroutine VISS(T,P,D,VS)
       implicit none
 
 !     VISCOSITY OF VAPOR AS FUNCTION OF
@@ -1478,9 +1478,9 @@ contains
       IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
 
       RETURN
-      END subroutine VISS
+end subroutine VISS
 
-      SUBROUTINE THERC(T,P,D,CONW,CONS,PS)
+subroutine THERC(T,P,D,CONW,CONS,PS)
       implicit none
 
 !     THERMAL CONDUCTIVITY OF WATER AND VAPOR AS FUNCTION OF
@@ -1520,5 +1520,5 @@ contains
 !     PRINT 2,T,P,PS
     2 FORMAT(8H AT T = ,E12.6,5H P = ,E12.6,19H IS LESS THAN PS = ,E12.6)
       RETURN
-      END subroutine THERC
+end subroutine THERC
 end module co2eos_module

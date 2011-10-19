@@ -2647,8 +2647,8 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-sl '// trim(cell_string) // '",' // &
                '"5-sg '// trim(cell_string) // '",' // &
-               '"6-Ul '// trim(cell_string) // '",' // &
-               '"7-Ug '// trim(cell_string) // '",'
+               '"6-Ul [KJ/mol] '// trim(cell_string) // '",' // &
+               '"7-Ug [KJ/mol]'// trim(cell_string) // '",'
       icolumn = 7
     case (MPH_MODE, FLASH2_MODE)
 !      header = ',"X [m] '// trim(cell_string) // '",' // &
@@ -2684,15 +2684,6 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       write(string,'(''"'',i2,''-Phase '// trim(cell_string) // '",'')') icolumn
       header = trim(header) // trim(string)
 
-!     add porosity to header
-      if (output_option%print_porosity) then
-        icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
-!       string = '"',i2,'-Porosity ' // trim(cell_string) // '"'
-!       write(fid,'(a)',advance="no") trim(string)
-        header = trim(header) // trim(string)
-      endif
-
     case (G_MODE)
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
@@ -2726,12 +2717,14 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                  '"3-P [Pa] '// trim(cell_string) // '",' // &
                  '"4-sl '// trim(cell_string) // '",' // &
                  '"5-Ul '// trim(cell_string) // '"' 
+        icolumn = 6
       else
 !        header = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
         header = ',"2-P [Pa] '// trim(cell_string) // '",' // &
                  '"3-sl '// trim(cell_string) // '"'
+        icolumn = 4
       endif
       if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
@@ -2745,6 +2738,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   end select
   write(fid,'(a)',advance="no") trim(header)
 
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    icolumn = icolumn + 1
+    write(string,'(''"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
+    header = trim(header) // trim(string)
+  endif  
+  
   ! reactive transport
   if (option%ntrandof > 0) then
   
@@ -2914,16 +2914,16 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       enddo
     endif    
     
+    if (reaction%print_age) then
+      if (reaction%species_idx%tracer_age_id > 0) then
+        icolumn = icolumn + 1
+        write(fid,'('',"Tracer_Age '',i2,''-'',a,''"'')',advance="no") &
+          icolumn, trim(cell_string)
+      endif
+    endif
+
   endif
     
-  if (reaction%print_age) then
-    if (reaction%species_idx%tracer_age_id > 0) then
-      icolumn = icolumn + 1
-      write(fid,'('',"Tracer_Age '',i2,''-'',a,''"'')',advance="no") &
-        icolumn, trim(cell_string)
-    endif
-  endif
-
   if (print_velocities) then 
     string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &
@@ -3035,15 +3035,6 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       write(string,'(''"'',i2,''-Phase '// trim(cell_string) // '",'')') icolumn
       header = trim(header) // trim(string)
 
-  !   add porosity to header
-      if (output_option%print_porosity) then
-        icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
-!       string = ',"Porosity ' // trim(cell_string) //'"'
-!       write(fid,'(a)',advance="no") trim(string)
-        header = trim(header) // trim(string)
-      endif
-      
     case (G_MODE)
     
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
@@ -3095,6 +3086,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       header = ''
   end select
   write(fid,'(a)',advance="no") trim(header)
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    icolumn = icolumn + 1
+    write(string,'(''"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
+    header = trim(header) // trim(string)
+  endif
 
   ! reactive transport
   if (option%ntrandof > 0) then
@@ -5378,15 +5376,15 @@ subroutine OutputHDF5(realization)
 
   interface
 
-     subroutine SAMRCopyVecToVecComponent(vec,svec, component)
+subroutine SAMRCopyVecToVecComponent(vec,svec, component)
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec, svec
        PetscInt :: component
-     end subroutine SAMRCopyVecToVecComponent
+end subroutine SAMRCopyVecToVecComponent
 
-     subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
+subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
        use ISO_C_BINDING
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -5396,13 +5394,13 @@ subroutine OutputHDF5(realization)
        PetscInt :: component
        character(kind=C_CHAR), dimension(*) :: namestr 
        
-     end subroutine SAMRRegisterForViz
+end subroutine SAMRRegisterForViz
        
-     subroutine SAMRWritePlotData(ptr, time)
+subroutine SAMRWritePlotData(ptr, time)
 #include "finclude/petscsysdef.h"
        PetscFortranAddr :: ptr
        PetscReal :: time
-     end subroutine SAMRWritePlotData
+end subroutine SAMRWritePlotData
 
   end interface
 

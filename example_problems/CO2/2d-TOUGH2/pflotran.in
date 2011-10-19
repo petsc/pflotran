@@ -132,8 +132,8 @@ FLOW_CONDITION initial
 :UNITS Pa,C,M,yr
 TYPE
 PRESSURE hydrostatic
-TEMPERATURE zero_gradient
-CONCENTRATION zero_gradient
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
 ENTHALPY dirichlet
 /
 IPHASE 1

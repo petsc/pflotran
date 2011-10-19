@@ -302,7 +302,7 @@ end subroutine Flash2SetupPatch
 ! date: 10/10/08
 !
 ! ************************************************************************** !
- subroutine Flash2UpdateReasonPatch(reason,realization)
+subroutine Flash2UpdateReasonPatch(reason,realization)
    use Realization_module
    use Patch_module
    use Field_module
@@ -367,7 +367,7 @@ end subroutine Flash2SetupPatch
 
    endif
   ! reason = re!; print *,'reason:',reason
- end subroutine Flash2UpdateReasonPatch
+end subroutine Flash2UpdateReasonPatch
 
 
 ! ************************************************************************** !
@@ -907,7 +907,7 @@ subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
       Res(1:option%nflowspec)=mol(:)
       Res(option%nflowdof)=eng
   ! endif
-  end subroutine Flash2Accumulation
+end subroutine Flash2Accumulation
 
 ! ************************************************************************** !
 !
@@ -1039,7 +1039,7 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
     print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
       
- end subroutine Flash2SourceSink
+end subroutine Flash2SourceSink
 
 
 ! ************************************************************************** !
@@ -1164,7 +1164,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-   end subroutine Flash2Flux
+end subroutine Flash2Flux
 
 ! ************************************************************************** !
 !
@@ -1263,7 +1263,7 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-   end subroutine Flash2FluxAdv
+end subroutine Flash2FluxAdv
 
 ! ************************************************************************** !
 !
@@ -1338,7 +1338,7 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-   end subroutine Flash2FluxDiffusion
+end subroutine Flash2FluxDiffusion
 
 ! ************************************************************************** !
 !
@@ -1689,16 +1689,16 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
        implicit none
 #include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
-     end subroutine samrpetscobjectstateincrease
+end subroutine samrpetscobjectstateincrease
     
-     subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -1706,9 +1706,9 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
        PetscFortranAddr :: p_application
        Vec :: vec
        PetscErrorCode :: ierr
-     end subroutine SAMRCoarsenFaceFluxes
+end subroutine SAMRCoarsenFaceFluxes
        
-  end interface
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -2851,7 +2851,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
- end subroutine Flash2ResidualPatch1
+end subroutine Flash2ResidualPatch1
 
 ! ************************************************************************** !
 !
@@ -3241,16 +3241,16 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsys.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
-  end interface
+end subroutine SAMRSetCurrentJacobianPatch
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -4320,8 +4320,8 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
-  interface
-     subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
+interface
+subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
 #include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
@@ -4329,16 +4329,16 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
        PetscReal :: val
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
-     end subroutine SAMRSetJacobianSourceOnPatch
+end subroutine SAMRSetJacobianSourceOnPatch
 
-     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
 #include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
-     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-  end interface
+end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+end interface
 
   SNES :: snes
   Vec :: xx

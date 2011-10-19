@@ -11,26 +11,21 @@ module Richards_Aux_module
 #include "definitions.h"
 
   type, public :: richards_auxvar_type
+  
     PetscReal :: pc
-!    PetscReal :: vis
-!    PetscReal :: dvis_dp
-!    PetscReal :: kr
-!    PetscReal :: dkr_dp
-
-!    PetscReal :: kvr
-
+#ifdef USE_ANISOTROPIC_MOBILITY
     PetscReal :: kvr_x
     PetscReal :: kvr_y
     PetscReal :: kvr_z
-
-    PetscReal :: dsat_dp
-    PetscReal :: dden_dp
-
-!    PetscReal :: dkvr_dp
     PetscReal :: dkvr_x_dp
     PetscReal :: dkvr_y_dp
     PetscReal :: dkvr_z_dp
-
+#else
+    PetscReal :: kvr
+    PetscReal :: dkvr_dp
+#endif
+    PetscReal :: dsat_dp
+    PetscReal :: dden_dp
 
   end type richards_auxvar_type
   
@@ -121,25 +116,21 @@ subroutine RichardsAuxVarInit(aux_var,option)
   type(option_type) :: option
   
   aux_var%pc = 0.d0
-!  aux_var%kr = 0.d0
-!  aux_var%dkr_dp = 0.d0
-!  aux_var%vis = 0.d0
-!  aux_var%dvis_dp = 0.d0
 
-!  aux_var%kvr = 0.d0
-
+#ifdef USE_ANISOTROPIC_MOBILITY
   aux_var%kvr_x = 0.d0
   aux_var%kvr_y = 0.d0
   aux_var%kvr_z = 0.d0
-
-  aux_var%dsat_dp = 0.d0
-  aux_var%dden_dp = 0.d0
-
-!  aux_var%dkvr_dp = 0.d0
-
   aux_var%dkvr_x_dp = 0.d0
   aux_var%dkvr_y_dp = 0.d0
   aux_var%dkvr_z_dp = 0.d0
+#else
+  aux_var%kvr = 0.d0
+  aux_var%dkvr_dp = 0.d0
+#endif
+
+  aux_var%dsat_dp = 0.d0
+  aux_var%dden_dp = 0.d0
 
 end subroutine RichardsAuxVarInit
 
@@ -160,26 +151,22 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   type(option_type) :: option
 
   aux_var2%pc = aux_var%pc
-!  aux_var2%kr = aux_var%kr
-!  aux_var2%dkr_dp = aux_var%dkr_dp
-!  aux_var2%vis = aux_var%vis
-!  aux_var2%dvis_dp = aux_var%dvis_dp
 
-!  aux_var2%kvr = aux_var%kvr
-
+#ifdef USE_ANISOTROPIC_MOBILITY
   aux_var2%kvr_x = aux_var%kvr_x 
   aux_var2%kvr_y = aux_var%kvr_y 
   aux_var2%kvr_z = aux_var%kvr_z 
+  aux_var2%dkvr_x_dp = aux_var%dkvr_x_dp 
+  aux_var2%dkvr_y_dp = aux_var%dkvr_y_dp 
+  aux_var2%dkvr_z_dp = aux_var%dkvr_z_dp 
+#else
+  aux_var2%kvr = aux_var%kvr
+  aux_var2%dkvr_dp = aux_var%dkvr_dp
+#endif
 
   aux_var2%dsat_dp = aux_var%dsat_dp
   aux_var2%dden_dp = aux_var%dden_dp
  
-! aux_var2%dkvr_dp = aux_var%dkvr_dp
-
-  aux_var2%dkvr_x_dp = aux_var%dkvr_x_dp 
-  aux_var2%dkvr_y_dp = aux_var%dkvr_y_dp 
-  aux_var2%dkvr_z_dp = aux_var%dkvr_z_dp 
-
 end subroutine RichardsAuxVarCopy
   
 ! ************************************************************************** !
@@ -219,10 +206,15 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
   global_aux_var%den_kg = 0.d0
-!  aux_var%kvr = 0.d0
+  
+#ifdef USE_ANISOTROPIC_MOBILITY
   aux_var%kvr_x = 0.d0
   aux_var%kvr_y = 0.d0
   aux_var%kvr_z = 0.d0
+#else
+  aux_var%kvr = 0.d0
+#endif
+
   kr = 0.d0
  
   global_aux_var%pres = x(1)
@@ -278,15 +270,15 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
  
   global_aux_var%den = dw_mol
   global_aux_var%den_kg = dw_kg
-!  aux_var%kvr = kr/visl
+  aux_var%dsat_dp = ds_dp
+  aux_var%dden_dp = dw_dp
 
-  
+#ifdef USE_ANISOTROPIC_MOBILITY  
   aux_var%kvr_x = kr/visl       ! For anisotropic relative perm
   aux_var%kvr_y = kr/visl       ! For anisotropic relative perm         
   aux_var%kvr_z = kr/visl       ! For anisotropic relative perm
-
-  ani_coef = 1
-  if (option%ani_relative_permeability) then
+  if (option%ani_relative_permeability) then  
+    ani_coef = 1
 !     do i=1, 100
 !     global_aux_var%sat(1) = 0.01*i
 !     ani_A = 3
@@ -302,42 +294,33 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 !    write(*,*) global_aux_var%sat(1), ani_coef
 !    end do
 !    stop
-  end if
-    
-!  aux_var%vis = visl
-!  aux_var%dvis_dp = dvis_dp
-!  aux_var%kr = kr
-!  aux_var%dkr_dp = dkr_dp
-  aux_var%dsat_dp = ds_dp
-
-  aux_var%dden_dp = dw_dp
-  
-!  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+  end if  
   aux_var%dkvr_x_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp ! For anisotropic relative perm 
   aux_var%dkvr_y_dp = (dkr_dp/visl - kr/(visl*visl)*dvis_dp) ! For anisotropic relative perm
   aux_var%dkvr_z_dp = (dkr_dp/visl - kr/(visl*visl)*dvis_dp) ! For anisotropic relative perm
-
-  if (option%ani_relative_permeability) then
-     aux_var%dkvr_z_dp = aux_var%dkvr_z_dp * ani_coef
-  end if
+  aux_var%dkvr_z_dp = aux_var%dkvr_z_dp * ani_coef
+#else
+  aux_var%kvr = kr/visl
+  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+#endif
 
 #ifdef DASVYAT
 
-!global_aux_var%den = 55.3d-0
-!aux_var%kvr_x =  1123.055414382469
-!aux_var%kvr_y =  1123.055414382469
-!aux_var%kvr_z =  1123.055414382469
-!
-!aux_var%dden_dp = 0.
-!aux_var%dkvr_x_dp = 0!.01*2*x(1)
-!aux_var%dkvr_y_dp = 0!.01*2*x(1)
-!aux_var%dkvr_z_dp = 0!.01*2*x(1)
+! global_aux_var%den = 55.3d-0
+! aux_var%kvr_x =  1123.055414382469
+! aux_var%kvr_y =  1123.055414382469
+! aux_var%kvr_z =  1123.055414382469
+! 
+! aux_var%dden_dp = 0.
+! aux_var%dkvr_x_dp = 0!.01*2*x(1)
+! aux_var%dkvr_y_dp = 0!.01*2*x(1)
+! aux_var%dkvr_z_dp = 0!.01*2*x(1)
 
 
 !aux_var%dsat_dp = 1e-2
 !global_aux_var%sat(1) = 1e-2*global_aux_var%pres(1)
-!aux_var%dsat_dp = 0
-!global_aux_var%sat(1) = 0.5
+! aux_var%dsat_dp = 0
+! global_aux_var%sat(1) = 0.5
 
 !write(*,*) global_aux_var%den, global_aux_var%den_kg
 !write(*,*) aux_var%kvr_x 

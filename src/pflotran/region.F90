@@ -280,7 +280,8 @@ subroutine RegionRead(region,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword, word
   PetscInt :: icount
-  type(point3d_type) :: coordinates(30)
+  PetscInt, parameter :: max_num_coordinates = 30
+  type(point3d_type) :: coordinates(max_num_coordinates)
 
   input%ierr = 0
   do
@@ -335,6 +336,12 @@ subroutine RegionRead(region,input,option)
           call InputReadStringErrorMsg(input,option,'REGION')
           if (InputCheckExit(input,option)) exit              
           icount = icount + 1
+          if (icount > max_num_coordinates) then
+            write(option%io_buffer, &
+                  '(''Number of coordinates in region '',a, &
+                &'' exceeds limit of '',i3)') region%name, max_num_coordinates
+            call printErrMsg(option)
+          endif
           call InputReadDouble(input,option,coordinates(icount)%x) 
           call InputErrorMsg(input,option,'x-coordinate','REGION')
           call InputReadDouble(input,option,coordinates(icount)%y)

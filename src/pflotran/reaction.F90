@@ -1212,14 +1212,15 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   PetscInt :: isrfcplx, jsrfcplx
   PetscReal :: constraint_conc(reaction%naqcomp)
   PetscInt :: constraint_type(reaction%naqcomp)
-  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%naqcomp)
+  character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nkinmnrl)
   character(len=MAXWORDLENGTH) :: constraint_srfcplx_name(reaction%nkinsrfcplx)
   character(len=MAXWORDLENGTH) :: constraint_colloid_name(reaction%ncoll)
   PetscInt :: constraint_id(reaction%naqcomp)
-    
+  PetscBool :: external_dataset(reaction%naqcomp)
+  
   constraint_id = 0
-  constraint_spec_name = ''
+  constraint_aux_string = ''
   constraint_type = 0
   constraint_conc = 0.d0
   
@@ -1242,15 +1243,16 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
       call printErrMsg(option)
     else
       constraint_type(jcomp) = aq_species_constraint%constraint_type(icomp)
-      constraint_spec_name(jcomp) = aq_species_constraint%constraint_spec_name(icomp)
+      constraint_aux_string(jcomp) = aq_species_constraint%constraint_aux_string(icomp)
       constraint_conc(jcomp) = aq_species_constraint%constraint_conc(icomp)
+      external_dataset(jcomp) = aq_species_constraint%external_dataset(icomp)
       
       ! link constraint species
       select case(constraint_type(jcomp))
         case(CONSTRAINT_MINERAL)
           found = PETSC_FALSE
           do imnrl = 1, reaction%nmnrl
-            if (StringCompare(constraint_spec_name(jcomp), &
+            if (StringCompare(constraint_aux_string(jcomp), &
                                 reaction%mineral_names(imnrl), &
                                 MAXWORDLENGTH)) then
               constraint_id(jcomp) = imnrl
@@ -1260,7 +1262,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
           enddo
           if (.not.found) then
             option%io_buffer = 'Constraint mineral: ' // &
-                     trim(constraint_spec_name(jcomp)) // &
+                     trim(constraint_aux_string(jcomp)) // &
                      ' for aqueous species: ' // &
                      trim(reaction%primary_species_names(jcomp)) // &
                      ' in constraint: ' // &
@@ -1270,7 +1272,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
         case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
           found = PETSC_FALSE
           do igas = 1, reaction%ngas
-            if (StringCompare(constraint_spec_name(jcomp), &
+            if (StringCompare(constraint_aux_string(jcomp), &
                                 reaction%gas_species_names(igas), &
                                 MAXWORDLENGTH)) then
               constraint_id(jcomp) = igas
@@ -1280,7 +1282,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
           enddo
           if (.not.found) then
             option%io_buffer = 'Constraint gas: ' // &
-                     trim(constraint_spec_name(jcomp)) // &
+                     trim(constraint_aux_string(jcomp)) // &
                      ' for aqueous species: ' // &
                      trim(reaction%primary_species_names(jcomp)) // &
                      ' in constraint: ' // &
@@ -1294,9 +1296,10 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   
   ! place ordered constraint parameters back in original arrays
   aq_species_constraint%constraint_type = constraint_type
-  aq_species_constraint%constraint_spec_name = constraint_spec_name
+  aq_species_constraint%constraint_aux_string = constraint_aux_string
   aq_species_constraint%constraint_spec_id = constraint_id
   aq_species_constraint%constraint_conc = constraint_conc
+  aq_species_constraint%external_dataset = external_dataset
 
   ! minerals
   if (reaction%use_full_geochemistry .and. associated(mineral_constraint)) then
@@ -1443,7 +1446,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: igas
   PetscReal :: conc(reaction%naqcomp)
   PetscInt :: constraint_type(reaction%naqcomp)
-  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%naqcomp)
+  character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
 
   PetscReal :: Res(reaction%naqcomp)
   PetscReal :: total_conc(reaction%naqcomp)
@@ -1482,7 +1485,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 #endif
     
   constraint_type = aq_species_constraint%constraint_type
-  constraint_spec_name = aq_species_constraint%constraint_spec_name
+  constraint_aux_string = aq_species_constraint%constraint_aux_string
   constraint_id = aq_species_constraint%constraint_spec_id
   conc = aq_species_constraint%constraint_conc
 
@@ -2256,9 +2259,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         case(CONSTRAINT_PH)
           string = 'pH'
         case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
-          string = aq_species_constraint%constraint_spec_name(icomp)
+          string = aq_species_constraint%constraint_aux_string(icomp)
         case(CONSTRAINT_SUPERCRIT_CO2)
-          string = 'SC ' // aq_species_constraint%constraint_spec_name(icomp)
+          string = 'SC ' // aq_species_constraint%constraint_aux_string(icomp)
       end select
       write(option%fid_out,104) reaction%primary_species_names(icomp), &
                                 rt_auxvar%pri_molal(icomp), &
@@ -2762,9 +2765,15 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
       do
         total = free_site_conc
         ln_free_site = log(free_site_conc)
+        
+!       call srfcmplx(irxn,icplx,lnQK,reaction%eqsrfcplx_logK,reaction%eqsrfcplx_Z,potential, &
+!               tempk,ln_act,rt_auxvar%ln_act_h2o,ln_free_site,srfcplx_conc)
+
+#if 0
         do j = 1, ncplx
           icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
-          ! compute secondary species concentration
+          
+          ! compute ion activity product
           lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN &
                  + reaction%eqsrfcplx_Z(icplx)*faraday*potential &
                  /(rgas*tempk)/LOG_TO_LN
@@ -2783,10 +2792,11 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
             lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
           enddo
           srfcplx_conc(icplx) = exp(lnQK)
+          
           total = total + reaction%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
           
         enddo
-        
+#endif
         if (one_more) exit
         
         total = total / free_site_conc
@@ -2801,6 +2811,55 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
   print *,'srfcmplx1: ',srfcplx_conc
 
 end subroutine DoubleLayer
+
+#if 0
+subroutine srfcmplx(irxn,icplx,lnQK,logK,Z,potential,tempk, &
+                ln_act,ln_act_h2o,ln_free_site,srfcplx_conc)
+
+implicit none
+
+  PetscReal, parameter :: rgas = 8.3144621d0
+  PetscReal, parameter :: tk = 273.15d0
+  PetscReal, parameter :: faraday = 96485.d0
+  
+  PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
+               charge_balance, potential, tempk, debye_length, &
+               srfchrg_capacitance_model
+               
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
+
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site, ln_act_h2o
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
+
+  PetscInt :: i, j, icomp, icplx, irxn, ncomp, ncplx
+
+        do j = 1, ncplx
+          icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -logK(icplx)*LOG_TO_LN &
+                 + Z(icplx)*faraday*potential &
+                 /(rgas*tempk)/LOG_TO_LN
+
+          ! activity of water
+          if (reaction%eqsrfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + reaction%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          endif
+
+          lnQK = lnQK + reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = reaction%eqsrfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = reaction%eqsrfcplxspecid(i,icplx)
+            lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          srfcplx_conc(icplx) = exp(lnQK)
+        enddo
+end subroutine srfcmplx
+#endif
 
 ! ************************************************************************** !
 !

@@ -60,6 +60,7 @@ module Condition_module
     
   type, public :: flow_sub_condition_type
     PetscInt :: itype                  ! integer describing type of condition
+    PetscInt :: isubtype
     character(len=MAXWORDLENGTH) :: ctype ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: units      ! units
     character(len=MAXWORDLENGTH) :: name
@@ -111,6 +112,7 @@ module Condition_module
     type(mineral_constraint_type), pointer :: minerals
     type(srfcplx_constraint_type), pointer :: surface_complexes
     type(colloid_constraint_type), pointer :: colloids
+    PetscBool :: requires_equilibration
     type(tran_constraint_type), pointer :: next    
   end type tran_constraint_type
   
@@ -129,7 +131,6 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: constraint_name   
     PetscReal :: time
     PetscInt :: num_iterations
-    PetscInt :: iflag
     character(len=MAXWORDLENGTH) :: time_units
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
@@ -255,7 +256,8 @@ function TranConstraintCreate(option)
   nullify(constraint%next)
   constraint%id = 0
   constraint%name = ''
-
+  constraint%requires_equilibration = PETSC_FALSE
+  
   TranConstraintCreate => constraint
 
 end function TranConstraintCreate
@@ -286,7 +288,6 @@ function TranConstraintCouplerCreate(option)
   nullify(coupler%colloids)
   
   coupler%num_iterations = 0
-  coupler%iflag = 0
   nullify(coupler%rt_auxvar)
   nullify(coupler%global_auxvar)
   
@@ -426,6 +427,7 @@ function FlowSubConditionCreate(ndof)
   allocate(sub_condition)
   sub_condition%units = ''
   sub_condition%itype = 0
+  sub_condition%isubtype = 0
   sub_condition%ctype = ''
   sub_condition%name = ''
 
@@ -875,6 +877,27 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = MASS_RATE_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    option%io_buffer = 'scaled_mass_rate type: ' // &
+                      trim(word) // &
+                      'not recognized for flow condition "' // &
+                      trim(condition%name) // '".'
+                    call printErrMsg(option)
+                end select
+              else
+                sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+              endif
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('conductance')
@@ -889,6 +912,27 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    option%io_buffer = 'scaled_volumetric_rate type: ' // &
+                      trim(word) // &
+                      'not recognized for flow condition "' // &
+                      trim(condition%name) // '".'
+                    call printErrMsg(option)
+                end select
+              else
+                sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+              endif
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case('unit_gradient')
@@ -1717,9 +1761,11 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           option%io_buffer = 'Constraint Species: ' // &
                              trim(aq_species_constraint%names(icomp))
           call printMsg(option)
+          
           call InputReadDouble(input,option,aq_species_constraint%constraint_conc(icomp))
           call InputErrorMsg(input,option,'concentration', &
                           'CONSTRAINT, CONCENTRATIONS')          
+          
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputDefaultMsg(input,option, &
                             'CONSTRAINT, CONCENTRATION, constraint_type')
@@ -1750,13 +1796,27 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                          ' not recognized in constraint,concentration'
                 call printErrMsg(option)
             end select 
+            
             if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS .or.&
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_SUPERCRIT_CO2) then
-              call InputReadWord(input,option,aq_species_constraint%constraint_spec_name(icomp), &
-                             PETSC_FALSE)
+              call InputReadWord(input,option,aq_species_constraint%constraint_aux_string(icomp), &
+                                 PETSC_TRUE)
               call InputErrorMsg(input,option,'constraint name', &
                               'CONSTRAINT, CONCENTRATIONS') 
+            else
+              call InputReadWord(input,option,word,PETSC_FALSE)
+              if (input%ierr == 0) then
+                call StringToUpper(word)
+                select case(word)
+                  case('DATASET')
+                    call InputReadWord(input,option,aq_species_constraint% &
+                                       constraint_aux_string(icomp),PETSC_TRUE)
+                    call InputErrorMsg(input,option,'dataset name', &
+                                    'CONSTRAINT, CONCENTRATIONS,')
+                    aq_species_constraint%external_dataset = PETSC_TRUE
+                end select
+              endif
             endif
           else
             aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
@@ -1769,6 +1829,12 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                    'Number of concentration constraints is less than ' // &
                    'number of primary species in aqueous constraint.'
           call printErrMsg(option)        
+        endif
+        if (icomp > reaction%naqcomp) then
+          option%io_buffer = &
+                   'Number of concentration constraints is greater than ' // &
+                   'number of primary species in aqueous constraint.'
+          call printWrnMsg(option)        
         endif
         
         if (associated(constraint%aqueous_species)) &

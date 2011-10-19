@@ -47,6 +47,7 @@ subroutine Init(simulation)
   use Logging_module  
   use Database_module
   use Input_module
+  use Condition_Control_module
   
   use Flash2_module
   use MPHASE_module
@@ -92,7 +93,7 @@ subroutine Init(simulation)
       
   interface
 
-     subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
+subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
 #include "finclude/petscsysdef.h"
 #include "finclude/petscpc.h"
        PC :: pc
@@ -100,7 +101,7 @@ subroutine Init(simulation)
        PetscInt :: which_pc
      end subroutine SAMRInitializePreconditioner
 
-  end interface
+end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,ierr)
@@ -293,6 +294,7 @@ subroutine Init(simulation)
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
                                       option)
+
     call MatSetOptionsPrefix(flow_solver%Jpre,"flow_",ierr)
 
     if (flow_solver%J_mat_type /= MATMFFD) then
@@ -316,7 +318,7 @@ subroutine Init(simulation)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
-                                 RichardsResidualMFD, &
+                                 RichardsResidualMFDLP, &
                                  realization,ierr)
           case default
             call SNESSetFunction(flow_solver%snes,field%flow_r, &
@@ -349,7 +351,7 @@ subroutine Init(simulation)
         select case(realization%discretization%itype)
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             RichardsJacobianMFD,realization,ierr)
+                             RichardsJacobianMFDLP,realization,ierr)
 !sp          case(STRUCTURED_GRID,AMR_GRID)
           case default !sp 
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
@@ -612,7 +614,7 @@ subroutine Init(simulation)
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
-    call RealizAssignFlowInitCond(realization)
+    call CondControlAssignFlowInitCond(realization)
 
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%initialize_flow_filename) > 1) then
@@ -663,7 +665,7 @@ subroutine Init(simulation)
     endif
 
     ! initial concentrations must be assigned after densities are set !!!
-    call RealizAssignTransportInitCond(realization)
+    call CondControlAssignTranInitCond(realization)
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%initialize_transport_filename) > 1) then
       call readTransportInitialCondition(realization, &
@@ -756,7 +758,6 @@ subroutine Init(simulation)
 
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
-  
   call PetscLogEventEnd(logging%event_init,ierr)
 
 end subroutine Init
@@ -1047,13 +1048,7 @@ subroutine InitReadInput(simulation)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
     
-  PetscInt :: i, i1, i2, idum, ireg, isrc, j
-  PetscInt :: ibc, ibrk, ir,np
-  PetscReal :: rdum
-
   PetscBool :: continuation_flag
-  PetscBool :: periodic_output_flag = PETSC_FALSE
-  PetscReal :: periodic_rate = 0.d0
   
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
@@ -1744,6 +1739,46 @@ subroutine InitReadInput(simulation)
                   units_conversion = UnitsConvertToInternal(word,option) 
                   output_option%periodic_output_time_incr = temp_real* &
                                                             units_conversion
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  if (input%ierr == 0) then
+                    if (StringCompareIgnoreCase(word,'between',SEVEN_INTEGER)) then
+
+                      call InputReadDouble(input,option,temp_real)
+                      call InputErrorMsg(input,option,'start time', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'start time units', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      units_conversion = UnitsConvertToInternal(word,option) 
+                      temp_real = temp_real * units_conversion
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (.not.StringCompareIgnoreCase(word,'and',THREE_INTEGER)) then
+                        input%ierr = 1
+                      endif
+                      call InputErrorMsg(input,option,'and', &
+                                          'OUTPUT,PERIODIC,TIME"')
+                      call InputReadDouble(input,option,temp_real2)
+                      call InputErrorMsg(input,option,'end time', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'end time units', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      temp_real2 = temp_real2 * units_conversion
+                      do
+                        waypoint => WaypointCreate()
+                        waypoint%time = temp_real
+                        waypoint%print_output = PETSC_TRUE    
+                        call WaypointInsertInList(waypoint,realization%waypoints)
+                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        if (temp_real > temp_real2) exit
+                      enddo
+                      output_option%periodic_output_time_incr = 0.d0
+                    else
+                      input%ierr = 1
+                      call InputErrorMsg(input,option,'between', &
+                                          'OUTPUT,PERIODIC,TIME')
+                    endif
+                  endif                  
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
                                     output_option%periodic_output_ts_imod)

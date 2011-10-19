@@ -264,7 +264,7 @@ or assuming an incompressible fluid
 q_z \eq q_z^0,
 \EN
 where $q_z^0$ denotes infiltration at the surface. Thus the pressure is obtained as a function of $z$ by solving the ODE
-\EQ\label{dpdz}
+\EQ
 \frac{dp}{dz} \eq -\frac{\mu q_z^0}{k_{\rm sat} k_r} - \rho g,
 \EN
 using Eqns.\eqref{kr} and \eqref{sat} to express the relative permeability $k_r$ as a function of pressure. For the special case of zero infiltration it follows that
@@ -272,36 +272,6 @@ using Eqns.\eqref{kr} and \eqref{sat} to express the relative permeability $k_r$
 p(z) \eq p_0 - \rho g (z-z_0),
 \EN
 with $p(z_0)\!=\!p_0$. The saturation profile is obtained from Eqns.\eqref{sat} and \eqref{seff}.
-
-\subsection{Watertable}
-
-The position of the watertable is defined by vanishing of the capillary pressure
-\EQ
-P_c(z_{\rm wt}) \eq 0,
-\EN
-where $z_{\rm wt}$ denotes the height of the watertable. For the case with no infiltration at the surface it follows that
-\EQ
-z_{\rm wt} \eq z_0 + \frac{p_0-p_g}{\rho g},
-\EN
-with the boundary condition $p(z_0) = p_0$ and $z_0$ denotes the datum. If $p_0$ is set equal to $p_g$, then $z_{\rm wt} = z_0$, or the height of the watertable is equal to the datum.
-
-The same holds true also with nonzero infiltration. To see this note that the pressure satisfies Eqn.\eqref{dpdz}. Integrating this equation yields
-\EQ
-p(z) \eq p_0 - \rho g (z-z_0) -\frac{\mu q_z^0}{k_{\rm sat}} \int_{z_0}^z \frac{dz'}{k_r}.
-\EN
-Thus the watertable is determined implicitly from the equation
-\EQ\label{wt}
-z_{\rm wt} \eq z_0 + \frac{p_0 -p_g}{\rho g} + \frac{\mu q_z^0}{\rho g k_{\rm sat}} \int_{z_0}^{z_{\rm wt}} \frac{dz}{k_r}.
-\EN
-Note that if $z_{\rm wt} = z_0$, the integral on the right-hand side vanishes.
-\begin{comment}
-Expanding the integral on the right-hand side yields
-\BA
-\int_{z_0}^{z_{\rm wt}} \F dz' &\eq \frac{\G_0}{\rho g} \int_{z_0}^{z_{\rm wt}} \Big[\F_0 + \frac{1}{1!}\F_0' z' + \frac{1}{2!} \F_0'' (z')^2 + \cdots \Big] dz',\\
-&\eq \frac{\G_0}{\rho g} \Big[\F_0 (z_{\rm wt}-z_0) + \frac{1}{1! 2}\F_0' (z_{\rm wt}^2-z_0^2) + \frac{1}{2! 3} \F_0'' (z_{\rm wt}^3-z_0^3) + \cdots  \Big].
-\EA
-\end{comment}
-Consequently, it is clear that for $p_0=p_g$, $z_{\rm wt}=z_0$ satisfies Eqn.\eqref{wt}. For $p_0\ne p_g$, the watertable height depends on $q_z^0$.
 
 \section*{Model Parameters}
 

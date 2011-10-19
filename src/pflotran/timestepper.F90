@@ -30,6 +30,8 @@ module Timestepper_module
     PetscReal :: dt_min
     PetscReal :: dt_max
     PetscReal :: prev_dt
+    PetscReal :: cfl_limiter
+    PetscReal :: cfl_limiter_ts
     
     PetscBool :: init_to_steady_state
     PetscBool :: run_as_steady_state
@@ -96,6 +98,8 @@ function TimestepperCreate()
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
   stepper%prev_dt = 0.d0
+  stepper%cfl_limiter = -999.d0
+  stepper%cfl_limiter_ts = 1.d20
   
   stepper%time_step_cut_flag = PETSC_FALSE
 
@@ -152,6 +156,8 @@ subroutine TimestepperReset(stepper,dt_min)
 
   stepper%dt_min = dt_min
   stepper%prev_dt = 0.d0
+  stepper%cfl_limiter = -999.d0
+  stepper%cfl_limiter_ts = 1.d20
 
   stepper%time_step_cut_flag = PETSC_FALSE
 
@@ -208,6 +214,10 @@ subroutine TimestepperRead(stepper,input,option)
       case('MAX_TS_CUTS')
         call InputReadInt(input,option,stepper%max_time_step_cuts)
         call InputDefaultMsg(input,option,'max_time_step_cuts')
+        
+      case('CFL_LIMITER')
+        call InputReadDouble(input,option,stepper%cfl_limiter)
+        call InputDefaultMsg(input,option,'cfl limiter')
         
       case('DT_FACTOR')
         string='time_step_factor'
@@ -266,6 +276,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
+  use Condition_Control_module
 
   implicit none
   
@@ -294,6 +305,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscBool :: failure
   PetscLogDouble :: start_time, end_time
   PetscReal :: tran_dt_save, flow_t0
+  PetscReal :: dt_cfl_1, flow_to_tran_ts_ratio
 
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -395,7 +407,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   if (transport_read .and. option%overwrite_restart_transport) then
-    call RealizAssignTransportInitCond(realization)  
+    call CondControlAssignTranInitCond(realization)  
   endif
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
@@ -529,10 +541,26 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       tran_dt_save = -999.d0
+      ! reset transpor time step if flow time step is cut
       if (associated(flow_stepper)) then
         if (flow_stepper%time_step_cut_flag) then
           tran_stepper%target_time = flow_stepper%target_time
           option%tran_dt = min(option%tran_dt,option%flow_dt)
+        endif
+      endif
+      ! CFL Limiting
+      if (tran_stepper%cfl_limiter > 0.d0) then
+        call TimestepperCheckCFLLimit(tran_stepper,realization)
+        call TimestepperEnforceCFLLimit(tran_stepper,option,output_option)
+      endif
+      ! if transport time step is less than flow step, but greater than
+      ! half the flow time step, might as well cut it down to half the 
+      ! flow time step size
+      if (associated(flow_stepper)) then
+        flow_to_tran_ts_ratio = option%flow_dt / option%tran_dt
+        if (flow_to_tran_ts_ratio > 1.d0 .and. &
+            flow_to_tran_ts_ratio < 2.d0) then
+          option%tran_dt = option%flow_dt * 0.5d0
         endif
       endif
       do ! loop on transport until it reaches the target time
@@ -561,7 +589,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         
         ! if still stepping, update the time step size based on convergence
         ! criteria
-        call StepperUpdateDT(null_stepper,tran_stepper,option) 
+        call StepperUpdateDT(null_stepper,tran_stepper,option)
+        ! check CFL limit if turned on
+        if (tran_stepper%cfl_limiter > 0.d0) then
+          call TimestepperEnforceCFLLimit(tran_stepper,option,output_option)
+        endif         
         ! if current step exceeds (factoring in tolerance) exceeds the target
         ! time, set the step size to the difference
         if ((option%tran_time + &
@@ -801,6 +833,10 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           dtt = fac * dt * (1.d0 + ut)
         case(RICHARDS_MODE)
           fac = 0.5d0
+!          write(*,*) "flow_stepper%num_newton_iterations", flow_stepper%num_newton_iterations
+!          write(*,*) "flow_stepper%iaccel", flow_stepper%iaccel
+!          write(*,*) "option%dpmxe", option%dpmxe
+!          write(*,*) "option%dpmax", option%dpmax
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
             fac = 0.33d0
             ut = 0.d0
@@ -809,6 +845,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             ut = up
           endif
           dtt = fac * dt * (1.d0 + ut)
+!              write(*,*) "dtt", dtt
         case(G_MODE)   
           fac = 0.5d0
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
@@ -980,8 +1017,9 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   if (flag) then ! flow stepper will govern the target time
 !    time = option%flow_time + option%flow_dt
     dt = option%flow_dt
-    dt_max = flow_stepper%dt_max
+    ! dt_max must be set from current waypoint and not updated below
     cur_waypoint => flow_stepper%cur_waypoint
+    dt_max = cur_waypoint%dt_max
     cumulative_time_steps = flow_stepper%steps
     max_time_step = flow_stepper%max_time_step
     tolerance = flow_stepper%time_step_tolerance
@@ -989,8 +1027,9 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   else
 !    time = option%tran_time + option%tran_dt
     dt = option%tran_dt
-    dt_max = tran_stepper%dt_max
     cur_waypoint => tran_stepper%cur_waypoint
+    ! dt_max must be set from current waypoint and not updated below
+    dt_max = cur_waypoint%dt_max
     cumulative_time_steps = tran_stepper%steps
     max_time_step = tran_stepper%max_time_step
     tolerance = tran_stepper%time_step_tolerance
@@ -1007,32 +1046,34 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   if (associated(flow_stepper)) flow_stepper%prev_dt = option%flow_dt
   if (associated(tran_stepper)) tran_stepper%prev_dt = option%tran_dt
 
-! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
-  if (target_time + tolerance*dt >= cur_waypoint%time .and. &
-      (cur_waypoint%update_conditions .or. &
-       cur_waypoint%print_output .or. &
-       cur_waypoint%print_tr_output)) then
-    ! decrement by time step size
-    target_time = target_time - dt
-    ! set new time step size based on waypoint time
-    dt = cur_waypoint%time - target_time
-    if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
-      dt = dt_max                    ! error from waypoint%time - time
-      target_time = target_time + dt
-    else
-      target_time = cur_waypoint%time
-      if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-      if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
-      option%match_waypoint = PETSC_TRUE
+! If a waypoint calls for a plot or change in src/sinks, adjust time step 
+! to match waypoint.
+  do ! we cycle just in case the next waypoint is beyond the target_time
+    if (target_time + tolerance*dt >= cur_waypoint%time .and. &
+        (cur_waypoint%update_conditions .or. &
+         cur_waypoint%print_output .or. &
+         cur_waypoint%print_tr_output)) then
+      ! decrement by time step size
+      target_time = target_time - dt
+      ! set new time step size based on waypoint time
+      dt = cur_waypoint%time - target_time
+      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+        dt = dt_max                    ! error from waypoint%time - time
+        target_time = target_time + dt
+      else
+        target_time = cur_waypoint%time
+        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+        option%match_waypoint = PETSC_TRUE
+        cur_waypoint => cur_waypoint%next
+      endif
+      exit
+    else if (target_time > cur_waypoint%time) then
       cur_waypoint => cur_waypoint%next
-      if (associated(cur_waypoint)) &
-        dt_max = cur_waypoint%dt_max
+    else
+      exit
     endif
-  else if (target_time > cur_waypoint%time) then
-    cur_waypoint => cur_waypoint%next
-    if (associated(cur_waypoint)) &
-      dt_max = cur_waypoint%dt_max
-  endif
+  enddo
   ! subtract 1 from max_time_steps since we still have to complete the current
   ! time step
   if (cumulative_time_steps >= max_time_step-1) then
@@ -1082,7 +1123,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
   use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
-                             RichardsTimeCut
+                             RichardsTimeCut, RichardsResidual
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
   use General_module, only : GeneralMaxChange, GeneralInitializeTimestep, &
                              GeneralTimeCut
@@ -1095,7 +1136,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Option_module
   use Solver_module
   use Field_module
-  use Richards_module
   
   implicit none
 
@@ -1118,7 +1158,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   PetscInt :: sum_newton_iterations, sum_linear_iterations
   PetscInt :: num_newton_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
-  PetscReal :: tempreal
+  PetscReal :: tempreal, tempreal2
   Vec :: update_vec
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
@@ -1173,6 +1213,11 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       endif
     endif
 
+#ifdef DASVYAT
+!     write(*,*) "Flow begins"
+!     read(*,*)
+#endif
+
     if (option%ntrandof > 0) then ! store initial saturations for transport
       call GlobalUpdateAuxVars(realization,TIME_T)
     endif
@@ -1191,26 +1236,12 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       case(G_MODE)
         call GeneralInitializeTimestep(realization)
     end select
+
     
     do
       
       call PetscGetTime(log_start_time, ierr)
 
-#ifdef DASVYAT_DEBUG
-    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_before.out', &
-                              viewer,ierr)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            call VecView(field%flow_xx_faces, viewer, ierr)
-            call VecView(field%flow_xx, viewer, ierr)
-            call vecView(field%flow_r_faces, viewer, ierr)
-    else
-            call VecView(field%flow_xx, viewer, ierr)
-    end if
-    write(*,*) "VecView error", ierr
-    call PetscViewerDestroy(viewer,ierr)
-    write(*,*) "Before SNESSolve" 
-    read(*,*)    
-#endif
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
@@ -1221,33 +1252,39 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#ifdef DASVYAT_DEBUG
+#if DASVYAT_DEBUG
 
     call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx_after.out', &
                               viewer,ierr)
     if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-       !     call VecView(field%flow_xx_faces, viewer, ierr)
-            call VecView(field%flow_xx, viewer, ierr)
-       !     call vecView(field%flow_r_faces, viewer, ierr)
-    call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
+!             call VecView(field%flow_xx_faces, viewer, ierr)
+     !       call VecView(field%flow_xx, viewer, ierr)
+     !        call VecView(field%flow_r_faces, viewer, ierr)
+              call VecNorm(field%flow_r_faces, NORM_2, tempreal, ierr)
 
-    write(*,*) "MFD residual", tempreal
+             write(*,*) "MFD residual", tempreal
     else
             call VecView(field%flow_xx, viewer, ierr)
     end if
 
+!    stop
+
     call RichardsResidual(solver%snes,field%flow_xx, field%flow_r,realization,ierr)
 
     call VecView(field%flow_r, viewer, ierr)
-    call VecNorm(field%flow_r, NORM_2, tempreal, ierr)
+    call VecNorm(field%flow_r, NORM_2, tempreal2, ierr)
 
 
-    write(*,*) "FV residual", tempreal
+    write(*,*) "FV residual", tempreal2
 
     call PetscViewerDestroy(viewer,ierr)
 
     write(*,*) "After SNESSolve" 
-    read(*,*)   
+
+    if (tempreal2/tempreal > 1e+4) stop
+
+!     stop
+!      read(*,*)   
      
 #endif
 
@@ -3005,6 +3042,60 @@ subroutine TimestepperSetTranWeights(option,flow_t0, flow_t1)
                           (flow_t1-flow_t0)
 
 end subroutine TimestepperSetTranWeights
+
+! ************************************************************************** !
+!
+! TimestepperCheckCFLLimit: Checks CFL limit specified by the user
+! author: Glenn Hammond
+! date: 01/17/11
+!
+! ************************************************************************** !
+subroutine TimestepperCheckCFLLimit(stepper,realization)
+
+  use Realization_module
+  
+  implicit none
+
+  type(stepper_type) :: stepper
+  type(realization_type) :: realization
+  
+  PetscReal :: dt_cfl_1
+  
+  call RealizationCalculateCFL1Timestep(realization,dt_cfl_1)
+  stepper%cfl_limiter_ts = dt_cfl_1*stepper%cfl_limiter
+ 
+end subroutine TimestepperCheckCFLLimit
+
+! ************************************************************************** !
+!
+! TimestepperEnforceCFLLimit: Enforces a CFL limit specified by the user
+! author: Glenn Hammond
+! date: 01/17/11
+!
+! ************************************************************************** !
+subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
+
+  use Option_module
+
+  implicit none
+
+  type(stepper_type) :: stepper
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+  
+  if (stepper%cfl_limiter_ts < option%tran_dt) then
+    option%tran_dt = stepper%cfl_limiter_ts
+    if (OptionPrintToScreen(option)) then
+      write(*,'(" CFL Limiting: ",1pe12.4," [",a1,"]")') &
+            stepper%cfl_limiter_ts/output_option%tconv,output_option%tunit
+    endif
+    if (OptionPrintToFile(option)) then
+      write(option%fid_out,'(/," CFL Limiting: ",1pe12.4," [",a1,"]",/)') &
+            stepper%cfl_limiter_ts/output_option%tconv,output_option%tunit
+    endif        
+  endif    
+
+end subroutine TimestepperEnforceCFLLimit
 
 ! ************************************************************************** !
 !

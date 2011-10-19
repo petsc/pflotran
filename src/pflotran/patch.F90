@@ -96,7 +96,8 @@ module Patch_module
             PatchSetDataset, &
             PatchInitConstraints, &
             PatchCountCells, PatchGetIvarsFromKeyword, &
-            PatchGetVarNameFromKeyword
+            PatchGetVarNameFromKeyword, &
+            PatchCalculateCFL1Timestep
 
 contains
 
@@ -990,77 +991,68 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
             endif
             
-          case default
-      
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE) ! updated 10/17/11 
+            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                        flow_condition%iphase
+            select case(flow_condition%pressure%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
+                        flow_condition%pressure%dataset%cur_value(1)
+              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+         !  case(SATURATION_BC)
+            end select
+            select case(flow_condition%temperature%itype)
+              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                    (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                     flow_condition%temperature%itype /= DIRICHLET_BC)) then
+                  coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                          flow_condition%temperature%dataset%cur_value(1)
+                endif
+            end select
+            select case(flow_condition%concentration%itype)
+              case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                    (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                     flow_condition%concentration%itype /= DIRICHLET_BC)) then
+                  coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                          flow_condition%concentration%dataset%cur_value(1)
+                endif
+            end select
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
+              end select
+            endif
+  
+          case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
             if (associated(flow_condition%pressure)) then
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-    !              do idof = 1, condition%num_sub_conditions
-    !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
-    !                  coupler%flow_aux_real_var(idof,1:num_connections) = &
-    !                    condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-    !                endif
-    !              enddo
-                  select case(option%iflowmode)
-                    case(FLASH2_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                       coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(MPH_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                       coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(IMS_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                       coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(THC_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)
-                      coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                        flow_condition%temperature%dataset%cur_value(1)
-                      coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                        flow_condition%concentration%dataset%cur_value(1)
-                      coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-                    case(RICHARDS_MODE)
-                      coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)
-                  end select
+                  coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
+                                            1:num_connections) = &
+                    flow_condition%pressure%dataset%cur_value(1)
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-                case(SATURATION_BC)
+             !  case(SATURATION_BC)
               end select
             endif
             if (associated(flow_condition%concentration)) then
-              select case(option%iflowmode)
-                case(RICHARDS_MODE)
-                  call SaturationUpdateCoupler(coupler,option,patch%grid, &
-                                               patch%saturation_function_array, &
-                                               patch%sat_func_id)
-              end select
+              call SaturationUpdateCoupler(coupler,option,patch%grid, &
+                                           patch%saturation_function_array, &
+                                           patch%sat_func_id)
             endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-                  call PatchScaleSourceSink(patch,option)
+                  call PatchScaleSourceSink(patch,coupler,option)
               end select
             endif
+          
+          case default
+      
         end select
       endif
     endif
@@ -1080,7 +1072,7 @@ end subroutine PatchUpdateCouplerAuxVars
 ! date: 01/12/11
 !
 ! ************************************************************************** !
-subroutine PatchScaleSourceSink(patch,option)
+subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   use Option_module
   use Field_module
@@ -1095,12 +1087,12 @@ subroutine PatchScaleSourceSink(patch,option)
 #include "finclude/petscvec.h90"
   
   type(patch_type) :: patch
+  type(coupler_type) :: source_sink
   type(option_type) :: option
   
   PetscErrorCode :: ierr
   
   type(grid_type), pointer :: grid
-  type(coupler_type), pointer :: cur_source_sink
   type(connection_set_type), pointer :: cur_connection_set
   type(field_type), pointer :: field
   
@@ -1110,6 +1102,7 @@ subroutine PatchScaleSourceSink(patch,option)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
+  PetscInt :: iscale_type
   PetscReal :: scale, sum
   PetscInt :: icount, x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
@@ -1123,86 +1116,87 @@ subroutine PatchScaleSourceSink(patch,option)
 
   grid => patch%grid
 
-  cur_source_sink => patch%source_sinks%first
-  do
-    if (.not.associated(cur_source_sink)) exit
+  call VecZeroEntries(field%work,ierr)
+  call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
 
-    call VecZeroEntries(field%work,ierr)
-    call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+  cur_connection_set => source_sink%connection_set
 
-    cur_connection_set => cur_source_sink%connection_set
-
-    do iconn = 1, cur_connection_set%num_connections
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      select case(option%iflowmode)
-        case(RICHARDS_MODE,G_MODE)
-           call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
-                                        x_width,y_width,z_width, &
-                                        x_count,y_count,z_count, &
-                                        ghosted_neighbors,option)
-           ! ghosted neighbors is ordered first in x, then, y, then z
-           icount = 0
-           sum = 0.d0
-           ! x-direction
-           do while (icount < x_count)
-             icount = icount + 1
-             neighbor_ghosted_id = ghosted_neighbors(icount)
-             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                         grid%structured_grid%dy(neighbor_ghosted_id)* &
-                         grid%structured_grid%dz(neighbor_ghosted_id)
+  iscale_type = source_sink%flow_condition%rate%isubtype
+  
+  select case(iscale_type)
+    case(SCALE_BY_VOLUME)
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + vol_ptr(local_id)
+      enddo
+    case(SCALE_BY_PERM)
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        vec_ptr(local_id) = vec_ptr(local_id) + perm_loc_ptr(ghosted_id) * &
+                                                vol_ptr(local_id)
+      enddo
+    case(SCALE_BY_NEIGHBOR_PERM)
+      do iconn = 1, cur_connection_set%num_connections
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+                                    x_width,y_width,z_width, &
+                                    x_count,y_count,z_count, &
+                                    ghosted_neighbors,option)
+        ! ghosted neighbors is ordered first in x, then, y, then z
+        icount = 0
+        sum = 0.d0
+        ! x-direction
+        do while (icount < x_count)
+          icount = icount + 1
+          neighbor_ghosted_id = ghosted_neighbors(icount)
+          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                      grid%structured_grid%dy(neighbor_ghosted_id)* &
+                      grid%structured_grid%dz(neighbor_ghosted_id)
              
-           enddo
-           ! y-direction
-           do while (icount < x_count + y_count)
-             icount = icount + 1
-             neighbor_ghosted_id = ghosted_neighbors(icount)                 
-             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                         grid%structured_grid%dx(neighbor_ghosted_id)* &
-                         grid%structured_grid%dz(neighbor_ghosted_id)
+        enddo
+        ! y-direction
+        do while (icount < x_count + y_count)
+          icount = icount + 1
+          neighbor_ghosted_id = ghosted_neighbors(icount)                 
+          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                      grid%structured_grid%dx(neighbor_ghosted_id)* &
+                      grid%structured_grid%dz(neighbor_ghosted_id)
              
-           enddo
-           ! z-direction
-           do while (icount < x_count + y_count + z_count)
-             icount = icount + 1
-             neighbor_ghosted_id = ghosted_neighbors(icount)                 
-             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
-                         grid%structured_grid%dx(neighbor_ghosted_id)* &
-                         grid%structured_grid%dy(neighbor_ghosted_id)
-           enddo
-           vec_ptr(local_id) = vec_ptr(local_id) + sum
-        case(THC_MODE)
-        case(MPH_MODE)
-        case(IMS_MODE)
-        case(FLASH2_MODE)
-      end select 
+        enddo
+        ! z-direction
+        do while (icount < x_count + y_count + z_count)
+          icount = icount + 1
+          neighbor_ghosted_id = ghosted_neighbors(icount)                 
+          sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                      grid%structured_grid%dx(neighbor_ghosted_id)* &
+                      grid%structured_grid%dy(neighbor_ghosted_id)
+        enddo
+        vec_ptr(local_id) = vec_ptr(local_id) + sum
+      enddo
+  end select
 
-    enddo
-    
-    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
-    call VecNorm(field%work,NORM_1,scale,ierr)
-    scale = 1.d0/scale
-    call VecScale(field%work,scale,ierr)
+  call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+  call VecNorm(field%work,NORM_1,scale,ierr)
+  scale = 1.d0/scale
+  call VecScale(field%work,scale,ierr)
 
-    call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      select case(option%iflowmode)
-        case(RICHARDS_MODE,G_MODE)
-          cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
-            vec_ptr(local_id)
-        case(THC_MODE)
-        case(MPH_MODE)
-        case(IMS_MODE)
-        case(FLASH2_MODE)
-      end select 
+  call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+  do iconn = 1, cur_connection_set%num_connections      
+    local_id = cur_connection_set%id_dn(iconn)
+    select case(option%iflowmode)
+      case(RICHARDS_MODE,G_MODE)
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          vec_ptr(local_id)
+      case(THC_MODE)
+      case(MPH_MODE)
+      case(IMS_MODE)
+      case(FLASH2_MODE)
+    end select 
 
-    enddo
-    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
-    
-    cur_source_sink => cur_source_sink%next
   enddo
+  call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
 
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
   call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
@@ -1322,9 +1316,6 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%colloids, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
-      ! turn on flag indicating constraint has not yet been used
-
-      cur_constraint_coupler%iflag = ONE_INTEGER
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
     cur_coupler => cur_coupler%next
@@ -3096,6 +3087,109 @@ subroutine PatchCountCells(patch,total_count,active_count)
 
 end subroutine PatchCountCells
 
+! ************************************************************************** !
+!
+! PatchCalculateCFL1Timestep: Calculates largest time step to preserves a 
+!                                CFL # of 1 in a patch
+! author: Glenn Hammond
+! date: 10/06/11
+!
+! ************************************************************************** !
+subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
+
+  use Option_module
+  use Connection_module
+  use Coupler_module
+  use Field_module
+  
+  implicit none
+  
+  type(patch_type) :: patch
+  type(option_type) :: option
+  PetscReal :: max_dt_cfl_1
+  
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+!  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: porosity_ave, v_darcy, v_pore
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: iphase
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal :: dt_cfl_1
+  PetscErrorCode :: ierr
+
+  field => patch%field
+!  global_aux_vars => patch%aux%Global%aux_vars
+!  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+
+  max_dt_cfl_1 = 1.d20
+  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
+      distance = cur_connection_set%dist(0,iconn)
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      !           (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
+      !            global_aux_vars(ghosted_id_up)%sat(iphase) + &
+      !            (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
+      !            global_aux_vars(ghosted_id_dn)%sat(iphase))
+      porosity_ave = fraction_upwind*porosity_loc_p(ghosted_id_up) + &
+                     (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)
+      do iphase = 1, option%nphase
+        v_darcy = patch%internal_velocities(iphase,sum_connection)
+        v_pore = v_darcy / porosity_ave
+        dt_cfl_1 = distance / dabs(v_pore)
+        max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
+      enddo
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id_dn = cur_connection_set%id_dn(iconn)
+      ghosted_id_dn = grid%nL2G(local_id_dn)
+      if (patch%imat(ghosted_id_dn) <= 0) cycle
+      distance = cur_connection_set%dist(0,iconn)
+      porosity_ave = porosity_loc_p(ghosted_id_dn)
+      do iphase = 1, option%nphase
+        v_darcy = patch%boundary_velocities(iphase,sum_connection)
+        v_pore = v_darcy / porosity_ave
+        dt_cfl_1 = distance / dabs(v_pore)
+        max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
+      enddo
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+
+end subroutine PatchCalculateCFL1Timestep
 
 ! ************************************************************************** !
 !

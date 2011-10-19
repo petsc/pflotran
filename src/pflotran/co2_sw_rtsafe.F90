@@ -72,7 +72,7 @@
   print *,'rtsafe: exceeded maximum iterations'
   END FUNCTION rtsafe
   
-  subroutine bracket(func,x1,x2)
+subroutine bracket(func,x1,x2)
   
   implicit none
   
@@ -98,5 +98,5 @@
   ifind = 0
   print *,'root bracket failed',x1,x2,f1,f2
   return
-  end subroutine bracket
-  end module co2_sw_rtsafe_module
+end subroutine bracket
+end module co2_sw_rtsafe_module

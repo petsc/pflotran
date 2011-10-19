@@ -926,30 +926,31 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-!    do idof=1,option%nflowdof
-      select case(boundary_condition%flow_condition%itype(1))
-      case(DIRICHLET_BC)
-         xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
-      case(HYDROSTATIC_BC)
-         xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-         xxbc(2:option%nflowdof) = &
-               xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
 
-    !  case(CONST_TEMPERATURE)
-      
-    !  case(PRODUCTION_WELL) ! 102      
-   
-      case(NEUMANN_BC,ZERO_GRADIENT_BC)
-         xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
-      end select
-!    enddo
-      select case(boundary_condition%flow_condition%itype(1))
+! Added the following by Satish Karra 10/05/11	  
+        do idof =1, option%nflowdof   
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          case(HYDROSTATIC_BC)
+            xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+            if(idof>=MPH_TEMPERATURE_DOF)then
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            endif 
+          case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          ! solve for pb from Darcy's law given qb /= 0
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            iphase = int(iphase_loc_p(ghosted_id))
+        end select
+      enddo
+
+      select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
         case(DIRICHLET_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC, HYDROSTATIC_BC)
-          iphasebc=int(iphase_loc_p(ghosted_id))                               
+          iphase = boundary_condition%flow_aux_int_var(1,iconn)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+          iphase=int(iphase_loc_p(ghosted_id))                               
       end select
-
+	  
       call MphaseAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                           global_aux_vars_bc(sum_connection),iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -1635,7 +1636,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   !if(option%use_isothermal == PETSC_FALSE) then     
      Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
      cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
+     fluxe = fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
@@ -1813,7 +1814,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
-    select case(ibndtype(1))
+    select case(ibndtype(MPH_PRESSURE_DOF))
         ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
         Dq = perm_dn / dd_up
@@ -1884,7 +1885,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   enddo
   
 ! Diffusion term   
-  select case(ibndtype(3))
+  select case(ibndtype(MPH_CONCENTRATION_DOF))
     case(DIRICHLET_BC) 
   ! if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
@@ -1904,14 +1905,22 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
 ! Conduction term
 ! if(option%use_isothermal == PETSC_FALSE) then
-    select case(ibndtype(2))
-      case(DIRICHLET_BC, 4)
+    select case(ibndtype(MPH_TEMPERATURE_DOF))
+      case(DIRICHLET_BC)
         Dk =  Dk_dn / dd_up
         cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
-        fluxe=fluxe + cond
+        fluxe = fluxe + cond
+      case(NEUMANN_BC)
+        fluxe = fluxe + aux_vars(MPH_TEMPERATURE_DOF)*area*1.d-6 
+	  ! aux_vars(MPH_TEMPERATURE_DOF) stores heat flux, 1.d-6 is to convert
+	  ! from W to MW, Added by Satish Karra 10/05/11
+      case(ZERO_GRADIENT_BC)
+      ! No change in fluxe
     end select
+!   print *, fluxe, aux_vars
 ! end if
-
+  
+  
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
 
@@ -1936,8 +1945,8 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine samrpetscobjectstateincrease(vec)
+interface
+subroutine samrpetscobjectstateincrease(vec)
        implicit none
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -1945,7 +1954,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
      
-  end interface
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -2104,7 +2113,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     write(option%io_buffer,*) 'saturation or mole fraction negative at cell ', &
       idum, min_value 
     call printMsg(option)
-!   option%force_newton_iteration = PETSC_TRUE
+    option%force_newton_iteration = PETSC_TRUE
   endif
 #endif
     
@@ -2221,8 +2230,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
 !         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
 
-!         if(xmol(2) > xco2eq * 1.10d0) then
-          if(xmol(2) > xco2eq) then
+          if(xmol(2) > xco2eq * 1.10d0) then
+!         if(xmol(2) > xco2eq) then
           
             write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
        &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
@@ -2277,7 +2286,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           xmol(3) = tmp
           xmol(4) = 1.D0-tmp          
 
-          if(satu(2) >= 1.D0) then
+!         if(satu(2) >= 1.D0) then
+          if(satu(2) >= 1.01D0) then
           
             write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
        &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1pe11.4)') &
@@ -2697,8 +2707,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
           case(DIRICHLET_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(HYDROSTATIC_BC)
-            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-            if(idof>=2)then
+            xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+            if(idof>=MPH_TEMPERATURE_DOF)then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
             endif 
           case(NEUMANN_BC, ZERO_GRADIENT_BC)
@@ -2708,7 +2718,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         end select
       enddo
 
-      select case(boundary_condition%flow_condition%itype(3))
+      select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
         case(DIRICHLET_BC,SEEPAGE_BC)
           iphase = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
@@ -2760,9 +2770,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         ! contribution to boundary
         global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
           global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) - Res(:)/option%flow_dt 
-        ! contribution to internal 
-!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
 !#endif
 
@@ -2936,16 +2943,16 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-  interface
-     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+interface
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
-  end interface
+end subroutine SAMRSetCurrentJacobianPatch
+end interface
 
   SNES :: snes
   Vec :: xx
@@ -3286,13 +3293,13 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           delxbc(idof)=0.D0
-      case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
+       case(HYDROSTATIC_BC)
+          xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
+          if(idof>=MPH_TEMPERATURE_DOF)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              delxbc(idof)=mphase%delx(idof,ghosted_id)
           endif 
-         case(NEUMANN_BC, ZERO_GRADIENT_BC)
+       case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
@@ -3302,7 +3309,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
 
-    select case(boundary_condition%flow_condition%itype(3))
+    select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
     case(DIRICHLET_BC,SEEPAGE_BC)
        iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
     case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
