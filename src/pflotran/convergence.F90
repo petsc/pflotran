@@ -163,8 +163,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   ! for some reason (e.g. negative saturation/mole fraction in multiphase),
   ! we are forcing extra newton iterations
   if (option%force_newton_iteration) then
-    reason = 0
-!   reason = -1
+!   reason = 0
+    reason = -1
     return
   endif
   
