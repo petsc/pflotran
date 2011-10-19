@@ -2924,7 +2924,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   endif
     
   if (print_velocities) then 
-    string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
+    string = '"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &
              ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &
@@ -3275,7 +3275,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   endif
 
   if (print_velocities) then 
-    string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
+    string = '"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &
              ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &

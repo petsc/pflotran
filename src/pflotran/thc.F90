@@ -1708,6 +1708,10 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       Dk = Dk_dn / dd_up
       cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
       fluxe = fluxe + cond
+    case(NEUMANN_BC)
+      fluxe = fluxe + aux_vars(THC_TEMPERATURE_DOF)*area*1.d-6 ! added by SK 10/18/11
+    case(ZERO_GRADIENT_BC)
+      ! No change in fluxe
   end select
 
   Res(1:option%nflowspec) = fluxm(:)*option%flow_dt

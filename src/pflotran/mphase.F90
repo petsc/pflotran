@@ -2920,7 +2920,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rxx.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'MPHxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
