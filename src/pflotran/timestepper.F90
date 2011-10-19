@@ -1046,28 +1046,34 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   if (associated(flow_stepper)) flow_stepper%prev_dt = option%flow_dt
   if (associated(tran_stepper)) tran_stepper%prev_dt = option%tran_dt
 
-! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
-  if (target_time + tolerance*dt >= cur_waypoint%time .and. &
-      (cur_waypoint%update_conditions .or. &
-       cur_waypoint%print_output .or. &
-       cur_waypoint%print_tr_output)) then
-    ! decrement by time step size
-    target_time = target_time - dt
-    ! set new time step size based on waypoint time
-    dt = cur_waypoint%time - target_time
-    if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
-      dt = dt_max                    ! error from waypoint%time - time
-      target_time = target_time + dt
-    else
-      target_time = cur_waypoint%time
-      if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-      if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
-      option%match_waypoint = PETSC_TRUE
+! If a waypoint calls for a plot or change in src/sinks, adjust time step 
+! to match waypoint.
+  do ! we cycle just in case the next waypoint is beyond the target_time
+    if (target_time + tolerance*dt >= cur_waypoint%time .and. &
+        (cur_waypoint%update_conditions .or. &
+         cur_waypoint%print_output .or. &
+         cur_waypoint%print_tr_output)) then
+      ! decrement by time step size
+      target_time = target_time - dt
+      ! set new time step size based on waypoint time
+      dt = cur_waypoint%time - target_time
+      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+        dt = dt_max                    ! error from waypoint%time - time
+        target_time = target_time + dt
+      else
+        target_time = cur_waypoint%time
+        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+        option%match_waypoint = PETSC_TRUE
+        cur_waypoint => cur_waypoint%next
+      endif
+      exit
+    else if (target_time > cur_waypoint%time) then
       cur_waypoint => cur_waypoint%next
+    else
+      exit
     endif
-  else if (target_time > cur_waypoint%time) then
-    cur_waypoint => cur_waypoint%next
-  endif
+  enddo
   ! subtract 1 from max_time_steps since we still have to complete the current
   ! time step
   if (cumulative_time_steps >= max_time_step-1) then
