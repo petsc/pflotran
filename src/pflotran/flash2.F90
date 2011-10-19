@@ -1471,12 +1471,16 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 #endif
   ! Conduction term
 ! if(option%use_isothermal == PETSC_FALSE) then
-    select case(ibndtype(2))
-    case(DIRICHLET_BC, 4)
+  select case(ibndtype(2))
+    case(DIRICHLET_BC)
        Dk =  Dk_dn / dd_up
        cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
-       fluxe=fluxe + cond
-    end select
+       fluxe = fluxe + cond
+    case(NEUMANN_BC)
+       fluxe = fluxe + aux_vars(2)*area*1.d-6 
+    case(ZERO_GRADIENT_BC)
+      ! No change in fluxe
+  end select
 ! end if
 
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
@@ -1485,7 +1489,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 end subroutine Flash2BCFlux
 ! ************************************************************************** !
 !
-! Flash2BCFlux: Computes the  boundary flux terms for the residual
+! Flash2BCFluxAdv: Computes the  boundary flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
@@ -1600,7 +1604,7 @@ end subroutine Flash2BCFluxAdv
 
 ! ************************************************************************** !
 !
-! Flash2BCFlux: Computes the  boundary flux terms for the residual
+! Flash2BCFluxDiffusion: Computes the  boundary flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
