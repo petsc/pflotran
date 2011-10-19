@@ -164,6 +164,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   ! we are forcing extra newton iterations
   if (option%force_newton_iteration) then
     reason = 0
+!   reason = -1
     return
   endif
   
