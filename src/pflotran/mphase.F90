@@ -2113,7 +2113,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     write(option%io_buffer,*) 'saturation or mole fraction negative at cell ', &
       idum, min_value 
     call printMsg(option)
-!   option%force_newton_iteration = PETSC_TRUE
+    option%force_newton_iteration = PETSC_TRUE
   endif
 #endif
     
