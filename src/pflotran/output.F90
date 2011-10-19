@@ -2006,10 +2006,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                                                 ! 4=dataset name, 5=material_id
       string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
     else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
                    option%time/realization%output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                   grid%ngmax
       string = trim(string) // ' DATAPACKING=BLOCK'
     endif
     write(fid,'(a)') trim(string)
