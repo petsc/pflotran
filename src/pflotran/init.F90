@@ -1048,13 +1048,7 @@ subroutine InitReadInput(simulation)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
     
-  PetscInt :: i, i1, i2, idum, ireg, isrc, j
-  PetscInt :: ibc, ibrk, ir,np
-  PetscReal :: rdum
-
   PetscBool :: continuation_flag
-  PetscBool :: periodic_output_flag = PETSC_FALSE
-  PetscReal :: periodic_rate = 0.d0
   
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
@@ -1745,6 +1739,46 @@ subroutine InitReadInput(simulation)
                   units_conversion = UnitsConvertToInternal(word,option) 
                   output_option%periodic_output_time_incr = temp_real* &
                                                             units_conversion
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  if (input%ierr == 0) then
+                    if (StringCompareIgnoreCase(word,'between',SEVEN_INTEGER)) then
+
+                      call InputReadDouble(input,option,temp_real)
+                      call InputErrorMsg(input,option,'start time', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'start time units', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      units_conversion = UnitsConvertToInternal(word,option) 
+                      temp_real = temp_real * units_conversion
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (.not.StringCompareIgnoreCase(word,'and',THREE_INTEGER)) then
+                        input%ierr = 1
+                      endif
+                      call InputErrorMsg(input,option,'and', &
+                                          'OUTPUT,PERIODIC,TIME"')
+                      call InputReadDouble(input,option,temp_real2)
+                      call InputErrorMsg(input,option,'end time', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'end time units', &
+                                         'OUTPUT,PERIODIC,TIME')
+                      temp_real2 = temp_real2 * units_conversion
+                      do
+                        waypoint => WaypointCreate()
+                        waypoint%time = temp_real
+                        waypoint%print_output = PETSC_TRUE    
+                        call WaypointInsertInList(waypoint,realization%waypoints)
+                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        if (temp_real > temp_real2) exit
+                      enddo
+                      output_option%periodic_output_time_incr = 0.d0
+                    else
+                      input%ierr = 1
+                      call InputErrorMsg(input,option,'between', &
+                                          'OUTPUT,PERIODIC,TIME')
+                    endif
+                  endif                  
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
                                     output_option%periodic_output_ts_imod)
