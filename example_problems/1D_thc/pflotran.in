@@ -126,11 +126,12 @@ TYPE
 PRESSURE dirichlet
 TEMPERATURE dirichlet
 CONCENTRATION dirichlet
+ENTHALPY dirichlet
 /
 PRESSURE 1.1215D5
 TEMPERATURE 75.D0
 CONCENTRATION 1.D-0
-ENTHALPY 0.D0 0.D0
+ENTHALPY 0.D0 
 END
 
 FLOW_CONDITION west
@@ -138,11 +139,12 @@ TYPE
 PRESSURE zero_gradient
 TEMPERATURE zero_gradient
 CONCENTRATION zero_gradient
+ENTHALPY dirichlet
 /
 PRESSURE 1.D5
 TEMPERATURE 25.D0
 CONCENTRATION 1.D-6
-ENTHALPY 0.D0 0.D0
+ENTHALPY 0.D0 
 END
 
 :========================== initial and boundary conditions =================

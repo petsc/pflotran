@@ -1000,7 +1000,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                         flow_condition%pressure%dataset%cur_value(1)
               case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                 call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-         !	  case(SATURATION_BC)
+         !  case(SATURATION_BC)
             end select
             select case(flow_condition%temperature%itype)
               case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -1027,19 +1027,22 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               end select
             endif
   
-            case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
-            select case(flow_condition%pressure%itype)
-              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF,1:num_connections) = &
-                        flow_condition%pressure%dataset%cur_value(1)
-              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-         !	  case(SATURATION_BC)
-            end select
+          case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
+            if (associated(flow_condition%pressure)) then
+              select case(flow_condition%pressure%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF, &
+                                            1:num_connections) = &
+                    flow_condition%pressure%dataset%cur_value(1)
+                case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+             !  case(SATURATION_BC)
+              end select
+            endif
             if (associated(flow_condition%concentration)) then
               call SaturationUpdateCoupler(coupler,option,patch%grid, &
-                                               patch%saturation_function_array, &
-                                               patch%sat_func_id)
+                                           patch%saturation_function_array, &
+                                           patch%sat_func_id)
             endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
@@ -1048,7 +1051,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               end select
             endif
           
-        case default
+          case default
       
         end select
       endif
