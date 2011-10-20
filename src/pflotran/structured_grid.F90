@@ -198,6 +198,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
 #ifndef DMDA_OLD
+! For PETSc versions >= 3.2
 #include "finclude/petscdmda.h"
 #endif
 
