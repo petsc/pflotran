@@ -1749,6 +1749,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   
   v_darcy = 0.D0 
+  ukvr = 0.d0
   
   Jup = 0.d0
   Jdn = 0.d0 
@@ -1920,6 +1921,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   
   fluxm = 0.d0
   v_darcy = 0.D0  
+  ukvr = 0.d0
   
 ! Flow term
   if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
@@ -2048,6 +2050,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
             res_pert_dn(1), J_pert_dn(1,1)
   
   v_darcy = 0.d0
+  ukvr = 0.d0
   density_ave = 0.d0
   q = 0.d0
 
@@ -2282,6 +2285,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
+  ukvr = 0.d0
 
   ! Flow  
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)

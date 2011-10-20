@@ -2006,10 +2006,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                                                 ! 4=dataset name, 5=material_id
       string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
     else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
                    option%time/realization%output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                   grid%ngmax
       string = trim(string) // ' DATAPACKING=BLOCK'
     endif
     write(fid,'(a)') trim(string)
@@ -2453,7 +2452,7 @@ subroutine OutputObservationTecplot(realization)
   type(observation_type), pointer :: observation
   PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
-  PetscInt :: local_id
+  PetscInt :: local_id, icolumn
 
   call PetscLogEventBegin(logging%event_output_observation,ierr)    
   
@@ -2504,6 +2503,8 @@ subroutine OutputObservationTecplot(realization)
       ! write title
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
       observation => patch%observation%first
+        
+      icolumn = 1
       do 
         if (.not.associated(observation)) exit
         
@@ -2517,12 +2518,12 @@ subroutine OutputObservationTecplot(realization)
               call printErrMsg(option)
               call WriteObservationHeaderForCoord(fid,realization, &
                                                    observation%region, &
-                                                   observation%print_velocities)
+                                                   observation%print_velocities,icolumn)
             else
               do icell=1,observation%region%num_cells
                 call WriteObservationHeaderForCell(fid,realization, &
                                                     observation%region,icell, &
-                                                    observation%print_velocities)
+                                                    observation%print_velocities,icolumn)
               enddo
             endif
           case(OBSERVATION_FLUX)
@@ -2588,7 +2589,7 @@ end subroutine OutputObservationTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
-                                         print_velocities)
+                                         print_velocities,icolumn)
 
   use Realization_module
   use Grid_module
@@ -2635,14 +2636,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   write(y_string,110) grid%y(grid%nL2G(local_id))
   write(z_string,110) grid%z(grid%nL2G(local_id))
   cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // &
-                ' ' // trim(adjustl(y_string)) // ' ' // &
-                trim(adjustl(z_string)) // ')'
+                ' ' // trim(adjustl(y_string)) // &
+                ' ' // trim(adjustl(z_string)) // ')'
   
   select case(option%iflowmode)
+  
     case (IMS_MODE)
-!      header = ',"X [m] '// trim(cell_string) // '",' // &
-!               '"Y [m] '// trim(cell_string) // '",' // &
-!               '"Z [m] '// trim(cell_string) // '",' // &
+    
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-sl '// trim(cell_string) // '",' // &
@@ -2650,10 +2650,10 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"6-Ul [KJ/mol] '// trim(cell_string) // '",' // &
                '"7-Ug [KJ/mol]'// trim(cell_string) // '",'
       icolumn = 7
+      
     case (MPH_MODE, FLASH2_MODE)
-!      header = ',"X [m] '// trim(cell_string) // '",' // &
-!               '"Y [m] '// trim(cell_string) // '",' // &
-!               '"Z [m] '// trim(cell_string) // '",' // &
+    
+#if 0
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-sl '// trim(cell_string) // '",' // &
@@ -2664,27 +2664,92 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"9-Ug [kJ/mol] '// trim(cell_string) // '",' // &
                '"10-visl [sPa] '// trim(cell_string) // '",' // &
                '"11-visg [sPa] '// trim(cell_string) // '",' // &
-               '"12-kvrl [1/sPa ] '// trim(cell_string) // '",' // &
-               '"13-kvrg [1/sPa ] '// trim(cell_string) // '",'
-      icolumn = 13
+               '"12-kvrl [1/sPa] '// trim(cell_string) // '",' // &
+               '"13-kvrg [1/sPa] '// trim(cell_string) // '",'
+#endif          
+      
+      icolumn = icolumn + 1
+      string = ''
+      header = ''
+
+      write(string,'('',"'',i2,''-T [C] '// trim(cell_string) // '"'')') icolumn
+      
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-P [Pa] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-sl '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-sg '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-dl [kg/m^3] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-dg [kg/m^3] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-Ul [kJ/mol] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-Ug [kJ/mol] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-visl [sPa] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-visg [sPa] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-kvrl [1/sPa] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
+      icolumn = icolumn + 1
+      
+      write(string,'('',"'',i2,''-kvrg [1/sPa] '// trim(cell_string) // '"'')') icolumn
+      header = trim(header) // trim(string)
+      
       do i=1,option%nflowspec
         icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Xl('',i2,'') '// trim(cell_string) // '",'')') &
+        write(string,'('',"'',i2,''-Xl('',i2,'') '// trim(cell_string) // '"'')') &
           icolumn,i
         header = trim(header) // trim(string)
       enddo
       do i=1,option%nflowspec
         icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Xg('',i2,'') '// trim(cell_string) // '",'')') &
+        write(string,'('',"'',i2,''-Xg('',i2,'') '// trim(cell_string) // '"'')') &
           icolumn,i
         header = trim(header) // trim(string)
       enddo
       
       icolumn = icolumn + 1
-      write(string,'(''"'',i2,''-Phase '// trim(cell_string) // '",'')') icolumn
+      write(string,'('',"'',i2,''-Phase '// trim(cell_string) // '"'')') icolumn
       header = trim(header) // trim(string)
 
     case (G_MODE)
+    
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-State [-] '// trim(cell_string) // '",' // &
@@ -2708,20 +2773,16 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
         header = trim(header) // trim(string)
       enddo
       string = trim(header) // ',"Phase '// trim(cell_string) // '"'
+      
     case(THC_MODE,RICHARDS_MODE)
+    
       if (option%iflowmode == THC_MODE) then
-!        string = ',"X [m] '// trim(cell_string) // '",' // &
-!                 '"Y [m] '// trim(cell_string) // '",' // &
-!                 '"Z [m] '// trim(cell_string) // '",' // &
         header = ',"2-T [C] '// trim(cell_string) // '",' // &
                  '"3-P [Pa] '// trim(cell_string) // '",' // &
                  '"4-sl '// trim(cell_string) // '",' // &
                  '"5-Ul '// trim(cell_string) // '"' 
         icolumn = 6
       else
-!        header = ',"X [m] '// trim(cell_string) // '",' // &
-!                 '"Y [m] '// trim(cell_string) // '",' // &
-!                 '"Z [m] '// trim(cell_string) // '",' // &
         header = ',"2-P [Pa] '// trim(cell_string) // '",' // &
                  '"3-sl '// trim(cell_string) // '"'
         icolumn = 4
@@ -2736,14 +2797,15 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     case default
       header = ''
   end select
-  write(fid,'(a)',advance="no") trim(header)
 
   ! add porosity to header
   if (output_option%print_porosity) then
     icolumn = icolumn + 1
-    write(string,'(''"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
+    write(string,'('',"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
     header = trim(header) // trim(string)
-  endif  
+  endif
+  
+  write(fid,'(a)',advance="no") trim(header)
   
   ! reactive transport
   if (option%ntrandof > 0) then
@@ -2924,14 +2986,16 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 
   endif
     
-  if (print_velocities) then 
-    string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_string) // '"' // &
-             ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_string) // '"' // &
-             ',"vlz [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_string) // '"'
-    write(fid,'(a)',advance="no") trim(string)
+  if (print_velocities) then
+    icolumn = icolumn + 1
+    write(fid,'('',"'',i2,''-vlx [m/'',a,''] '',a,''"'')',advance="no") &
+      icolumn,trim(realization%output_option%tunit),trim(cell_string)
+    icolumn = icolumn + 1
+    write(fid,'('',"'',i2,''-vly [m/'',a,''] '',a,''"'')',advance="no") &
+      icolumn,trim(realization%output_option%tunit),trim(cell_string)
+    icolumn = icolumn + 1
+    write(fid,'('',"'',i2,''-vlz [m/'',a,''] '',a,''"'')',advance="no") &
+      icolumn,trim(realization%output_option%tunit),trim(cell_string)
   endif
 
 end subroutine WriteObservationHeaderForCell
@@ -2944,7 +3008,7 @@ end subroutine WriteObservationHeaderForCell
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCoord(fid,realization,region, &
-                                           print_velocities)
+                                           print_velocities,icolumn)
 
   use Realization_module
   use Option_module
@@ -3276,7 +3340,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   endif
 
   if (print_velocities) then 
-    string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
+    string = '"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &
              ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
              trim(cell_string) // '"' // &

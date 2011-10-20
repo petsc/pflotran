@@ -475,7 +475,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         if(kr(2)<0.D0) kr(2)=0.D0!;kr(1)=1.D0
         if(kr(2)>1.D0) kr(2)=1.D0!;kr(1)=0.D0
 
-      case(5) ! Modified Brooks-Corey
+      case(6) ! Modified Brooks-Corey
        
         lam=pckr_lambda
         ala=pckr_alpha
@@ -489,7 +489,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         se=(sw-0.03D0)/(sw0-0.03D0)
         if (se > 1.d-6) then
           temp=se**(-1.D0/um)
-          if(temp<1.D0) temp =1.D0
+          if(temp<1.D0+1e-6) temp =1.D0+1e-6
           upc=(temp-1.D0)**(1.d0/un)/ala
           if(upc>pcmax) upc=pcmax
         else
@@ -509,14 +509,16 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
            
         se = (sw - swir)/(1.D0 - swir -sgir)
            
-        if(se<0.D0) se=0.D0
-        if(se>=1.D0)then
+        if(se<1.D-6)then
+          se=0.D0
+          kr(2)=1.0 
+        elseif(se>=1.D0-1d-6)then
           kr(2)=0.D0
         else  
           kr(2)=(1.D0 - se)**0.33333333D0 * (1.D0 -se**(1.D0/um))**(2.D0*um) 
         endif
 
-      case(6) !linear intropolation ,need pcmax, assign krmax=1.
+      case(5) !linear intropolation ,need pcmax, assign krmax=1.
         
         if(sw>swir)then
           se=(sw-swir)/(sw0-swir)
@@ -534,6 +536,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
           !upc=pcmax*(1.D0-se)
           ! kr(1)=se
           kr(2)=se
+          if(kr(2)>1D0)kr(2)=1D0
         else
         ! upc=pcmax
         ! kr(1)=0.d0

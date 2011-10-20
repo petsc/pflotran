@@ -610,28 +610,36 @@ end subroutine MphaseUpdateMassBalancePatch
               re=0; exit
            endif
            if(xx_p(n0 + 3) < 0D0)then
- !             if(xx_p(n0 + 3) > -1D-3)then
- !                xx_p(n0 + 3) =0.D0
- !             else  
+              if(xx_p(n0 + 3) > -1D-14)then
+                 xx_p(n0 + 3) =0.D0
+              else  
         
  !        print *,'MPhaseUpdate: ',iipha,n,n0,option%nflowdof,xx_p(n0+3)
           
                  re=0; exit
- !             endif          ! clu removed 05/02/2011
+            endif          ! clu removed 05/02/2011
           endif
         case (2)
            if(xx_p(n0 + 3) > 1.0D0)then
               re=0; exit
            endif
            if(xx_p(n0 + 3) < 0D-0)then
+            if(xx_p(n0 + 3) > -1D-14)then
+                 xx_p(n0 + 3) =0.D0
+              else  
               re=0; exit
+            endif 
            endif
         case (3)
            if(xx_p(n0 + 3) > 1.D0)then
               re=0; exit
            endif
            if(xx_p(n0 + 3) < 0.)then
+            if(xx_p(n0 + 3) > -1D-14)then
+                 xx_p(n0 + 3) =0.D0
+              else  
               re=0; exit
+            endif  
            endif
         end select
      end do
@@ -1456,6 +1464,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
             dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
             if (dphi>=0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
+              if(ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                 v_darcy = Dq * ukvr * dphi
@@ -2230,16 +2239,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
 !         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
 
-          if(xmol(2) > xco2eq * 1.10d0) then
-!         if(xmol(2) > xco2eq) then
-          
-            write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
-       &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
-       &    '' Xco2eq='',1pe11.4)') &
-            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
+!          if(xmol(4)+ wat_sat_x > 1.05d0) then
+         if(xmol(2) > xco2eq ) then
 
-            iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
-        
         !   Rachford-Rice initial guess: 1=H2O, 2=CO2
             k1 = wat_sat_x !sat_pressure*1.D5/p
             k2 = henry/p
@@ -2250,9 +2252,18 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             
        !    calculate initial guess for sg
             sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
-!           write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
+            if(sg>1D-4)then          
+            write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
+       &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
+       &    '' Xco2eq='',1pe11.4)') &
+            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
+
+            iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
+        
+           write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
             xx_p(dof_offset+3) = sg   
             ichange = 1
+            endif
           endif
 
         case(2) ! gas
@@ -2267,8 +2278,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
 
             iphase_loc_p(ghosted_id) = 3 ! Gas -> 2ph
-!           xx_p(dof_offset+3) = 1.D0-formeps
-            xx_p(dof_offset+3) = 1.D0
+           xx_p(dof_offset+3) = 1.D0-formeps
+!            xx_p(dof_offset+3) = 1.D0
             ichange = 1
           endif
 
@@ -2920,7 +2931,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rxx.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'MPHxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif

@@ -198,6 +198,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
 #ifndef DMDA_OLD
+! For PETSc versions >= 3.2
 #include "finclude/petscdmda.h"
 #endif
 
@@ -213,6 +214,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   ! Generate the DM object that will manage communication.
   !-----------------------------------------------------------------------
 #ifndef DMDA_OLD
+  ! This code is for the DMDACreate3D() interface in PETSc versions >= 3.2 --RTM
   call DMDACreate3D(option%mycomm,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE, &
                   DMDA_BOUNDARY_NONE,DMDA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
@@ -227,6 +229,8 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                  PETSC_NULL_INTEGER,ierr)
 #else
+  ! This code is for the DMDACreate3D() interface in versions of PETSc
+  ! prior to release 3.2.  This should be removed, eventually. --RTM
   call DMDACreate3D(option%mycomm,DMDA_NONPERIODIC,DMDA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
