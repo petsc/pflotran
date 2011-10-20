@@ -5561,6 +5561,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   PetscInt :: istartaq_loc, iendaq_loc
   PetscInt :: istartcoll_loc, iendcoll_loc
   PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
   PetscReal :: xxbc(realization%reaction%ncomp)
   PetscReal, pointer :: basis_molarity_p(:)
   PetscReal, pointer :: basis_coll_conc_p(:)
@@ -5579,7 +5580,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   field => realization%field
   reaction => realization%reaction
   
-  call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
 
   if (update_cells) then
 
@@ -5772,6 +5774,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
+              porosity_loc_p(ghosted_id), &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
            ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
@@ -5800,6 +5803,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   patch%aux%RT%aux_vars_up_to_date = update_cells .and. update_bcs
   
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   icall = icall+ 1
 
 end subroutine RTUpdateAuxVarsPatch

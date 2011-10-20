@@ -1414,8 +1414,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          aq_species_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
+                                         porosity, &
                                          num_iterations, &
-                                         initialize_rt_auxvar,option)
+                                         use_prev_soln_as_guess,option)
   use Option_module
   use Input_module
   use String_module  
@@ -1435,7 +1436,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscInt :: num_iterations
-  PetscBool :: initialize_rt_auxvar
+  PetscReal :: porosity
+  PetscBool :: use_prev_soln_as_guess
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1451,6 +1453,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: Res(reaction%naqcomp)
   PetscReal :: total_conc(reaction%naqcomp)
   PetscReal :: free_conc(reaction%naqcomp)
+  PetscReal :: guess(reaction%naqcomp)
   PetscReal :: Jac(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: indices(reaction%naqcomp)
   PetscReal :: norm
@@ -1521,6 +1524,14 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     rt_auxvar%total(:,iphase) = aq_species_constraint%basis_molarity
     return
   endif
+  
+  ! set initial guess
+  
+  if (use_prev_soln_as_guess) then
+    guess = rt_auxvar%pri_molal
+  else
+    guess = 1.d-9
+  endif
 
   ! if using multirate reaction, we need to turn it off to equilibrate the system
   ! then turn it back on
@@ -1561,7 +1572,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     select case(constraint_type(icomp))
       case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
         total_conc(icomp) = conc(icomp)*convert_molal_to_molar
-        free_conc(icomp) = 1.d-9
+        free_conc(icomp) = guess(icomp)
       case(CONSTRAINT_FREE)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal
       case(CONSTRAINT_LOG)
@@ -1600,13 +1611,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         if (conc(icomp) <= 0.d0) then ! log form
           conc(icomp) = 10.d0**conc(icomp) ! conc log10 partial pressure gas
         endif
-        free_conc(icomp) = 1.d-9 ! guess
+        free_conc(icomp) = guess(icomp)
     end select
   enddo
   
-  if (initialize_rt_auxvar) then
-    rt_auxvar%pri_molal = free_conc
-  endif
+  rt_auxvar%pri_molal = free_conc
 
   num_iterations = 0
   compute_activity_coefs = PETSC_FALSE
@@ -1648,7 +1657,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
-          tempreal = option%reference_porosity*option%reference_saturation*1000.d0
+          tempreal = porosity*global_auxvar%sat(iphase)*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
           Res(icomp) = rt_auxvar%total(icomp,1) + &
             rt_auxvar%total_sorb_eq(icomp)/tempreal - total_conc(icomp)

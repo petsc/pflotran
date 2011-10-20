@@ -1814,7 +1814,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                                        constraint_aux_string(icomp),PETSC_TRUE)
                     call InputErrorMsg(input,option,'dataset name', &
                                     'CONSTRAINT, CONCENTRATIONS,')
-                    aq_species_constraint%external_dataset = PETSC_TRUE
+                    aq_species_constraint%external_dataset(icomp) = PETSC_TRUE
                 end select
               endif
             endif

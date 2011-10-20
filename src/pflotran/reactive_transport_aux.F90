@@ -448,6 +448,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%sec_molal = aux_var2%sec_molal
   if (associated(aux_var%total_sorb_eq)) then  
     aux_var%total_sorb_eq = aux_var2%total_sorb_eq
+  endif
+  if (associated(aux_var%dtotal_sorb_eq)) then  
     aux_var%dtotal_sorb_eq = aux_var2%dtotal_sorb_eq
   endif
   

@@ -8,6 +8,7 @@ module Dataset_module
  
   type, public :: dataset_type
     character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: dataset_name
     character(len=MAXSTRINGLENGTH) :: filename
     PetscInt :: itype
     PetscBool :: realization_dependent
@@ -49,6 +50,7 @@ function DatasetCreate()
   
   allocate(dataset)
   dataset%name = ''
+  dataset%dataset_name = ''
   dataset%filename = ''
   dataset%itype = DATASET_HETEROGENEOUS
   dataset%realization_dependent = PETSC_FALSE
@@ -97,6 +99,9 @@ subroutine DatasetRead(dataset,input,option)
       case('NAME') 
         call InputReadWord(input,option,dataset%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','DATASET')
+      case('HDF5_DATASET_NAME') 
+        call InputReadWord(input,option,dataset%dataset_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'hdf5_dataset_name','DATASET')
       case('FILENAME') 
         call InputReadNChars(input,option,dataset%filename, &
                              MAXSTRINGLENGTH,PETSC_TRUE)
@@ -121,7 +126,11 @@ subroutine DatasetRead(dataset,input,option)
         call printErrMsg(option)
     end select 
   
-  enddo  
+  enddo
+  
+  if (len_trim(dataset%dataset_name) < 1) then
+    dataset%dataset_name = dataset%name
+  endif
 
 end subroutine DatasetRead
 

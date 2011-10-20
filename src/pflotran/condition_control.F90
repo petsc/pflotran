@@ -430,7 +430,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite
-  PetscReal, pointer :: xx_p(:), xx_loc_p(:)
+  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -454,6 +454,8 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscInt :: dataset_to_idof(20)
   PetscInt :: idataset, num_datasets
   PetscBool :: use_dataset
+  PetscReal :: ave_num_iterations
+  PetscLogDouble :: tstart, tend
   
   option => realization%option
   discretization => realization%discretization
@@ -477,7 +479,8 @@ subroutine CondControlAssignTranInitCond(realization)
       global_aux_vars => cur_patch%aux%Global%aux_vars
 
       ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+      call GridVecGetArrayF90(grid,field%tran_xx,xx_p,ierr)
+      call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc,ierr)
       
       xx_p = -999.d0
       
@@ -501,7 +504,7 @@ subroutine CondControlAssignTranInitCond(realization)
                          constraint_coupler%aqueous_species%constraint_aux_string(idof), &
                          string,option)
             string = '' ! group name
-            string2 = dataset%name ! dataset name
+            string2 = dataset%dataset_name ! dataset name
             call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                               dataset%filename, &
                                               string,string2, &
@@ -517,6 +520,8 @@ subroutine CondControlAssignTranInitCond(realization)
         
         if (use_dataset) then
           call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
+          ave_num_iterations = 0.d0
+          call PetscGetTime(tstart,ierr) 
         endif
         
         do icell=1,initial_condition%region%num_cells
@@ -533,7 +538,7 @@ subroutine CondControlAssignTranInitCond(realization)
               do idataset = 1, num_datasets
                 ! remember that xx_loc_p holds the data set values that were read in
                 constraint_coupler%aqueous_species%constraint_conc(dataset_to_idof(idataset)) = &
-                  xx_loc_p(ibegin+idataset-1)
+                  xx_loc_p(ibegin+dataset_to_idof(idataset)-1)
               enddo
             endif
             if (icell == 1) then
@@ -543,21 +548,27 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%aqueous_species, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
+                porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
-                PETSC_TRUE,option)
+                PETSC_FALSE,option)
             else
-              call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
-                rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
-                option)
+!geh              call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
+!geh                rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
+!geh                option)
+              rt_aux_vars(ghosted_id)%pri_molal = &
+                rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1)))%pri_molal
               call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                 global_aux_vars(ghosted_id),reaction, &
                 constraint_coupler%constraint_name, &
                 constraint_coupler%aqueous_species, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
+                porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
-                PETSC_FALSE,option)
+                PETSC_TRUE,option)
             endif
+            ave_num_iterations = ave_num_iterations + &
+              constraint_coupler%num_iterations
           endif
           offset = ibegin + reaction%offset_aq - 1
           do idof = 1, reaction%naqcomp ! primary aqueous concentrations
@@ -615,12 +626,23 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
         enddo
         if (use_dataset) then
+          call PetscGetTime(tend,ierr) 
           call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr)
+          ave_num_iterations = ave_num_iterations / &
+            initial_condition%region%num_cells
+          write(option%io_buffer,&
+                '("Average number of iterations in ReactionEquilibrateConstraint():", &
+                & f5.1)') ave_num_iterations
+          call printMsg(option)
+          write(option%io_buffer,'(f10.2," Seconds to equilibrate constraints")') &
+            tend-tstart
+          call printMsg(option)
         endif
         initial_condition => initial_condition%next
       enddo
       
       call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
+      call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc,ierr)
 
       cur_patch => cur_patch%next
     enddo

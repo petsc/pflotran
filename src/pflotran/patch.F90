@@ -1314,8 +1314,9 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%aqueous_species, &
                             cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%colloids, &
+                            option%reference_porosity, &
                             cur_constraint_coupler%num_iterations, &
-                            PETSC_TRUE,option)
+                            PETSC_FALSE,option)
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
     cur_coupler => cur_coupler%next
