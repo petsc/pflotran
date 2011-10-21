@@ -1707,7 +1707,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
-                                  area, norm, dist_gravity,upweight, &
+                                  area, dist, dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
   use Saturation_Function_module                        
@@ -1721,7 +1721,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy, area, norm(3)
+  PetscReal :: v_darcy, area, dist(3)
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
@@ -1789,13 +1789,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 
     if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY
-      if (dabs(norm(1))==1) then
+      if (dabs(dist(1))==1) then
         ukvr = rich_aux_var_up%kvr_x
         dukvr_dp_up = rich_aux_var_up%dkvr_x_dp
-      else if (dabs(norm(2))==1) then
+      else if (dabs(dist(2))==1) then
         ukvr = rich_aux_var_up%kvr_y
         dukvr_dp_up = rich_aux_var_up%dkvr_y_dp
-      else if (dabs(norm(3))==1) then
+      else if (dabs(dist(3))==1) then
         ukvr = rich_aux_var_up%kvr_z
         dukvr_dp_up = rich_aux_var_up%dkvr_z_dp
       end if
@@ -1805,13 +1805,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 #endif
     else
 #ifdef USE_ANISOTROPIC_MOBILITY    
-      if (dabs(norm(1))==1) then
+      if (dabs(dist(1))==1) then
         ukvr = rich_aux_var_dn%kvr_x
         dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
-      else if (dabs(norm(2))==1) then
+      else if (dabs(dist(2))==1) then
         ukvr = rich_aux_var_dn%kvr_y
         dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
-      else if (dabs(norm(3))==1) then
+      else if (dabs(dist(3))==1) then
         ukvr = rich_aux_var_dn%kvr_z
         dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
       end if
@@ -1847,7 +1847,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     x_dn(1) = global_aux_var_dn%pres(1)
     call RichardsFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
-                      area, norm, dist_gravity,upweight, &
+                      area, dist, dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
     pert_up = x_up(ideriv)*perturbation_tolerance
@@ -1866,13 +1866,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
-                      area, norm, dist_gravity,upweight, &
+                      area, dist, dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
     call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_pert_dn,global_aux_var_pert_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
-                      area, norm, dist_gravity,upweight, &
+                      area, dist, dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
     J_pert_up(1,ideriv) = (res_pert_up(1)-res(1))/pert_up
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
@@ -1895,7 +1895,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
-                        area, norm, dist_gravity,upweight, &
+                        area, dist, dist_gravity,upweight, &
                         option,v_darcy,Res)
   use Option_module                              
   
@@ -1908,7 +1908,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy,area, norm(3)
+  PetscReal :: v_darcy,area, dist(3)
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
@@ -1945,7 +1945,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY       
-      if (dabs(dabs(norm(1))-1) < 1e-6) then
+      if (dabs(dabs(dist(1))-1) < 1e-6) then
         ukvr = rich_aux_var_up%kvr_x
       else if (dabs(dabs(norm(2))-1) < 1e-6) then
         ukvr = rich_aux_var_up%kvr_y
