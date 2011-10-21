@@ -4397,6 +4397,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 #else
                   neig_ukvr(j) = test_rich_aux_vars%kvr
 #endif
+                  call GlobalAuxVarDestroy(test_global_aux_vars) 
 
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
@@ -4669,6 +4670,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 !                  neig_dkvr_dp(j) =  rich_aux_vars(ghosted_id)%dkvr_dp
                   neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
 #endif
+                  call GlobalAuxVarDestroy(test_global_aux_vars) 
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
 #ifdef USE_ANISOTROPIC_MOBILITY
@@ -5997,7 +5999,6 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   rich_aux_vars => patch%aux%Richards%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
  
-!   write(*,*) "ENTER MFD JACOBIAN"
 
   call VecGetArrayF90(grid%e2n, e2n_local, ierr)
 
@@ -6084,25 +6085,18 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
       Jbl(nrow + (numfaces + iface)*nrow) = aux_var%dRp_dneig(iface)
    end do
 
-!   if (grid%x(ghosted_id) > 500 .and. grid%y(ghosted_id) > 250) then
-!        write(*,*) grid%x(ghosted_id), grid%y(ghosted_id), grid%z(ghosted_id)
-!        write(*,*) 
-!        do iface = 1, numfaces + 1
-!          write(*,*) (J(iface + (numfaces + 1)*(jface-1)),jface=1,numfaces + 1)
-!        end do
-!        write(*,*) 
-!        write(*,*) (aux_var%dRp_dneig(iface),iface=1,numfaces + 1)
-!        write(*,*) 
-!   end if
-
 
      call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 , ghosted_LP_id, &
-!     call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 + numfaces, ghosted_LP_id, &
                                          J, ADD_VALUES,ierr)
+
+!     call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 + numfaces, ghosted_LP_id, &
+!                                         Jbl, ADD_VALUES,ierr)
+
 
      call MatSetValuesLocal(A, 1, cell_LP_id, numfaces, neig_LP_id, aux_var%dRp_dneig, ADD_VALUES,ierr)
 
 !     do iface = 1, numfaces
+!     do iface = 1, 1
 !        call MatSetValuesLocal(A, 1, cell_LP_id, 1, neig_LP_id(iface), aux_var%dRp_dneig(iface), ADD_VALUES,ierr)
 !     end do
 
@@ -6110,13 +6104,9 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   end do
 
 
-!   write(*,*) "Before Assembly"
 
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-
-
-!    write(*,*) "First stage done"
 
 
 

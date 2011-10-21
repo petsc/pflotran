@@ -1141,6 +1141,7 @@ subroutine RealProcessTranConditions(realization)
   ! tie constraints to couplers, if not already associated
   cur_condition => realization%transport_conditions%first
   do
+
     if (.not.associated(cur_condition)) exit
     cur_constraint_coupler => cur_condition%constraint_coupler_list
     do
