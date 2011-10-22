@@ -6005,7 +6005,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
      numfaces = 6
 
     allocate(J((numfaces+1)*(numfaces+1)))
-    allocate(Jbl((2*numfaces+1)*(numfaces+1)))
+!    allocate(Jbl((2*numfaces+1)*(numfaces+1)))
     allocate(bound_id(numfaces))
     allocate(sq_faces(numfaces))
     allocate(ghosted_LP_id(numfaces+1+numfaces))
@@ -6051,7 +6051,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
 !     write(*,*) ( ghosted_LP_id(iface),iface=1,7)  
 
     J = 0.
-    Jbl = 0.
+!    Jbl = 0.
 
    call MFDAuxJacobianLocal_LP( grid, aux_var, &
                                        rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
@@ -6074,16 +6074,16 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
         end if
    end do
  
-  do jface = 1, numfaces + 1
-     do iface = 1, numfaces + 1
-        Jbl(iface + (jface-1)*(numfaces + 1)) = J(iface + (numfaces + 1)*(jface-1))
-     end do
-   end do
-
-
-   do iface = 1, numfaces 
-      Jbl(nrow + (numfaces + iface)*nrow) = aux_var%dRp_dneig(iface)
-   end do
+! do jface = 1, numfaces + 1
+!    do iface = 1, numfaces + 1
+!       Jbl(iface + (jface-1)*(numfaces + 1)) = J(iface + (numfaces + 1)*(jface-1))
+!    end do
+!  end do
+!
+!
+!  do iface = 1, numfaces 
+!     Jbl(nrow + (numfaces + iface)*nrow) = aux_var%dRp_dneig(iface)
+!  end do
 
 
      call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 , ghosted_LP_id, &
@@ -6109,10 +6109,8 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 
-
-
     deallocate(J)
-    deallocate(Jbl)
+!    deallocate(Jbl)
     deallocate(bound_id)
     deallocate(ghosted_LP_id)
     deallocate(neig_LP_id)
