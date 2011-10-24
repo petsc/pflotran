@@ -216,7 +216,7 @@ The governing equations for mass and energy conservation can be written in the f
 \EQ\label{massconv}
 \sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a X_i^\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a X_i^\a -\varphi s_\a \rho_\a D_\a \bnabla X_i^\a\big]\right\} \eq Q_i,
 \EN
-with porosity $\varphi$, molar density $\rho_\a$, diffusion/dispersion coefficient $D_\a$ and source/sink term $Q_i$. The sum over $\a$ is over all fluid phases present in a particular control volume. In these equations $s_\a$ denotes the volume fraction of phase $\a$ satisfying
+with porosity $\varphi$, molar density $\rho_\a$, mole fraction $X_i^\a$ of the $i$th component in fluid phase $\a$, diffusion/dispersion coefficient $D_\a$ and source/sink term $Q_i$. The sum over $\a$ is over all fluid phases present in a particular control volume. In these equations $s_\a$ denotes the volume fraction of phase $\a$ satisfying
 \EQ
 \sum_\a s_\a \eq 1.
 \EN
@@ -255,7 +255,7 @@ The energy conservation equation can be written in the form
 as the sum of contributions from each fluid phase and rock,
 with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term. Internal energy and ethalpy are related through the thermodynamic expression
 \EQ
-U_\a \eq H_\a + \frac{\rho_\a}{P_\a}.
+H_\a \eq U_\a + \frac{P_\a}{\rho_\a}.
 \EN
 
 The pressure $P_\a$ of fluid phase $\a$ is related to the fluid pressure of phase $\b$ through the capillary pressure $P_{\a\b}^c$
@@ -791,8 +791,32 @@ x_\a &\eq \frac{n_\a}{n} \eq \frac{(n_\a/V_\a) (V_\a/V_p)}{\sum_\b (n_\b/ V_\b) 
 &\eq \frac{s_\a \rho_\a}{\sum_\b s_\b\rho_\b}.
 \EA
 
-\section{Example Problems}
+\section{Example Problem}
 
+An example problem using PFLOTRAN is presented to provide a benchmark problem for comparison with SAMRAI. In this problem supercritical CO$_2$ is injected at a rate of 1 kg/s for 10 years at the center of a domain of size 500 m $\!\times\!$ 500 m $\!\times\!$ 100 m in a grid cell measuring 10 m $\!\times\!$ 10 m $\!\times\!$ 2 m. A coarse grid is used with size 25 $\times$ 25 $\times$ 50. The ambient temperature is taken as 50\degc\ with a pressure of 200 bars.
+
+Results are shown in Figures~\ref{f10y} and \ref{f250y} for times of 10 and 250 years, respectively, for saturation (left) and dissolved CO$_2$ (right). Fingering of dissolved CO$_2$ occurs in the H$_2$O phase as evident in Figure~\ref{f250y}.
+
+Shown in Figure~\ref{fmass} is the total moles of CO$_2$ in the H$_2$O (blue curve) and supercritical CO$_2$ (red curve) phases. The peak in CO$_2$ in the supercritical CO$_2$ phase occurs at 10 years when injection is halted. With increasing time the CO$_2$ in the H$_2O$ increases with time and the supercritical CO$_2$ phase dissipates.
+
+\begin{figure}[h]
+\includegraphics[scale=0.25]{./figs/sg-10y.png}
+\includegraphics[scale=0.25]{./figs/xlco2-10y.png}
+\caption{Saturation of supercritical CO$_2$ (left) and mole fraction of dissolved CO$_2$ (right) at an elapsed time of 10 years.}\label{f10y}
+\end{figure}
+
+\begin{figure}
+\includegraphics[scale=0.25]{./figs/sg-250y.png}
+\includegraphics[scale=0.25]{./figs/xlco2-250y.png}
+\caption{Saturation of supercritical CO$_2$ (left) and mole fraction of dissolved CO$_2$ (right) at an elapsed time of 250 years.}\label{f250y}
+\end{figure}
+
+\begin{figure}\centering
+\includegraphics[scale=0.45]{./figs/mass}
+\caption{Moles of CO$_2$ as a function of time in H$_2$ and supercritical CO$_2$ phases.}\label{fmass}
+\end{figure}
+
+\newpage
 \section{References}
 
 Span, R., Wagner, W. (1996) A New Equation of State for Carbon Dioxide Covering the Fluid Region from the Triple-Point Temperature to 1100 K at Pressures up to 800 MPa, J. Phys. Chem. Ref. Data, 25, 6, 1509--1596.
