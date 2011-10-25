@@ -1928,6 +1928,8 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
   PetscInt,pointer    :: cell_count(:), cell_ids(:)
   PetscInt,pointer    :: cell_ids_for_face(:), face_ids_for_face(:)
   PetscScalar,pointer :: vert2cell_array(:)
+
+  ugrid => grid%unstructured_grid
   
   if (associated(region%cell_ids)) then
     
