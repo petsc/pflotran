@@ -148,8 +148,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
       
-      
-
       num_iteration = 0
       do 
         pressure = pressure0 + 0.5d0*(rho+rho0) * &
