@@ -2160,7 +2160,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
             exit
           endif
         enddo
-        if (found == PETSC_FALSE) then
+        if (.not.found) then
           option%io_buffer = 'Increase the value of ' // &
             'MAX_CELLS_SHARING_A_VERTEX within the code.'
           call printErrMsg(option)
@@ -2196,7 +2196,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
               exit
             endif
           enddo
-          if (found == PETSC_FALSE) then
+          if (.not.found) then
             option%io_buffer = 'Increase the value of ' // &
               'MAX_CELLS_SHARING_A_VERTEX within the code.'
             call printErrMsg(option)
@@ -2480,7 +2480,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         
       enddo
 
-      if ((found == PETSC_FALSE)) then
+      if (.not.found) then
         option%io_buffer='No cell found for vertex '
         call printErrMsg(option)
       endif
