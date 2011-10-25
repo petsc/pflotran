@@ -153,7 +153,7 @@ subroutine sw_prop(tx,px,rho,h,u,fg)
           jpx = 0
           do ipx = 1,nptab
             n = nttab(ipx)-ncrit(ipx)+1
-            if(tkx.gt.t_tab(ipx,1)) then
+            if (tkx.gt.t_tab(ipx,1)) then
               jpx = jpx+1
               call splint(t_tab(ipx,ncrit(ipx):nttab(ipx)),r_tab(ipx,ncrit(ipx):nttab(ipx)), &
                 rr(ipx,ncrit(ipx):nttab(ipx)),n,tkx,rtab(jpx))

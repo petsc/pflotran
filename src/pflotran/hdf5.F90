@@ -2460,7 +2460,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     call printErrMsg(option,'iend /= istart+grid%nlmax')
   endif
 
-  if(mod(option%myrank,option%hdf5_read_group_size) == 0) then  
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
      call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
      call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
      ! should be a rank=1 data space
@@ -3420,7 +3420,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
     !
     region%num_cells = dims_h5(1)/option%mycommsize
       remainder = dims_h5(1) - region%num_cells*option%mycommsize
-    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    if (option%myrank < remainder) region%num_cells = region%num_cells + 1
     
     ! Find istart and iend
     istart = 0
@@ -3464,7 +3464,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   
     do ii = 1,region%num_cells
       region%cell_ids(ii) = int_buffer(ii,1)
-    !if(option%myrank == 0) write(*,*), ii, region%cell_ids(ii)
+    !if (option%myrank == 0) write(*,*), ii, region%cell_ids(ii)
   enddo
     
   case(2)
@@ -3514,7 +3514,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,int_buffer,&
           dims_h5,hdf5_err,memory_space_id,data_space_id)
      
-     if(dims_h5(1) == 2) then
+     if (dims_h5(1) == 2) then
        !
        ! Input data is: Cell IDs + Face IDs
        !

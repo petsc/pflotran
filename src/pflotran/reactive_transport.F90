@@ -762,16 +762,16 @@ subroutine RTUpdateSolutionPatch(realization)
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
 
 #ifdef CHUAN_CO2
-          if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
+          if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
             ncomp = reaction%kinmnrlspecid(0,imnrl)
             do iaqspec=1, ncomp  
               icomp = reaction%kinmnrlspecid(iaqspec,imnrl)
-              if(icomp == realization%reaction%species_idx%co2_aq_id) then
+              if (icomp == realization%reaction%species_idx%co2_aq_id) then
                 global_aux_vars(ghosted_id)%reaction_rate(2) &
                   = global_aux_vars(ghosted_id)%reaction_rate(2)& 
                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
                   * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
-              else if(icomp == reaction%species_idx%h2o_aq_id)then
+              else if (icomp == reaction%species_idx%h2o_aq_id) then
                 global_aux_vars(ghosted_id)%reaction_rate(1) &
                   = global_aux_vars(ghosted_id)%reaction_rate(1)& 
                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
@@ -1528,7 +1528,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
           select case(source_sink%flow_condition%itype(1))
             case(MASS_RATE_SS)
               do ieqgas = 1, reaction%ngas
-                if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+                if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
                   icomp = reaction%eqgasspecid(1,ieqgas)
                   iendall = local_id*reaction%ncomp
                   istartall = iendall-reaction%ncomp
@@ -1625,7 +1625,7 @@ end interface
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(option%use_samr) then
+      if (option%use_samr) then
          call SAMRSetCurrentJacobianPatch(T, grid%structured_grid%p_samr_patch)
       endif
 
@@ -1947,7 +1947,7 @@ end interface
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
-  if(option%use_samr) then
+  if (option%use_samr) then
      flow_pc = 1
      call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
             realization%discretization%amrgrid%p_application, &
@@ -2012,7 +2012,7 @@ end interface
   option => realization%option
   field => realization%field
 
-  if(option%use_samr) then
+  if (option%use_samr) then
     call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
   endif
       
@@ -2174,7 +2174,7 @@ subroutine RTReactPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
-  if(option%use_samr) then
+  if (option%use_samr) then
       call GridVecGetMaskArrayCellF90(grid, field%porosity_loc, mask_p, ierr)
   endif
       
@@ -2256,7 +2256,7 @@ subroutine RTReactPatch(realization)
 !geh: many f90 compilers do not bail out of the condition if the first 
 !     argument is false, but still check the second.  In this case mask_p 
 !     is null for non-amr and must be moved within the conditional
-!geh    if(option%use_samr .and. (mask_p(local_id)<=0)) cycle
+!geh    if (option%use_samr .and. (mask_p(local_id)<=0)) cycle
     if (option%use_samr) then
       if (mask_p(local_id) <= 0) cycle
     endif    
@@ -2530,7 +2530,7 @@ end interface
 
   ! now coarsen all face fluxes in case we are using SAMRAI to 
   ! ensure consistent fluxes at coarse-fine interfaces
-  if(option%use_samr) then
+  if (option%use_samr) then
     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
 
     cur_level => realization%level_list%first
@@ -2561,7 +2561,7 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  if(discretization%itype==AMR_GRID) then
+  if (discretization%itype==AMR_GRID) then
     call samrpetscobjectstateincrease(residual)
   endif
       
@@ -2674,18 +2674,18 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
                         ZERO_INTEGER)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
                         ONE_INTEGER)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
                         ZERO_INTEGER)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
                         ONE_INTEGER)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
@@ -2724,7 +2724,7 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
+          if (mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
              flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
                        ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
           else
@@ -2747,7 +2747,7 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
         fluxes(direction)%flux_p(flux_id) = res
       endif
 
-      if(.not.option%use_samr) then
+      if (.not.option%use_samr) then
         residual_p(local_id_up) = residual_p(local_id_up) + res
         residual_p(local_id_dn) = residual_p(local_id_dn) - res
       endif
@@ -2781,7 +2781,7 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
 
       ! leave off the boundary contribution since it is already inclued in the
 ! rhs value
-      if(option%use_samr) then
+      if (option%use_samr) then
       ! bp, I only need this                  
          res = coef_dn(iphase)*solution_loc_p(ghosted_id)
       else                  
@@ -3003,7 +3003,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
       ! in the src sink
       
       do ieqgas = 1, reaction%ngas
-        if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+        if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
  
           icomp = reaction%eqgasspecid(1,ieqgas)
           if (idof == icomp) then
@@ -3209,7 +3209,7 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
       ! in the src sink
       
       do ieqgas = 1, reaction%ngas
-        if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+        if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
  
           icomp = reaction%eqgasspecid(1,ieqgas)
           if (idof == icomp) then
@@ -3347,7 +3347,7 @@ end interface
 
   ! now coarsen all face fluxes in case we are using SAMRAI to 
   ! ensure consistent fluxes at coarse-fine interfaces
-  if(option%use_samr) then
+  if (option%use_samr) then
     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
 
     cur_level => realization%level_list%first
@@ -3641,7 +3641,7 @@ end interface
 
   ! now coarsen all face fluxes in case we are using SAMRAI to 
   ! ensure consistent fluxes at coarse-fine interfaces
-  if(option%use_samr) then
+  if (option%use_samr) then
     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
 
     cur_level => realization%level_list%first
@@ -3672,7 +3672,7 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  if(discretization%itype==AMR_GRID) then
+  if (discretization%itype==AMR_GRID) then
     call samrpetscobjectstateincrease(r)
   endif
 
@@ -3934,15 +3934,15 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
 
@@ -4028,7 +4028,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
           
         if (sum_connection <= max_x_conn) then
           direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
+          if (mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
                      ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
           else
@@ -4612,7 +4612,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
           select case(source_sink%flow_condition%itype(1))
             case(MASS_RATE_SS)
               do ieqgas = 1, reaction%ngas
-                if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+                if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
                   icomp = reaction%eqgasspecid(1,ieqgas)
                   iendall = local_id*reaction%ncomp
                   istartall = iendall-reaction%ncomp
@@ -5471,7 +5471,7 @@ end interface
     call PetscLogEventEnd(logging%event_rt_jacobian_zero,ierr)                          
   endif
 
-  if(option%use_samr) then
+  if (option%use_samr) then
      tran_pc = 1
      call SAMRSetJacobianSrcCoeffsOnPatch(tran_pc, &
             realization%discretization%amrgrid%p_application, &
@@ -5609,7 +5609,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
                                    patch%aux%Global%aux_vars(ghosted_id), &
                                    reaction,option)
-        if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
+        if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
           call CO2AqActCoeff(patch%aux%RT%aux_vars(ghosted_id), &
                                    patch%aux%Global%aux_vars(ghosted_id), &
                                    reaction,option)
@@ -5674,7 +5674,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         endif
 
 !       if (option%iflowmode /= MPH_MODE .or. icall>1) then
-        if (option%iflowmode /= MPH_MODE .and. option%iflowmode /= FLASH2_MODE)then
+        if (option%iflowmode /= MPH_MODE .and. option%iflowmode /= FLASH2_MODE) then
 !       Note: the  DIRICHLET_BC is not time dependent in this case (icall)    
         select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
@@ -5724,7 +5724,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
                                        patch%aux%Global%aux_vars_bc(sum_connection), &
                                        reaction,option)
-            if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
+            if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
               call CO2AqActCoeff(patch%aux%RT%aux_vars_bc(sum_connection), &
                                  patch%aux%Global%aux_vars_bc(sum_connection), &
                                  reaction,option) 
@@ -5881,7 +5881,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   patch%aux%RT%n_zero_rows = n_zero_rows  
 
 
-  if(.not.(option%use_samr)) then
+  if (.not.(option%use_samr)) then
      call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
                         MPI_MAX,option%mycomm,ierr)
      

@@ -450,7 +450,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
           option%io_buffer = 'Cells verticies exceed maximum number of vertices'
           call printErrMsg(option)
         endif
-        if((num_vertices /= 8).and.(num_vertices /= 6)) then
+        if ((num_vertices /= 8).and.(num_vertices /= 6)) then
           write(*,*),num_vertices
           option%io_buffer = 'Only cells with 6 or 8 vertices supported'
           call printErrMsg(option)
@@ -1419,7 +1419,7 @@ subroutine UGridDecompose(unstructured_grid,option)
             exit
           end if 
         end do 
-        if( .not. found) then ! if here then not on processor and not in the ghost list  
+        if ( .not. found) then ! if here then not on processor and not in the ghost list  
           ghost_cell_count = ghost_cell_count + 1
           ! reallocate the ghost cell array if necessary
           if (ghost_cell_count > max_ghost_cell_count) then
@@ -1589,7 +1589,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   allocate(unstructured_grid%vertex_ids_nindex(vertex_count))
   unstructured_grid%vertex_ids_nindex = int_array3(1:vertex_count)
   !do ivertex=1,vertex_count
-  !  if(option%myrank.eq.0) write(*,*), 'int_array3(',ivertex,')=',int_array3(ivertex)
+  !  if (option%myrank == 0) write(*,*), 'int_array3(',ivertex,')=',int_array3(ivertex)
   !enddo
 
   ! now load all the vertices needed to define all the local cells
@@ -2394,7 +2394,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
             face_id2 = cell_to_face(iface2,cell_id2)
             !geh nvertices2 = 4
             !gehcomment: I believe that cell_type and iface on next line shoudl be the "2" versions
-            !geh if((cell_type.eq.WEDGE_TYPE).and.(iface.gt.3)) nvertices2 = 3
+            !geh if ((cell_type == WEDGE_TYPE).and.(iface.gt.3)) nvertices2 = 3
             select case(cell_type2)
               case(HEX_TYPE) 
                 nvertices2 = 4
@@ -2408,7 +2408,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                 nvertices2 = 3
             end select            
             ! Both iface and iface2 need to have same number of vertices
-            if(nvertices == nvertices2) then
+            if (nvertices == nvertices2) then
               ! Count the number of vertices of iface which match vertices
               ! of iface2
               num_match = 0
@@ -2462,7 +2462,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       enddo ! iface-loop
       
       ! Check that one shared face was found between the Cell and Neighboring-Cell
-      if(.not.face_found) then
+      if (.not.face_found) then
         write(string,*),'rank=',option%myrank, 'local_id_id',cell_id,'local_id_id2',cell_id2
         option%io_buffer='No shared face found: ' // string // '\n'
         write(*,*),'No shared face found: rank=',option%myrank, 'local_id_id',cell_id,'local_id_id2',cell_id2
@@ -2612,7 +2612,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       found = PETSC_FALSE
       do iface2 = 1, 6
         face_id2 = cell_to_face(iface2,cell_id)
-        if(face_id<0) cycle
+        if (face_id<0) cycle
         if (face_id == temp_int(face_id2)) then
           found = PETSC_TRUE
           cell_to_face(iface2,cell_id) = face_id
@@ -2631,7 +2631,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   do ghosted_id = 1, unstructured_grid%num_cells_ghosted
     do ivertex = 1, unstructured_grid%cell_vertices_0(0,ghosted_id)
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,ghosted_id)+1
-      if( vertex_id <= 0) cycle 
+      if ( vertex_id <= 0) cycle 
       count = vertex_to_cell(0,vertex_id) + 1
       if (count > MAX_CELLS_SHARING_A_VERTEX) then
         write(string,*) 'Vertex can be shared by at most by ',MAX_CELLS_SHARING_A_VERTEX, &
@@ -2691,7 +2691,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           option%io_buffer = 'face not found in connection loop' // string 
           call printErrMsg(option)
         endif
-        if(face_to_vertex(4,face_id) < 0) then
+        if (face_to_vertex(4,face_id) < 0) then
           face_type = TRI_FACE_TYPE
         else
           face_type = QUAD_FACE_TYPE
@@ -2795,7 +2795,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     do iface = 1,MAX_DUALS
       face_id = cell_to_face(iface, local_id)
       if (face_id == -999) cycle
-      if( unstructured_grid%face_centroid(face_id)%id == -999) then
+      if ( unstructured_grid%face_centroid(face_id)%id == -999) then
         count = 0
         unstructured_grid%face_centroid(face_id)%x = 0.d0
         unstructured_grid%face_centroid(face_id)%y = 0.d0
@@ -2834,7 +2834,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         
         do ivert = 1,MAX_VERT_PER_FACE
           vertex_id = face_to_vertex(ivert,face_id)
-          if(vertex_id.ne.-999) then
+          if (vertex_id.ne.-999) then
             unstructured_grid%face_centroid(face_id)%x = &
               unstructured_grid%face_centroid(face_id)%x + unstructured_grid%vertices(vertex_id)%x
             unstructured_grid%face_centroid(face_id)%y = &

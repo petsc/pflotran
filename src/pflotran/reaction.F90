@@ -1630,7 +1630,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
-      if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
+      if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
             call CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)  
        endif
      endif
@@ -1829,7 +1829,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           igas = constraint_id(icomp)
          
           ! compute secondary species concentration
-          if(abs(reaction%species_idx%co2_gas_id) == igas) then
+          if (abs(reaction%species_idx%co2_gas_id) == igas) then
           
 !           pres = global_auxvar%pres(2)
             pres = conc(icomp)*1.D5
@@ -3555,7 +3555,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
             ncomp = reaction%eqcplxspecid(0,icplx)
             do jcomp = 1, ncomp
               j = reaction%eqcplxspecid(jcomp,icplx)
-              if(abs(reaction%primary_spec_Z(j)) > 0.d0) then
+              if (abs(reaction%primary_spec_Z(j)) > 0.d0) then
                 dgamdi = -0.5d0*reaction%debyeA*reaction%primary_spec_Z(j)**2/(sqrt_I* &
                 (1.d0+reaction%debyeB*reaction%primary_spec_a0(j)*sqrt_I)**2)+ &
                 reaction%debyeBdot 
@@ -3822,7 +3822,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   endif
 #endif  
 
-  if(iphase > option%nphase) return 
+  if (iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0
   rt_auxvar%aqueous%dtotal(:,:,iphase)=0D0
 !  do icomp = 1, reaction%naqcomp
@@ -3830,7 +3830,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !  enddo
     
 !  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-  if(global_auxvar%sat(iphase)>1D-20)then
+  if (global_auxvar%sat(iphase)>1D-20) then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
    
       pressure = global_auxvar%pres(2)
@@ -3848,7 +3848,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !            global_auxvar%fugacoeff(1) = xphico2
 
 
-      if(abs(reaction%species_idx%co2_gas_id) == ieqgas )then
+      if (abs(reaction%species_idx%co2_gas_id) == ieqgas ) then
 !          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
@@ -3886,7 +3886,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
                                         rt_auxvar%gas_molal(ieqgas)
 !       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
 !        global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
-   !     if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
+   !     if (rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
    ! contribute to %dtotal

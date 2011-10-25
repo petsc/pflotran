@@ -2518,7 +2518,7 @@ subroutine BasisInit(reaction,option)
       do
         ierr = 0
         call InputReadWord(string,word,PETSC_TRUE,ierr)
-        if(InputError(ierr)) exit
+        if (InputError(ierr)) exit
 
         select case(word)
           case('+')
@@ -2559,7 +2559,7 @@ subroutine BasisInit(reaction,option)
       do
         ierr = 0
         call InputReadWord(string,word,PETSC_TRUE,ierr)
-        if(InputError(ierr)) exit
+        if (InputError(ierr)) exit
 
         select case(word)
           case('+')

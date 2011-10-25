@@ -140,7 +140,7 @@ end interface
 
   patch => realization%patch
 
-  if(associated(patch)) then
+  if (associated(patch)) then
      if (associated(patch%grid)) then
         grid => patch%grid
      endif
@@ -286,7 +286,7 @@ end interface
       endif
     endif
 
-    if(option%use_samr) then
+    if (option%use_samr) then
        option%samr_mode=0
     endif
       
@@ -398,10 +398,10 @@ end interface
     endif
 
     ! setup a shell preconditioner and initialize in the case of AMR
-    if(option%use_samr) then
+    if (option%use_samr) then
 !     flow_solver%pc_type = PCSHELL
       pcside = PC_RIGHT
-      if(flow_solver%pc_type==PCSHELL) then
+      if (flow_solver%pc_type==PCSHELL) then
         call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
         flowortranpc=0 
         call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, flow_solver%pc)
@@ -434,7 +434,7 @@ end interface
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
       
-     if(option%use_samr) then
+     if (option%use_samr) then
         option%samr_mode=1
      endif
      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
@@ -501,10 +501,10 @@ end interface
     call SolverSetSNESOptions(tran_solver)
 
     ! setup a shell preconditioner and initialize in the case of AMR
-    if(associated(discretization%amrgrid)) then
+    if (associated(discretization%amrgrid)) then
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
-       if(tran_solver%pc_type==PCSHELL) then
+       if (tran_solver%pc_type==PCSHELL) then
           call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
           flowortranpc=1
           call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, tran_solver%pc)
@@ -1106,7 +1106,7 @@ subroutine InitReadInput(simulation)
   realization => simulation%realization
   patch => realization%patch
 
-  if(associated(patch)) grid => patch%grid
+  if (associated(patch)) grid => patch%grid
 
   option => realization%option
   output_option => realization%output_option
@@ -2416,7 +2416,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
   ! loop over all patches and allocate arrays for subcontinuum type
   ! count arrays: This has to be done only for the last and finest level
   cur _level => realization%level_list%last
-  if(.not.associated(cur_level)) exit
+  if (.not.associated(cur_level)) exit
   cur_patch => cur_level%patch_list%first
   do
     ! Allocate storage for the subcontinuum id offset
@@ -2438,7 +2438,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
           iend = grid%nlmax
         endif
         do icell=istart, iend
-          if(associated(region)) then
+          if (associated(region)) then
             local_id = region%cell_ids(icell)
           else
             local_id = icell
@@ -2670,7 +2670,7 @@ subroutine readRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-      if(region%grid_type == STRUCTURED_GRID) then
+      if (region%grid_type == STRUCTURED_GRID) then
         call HDF5ReadRegionFromFile(realization,region,region%filename)
     else
 #ifndef SAMR_HAVE_HDF5

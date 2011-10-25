@@ -2501,7 +2501,7 @@ end interface
 
   ! now coarsen all face fluxes in case we are using SAMRAI to 
   ! ensure consistent fluxes at coarse-fine interfaces
-  if(option%use_samr) then
+  if (option%use_samr) then
      call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
 
      cur_level => realization%level_list%first
@@ -2682,7 +2682,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
  ! ! now coarsen all face fluxes in case we are using SAMRAI to 
  ! ! ensure consistent fluxes at coarse-fine interfaces
- ! if(option%use_samr) then
+ ! if (option%use_samr) then
  !    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
 !
 !     cur_level => realization%level_list%first
@@ -2883,7 +2883,7 @@ use Logging_module
 
  ! ! now coarsen all face fluxes in case we are using SAMRAI to 
  ! ! ensure consistent fluxes at coarse-fine interfaces
- ! if(option%use_samr) then
+ ! if (option%use_samr) then
  !    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
 !
 !     cur_level => realization%level_list%first
@@ -3158,18 +3158,18 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
                         ZERO_INTEGER)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
                         ONE_INTEGER)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
                         ZERO_INTEGER)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
                         ONE_INTEGER)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
@@ -3224,7 +3224,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
 
-!       if (ghosted_id_up.eq.15.or.ghosted_id_dn.eq.15)  write(*,*) "dddddddddddddddddddddddddddd"
+!       if (ghosted_id_up == 15.or.ghosted_id_dn == 15)  write(*,*) "dddddddddddddddddddddddddddd"
 
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
@@ -3243,14 +3243,14 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_velocities(1,sum_connection) = v_darcy
 
 #if 1
-!      if (ghosted_id_up.eq.555.or.ghosted_id_dn.eq.555)  write(*,*) "int flux ************", sum_connection, v_darcy, Res(1)
+!      if (ghosted_id_up == 555.or.ghosted_id_dn == 555)  write(*,*) "int flux ************", sum_connection, v_darcy, Res(1)
 #endif
 
       
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
+          if (mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
              flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
                        ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
           else
@@ -3278,7 +3278,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         global_aux_vars(local_id_up)%mass_balance_delta(1,1) - Res(1)
 #endif
 
-      if(.not.option%use_samr) then
+      if (.not.option%use_samr) then
          
          if (local_id_up>0) then
             r_p(local_id_up) = r_p(local_id_up) + Res(1)
@@ -4006,22 +4006,22 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   numfaces = 6 ! hex only
 #if 0  
   allocate(sq_faces(numfaces), stat = ierr)
-  if(ierr /= 0) write(*,*)"sq_faces allocation error" 
+  if (ierr /= 0) write(*,*)"sq_faces allocation error" 
 
   allocate(face_pres(numfaces), stat = ierr)
-  if(ierr /= 0) write(*,*)"sq_faces allocation error" 
+  if (ierr /= 0) write(*,*)"sq_faces allocation error" 
 
   allocate(rhs(numfaces), stat = ierr)
-  if(ierr /= 0) write(*,*)"rhs allocation error" 
+  if (ierr /= 0) write(*,*)"rhs allocation error" 
 
   allocate(bc_g(numfaces), stat = ierr)
-  if(ierr /= 0) write(*,*)"bc_g allocation error" 
+  if (ierr /= 0) write(*,*)"bc_g allocation error" 
 
   allocate(bc_h(numfaces), stat = ierr)
-  if(ierr /= 0) write(*,*)"bc_h allocation error" 
+  if (ierr /= 0) write(*,*)"bc_h allocation error" 
 
   allocate(bnd (numfaces), stat = ierr)
-  if(ierr /= 0) write(*,*)"bnd allocation error" 
+  if (ierr /= 0) write(*,*)"bnd allocation error" 
 #endif
   stride = 6 !hex only
 
@@ -4906,7 +4906,7 @@ end interface
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(option%use_samr) then
+      if (option%use_samr) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
 
@@ -4927,7 +4927,7 @@ end interface
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(option%use_samr) then
+      if (option%use_samr) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
 
@@ -5050,7 +5050,7 @@ end interface
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-!      if(option%use_samr) then
+!      if (option%use_samr) then
 !         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
 !      endif
 
@@ -5156,7 +5156,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-!      if(option%use_samr) then
+!      if (option%use_samr) then
 !         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
 !      endif
 
@@ -5581,7 +5581,7 @@ end interface
 #ifdef BUFFER_MATRIX
     endif
 #endif
-!!$    if(option%use_samr) then
+!!$    if (option%use_samr) then
 !!$       flow_pc = 0
 !!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
 !!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
@@ -5636,7 +5636,7 @@ end interface
       endif
 #endif
 
-!!$      if(option%use_samr) then
+!!$      if (option%use_samr) then
 !!$         flow_pc = 0
 !!$         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
 !!$         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
@@ -5687,7 +5687,7 @@ end interface
   endif
 #endif
 
-  if(option%use_samr) then
+  if (option%use_samr) then
      flow_pc = 0
      call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
           realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
@@ -6207,7 +6207,7 @@ subroutine RichardsCreateZeroArray(patch,option)
   patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
   patch%aux%Richards%n_zero_rows = n_zero_rows
   
-  if(.not. (option%use_samr)) then
+  if (.not. (option%use_samr)) then
      call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
                         MPI_MAX,option%mycomm,ierr)
      if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE

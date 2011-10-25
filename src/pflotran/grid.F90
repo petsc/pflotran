@@ -435,7 +435,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 !           numfaces(local_id_dn) = numfaces(local_id_dn) + 1
 !        end if
 !        
-!    else if(conn%itype==INTERNAL_CONNECTION_TYPE) then 
+!    else if (conn%itype==INTERNAL_CONNECTION_TYPE) then 
 !        ghosted_id_up = conn%id_up(iface)
 !        ghosted_id_dn = conn%id_dn(iface)
 !
@@ -477,7 +477,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
            local_id = local_id + 1
         end if
         
-    else if(conn%itype==INTERNAL_CONNECTION_TYPE) then 
+    else if (conn%itype==INTERNAL_CONNECTION_TYPE) then 
         ghosted_id_up = conn%id_up(iface)
         ghosted_id_dn = conn%id_dn(iface)
 
@@ -660,7 +660,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
          local_face_id = grid%fG2L(ghost_face_id)
          conn => grid%faces(ghost_face_id)%conn_set_ptr
          iface = grid%faces(ghost_face_id)%id
-         if(conn%itype==INTERNAL_CONNECTION_TYPE) then
+         if (conn%itype==INTERNAL_CONNECTION_TYPE) then
 
            if (local_face_id > 0) then
 
@@ -1560,7 +1560,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                     region%num_cells = 0
                   endif
   ! the next test as designed will only work on a uniform grid
-                  if(.not. (option%use_samr)) then
+                  if (.not. (option%use_samr)) then
                      call MPI_Allreduce(region%num_cells,count, &
                                         ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                                         option%mycomm,ierr)   
@@ -1975,7 +1975,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     count = 0
     do ghosted_id = 1, ugrid%num_cells_ghosted
       local_id = grid%nG2L(ghosted_id)
-      if(local_id < 1) cycle
+      if (local_id < 1) cycle
       count = count + 1
       natural_id = grid%nG2A(ghosted_id)
       tmp_int_array(count) = natural_id
@@ -2016,7 +2016,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
     count = 0
     do ii=1, ugrid%num_cells_local
-      if(v_loc_p(ii) == 1) count = count + 1
+      if (v_loc_p(ii) == 1) count = count + 1
     enddo
     
     region%num_cells = count
@@ -2024,7 +2024,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       allocate(tmp_int_array(count))
       count = 0
       do ii =1, ugrid%num_cells_local
-        if(v_loc_p(ii) == 1) then
+        if (v_loc_p(ii) == 1) then
           count = count + 1
           tmp_int_array(count) = ii
         endif
@@ -2079,7 +2079,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
   !  Region is defined as a collection of faces. Each face is identified by 
   !  a list of vertices forming it.
   !
-  if(associated(region%vertex_ids)) then
+  if (associated(region%vertex_ids)) then
     !
     ! Create a sparse matrix: mat_vert2cell
     !
@@ -2099,7 +2099,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     
     do ghosted_id = 1, ugrid%num_cells_ghosted
       local_id = grid%nG2L(ghosted_id)
-      if(local_id < 1) cycle
+      if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id)
       do ii = 1, ugrid%cell_vertices_0(0, local_id)
         call MatSetValues(mat_vert2cell, &
@@ -2123,7 +2123,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
 #endif      
 
     call MatGetOwnershipRange(mat_vert2cell, rstart, rend, ierr)
-    if(option%mycommsize > 1) then
+    if (option%mycommsize > 1) then
       call MatMPIAIJGetSeqAIJ(mat_vert2cell, mat_vert2cell_diag, &
                               mat_vert2cell_offdiag, icol, iicol, ierr)
       call MatGetRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, PETSC_FALSE, &
@@ -2153,12 +2153,12 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         found = PETSC_FALSE
         do kk = 1, MAX_CELLS_SHARING_A_VERTEX
           index = (ii - 1)*MAX_CELLS_SHARING_A_VERTEX + kk
-          if(vert2cell_array(index) == -1) then
+          if (vert2cell_array(index) == -1) then
             found = PETSC_TRUE
             exit
           endif
         enddo
-        if(found.eqv.PETSC_FALSE) then
+        if (found == PETSC_FALSE) then
           option%io_buffer = 'Increase the value of ' // &
             'MAX_CELLS_SHARING_A_VERTEX within the code.'
           call printErrMsg(option)
@@ -2166,7 +2166,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         vert2cell_array(index) = aa(aaa+ jj)
       enddo
     enddo
-    if(option%mycommsize > 1) then
+    if (option%mycommsize > 1) then
       call MatRestoreRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
@@ -2178,7 +2178,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       ! call MatRestoreArrayF90(mat_vert2cell, aa, ierr)
     endif
       
-    if(option%mycommsize > 1) then
+    if (option%mycommsize > 1) then
       call MatGetRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
@@ -2188,13 +2188,13 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         do jj = ia_p(ii), ia_p(ii+1)-1
           found = PETSC_FALSE
           do kk = 1,MAX_CELLS_SHARING_A_VERTEX
-            if(vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk) &
+            if (vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk) &
                                   == -1) then
               found = PETSC_TRUE
               exit
             endif
           enddo
-          if(found.eqv.PETSC_FALSE) then
+          if (found == PETSC_FALSE) then
             option%io_buffer = 'Increase the value of ' // &
               'MAX_CELLS_SHARING_A_VERTEX within the code.'
             call printErrMsg(option)
@@ -2260,10 +2260,10 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       ghosted_id = ugrid%face_to_cell_ghosted(1, ii)
       if (ghosted_id < 0 ) exit
       local_id   = grid%nG2L(ghosted_id)
-      if(local_id < 1) cycle
+      if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id) ! 1-based
       do jj = 1, MAX_VERT_PER_FACE
-        if( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
+        if ( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
           call VecSetValues(vec_cell2facevert,1, &
                         (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
                         tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
@@ -2343,12 +2343,12 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       
     do ii = 1,region%num_verts
       do jj = 1,MAX_CELLS_SHARING_A_VERTEX
-        if(v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj) == -1) exit
+        if (v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj) == -1) exit
         count = count + 1
         cell_count(ii) = cell_count(ii) + 1
         cell_ids(count) = v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj )
       enddo
-      if(cell_count(ii) < 0) then
+      if (cell_count(ii) < 0) then
         option%io_buffer = 'For a given vertex, no cell found. Stopping'
         call printErrMsg(option)
       endif
@@ -2421,49 +2421,49 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       found  = PETSC_FALSE
       do ii = istart,iend,MAX_VERT_PER_FACE
         counter2 = counter2 + 1
-        if(region%vertex_ids(0, jj) == 4) then
-          if((v_loc_p(ii    ) == region%vertex_ids(1,jj)).and.&
+        if (region%vertex_ids(0, jj) == 4) then
+          if ((v_loc_p(ii    ) == region%vertex_ids(1,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(2,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(3,jj)).and.&
               (v_loc_p(ii + 3) == region%vertex_ids(4,jj)))      then
               found = PETSC_TRUE
               exit
           endif
-          if((v_loc_p(ii    ) == region%vertex_ids(2,jj)).and.&
+          if ((v_loc_p(ii    ) == region%vertex_ids(2,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(3,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(4,jj)).and.&
               (v_loc_p(ii + 3) == region%vertex_ids(1,jj)))      then
               found = PETSC_TRUE
               exit
           endif
-          if((v_loc_p(ii    ) == region%vertex_ids(3,jj)).and.&
+          if ((v_loc_p(ii    ) == region%vertex_ids(3,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(4,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(2,jj)).and.&
               (v_loc_p(ii + 3) == region%vertex_ids(1,jj)))      then
               found = PETSC_TRUE
               exit
           endif
-          if((v_loc_p(ii    ) == region%vertex_ids(4,jj)).and.&
+          if ((v_loc_p(ii    ) == region%vertex_ids(4,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(1,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(2,jj)).and.&
               (v_loc_p(ii + 3) == region%vertex_ids(3,jj)))      then
               found = PETSC_TRUE
               exit
           endif
-        elseif( v_loc_p(ii + 3) < 0 ) then
-          if((v_loc_p(ii    ) == region%vertex_ids(1,jj)).and.&
+        elseif ( v_loc_p(ii + 3) < 0 ) then
+          if ((v_loc_p(ii    ) == region%vertex_ids(1,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(2,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(3,jj)))      then
               found = PETSC_TRUE
               exit
           endif
-          if((v_loc_p(ii    ) == region%vertex_ids(2,jj)).and.&
+          if ((v_loc_p(ii    ) == region%vertex_ids(2,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(3,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(1,jj)))      then
               found = PETSC_TRUE
               exit
           endif
-          if((v_loc_p(ii    ) == region%vertex_ids(3,jj)).and.&
+          if ((v_loc_p(ii    ) == region%vertex_ids(3,jj)).and.&
               (v_loc_p(ii + 1) == region%vertex_ids(1,jj)).and.&
               (v_loc_p(ii + 2) == region%vertex_ids(2,jj)))      then
               found = PETSC_TRUE
@@ -2471,14 +2471,14 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
           endif
         endif
           
-        if(counter2 == MAX_DUALS) then
+        if (counter2 == MAX_DUALS) then
           counter2 = 0
           counter1 = counter1 + 1
         endif
         
       enddo
 
-      if((found.eqv.PETSC_FALSE)) then
+      if ((found == PETSC_FALSE)) then
         option%io_buffer='No cell found for vertex '
         call printErrMsg(option)
       endif
@@ -2546,7 +2546,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     count = 0
     do ghosted_id=1,ugrid%num_cells_ghosted
       local_id = grid%nG2L(ghosted_id)
-      if(local_id < 1) cycle
+      if (local_id < 1) cycle
       count = count + 1
       natural_id = grid%nG2A(ghosted_id)
       tmp_int_array(count) = natural_id
@@ -2594,7 +2594,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call VecGetArrayF90(vec_face_ids_loc, v_loc2_p, ierr)
     count = 0
     do ii = 1, ugrid%num_cells_local
-      if(v_loc_p(ii) == 1) count = count + 1
+      if (v_loc_p(ii) == 1) count = count + 1
     enddo
     
     region%num_cells = count
@@ -2603,7 +2603,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       allocate(tmp_int_array2(count))
       count = 0
       do ii = 1, ugrid%num_cells_local
-        if(v_loc_p(ii) == 1) then
+        if (v_loc_p(ii) == 1) then
           count = count + 1
           tmp_int_array(count) = ii
           tmp_int_array2(count) = v_loc2_p(ii)
@@ -3264,7 +3264,7 @@ end function GridIndexToCellID
 !
 !  ! do this only at the last and finest level
 !  cur_level => realization%level_list%last
-!  if(.not.associated(cur_level)) exit
+!  if (.not.associated(cur_level)) exit
 !  cur_patch => cur_level%patch_list%first
 !  do 
 !    grid => cur_patch%grid
@@ -3290,7 +3290,7 @@ end function GridIndexToCellID
 !    ! Loop through all the cells-> all subcontinuum and set the subgrid
 !    ! information
 !    do icell=1, cur_patch%grid%nlmax
-!      if(associated(region)) the
+!      if (associated(region)) the
 !        local_id = region%cell_ids(icell)
 !      else
 !        local_id = icell

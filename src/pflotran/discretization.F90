@@ -805,7 +805,7 @@ end interface
        call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, option%samr_mode, Jacobian)
 
 ! for now we assume that if there are multiple dof's they are contiguous in mem, ie petsc block form       
-       if(ndof>1) then
+       if (ndof>1) then
 ! we create a dummy mapping to satisfy the PETSc mapping requirements   
           imax=0
           nlevels =  hierarchy_number_levels(discretization%amrgrid%p_application)
@@ -813,7 +813,7 @@ end interface
              npatches = level_number_patches(discretization%amrgrid%p_application, ln )
              do pn=0,npatches-1
                 islocal = is_local_patch(discretization%amrgrid%p_application, ln, pn);
-                if(islocal == 1) then
+                if (islocal == 1) then
                    ngmax =  discretization%amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax
                    imax = max(ngmax,imax) 
                 endif

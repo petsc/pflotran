@@ -2167,7 +2167,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
         filename = trim(filename) // trim(realization_word)
       endif
       input2 => InputCreate(IUNIT_TEMP,filename)
-      if(dataset%rank<=3)then
+      if (dataset%rank<=3) then
         call FlowConditionReadValuesFromFile(input2,dataset,option)
       else
         call FlowConditionReadValuesFromFile2(input2,dataset,option)
@@ -2175,7 +2175,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       call InputDestroy(input2)
     endif
   else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
-    if(dataset%rank<=3)then
+    if (dataset%rank<=3) then
       call FlowConditionReadValuesFromFile(input,dataset,option)
     else
       call FlowConditionReadValuesFromFile2(input,dataset,option)

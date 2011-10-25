@@ -1494,7 +1494,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       stepper%cumulative_time_step_cuts
 
     ! the grid pointer is null if we are working with SAMRAI
-    if(associated(discretization%grid)) then
+    if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
     else
        scaled_fnorm = fnorm
@@ -1844,7 +1844,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
     endif
     
     ! the grid pointer is null if we are working with SAMRAI
-    if(associated(discretization%grid)) then
+    if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax   
     else
        scaled_fnorm = fnorm
@@ -2396,7 +2396,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     ! the grid pointer is null if we are working with SAMRAI
-    if(associated(discretization%grid)) then
+    if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
     else
        scaled_fnorm = fnorm
@@ -2550,7 +2550,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     ! the grid pointer is null if we are working with SAMRAI
-    if(associated(discretization%grid)) then
+    if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax   
     else
        scaled_fnorm = fnorm

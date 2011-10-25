@@ -318,7 +318,7 @@ subroutine RealizationCreateDiscretization(realization)
 
 
 
-    if(option%use_samr) then
+    if (option%use_samr) then
        option%ivar_centering = SIDE_CENTERED
        call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
                                     GLOBAL,option)
@@ -351,7 +351,7 @@ subroutine RealizationCreateDiscretization(realization)
                                            field%tran_work_loc)
       endif
 
-      if(option%use_samr) then
+      if (option%use_samr) then
          option%ivar_centering = SIDE_CENTERED
          call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
                                       GLOBAL,option)
@@ -376,7 +376,7 @@ subroutine RealizationCreateDiscretization(realization)
       ! again, just for storage of the current colution
       call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
                                       LOCAL,option)
-      if(option%use_samr) then
+      if (option%use_samr) then
          option%ivar_centering = SIDE_CENTERED
          call DiscretizationCreateVector(discretization,ONEDOF,field%tran_face_fluxes, &
                                       GLOBAL,option)

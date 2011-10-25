@@ -556,7 +556,7 @@ subroutine RActivityCoefficientsChunk(auxvar,vector_length,ithread,reaction,opti
             ncomp = reaction%eqcplxspecid(0,icplx)
             do jcomp = 1, ncomp
               j = reaction%eqcplxspecid(jcomp,icplx)
-              if(abs(reaction%primary_spec_Z(j)) > 0.d0) then
+              if (abs(reaction%primary_spec_Z(j)) > 0.d0) then
                 dgamdi = -0.5d0*reaction%debyeA*reaction%primary_spec_Z(j)**2/(sqrt_I* &
                 (1.d0+reaction%debyeB*reaction%primary_spec_a0(j)*sqrt_I)**2)+ &
                 reaction%debyeBdot 
@@ -838,7 +838,7 @@ subroutine RTotalChunk(auxvar,vector_length,ithread,reaction,option)
   endif
 #endif  
 
-  if(iphase > option%nphase) return 
+  if (iphase > option%nphase) return 
 
   do ichunk = 1, vector_length
 
@@ -849,7 +849,7 @@ subroutine RTotalChunk(auxvar,vector_length,ithread,reaction,option)
 !  enddo
     
 !  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-  if(auxvar%sat(ichunk,ithread,iphase)>1D-20)then
+  if (auxvar%sat(ichunk,ithread,iphase)>1D-20) then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
    
       pressure = auxvar%pres(ichunk,ithread,2)
@@ -867,7 +867,7 @@ subroutine RTotalChunk(auxvar,vector_length,ithread,reaction,option)
 !            global_auxvar%fugacoeff(1) = xphico2
 
 
-      if(abs(reaction%species_idx%co2_gas_id) == ieqgas )then
+      if (abs(reaction%species_idx%co2_gas_id) == ieqgas ) then
 !          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           m_na = auxvar%pri_molal(ichunk,ithread,reaction%species_idx%na_ion_id)
@@ -905,7 +905,7 @@ subroutine RTotalChunk(auxvar,vector_length,ithread,reaction,option)
                                         auxvar%gas_molal(ichunk,ithread,ieqgas)
 !       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,auxvar%pri_molal(ichunk,ithread,icomp),&
 !        global_auxvar%sat(2),auxvar%gas_molal(ichunk,ithread,ieqgas)
-   !     if(auxvar%total(ichunk,ithread,icomp,iphase) > den)auxvar%total(ichunk,ithread,icomp,iphase) = den* .99D0
+   !     if (auxvar%total(ichunk,ithread,icomp,iphase) > den)auxvar%total(ichunk,ithread,icomp,iphase) = den* .99D0
    !     enddo
 
    ! contribute to %dtotal

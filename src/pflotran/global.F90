@@ -556,7 +556,7 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
       patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
         (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if(weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
+      if (weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
 !        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
 !         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
@@ -573,7 +573,7 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
       patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
         (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      if(weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
+      if (weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
 !        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
 !         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))

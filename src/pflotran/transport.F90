@@ -125,7 +125,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
         weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        if(iphase ==2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
+        if (iphase ==2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
                                weight*rt_parameter%diffusion_coefficient(iphase)
 ! Add the effect of temperature on diffusivity, Satish Karra, 08/15/2011
 #ifdef TEMP_DEPENDENT_LOGK
@@ -249,7 +249,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
          !  need to account for multiple phases
          !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            if( iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
+            if ( iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                                        weight*rt_parameter%diffusion_coefficient(iphase)
 #ifdef TEMP_DEPENDENT_LOGK    
             diffusion(iphase) = diffusion(iphase) + &
@@ -269,7 +269,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
               weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           !   need to account for multiple phases
           !   units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              if(iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
+              if (iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                                         weight*rt_parameter%diffusion_coefficient(iphase)
 #ifdef TEMP_DEPENDENT_LOGK    
               diffusion(iphase) = diffusion(iphase) + &

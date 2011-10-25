@@ -534,12 +534,12 @@ subroutine RegionReadFromFileId(region,input,option)
   call InputReadFlotranString(input, option)
   do 
     call InputReadInt(input, option, temp_int)
-    if(InputError(input)) exit
+    if (InputError(input)) exit
     count = count + 1
     temp_int_array(count) = temp_int
   enddo
 
-  if(count == 1) then
+  if (count == 1) then
     !
     ! Input data contains only cell ids
     !
@@ -564,7 +564,7 @@ subroutine RegionReadFromFileId(region,input,option)
     ! Depending on processor rank, save only a portion of data
     region%num_cells = count/option%mycommsize
       remainder = count - region%num_cells*option%mycommsize
-    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    if (option%myrank < remainder) region%num_cells = region%num_cells + 1
     istart = 0
     iend   = 0
     call MPI_Exscan(region%num_cells, istart, ONE_INTEGER_MPI, MPIU_INTEGER, &
@@ -578,7 +578,7 @@ subroutine RegionReadFromFileId(region,input,option)
     region%cell_ids(1:region%num_cells) = cell_ids_p(istart+1:iend)
     deallocate(cell_ids_p)
 
-  else if(count == 2) then
+  else if (count == 2) then
     !
     ! Input data contains cell ids + face ids
     !
@@ -592,12 +592,12 @@ subroutine RegionReadFromFileId(region,input,option)
       call InputReadFlotranString(input, option)
       if (InputError(input)) exit
       call InputReadInt(input, option, temp_int)
-      if(InputError(input)) exit
+      if (InputError(input)) exit
       count = count + 1
       cell_ids_p(count) = temp_int
 
       call InputReadInt(input,option,temp_int)
-      if(InputError(input)) then
+      if (InputError(input)) then
         option%io_buffer = 'ERROR while reading the region from file'
         call printErrMsg(option)
       endif
@@ -611,7 +611,7 @@ subroutine RegionReadFromFileId(region,input,option)
     ! Depending on processor rank, save only a portion of data
     region%num_cells = count/option%mycommsize
       remainder = count - region%num_cells*option%mycommsize
-    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
+    if (option%myrank < remainder) region%num_cells = region%num_cells + 1
     istart = 0
     iend   = 0
     call MPI_Exscan(region%num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
@@ -636,7 +636,7 @@ subroutine RegionReadFromFileId(region,input,option)
     vert_id_1_p(1) = temp_int_array(2)
     vert_id_2_p(1) = temp_int_array(3)
     vert_id_3_p(1) = temp_int_array(4)
-    if(vert_id_0_p(1) == 4 ) vert_id_4_p(1) = temp_int_array(5)
+    if (vert_id_0_p(1) == 4 ) vert_id_4_p(1) = temp_int_array(5)
     count = 1 ! reset the counter to represent the num of rows read
 
     ! Read the data
@@ -644,14 +644,14 @@ subroutine RegionReadFromFileId(region,input,option)
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
       call InputReadInt(input,option,temp_int)
-      if(InputError(input)) exit
+      if (InputError(input)) exit
       count = count + 1
       vert_id_0_p(count) = temp_int
 
       vert_id_4_p(count) = -999
       do ii = 1, vert_id_0_p(count)
         call InputReadInt(input,option,temp_int)
-        if(InputError(input)) then
+        if (InputError(input)) then
           option%io_buffer = 'ERROR while reading the region from file'
           call printErrMsg(option)
         endif
@@ -680,7 +680,7 @@ subroutine RegionReadFromFileId(region,input,option)
     ! Depending on processor rank, save only a portion of data
     region%num_verts = count/option%mycommsize
       remainder = count - region%num_verts*option%mycommsize
-    if(option%myrank < remainder) region%num_verts = region%num_verts + 1
+    if (option%myrank < remainder) region%num_verts = region%num_verts + 1
     istart = 0
     iend   = 0
     call MPI_Exscan(region%num_verts,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
