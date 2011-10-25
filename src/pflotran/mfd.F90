@@ -232,6 +232,12 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
            end if
        else
            d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
+       end if
+
+       if (local_face_id > 0) then
+           d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
+       else
+           o_nnz(grid%nlmax_faces + icell) = o_nnz(grid%nlmax_faces + icell) + 1
        end if 
 
     end do

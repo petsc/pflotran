@@ -90,7 +90,7 @@
 \renewcommand{\b}{{\beta}}
 \renewcommand{\e}{{\epsilon}}
 \newcommand{\s}{{\sigma}}
-\renewcommand{\sc}{{c}}
+\renewcommand{\sc}{{g}}
 \newcommand{\w}{{\rm H_2O}}
 \newcommand{\air}{{\rm N_2}}
 \newcommand{\pe}{{\rm Pe}}
@@ -193,19 +193,30 @@
 
 \thispagestyle{empty}
 
+\author{P.C. Lichtner (LANL)}
+\title{Requirements Document for H$_2$O--CO$_2$ Two-Phase--Two-Component System}
+
 \begin{document}
+
+\maketitle
 
 \tableofcontents
 
-\section{Modeling CO$_2$ Sequestration}
+\section{Scope}
 
-\subsection{Governing Equations}
+This report provides the governing equations, constitutive relations and numerical considerations for implementing the two-phase--two-component system H$_2$O--CO$_2$ into the SAMRAI parallel adaptive mesh refinement framework. Phases considered are liquid water (H$_2$O) and supercritical carbon dioxide (CO$_2$) designated as $\a = l,\, g$, respectively. Components consist of H$_2$O and CO$_2$ designated by the subscript $i=1,\,2$, respectively. The system considered may be either isothermal, in which case an energy balance equation is not necessary, or nonisothermal increasing the number of degrees of freedom by one.
 
-Mass conservation equations employed by PFLOTRAN can be written in the form
+Even this relatively simple system involves a complex system of nonlinear partial differential equations combined with complex equations of state for material properties and chemical solubility at the relevant temperatures and pressures.
+
+\section{Governing Equations}
+
+\subsection{Mass Conservation Equations}
+
+The governing equations for mass and energy conservation can be written in the form
 \EQ\label{massconv}
 \sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a X_i^\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a X_i^\a -\varphi s_\a \rho_\a D_\a \bnabla X_i^\a\big]\right\} \eq Q_i,
 \EN
-with porosity $\varphi$, molar density $\rho_\a$, diffusivity/dispersivity $D_\a$ and source/sink term $Q_i$. The sum over $\a$ is over all fluid phases present in a particular control volume. In these equations $s_\a$ denotes the volume fraction of phase $\a$ satisfying
+with porosity $\varphi$, molar density $\rho_\a$, mole fraction $X_i^\a$ of the $i$th component in fluid phase $\a$, diffusion/dispersion coefficient $D_\a$ and source/sink term $Q_i$. The sum over $\a$ is over all fluid phases present in a particular control volume. In these equations $s_\a$ denotes the volume fraction of phase $\a$ satisfying
 \EQ
 \sum_\a s_\a \eq 1.
 \EN
@@ -213,13 +224,19 @@ The mole fraction $X_i^\a$ satisfies the constraint condition
 \EQ\label{molefrac}
 \sum_i X_i^\a \eq 1.
 \EN
-The Darcy velocity $\bq_\a$ is given as
+The Darcy velocity $\bq_\a$ is given by the expression
 \EQ
 \bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \Big(P_\a - W_\a\rho_\a g z\Big),
 \EN
-with viscosity $\mu_\a$, formula weight $W_\a$, acceleration of gravity $g$, and height $z$.
+for pressure $P_\a$ viscosity $\mu_\a$, formula weight $W_\a$, acceleration of gravity $g$, and height $z$.
 
-Summing Eqns.\eqref{massconv} over all components $i$ making use of Eqn.\eqref{molefrac} gives
+Each phase $\a$ is a mixture of species H$_2$O and CO$_2$. The formula weight $W_\a$ for the mixture is given by
+\EQ
+W_\a \eq \sum_i W_i X_i^\a,
+\EN
+where $W_i$ is the formula weight of the $i$th component. For H$_2$O, $W_{\rm H_2O} = 18.01534$ kg/mol, and for CO$_2$, $W_{\c} = 44.0098$ kg/kmol.
+
+Summing Eqns.\eqref{massconv} over all components $i$ making use of Eqn.\eqref{molefrac} gives the continuity equation
 \EQ\label{masstot}
 \sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a \big) + \bnabla\cdot \big(\bq_\a \rho_\a \big)\right\} \eq Q,
 \EN
@@ -229,402 +246,53 @@ Q \eq \sum_i Q_i.
 \EN
 The equation for $i$ = H$_2$O in Eqn.\eqref{massconv} may be replaced with Eqn.\eqref{masstot}, for example, thereby eliminating the need to consider the diffusion term for H$_2$O.
 
+\subsection{Energy Conservation}
+
 The energy conservation equation can be written in the form
 \EQ
 \sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q_e,
 \EN
 as the sum of contributions from each fluid phase and rock,
-with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term.
-
-\subsection{Choice of Independent Variables}
-
-Depending on the number and type of phases present within a control volume, the independent variables are chosen according to Table~\ref{tindepvar}. There exist $2^2-1=3$ possible phases in the system corresponding to liquid, gas and liquid-gas. In general for a system made up of $N_p$ individual phases, there are $2^{N_p}-1$ possible phase combinations.
-
-\tabcolsep 3pt
-\begin{table}[H]\centering
-\caption{Independent variables in a two-phase system.}\label{tindepvar}
-\vspace{3mm}
-\begin{tabular}{lccc}
-\toprule
-Phases & \multicolumn{3}{c}{Variables}\\
-\midrule
-liquid & $P_l$ & $T$ & $X_i^l$\\
-gas & $P_g$ & $T$ & $X_i^g$\\
-two-phase & $P_g$ & $T$ & $s_g$\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Constitutive Relations}
-
-Various constitutive relations hold depending on the phases present.
-
-\subsubsection{Liquid Phase: Variables $\{P_l,\,T,\,X_\c^l\}$}
-
-For a pure liquid phase $s_l=1$. The molality of dissolved $\c$ is found from the relation
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term. Internal energy and ethalpy are related through the thermodynamic expression
 \EQ
-m_\c^{l} \eq \frac{X_\c^l W_\w^{-1}}{1- X_\c^l - \displaystyle\sum_{i\ne \w,\c} \!\!\!\!\!\!X_i^l}.
+H_\a \eq U_\a + \frac{P_\a}{\rho_\a}.
 \EN
-with the inverse relation
+
+The pressure $P_\a$ of fluid phase $\a$ is related to the fluid pressure of phase $\b$ through the capillary pressure $P_{\a\b}^c$
 \EQ
-X_\c^l \eq \frac{m_\c  W_\w}{1 +  W_\w\big(m_\c + \displaystyle\sum_{i\ne \w,\c}\!\!\! \!\!\! m_i\big)}.
+P_\a \eq P_\b + P_{\a\b}^c,
 \EN
+where $P_\b$ is assumed to be the non-wetting phase, in this case supercritical CO$_2$.
 
-\subsubsection{Gas Phase: Variables $\{P_g,\,T,\,X_\c^g\}$}
+\section{Constitutive Relations}
 
-For a pure gas phase $s_g=1$.
+\subsection{Material Properties}
 
-\subsubsection{Two-Phase: Variables $\{P_g,\,T,\,s_g\}$}
+Material fluid properties for density, viscosity, internal energy and enthalpy are needed for pure H$_2$O and supercritical CO$_2$, and in the case of nonisothermal systems internal energy and enthalpy. In addition, mixture properties for CO$_2$ dissolved in H$_2$O and H$_2O$ dissolved in supercritical CO$_2$ are needed. 
 
-In a two-phase system
-$X_\c^g$, is assumed to be given by
-\EQ
-X_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
-\EN
-with total gas pressure $P_g$ equal to
-\EQ
-P_g \eq P_\c^g + P_\w^{\rm sat}(T),
-\EN
-and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. One also has
-\EQ
-X_\c^l = 1-X_\c^g. 
-\EN
-The molality of dissolved $\c$ is found from the relation
-\EQ
-m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{}} P_g^{}.
-\EN
+\subsubsection{Pure H$_2$O}
 
-\subsection{Conditions for Change in Phase}
-
-Possible changes in phase that may occur in the system are listed in Table~\ref{tphasechng}. In Table~\ref{tphasechng}, $\mu_i^\a$ refers to the chemical potential of the $i$th species in phase $\a$.
-
-\begin{table}[H]\centering
-\caption{Independent variables in a two-phase system.}\label{tphasechng}
-\vspace{3mm}
-\begin{tabular}{rclcrcl}
-\toprule
-\multicolumn{3}{c}{Phase Transformation} & Condition & \multicolumn{3}{c}{Variable Switching}\\
-\midrule
-liquid &$\rightarrow$& two-phase & $\mu_\c^l > \mu_\c^g$ & $\{P_l, \, T, X_\c^l\}$ &$\rightarrow$& $\{P_g, \, T, s_g\}$\\
-gas &$\rightarrow$& two-phase & $\mu_\c^l < \mu_\c^g$ & $\{P_g, \, T, X_\c^g\}$ &$\rightarrow$& $\{P_g, \, T, s_g\}$\\
-two-phase &$\rightarrow$& liquid & $s_g < 0$ & $\{P_g, \, T, s_g\}$ &$\rightarrow$& $\{P_g, \, T, X_\c^l\}$\\
-two-phase &$\rightarrow$& gas & $s_g > 0$ & $\{P_g, \, T, s_g\}$ &$\rightarrow$& $\{P_g, \, T, X_\c^g\}$\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Finite Volume Discretization}
-
-Using a finite volume discretization approach, the governing flow and transport equations are discretized according to
-\BA
-R_{in}^{k+1} \eq &\sum_\a \left\{\frac{\big(\varphi s_\a \rho_\a X_i^\a\big)_n^{k+1}-(\varphi s_\a \rho_\a X_i^\a)_n^k}{\Delta t} V_n \right. \nonumber\\
-&\left. + \sum_{n'} \left[q_{\a,nn'}^{k+1} \rho_{\a,nn'}^{k+1} X_{inn'}^{\a,k+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{k+1} \frac{X_{i n'}^{\a, k+1}-X_{i n}^{\a,k+1}}{d_{n'}+d_n}\right] A_{nn'}\right\} \nonumber\\
-&- Q_i^{k+1} V_n,
-\EA
-providing the residual function for the $i$th component at the $n$th control volume and $k+1$st time step, where the sum over $n'$ is over all control volumes which connect to the $n$th control volume, $d_n$, $d_{n'}$ refers to the distance for the control volume center to the interface, and $A_{nn'}$ denotes the interfacial area.
-
-\section{Flash Method}
-
-An alternative approach to variable switching is the flash method.
-Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step. Finally, the variable switching approach is not appropriate for use with multilevel solvers because of the possibility for the need to solve for different independent variables on different levels.
-
-\subsection{Two-Phase System}
-
-An alternative to variable switching is to keep the primary variables preserved using the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
-\BA
-z_i &\eq\dfrac{\sum_\a n_i^\a}{\sum_\a \sum_j n^\a_j},\\
-&\eq \frac{\sum_\a s_\a \rho_\a x_i^\a}{\sum_{\a} s_\a \rho_\a},
-\EA
-where the latter form is obtained using the expansion
-\BA
-\frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
-&\eq \varphi s_\a \rho_\a x_i^\a,
-\EA
-where $V_p$ denotes the pore volume.
-Explicitly for a two-phase ($\a=w$, $\sc$) system where $w$ designates the phase $\w$ and $\sc$ designates supercritical $\c$, $z_i$ can be expressed as
-\EQ
-z_i \eq \frac{\rho_w s_w x_i^w + \rho_{\rm SC} s_{\sc} x_i^{\sc}}{\rho_w s_w + \rho_{\sc} s_{\sc}},
-\EN
-for molar fluid densities $\rho_w$, $\rho_{\sc}$ and saturation $s_w$, $s_{\sc} = 1\!-\!s_w$.
-The variable $z_i$ is a persistent degree of freedom throughout the simulation.
-
-Introducing $z_i$ into the mass conservation equations gives
-\EQ
-\left\{\frac{\p}{\p t} \big(\varphi z_i \sum_\a s_\a\rho_\a\big) + \bnabla\cdot \sum_\a \big[\bq_\a \rho_\a x_i^\a -\varphi s_\a \rho_\a D_\a \bnabla x_i^\a\big]\right\} \eq Q_i.
-\EN
-In this equation $s_\a$ and $x_i^\a$ are expressed as nonlinear functions of the variable $z_i$. In the current version of PFLOTRAN the Jacobian is computed numerically.
-
-Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively. Under conditions of thermodynamic equilibrium these quantities are related by the equilibrium constant $K_i$
-\EQ\label{yi}
-y_i \eq K_i x_i. 
-\EN
-Let $x_c$ represent the supercritical $\c$ mole fraction defined as
-\EQ
-x_c\eq\dfrac{\sum_i n_i^c}{\sum_\a \sum_i n^\a_i}.
-\EN
-Under a phase transformation mass conservation implies the relation
-\EQ
-z_i \eq x_c y_i + (1-x_c) x_i.
-\EN
-Using Eqn.\eqref{yi} it follows that
-\EQ
-z_i \eq x_c K_i x_i + (1-x_c) x_i,
-\EN
-from which
-\begin{subequations}\label{addphase_N2}
-\BA
-x_i \eq \frac{z_i}{1+(K_i-1)x_c}, 
-\EA
-and
-\BA
-y_i \eq \frac{K_i z_i}{1+(K_i-1)x_c}. 
-\EA
-\end{subequations}
-The value of $x_c$ can be found by solving the flash equation (i.e. the Rachford-Rice equation)
-\EQ\label{flash}
-F(x_c)=\sum_i(y_i-x_i)=\sum_i \frac {z_i(K_i-1)}{1+(K_i-1)x_c} =0.
-\EN
-Eqn.(\ref{flash}) indicates that the flash method is not applicable to a multiphase system with phase equilibrium distribution coefficients $K_i$ equal to unity, e.g. the water-steam system. Under such situations Eqn.(\ref{flash}) is trivially satisfied.
-
-Since $F(x_c)$ is a monotonically decreasing function of $x_c$, a meaningful solution $0\leq x_c\leq 1$ can exist only if 
-\begin{subequations}\label{addphase_N3}
-\BA\label{liqbc}
-\sum_i K_i z_i \geq 1,
-\EA
-and
-\BA\label{vapbc}
-\sum_i \frac{z_i}{K_i} \leq 1.
-\EA
-\end{subequations}
-If the equality in Eqn.(\ref{liqbc}) is satisfied the vapor phase is stable, whereas if the equality in Eqn.(\ref{vapbc}) is valid the liquid phase is stable. 
-These conditions were referred to by \cite{michelsen-2-1982} in his discussion on phase change calculations. 
-It was demonstrated that this criteria is consistent with the tangent plane method applied to the minimization of the Gibbs free energy [\cite{michelsen-1-1982}, \cite{nghiem-1985}]. A more detailed discussion can be found in these references. In the PFLOTRAN MPHASE mode in which variable switching is employed, the solution of Eqn.(\ref{flash}) for a single node is used as the initial guess for saturation for a phase transition from single to two phase, although the efficiency of this initial guess is not entirely satisfactory because the node does not represent a closed system.
-
-Eqns.(\ref{addphase_N3}) a, b are used as criteria to determine the existence of a change in phase in the implementation of the flash mode; i.e. if $\sum_i K_i z_i \leq 1$, then only a liquid phase exists; if $\sum_i {z_i}/{K_i} \geq 1$, then only a gas phase exists; otherwise two phases coexist. Once the phase configuration (single aqueous phase, single supercritical phase, and coexisting two-phase system) is determined, the secondary variables are evaluated in the following steps: 
+The density, viscosity, internal energy, and enthalpy of pure H$_2$O are taken from the steam tables [International Formulation Committee of the Sixth International Conference on Properties of Steam, (1967)] and is valid for the pressure and temperature range of $0 < P < 1000$ bars, and $0 < T < 800$\degc. In addition, the saturation curve of H$_2$O, $P_{\rm sat}(T)$ and its inverse relation $T_{\rm sat}(P_v)$, for vapor pressure $P_v$, are also provided.
 
 \noindent
-{\bf Case 1:} single aqueous ($\w$) phase.
-The aqueous concentration is obtained as
-\begin{subequations}\label{fla-sec-c1}
-\BA
-x_i^w = z_i
-\EA
-and phase saturations are given by
-\BA
-s_w = 1, \ s_{\sc} =0 
-\EA
-\end{subequations}
+Critical temperature ($T_c$)	373.946\degc\\
+Critical pressure ($P_c$)	220.640 bar\\
+Critical density ($\rho_c$)	322.000000 kg/m$^3$
+
+\subsubsection{Supercritical CO$_2$}
+
+Material properties of supercritical CO$_2$ are obtained from an equation of state such as Span and Wagner (1996) for density, viscosity, internal energy, enthalpy, fugacity, and fugacity coefficient as functions of temperature and pressure.
 
 \noindent
-{\bf Case 2:} single supercritical $\c$ phase.
-The supercritical $\c$ concentration is obtained as
-\begin{subequations}\label{fla-sec-c2}
-\BA
-x_i^{\sc} = z_i
-\EA
-and phase saturations are given by
-\BA
- s_w = 0, \ s_{\sc} =1 
-\EA
-\end{subequations}
-For both cases 1 and 2, the density of either the aqueous or supercritical $\c$ phase can be obtained from the EOS, since $P$, $T$ and $x_i$ are known.
+Critical temperature: ($T_c$) 30.9782\degc\\
+Critical pressure: ($P_c$)	73.773 bar\\
+Critical density: ($\rho_c$)	467.600 kg/m$^3$
 
-\noindent
-{\bf Case 3:} two phases coexist.
-As stated previously, the coefficients $K_i$ are not functions of the $\c$ concentration. Their values at given $P$ and $T$ given explicitly by
-\begin{subequations}
-\BA
-K_{\w} =\frac{P_{\w}^{\rm sat}(T)}{P}.
-\EA
-and
-\BA\label{k_value_c}
-K_{\c} =\frac{H_{\c}\gamma_{\c}}{P\phi_{\c}},
-\EA
-\end{subequations}
-From these relations the phase composition can be obtained by solving a linear set of equation for the four unknown secondary variables $x_i^\alpha$, ($i$=H$_2$O, CO$_2$) and $\alpha=w$, $\sc$. One has
-\begin{subequations}\label{k_value_w}
-\BA
-x_i^{\sc} = K_i x_i^w,  \ (i = \w, \ \c),
-\EA
-subject to the constraints
-\BA
-{\displaystyle\sum_i} x_i^\alpha=1, \ (\alpha=w, \ {\sc}).
-\EA
-\end{subequations}
-From these results the phase densities $\rho_\alpha, \alpha=w$, $\sc$ can be calculated from $P$, $T$ and $x_i^\alpha$. Once the phase densities are obtained, the saturations $s_\alpha, \alpha=w$, $\sc$ can be obtained by solving the linear mass conservation equation
-\EQ
-\rho_w s_w x_{\c}^w + 
-\rho_{\sc} s_{\sc} x_{\c}^{\sc} = (\rho_w s_w+\rho_{\sc} s_{\sc}) z_{\c},
-\EN 
-with $s_w=1-s_{\sc}$ to give
-\EQ
-s_{\sc} \eq \frac{\rho_{w} (z_{\c} - x_{\c}^w)}
-{\rho_w (z_{\c} - x_{\c}^w) + \rho_{\sc} (x_{\c}^{\sc} - z_{\c})}.
-\EN
+\subsubsection{Mixture Properties}
 
-\subsection{Two-Component System}
+\subsection{Capillary Pressure}
 
-\begin{comment}
-One important assumption in the implementation in PFLOTRAN is that the activity coefficients in the aqueous phase and the fugacity coefficient in the supercritical phase are not functions of the $\c$ concentration. 
-%I.e. non-ideality is weak in the aqueous and gas mixtures. 
-This assumption is consistent with the solubility equations for $\c$ [\cite {garcia01}, \cite{duan2003}, \cite{duan2008}] adapted in PLOTRAN. With this assumption, the phase distribution parameters $K_i(P,\,T)$ are not functions of the mole fractions $z_i, x_i$ and $y_i$, which greatly simplifies the flash calculation. 
-\end{comment}
-
-Currently the FLASH2 mode in PFLOTRAN can only handle systems with two components and two phases, enabling the flash calculation to be carried out in a simplified manner. 
-For a two-component system the FLASH equations may be solved analytically. In this case
-\begin{subequations}
-\EQ
-x_1+x_2\eq 1,
-\EN
-and
-\EQ
-K_1 x_1 + K_2 x_2 \eq 1,
-\EN
-\end{subequations}
-giving
-\begin{subequations}
-\EQ
-x_1 = \frac{1-K_2}{K_1-K_2}, \ \ \ x_2=1-x_1 \eq \frac{K_1-1}{K_1-K_2},
-\EN
-and
-\EQ
-y_1 = \frac{K_1(1-K_2)}{K_1-K_2}, \ \ \ y_2 \eq \frac{K_2(K_1-1)}{K_1-K_2}.
-\EN
-\end{subequations}
-It then follows that
-\begin{subequations}
-\BA
-x_c &\eq \frac{z_i - x_i}{(K_i-1)x_i}, \ (i=1,\,2),\\
-&\eq \frac{z_1(K_1-K_2)-(1-K_2)}{(K_1-1)(1-K_2)},\\
-&\eq \frac{z_2(K_1-K_2)-(K_1-1)}{(K_1-1)(1-K_2)}.
-\EA
-\end{subequations}
-
-Both $K_1$ and $K_2$ are functions of $P$ and $T$. The quantity $K_2$, however, is also a function of $x_\c$. For the phase transformation for component $\w$ it is assumed that
-\EQ
-K_1 \eq \frac{P_{\rm sat}}{P}.
-\EN
-The phase transformation for the $\c$ component is obtained from the mass action relation
-\EQ
-K_\c^{\rm eq} \eq \frac{\phi_\c y_\c P}{\gamma_\c m_\c}.
-\EN
-Solving for $m_\c$ gives
-\EQ
-m_\c \eq \frac{\phi_\c y_\c P}{K_\c^{\rm eq}\gamma_\c}.
-\EN
-Substituting the relation
-\EQ
-m_\c \eq \frac{x_\c}{W_\w(1-x_\c)},
-\EN
-gives
-\EQ
-y_\c \eq K_2 x_\c,
-\EN
-with
-\EQ
-K_2 \eq \frac{K_\c^{\rm eq}\gamma_\c}{W_\w(1-x_\c)\phi_\c P}.
-\EN
-Thus $K_2$ is a function of $x_\c$ yielding a quadratic equation for $x_\c$. %Note that $\gamma_\c\rightarrow 1$ as $x_\c\rightarrow 0$.
-
-%\EQ
-%F(y)=\sum_{i}^{n_c} y_i (\mu _i(y)-\mu _0) >= 0
-%\EN
-%The applications of this method are closely related with the formulation of Gibbs free energy. In PFLOTRAN, we do not explicitly  evaluate the Gibbs free energy, and the extended Henry coefficient was adopted to calculate the phase composition directly. Concerned these features, this condition should be proposed as: for a initially single phase system at given temperature and pressure $(T_0, P_0)$, a $n_c$ -component mixture with mole fraction $(x_1, x_2, ... ,x_{n_c})$, whether the Gibbs  free energy will reduce , resulting in 2 phase system by forming a new infinitesimal new phase with composition  $(K_1x_1, K_2x_2, ... ,K_{n_c}x_{n_c})$. 
-%With the tangent plane method, if the phase transition is not feasible, namely the single phase is stable, then the tangent plane to the Gibbs free energy surface at $\bold X$ should lie below the surface. If the evaluation of chemical potential in both phases employ the same standard condition, then 
-%\EQ
-%F(y)=RT \sum_{i}^{n_c} y_i ln \frac {f_i(y,p,T)}{f_i(x,p,T)} \ge  0 
-%\EN 
-%for all y, where by definition 
-%\EQ
-%y_i=Y_i/\sum_{i}^{n_c} Y_i 
-%\EN
-%and
-%\EQ
-%Y_i=K_i x_i
-%\EN  
-% Where $K_i$ is the phase equilibrium coefficient, namely the $K$ value. From Nghiem's results,  at the stationary condition, 
- %\EQ
- %F(y)=-ln(\sum_{i}^{n_c} Y)
- %\EN
- 
- %then the phase stability condition turns into the form
- %\EQ
- %\sum_{i}^{n_c} Y_i \le 1
- %\EN
- %And when $F=0$,  which stands for a thermal equilibrium point, $Y=y$, both stationary condition and extend Henry's law are satisfied.
-
-%\begin{comment}
-\subsection{Flash Method for Multiphase-Multicomponent Systems}
-
-A multiphase system is described by the mole numbers $n_i^\a$. Input to the flash calculation is the total mole fraction of each species $z_i$ defined by
-\EQ
-z_i \eq \frac{n_i}{n} \eq \frac{\sum_\a n_i^\a}{\sum_{i'\a'} n_{i'}^{\a'}},
-\EN
-where $n_i$ is defined by
-\EQ
-n_i \eq \sum_\a n_i^\a,
-\EN
-and the total number of moles in the system $n$ is obtained from
-\EQ
-n \eq \sum_i n_i.
-\EN
-There are $N_C\!-\!1$ independent values $z_i$ because of the constraint
-\EQ
-\sum_i z_i \eq 1.
-\EN
-The result of the flash calculation is to provide the composition of each phase through the mole fractions $x_i^\a$ given by
-\EQ
-x_i^\a \eq \frac{n_i^\a}{n_\a}, \ \ \ \sum_i x_i^\a \eq 1,
-\EN
-and the mole fraction of each phase present in the system $x_\a$ defined by
-\EQ
-x_\a \eq \frac{n_\a}{n}, \ \ \ \sum_\a x_\a \eq 1,
-\EN
-where
-\EQ
-n_\a \eq \sum_i n_i^\a.
-\EN
-The total number of unknowns is thus equal to $(N_C\!-\!1)N_P \!+\! N_P\!-\!1 \!=\! N_C N_P \!-\!1$.
-
-To determine the number of equations, first the dual variables $\lambda_\a^i$ are introduced defined by
-\EQ
-\lambda_\a^i \eq \frac{n_i^\a}{n_i}, \ \ \ \sum_\a \lambda_\a^i \eq 1.
-\EN
-The identity is obtained
-\EQ\label{identity}
-x_\a x_i^\a \eq z_i \lambda_\a^i.
-\EN
-Summing this equation over all phases $\a$ yields the mass balance equations
-\EQ
-z_i \eq \sum_\a x_\a x_i^\a,
-\EN
-of which there are $N_C\!-\!1$ independent equations.
-Combining this equation with the conditions for equilibrium in a multiphase system described by the equality of the chemical potentials for each component between each phase
-\EQ\label{chempot}
-\mu_i^\b \eq \mu_i^\a,
-\EN
-provides an additional set of $N_C(N_P\!-\!1)$ equations. Thus there are a total of $N_C(N_P\!-\!1) \!+\! N_C\!-\!1= N_C N_P\!-\!1$ equations in all.
-
-In terms of the dual variables $\lambda_\a^i$ it follows that
-\EQ
-x_\a \eq \sum_i z_i \lambda_\a^i,
-\EN
-and
-\EQ
-x_i^\a \eq \frac{z_i \lambda_\a^i}{\sum_{i'} z_{i'} \lambda_\a^{i'}}.
-\EN
-Thus the set of variables $\{x_\a,\, x_i^\a\}$ is equivalent to the set $\{z_i,\,\lambda_\a^i\}$. Expressing the equilibrium constraints Eqn.\eqref{chempot} in terms of the latter set then provides a generally nonlinear system of $N_C (N_P\!-\!1)$ equations in an equal number of unknowns.
-
-The mole fraction of phase $\a$ is equal to 
-\BA
-x_\a &\eq \frac{n_\a}{n} \eq \frac{(n_\a/V_\a) (V_\a/V_p)}{\sum_\b (n_\b/ V_\b) (V_\b/V_p)},\nonumber\\
-&\eq \frac{s_\a \rho_\a}{\sum_\b s_\b\rho_\b}.
-\EA
-
-\bibliographystyle{plainnat}
-\bibliography{./reference-new}
-
-\section*{Appendix: Supercritical CO$_2$--H$_2$O Equilibrium Relations}
+\subsection{Supercritical CO$_2$--H$_2$O Equilibrium Relations}
 
 This section follows Duan \& Sun (2003).
 For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). Equilibrium of supercritical CO$_2$ with an aqueous solution described by the reaction
@@ -728,5 +396,443 @@ C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c^{
 &\eq \rho_\c \frac{f_\c}{\phi_\c P_g},\\
 &\eq \rho_\c K_\c^{\rm eq} \frac{a_\c}{\phi_\c P_g}.
 \EA
+
+\section{Numerical Implementation}
+
+\subsection{Finite Volume Discretization}
+
+Using a finite volume discretization approach, the governing flow and transport equations are discretized according to
+\BA
+R_{in}^{k+1} \eq &\sum_\a \left\{\frac{\big(\varphi s_\a \rho_\a X_i^\a\big)_n^{k+1}-(\varphi s_\a \rho_\a X_i^\a)_n^k}{\Delta t} V_n \right. \nonumber\\
+&\left. + \sum_{n'} \left[q_{\a,nn'}^{k+1} \rho_{\a,nn'}^{k+1} X_{inn'}^{\a,k+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{k+1} \frac{X_{i n'}^{\a, k+1}-X_{i n}^{\a,k+1}}{d_{n'}+d_n}\right] A_{nn'}\right\} \nonumber\\
+&- Q_i^{k+1} V_n,
+\EA
+providing the residual function $R_{in}$ for the $i$th component at the $n$th control volume and $k+1$st time step, where the sum over $n'$ is over all control volumes which connect to the $n$th control volume, $d_n$, $d_{n'}$ refers to the distance for the control volume center to the interface, and $A_{nn'}$ denotes the interfacial area.
+
+\subsection{Independent Variables}
+
+A common approach, referred to as variable switching is to select the independent variables at each control volume or grid cell dependent on the phases present. Several possibilities are listed in Table~\ref{tindepvar}. There exist $2^2\!-\!1=3$ possible phases in the system corresponding to liquid, gas and liquid-gas. In general for a system made up of $N_p$ individual phases, there are $2^{N_p}\!-\!1$ possible phase combinations.
+
+An alternative approach is to use the so-called Flash method in which a persistent set of independent variables exit. This approach may be advantageous for use with multilevel solvers to avoid changing the independent variables on different levels within a patch.
+
+In either case it is necessary to determine the stable phases present in a control volume based on conditions of thermodynamic equilibrium.
+
+\tabcolsep 6pt
+\begin{table}[H]\centering
+\caption{Independent variables in a two-phase system.}\label{tindepvar}
+\vspace{3mm}
+\begin{tabular}{lccc}
+\toprule
+Phase & \multicolumn{3}{c}{Variables}\\
+\midrule
+liquid & $P_l$ & $T$ & $X_i^l$\\
+gas & $P_g$ & $T$ & $X_i^g$\\
+two-phase & $P_g$ & $T$ & $s_g$\\
+& $P_g$ & $P_l$ & $s_g$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Various constitutive relations hold depending on the phases present.
+
+\subsubsection{Liquid Phase: Independent Variables $\{P_l,\,T,\,X_\c^l\}$}
+
+For a pure liquid phase $s_l=1$. The molality of dissolved $\c$ is found from the relation
+\EQ
+m_\c^{l} \eq \frac{X_\c^l W_\w^{-1}}{1- X_\c^l - \displaystyle\sum_{i\ne \w,\c} \!\!\!\!\!\!X_i^l}.
+\EN
+with the inverse relation
+\EQ
+X_\c^l \eq \frac{m_\c  W_\w}{1 +  W_\w\big(m_\c + \displaystyle\sum_{i\ne \w,\c}\!\!\! \!\!\! m_i\big)}.
+\EN
+
+\subsubsection{Gas Phase: Independent Variables $\{P_g,\,T,\,X_\c^g\}$}
+
+For a pure gas phase $s_g=1$.
+
+\subsubsection{Two-Phase: Independent Variables $\{P_g,\,T,\,s_g\}$}
+
+In a two-phase system
+$X_\c^g$, is assumed to be given by
+\EQ
+X_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
+\EN
+with total gas pressure $P_g$ equal to
+\EQ
+P_g \eq P_\c^g + P_\w^{\rm sat}(T),
+\EN
+and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. One also has
+\EQ
+X_\c^l = 1-X_\c^g. 
+\EN
+The molality of dissolved $\c$ is found from the relation
+\EQ
+m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{}} P_g^{}.
+\EN
+
+\subsection{Conditions for Change in Phase}
+
+Possible changes in phase that may occur in the system are listed in Table~\ref{tphasechng}. In Table~\ref{tphasechng}, $\mu_i^\a$ refers to the chemical potential of the $i$th species in phase $\a$.
+
+\begin{table}[H]\centering
+\caption{Independent variables in a two-phase system.}\label{tphasechng}
+\vspace{3mm}
+\begin{tabular}{rclcrcl}
+\toprule
+\multicolumn{3}{c}{Phase Transformation} & Condition & \multicolumn{3}{c}{Variable Switching}\\
+\midrule
+liquid &$\rightarrow$& two-phase & $\mu_\c^l > \mu_\c^g$ & $\{P_l, \, T, X_\c^l\}$ &$\rightarrow$& $\{P_g, \, T, s_g\}$\\
+gas &$\rightarrow$& two-phase & $\mu_\c^l < \mu_\c^g$ & $\{P_g, \, T, X_\c^g\}$ &$\rightarrow$& $\{P_g, \, T, s_g\}$\\
+two-phase &$\rightarrow$& liquid & $s_g < 0$ & $\{P_g, \, T, s_g\}$ &$\rightarrow$& $\{P_g, \, T, X_\c^l\}$\\
+two-phase &$\rightarrow$& gas & $s_g > 0$ & $\{P_g, \, T, s_g\}$ &$\rightarrow$& $\{P_g, \, T, X_\c^g\}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Flash Method}
+
+An alternative approach to variable switching is the flash method.
+Although the variable switching method is often considered stable and efficient, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step. Finally, the variable switching approach is not appropriate for use with multilevel solvers because of the possibility for the need to solve for different independent variables on different levels.
+
+\subsubsection{Two-Phase System}
+
+An alternative to variable switching is to keep the primary variables preserved using the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
+\BA
+z_i &\eq\dfrac{\sum_\a n_i^\a}{\sum_\a n_\a},\\
+&\eq \frac{\sum_\a s_\a \rho_\a x_i^\a}{\sum_{\a} s_\a \rho_\a},
+\EA
+where the latter form is obtained using the expansions
+\BA
+\frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi s_\a \rho_\a x_i^\a,
+\EA
+where $V_p$ denotes the pore volume, and
+\BA
+\frac{n_\a}{V} &\eq \frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi s_\a \rho_\a.
+\EA
+Explicitly for a two-phase ($\a=l$, $\sc$) system where $w$ designates the phase $\w$ and $\sc$ designates supercritical $\c$, $z_i$ can be expressed as
+\EQ
+z_i \eq \frac{\rho_l s_l x_i^l + \rho_{\sc} s_{\sc} x_i^{\sc}}{\rho_l s_l + \rho_{\sc} s_{\sc}},
+\EN
+for molar fluid densities $\rho_l$, $\rho_{\sc}$ and saturation $s_l$, $s_{\sc} = 1\!-\!s_l$.
+The variable $z_i$ is a persistent degree of freedom throughout the simulation.
+
+Introducing $z_i$ into the mass conservation equations gives
+\EQ
+\left\{\frac{\p}{\p t} \big(\varphi z_i \sum_\a s_\a\rho_\a\big) + \bnabla\cdot \sum_\a \big[\bq_\a \rho_\a x_i^\a -\varphi s_\a \rho_\a D_\a \bnabla x_i^\a\big]\right\} \eq Q_i.
+\EN
+In this equation $s_\a$ and $x_i^\a$ are expressed as nonlinear functions of the variable $z_i$. In the current version of PFLOTRAN the Jacobian is computed numerically.
+
+Let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively. Under conditions of thermodynamic equilibrium these quantities are related by the equilibrium constant $K_i$
+\EQ\label{yi}
+y_i \eq K_i x_i. 
+\EN
+Let $x_g$ represent the supercritical $\c$ mole fraction defined as
+\EQ
+x_g\eq\dfrac{\sum_i n_i^g}{\sum_\a n_\a},
+\EN
+with $n_\a = \sum_i n_i^\a$. Under a phase transformation mass conservation implies the relation
+\EQ
+z_i \eq x_g y_i + (1-x_g) x_i.
+\EN
+Using Eqn.\eqref{yi} it follows that
+\EQ
+z_i \eq x_g K_i x_i + (1-x_g) x_i,
+\EN
+from which
+\begin{subequations}\label{addphase_N2}
+\BA
+x_i \eq \frac{z_i}{1+(K_i-1)x_g}, 
+\EA
+and
+\BA
+y_i \eq \frac{K_i z_i}{1+(K_i-1)x_g}. 
+\EA
+\end{subequations}
+The value of $x_g$ can be found by solving the flash equation (i.e. the Rachford-Rice equation)
+\EQ\label{flash}
+F(x_g)=\sum_i(y_i-x_i)=\sum_i \frac {z_i(K_i-1)}{1+(K_i-1)x_g} =0.
+\EN
+Eqn.(\ref{flash}) indicates that the flash method is not applicable to a multiphase system with phase equilibrium distribution coefficients $K_i$ equal to unity, e.g. the water-steam system. Under such situations Eqn.(\ref{flash}) is trivially satisfied.
+
+Since $F(x_g)$ is a monotonically decreasing function of $x_g$, a meaningful solution $0\leq x_g\leq 1$ can exist only if 
+\begin{subequations}\label{addphase_N3}
+\BA\label{liqbc}
+\sum_i K_i z_i \geq 1,
+\EA
+and
+\BA\label{vapbc}
+\sum_i \frac{z_i}{K_i} \leq 1.
+\EA
+\end{subequations}
+If the equality in Eqn.(\ref{liqbc}) is satisfied the vapor phase is stable, whereas if the equality in Eqn.(\ref{vapbc}) is valid the liquid phase is stable. 
+These conditions were referred to by \cite{michelsen-2-1982} in his discussion on phase change calculations. 
+It was demonstrated that this criteria is consistent with the tangent plane method applied to the minimization of the Gibbs free energy [\cite{michelsen-1-1982}, \cite{nghiem-1985}]. A more detailed discussion can be found in these references. In the PFLOTRAN MPHASE mode in which variable switching is employed, the solution of Eqn.(\ref{flash}) for a single node is used as the initial guess for saturation for a phase transition from single to two phase, although the efficiency of this initial guess is not entirely satisfactory because the node does not represent a closed system.
+
+Eqns.(\ref{addphase_N3}) a, b are used as criteria to determine the existence of a change in phase in the implementation of the flash mode; i.e. if $\sum_i K_i z_i \leq 1$, then only a liquid phase exists; if $\sum_i {z_i}/{K_i} \geq 1$, then only a gas phase exists; otherwise two phases coexist. Once the phase configuration (single aqueous phase, single supercritical phase, and coexisting two-phase system) is determined, the secondary variables are evaluated in the following steps: 
+
+\noindent
+{\bf Case 1:} single aqueous ($\w$) phase.
+The aqueous concentration is obtained as
+\begin{subequations}\label{fla-sec-c1}
+\BA
+x_i^l = z_i
+\EA
+and phase saturations are given by
+\BA
+s_l = 1, \ s_{\sc} =0 
+\EA
+\end{subequations}
+
+\noindent
+{\bf Case 2:} single supercritical $\c$ phase.
+The supercritical $\c$ concentration is obtained as
+\begin{subequations}\label{fla-sec-c2}
+\BA
+x_i^{\sc} = z_i
+\EA
+and phase saturations are given by
+\BA
+ s_l = 0, \ s_{\sc} =1 
+\EA
+\end{subequations}
+For both cases 1 and 2, the density of either the aqueous or supercritical $\c$ phase can be obtained from the EOS, since $P$, $T$ and $x_i$ are known.
+
+\noindent
+{\bf Case 3:} two phases coexist.
+As stated previously, the coefficients $K_i$ are not functions of the $\c$ concentration. Their values at given $P$ and $T$ given explicitly by
+\begin{subequations}
+\BA
+K_{\w} =\frac{P_{\w}^{\rm sat}(T)}{P}.
+\EA
+and
+\BA\label{k_value_c}
+K_{\c} =\frac{H_{\c}\gamma_{\c}}{P\phi_{\c}},
+\EA
+\end{subequations}
+From these relations the phase composition can be obtained by solving a linear set of equation for the four unknown secondary variables $x_i^\alpha$, ($i$=H$_2$O, CO$_2$) and $\alpha=w$, $\sc$. One has
+\begin{subequations}\label{k_value_w}
+\BA
+x_i^{\sc} = K_i x_i^w,  \ (i = \w, \ \c),
+\EA
+subject to the constraints
+\BA
+{\displaystyle\sum_i} x_i^\alpha=1, \ (\alpha=w, \ {\sc}).
+\EA
+\end{subequations}
+From these results the phase densities $\rho_\alpha, \alpha=w$, $\sc$ can be calculated from $P$, $T$ and $x_i^\alpha$. Once the phase densities are obtained, the saturations $s_\alpha, \alpha=w$, $\sc$ can be obtained by solving the linear mass conservation equation
+\EQ
+\rho_w s_w x_{\c}^w + 
+\rho_{\sc} s_{\sc} x_{\c}^{\sc} = (\rho_w s_w+\rho_{\sc} s_{\sc}) z_{\c},
+\EN 
+with $s_w=1-s_{\sc}$ to give
+\EQ
+s_{\sc} \eq \frac{\rho_{w} (z_{\c} - x_{\c}^w)}
+{\rho_w (z_{\c} - x_{\c}^w) + \rho_{\sc} (x_{\c}^{\sc} - z_{\c})}.
+\EN
+
+\subsubsection{Two-Component System}
+
+\begin{comment}
+One important assumption in the implementation in PFLOTRAN is that the activity coefficients in the aqueous phase and the fugacity coefficient in the supercritical phase are not functions of the $\c$ concentration. 
+%I.e. non-ideality is weak in the aqueous and gas mixtures. 
+This assumption is consistent with the solubility equations for $\c$ [\cite {garcia01}, \cite{duan2003}, \cite{duan2008}] adapted in PLOTRAN. With this assumption, the phase distribution parameters $K_i(P,\,T)$ are not functions of the mole fractions $z_i, x_i$ and $y_i$, which greatly simplifies the flash calculation. 
+\end{comment}
+
+Currently the FLASH2 mode in PFLOTRAN can only handle systems with two components and two phases, enabling the flash calculation to be carried out in a simplified manner. 
+For a two-component system the FLASH equations may be solved analytically. In this case
+\begin{subequations}
+\EQ
+x_1+x_2\eq 1,
+\EN
+and
+\EQ
+K_1 x_1 + K_2 x_2 \eq 1,
+\EN
+\end{subequations}
+giving
+\begin{subequations}
+\EQ
+x_1 = \frac{1-K_2}{K_1-K_2}, \ \ \ x_2=1-x_1 \eq \frac{K_1-1}{K_1-K_2},
+\EN
+and
+\EQ
+y_1 = \frac{K_1(1-K_2)}{K_1-K_2}, \ \ \ y_2 \eq \frac{K_2(K_1-1)}{K_1-K_2}.
+\EN
+\end{subequations}
+It then follows that
+\begin{subequations}
+\BA
+x_c &\eq \frac{z_i - x_i}{(K_i-1)x_i}, \ (i=1,\,2),\\
+&\eq \frac{z_1(K_1-K_2)-(1-K_2)}{(K_1-1)(1-K_2)},\\
+&\eq \frac{z_2(K_1-K_2)-(K_1-1)}{(K_1-1)(1-K_2)}.
+\EA
+\end{subequations}
+
+Both $K_1$ and $K_2$ are functions of $P$ and $T$. The quantity $K_2$, however, is also a function of $x_\c$. For the phase transformation for component $\w$ it is assumed that
+\EQ
+K_1 \eq \frac{P_{\rm sat}}{P}.
+\EN
+The phase transformation for the $\c$ component is obtained from the mass action relation
+\EQ
+K_\c^{\rm eq} \eq \frac{\phi_\c y_\c P}{\gamma_\c m_\c}.
+\EN
+Solving for $m_\c$ gives
+\EQ
+m_\c \eq \frac{\phi_\c y_\c P}{K_\c^{\rm eq}\gamma_\c}.
+\EN
+Substituting the relation
+\EQ
+m_\c \eq \frac{x_\c}{W_\w(1-x_\c)},
+\EN
+gives
+\EQ
+y_\c \eq K_2 x_\c,
+\EN
+with
+\EQ
+K_2 \eq \frac{K_\c^{\rm eq}\gamma_\c}{W_\w(1-x_\c)\phi_\c P}.
+\EN
+Thus $K_2$ is a function of $x_\c$ yielding a quadratic equation for $x_\c$. %Note that $\gamma_\c\rightarrow 1$ as $x_\c\rightarrow 0$.
+
+%\EQ
+%F(y)=\sum_{i}^{n_c} y_i (\mu _i(y)-\mu _0) >= 0
+%\EN
+%The applications of this method are closely related with the formulation of Gibbs free energy. In PFLOTRAN, we do not explicitly  evaluate the Gibbs free energy, and the extended Henry coefficient was adopted to calculate the phase composition directly. Concerned these features, this condition should be proposed as: for a initially single phase system at given temperature and pressure $(T_0, P_0)$, a $n_c$ -component mixture with mole fraction $(x_1, x_2, ... ,x_{n_c})$, whether the Gibbs  free energy will reduce , resulting in 2 phase system by forming a new infinitesimal new phase with composition  $(K_1x_1, K_2x_2, ... ,K_{n_c}x_{n_c})$. 
+%With the tangent plane method, if the phase transition is not feasible, namely the single phase is stable, then the tangent plane to the Gibbs free energy surface at $\bold X$ should lie below the surface. If the evaluation of chemical potential in both phases employ the same standard condition, then 
+%\EQ
+%F(y)=RT \sum_{i}^{n_c} y_i ln \frac {f_i(y,p,T)}{f_i(x,p,T)} \ge  0 
+%\EN 
+%for all y, where by definition 
+%\EQ
+%y_i=Y_i/\sum_{i}^{n_c} Y_i 
+%\EN
+%and
+%\EQ
+%Y_i=K_i x_i
+%\EN  
+% Where $K_i$ is the phase equilibrium coefficient, namely the $K$ value. From Nghiem's results,  at the stationary condition, 
+ %\EQ
+ %F(y)=-ln(\sum_{i}^{n_c} Y)
+ %\EN
+ 
+ %then the phase stability condition turns into the form
+ %\EQ
+ %\sum_{i}^{n_c} Y_i \le 1
+ %\EN
+ %And when $F=0$,  which stands for a thermal equilibrium point, $Y=y$, both stationary condition and extend Henry's law are satisfied.
+
+%\begin{comment}
+\subsubsection{Flash Method for Multiphase-Multicomponent Systems}
+
+A multiphase system is described by the mole numbers $n_i^\a$. Input to the flash calculation is the total mole fraction of each species $z_i$ defined by
+\EQ
+z_i \eq \frac{n_i}{n} \eq \frac{\sum_\a n_i^\a}{\sum_{i'\a'} n_{i'}^{\a'}},
+\EN
+where $n_i$ is defined by
+\EQ
+n_i \eq \sum_\a n_i^\a,
+\EN
+and the total number of moles in the system $n$ is obtained from
+\EQ
+n \eq \sum_i n_i.
+\EN
+There are $N_C\!-\!1$ independent values $z_i$ because of the constraint
+\EQ
+\sum_i z_i \eq 1.
+\EN
+The result of the flash calculation is to provide the composition of each phase through the mole fractions $x_i^\a$ given by
+\EQ
+x_i^\a \eq \frac{n_i^\a}{n_\a}, \ \ \ \sum_i x_i^\a \eq 1,
+\EN
+and the mole fraction of each phase present in the system $x_\a$ defined by
+\EQ
+x_\a \eq \frac{n_\a}{n}, \ \ \ \sum_\a x_\a \eq 1,
+\EN
+where
+\EQ
+n_\a \eq \sum_i n_i^\a.
+\EN
+The total number of unknowns is thus equal to $(N_C\!-\!1)N_P \!+\! N_P\!-\!1 \!=\! N_C N_P \!-\!1$.
+
+To determine the number of equations, first the dual variables $\lambda_\a^i$ are introduced defined by
+\EQ
+\lambda_\a^i \eq \frac{n_i^\a}{n_i}, \ \ \ \sum_\a \lambda_\a^i \eq 1.
+\EN
+The identity is obtained
+\EQ\label{identity}
+x_\a x_i^\a \eq z_i \lambda_\a^i.
+\EN
+Summing this equation over all phases $\a$ yields the mass balance equations
+\EQ
+z_i \eq \sum_\a x_\a x_i^\a,
+\EN
+of which there are $N_C\!-\!1$ independent equations.
+Combining this equation with the conditions for equilibrium in a multiphase system described by the equality of the chemical potentials for each component between each phase
+\EQ\label{chempot}
+\mu_i^\b \eq \mu_i^\a,
+\EN
+provides an additional set of $N_C(N_P\!-\!1)$ equations. Thus there are a total of $N_C(N_P\!-\!1) \!+\! N_C\!-\!1= N_C N_P\!-\!1$ equations in all.
+
+In terms of the dual variables $\lambda_\a^i$ it follows that
+\EQ
+x_\a \eq \sum_i z_i \lambda_\a^i,
+\EN
+and
+\EQ
+x_i^\a \eq \frac{z_i \lambda_\a^i}{\sum_{i'} z_{i'} \lambda_\a^{i'}}.
+\EN
+Thus the set of variables $\{x_\a,\, x_i^\a\}$ is equivalent to the set $\{z_i,\,\lambda_\a^i\}$. Expressing the equilibrium constraints Eqn.\eqref{chempot} in terms of the latter set then provides a generally nonlinear system of $N_C (N_P\!-\!1)$ equations in an equal number of unknowns.
+
+The mole fraction of phase $\a$ is equal to 
+\BA
+x_\a &\eq \frac{n_\a}{n} \eq \frac{(n_\a/V_\a) (V_\a/V_p)}{\sum_\b (n_\b/ V_\b) (V_\b/V_p)},\nonumber\\
+&\eq \frac{s_\a \rho_\a}{\sum_\b s_\b\rho_\b}.
+\EA
+
+\section{Example Problem}
+
+An example problem using PFLOTRAN is presented to provide a benchmark problem for comparison with SAMRAI. In this problem supercritical CO$_2$ is injected at a rate of 1 kg/s for 10 years at the center of a domain of size 500 m $\!\times\!$ 500 m $\!\times\!$ 100 m in a grid cell measuring 10 m $\!\times\!$ 10 m $\!\times\!$ 2 m. A coarse grid is used with size 25 $\times$ 25 $\times$ 50. The ambient temperature is taken as 50\degc\ with a pressure of 200 bars.
+
+Results are shown in Figures~\ref{f10y} and \ref{f250y} for times of 10 and 250 years, respectively, for saturation (left) and dissolved CO$_2$ (right). Fingering of dissolved CO$_2$ occurs in the H$_2$O phase as evident in Figure~\ref{f250y}.
+
+Shown in Figure~\ref{fmass} is the total moles of CO$_2$ in the H$_2$O (blue curve) and supercritical CO$_2$ (red curve) phases. The peak in CO$_2$ in the supercritical CO$_2$ phase occurs at 10 years when injection is halted. With increasing time the CO$_2$ in the H$_2O$ increases with time and the supercritical CO$_2$ phase dissipates.
+
+\begin{figure}[h]
+\includegraphics[scale=0.25]{./figs/sg-10y.png}
+\includegraphics[scale=0.25]{./figs/xlco2-10y.png}
+\caption{Saturation of supercritical CO$_2$ (left) and mole fraction of dissolved CO$_2$ (right) at an elapsed time of 10 years.}\label{f10y}
+\end{figure}
+
+\begin{figure}
+\includegraphics[scale=0.25]{./figs/sg-250y.png}
+\includegraphics[scale=0.25]{./figs/xlco2-250y.png}
+\caption{Saturation of supercritical CO$_2$ (left) and mole fraction of dissolved CO$_2$ (right) at an elapsed time of 250 years.}\label{f250y}
+\end{figure}
+
+\begin{figure}\centering
+\includegraphics[scale=0.45]{./figs/mass}
+\caption{Moles of CO$_2$ as a function of time in H$_2$ and supercritical CO$_2$ phases.}\label{fmass}
+\end{figure}
+
+\newpage
+\section{References}
+
+Span, R., Wagner, W. (1996) A New Equation of State for Carbon Dioxide Covering the Fluid Region from the Triple-Point Temperature to 1100 K at Pressures up to 800 MPa, J. Phys. Chem. Ref. Data, 25, 6, 1509--1596.
+
+Revised Release on the IAPS Formulation 1985 for the Thermal Conductivity of Ordinary Water Substance, International Association for the Properties of Water and Steam, London, 1998, 23. 
+
+Thermal conductivity and viscosity
+
+Kestin, J.; Sengers, J.V.; Kamgar-Parsi, B.; Levelt Sengers, J.M.H., Thermophysical Properties of Fluid H2O, J. Phys. Chem. Ref. Data, 1984, 13, 1, 175-183.
+
+Viscosity
+
+IAPWS, Revised Release on the IAPS Formulation 1985 for the Viscosity of Ordinary Water Substance, International Association for the Properties of Water and Steam, Erlangen, Germany, 1997, 15.
+
+\bibliographystyle{plainnat}
+\bibliography{./reference-new}
+
 
 \end{document}

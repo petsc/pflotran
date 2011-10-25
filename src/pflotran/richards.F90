@@ -1707,7 +1707,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
-                                  area, norm, dist_gravity,upweight, &
+                                  area, dist, dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
   use Saturation_Function_module                        
@@ -1721,7 +1721,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy, area, norm(3)
+  PetscReal :: v_darcy, area, dist(3)
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
@@ -1789,13 +1789,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 
     if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY
-      if (dabs(norm(1))==1) then
+      if (dabs(dist(1))==1) then
         ukvr = rich_aux_var_up%kvr_x
         dukvr_dp_up = rich_aux_var_up%dkvr_x_dp
-      else if (dabs(norm(2))==1) then
+      else if (dabs(dist(2))==1) then
         ukvr = rich_aux_var_up%kvr_y
         dukvr_dp_up = rich_aux_var_up%dkvr_y_dp
-      else if (dabs(norm(3))==1) then
+      else if (dabs(dist(3))==1) then
         ukvr = rich_aux_var_up%kvr_z
         dukvr_dp_up = rich_aux_var_up%dkvr_z_dp
       end if
@@ -1805,13 +1805,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
 #endif
     else
 #ifdef USE_ANISOTROPIC_MOBILITY    
-      if (dabs(norm(1))==1) then
+      if (dabs(dist(1))==1) then
         ukvr = rich_aux_var_dn%kvr_x
         dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
-      else if (dabs(norm(2))==1) then
+      else if (dabs(dist(2))==1) then
         ukvr = rich_aux_var_dn%kvr_y
         dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
-      else if (dabs(norm(3))==1) then
+      else if (dabs(dist(3))==1) then
         ukvr = rich_aux_var_dn%kvr_z
         dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
       end if
@@ -1847,7 +1847,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     x_dn(1) = global_aux_var_dn%pres(1)
     call RichardsFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
-                      area, norm, dist_gravity,upweight, &
+                      area, dist, dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
     pert_up = x_up(ideriv)*perturbation_tolerance
@@ -1866,13 +1866,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
-                      area, norm, dist_gravity,upweight, &
+                      area, dist, dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
     call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_pert_dn,global_aux_var_pert_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
-                      area, norm, dist_gravity,upweight, &
+                      area, dist, dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
     J_pert_up(1,ideriv) = (res_pert_up(1)-res(1))/pert_up
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
@@ -1895,7 +1895,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
-                        area, norm, dist_gravity,upweight, &
+                        area, dist, dist_gravity,upweight, &
                         option,v_darcy,Res)
   use Option_module                              
   
@@ -1908,7 +1908,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy,area, norm(3)
+  PetscReal :: v_darcy,area, dist(3)
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
@@ -1945,7 +1945,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (dphi>=0.D0) then
 #ifdef USE_ANISOTROPIC_MOBILITY       
-      if (dabs(dabs(norm(1))-1) < 1e-6) then
+      if (dabs(dabs(dist(1))-1) < 1e-6) then
         ukvr = rich_aux_var_up%kvr_x
       else if (dabs(dabs(norm(2))-1) < 1e-6) then
         ukvr = rich_aux_var_up%kvr_y
@@ -4397,6 +4397,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 #else
                   neig_ukvr(j) = test_rich_aux_vars%kvr
 #endif
+                  call GlobalAuxVarDestroy(test_global_aux_vars) 
 
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
@@ -4669,6 +4670,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 !                  neig_dkvr_dp(j) =  rich_aux_vars(ghosted_id)%dkvr_dp
                   neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
 #endif
+                  call GlobalAuxVarDestroy(test_global_aux_vars) 
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
 #ifdef USE_ANISOTROPIC_MOBILITY
@@ -5997,14 +5999,13 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   rich_aux_vars => patch%aux%Richards%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
  
-!   write(*,*) "ENTER MFD JACOBIAN"
 
   call VecGetArrayF90(grid%e2n, e2n_local, ierr)
 
      numfaces = 6
 
     allocate(J((numfaces+1)*(numfaces+1)))
-    allocate(Jbl((2*numfaces+1)*(numfaces+1)))
+!    allocate(Jbl((2*numfaces+1)*(numfaces+1)))
     allocate(bound_id(numfaces))
     allocate(sq_faces(numfaces))
     allocate(ghosted_LP_id(numfaces+1+numfaces))
@@ -6050,7 +6051,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
 !     write(*,*) ( ghosted_LP_id(iface),iface=1,7)  
 
     J = 0.
-    Jbl = 0.
+!    Jbl = 0.
 
    call MFDAuxJacobianLocal_LP( grid, aux_var, &
                                        rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
@@ -6073,36 +6074,29 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
         end if
    end do
  
-  do jface = 1, numfaces + 1
-     do iface = 1, numfaces + 1
-        Jbl(iface + (jface-1)*(numfaces + 1)) = J(iface + (numfaces + 1)*(jface-1))
-     end do
-   end do
-
-
-   do iface = 1, numfaces 
-      Jbl(nrow + (numfaces + iface)*nrow) = aux_var%dRp_dneig(iface)
-   end do
-
-!   if (grid%x(ghosted_id) > 500 .and. grid%y(ghosted_id) > 250) then
-!        write(*,*) grid%x(ghosted_id), grid%y(ghosted_id), grid%z(ghosted_id)
-!        write(*,*) 
-!        do iface = 1, numfaces + 1
-!          write(*,*) (J(iface + (numfaces + 1)*(jface-1)),jface=1,numfaces + 1)
-!        end do
-!        write(*,*) 
-!        write(*,*) (aux_var%dRp_dneig(iface),iface=1,numfaces + 1)
-!        write(*,*) 
-!   end if
+! do jface = 1, numfaces + 1
+!    do iface = 1, numfaces + 1
+!       Jbl(iface + (jface-1)*(numfaces + 1)) = J(iface + (numfaces + 1)*(jface-1))
+!    end do
+!  end do
+!
+!
+!  do iface = 1, numfaces 
+!     Jbl(nrow + (numfaces + iface)*nrow) = aux_var%dRp_dneig(iface)
+!  end do
 
 
      call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 , ghosted_LP_id, &
-!     call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 + numfaces, ghosted_LP_id, &
                                          J, ADD_VALUES,ierr)
+
+!     call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 + numfaces, ghosted_LP_id, &
+!                                         Jbl, ADD_VALUES,ierr)
+
 
      call MatSetValuesLocal(A, 1, cell_LP_id, numfaces, neig_LP_id, aux_var%dRp_dneig, ADD_VALUES,ierr)
 
 !     do iface = 1, numfaces
+!     do iface = 1, 1
 !        call MatSetValuesLocal(A, 1, cell_LP_id, 1, neig_LP_id(iface), aux_var%dRp_dneig(iface), ADD_VALUES,ierr)
 !     end do
 
@@ -6110,19 +6104,13 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   end do
 
 
-!   write(*,*) "Before Assembly"
 
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 
-!    write(*,*) "First stage done"
-
-
-
-
     deallocate(J)
-    deallocate(Jbl)
+!    deallocate(Jbl)
     deallocate(bound_id)
     deallocate(ghosted_LP_id)
     deallocate(neig_LP_id)

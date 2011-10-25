@@ -1414,7 +1414,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          aq_species_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
-                                         porosity, &
+                                         porosity1, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
   use Option_module
@@ -1436,7 +1436,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscInt :: num_iterations
-  PetscReal :: porosity
+  
+! *****************************
+! pcl: using 'porosity' does not compile on Mac with gfortran 4.6.0
+  PetscReal :: porosity1
+! *****************************
+
   PetscBool :: use_prev_soln_as_guess
   type(option_type) :: option
   
@@ -1657,7 +1662,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
-          tempreal = porosity*global_auxvar%sat(iphase)*1000.d0
+          tempreal = porosity1*global_auxvar%sat(iphase)*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
           Res(icomp) = rt_auxvar%total(icomp,1) + &
             rt_auxvar%total_sorb_eq(icomp)/tempreal - total_conc(icomp)
