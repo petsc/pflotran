@@ -3250,7 +3250,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
+          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
              flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
                        ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
           else

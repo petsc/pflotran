@@ -137,7 +137,7 @@ end interface
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal.eq.1) then
+        if(islocal == 1) then
            patch => PatchCreate()
            patch%grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            call PatchAddToList(patch,level%patch_list)
@@ -196,7 +196,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal.eq.1) then
+        if(islocal == 1) then
            structured_grid=>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            call StructGridComputeLocalBounds(structured_grid, da)
            amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%nlmax = structured_grid%nlmax
@@ -249,7 +249,7 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal.eq.1) then
+        if(islocal == 1) then
            structured_grid =>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            p_samr_patch = structured_grid%p_samr_patch
            call samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
@@ -365,7 +365,7 @@ end interface
         allocate(gridlevel(ln+1)%grids(npatches))
         do pn=0,npatches-1
            islocal = is_local_patch(p_application, ln, pn);
-           if(islocal.eq.1) then
+           if(islocal == 1) then
               gridlevel(ln+1)%grids(pn+1)%grid_ptr => GridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%itype = STRUCTURED_GRID 
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%ctype = 'structured'
@@ -592,7 +592,7 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal.eq.1) then
+        if(islocal == 1) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            structured_grid => grid%structured_grid           
            allocate(structured_grid%dx_global(structured_grid%nx))

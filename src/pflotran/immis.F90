@@ -1854,7 +1854,7 @@ subroutine SAMRSetCurrentJacobianPatch(mat,patch)
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
       if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+        (.not.(grid%structured_grid%p_samr_patch == 0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
       call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)

@@ -1324,7 +1324,8 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
       allocate(grid%z(grid%ngmax))
       grid%z = 0.d0
       call UGridComputeCoord(grid%unstructured_grid,option, &
-                             ugdm%scatter_ltol, & !sp  
+                             ugdm%scatter_ltol, & !sp 
+                             grid%nL2G, &
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
@@ -1420,11 +1421,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   type(region_type), pointer :: region
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)
-  PetscInt :: i, j, k, count, local_count, local_ghosted_id, local_id
+  PetscInt :: i, j, k, count, local_count, ghosted_id, local_id
   PetscInt :: i_min, i_max, j_min, j_max, k_min, k_max
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
   PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
   PetscReal :: x_shift, y_shift, z_shift
+  PetscReal :: del_x, del_y, del_z
   PetscInt :: iflag
   PetscBool :: same_point
   PetscErrorCode :: ierr
@@ -1435,7 +1437,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   
     if (.not.associated(region)) exit
     
-    if (.not.associated(region%cell_ids)) then
+    if (.not.(associated(region%cell_ids) .or. &
+              associated(region%vertex_ids))) then
+      ! i, j, k block
       if (region%i1 > 0 .and. region%i2 > 0 .and. &
           region%j1 > 0 .and. region%j2 > 0 .and. &
           region%k1 > 0 .and. region%k2 > 0) then
@@ -1578,6 +1582,19 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                        call printErrMsg(option)
                      endif
                   endif
+                case(UNSTRUCTURED_GRID)
+                  !geh: must check each cell individually
+                  call UGridGetCellFromPoint(region%coordinates(ONE_INTEGER)%x, &
+                                             region%coordinates(ONE_INTEGER)%y, &
+                                             region%coordinates(ONE_INTEGER)%z, &
+                                             grid%unstructured_grid,option,local_id)
+                  if (local_id > 0) then
+                    region%num_cells = 1
+                    allocate(region%cell_ids(region%num_cells))
+                    region%cell_ids(1) = local_id
+                  else
+                    region%num_cells = 0
+                  endif
               end select
             endif
           else ! 2 coordinates
@@ -1594,20 +1611,20 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             z_max = max(region%coordinates(ONE_INTEGER)%z, &
                         region%coordinates(TWO_INTEGER)%z)
                         
-            ! shift box slightly inward
-            x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
-            x_min = x_min+x_shift            
-            x_max = x_max-x_shift
-            y_shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
-            y_min = y_min+y_shift            
-            y_max = y_max-y_shift
-            z_shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
-            z_min = z_min+z_shift            
-            z_max = z_max-z_shift
-                 
-            ! if plane or line, ensure it is within the grid cells     
             if (grid%itype == STRUCTURED_GRID .or. &
                 grid%itype == STRUCTURED_GRID_MIMETIC) then
+              ! shift box slightly inward
+              x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
+              x_min = x_min+x_shift            
+              x_max = x_max-x_shift
+              y_shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
+              y_min = y_min+y_shift            
+              y_max = y_max-y_shift
+              z_shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
+              z_min = z_min+z_shift            
+              z_max = z_max-z_shift
+                 
+              ! if plane or line, ensure it is within the grid cells     
               if (x_max-x_min < 1.d-10) then
                 x_max = region%coordinates(ONE_INTEGER)%x
                 x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
@@ -1705,14 +1722,65 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   else
                     iflag = 1
                   endif
+                case(UNSTRUCTURED_GRID)
+                  del_x = x_max-x_min
+                  del_y = y_max-y_min
+                  del_z = z_max-z_min
+                  ! 3D box
+                  if (del_x > 1.d-10 .and. &
+                      del_y > 1.d-10 .and. &
+                      del_z > 1.d-10) then
+                    ! geh: if the coordinates define a 3D box, add all cell centers
+                    ! that reside within the box
+                    count = 0
+                    do local_id = 1, grid%nlmax
+                      ghosted_id = grid%nL2G(local_id)
+                      if (grid%x(ghosted_id) >= x_min .and. &
+                          grid%x(ghosted_id) <= x_max .and. &
+                          grid%y(ghosted_id) >= y_min .and. &
+                          grid%y(ghosted_id) <= y_max .and. &
+                          grid%z(ghosted_id) >= z_min .and. &
+                          grid%z(ghosted_id) <= z_max) then
+                        count = count + 1
+                      endif
+                    enddo
+                    allocate(region%cell_ids(count))
+                    region%cell_ids = 0
+                    count = 0
+                    do local_id = 1, grid%nlmax
+                      ghosted_id = grid%nL2G(local_id)
+                      if (grid%x(ghosted_id) >= x_min .and. &
+                          grid%x(ghosted_id) <= x_max .and. &
+                          grid%y(ghosted_id) >= y_min .and. &
+                          grid%y(ghosted_id) <= y_max .and. &
+                          grid%z(ghosted_id) >= z_min .and. &
+                          grid%z(ghosted_id) <= z_max) then
+                        count = count + 1
+                        region%cell_ids(count) = local_id
+                      endif
+                    enddo
+                    region%num_cells = count
+                  ! 2D plane
+                  elseif ((del_x < 1.d-10 .and. del_y > 1.d-10 .and. &
+                           del_z > 1.d-10) .or. &
+                          (del_x > 1.d-10 .and. del_y < 1.d-10 .and. &
+                           del_z > 1.d-10) .or. &
+                          (del_x > 1.d-10 .and. del_y > 1.d-10 .and. &
+                           del_z < 1.d-10)) then
+                    call UGridGetCellsInRectangle(x_min,x_max,y_min,y_max, &
+                                                  z_min,z_max, &
+                                                  grid%unstructured_grid,option, &
+                                                  region%num_cells,region%cell_ids, &
+                                                  region%faces)
+                  endif
               end select
             endif
 
-            if(.not. (option%use_samr)) then
-               call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                                  option%mycomm,ierr)
+            if (.not. (option%use_samr)) then
+              call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
+                                 option%mycomm,ierr)
             else
-               i=0
+              i = 0
             endif
 
             iflag = i
@@ -1731,13 +1799,14 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       !sp start
       select case(grid%itype) 
         case(UNSTRUCTURED_GRID)
+#ifdef GLENN
           allocate(temp_int_array(region%num_cells))
           temp_int_array = 0
           local_count=0
           do count=1,region%num_cells
             local_id = GridGetLocalIdFromNaturalId( grid, region%cell_ids(count))
-            if( local_id .le. 0) cycle
-            if( local_id .gt. grid%unstructured_grid%num_cells_local) cycle
+            if (local_id <= 0) cycle
+            if (local_id > grid%unstructured_grid%num_cells_local) cycle
             local_count = local_count + 1
             temp_int_array(local_count) = local_id
           enddo
@@ -1748,7 +1817,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             region%num_cells=local_count 
           endif
           deallocate(temp_int_array)
-
+#else
+          call GridLocalizeRegionsForUGrid(grid, region, option)
+#endif
         case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
 !sp following was commented out 
 !sp remove? 
@@ -1805,7 +1876,7 @@ end subroutine GridLocalizeRegions
 ! date: 5/30/2011
 !
 ! ************************************************************************** !
-subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
+subroutine GridLocalizeRegionsForUGrid(grid, region, option)
 
   use Option_module
   use Region_module
@@ -1821,11 +1892,10 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
 #include "finclude/petscmat.h"
 
   type(grid_type)                 :: grid
-  type(region_list_type), pointer :: region_list
+  type(region_type)               :: region
   type(option_type)               :: option
 
   ! local
-  type(region_type), pointer      :: region
   type(unstructured_grid_type),pointer    :: ugrid
   Vec                             :: vec_cell_ids,vec_cell_ids_loc
   Vec                             :: vec_face_ids,vec_face_ids_loc
@@ -1859,241 +1929,267 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
   PetscInt,pointer    :: cell_ids_for_face(:), face_ids_for_face(:)
   PetscScalar,pointer :: vert2cell_array(:)
   
-  region => region_list%first
-  
-  ugrid => grid%unstructured_grid
+  if (associated(region%cell_ids)) then
+    
+    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+                      vec_cell_ids, ierr)
+    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+                      vec_cell_ids_loc, ierr)
+    
+    call VecZeroEntries(vec_cell_ids, ierr)
+    
+    allocate(tmp_int_array(region%num_cells))
+    allocate(tmp_scl_array(region%num_cells))
 
-  do
-  
-    if(.not.associated(region)) exit
-    
-    if(associated(region%cell_ids)) then
-    
-      call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
-                        vec_cell_ids, ierr)
-      call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
-                        vec_cell_ids_loc, ierr)
-    
-      call VecSet(vec_cell_ids, 0.d0, ierr)
-      call VecAssemblyBegin(vec_cell_ids, ierr)
-      call VecAssemblyEnd(vec_cell_ids, ierr)
-    
-      allocate(tmp_int_array(region%num_cells))
-      allocate(tmp_scl_array(region%num_cells))
-
-      count = 0
-      do ii = 1, region%num_cells
-        count = count + 1
-        tmp_int_array(count) = region%cell_ids(ii)
-        tmp_scl_array(count) = 1.d0
-      enddo
+    count = 0
+    do ii = 1, region%num_cells
+      count = count + 1
+      tmp_int_array(count) = region%cell_ids(ii)
+      tmp_scl_array(count) = 1.d0
+    enddo
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_bef.out', &
-                                viewer, ierr)
-      call VecView(vec_cell_ids, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_bef.out', &
+                              viewer, ierr)
+    call VecView(vec_cell_ids, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif
 
-      call VecSetValues(vec_cell_ids, region%num_cells, tmp_int_array, &
-                        tmp_scl_array, ADD_VALUES, ierr)
+    call VecSetValues(vec_cell_ids, region%num_cells, tmp_int_array, &
+                      tmp_scl_array, ADD_VALUES, ierr)
     
-      deallocate(tmp_int_array)
-      deallocate(tmp_scl_array)
+    deallocate(tmp_int_array)
+    deallocate(tmp_scl_array)
 
-      call VecAssemblyBegin(vec_cell_ids, ierr)
-      call VecAssemblyEnd(vec_cell_ids, ierr)
+    call VecAssemblyBegin(vec_cell_ids, ierr)
+    call VecAssemblyEnd(vec_cell_ids, ierr)
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_aft.out', &
-                                viewer, ierr)
-      call VecView(vec_cell_ids, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_aft.out', &
+                              viewer, ierr)
+    call VecView(vec_cell_ids, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif
 
-      allocate(tmp_int_array(ugrid%num_cells_local))
-      count = 0
-      do ghosted_id = 1, ugrid%num_cells_ghosted
-        local_id = grid%nG2L(ghosted_id)
-        if(local_id < 1) cycle
-        count = count + 1
-        natural_id = grid%nG2A(ghosted_id)
-        tmp_int_array(count) = natural_id
-      enddo
+    allocate(tmp_int_array(ugrid%num_cells_local))
+    count = 0
+    do ghosted_id = 1, ugrid%num_cells_ghosted
+      local_id = grid%nG2L(ghosted_id)
+      if(local_id < 1) cycle
+      count = count + 1
+      natural_id = grid%nG2A(ghosted_id)
+      tmp_int_array(count) = natural_id
+    enddo
     
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
-                         tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+                        tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
     
-      call VecGetOwnershipRange(vec_cell_ids_loc,istart,iend,ierr)
-      do ii=1,ugrid%num_cells_local
-        tmp_int_array(ii) = ii + istart
-      enddo
+    call VecGetOwnershipRange(vec_cell_ids_loc,istart,iend,ierr)
+    do ii=1,ugrid%num_cells_local
+      tmp_int_array(ii) = ii + istart
+    enddo
 
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
-                         tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
-      deallocate(tmp_int_array)
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+                        tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
+    deallocate(tmp_int_array)
     
-      call VecScatterCreate(vec_cell_ids,is_from,vec_cell_ids_loc,is_to, &
-                            vec_scat, ierr)
-      call ISDestroy(is_from, ierr)
-      call ISDestroy(is_to, ierr)
+    call VecScatterCreate(vec_cell_ids,is_from,vec_cell_ids_loc,is_to, &
+                          vec_scat, ierr)
+    call ISDestroy(is_from, ierr)
+    call ISDestroy(is_to, ierr)
     
-      call VecScatterBegin(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterEnd(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
-                         INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterDestroy(vec_scat, ierr)
+    call VecScatterBegin(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterEnd(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
+                        INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterDestroy(vec_scat, ierr)
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_loc.out', &
-                                viewer, ierr)
-      call VecView(vec_cell_ids_loc, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_loc.out', &
+                              viewer, ierr)
+    call VecView(vec_cell_ids_loc, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif
     
-      call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
-      count = 0
-      do ii=1, ugrid%num_cells_local
-        if(v_loc_p(ii) == 1) count = count + 1
-      enddo
+    call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
+    count = 0
+    do ii=1, ugrid%num_cells_local
+      if(v_loc_p(ii) == 1) count = count + 1
+    enddo
     
-      region%num_cells = count
-      if (count > 0) then
-        allocate(tmp_int_array(count))
-        count = 0
-        do ii =1, ugrid%num_cells_local
-          if(v_loc_p(ii) == 1) then
-            count = count + 1
-            tmp_int_array(count) = ii
-         endif
-        enddo
-
-        deallocate(region%cell_ids)
-        allocate(region%cell_ids(region%num_cells))
-        region%cell_ids = tmp_int_array
-        deallocate(tmp_int_array)
-
-        if (region%iface /= 0) then
-          allocate(region%faces(region%num_cells))
-          
-          !
-          ! In unstrucutred mesh, faces for hex are saved in the following order:
-          !   (1) SOUTH
-          !   (2) EAST
-          !   (3) NORTH
-          !   (4) WEST
-          !   (5) BOTTOM
-          !   (6) TOP
-          ! PS: This will not work for WEDGE
-          !
-          select case (region%iface)
-            case(WEST_FACE)
-              region%faces = 4
-            case(EAST_FACE)
-              region%faces = 2
-            case(SOUTH_FACE)
-              region%faces = 1
-            case(NORTH_FACE)
-              region%faces = 3
-            case(BOTTOM_FACE)
-              region%faces = 5
-            case(TOP_FACE)
-              region%faces = 6
-            case(NULL_FACE)
-              region%faces = NULL_FACE
-          end select
+    region%num_cells = count
+    if (count > 0) then
+      allocate(tmp_int_array(count))
+      count = 0
+      do ii =1, ugrid%num_cells_local
+        if(v_loc_p(ii) == 1) then
+          count = count + 1
+          tmp_int_array(count) = ii
         endif
-      else
-        nullify(region%cell_ids)
+      enddo
+
+      deallocate(region%cell_ids)
+      allocate(region%cell_ids(region%num_cells))
+      region%cell_ids = tmp_int_array
+      deallocate(tmp_int_array)
+
+      if (region%iface /= 0) then
+        allocate(region%faces(region%num_cells))
+          
+        !
+        ! In unstrucutred mesh, faces for hex are saved in the following order:
+        !   (1) SOUTH
+        !   (2) EAST
+        !   (3) NORTH
+        !   (4) WEST
+        !   (5) BOTTOM
+        !   (6) TOP
+        ! PS: This will not work for WEDGE
+        !
+        select case (region%iface)
+          case(WEST_FACE)
+            region%faces = 4
+          case(EAST_FACE)
+            region%faces = 2
+          case(SOUTH_FACE)
+            region%faces = 1
+          case(NORTH_FACE)
+            region%faces = 3
+          case(BOTTOM_FACE)
+            region%faces = 5
+          case(TOP_FACE)
+            region%faces = 6
+          case(NULL_FACE)
+            region%faces = NULL_FACE
+        end select
       endif
+    else
+      nullify(region%cell_ids)
+    endif
     
-      call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr)
+    call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr)
       
 
-    endif
+  endif
 
   
+  !
+  !  Region is defined as a collection of faces. Each face is identified by 
+  !  a list of vertices forming it.
+  !
+  if(associated(region%vertex_ids)) then
     !
-    !  Region is defined as a collection of faces. Each face is identified by 
-    !  a list of vertices forming it.
+    ! Create a sparse matrix: mat_vert2cell
     !
-    if(associated(region%vert_ids)) then
-      !
-      ! Create a sparse matrix: mat_vert2cell
-      !
-      !  - size(mat_vert2cell) = num_vertices_global x num_cells_global
-      !  - i-th row of mat_vert2cell corresponds to global vertex id in natural
-      !    indexing
-      !  - j-th column of mat_vert2cell corresponds to global cell id in 
-      !    natural indexing
-      !  - mat_vert2cell(i,j) = j (i.e. i-th global vertex constitutes j-th
-      !    cell
-      !
-      call MatCreateMPIAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
-                           ugrid%num_vertices_global, ugrid%num_cells_global, &
-                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
-                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
-                           mat_vert2cell, ierr)
+    !  - size(mat_vert2cell) = num_vertices_global x num_cells_global
+    !  - i-th row of mat_vert2cell corresponds to global vertex id in natural
+    !    indexing
+    !  - j-th column of mat_vert2cell corresponds to global cell id in 
+    !    natural indexing
+    !  - mat_vert2cell(i,j) = j (i.e. i-th global vertex constitutes j-th
+    !    cell
+    !
+    call MatCreateMPIAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
+                          ugrid%num_vertices_global, ugrid%num_cells_global, &
+                          MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
+                          MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
+                          mat_vert2cell, ierr)
     
-      do ghosted_id = 1, ugrid%num_cells_ghosted
-        local_id = grid%nG2L(ghosted_id)
-        if(local_id < 1) cycle
-        natural_id = grid%nG2A(ghosted_id)
-        do ii = 1, ugrid%cell_vertices_0(0, local_id)
-          call MatSetValues(mat_vert2cell, &
-                            1, &
-                            ugrid%cell_vertices_nindex(ii, local_id), &
-                            1, &
-                            natural_id-1, &
-                            natural_id-1.0d0, &
-                            INSERT_VALUES, &
-                            ierr)
-        enddo
+    do ghosted_id = 1, ugrid%num_cells_ghosted
+      local_id = grid%nG2L(ghosted_id)
+      if(local_id < 1) cycle
+      natural_id = grid%nG2A(ghosted_id)
+      do ii = 1, ugrid%cell_vertices_0(0, local_id)
+        call MatSetValues(mat_vert2cell, &
+                          1, &
+                          ugrid%cell_vertices_nindex(ii, local_id), &
+                          1, &
+                          natural_id-1, &
+                          natural_id-1.0d0, &
+                          INSERT_VALUES, &
+                          ierr)
       enddo
+    enddo
       
-      call MatAssemblyBegin(mat_vert2cell, MAT_FINAL_ASSEMBLY, ierr)
-      call MatAssemblyEnd(  mat_vert2cell, MAT_FINAL_ASSEMBLY, ierr)
+    call MatAssemblyBegin(mat_vert2cell, MAT_FINAL_ASSEMBLY, ierr)
+    call MatAssemblyEnd(  mat_vert2cell, MAT_FINAL_ASSEMBLY, ierr)
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'mat_vert2cell.out', viewer, ierr)
-      call MatView(mat_vert2cell, viewer,ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'mat_vert2cell.out', viewer, ierr)
+    call MatView(mat_vert2cell, viewer,ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif      
 
-      call MatGetOwnershipRange(mat_vert2cell, rstart, rend, ierr)
-      if(option%mycommsize > 1) then
-        call MatMPIAIJGetSeqAIJ(mat_vert2cell, mat_vert2cell_diag, &
-                                mat_vert2cell_offdiag, icol, iicol, ierr)
-        call MatGetRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, PETSC_FALSE, &
-                            n, ia_p, ja_p, done, ierr)
-        call MatGetArray(mat_vert2cell_diag, aa, aaa, ierr)
-        ! call MatGetArrayF90(mat_vert2cell_diag, aa, ierr)
-      else 
-        call MatGetRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
-                            ia_p, ja_p, done, ierr)
-        call MatGetArray(mat_vert2cell, aa, aaa, ierr)
-        !call MatGetArrayF90(mat_vert2cell, aa, ierr)
-      endif
+    call MatGetOwnershipRange(mat_vert2cell, rstart, rend, ierr)
+    if(option%mycommsize > 1) then
+      call MatMPIAIJGetSeqAIJ(mat_vert2cell, mat_vert2cell_diag, &
+                              mat_vert2cell_offdiag, icol, iicol, ierr)
+      call MatGetRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, PETSC_FALSE, &
+                          n, ia_p, ja_p, done, ierr)
+      call MatGetArray(mat_vert2cell_diag, aa, aaa, ierr)
+      ! call MatGetArrayF90(mat_vert2cell_diag, aa, ierr)
+    else 
+      call MatGetRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
+                          ia_p, ja_p, done, ierr)
+      call MatGetArray(mat_vert2cell, aa, aaa, ierr)
+      !call MatGetArrayF90(mat_vert2cell, aa, ierr)
+    endif
       
-      !
-      ! vert2cell_array 
-      !  Let MCSV = MAX_CELLS_SHARING_A_VERTEX
-      !
-      !  - size(vert2cell_array) = No. rows of mat_vert2cell owned by proc x MCSV
-      !  - vert2cell_array((i-1)*MCSV + 1: i*MCSV ) = Cell ids (in natural 
-      !    index) which contain i-th vertex as one of its vertices
-      !
-      allocate(vert2cell_array(1: (rend - rstart)*MAX_CELLS_SHARING_A_VERTEX))
-      vert2cell_array = -1
-      do ii = 1, n
-        count = ia_p(ii + 1) - ia_p(ii)
-        do jj = ia_p(ii), ia_p(ii + 1) - 1
+    !
+    ! vert2cell_array 
+    !  Let MCSV = MAX_CELLS_SHARING_A_VERTEX
+    !
+    !  - size(vert2cell_array) = No. rows of mat_vert2cell owned by proc x MCSV
+    !  - vert2cell_array((i-1)*MCSV + 1: i*MCSV ) = Cell ids (in natural 
+    !    index) which contain i-th vertex as one of its vertices
+    !
+    allocate(vert2cell_array(1: (rend - rstart)*MAX_CELLS_SHARING_A_VERTEX))
+    vert2cell_array = -1
+    do ii = 1, n
+      count = ia_p(ii + 1) - ia_p(ii)
+      do jj = ia_p(ii), ia_p(ii + 1) - 1
+        found = PETSC_FALSE
+        do kk = 1, MAX_CELLS_SHARING_A_VERTEX
+          index = (ii - 1)*MAX_CELLS_SHARING_A_VERTEX + kk
+          if(vert2cell_array(index) == -1) then
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo
+        if(found.eqv.PETSC_FALSE) then
+          option%io_buffer = 'Increase the value of ' // &
+            'MAX_CELLS_SHARING_A_VERTEX within the code.'
+          call printErrMsg(option)
+        endif
+        vert2cell_array(index) = aa(aaa+ jj)
+      enddo
+    enddo
+    if(option%mycommsize > 1) then
+      call MatRestoreRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, &
+                              PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+      call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
+      !call MatRestoreArrayF90(mat_vert2cell_diag, aa, ierr)
+    else
+      call MatRestoreRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
+                              ia_p, ja_p, done, ierr)
+      call MatRestoreArray(mat_vert2cell, aa, aaa, ierr)
+      ! call MatRestoreArrayF90(mat_vert2cell, aa, ierr)
+    endif
+      
+    if(option%mycommsize > 1) then
+      call MatGetRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
+                          PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+      call MatGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
+      !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
+      do ii=1, n
+        count = ia_p(ii+1) - ia_p(ii)
+        do jj = ia_p(ii), ia_p(ii+1)-1
           found = PETSC_FALSE
-          do kk = 1, MAX_CELLS_SHARING_A_VERTEX
-            index = (ii - 1)*MAX_CELLS_SHARING_A_VERTEX + kk
-            if(vert2cell_array(index) == -1) then
+          do kk = 1,MAX_CELLS_SHARING_A_VERTEX
+            if(vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk) &
+                                  == -1) then
               found = PETSC_TRUE
               exit
             endif
@@ -2103,481 +2199,442 @@ subroutine GridLocalizeRegionsForUGrid(grid, region_list, option)
               'MAX_CELLS_SHARING_A_VERTEX within the code.'
             call printErrMsg(option)
           endif
-          vert2cell_array(index) = aa(aaa+ jj)
+          vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk ) = &
+            aa(aaa+jj)
         enddo
       enddo
-      if(option%mycommsize > 1) then
-        call MatRestoreRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, &
-                                PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-        call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
-        !call MatRestoreArrayF90(mat_vert2cell_diag, aa, ierr)
-      else
-        call MatRestoreRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
-                                ia_p, ja_p, done, ierr)
-        call MatRestoreArray(mat_vert2cell, aa, aaa, ierr)
-        ! call MatRestoreArrayF90(mat_vert2cell, aa, ierr)
-      endif
-      
-      if(option%mycommsize > 1) then
-        call MatGetRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
-                            PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-        call MatGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
-        !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
-        do ii=1, n
-          count = ia_p(ii+1) - ia_p(ii)
-          do jj = ia_p(ii), ia_p(ii+1)-1
-            found = PETSC_FALSE
-            do kk = 1,MAX_CELLS_SHARING_A_VERTEX
-              if(vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk) &
-                                   == -1) then
-                found = PETSC_TRUE
-                exit
-              endif
-            enddo
-            if(found.eqv.PETSC_FALSE) then
-              option%io_buffer = 'Increase the value of ' // &
-                'MAX_CELLS_SHARING_A_VERTEX within the code.'
-              call printErrMsg(option)
-            endif
-            vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk ) = &
-              aa(aaa+jj)
-          enddo
-        enddo
-        call MatRestoreRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
-                                PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-        call MatGetArray(mat_vert2cell_offdiag,aa,aaa,ierr)
-        !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
-        call MatDestroy(mat_vert2cell, ierr)
-      endif
+      call MatRestoreRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
+                              PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+      call MatGetArray(mat_vert2cell_offdiag,aa,aaa,ierr)
+      !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
+      call MatDestroy(mat_vert2cell, ierr)
+    endif
             
-      !
-      call VecCreateMPI(option%mycomm, (rend-rstart)*MAX_CELLS_SHARING_A_VERTEX, &
-        PETSC_DECIDE, vec_vert2cell, ierr)
+    !
+    call VecCreateMPI(option%mycomm, (rend-rstart)*MAX_CELLS_SHARING_A_VERTEX, &
+      PETSC_DECIDE, vec_vert2cell, ierr)
       
-      call VecGetArrayF90(vec_vert2cell,v_loc_p,ierr)
-      v_loc_p = vert2cell_array
-      call VecRestoreArrayF90(vec_vert2cell,v_loc_p,ierr)
+    call VecGetArrayF90(vec_vert2cell,v_loc_p,ierr)
+    v_loc_p = vert2cell_array
+    call VecRestoreArrayF90(vec_vert2cell,v_loc_p,ierr)
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_vert2cell.out', viewer, ierr)
-      call VecView(vec_vert2cell, viewer,ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_vert2cell.out', viewer, ierr)
+    call VecView(vec_vert2cell, viewer,ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif
 
-      !
-      ! vec_cell2facevert
-      !   Contains vertices forming face. 
-      !
-      !  i-th cell j-th face vertex-0
-      !  i-th cell j-th face vertex-1
-      !  i-th cell j-th face vertex-2
-      !  i-th cell j-th face vertex-3
-      !  i-th cell j+1-th face vertex-0
-      !  i-th cell j+1-th face vertex-1
-      !  i-th cell j+1-th face vertex-2
-      !  i-th cell j+1-th face vertex-3
-      !  ...
-      !  ...
-      !  ...
-      !  i+1-th cell j-th face vertex-0
-      !  i+1-th cell j-th face vertex-1
-      !  i+1-th cell j-th face vertex-2
-      !  i+1-th cell j-th face vertex-3
-      !
-      call VecCreateMPI(option%mycomm, PETSC_DECIDE, &
-                        ugrid%num_cells_global*MAX_DUALS*MAX_VERT_PER_FACE, &
-                        vec_cell2facevert, ierr)
+    !
+    ! vec_cell2facevert
+    !   Contains vertices forming face. 
+    !
+    !  i-th cell j-th face vertex-0
+    !  i-th cell j-th face vertex-1
+    !  i-th cell j-th face vertex-2
+    !  i-th cell j-th face vertex-3
+    !  i-th cell j+1-th face vertex-0
+    !  i-th cell j+1-th face vertex-1
+    !  i-th cell j+1-th face vertex-2
+    !  i-th cell j+1-th face vertex-3
+    !  ...
+    !  ...
+    !  ...
+    !  i+1-th cell j-th face vertex-0
+    !  i+1-th cell j-th face vertex-1
+    !  i+1-th cell j-th face vertex-2
+    !  i+1-th cell j-th face vertex-3
+    !
+    call VecCreateMPI(option%mycomm, PETSC_DECIDE, &
+                      ugrid%num_cells_global*MAX_DUALS*MAX_VERT_PER_FACE, &
+                      vec_cell2facevert, ierr)
 
-      ! Initialize vector
-      call VecSet(vec_cell2facevert, -999.d0, ierr)
-      call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
-      call VecAssemblyEnd(  vec_cell2facevert, ierr) !
+    ! Initialize vector
+    call VecSet(vec_cell2facevert, -999.d0, ierr)
+    call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
+    call VecAssemblyEnd(  vec_cell2facevert, ierr) !
             
-      allocate(tmp_int_array(ugrid%num_cells_local))
-      tmp_int_array = 0
+    allocate(tmp_int_array(ugrid%num_cells_local))
+    tmp_int_array = 0
       
-      do ii = 1, MAX_DUALS*ugrid%num_cells_ghosted
-        ghosted_id = ugrid%face_to_cell_locindex(1, ii)
-        if (ghosted_id < 0 ) exit
-        local_id   = grid%nG2L(ghosted_id)
-        if(local_id < 1) cycle
-        natural_id = grid%nG2A(ghosted_id) ! 1-based
-        do jj = 1, MAX_VERT_PER_FACE
-          if( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
-            call VecSetValues(vec_cell2facevert,1, &
-                          (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
-                          tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
-                          ugrid%face_to_vertex_nindex(jj, ii) - 1.d0, &
-                          INSERT_VALUES, ierr)
-          endif
-        enddo 
-        tmp_int_array(local_id) = tmp_int_array(local_id) + 1
-      enddo
-      
-      call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
-      call VecAssemblyEnd(  vec_cell2facevert, ierr) !
-      deallocate(tmp_int_array)
-
-#if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_cell2facevert.out', viewer, ierr)
-      call VecView(vec_cell2facevert, viewer,ierr)
-      call PetscViewerDestroy(viewer, ierr)
-#endif
-      
-      allocate(tmp_int_array(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
-      count = 0
-      do ii = 1, region%num_verts
-        do jj = 1, MAX_CELLS_SHARING_A_VERTEX
-          count = count + 1
-          tmp_int_array(count) = region%vert_ids(1,ii)*MAX_CELLS_SHARING_A_VERTEX + jj
-        enddo
-      enddo
-
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, &
-                         region%num_verts*MAX_CELLS_SHARING_A_VERTEX, &
-                         tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
-      deallocate(tmp_int_array)
-      
-      call VecCreateMPI(option%mycomm, &
-                  region%num_verts*MAX_CELLS_SHARING_A_VERTEX, PETSC_DECIDE, &
-                  vec_vert2cell_reg_subset, ierr)
-      call VecGetOwnershipRange(vec_vert2cell_reg_subset, istart, iend, ierr)
-
-      allocate(tmp_int_array(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
-      do ii = 1, region%num_verts*MAX_CELLS_SHARING_A_VERTEX
-        tmp_int_array(ii) = ii + istart
-      enddo
-      
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, &
-                         region%num_verts*MAX_CELLS_SHARING_A_VERTEX, &
-                         tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
-      deallocate(tmp_int_array)
-      
-      call VecScatterCreate(vec_vert2cell, is_from, vec_vert2cell_reg_subset, &
-                            is_to, vec_scat, ierr)
-      call ISDestroy(is_from, ierr)
-      call ISDestroy(is_to, ierr)
-    
-      call VecScatterBegin(vec_scat, vec_vert2cell, vec_vert2cell_reg_subset, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterEnd(  vec_scat, vec_vert2cell, vec_vert2cell_reg_subset, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterDestroy(vec_scat, ierr)
-
-#if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_vert2cell_reg_subset.out', &
-                                viewer, ierr)
-      call VecView(vec_vert2cell_reg_subset, viewer,ierr)
-      call PetscViewerDestroy(viewer, ierr)
-#endif
-      
-      call VecGetArrayF90(vec_vert2cell_reg_subset, v_loc_p, ierr)
-      allocate(cell_count(region%num_verts))
-      allocate(cell_ids(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
-      
-      ! initialize
-      cell_count    = 0
-      count         = 0
-      
-      do ii = 1,region%num_verts
-        do jj = 1,MAX_CELLS_SHARING_A_VERTEX
-          if(v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj) == -1) exit
-          count = count + 1
-          cell_count(ii) = cell_count(ii) + 1
-          cell_ids(count) = v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj )
-        enddo
-        if(cell_count(ii).lt.0) then
-          option%io_buffer = 'For a given vertex, no cell found. Stopping'
-          call printErrMsg(option)
+    do ii = 1, MAX_DUALS*ugrid%num_cells_ghosted
+      ghosted_id = ugrid%face_to_cell_ghosted(1, ii)
+      if (ghosted_id < 0 ) exit
+      local_id   = grid%nG2L(ghosted_id)
+      if(local_id < 1) cycle
+      natural_id = grid%nG2A(ghosted_id) ! 1-based
+      do jj = 1, MAX_VERT_PER_FACE
+        if( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
+          call VecSetValues(vec_cell2facevert,1, &
+                        (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
+                        tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
+                        ugrid%face_to_vertex_nindex(jj, ii) - 1.d0, &
+                        INSERT_VALUES, ierr)
         endif
-      enddo
-      call VecRestoreArrayF90(vec_vert2cell_reg_subset, v_loc_p, ierr)
+      enddo 
+      tmp_int_array(local_id) = tmp_int_array(local_id) + 1
+    enddo
       
-      allocate(tmp_int_array(count*MAX_DUALS*MAX_VERT_PER_FACE))
-      kk = 0
-      do ii = 1,count
-        do jj = 1,MAX_DUALS*MAX_VERT_PER_FACE
-          kk = kk + 1
-          tmp_int_array(kk) = cell_ids(ii) * MAX_DUALS*MAX_VERT_PER_FACE + jj
-        enddo
-      enddo
-      
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, count*MAX_DUALS*MAX_VERT_PER_FACE,&
-        tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
-      deallocate(tmp_int_array)
-      
-      call VecCreateMPI(option%mycomm, count*MAX_DUALS*MAX_VERT_PER_FACE, &
-                        PETSC_DECIDE, vec_cell2facevert_reg_subset, ierr)
-      call VecGetOwnershipRange(vec_cell2facevert_reg_subset, istart, &
-                                iend, ierr)
-      allocate(tmp_int_array(count*MAX_DUALS*MAX_VERT_PER_FACE))
-      do ii = 1, count*MAX_DUALS*MAX_VERT_PER_FACE
-        tmp_int_array(ii) = ii + istart
-      enddo
-
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, count*MAX_DUALS*MAX_VERT_PER_FACE, &
-                         tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
-      deallocate(tmp_int_array)
-      
-      call VecScatterCreate(vec_cell2facevert, &
-                            is_from,vec_cell2facevert_reg_subset, is_to, &
-                            vec_scat, ierr)
-      call ISDestroy(is_from,ierr)
-      call ISDestroy(is_to,ierr)
-    
-      call VecScatterBegin(vec_scat, vec_cell2facevert, &
-                           vec_cell2facevert_reg_subset, INSERT_VALUES, &
-                           SCATTER_FORWARD, ierr)
-      call VecScatterEnd(  vec_scat, vec_cell2facevert, &
-                           vec_cell2facevert_reg_subset, INSERT_VALUES, &
-                           SCATTER_FORWARD, ierr)
-      call VecScatterDestroy(vec_scat, ierr)
+    call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
+    call VecAssemblyEnd(  vec_cell2facevert, ierr) !
+    deallocate(tmp_int_array)
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, &
-                                'vec_cell2facevert_reg_subset.out', viewer, &
-                                ierr)
-      call VecView(vec_cell2facevert_reg_subset, viewer,ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell2facevert.out', viewer, ierr)
+    call VecView(vec_cell2facevert, viewer,ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif
-
-      call VecGetArrayF90(vec_cell2facevert_reg_subset, v_loc_p, ierr)
-      istart = 0
-      iend   = 0
-      counter1 = 0
-      counter2 = 0
       
-      allocate(cell_ids_for_face(region%num_verts))
-      allocate(face_ids_for_face(region%num_verts))
-      do jj = 1,region%num_verts
-        iend   = istart + cell_count(jj) * MAX_DUALS * MAX_VERT_PER_FACE
-        istart = istart +  1
-        counter1 = (istart-1)/MAX_VERT_PER_FACE/MAX_DUALS
-        counter2 = 0
-        found  = PETSC_FALSE
-        do ii = istart,iend,MAX_VERT_PER_FACE
-          counter2 = counter2 + 1
-          if(region%vert_ids(0, jj) == 4) then
-            if((v_loc_p(ii    ) == region%vert_ids(1,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii + 3) == region%vert_ids(4,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-            if((v_loc_p(ii    ) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(4,jj)).and.&
-               (v_loc_p(ii + 3) == region%vert_ids(1,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-            if((v_loc_p(ii    ) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(4,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii + 3) == region%vert_ids(1,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-            if((v_loc_p(ii    ) == region%vert_ids(4,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(1,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii + 3) == region%vert_ids(3,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-          elseif( v_loc_p(ii + 3) < 0 ) then
-            if((v_loc_p(ii    ) == region%vert_ids(1,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(3,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-            if((v_loc_p(ii    ) == region%vert_ids(2,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(1,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-            if((v_loc_p(ii    ) == region%vert_ids(3,jj)).and.&
-               (v_loc_p(ii + 1) == region%vert_ids(1,jj)).and.&
-               (v_loc_p(ii + 2) == region%vert_ids(2,jj)))      then
-               found = PETSC_TRUE
-               exit
-            endif
-          endif
-          
-          if(counter2 == MAX_DUALS) then
-            counter2 = 0
-            counter1 = counter1 + 1
-          endif
-        
-        enddo
-
-        if((found.eqv.PETSC_FALSE)) then
-          option%io_buffer='No cell found for vertex '
-          call printErrMsg(option)
-        endif
-        
-        cell_ids_for_face(jj) = cell_ids(counter1+1)
-        face_ids_for_face(jj) = (ii-istart)/MAX_VERT_PER_FACE & 
-                                - INT( (ii-istart)/MAX_VERT_PER_FACE/MAX_DUALS)*MAX_DUALS + 1
-        istart = iend
-      enddo
-      call VecRestoreArrayF90(vec_cell2facevert_reg_subset, v_loc_p, ierr)
-
-
-      call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
-                        vec_cell_ids, ierr)
-      call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
-                        vec_cell_ids_loc, ierr)
-      call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
-                        vec_face_ids, ierr)
-      call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
-                        vec_face_ids_loc, ierr)
-    
-      call VecSet(vec_cell_ids, 0.d0, ierr)
-      call VecAssemblyBegin(vec_cell_ids, ierr)
-      call VecAssemblyEnd(  vec_cell_ids, ierr)
-    
-      call VecSet(vec_face_ids, 0.d0, ierr)
-      call VecAssemblyBegin(vec_face_ids, ierr)
-      call VecAssemblyEnd(  vec_face_ids, ierr)
-
-      allocate(tmp_int_array(region%num_verts))
-      allocate(tmp_scl_array(region%num_verts))
-
-      do ii = 1, region%num_verts
-        tmp_int_array(ii)  = cell_ids_for_face(ii)
-        tmp_scl_array(ii)  = 1.d0
-      enddo
-
-      call VecSetValues(vec_cell_ids, region%num_verts, tmp_int_array, &
-                        tmp_scl_array, ADD_VALUES, ierr)
-
-      do ii = 1, region%num_verts
-        tmp_int_array(ii) = cell_ids_for_face(ii)
-        tmp_scl_array(ii) = face_ids_for_face(ii)
-      enddo
-
-      call VecSetValues(vec_face_ids, region%num_verts, tmp_int_array, &
-                        tmp_scl_array, ADD_VALUES, ierr)
-    
-      deallocate(tmp_int_array)
-      deallocate(tmp_scl_array)
-
-      call VecAssemblyBegin(vec_cell_ids, ierr)
-      call VecAssemblyEnd(  vec_cell_ids, ierr)
-      call VecAssemblyBegin(vec_face_ids, ierr)
-      call VecAssemblyEnd(  vec_face_ids, ierr)
-
-#if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_aft_2.out', &
-                                viewer, ierr)
-      call VecView(vec_cell_ids, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
-#endif
-
-      allocate(tmp_int_array(ugrid%num_cells_local))
-      count = 0
-      do ghosted_id=1,ugrid%num_cells_ghosted
-        local_id = grid%nG2L(ghosted_id)
-        if(local_id.lt.1) cycle
+    allocate(tmp_int_array(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
+    count = 0
+    do ii = 1, region%num_verts
+      do jj = 1, MAX_CELLS_SHARING_A_VERTEX
         count = count + 1
-        natural_id = grid%nG2A(ghosted_id)
-        tmp_int_array(count) = natural_id
+        tmp_int_array(count) = region%vertex_ids(1,ii)*MAX_CELLS_SHARING_A_VERTEX + jj
       enddo
+    enddo
 
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
-                        tmp_int_array, PETSC_COPY_VALUES, &
-                        is_from, ierr)
-    
-      call VecGetOwnershipRange(vec_cell_ids_loc, istart, iend, ierr)
-      do ii = 1, ugrid%num_cells_local
-        tmp_int_array(ii) = ii + istart
-      enddo
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, &
+                        region%num_verts*MAX_CELLS_SHARING_A_VERTEX, &
+                        tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
+    deallocate(tmp_int_array)
+      
+    call VecCreateMPI(option%mycomm, &
+                region%num_verts*MAX_CELLS_SHARING_A_VERTEX, PETSC_DECIDE, &
+                vec_vert2cell_reg_subset, ierr)
+    call VecGetOwnershipRange(vec_vert2cell_reg_subset, istart, iend, ierr)
 
-      tmp_int_array = tmp_int_array - 1
-      call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
-                         tmp_int_array, PETSC_COPY_VALUES, &
-                         is_to, ierr)
-      deallocate(tmp_int_array)
+    allocate(tmp_int_array(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
+    do ii = 1, region%num_verts*MAX_CELLS_SHARING_A_VERTEX
+      tmp_int_array(ii) = ii + istart
+    enddo
+      
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, &
+                        region%num_verts*MAX_CELLS_SHARING_A_VERTEX, &
+                        tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
+    deallocate(tmp_int_array)
+      
+    call VecScatterCreate(vec_vert2cell, is_from, vec_vert2cell_reg_subset, &
+                          is_to, vec_scat, ierr)
+    call ISDestroy(is_from, ierr)
+    call ISDestroy(is_to, ierr)
     
-      call VecScatterCreate(vec_cell_ids, is_from, vec_cell_ids_loc, &
-                            is_to, vec_scat, ierr)
-      call ISDestroy(is_from,ierr)
-      call ISDestroy(is_to,ierr)
-    
-      call VecScatterBegin(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterEnd(  vec_scat, vec_cell_ids, vec_cell_ids_loc, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterBegin(vec_scat, vec_face_ids, vec_face_ids_loc, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterEnd(  vec_scat, vec_face_ids, vec_face_ids_loc, &
-                           INSERT_VALUES, SCATTER_FORWARD, ierr)
-      call VecScatterDestroy(vec_scat, ierr)
+    call VecScatterBegin(vec_scat, vec_vert2cell, vec_vert2cell_reg_subset, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterEnd(  vec_scat, vec_vert2cell, vec_vert2cell_reg_subset, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterDestroy(vec_scat, ierr)
 
 #if GB_DEBUG
-      call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_loc_2.out', &
-                                viewer, ierr)
-      call VecView(vec_cell_ids_loc, viewer, ierr)
-      call PetscViewerDestroy(viewer, ierr)
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_vert2cell_reg_subset.out', &
+                              viewer, ierr)
+    call VecView(vec_vert2cell_reg_subset, viewer,ierr)
+    call PetscViewerDestroy(viewer, ierr)
+#endif
+      
+    call VecGetArrayF90(vec_vert2cell_reg_subset, v_loc_p, ierr)
+    allocate(cell_count(region%num_verts))
+    allocate(cell_ids(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
+      
+    ! initialize
+    cell_count    = 0
+    count         = 0
+      
+    do ii = 1,region%num_verts
+      do jj = 1,MAX_CELLS_SHARING_A_VERTEX
+        if(v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj) == -1) exit
+        count = count + 1
+        cell_count(ii) = cell_count(ii) + 1
+        cell_ids(count) = v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj )
+      enddo
+      if(cell_count(ii) < 0) then
+        option%io_buffer = 'For a given vertex, no cell found. Stopping'
+        call printErrMsg(option)
+      endif
+    enddo
+    call VecRestoreArrayF90(vec_vert2cell_reg_subset, v_loc_p, ierr)
+      
+    allocate(tmp_int_array(count*MAX_DUALS*MAX_VERT_PER_FACE))
+    kk = 0
+    do ii = 1,count
+      do jj = 1,MAX_DUALS*MAX_VERT_PER_FACE
+        kk = kk + 1
+        tmp_int_array(kk) = cell_ids(ii) * MAX_DUALS*MAX_VERT_PER_FACE + jj
+      enddo
+    enddo
+      
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, count*MAX_DUALS*MAX_VERT_PER_FACE,&
+      tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
+    deallocate(tmp_int_array)
+      
+    call VecCreateMPI(option%mycomm, count*MAX_DUALS*MAX_VERT_PER_FACE, &
+                      PETSC_DECIDE, vec_cell2facevert_reg_subset, ierr)
+    call VecGetOwnershipRange(vec_cell2facevert_reg_subset, istart, &
+                              iend, ierr)
+    allocate(tmp_int_array(count*MAX_DUALS*MAX_VERT_PER_FACE))
+    do ii = 1, count*MAX_DUALS*MAX_VERT_PER_FACE
+      tmp_int_array(ii) = ii + istart
+    enddo
+
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, count*MAX_DUALS*MAX_VERT_PER_FACE, &
+                        tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
+    deallocate(tmp_int_array)
+      
+    call VecScatterCreate(vec_cell2facevert, &
+                          is_from,vec_cell2facevert_reg_subset, is_to, &
+                          vec_scat, ierr)
+    call ISDestroy(is_from,ierr)
+    call ISDestroy(is_to,ierr)
+    
+    call VecScatterBegin(vec_scat, vec_cell2facevert, &
+                          vec_cell2facevert_reg_subset, INSERT_VALUES, &
+                          SCATTER_FORWARD, ierr)
+    call VecScatterEnd(  vec_scat, vec_cell2facevert, &
+                          vec_cell2facevert_reg_subset, INSERT_VALUES, &
+                          SCATTER_FORWARD, ierr)
+    call VecScatterDestroy(vec_scat, ierr)
+
+#if GB_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'vec_cell2facevert_reg_subset.out', viewer, &
+                              ierr)
+    call VecView(vec_cell2facevert_reg_subset, viewer,ierr)
+    call PetscViewerDestroy(viewer, ierr)
 #endif
 
-      call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
-      call VecGetArrayF90(vec_face_ids_loc, v_loc2_p, ierr)
+    call VecGetArrayF90(vec_cell2facevert_reg_subset, v_loc_p, ierr)
+    istart = 0
+    iend   = 0
+    counter1 = 0
+    counter2 = 0
+      
+    allocate(cell_ids_for_face(region%num_verts))
+    allocate(face_ids_for_face(region%num_verts))
+    do jj = 1,region%num_verts
+      iend   = istart + cell_count(jj) * MAX_DUALS * MAX_VERT_PER_FACE
+      istart = istart +  1
+      counter1 = (istart-1)/MAX_VERT_PER_FACE/MAX_DUALS
+      counter2 = 0
+      found  = PETSC_FALSE
+      do ii = istart,iend,MAX_VERT_PER_FACE
+        counter2 = counter2 + 1
+        if(region%vertex_ids(0, jj) == 4) then
+          if((v_loc_p(ii    ) == region%vertex_ids(1,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(2,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(3,jj)).and.&
+              (v_loc_p(ii + 3) == region%vertex_ids(4,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+          if((v_loc_p(ii    ) == region%vertex_ids(2,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(3,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(4,jj)).and.&
+              (v_loc_p(ii + 3) == region%vertex_ids(1,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+          if((v_loc_p(ii    ) == region%vertex_ids(3,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(4,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(2,jj)).and.&
+              (v_loc_p(ii + 3) == region%vertex_ids(1,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+          if((v_loc_p(ii    ) == region%vertex_ids(4,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(1,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(2,jj)).and.&
+              (v_loc_p(ii + 3) == region%vertex_ids(3,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+        elseif( v_loc_p(ii + 3) < 0 ) then
+          if((v_loc_p(ii    ) == region%vertex_ids(1,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(2,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(3,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+          if((v_loc_p(ii    ) == region%vertex_ids(2,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(3,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(1,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+          if((v_loc_p(ii    ) == region%vertex_ids(3,jj)).and.&
+              (v_loc_p(ii + 1) == region%vertex_ids(1,jj)).and.&
+              (v_loc_p(ii + 2) == region%vertex_ids(2,jj)))      then
+              found = PETSC_TRUE
+              exit
+          endif
+        endif
+          
+        if(counter2 == MAX_DUALS) then
+          counter2 = 0
+          counter1 = counter1 + 1
+        endif
+        
+      enddo
+
+      if((found.eqv.PETSC_FALSE)) then
+        option%io_buffer='No cell found for vertex '
+        call printErrMsg(option)
+      endif
+        
+      cell_ids_for_face(jj) = cell_ids(counter1+1)
+      face_ids_for_face(jj) = (ii-istart)/MAX_VERT_PER_FACE & 
+                              - INT( (ii-istart)/MAX_VERT_PER_FACE/MAX_DUALS)*MAX_DUALS + 1
+      istart = iend
+    enddo
+    call VecRestoreArrayF90(vec_cell2facevert_reg_subset, v_loc_p, ierr)
+
+
+    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+                      vec_cell_ids, ierr)
+    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+                      vec_cell_ids_loc, ierr)
+    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+                      vec_face_ids, ierr)
+    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+                      vec_face_ids_loc, ierr)
+    
+    call VecSet(vec_cell_ids, 0.d0, ierr)
+    call VecAssemblyBegin(vec_cell_ids, ierr)
+    call VecAssemblyEnd(  vec_cell_ids, ierr)
+    
+    call VecSet(vec_face_ids, 0.d0, ierr)
+    call VecAssemblyBegin(vec_face_ids, ierr)
+    call VecAssemblyEnd(  vec_face_ids, ierr)
+
+    allocate(tmp_int_array(region%num_verts))
+    allocate(tmp_scl_array(region%num_verts))
+
+    do ii = 1, region%num_verts
+      tmp_int_array(ii)  = cell_ids_for_face(ii)
+      tmp_scl_array(ii)  = 1.d0
+    enddo
+
+    call VecSetValues(vec_cell_ids, region%num_verts, tmp_int_array, &
+                      tmp_scl_array, ADD_VALUES, ierr)
+
+    do ii = 1, region%num_verts
+      tmp_int_array(ii) = cell_ids_for_face(ii)
+      tmp_scl_array(ii) = face_ids_for_face(ii)
+    enddo
+
+    call VecSetValues(vec_face_ids, region%num_verts, tmp_int_array, &
+                      tmp_scl_array, ADD_VALUES, ierr)
+    
+    deallocate(tmp_int_array)
+    deallocate(tmp_scl_array)
+
+    call VecAssemblyBegin(vec_cell_ids, ierr)
+    call VecAssemblyEnd(  vec_cell_ids, ierr)
+    call VecAssemblyBegin(vec_face_ids, ierr)
+    call VecAssemblyEnd(  vec_face_ids, ierr)
+
+#if GB_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_aft_2.out', &
+                              viewer, ierr)
+    call VecView(vec_cell_ids, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
+#endif
+
+    allocate(tmp_int_array(ugrid%num_cells_local))
+    count = 0
+    do ghosted_id=1,ugrid%num_cells_ghosted
+      local_id = grid%nG2L(ghosted_id)
+      if(local_id < 1) cycle
+      count = count + 1
+      natural_id = grid%nG2A(ghosted_id)
+      tmp_int_array(count) = natural_id
+    enddo
+
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+                      tmp_int_array, PETSC_COPY_VALUES, &
+                      is_from, ierr)
+    
+    call VecGetOwnershipRange(vec_cell_ids_loc, istart, iend, ierr)
+    do ii = 1, ugrid%num_cells_local
+      tmp_int_array(ii) = ii + istart
+    enddo
+
+    tmp_int_array = tmp_int_array - 1
+    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+                        tmp_int_array, PETSC_COPY_VALUES, &
+                        is_to, ierr)
+    deallocate(tmp_int_array)
+    
+    call VecScatterCreate(vec_cell_ids, is_from, vec_cell_ids_loc, &
+                          is_to, vec_scat, ierr)
+    call ISDestroy(is_from,ierr)
+    call ISDestroy(is_to,ierr)
+    
+    call VecScatterBegin(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterEnd(  vec_scat, vec_cell_ids, vec_cell_ids_loc, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterBegin(vec_scat, vec_face_ids, vec_face_ids_loc, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterEnd(  vec_scat, vec_face_ids, vec_face_ids_loc, &
+                          INSERT_VALUES, SCATTER_FORWARD, ierr)
+    call VecScatterDestroy(vec_scat, ierr)
+
+#if GB_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, 'vec_cell_ids_loc_2.out', &
+                              viewer, ierr)
+    call VecView(vec_cell_ids_loc, viewer, ierr)
+    call PetscViewerDestroy(viewer, ierr)
+#endif
+
+    call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
+    call VecGetArrayF90(vec_face_ids_loc, v_loc2_p, ierr)
+    count = 0
+    do ii = 1, ugrid%num_cells_local
+      if(v_loc_p(ii) == 1) count = count + 1
+    enddo
+    
+    region%num_cells = count
+    if (count > 0) then
+      allocate(tmp_int_array(count))
+      allocate(tmp_int_array2(count))
       count = 0
       do ii = 1, ugrid%num_cells_local
-        if(v_loc_p(ii) == 1) count = count + 1
+        if(v_loc_p(ii) == 1) then
+          count = count + 1
+          tmp_int_array(count) = ii
+          tmp_int_array2(count) = v_loc2_p(ii)
+        endif
       enddo
-    
-      region%num_cells = count
-      if (count > 0) then
-        allocate(tmp_int_array(count))
-        allocate(tmp_int_array2(count))
-        count = 0
-        do ii = 1, ugrid%num_cells_local
-          if(v_loc_p(ii) == 1) then
-            count = count + 1
-            tmp_int_array(count) = ii
-            tmp_int_array2(count) = v_loc2_p(ii)
-         endif
-        enddo
 
-        !deallocate(region%cell_ids)
-        allocate(region%cell_ids(region%num_cells))
-        allocate(region%faces(region%num_cells))
-        region%cell_ids = tmp_int_array
-        region%faces    = tmp_int_array2
+      !deallocate(region%cell_ids)
+      allocate(region%cell_ids(region%num_cells))
+      allocate(region%faces(region%num_cells))
+      region%cell_ids = tmp_int_array
+      region%faces    = tmp_int_array2
         
-        deallocate(tmp_int_array)
-        deallocate(tmp_int_array2)
+      deallocate(tmp_int_array)
+      deallocate(tmp_int_array2)
 
-      else
-        nullify(region%cell_ids)
-      endif
-    
-      call VecRestoreArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
-
-
-      deallocate(cell_count)
-      deallocate(cell_ids)
-      
-      call VecDestroy(vec_cell2facevert, ierr)
-      call VecDestroy(vec_vert2cell, ierr)
-      deallocate(vert2cell_array)
-
+    else
+      nullify(region%cell_ids)
     endif
     
-  region => region%next
+    call VecRestoreArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
 
-  enddo
+
+    deallocate(cell_count)
+    deallocate(cell_ids)
+      
+    call VecDestroy(vec_cell2facevert, ierr)
+    call VecDestroy(vec_vert2cell, ierr)
+    deallocate(vert2cell_array)
+
+  endif
+
 
 end subroutine GridLocalizeRegionsForUGrid
 

@@ -2468,7 +2468,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
   enddo 
 
   ! currently subcontinuum properties are set based on regions only.
-  ! TODO: Add support to read subcontinuum properties from input file
+  ! TODO(jitu): Add support to read subcontinuum properties from input file
   update_ghosted_subcontinuum_ids = PETSC_FALSE
   cur_level => realization%level_list%last
   if (.not.associated(cur_level)) exit
@@ -2483,7 +2483,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
       if (.not.associated(strata%region) .and. strata%active) then
         ! readSubcontinuumFromFile(realization, &
         !                        strata%subcontinuum_property_file_name)
-        ! TODO: Implement the above function
+        ! TODO(jitu): Implement the above function
       else if (strata%active) then
         update_ghosted_subcontinuum_ids = PETSC_TRUE
         region => strata%region
@@ -2670,12 +2670,13 @@ subroutine readRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-      if(region%grid_type.eq.STRUCTURED_GRID) then
+      if(region%grid_type == STRUCTURED_GRID) then
         call HDF5ReadRegionFromFile(realization,region,region%filename)
     else
 #ifndef SAMR_HAVE_HDF5
       call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
 #else
+     !geh: No.  AMR is entirely structured.
       ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
 #endif      
     endif

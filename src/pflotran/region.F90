@@ -21,7 +21,7 @@ module Region_module
     PetscInt :: num_cells
     PetscInt, pointer :: cell_ids(:)
     PetscInt, pointer :: faces(:)
-    PetscInt, pointer :: vert_ids(:,:) ! For Unstructured mesh
+    PetscInt, pointer :: vertex_ids(:,:) ! For Unstructured mesh
     PetscInt :: num_verts              ! For Unstructured mesh
     PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
     type(region_type), pointer :: next
@@ -95,7 +95,7 @@ function RegionCreateWithNothing()
   nullify(region%coordinates)
   nullify(region%cell_ids)
   nullify(region%faces)
-  nullify(region%vert_ids)
+  nullify(region%vertex_ids)
   nullify(region%next)
   
   RegionCreateWithNothing => region
@@ -207,10 +207,10 @@ function RegionCreateWithRegion(region)
     allocate(new_region%faces(new_region%num_cells))
     new_region%faces(1:new_region%num_cells) = region%faces(1:region%num_cells)
   endif
-  if (associated(region%vert_ids)) then
-    allocate(new_region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts))
-    new_region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts) = &
-    region%vert_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts)
+  if (associated(region%vertex_ids)) then
+    allocate(new_region%vertex_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts))
+    new_region%vertex_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts) = &
+    region%vertex_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts)
   endif
   
   RegionCreateWithRegion => new_region
@@ -473,7 +473,9 @@ subroutine RegionReadFromFileId(region,input,option)
   PetscInt, parameter :: VERTEX_IDS = 3
 
   call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
-
+  
+  !TODO(geh): clean and optimize this subroutine
+  
   max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -688,12 +690,12 @@ subroutine RegionReadFromFileId(region,input,option)
 
     ! Allocate memory and save the data
     region%num_verts = iend - istart
-    allocate(region%vert_ids(0:MAX_VERT_PER_FACE,1:region%num_verts))
-    region%vert_ids(0,1:region%num_verts) = vert_id_0_p(istart + 1: iend)
-    region%vert_ids(1,1:region%num_verts) = vert_id_1_p(istart + 1: iend)
-    region%vert_ids(2,1:region%num_verts) = vert_id_2_p(istart + 1: iend)
-    region%vert_ids(3,1:region%num_verts) = vert_id_3_p(istart + 1: iend)
-    region%vert_ids(4,1:region%num_verts) = vert_id_4_p(istart + 1: iend)
+    allocate(region%vertex_ids(0:MAX_VERT_PER_FACE,1:region%num_verts))
+    region%vertex_ids(0,1:region%num_verts) = vert_id_0_p(istart + 1: iend)
+    region%vertex_ids(1,1:region%num_verts) = vert_id_1_p(istart + 1: iend)
+    region%vertex_ids(2,1:region%num_verts) = vert_id_2_p(istart + 1: iend)
+    region%vertex_ids(3,1:region%num_verts) = vert_id_3_p(istart + 1: iend)
+    region%vertex_ids(4,1:region%num_verts) = vert_id_4_p(istart + 1: iend)
     deallocate(vert_id_0_p)
     deallocate(vert_id_1_p)
     deallocate(vert_id_2_p)
@@ -825,7 +827,8 @@ subroutine RegionDestroy(region)
   if (associated(region%faces)) deallocate(region%faces)
   nullify(region%faces)
   nullify(region%next)
-  if (associated(region%vert_ids)) deallocate(region%vert_ids)
+  if (associated(region%vertex_ids)) deallocate(region%vertex_ids)
+  nullify(region%vertex_ids)
   
   deallocate(region)
   nullify(region)

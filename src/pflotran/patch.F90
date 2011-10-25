@@ -275,11 +275,9 @@ subroutine PatchLocalizeRegions(patch,regions,option)
     cur_region => cur_region%next
   enddo
   
-  if(patch%grid%itype.ne.UNSTRUCTURED_GRID) then
-    call GridLocalizeRegions(patch%grid,patch%regions,option)
-  else
-    call GridLocalizeRegionsForUGrid(patch%grid,patch%regions,option)
-  endif
+  !geh: All grids must be localized through GridLocalizeRegions.  Patch
+  !     should not differentiate between structured/unstructured, etc.
+  call GridLocalizeRegions(patch%grid,patch%regions,option)
  
 end subroutine PatchLocalizeRegions
 

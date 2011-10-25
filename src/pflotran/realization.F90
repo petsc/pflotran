@@ -196,7 +196,8 @@ end function RealizationCreate2
 subroutine RealizationCreateDiscretization(realization)
 
   use Grid_module
-  use Unstructured_Grid_module, only : UGridMapIndices
+  use Unstructured_Grid_module, only : UGridMapIndices, &
+                                       UGridEnsureRightHandRule
   use AMR_Grid_module
   use MFD_module
   use Coupler_module
@@ -406,6 +407,10 @@ subroutine RealizationCreateDiscretization(realization)
                            grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                    discretization%dm_1dof%ugdm)  !sp 
+#ifdef GLENN
+      call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
+                                    grid%y,grid%z,option)
+#endif
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option, discretization%dm_1dof%ugdm) !sp 
       call GridComputeVolumes(grid,field%volume,option)
@@ -1013,7 +1018,7 @@ subroutine RealProcessSubcontinuumProp(realization)
             cur_subcontinuum_property%id
           exit
         endif
-        ! START TODO: check if this error check block is at right place. might have
+        ! START TODO(jitu): check if this error check block is at right place. might have
         ! to push it to upper do loop: Jitu 10/07/2010 
         if (.not.found) then
           option%io_buffer = 'Saturation function "' // &
@@ -1023,7 +1028,7 @@ subroutine RealProcessSubcontinuumProp(realization)
                '" not found among available subcontinuum types.'
           call printErrMsg(realization%option)    
         endif
-        ! END TODO
+        ! END TODO(jitu)
       enddo  
       cur_subcontinuum_property => cur_subcontinuum_property%next
     enddo

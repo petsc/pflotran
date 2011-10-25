@@ -300,6 +300,7 @@ PetscInt, parameter :: BOX_STENCIL = 2
 ! grid cell type
 PetscInt, parameter :: HEX_TYPE          = 1
 PetscInt, parameter :: WEDGE_TYPE        = 2
+PetscInt, parameter :: TET_TYPE          = 3
 
 ! grid cell properties
 PetscInt, parameter :: TRI_FACE_TYPE     = 1

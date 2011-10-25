@@ -2801,7 +2801,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
+          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
              flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
                        ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
           else
@@ -3293,7 +3293,7 @@ end interface
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
       if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+        (.not.(grid%structured_grid%p_samr_patch == 0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
       call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
@@ -3314,7 +3314,7 @@ end interface
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
       if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+        (.not.(grid%structured_grid%p_samr_patch == 0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
       call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)

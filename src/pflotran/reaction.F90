@@ -5522,7 +5522,7 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
     do k = j, FIVE_INTEGER
       a(j,k) = 0.d0
       do i = 1, reaction%num_dbase_temperatures
-        if (temp_int(i) .eq. 1) then
+        if (temp_int(i) == 1) then
           a(j,k) = a(j,k) + vec(j,i)*vec(k,i)
         endif
       enddo

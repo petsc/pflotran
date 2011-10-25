@@ -3398,7 +3398,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   
   ! Get number of dimensions and check
   call h5sget_simple_extent_ndims_f(data_space_id,ndims,hdf5_err)
-  if ((ndims.gt.2).or.(ndims.lt.1)) then
+  if ((ndims > 2).or.(ndims < 1)) then
     option%io_buffer='Dimension of '//string//' dataset in ' // filename // &
      ' is > 2 or < 1.'
   call printErrMsg(option)
@@ -3420,7 +3420,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
     !
     region%num_cells = dims_h5(1)/option%mycommsize
       remainder = dims_h5(1) - region%num_cells*option%mycommsize
-    if(option%myrank.lt.remainder) region%num_cells = region%num_cells + 1
+    if(option%myrank < remainder) region%num_cells = region%num_cells + 1
     
     ! Find istart and iend
     istart = 0
@@ -3464,7 +3464,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   
     do ii = 1,region%num_cells
       region%cell_ids(ii) = int_buffer(ii,1)
-    !if(option%myrank.eq.0) write(*,*), ii, region%cell_ids(ii)
+    !if(option%myrank == 0) write(*,*), ii, region%cell_ids(ii)
   enddo
     
   case(2)
@@ -3532,13 +3532,13 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
        ! Input data is list of Vertices
        !
        ! allocate array to store vertices for each cell
-       allocate(region%vert_ids(0:MAX_VERT_PER_FACE,region%num_verts))
-       region%vert_ids = -1
+       allocate(region%vertex_ids(0:MAX_VERT_PER_FACE,region%num_verts))
+       region%vertex_ids = -1
   
        do ii = 1,region%num_verts
-         region%vert_ids(0,ii) = int_buffer(1,ii)
+         region%vertex_ids(0,ii) = int_buffer(1,ii)
            do jj = 2,int_buffer(1,ii)+1
-           region%vert_ids(jj-1,ii) = int_buffer(jj,ii)
+           region%vertex_ids(jj-1,ii) = int_buffer(jj,ii)
          enddo
        enddo
      endif

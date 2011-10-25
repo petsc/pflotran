@@ -1687,7 +1687,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
     endif
     if (realization%reaction%use_log_formulation) then
       if (associated(realization%patch%grid%structured_grid) .and. &
-          (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+          (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
         cur_level => realization%level_list%first
         do 
           if (.not.associated(cur_level)) exit
@@ -1715,7 +1715,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
         (log_end_time - log_start_time)          
         
       if (associated(realization%patch%grid%structured_grid) .and. &
-          (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+          (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
         cur_level => realization%level_list%first
         do 
           if (.not.associated(cur_level)) exit
@@ -2481,7 +2481,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 
   if (realization%reaction%use_log_formulation) then
     if (associated(realization%patch%grid%structured_grid) .and. &
-        (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+        (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
       cur_level => realization%level_list%first
       do 
         if (.not.associated(cur_level)) exit
@@ -2505,7 +2505,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
     call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
       
     if (associated(realization%patch%grid%structured_grid) .and. &
-        (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+        (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
       cur_level => realization%level_list%first
       do 
         if (.not.associated(cur_level)) exit

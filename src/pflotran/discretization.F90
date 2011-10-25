@@ -813,7 +813,7 @@ end interface
              npatches = level_number_patches(discretization%amrgrid%p_application, ln )
              do pn=0,npatches-1
                 islocal = is_local_patch(discretization%amrgrid%p_application, ln, pn);
-                if(islocal.eq.1) then
+                if(islocal == 1) then
                    ngmax =  discretization%amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax
                    imax = max(ngmax,imax) 
                 endif
