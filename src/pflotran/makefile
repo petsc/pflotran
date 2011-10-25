@@ -234,7 +234,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o
-unstructured_grid.o : option.o connection.o 
+unstructured_grid.o : option.o connection.o unstructured_cell.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
