@@ -1,3 +1,5 @@
 [repository]
 native = LF
-
+[patterns]
+**.F90 = native
+**.h = native
