@@ -156,6 +156,7 @@ common_obj = ${common_src}option.o \
 	${common_src}observation.o \
 	${common_src}solver.o \
 	${common_src}cf90bridge.o\
+	${common_src}unstructured_cell.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
 	${common_src}condition.o \
@@ -234,6 +235,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o
 unstructured_grid.o : option.o connection.o 
+unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \

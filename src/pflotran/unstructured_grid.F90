@@ -2102,6 +2102,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(unstructured_grid_type) :: unstructured_grid
   VecScatter :: scatter_ltol 
 
+  type(connection_set_type), pointer :: connections
 #ifdef ENABLE_UNSTRUCTURED
   PetscInt :: nconn, iconn
   PetscInt :: idual, dual_id
@@ -2143,8 +2144,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(point_type) :: intercept1, intercept2, intercept
 
   character(len=MAXSTRINGLENGTH) :: string  
-
-  type(connection_set_type), pointer :: connections
 
   !sp 
   PetscReal, pointer :: vec_p(:) !sp 
@@ -2862,8 +2861,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   deallocate(vertex_to_cell)
   deallocate(dual_to_face)
 
-  UGridComputeInternConnect => connections
 #endif        
+  UGridComputeInternConnect => connections
 
 end function UGridComputeInternConnect
 
