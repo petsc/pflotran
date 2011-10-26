@@ -529,7 +529,7 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
 
   if (.not.associated(sub_condition)) return
   
-  if (.not. (associated(sub_condition%flow_dataset%time_series) .or. &
+  if (.not. (associated(sub_condition%flow_dataset%time_series%values) .or. &
              associated(sub_condition%flow_dataset%dataset))) then
     if (destroy_if_null) call FlowSubConditionDestroy(sub_condition)
     return
