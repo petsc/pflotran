@@ -576,7 +576,10 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
   type(flow_condition_dataset_type) :: dataset
   type(flow_condition_dataset_type) :: default_dataset
   
-  !TOOD(geh): setup
+  if (associated(dataset%time_series)) then
+    call TimeSeriesVerify(option, default_time, dataset%time_series, &
+                          default_dataset%time_series)
+  endif
   
 end subroutine FlowConditionDatasetVerify
 
@@ -598,7 +601,14 @@ subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
   PetscReal :: max_sim_time
   PetscReal, pointer :: times(:)
   
-  !TOOD(geh): setup
+  type(flow_condition_dataset_type), pointer :: flow_dataset
+  
+  flow_dataset => sub_condition%flow_dataset
+  
+  if (associated(flow_dataset%time_series)) then
+    call TimeSeriesGetTimes(option, flow_dataset%time_series, max_sim_time, &
+                            times)
+  endif
  
 end subroutine FlowConditionDatasetGetTimes
 
