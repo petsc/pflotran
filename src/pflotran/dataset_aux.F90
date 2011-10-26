@@ -23,10 +23,6 @@ module Dataset_Aux_module
     type(dataset_type), pointer :: next
   end type dataset_type
 
-  type, public :: dataset_info_type
-  
-  end type dataset_info_type
-  
   ! dataset types
   PetscInt, parameter :: DATASET_INTEGER = 1
   PetscInt, parameter :: DATASET_REAL = 2

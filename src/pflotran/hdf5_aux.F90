@@ -27,7 +27,7 @@ module HDF5_aux_module
 #ifdef PARALLELIO_LIB
   public :: HDF5ReadNDimRealArray, &
             HDF5ReadDatasetInteger2D, &
-			HDF5ReadDatasetReal2D
+            HDF5ReadDatasetReal2D
 #else
   public :: HDF5ReadNDimRealArray, &
             HDF5ReadDataset
@@ -363,8 +363,8 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   call parallelIO_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
   if (ndims > 2) then
     option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
-	   ' is greater than to 2.'
-	call printErrMsg(option)
+    ' is greater than to 2.'
+    call printErrMsg(option)
   endif
   
   ! Get size of each dimension
@@ -447,8 +447,8 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   call parallelIO_get_dataset_ndims(ndims, file_id, dataset_name, option%ioread_group_id, ierr)
   if (ndims > 2) then
     option%io_buffer='Dimension of ' // dataset_name // ' dataset in ' // filename // &
-	   ' is greater than to 2.'
-	call printErrMsg(option)
+    ' is greater than to 2.'
+    call printErrMsg(option)
   endif
   
   ! Get size of each dimension
