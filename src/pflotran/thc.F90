@@ -2005,10 +2005,10 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       enthalpy_flag = PETSC_FALSE
     endif
 
-    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / FMWCO2
@@ -2477,10 +2477,10 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       enthalpy_flag = PETSC_FALSE
     endif
 
-    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / FMWCO2

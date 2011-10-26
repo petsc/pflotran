@@ -3,6 +3,8 @@ module Condition_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Dataset_Aux_module
+  use Time_Series_module
   
   implicit none
 
@@ -15,17 +17,8 @@ module Condition_module
   PetscInt, parameter :: LINEAR = 2
 
   type, public :: flow_condition_dataset_type
-    PetscInt :: rank
-    PetscBool :: is_transient
-    PetscBool :: is_cyclic
-    PetscInt :: interpolation_method
-    PetscReal, pointer :: times(:)
-    PetscReal, pointer :: values(:,:)
-    PetscReal, pointer :: cur_value(:)
-    PetscInt :: cur_time_index
-    PetscInt :: max_time_index
-    PetscReal :: time_shift
-    PetscReal :: lame_aux_variable_remove_me
+    type(time_series_type), pointer :: time_series
+    type(dataset_type), pointer ::  dataset
   end type flow_condition_dataset_type
   
   type, public :: flow_condition_type
@@ -66,7 +59,7 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: name
     type(flow_condition_dataset_type) :: datum
     type(flow_condition_dataset_type) :: gradient
-    type(flow_condition_dataset_type) :: dataset
+    type(flow_condition_dataset_type) :: flow_dataset
   end type flow_sub_condition_type
   
   type, public :: sub_condition_ptr_type
@@ -431,12 +424,16 @@ function FlowSubConditionCreate(ndof)
   sub_condition%ctype = ''
   sub_condition%name = ''
 
-  call FlowConditionDatasetInit(sub_condition%dataset)
-  sub_condition%dataset%rank = ndof
+  ! by default, create time series
+  call FlowConditionDatasetInit(sub_condition%flow_dataset)
+  sub_condition%flow_dataset%time_series => TimeSeriesCreate()
+  sub_condition%flow_dataset%time_series%rank = ndof
   call FlowConditionDatasetInit(sub_condition%gradient)
-  sub_condition%gradient%rank = 3
+  sub_condition%gradient%time_series => TimeSeriesCreate()
+  sub_condition%gradient%time_series%rank = 3
   call FlowConditionDatasetInit(sub_condition%datum)
-  sub_condition%datum%rank = 3
+  sub_condition%datum%time_series => TimeSeriesCreate()
+  sub_condition%datum%time_series%rank = 3
 
   FlowSubConditionCreate => sub_condition
 
@@ -483,23 +480,14 @@ end function GetFlowSubCondFromArrayByName
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine FlowConditionDatasetInit(dataset)
+subroutine FlowConditionDatasetInit(flow_condition_dataset)
 
   implicit none
   
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_condition_dataset
 
-  nullify(dataset%times)
-  nullify(dataset%values)
-  nullify(dataset%cur_value)
-  dataset%cur_time_index = 0
-  dataset%max_time_index = 0
-  dataset%rank = 0
-  dataset%is_cyclic = PETSC_FALSE
-  dataset%is_transient = PETSC_FALSE
-  dataset%interpolation_method = NULL
-  dataset%time_shift = 0.d0
-  dataset%lame_aux_variable_remove_me = 0.d0
+  nullify(flow_condition_dataset%time_series)
+  nullify(flow_condition_dataset%dataset)
     
 end subroutine FlowConditionDatasetInit
 
@@ -514,7 +502,7 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
                                   sub_condition, &
                                   default_time, &
                                   default_ctype, default_itype, &
-                                  default_dataset, &
+                                  default_flow_dataset, &
                                   default_datum, default_gradient, &
                                   destroy_if_null)
 
@@ -532,7 +520,7 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   PetscInt :: default_interpolation
   PetscReal :: default_time
   PetscInt :: default_iphase
-  type(flow_condition_dataset_type) :: default_dataset
+  type(flow_condition_dataset_type) :: default_flow_dataset
   type(flow_condition_dataset_type) :: default_datum
   type(flow_condition_dataset_type) :: default_gradient
   PetscBool :: destroy_if_null
@@ -541,7 +529,8 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
 
   if (.not.associated(sub_condition)) return
   
-  if (.not.associated(sub_condition%dataset%values)) then
+  if (.not. (associated(sub_condition%flow_dataset%time_series) .or. &
+             associated(sub_condition%flow_dataset%dataset))) then
     if (destroy_if_null) call FlowSubConditionDestroy(sub_condition)
     return
   endif
@@ -553,8 +542,8 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   endif
   
   call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
-                                  default_time,sub_condition%dataset, &
-                                  default_dataset)
+                                  default_time,sub_condition%flow_dataset, &
+                                  default_flow_dataset)
   call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
                                   default_time,sub_condition%datum,&
                                   default_datum)
@@ -571,9 +560,10 @@ end subroutine FlowSubConditionVerify
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name, &
-                                  default_time, &
-                                  dataset, default_dataset)
+subroutine FlowConditionDatasetVerify(option, condition_name, &
+                                      sub_condition_name, &
+                                      default_time, &
+                                      dataset, default_dataset)
   use Option_module
 
   implicit none
@@ -586,62 +576,8 @@ subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name
   type(flow_condition_dataset_type) :: dataset
   type(flow_condition_dataset_type) :: default_dataset
   
-  PetscInt :: array_size
+  !TOOD(geh): setup
   
-  if (default_dataset%is_cyclic) dataset%is_cyclic = PETSC_TRUE
-  if (dataset%interpolation_method == NULL) &
-    dataset%interpolation_method = default_dataset%interpolation_method
-  
-  dataset%max_time_index = 1
-  if (.not.associated(dataset%times)) then
-    if (.not.associated(default_dataset%times)) then
-      array_size = 1
-      allocate(dataset%times(array_size))
-      dataset%times = default_time
-    else
-      array_size = size(default_dataset%times,1)
-      allocate(dataset%times(array_size))
-      dataset%times(1:array_size) = default_dataset%times(1:array_size)
-    endif
-  endif
-  if (.not.associated(dataset%values)) then
-    if (.not.associated(default_dataset%values)) then
-      ! allocate to size 1
-      array_size = 1
-      allocate(dataset%values(1:dataset%rank,array_size))
-      dataset%values(1:dataset%rank,1:array_size) = 0.d0
-    else
-      ! copy default
-      array_size = size(default_dataset%values,2)
-      allocate(dataset%values(1:dataset%rank,array_size))
-      dataset%values(1:dataset%rank,1:array_size) = &
-        default_dataset%values(1:dataset%rank,1:array_size)
-    endif
-  endif
-  dataset%max_time_index = size(dataset%times,1) 
-  if (dataset%max_time_index > 1) then
-    if (size(dataset%values,2) /= & ! size of 2nd rank
-        dataset%max_time_index) then
-      write(size1,*) size(dataset%times,1)
-      write(size2,*) size(dataset%values,2)
-      option%io_buffer = 'times/values ('//trim(size1)//'/'//trim(size2) // &
-                         ') array size mismatch in ' // &
-                         'condition: ' // trim(condition_name) // &
-                         'subcondition: ' // trim(sub_condition_name)
-      call printErrMsg(option) 
-    endif
-    dataset%is_transient = PETSC_TRUE
-  else
-    dataset%is_transient = PETSC_FALSE
-  endif  
-  dataset%cur_time_index = 1
-  
-  allocate(dataset%cur_value(dataset%rank))
-  dataset%cur_value(1:dataset%rank) = dataset%values(1:dataset%rank,1)
-
-  dataset%time_shift = dataset%times(dataset%max_time_index)
-! print *,'condition: ',dataset%max_time_index,dataset%time_shift
-
 end subroutine FlowConditionDatasetVerify
 
 ! ************************************************************************** !
@@ -662,44 +598,7 @@ subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
   PetscReal :: max_sim_time
   PetscReal, pointer :: times(:)
   
-  type(flow_condition_dataset_type), pointer :: dataset
-  PetscInt :: num_times
-  PetscInt :: itime
-  PetscReal :: time_shift
-  PetscReal, allocatable :: temp_times(:)
-
-  dataset => sub_condition%dataset
-
-  if (.not.dataset%is_cyclic .or. dataset%max_time_index == 1) then
-    allocate(times(dataset%max_time_index))
-    times =  dataset%times
-  else ! cyclic
-    num_times = (int(max_sim_time/dataset%times(dataset%max_time_index))+1)* &
-                dataset%max_time_index
-    allocate(temp_times(num_times))
-    temp_times = 0.d0
-
-    num_times = 0
-    itime = 0
-    time_shift = 0.d0
-    do
-      num_times = num_times + 1
-      itime = itime + 1
-      ! exist for non-cyclic
-      if (itime > dataset%max_time_index) exit
-      temp_times(num_times) = dataset%times(itime) + time_shift
-      if (mod(itime,dataset%max_time_index) == 0) then
-        itime = 0
-        time_shift = time_shift + dataset%times(dataset%max_time_index) 
-      endif 
-      ! exit for cyclic
-      if (temp_times(num_times) >= max_sim_time) exit
-    enddo
-
-    allocate(times(num_times))
-    times(:) = temp_times(1:num_times)
-    deallocate(temp_times)
-  endif
+  !TOOD(geh): setup
  
 end subroutine FlowConditionDatasetGetTimes
 
@@ -730,7 +629,7 @@ subroutine FlowConditionRead(condition,input,option)
                                        sub_condition_ptr
   PetscReal :: default_time
   PetscInt :: default_iphase
-  type(flow_condition_dataset_type) :: default_dataset
+  type(flow_condition_dataset_type) :: default_flow_dataset
   type(flow_condition_dataset_type) :: default_datum
   type(flow_condition_dataset_type) :: default_gradient
   type(flow_condition_dataset_type) :: default_well
@@ -745,23 +644,27 @@ subroutine FlowConditionRead(condition,input,option)
 
   default_time = 0.d0
   default_iphase = 0
-  call FlowConditionDatasetInit(default_dataset)
-  default_dataset%rank = 1
-  default_dataset%interpolation_method = STEP
-  default_dataset%is_cyclic = PETSC_FALSE
+  call FlowConditionDatasetInit(default_flow_dataset)
+  default_flow_dataset%time_series => TimeSeriesCreate()
+  default_flow_dataset%time_series%rank = 1
+  default_flow_dataset%time_series%interpolation_method = STEP
+  default_flow_dataset%time_series%is_cyclic = PETSC_FALSE
   call FlowConditionDatasetInit(default_datum)
-  default_datum%rank = 3
+  default_datum%time_series => TimeSeriesCreate()
+  default_datum%time_series%rank = 3
   call FlowConditionDatasetInit(default_gradient)
-  default_gradient%rank = 3
+  default_gradient%time_series => TimeSeriesCreate()
+  default_gradient%time_series%rank = 3
   call FlowConditionDatasetInit(default_well)
-  default_well%rank = 7 + option%nflowspec
+  default_well%time_series => TimeSeriesCreate()
+  default_well%time_series%rank = 7 + option%nflowspec
 
   pressure => FlowSubConditionCreate(option%nphase)
   pressure%name = 'pressure'
   flux => pressure
   rate => FlowSubConditionCreate(option%nflowspec)
   rate%name = 'rate'
-  well => FlowSubConditionCreate(default_well%rank)
+  well => FlowSubConditionCreate(default_well%time_series%rank)
   well%name = 'well'
   temperature => FlowSubConditionCreate(ONE_INTEGER)
   temperature%name = 'temperature'
@@ -820,7 +723,7 @@ subroutine FlowConditionRead(condition,input,option)
           end select
         enddo
       case('CYCLIC')
-        default_dataset%is_cyclic = PETSC_TRUE
+        default_flow_dataset%time_series%is_cyclic = PETSC_TRUE
       case('SYNC_TIMESTEP_WITH_UPDATE')
         condition%sync_time_with_update = PETSC_TRUE
       case('INTERPOLATION')
@@ -829,9 +732,9 @@ subroutine FlowConditionRead(condition,input,option)
         call StringToLower(word)
         select case(word)
           case('step')
-            default_dataset%interpolation_method = STEP
+            default_flow_dataset%time_series%interpolation_method = STEP
           case('linear') 
-            default_dataset%interpolation_method = LINEAR
+            default_flow_dataset%time_series%interpolation_method = LINEAR
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
@@ -991,34 +894,34 @@ subroutine FlowConditionRead(condition,input,option)
         enddo
       case('TEMPERATURE','TEMP')
         call FlowConditionReadValues(input,option,word,string, &
-                                     temperature%dataset, &
+                                     temperature%flow_dataset, &
                                      temperature%units)
       case('ENTHALPY','H')
         call FlowConditionReadValues(input,option,word,string, &
-                                     enthalpy%dataset, &
+                                     enthalpy%flow_dataset, &
                                      enthalpy%units)
       case('PRESSURE','PRES','PRESS')
         call FlowConditionReadValues(input,option,word,string, &
-                                     pressure%dataset, &
+                                     pressure%flow_dataset, &
                                      pressure%units)
       case('RATE')
         call FlowConditionReadValues(input,option,word,string, &
-                                     rate%dataset, &
+                                     rate%flow_dataset, &
                                      rate%units)
       case('WELL')
         call FlowConditionReadValues(input,option,word,string, &
-                                     well%dataset, &
+                                     well%flow_dataset, &
                                      well%units)
       case('FLUX','VELOCITY','VEL')
         call FlowConditionReadValues(input,option,word,string, &
-                                     pressure%dataset, &
+                                     pressure%flow_dataset, &
                                      pressure%units)
       case('CONC','CONCENTRATION','SATURATION')
         call FlowConditionReadValues(input,option,word,string, &
-                                     concentration%dataset, &
+                                     concentration%flow_dataset, &
                                      concentration%units)
       case('CONDUCTANCE')
-        call InputReadDouble(input,option,pressure%dataset%lame_aux_variable_remove_me)
+        call InputReadDouble(input,option,pressure%flow_dataset%time_series%lame_aux_variable_remove_me)
         call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -1037,15 +940,17 @@ subroutine FlowConditionRead(condition,input,option)
     condition%iphase = default_iphase    
   endif
   
-  ! update datum and gradient defaults, if null, based on dataset default
-  if (default_dataset%is_cyclic) then
-    default_datum%is_cyclic = PETSC_TRUE
-    default_gradient%is_cyclic = PETSC_TRUE
+  ! update datum and gradient defaults, if null, based on flow_dataset default
+  if (default_flow_dataset%time_series%is_cyclic) then
+    default_datum%time_series%is_cyclic = PETSC_TRUE
+    default_gradient%time_series%is_cyclic = PETSC_TRUE
   endif
-  if (default_datum%interpolation_method == NULL) &
-    default_datum%interpolation_method = default_dataset%interpolation_method
-  if (default_gradient%interpolation_method == NULL) &
-    default_gradient%interpolation_method = default_dataset%interpolation_method
+  if (default_datum%time_series%interpolation_method == NULL) &
+    default_datum%time_series%interpolation_method = &
+    default_flow_dataset%time_series%interpolation_method
+  if (default_gradient%time_series%interpolation_method == NULL) &
+    default_gradient%time_series%interpolation_method = &
+    default_flow_dataset%time_series%interpolation_method
 
   ! check to ensure that a rate condition is not of type pressure   
   if (associated(rate)) then
@@ -1074,32 +979,32 @@ subroutine FlowConditionRead(condition,input,option)
   word = 'pressure/flux'
   call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
                               default_ctype, default_itype, &
-                              default_dataset, &
+                              default_flow_dataset, &
                               default_datum, default_gradient, PETSC_TRUE)
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,rate,default_time, &
                               default_ctype, default_itype, &
-                              default_dataset, &
+                              default_flow_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
   word = 'well'
   call FlowSubConditionVerify(option,condition,word,well,default_time, &
                               default_ctype, default_itype, &
-                              default_dataset, &
+                              default_flow_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
                               default_ctype, default_itype, &
-                              default_dataset, &
+                              default_flow_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
   word = 'concentration'
   call FlowSubConditionVerify(option,condition,word,concentration,default_time, &
                               default_ctype, default_itype, &
-                              default_dataset, &
+                              default_flow_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
   word = 'enthalpy'
   call FlowSubConditionVerify(option,condition,word,enthalpy,default_time, &
                               default_ctype, default_itype, &
-                              default_dataset, &
+                              default_flow_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
 
   select case(option%iflowmode)
@@ -1204,7 +1109,7 @@ subroutine FlowConditionRead(condition,input,option)
       
   end select
   
-  call FlowConditionDatasetDestroy(default_dataset)
+  call FlowConditionDatasetDestroy(default_flow_dataset)
   call FlowConditionDatasetDestroy(default_datum)
   call FlowConditionDatasetDestroy(default_gradient)
     
@@ -1239,7 +1144,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   type(flow_sub_condition_type), pointer :: sub_condition_ptr
   PetscReal :: default_time
   PetscInt :: default_iphase
-  type(flow_condition_dataset_type) :: default_dataset
+  type(flow_condition_dataset_type) :: default_flow_dataset
   type(flow_condition_dataset_type) :: default_datum
   type(flow_condition_dataset_type) :: default_gradient
   character(len=MAXWORDLENGTH) :: default_ctype
@@ -1255,14 +1160,17 @@ subroutine FlowConditionGeneralRead(condition,input,option)
 
   default_time = 0.d0
   default_iphase = 0
-  call FlowConditionDatasetInit(default_dataset)
-  default_dataset%rank = 1
-  default_dataset%interpolation_method = STEP
-  default_dataset%is_cyclic = PETSC_FALSE
+  call FlowConditionDatasetInit(default_flow_dataset)
+  default_flow_dataset%time_series => TimeSeriesCreate()
+  default_flow_dataset%time_series%rank = 1
+  default_flow_dataset%time_series%interpolation_method = STEP
+  default_flow_dataset%time_series%is_cyclic = PETSC_FALSE
   call FlowConditionDatasetInit(default_datum)
-  default_datum%rank = 3
+  default_datum%time_series => TimeSeriesCreate()
+  default_datum%time_series%rank = 3
   call FlowConditionDatasetInit(default_gradient)
-  default_gradient%rank = 3
+  default_gradient%time_series => TimeSeriesCreate()
+  default_gradient%time_series%rank = 3
   
   select case(option%iflowmode)
     case(G_MODE)
@@ -1288,7 +1196,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
     select case(trim(word))
     
       case('CYCLIC')
-        default_dataset%is_cyclic = PETSC_TRUE
+        default_flow_dataset%time_series%is_cyclic = PETSC_TRUE
       case('SYNC_TIMESTEP_WITH_UPDATE')
         condition%sync_time_with_update = PETSC_TRUE
       case('INTERPOLATION')
@@ -1297,9 +1205,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         call StringToLower(word)
         select case(word)
           case('step')
-            default_dataset%interpolation_method = STEP
+            default_flow_dataset%time_series%interpolation_method = STEP
           case('linear') 
-            default_dataset%interpolation_method = LINEAR
+            default_flow_dataset%time_series%interpolation_method = LINEAR
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
@@ -1372,13 +1280,13 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                                                             option)
         end select
         call FlowConditionReadValues(input,option,word,string, &
-                                     sub_condition_ptr%dataset, &
+                                     sub_condition_ptr%flow_dataset, &
                                      sub_condition_ptr%units)
         select case(word)
           case('LIQUID_SATURATION') ! convert to gas saturation
-            do i = 1, size(sub_condition_ptr%dataset%values)
-              sub_condition_ptr%dataset%values(i,:) = &
-                1.d0 - sub_condition_ptr%dataset%values(i,:)
+            do i = 1, size(sub_condition_ptr%flow_dataset%time_series%values)
+              sub_condition_ptr%flow_dataset%time_series%values(i,:) = &
+                1.d0 - sub_condition_ptr%flow_dataset%time_series%values(i,:)
             enddo
         end select
       case default
@@ -1389,15 +1297,17 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   
   enddo  
   
-  ! update datum and gradient defaults, if null, based on dataset default
-  if (default_dataset%is_cyclic) then
-    default_datum%is_cyclic = PETSC_TRUE
-    default_gradient%is_cyclic = PETSC_TRUE
+  ! update datum and gradient defaults, if null, based on flow_dataset default
+  if (default_flow_dataset%time_series%is_cyclic) then
+    default_datum%time_series%is_cyclic = PETSC_TRUE
+    default_gradient%time_series%is_cyclic = PETSC_TRUE
   endif
-  if (default_datum%interpolation_method == NULL) &
-    default_datum%interpolation_method = default_dataset%interpolation_method
-  if (default_gradient%interpolation_method == NULL) &
-    default_gradient%interpolation_method = default_dataset%interpolation_method
+  if (default_datum%time_series%interpolation_method == NULL) &
+    default_datum%time_series%interpolation_method = &
+      default_flow_dataset%time_series%interpolation_method
+  if (default_gradient%time_series%interpolation_method == NULL) &
+    default_gradient%time_series%interpolation_method = &
+      default_flow_dataset%time_series%interpolation_method
 
   ! need mole fraction and some sort of saturation
   if (associated(general%flux)) then
@@ -1469,35 +1379,35 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   word = 'liquid pressure'
   call FlowSubConditionVerify(option,condition,word,general%liquid_pressure, &
                               default_time, default_ctype, default_itype, &
-                              default_dataset, default_datum, &
+                              default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
   word = 'gas pressure'
   call FlowSubConditionVerify(option,condition,word,general%gas_pressure, &
                               default_time, default_ctype, default_itype, &
-                              default_dataset, default_datum, &
+                              default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
   word = 'gas saturation'
   call FlowSubConditionVerify(option,condition,word,general%gas_saturation, &
                               default_time, default_ctype, default_itype, &
-                              default_dataset, default_datum, &
+                              default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
   word = 'mole fraction'
   call FlowSubConditionVerify(option,condition,word,general%mole_fraction, &
                               default_time, default_ctype, default_itype, &
-                              default_dataset, default_datum, &
+                              default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,general%temperature, &
                               default_time, default_ctype, default_itype, &
-                              default_dataset, default_datum, &
+                              default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
   word = 'flux'
   call FlowSubConditionVerify(option,condition,word,general%flux, &
                               default_time, default_ctype, default_itype, &
-                              default_dataset, default_datum, &
+                              default_flow_dataset, default_datum, &
                               default_gradient, PETSC_TRUE)
 
-  call FlowConditionDatasetDestroy(default_dataset)
+  call FlowConditionDatasetDestroy(default_flow_dataset)
   call FlowConditionDatasetDestroy(default_datum)
   call FlowConditionDatasetDestroy(default_gradient)
     
@@ -2010,7 +1920,8 @@ end subroutine TranConstraintRead
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
+subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
+                                   units)
 
   use Input_module
   use String_module
@@ -2028,7 +1939,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_dataset
   character(len=MAXWORDLENGTH) :: units
   
   character(len=MAXSTRINGLENGTH) :: string2, filename, hdf5_path
@@ -2061,13 +1972,17 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
   length = len_trim(word)
-  if (length==FOUR_INTEGER .and. StringCompare(word,'file',length)) then  !sp 
+  if (length == FOUR_INTEGER .and. StringCompare(word,'file',FOUR_INTEGER)) then 
     input%err_buf2 = trim(keyword) // ', FILE'
     input%err_buf = 'keyword'
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
     if (input%ierr == 0) then
       filename = string2
     else
+      option%io_buffer = 'The ability to read realization dependent datasets outside the DATASET block is no longer supported'
+      call printErrMsg(option)
+!TODO(geh): remove after 12/31/11
+#if 0
       do
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,'FLOW_CONDITION')
@@ -2092,7 +2007,8 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
             hdf5_path = adjustl(input%buf)
           case('UNITS')
         end select          
-      enddo      
+      enddo
+#endif
     endif
     
     if (len_trim(filename) < 2) then
@@ -2133,19 +2049,19 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       
       ! dims(1) = size of array
       ! dims(2) = number of data point in time
-      if (dims(1)-1 == dataset%rank) then
+      if (dims(1)-1 == flow_dataset%time_series%rank) then
         ! alright, the 2d data is layed out in C-style.  now place it in
         ! the appropriate arrays
-        allocate(dataset%times(dims(2)))
-        dataset%times = -999.d0
-        allocate(dataset%values(dataset%rank,dims(2))) 
-        dataset%values = -999.d0
+        allocate(flow_dataset%time_series%times(dims(2)))
+        flow_dataset%time_series%times = -999.d0
+        allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,dims(2))) 
+        flow_dataset%time_series%values = -999.d0
         icount = 1
         do i = 1, dims(2)
-          dataset%times(i) = real_buffer(icount)
+          flow_dataset%time_series%times(i) = real_buffer(icount)
           icount = icount + 1
-          do irank = 1, dataset%rank
-            dataset%values(irank,i) = real_buffer(icount)
+          do irank = 1, flow_dataset%time_series%rank
+            flow_dataset%time_series%values(irank,i) = real_buffer(icount)
             icount = icount + 1
           enddo
         enddo  
@@ -2158,7 +2074,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       nullify(dims)
       if (associated(real_buffer)) deallocate(real_buffer)
       nullify(real_buffer)
-#endif      
+#endif    
     else
       i = index(filename,'.',PETSC_TRUE)
       if (i > 2) then
@@ -2167,24 +2083,31 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
         filename = trim(filename) // trim(realization_word)
       endif
       input2 => InputCreate(IUNIT_TEMP,filename)
-      if (dataset%rank<=3) then
-        call FlowConditionReadValuesFromFile(input2,dataset,option)
+      if (flow_dataset%time_series%rank<=3) then
+        call FlowConditionReadValuesFromFile(input2,flow_dataset,option)
       else
-        call FlowConditionReadValuesFromFile2(input2,dataset,option)
+        call FlowConditionReadValuesFromFile2(input2,flow_dataset,option)
       endif  
       call InputDestroy(input2)
     endif
+  else if (StringCompare(word,'dataset')) then
+    call InputReadWord(input,option,word,PETSC_TRUE)    
+    input%err_buf2 = trim(keyword) // ', DATASET'
+    input%err_buf = 'dataset name'
+    call InputErrorMsg(input,option)
+    flow_dataset%dataset => DatasetCreate()
+    flow_dataset%dataset%name = word
   else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
-    if (dataset%rank<=3) then
-      call FlowConditionReadValuesFromFile(input,dataset,option)
+    if (flow_dataset%time_series%rank<=3) then
+      call FlowConditionReadValuesFromFile(input,flow_dataset,option)
     else
-      call FlowConditionReadValuesFromFile2(input,dataset,option)
+      call FlowConditionReadValuesFromFile2(input,flow_dataset,option)
     endif  
   else
     input%buf = trim(string2)
-    allocate(dataset%values(dataset%rank,1))
-    do irank=1,dataset%rank
-      call InputReadDouble(input,option,dataset%values(irank,1))
+    allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,1))
+    do irank=1,flow_dataset%time_series%rank
+      call InputReadDouble(input,option,flow_dataset%time_series%values(irank,1))
       write(input%err_buf,'(a,i2)') trim(keyword) // ' dataset_values, irank = ', irank
       input%err_buf2 = 'CONDITION'
       call InputErrorMsg(input,option) 
@@ -2195,9 +2118,9 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       call InputDefaultMsg(input,option,word)
     else
       units = trim(word)
-      dataset%values(1:dataset%rank,1) = &
+      flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1) = &
         UnitsConvertToInternal(units,option) * &
-        dataset%values(1:dataset%rank,1)
+        flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1)
     endif
   endif
   call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)    
@@ -2211,7 +2134,7 @@ end subroutine FlowConditionReadValues
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine FlowConditionReadValuesFromFile(input,dataset,option)
+subroutine FlowConditionReadValuesFromFile(input,flow_dataset,option)
 
   use Input_module
   use String_module
@@ -2222,7 +2145,7 @@ subroutine FlowConditionReadValuesFromFile(input,dataset,option)
   implicit none
   
   type(input_type) :: input
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_dataset
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units, data_units
@@ -2245,12 +2168,12 @@ subroutine FlowConditionReadValuesFromFile(input,dataset,option)
   temp_times = 0.d0
   temp_array1 = 0.d0
 
-  if (dataset%rank > 1) then
+  if (flow_dataset%time_series%rank > 1) then
     allocate(temp_array2(max_size))
     temp_array2 = 0.d0
   endif
   
-  if (dataset%rank > 2) then
+  if (flow_dataset%time_series%rank > 2) then
     allocate(temp_array3(max_size))
     temp_array3 = 0.d0
   endif
@@ -2287,11 +2210,11 @@ subroutine FlowConditionReadValuesFromFile(input,dataset,option)
     call InputErrorMsg(input,option,'time','CONDITION FILE')   
     call InputReadDouble(input,option,temp_array1(count))
     call InputErrorMsg(input,option,'array1','CONDITION FILE')
-    if (dataset%rank > 1) then
+    if (flow_dataset%time_series%rank > 1) then
       call InputReadDouble(input,option,temp_array2(count))
       call InputErrorMsg(input,option,'array2','CONDITION FILE') 
     endif
-    if (dataset%rank > 2) then
+    if (flow_dataset%time_series%rank > 2) then
       call InputReadDouble(input,option,temp_array3(count))
       call InputErrorMsg(input,option,'array3','CONDITION FILE') 
     endif
@@ -2301,59 +2224,66 @@ subroutine FlowConditionReadValuesFromFile(input,dataset,option)
       ! careful.  reallocateRealArray double max_size every time.
       i = temp_max_size
       call reallocateRealArray(temp_array1,i) 
-      if (dataset%rank > 1) then
+      if (flow_dataset%time_series%rank > 1) then
         i = temp_max_size
         call reallocateRealArray(temp_array2,i)
       endif
-      if (dataset%rank > 2) then
+      if (flow_dataset%time_series%rank > 2) then
         i = temp_max_size
         call reallocateRealArray(temp_array3,i)
       endif
     endif  
   enddo
   
-  if (associated(dataset%times)) then
-    if (count /= size(dataset%times,1) .and. &
+  if (associated(flow_dataset%time_series%times)) then
+    if (count /= size(flow_dataset%time_series%times,1) .and. &
         OptionPrintToScreen(option)) then
       print *, 'Number of times (', count, ') in ', trim(input%filename), &
-               ' does not match previous allocation: ', size(dataset%times,1)
+               ' does not match previous allocation: ', &
+               size(flow_dataset%time_series%times,1)
       stop
     endif
     do i=1,count
-      if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8 .and. &
+      if (dabs(flow_dataset%time_series%times(i)-temp_times(i)) > 1.d-8 .and. &
           OptionPrintToScreen(option)) then
         print *, 'Time (', temp_times(i), ') in ', trim(input%filename), &
                  ' does not match previous allocation time: ', &
-                 dataset%times(i), i
+                 flow_dataset%time_series%times(i), i
         stop
       endif
     enddo
   else
-    allocate(dataset%times(count))
+    allocate(flow_dataset%time_series%times(count))
   endif
 
-  if (associated(dataset%values)) deallocate(dataset%values)
-  allocate(dataset%values(dataset%rank,count))
+  if (associated(flow_dataset%time_series%values)) &
+    deallocate(flow_dataset%time_series%values)
+  allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,count))
 
-  dataset%times(1:count) = temp_times(1:count)
-  dataset%values(1,1:count) = temp_array1(1:count)
-  if (dataset%rank > 1) dataset%values(2,1:count) = temp_array2(1:count)
-  if (dataset%rank > 2) dataset%values(3,1:count) = temp_array3(1:count)
+  flow_dataset%time_series%times(1:count) = temp_times(1:count)
+  flow_dataset%time_series%values(1,1:count) = temp_array1(1:count)
+  if (flow_dataset%time_series%rank > 1) &
+    flow_dataset%time_series%values(2,1:count) = temp_array2(1:count)
+  if (flow_dataset%time_series%rank > 2) &
+    flow_dataset%time_series%values(3,1:count) = temp_array3(1:count)
   
   deallocate(temp_times)
   deallocate(temp_array1)
-  if (dataset%rank > 1) deallocate(temp_array2)
-  if (dataset%rank > 2) deallocate(temp_array3)
+  if (flow_dataset%time_series%rank > 1) deallocate(temp_array2)
+  if (flow_dataset%time_series%rank > 2) deallocate(temp_array3)
 
   if (len_trim(time_units) > 0) then
     ! Times
     conversion = UnitsConvertToInternal(time_units,option)
-    dataset%times(1:count) = conversion * dataset%times(1:count)
+    flow_dataset%time_series%times(1:count) = conversion * &
+                                   flow_dataset%time_series%times(1:count)
   endif
   if (len_trim(data_units) > 0) then
     ! Data
     conversion = UnitsConvertToInternal(data_units,option)
-    dataset%values(1:dataset%rank,1:count) = conversion * dataset%values(1:dataset%rank,1:count)
+    flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count) = &
+      conversion * &
+      flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count)
   endif
   
 end subroutine FlowConditionReadValuesFromFile
@@ -2364,7 +2294,7 @@ end subroutine FlowConditionReadValuesFromFile
 ! date: 5/31/11
 !
 ! ************************************************************************** !
-subroutine FlowConditionReadValuesFromFile2(input,dataset,option)
+subroutine FlowConditionReadValuesFromFile2(input,flow_dataset,option)
 
   use Input_module
   use String_module
@@ -2375,7 +2305,7 @@ subroutine FlowConditionReadValuesFromFile2(input,dataset,option)
   implicit none
   
   type(input_type) :: input
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_dataset
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units, data_units
@@ -2393,7 +2323,7 @@ subroutine FlowConditionReadValuesFromFile2(input,dataset,option)
   data_units = ''
   max_size = 1000
   allocate(temp_times(max_size))
-  allocate(temp_array(dataset%rank, max_size)) 
+  allocate(temp_array(flow_dataset%time_series%rank, max_size)) 
 
   count = 0
   ierr = 0
@@ -2427,7 +2357,7 @@ subroutine FlowConditionReadValuesFromFile2(input,dataset,option)
     call InputErrorMsg(input,option,'time','CONDITION FILE')   
 
 
-   do i =1, dataset%rank
+   do i =1, flow_dataset%time_series%rank
       call InputReadDouble(input,option,temp_array(i,count))
       call InputErrorMsg(input,option,'array:',' CONDITION FILE') 
    enddo
@@ -2439,31 +2369,33 @@ subroutine FlowConditionReadValuesFromFile2(input,dataset,option)
    stop
  endif 
   
- if (associated(dataset%times)) then
-   if (count /= size(dataset%times,1) .and. &
+ if (associated(flow_dataset%time_series%times)) then
+   if (count /= size(flow_dataset%time_series%times,1) .and. &
         OptionPrintToScreen(option)) then
       print *, 'Number of times (', count, ') in ', trim(input%filename), &
-               ' does not match previous allocation: ', size(dataset%times,1)
+               ' does not match previous allocation: ', &
+               size(flow_dataset%time_series%times,1)
       stop
     endif
     do i=1,count
-      if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8 .and. &
+      if (dabs(flow_dataset%time_series%times(i)-temp_times(i)) > 1.d-8 .and. &
           OptionPrintToScreen(option)) then
         print *, 'Time (', temp_times(i), ') in ', trim(input%filename), &
                  ' does not match previous allocation time: ', &
-                 dataset%times(i), i
+                 flow_dataset%time_series%times(i), i
         stop
       endif
     enddo
   else
-    allocate(dataset%times(count))
+    allocate(flow_dataset%time_series%times(count))
   endif
 
-  if (associated(dataset%values)) deallocate(dataset%values)
-  allocate(dataset%values(dataset%rank,count))
+  if (associated(flow_dataset%time_series%values)) &
+    deallocate(flow_dataset%time_series%values)
+  allocate(flow_dataset%time_series%values(flow_dataset%time_series%rank,count))
 
-  dataset%times(1:count) = temp_times(1:count)
-  dataset%values(:,1:count) = temp_array(:,1:count)
+  flow_dataset%time_series%times(1:count) = temp_times(1:count)
+  flow_dataset%time_series%values(:,1:count) = temp_array(:,1:count)
   
     
   deallocate(temp_times)
@@ -2472,12 +2404,15 @@ subroutine FlowConditionReadValuesFromFile2(input,dataset,option)
   if (len_trim(time_units) > 0) then
     ! Times
     conversion = UnitsConvertToInternal(time_units,option)
-    dataset%times(1:count) = conversion * dataset%times(1:count)
+    flow_dataset%time_series%times(1:count) = conversion * &
+      flow_dataset%time_series%times(1:count)
   endif
   if (len_trim(data_units) > 0) then
     ! Data
     conversion = UnitsConvertToInternal(data_units,option)
-    dataset%values(1:dataset%rank,1:count) = conversion * dataset%values(1:dataset%rank,1:count)
+    flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count) = &
+      conversion * &
+      flow_dataset%time_series%values(1:flow_dataset%time_series%rank,1:count)
   endif
   
 end subroutine FlowConditionReadValuesFromFile2
@@ -2571,59 +2506,38 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
   110 format(6x,a)  
 
   write(option%fid_out,110) 'Datum:'
-  call FlowConditionPrintDataset(subcondition%datum,option)
+  call TimeSeriesPrint(subcondition%datum%time_series,option)
   write(option%fid_out,110) 'Gradient:'
-  call FlowConditionPrintDataset(subcondition%gradient,option)
+  call TimeSeriesPrint(subcondition%gradient%time_series,option)
   write(option%fid_out,110) 'Dataset:'
-  call FlowConditionPrintDataset(subcondition%dataset,option)
+  call TimeSeriesPrint(subcondition%flow_dataset%time_series,option)
             
 end subroutine FlowConditionPrintSubCondition
  
 ! ************************************************************************** !
 !
-! FlowConditionPrintDataset: Prints flow condition dataset info
+! FlowConditionDatasetPrint: Prints flow condition dataset info
 ! author: Glenn Hammond
 ! date: 12/04/08
 !
 ! ************************************************************************** !
-subroutine FlowConditionPrintDataset(dataset,option)
+subroutine FlowConditionDatasetPrint(flow_dataset,option)
 
   use Option_module
 
   implicit none
   
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_dataset
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
-
-  if (dataset%is_cyclic) then
-    string = 'yes'
-  else
-    string = 'no'
+  if(associated(flow_dataset%time_series)) then
+    call TimeSeriesPrint(flow_dataset%time_series,option)
   endif
-  write(option%fid_out,'(8x,''Is cyclic: '',a)') trim(string)
-
-  100 format(8x,'Is transient: ', a)
-  if (dataset%is_transient) then
-    write(option%fid_out,100) 'yes'
-    write(option%fid_out,'(8x,''  Number of values: '', i7)') &
-      dataset%max_time_index
-    select case(dataset%interpolation_method)
-      case(STEP)
-        string = 'step'
-      case(LINEAR)
-        string = 'linear'
-    end select
-    write(option%fid_out,'(8x,''  Interpolation method: '', a)') trim(string)
-    write(option%fid_out,'(8x,''Start value:'',es16.8)') dataset%cur_value(1)
-  else
-    write(option%fid_out,100) 'no'
-    write(option%fid_out,'(8x,''Value:'',es16.8)') dataset%cur_value(1)
+  if(associated(flow_dataset%dataset)) then
+    !TODO(geh): setup
   endif
-
-            
-end subroutine FlowConditionPrintDataset
+  
+end subroutine FlowConditionDatasetPrint
 
 ! ************************************************************************** !
 !
@@ -2655,7 +2569,7 @@ subroutine FlowConditionUpdate(condition_list,option,time)
       sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
       
       if (associated(sub_condition)) then
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%dataset)
+        call FlowSubConditionUpdateDataset(option,time,sub_condition%flow_dataset)
         call FlowSubConditionUpdateDataset(option,time,sub_condition%datum)
         call FlowSubConditionUpdateDataset(option,time,sub_condition%gradient)
       endif
@@ -2675,7 +2589,7 @@ end subroutine FlowConditionUpdate
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine FlowSubConditionUpdateDataset(option,time,dataset)
+subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
 
   use Option_module
   
@@ -2683,75 +2597,14 @@ subroutine FlowSubConditionUpdateDataset(option,time,dataset)
   
   type(option_type) :: option
   PetscReal :: time
-  PetscBool :: is_cyclic
-  PetscInt :: interpolation_method
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_condition_dataset
   
-  PetscInt :: irank
-  PetscInt :: cur_time_index
-  PetscInt :: next_time_index
-  PetscReal :: time_fraction
-
- ! potentially for initial condition
-  if (time < 1.d-40 .or. .not.dataset%is_transient) return  
-
-  ! cycle times if at max_time_index and cyclic
-  if (dataset%cur_time_index == dataset%max_time_index .and. &
-      dataset%is_cyclic .and. dataset%max_time_index > 1) then
-      
-    do cur_time_index = 1, dataset%max_time_index
-      dataset%times(cur_time_index) = dataset%times(cur_time_index) + &     
-                               dataset%time_shift
-    enddo
-    dataset%cur_time_index = 1
+  if (associated(flow_condition_dataset%time_series)) then
+    call TimeSeriesUpdate(option,time,flow_condition_dataset%time_series)
   endif
- 
-  cur_time_index = dataset%cur_time_index
-  next_time_index = min(dataset%cur_time_index+1, &
-                        dataset%max_time_index)
-
-  ! ensure that condition has started
-  if (time >= dataset%times(cur_time_index) .or. &
-      dabs(time-dataset%times(cur_time_index)) < 1.d-40) then
-
-    ! find appropriate time interval
-    do
-      if (time < dataset%times(next_time_index) .or. &
-          cur_time_index == next_time_index) &
-        exit
-      cur_time_index = next_time_index
-      ! ensure that time index does not go beyond end of array
-      if (next_time_index < dataset%max_time_index) &
-        next_time_index = next_time_index + 1
-    enddo
-    
-    dataset%cur_time_index = cur_time_index
-    
-    select case(dataset%interpolation_method)
-      case(STEP) ! just use the current value
-        do irank=1,dataset%rank
-          dataset%cur_value(irank) =  &
-                             dataset%values(irank,dataset%cur_time_index) 
-        enddo 
-      case(LINEAR) ! interpolate the value between times
-        do irank=1,dataset%rank
-          ! interpolate value based on time
-          dataset%cur_time_index = cur_time_index
-          if (cur_time_index < dataset%max_time_index) then
-            time_fraction = (time-dataset%times(cur_time_index)) / &
-                              (dataset%times(next_time_index) - &
-                               dataset%times(cur_time_index))
-            dataset%cur_value(irank) = dataset%values(irank,cur_time_index) + &
-                                  time_fraction * &
-                                  (dataset%values(irank,next_time_index) - &
-                                   dataset%values(irank,cur_time_index))
-          else
-            dataset%cur_value(irank) =  &
-                               dataset%values(irank,dataset%max_time_index) 
-          endif
-        enddo
-    end select 
-  endif    
+  if (associated(flow_condition_dataset%dataset)) then
+    !TODO(geh): setup
+  endif
   
 end subroutine FlowSubConditionUpdateDataset
 
@@ -3054,55 +2907,74 @@ function FlowConditionIsTransient(condition)
   
   FlowConditionIsTransient = PETSC_FALSE
 
+  !TODO(geh): add check for general condition
+  
   ! pressure
-  if (associated(condition%pressure)) then
-    if (condition%pressure%dataset%is_transient .or. &
-        condition%pressure%gradient%is_transient .or. &
-        condition%pressure%datum%is_transient) &
-      FlowConditionIsTransient = PETSC_TRUE
+  if (FlowSubConditionIsTransient(condition%pressure) .or. &
+      FlowSubConditionIsTransient(condition%temperature) .or. &
+      FlowSubConditionIsTransient(condition%concentration) .or. &
+      FlowSubConditionIsTransient(condition%rate) .or. &
+      FlowSubConditionIsTransient(condition%well) .or. &
+      FlowSubConditionIsTransient(condition%enthalpy)) then
+    FlowConditionIsTransient = PETSC_TRUE
   endif
   
-  ! temperature
-  if (associated(condition%temperature)) then
-    if (condition%temperature%dataset%is_transient .or. &
-        condition%temperature%gradient%is_transient .or. &
-        condition%temperature%datum%is_transient) &
-      FlowConditionIsTransient = PETSC_TRUE
-  endif
-
-  ! concentration
-  if (associated(condition%concentration)) then
-    if (condition%concentration%dataset%is_transient .or. &
-        condition%concentration%gradient%is_transient .or. &
-        condition%concentration%datum%is_transient) &
-      FlowConditionIsTransient = PETSC_TRUE
-  endif
-
-  ! rate
-  if (associated(condition%rate)) then
-    if (condition%rate%dataset%is_transient .or. &
-        condition%rate%gradient%is_transient .or. &
-        condition%rate%datum%is_transient) &
-      FlowConditionIsTransient = PETSC_TRUE
-  endif
- 
-  ! well
-  if (associated(condition%well)) then
-    if (condition%well%dataset%is_transient .or. &
-        condition%well%gradient%is_transient .or. &
-        condition%well%datum%is_transient) &
-      FlowConditionIsTransient = PETSC_TRUE
-  endif
- 
-  ! enthalpy
-  if (associated(condition%enthalpy)) then
-    if (condition%enthalpy%dataset%is_transient .or. &
-        condition%enthalpy%gradient%is_transient .or. &
-        condition%enthalpy%datum%is_transient) &
-      FlowConditionIsTransient = PETSC_TRUE
-  endif
-   
 end function FlowConditionIsTransient
+
+! ************************************************************************** !
+!
+! FlowSubConditionIsTransient: Returns PETSC_TRUE
+! author: Glenn Hammond
+! date: 11/26/11
+!
+! ************************************************************************** !
+function FlowSubConditionIsTransient(sub_condition)
+
+  implicit none
+  
+  type(flow_sub_condition_type), pointer :: sub_condition
+  
+  PetscBool :: FlowSubConditionIsTransient
+  
+  FlowSubConditionIsTransient = PETSC_FALSE
+
+  if (associated(sub_condition)) then
+    if (FlowDatasetIsTransient(sub_condition%flow_dataset) .or. &
+        FlowDatasetIsTransient(sub_condition%gradient) .or. &
+        FlowDatasetIsTransient(sub_condition%datum)) then
+      FlowSubConditionIsTransient = PETSC_TRUE
+    endif
+  endif  
+  
+end function FlowSubConditionIsTransient
+
+! ************************************************************************** !
+!
+! FlowDatasetIsTransient: Returns PETSC_TRUE
+! author: Glenn Hammond
+! date: 11/26/11
+!
+! ************************************************************************** !
+function FlowDatasetIsTransient(flow_dataset)
+
+  implicit none
+  
+  type(flow_condition_dataset_type) :: flow_dataset
+  
+  PetscBool :: FlowDatasetIsTransient
+  
+  FlowDatasetIsTransient = PETSC_FALSE
+
+  if (associated(flow_dataset%time_series)) then
+    if (flow_dataset%time_series%is_transient) then
+      FlowDatasetIsTransient = PETSC_TRUE
+    endif
+  endif
+  if (associated(flow_dataset%dataset)) then
+    !TODO(geh): setup 
+  endif
+  
+end function FlowDatasetIsTransient
 
 ! ************************************************************************** !
 !
@@ -3228,7 +3100,7 @@ subroutine FlowSubConditionDestroy(sub_condition)
   
   if (.not.associated(sub_condition)) return
   
-  call FlowConditionDatasetDestroy(sub_condition%dataset)
+  call FlowConditionDatasetDestroy(sub_condition%flow_dataset)
   call FlowConditionDatasetDestroy(sub_condition%datum)
   call FlowConditionDatasetDestroy(sub_condition%gradient)
 
@@ -3244,18 +3116,20 @@ end subroutine FlowSubConditionDestroy
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine FlowConditionDatasetDestroy(dataset)
+subroutine FlowConditionDatasetDestroy(flow_condition_dataset)
 
   implicit none
   
-  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: flow_condition_dataset
   
-  if (associated(dataset%times)) deallocate(dataset%times)
-  nullify(dataset%times)
-  if (associated(dataset%values)) deallocate(dataset%values)
-  nullify(dataset%values)  
-  if (associated(dataset%cur_value)) deallocate(dataset%cur_value)
-  nullify(dataset%cur_value)  
+  if (associated(flow_condition_dataset%time_series)) then
+    call TimeSeriesDestroy(flow_condition_dataset%time_series)
+  endif
+  nullify(flow_condition_dataset%time_series)
+  ! since datasets reside in the dataset list, we simple unlink the pointer
+  ! without destroying the object.
+  if (associated(flow_condition_dataset%dataset)) &
+    nullify(flow_condition_dataset%dataset)
 
 end subroutine FlowConditionDatasetDestroy
 

@@ -147,6 +147,8 @@ common_obj = ${common_src}option.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}fluid.o \
+	${common_src}time_series.o \
+	${common_src}dataset_aux.o \
 	${common_src}dataset.o \
 	${common_src}saturation_function.o \
 	${common_src}material.o \
@@ -253,7 +255,7 @@ coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
-	      string.o hdf5_aux.F90
+	      string.o hdf5_aux.F90 dataset_aux.o
 condition_control.o : realization.o discretization.o region.o option.o grid.o \
 	              field.o coupler.o condition.o connection.o reaction.o \
 		      hdf5.o mfd.o
@@ -313,11 +315,12 @@ timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 mass_balance.o input.o string.o reactive_transport.o
 hdf5.o : realization.o option.o logging.o
-hdf5_aux.o : option.o logging.o
+hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
-dataset.o : string.o option.o input.o
+dataset.o : hdf5.o hdf5_aux.o string.o option.o input.o
+time_series.o : string.o option.o input.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o

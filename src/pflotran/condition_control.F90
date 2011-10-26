@@ -173,30 +173,30 @@ subroutine CondControlAssignFlowInitCond(realization)
                 select case(initial_condition%flow_condition%iphase)
                   case(TWO_PHASE_STATE)
                     xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF-1) = &
-                      general%gas_pressure%dataset%cur_value(1)
+                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
                     xx_p(ibegin+GENERAL_GAS_SATURATION_DOF-1) = &
-                      general%gas_saturation%dataset%cur_value(1)
-                    temperature = general%temperature%dataset%cur_value(1)
+                      general%gas_saturation%flow_dataset%time_series%cur_value(1)
+                    temperature = general%temperature%flow_dataset%time_series%cur_value(1)
                     call psat(temperature,p_sat,ierr)
                     ! p_a = p_g - p_s(T)
                     xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF-1) = &
-                      general%gas_pressure%dataset%cur_value(1) - &
+                      general%gas_pressure%flow_dataset%time_series%cur_value(1) - &
                       p_sat
                   case(LIQUID_STATE)
                     xx_p(ibegin+GENERAL_LIQUID_PRESSURE_DOF-1) = &
-                      general%liquid_pressure%dataset%cur_value(1)
+                      general%liquid_pressure%flow_dataset%time_series%cur_value(1)
                     xx_p(ibegin+GENERAL_MOLE_FRACTION_DOF-1) = &
-                      general%mole_fraction%dataset%cur_value(1)
+                      general%mole_fraction%flow_dataset%time_series%cur_value(1)
                     xx_p(ibegin+GENERAL_TEMPERATURE_DOF-1) = &
-                      general%temperature%dataset%cur_value(1)
+                      general%temperature%flow_dataset%time_series%cur_value(1)
                   case(GAS_STATE)
                     xx_p(ibegin+GENERAL_GAS_PRESSURE_DOF-1) = &
-                      general%gas_pressure%dataset%cur_value(1)
+                      general%gas_pressure%flow_dataset%time_series%cur_value(1)
                     xx_p(ibegin+GENERAL_AIR_PRESSURE_DOF-1) = &
-                      general%gas_pressure%dataset%cur_value(1) * &
-                      general%mole_fraction%dataset%cur_value(1)
+                      general%gas_pressure%flow_dataset%time_series%cur_value(1) * &
+                      general%mole_fraction%flow_dataset%time_series%cur_value(1)
                     xx_p(ibegin+GENERAL_TEMPERATURE_DOF-1) = &
-                      general%temperature%dataset%cur_value(1)
+                      general%temperature%flow_dataset%time_series%cur_value(1)
                 end select
                 iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
                 cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
@@ -310,7 +310,7 @@ subroutine CondControlAssignFlowInitCond(realization)
                       endif
                       do idof = 1, option%nflowdof
                          xx_p(ibegin+idof-1) = &
-                             initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                             initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
                       enddo
                       iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
                       if (option%iflowmode == G_MODE) then
@@ -411,7 +411,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Coupler_module
   use Condition_module
   use Grid_module
-  use Dataset_module
+  use Dataset_Aux_module
   use Level_module
   use Patch_module
   use Reactive_Transport_Aux_module
@@ -504,7 +504,7 @@ subroutine CondControlAssignTranInitCond(realization)
                          constraint_coupler%aqueous_species%constraint_aux_string(idof), &
                          string,option)
             string = '' ! group name
-            string2 = dataset%dataset_name ! dataset name
+            string2 = dataset%h5_dataset_name ! dataset name
             call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                               dataset%filename, &
                                               string,string2, &

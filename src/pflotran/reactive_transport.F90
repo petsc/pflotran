@@ -1449,7 +1449,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
     
@@ -1512,8 +1512,8 @@ subroutine RTCalculateRHS_t1Patch(realization)
         if (.not.associated(source_sink)) exit
 
 !geh begin change
-!geh        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-        msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh        msrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+        msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
 !geh end change
         msrc(1) =  msrc(1) / FMWH2O*1D3
         msrc(2) =  msrc(2) / FMWCO2*1D3
@@ -1890,7 +1890,7 @@ end interface
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
       
@@ -2428,7 +2428,7 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
       
@@ -2959,7 +2959,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
       
@@ -3013,8 +3013,8 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
               if (.not.associated(source_sink)) exit
 
 !geh begin change
-!geh              msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-              msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh              msrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+              msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
 !geh end change
               msrc(1) =  msrc(1) / FMWH2O*1D3
               msrc(2) =  msrc(2) / FMWCO2*1D3
@@ -3163,7 +3163,7 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
       
@@ -3219,8 +3219,8 @@ subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
               if (.not.associated(source_sink)) exit
 
 !geh begin change
-!geh              msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-              msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+!geh              msrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+              msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
 !geh end change
               msrc(1) =  msrc(1) / FMWH2O*1D3
               msrc(2) =  msrc(2) / FMWCO2*1D3
@@ -4522,7 +4522,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
 #endif
@@ -4594,7 +4594,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
         select case(source_sink%flow_condition%itype(1))
           case(MASS_RATE_SS)
-            msrc(:) = source_sink%flow_condition%rate%dataset%cur_value(:)
+            msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
           case default
             msrc(:) = 0.d0
         end select
@@ -5347,7 +5347,7 @@ end interface
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       flow_src_sink_type = source_sink%flow_condition%rate%itype
     endif
 #endif

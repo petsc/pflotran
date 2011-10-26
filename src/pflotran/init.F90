@@ -1020,7 +1020,7 @@ subroutine InitReadInput(simulation)
   use Subcontinuum_module
 #endif
   use Saturation_Function_module  
-  use Dataset_module
+  use Dataset_Aux_module
   use Fluid_module
   use Realization_module
   use Timestepper_module

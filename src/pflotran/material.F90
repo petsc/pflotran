@@ -1,6 +1,6 @@
 module Material_module
  
-  use Dataset_module
+  use Dataset_Aux_module
 
   implicit none
 

@@ -71,33 +71,47 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   select case(option%iflowmode)
     case(G_MODE)
-      temperature_at_datum = condition%general%temperature%dataset%cur_value(1)
-      temperature_gradient(1:3) = condition%general%temperature%gradient%cur_value(1:3)
-      concentration_at_datum = condition%general%mole_fraction%dataset%cur_value(1)
-      concentration_gradient(1:3) = condition%general%mole_fraction%gradient%cur_value(1:3)
-      datum(1:3) = condition%general%liquid_pressure%datum%cur_value(1:3)
-      pressure_at_datum = condition%general%liquid_pressure%dataset%cur_value(1)    
+      temperature_at_datum = &
+        condition%general%temperature%flow_dataset%time_series%cur_value(1)
+      temperature_gradient(1:3) = &
+        condition%general%temperature%gradient%time_series%cur_value(1:3)
+      concentration_at_datum = &
+        condition%general%mole_fraction%flow_dataset%time_series%cur_value(1)
+      concentration_gradient(1:3) = &
+        condition%general%mole_fraction%gradient%time_series%cur_value(1:3)
+      datum(1:3) = &
+        condition%general%liquid_pressure%datum%time_series%cur_value(1:3)
+      pressure_at_datum = &
+        condition%general%liquid_pressure%flow_dataset%time_series%cur_value(1)    
       ! gradient is in m/m; needs conversion to Pa/m
-      piezometric_head_gradient(1:3) = condition%general%liquid_pressure%gradient%cur_value(1:3)
+      piezometric_head_gradient(1:3) = &
+        condition%general%liquid_pressure%gradient%time_series%cur_value(1:3)
     case default
       ! for now, just set it; in future need to account for a different temperature datum
       if (associated(condition%temperature)) then
         if (condition%temperature%itype == DIRICHLET_BC) then
-          temperature_at_datum = condition%temperature%dataset%cur_value(1)
-          temperature_gradient(1:3) = condition%temperature%gradient%cur_value(1:3)
+          temperature_at_datum = &
+            condition%temperature%flow_dataset%time_series%cur_value(1)
+          temperature_gradient(1:3) = &
+            condition%temperature%gradient%time_series%cur_value(1:3)
         endif
       endif
       if (associated(condition%concentration)) then
         if (condition%temperature%itype == DIRICHLET_BC) then
-          concentration_at_datum = condition%concentration%dataset%cur_value(1)
-          concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
+          concentration_at_datum = &
+            condition%concentration%flow_dataset%time_series%cur_value(1)
+          concentration_gradient(1:3) = &
+            condition%concentration%gradient%time_series%cur_value(1:3)
         endif
       endif
 
-      datum(1:3) = condition%pressure%datum%cur_value(1:3)
-      pressure_at_datum = condition%pressure%dataset%cur_value(1)
+      datum(1:3) = &
+        condition%pressure%datum%time_series%cur_value(1:3)
+      pressure_at_datum = &
+        condition%pressure%flow_dataset%time_series%cur_value(1)
       ! gradient is in m/m; needs conversion to Pa/m
-      piezometric_head_gradient(1:3) = condition%pressure%gradient%cur_value(1:3)
+      piezometric_head_gradient(1:3) = &
+        condition%pressure%gradient%time_series%cur_value(1:3)
   end select      
       
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
@@ -289,7 +303,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
           coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
         else if (condition%pressure%itype == CONDUCTANCE_BC) then
           coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
-          coupler%flow_aux_real_var(2,iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
+          coupler%flow_aux_real_var(2,iconn) = &
+            condition%pressure%flow_dataset%time_series%lame_aux_variable_remove_me
         else
           coupler%flow_aux_real_var(1,iconn) = pressure
         endif
@@ -365,7 +380,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
       else if (condition%pressure%itype == CONDUCTANCE_BC) then
         coupler%flow_aux_real_var(1,num_faces + iconn) = max(pressure,option%reference_pressure)
-        coupler%flow_aux_real_var(2,num_faces + iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
+        coupler%flow_aux_real_var(2,num_faces + iconn) = &
+          condition%pressure%flow_dataset%time_series%lame_aux_variable_remove_me
       else
         coupler%flow_aux_real_var(1,num_faces + iconn) = pressure
       endif

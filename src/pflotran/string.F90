@@ -16,17 +16,22 @@ module String_module
             StringStartswithAlpha, &
             StringAdjustl, &
             StringNull
+  
+  interface StringCompare
+    module procedure StringCompare1
+    module procedure StringCompare2
+  end interface
 
 contains
 
 ! ************************************************************************** !
 !
-! StringCompare: compares two strings
+! StringCompare1: compares two strings
 ! author: Glenn Hammond
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-PetscBool function StringCompare(string1,string2,n)
+PetscBool function StringCompare1(string1,string2,n)
 
   implicit none
 
@@ -35,15 +40,48 @@ PetscBool function StringCompare(string1,string2,n)
   
   do i=1,n
     if (string1(i:i) /= string2(i:i)) then
-      StringCompare = PETSC_FALSE
+      StringCompare1 = PETSC_FALSE
       return
     endif
   enddo
 
-  StringCompare = PETSC_TRUE
+  StringCompare1 = PETSC_TRUE
   return
 
-end function StringCompare
+end function StringCompare1
+
+! ************************************************************************** !
+!
+! StringCompare2: compares two strings
+! author: Glenn Hammond
+! date: 10/25/11
+!
+! ************************************************************************** !
+PetscBool function StringCompare2(string1,string2)
+
+  implicit none
+
+  PetscInt :: i, length1, length2
+  character(len=*) :: string1, string2
+  
+  length1 = len_trim(string1)
+  length2 = len_trim(string2)
+  if (length1 /= length2) then
+    StringCompare2 = PETSC_FALSE
+    return
+  endif
+
+  do i=1,length1
+    if (string1(i:i) /= string2(i:i)) then
+      StringCompare2 = PETSC_FALSE
+      return
+    endif
+  enddo
+
+  StringCompare2 = PETSC_TRUE
+  return
+
+end function StringCompare2
 
 ! ************************************************************************** !
 !

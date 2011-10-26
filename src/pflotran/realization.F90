@@ -9,7 +9,7 @@ module Realization_module
   use Subcontinuum_module
 #endif
   use Saturation_Function_module
-  use Dataset_module
+  use Dataset_Aux_module
   use Fluid_module
   use Discretization_module
   use Field_module

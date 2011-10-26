@@ -2177,7 +2177,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
         scale = 1.d0
       endif
       
-      call GeneralSrcSink(option,source_sink%flow_condition%rate%dataset%cur_value(:), &
+      call GeneralSrcSink(option,source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:), &
                         source_sink%flow_condition%rate%itype, &
                         gen_aux_vars(ZERO_INTEGER,ghosted_id), &
                         scale,Res)
@@ -2648,7 +2648,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+    qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
 
     cur_connection_set => source_sink%connection_set
     

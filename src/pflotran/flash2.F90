@@ -2056,17 +2056,17 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
       
-    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-!    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 !    hsrc1=0D0
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
 !    msrc(:)= psrc(:)
-     msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
+     msrc(:)= source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
      msrc(1) =  msrc(1) / FMWH2O
      msrc(2) =  msrc(2) / FMWCO2
 
@@ -3140,16 +3140,16 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
       
-    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-!    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 !    hsrc1=0D0
 !    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
-     msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
+     msrc(:)= source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
      msrc(1) =  msrc(1) / FMWH2O
      msrc(2) =  msrc(2) / FMWCO2
 
@@ -3523,15 +3523,15 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
 
-    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
-      msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
+      msrc(:)= source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
  
@@ -4486,15 +4486,15 @@ end interface
    !   enthalpy_flag = PETSC_FALSE
    ! endif
 
-    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
  !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
-      msrc(:)= source_sink%flow_condition%rate%dataset%cur_value(:)
+      msrc(:)= source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
  

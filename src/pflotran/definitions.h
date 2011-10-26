@@ -287,12 +287,6 @@ PetscInt, parameter :: SIDE_CENTERED = 1
 PetscInt, parameter :: GLOBAL_IMPLICIT = 0
 PetscInt, parameter :: OPERATOR_SPLIT = 1
 
-! dataset types
-PetscInt, parameter :: DATASET_SCALAR = 1
-PetscInt, parameter :: DATASET_VECTOR = 2
-PetscInt, parameter :: DATASET_TENSOR = 3
-PetscInt, parameter :: DATASET_HETEROGENEOUS = 4
-
 ! stencil type
 PetscInt, parameter :: STAR_STENCIL = 1
 PetscInt, parameter :: BOX_STENCIL = 2
@@ -313,5 +307,10 @@ PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 ! ids of non-petsc arrays
 PetscInt, parameter :: MATERIAL_ID_ARRAY = 1
 PetscInt, parameter :: SATURATION_FUNCTION_ID_ARRAY = 2
+
+! interpolation methods
+PetscInt, parameter :: INTERPOLATION_NULL = 0
+PetscInt, parameter :: INTERPOLATION_STEP = 1
+PetscInt, parameter :: INTERPOLATION_LINEAR = 2
 
 #define HASH

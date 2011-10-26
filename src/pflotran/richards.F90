@@ -3532,7 +3532,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+    qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       
     cur_connection_set => source_sink%connection_set
     
@@ -5605,7 +5605,7 @@ end interface
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+    qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
 
     cur_connection_set => source_sink%connection_set
     
