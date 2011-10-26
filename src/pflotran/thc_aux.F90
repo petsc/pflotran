@@ -35,6 +35,7 @@ module THC_Aux_module
     PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
+	PetscReal, pointer :: vapor_diffusion_coefficient
     PetscReal, pointer :: diffusion_activation_energy(:)
   end type thc_parameter_type
   
