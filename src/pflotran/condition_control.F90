@@ -520,10 +520,10 @@ subroutine CondControlAssignTranInitCond(realization)
         
         if (use_dataset) then
           call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p,ierr); CHKERRQ(ierr)
-          ave_num_iterations = 0.d0
           call PetscGetTime(tstart,ierr) 
         endif
         
+        ave_num_iterations = 0.d0
         do icell=1,initial_condition%region%num_cells
           local_id = initial_condition%region%cell_ids(icell)
           ghosted_id = grid%nL2G(local_id)
