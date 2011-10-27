@@ -2919,7 +2919,6 @@ use Logging_module
 
    call VecScatterBegin( discretization%MFD%scatter_gtol_LP, field%flow_r_loc_faces, r, &
                                 ADD_VALUES,SCATTER_REVERSE, ierr)
-
    call VecCopy(field%flow_xx_loc_faces, field%work_loc_faces, ierr)
 
    call VecScatterEnd ( discretization%MFD%scatter_gtol_LP, field%flow_r_loc_faces, r,&

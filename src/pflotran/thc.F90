@@ -753,6 +753,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 
   use Option_module
   use Saturation_Function_module
+  use water_eos_module
   
   implicit none
 
@@ -770,6 +771,13 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   type(thc_auxvar_type) :: thc_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
+  
+#ifdef ICE
+  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g
+  PetscReal :: dpsat_dt, ddeng_dt, dmolg_dt, dsatg_dp, dsatg_dt
+  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscErrorCode :: ierr  
+#endif
 
   porXvol = por*vol
   
@@ -791,6 +799,22 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
             global_aux_var%den(1)*thc_aux_var%du_dt)*porXvol +  &
            (1.d0 - por)*vol*rock_dencpr 
   J(3,3) = 0.d0 
+
+#ifdef ICE ! Added by Satish Karra, 10/25/11
+  ! Assuming above freezing for now, no s_i considered
+  sat_g = 1 - global_aux_var%sat(1)
+  p_g = 1.01325d5 ! Hardwired for now
+  den_g = p_g/(R_gas_constant*global_aux_var%temp(1))
+  call PSAT(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
+  mol_g = p_sat/p_g
+  ddeng_dt = - p_g/(R_gas_constant*(global_aux_var%temp(1))**2)
+  dmolg_dt = (1/p_g)*dpsat_dt
+  dsatg_dp = -thc_aux_var%dsat_dp
+  dsatg_dt = 0.d0 
+  J(1,1) = J(1,1) + dsatg_dp*den_g*mol_g*porXvol
+  J(1,2) = J(1,2) + (sat_g*ddeng_dt*mol_g + sat_g*den_g*dmolg_dt &
+           + dsatg_dt*den_g*mol_g)*porXvol
+#endif
 
   if (option%numerical_derivatives) then
     allocate(thc_aux_var_pert%xmol(option%nflowspec),thc_aux_var_pert%diff(option%nflowspec))
@@ -847,6 +871,7 @@ end subroutine THCAccumDerivative
 subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
 
   use Option_module
+  use water_eos_module
   
   implicit none
 
@@ -859,10 +884,26 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
 
+#ifdef ICE
+  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g
+  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscErrorCode :: ierr
+#endif
+  
 ! TechNotes, THC Mode: First term of Equation 8
   porXvol = por*vol
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   mol(2) = global_aux_var%sat(1)*global_aux_var%den(1)*aux_var%xmol(2)*porXvol
+
+#ifdef ICE ! Added by Satish Karra, 10/25/11
+  ! Assuming above freezing for now, no s_i considered
+  sat_g = 1 - global_aux_var%sat(1)
+  p_g = 1.01325d5 ! Hardwired for now
+  den_g = p_g/(R_gas_constant*global_aux_var%temp(1))
+  call PSAT(global_aux_var%temp(1), p_sat, ierr)
+  mol_g = p_sat/p_g
+  mol(1) = mol(1) + sat_g*den_g*mol_g*porXvol
+#endif
 
 !  write(*,*) 'por ', por
 !  write(*,*) 'vol ', vol
@@ -901,7 +942,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              area,dist_gravity,upweight, &
                              option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
-  use Saturation_Function_module                    
+  use Saturation_Function_module             
+  use water_eos_module       
   
   implicit none
   
@@ -914,8 +956,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: Dk_up, Dk_dn
-  PetscReal :: Diff_up,Diff_dn
-  PetscReal :: v_darcy,area
+  PetscReal :: Diff_up, Diff_dn
+  PetscReal :: v_darcy, area
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
@@ -939,6 +981,24 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
   PetscReal :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert_up, pert_dn, &
             res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
+			
+#ifdef ICE  
+  PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
+  PetscReal :: p_g
+  PetscReal :: deng_up, deng_dn
+  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscReal :: psat_up, psat_dn
+  PetscReal :: molg_up, molg_dn
+  PetscReal :: satg_up, satg_dn
+  PetscReal :: Diffg_up, Diffg_dn
+  PetscReal :: ddeng_dt_up, ddeng_dt_dn
+  PetscReal :: dpsat_dt_up, dpsat_dt_dn
+  PetscReal :: dmolg_dt_up, dmolg_dt_dn
+  PetscReal :: dDiffg_dt_up, dDiffg_dt_dn
+  PetscReal :: dDiffg_dp_up, dDiffg_dp_dn
+  PetscReal :: dsatg_dp_up, dsatg_dp_dn
+  PetscErrorCode :: ierr
+#endif
   
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up*tor_up*por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
@@ -978,6 +1038,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   dq_dt_dn = 0.d0
   duxmol_dxmol_up = 0.d0
   duxmol_dxmol_dn = 0.d0
+  
   
 ! Flow term
   if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
@@ -1039,12 +1100,12 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       dq_dt_up = Dq*(dukvr_dt_up*dphi+ukvr*dphi_dt_up)*area
       dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
         
-      Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(1)
-      Jup(1,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(1)
+      Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)
+      Jup(1,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)
 !      Jup(1,3:option%nflowdof) = 0.d0
 
-      Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(1)
-      Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(1)
+      Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
+      Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
 !      Jdn(1,3:option%nflowdof) = 0.d0
       do ispec=2,option%nflowspec 
         ! based on flux = q*density_ave*uxmol
@@ -1082,6 +1143,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     ddifff_dp_up = diffdp*0.25D0*(aux_var_up%dsat_dp*(global_aux_var_up%den(1) + global_aux_var_dn%den(1))+ &
                   (global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_up%dden_dp)
     ddifff_dt_up = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_up%dden_dt
+	! Need to add a term due to temperature dependence on diffusivity
     ddifff_dp_dn = diffdp*0.25D0*(aux_var_dn%dsat_dp*(global_aux_var_up%den(1) + global_aux_var_dn%den(1))+ &
                   (global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_dn%dden_dp)
     ddifff_dt_dn = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_dn%dden_dt
@@ -1109,6 +1171,55 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+difff*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*(-1.d0)
     enddo  
   endif 
+
+#ifdef ICE
+  ! Added by Satish Karra, 10/25/11
+  ! Now looking at above freezing only
+  satg_up = 1 - global_aux_var_up%sat(1)
+  satg_dn = 1 - global_aux_var_dn%sat(1)
+  if ((satg_up > eps) .and. (satg_dn > eps)) then
+    p_g = 1.01325d5 ! Hardcoded the pressure of water vapor to be 1 atm for now	
+    deng_up = p_g/(R_gas_constant*global_aux_var_up%temp(1))
+    deng_dn = p_g/(R_gas_constant*global_aux_var_dn%temp(1))
+    ! Assuming above freezing, sg = 1-sl, pg = den_g*R*T
+    Diffg_up = 5.d-4 ! Need to read these from input file
+    Diffg_dn = 5.d-4
+    Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
+    Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
+    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
+    call PSAT(global_aux_var_up%temp(1), psat_up, dpsat_dt_up, ierr)
+    call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
+    molg_up = psat_up/p_g
+    molg_dn = psat_dn/p_g
+    ddeng_dt_up = - p_g/(R_gas_constant*(global_aux_var_up%temp(1))**2)
+    dmolg_dt_up = (1/p_g)*dpsat_dt_up
+    ddeng_dt_dn = - p_g/(R_gas_constant*(global_aux_var_dn%temp(1))**2)
+    dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
+	dDiffg_dt_up = 0.d0 ! For now assuming diffusivity of water vapor is constant
+    dDiffg_dt_dn = 0.d0
+    dDiffg_dp_up = 0.d0
+    dDiffg_dp_dn = 0.d0
+    dsatg_dp_up = -aux_var_up%dsat_dp
+    dsatg_dp_dn = -aux_var_dn%dsat_dp
+	
+    Jup(1,1) = Jup(1,1) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
+               dsatg_dp_up*deng_up + por_up*satg_up*tor_up*deng_up*dDiffg_dp_up)*&
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area
+    Jup(1,2) = Jup(1,2) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
+               satg_up*ddeng_dt_up + por_up*satg_up*tor_up*deng_up*dDiffg_dt_up)*&
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*dpsat_dt_up/&
+               p_g/(dd_up + dd_dn)
+
+    Jdn(1,1) = Jdn(1,1) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
+               dsatg_dp_dn*deng_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dp_dn)*&
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area
+    Jdn(1,2) = Jdn(1,2) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
+               satg_dn*ddeng_dt_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dt_dn)*&
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*(-dpsat_dt_dn)/&
+               p_g/(dd_up + dd_dn)
+    
+  endif
+#endif 
 
 ! conduction term
         
@@ -1193,7 +1304,8 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
                   area,dist_gravity,upweight, &
                   option,v_darcy,Diff_up,Diff_dn,Res)
   use Option_module                              
-  
+  use water_eos_module
+
   implicit none
   
   type(thc_auxvar_type) :: aux_var_up, aux_var_dn
@@ -1214,6 +1326,18 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
+
+#ifdef ICE  
+  PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
+  PetscReal :: p_g
+  PetscReal :: deng_up, deng_dn
+  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscReal :: psat_up, psat_dn
+  PetscReal :: molg_up, molg_dn
+  PetscReal :: satg_up, satg_dn
+  PetscReal :: Diffg_up, Diffg_dn
+  PetscErrorCode :: ierr
+#endif
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up*tor_up*por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
@@ -1249,7 +1373,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
     endif
 
     if (ukvr > floweps) then
-      v_darcy= Dq * ukvr * dphi
+      v_darcy = Dq * ukvr * dphi
    
       q = v_darcy * area
         
@@ -1270,8 +1394,34 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
 !     fluxm(2) = fluxm(2) + difff * .5D0 * (aux_var_up%diff(2) + aux_var_dn%diff(2))* &
 !                (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
       fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
-                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) ! divide by the sum of the distances??
   endif 
+  
+
+#ifdef ICE
+  ! Added by Satish Karra, 10/24/11
+  ! Now looking at above freezing only
+  satg_up = 1 - global_aux_var_up%sat(1)
+  satg_dn = 1 - global_aux_var_dn%sat(1)
+  if ((satg_up > eps) .and. (satg_dn > eps)) then
+    p_g = 1.01325d5 ! Hardcoded the pressure of water vapor to be 1 atm for now	
+    deng_up = p_g/(R_gas_constant*global_aux_var_up%temp(1))
+    deng_dn = p_g/(R_gas_constant*global_aux_var_dn%temp(1))
+    ! Assuming above freezing, sg = 1-sl, pg = deng*R*T
+    Diffg_up = 5.d-4  !Need to read this from input file, hardwired for now
+    Diffg_dn = 5.d-4
+    Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
+    Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
+    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
+    call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
+    call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
+    molg_up = psat_up/p_g
+    molg_dn = psat_dn/p_g
+    fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/(dd_up + dd_dn)
+  endif
+#endif 
+
+print *, global_aux_var_up%sat(1), global_aux_var_dn%sat(1)
 
 ! conduction term
         
