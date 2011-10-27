@@ -1683,6 +1683,8 @@ subroutine InitReadInput(simulation)
               output_option%print_porosity = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
+            case('PRINT_COLUMN_IDS')
+              output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','OUTPUT')

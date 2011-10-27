@@ -1381,12 +1381,15 @@ subroutine OutputTecplotPoint(realization)
              '"Y [m]",' // &
              '"Z [m]"'
 
-    icolumn = 3
+    if (output_option%print_column_ids) then
+      icolumn = 3
+    else
+      icolumn = -1
+    endif
 
     ! add porosity to header
     if (output_option%print_porosity) then
-      icolumn = icolumn + 1
-      header = trim(header) // ',"4-Porosity"'
+      call OutputAppendToHeader(header,'Porosity','','',icolumn)
     endif
         
     ! write flow variables
@@ -1414,17 +1417,12 @@ subroutine OutputTecplotPoint(realization)
     endif
 
     ! write material ids
-    icolumn = icolumn + 1
-    write(string,'('',"'',i2,''-Material_ID"'')') icolumn
-    header = trim(header) // trim(string)
+    call OutputAppendToHeader(header,'Material_ID','','',icolumn)
 
     if (associated(output_option%plot_variables)) then
       do i = 1, size(output_option%plot_variables)
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                          option))
-        header = trim(header) // trim(string)
+        string = trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i),option))
+        call OutputAppendToHeader(header,string,'','',icolumn)
       enddo
     endif
 
@@ -2452,7 +2450,7 @@ subroutine OutputObservationTecplot(realization)
   type(observation_type), pointer :: observation
   PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
-  PetscInt :: local_id, icolumn
+  PetscInt :: local_id
 
   call PetscLogEventBegin(logging%event_output_observation,ierr)    
   
@@ -2504,7 +2502,6 @@ subroutine OutputObservationTecplot(realization)
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
       observation => patch%observation%first
         
-      icolumn = 1
       do 
         if (.not.associated(observation)) exit
         
@@ -2518,12 +2515,12 @@ subroutine OutputObservationTecplot(realization)
               call printErrMsg(option)
               call WriteObservationHeaderForCoord(fid,realization, &
                                                    observation%region, &
-                                                   observation%print_velocities,icolumn)
+                                                   observation%print_velocities)
             else
               do icell=1,observation%region%num_cells
                 call WriteObservationHeaderForCell(fid,realization, &
                                                     observation%region,icell, &
-                                                    observation%print_velocities,icolumn)
+                                                    observation%print_velocities)
               enddo
             endif
           case(OBSERVATION_FLUX)
@@ -2589,15 +2586,13 @@ end subroutine OutputObservationTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
-                                         print_velocities,icolumn)
+                                         print_velocities)
 
   use Realization_module
   use Grid_module
-  use Field_module
   use Option_module
   use Patch_module
   use Region_module
-  use Reaction_Aux_module
 
   implicit none
   
@@ -2607,24 +2602,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   PetscInt :: icell
   PetscBool :: print_velocities
   
-  PetscInt :: i, icolumn, local_id
+  PetscInt :: local_id
   character(len=MAXHEADERLENGTH) :: header
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch  
-  type(reaction_type), pointer :: reaction
-  type(output_option_type), pointer :: output_option  
-  
-  patch => realization%patch
-  option => realization%option
-  output_option => realization%output_option
-  field => realization%field
-  grid => patch%grid
+
+  grid => realization%patch%grid
   
   local_id = region%cell_ids(icell)
   write(cell_string,*) grid%nL2A(region%cell_ids(icell))+1 ! nL2A is zero-based
@@ -2639,10 +2623,96 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                 ' ' // trim(adjustl(y_string)) // &
                 ' ' // trim(adjustl(z_string)) // ')'
   
-  select case(option%iflowmode)
+  call WriteObservationHeader(fid,realization,cell_string,print_velocities)
+
+end subroutine WriteObservationHeaderForCell
+
+! ************************************************************************** !
+!
+! WriteObservationHeaderForCoord: Print a header for data at a coordinate
+! author: Glenn Hammond
+! date: 04/11/08
+!
+! ************************************************************************** !  
+subroutine WriteObservationHeaderForCoord(fid,realization,region, &
+                                          print_velocities)
+
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Region_module
   
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  type(region_type) :: region
+  PetscBool :: print_velocities
+  
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  
+  cell_string = trim(region%name)
+  
+  110 format(1f12.2)
+  write(x_string,110) region%coordinates(ONE_INTEGER)%x
+  write(y_string,110) region%coordinates(ONE_INTEGER)%y
+  write(z_string,110) region%coordinates(ONE_INTEGER)%z
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
+                trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
+
+  call WriteObservationHeader(fid,realization,cell_string,print_velocities)
+
+end subroutine WriteObservationHeaderForCoord
+
+! ************************************************************************** !
+!
+! WriteObservationHeader: Print a header for data
+! author: Glenn Hammond
+! date: 10/27/11
+!
+! ************************************************************************** !  
+subroutine WriteObservationHeader(fid,realization,cell_string, &
+                                  print_velocities)
+
+  use Realization_module
+  use Option_module
+  use Reactive_Transport_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscBool :: print_velocities
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  
+  PetscInt :: i, icolumn
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option  
+  
+  option => realization%option
+  output_option => realization%output_option
+  
+  if (output_option%print_column_ids) then
+    icolumn = 1
+  else
+    icolumn = -1
+  endif
+  header = ''
+
+  select case(option%iflowmode)
     case (IMS_MODE)
-    
+      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
+#if 0    
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-sl '// trim(cell_string) // '",' // &
@@ -2650,9 +2720,8 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"6-Ul [KJ/mol] '// trim(cell_string) // '",' // &
                '"7-Ug [KJ/mol]'// trim(cell_string) // '",'
       icolumn = 7
-      
+#endif
     case (MPH_MODE, FLASH2_MODE)
-    
 #if 0
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
@@ -2667,131 +2736,61 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"12-kvrl [1/sPa] '// trim(cell_string) // '",' // &
                '"13-kvrg [1/sPa] '// trim(cell_string) // '",'
 #endif          
-      
-      icolumn = icolumn + 1
-      string = ''
-      header = ''
-
-      write(string,'('',"'',i2,''-T [C] '// trim(cell_string) // '"'')') icolumn
-      
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-P [Pa] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-sl '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-sg '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-dl [kg/m^3] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-dg [kg/m^3] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-Ul [kJ/mol] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-Ug [kJ/mol] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-visl [sPa] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-visg [sPa] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-kvrl [1/sPa] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      icolumn = icolumn + 1
-      
-      write(string,'('',"'',i2,''-kvrg [1/sPa] '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-      
-      do i=1,option%nflowspec
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-Xl('',i2,'') '// trim(cell_string) // '"'')') &
-          icolumn,i
-        header = trim(header) // trim(string)
+      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'kvrg','[1/sPa]',cell_string,icolumn)
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xl(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
       enddo
-      do i=1,option%nflowspec
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-Xg('',i2,'') '// trim(cell_string) // '"'')') &
-          icolumn,i
-        header = trim(header) // trim(string)
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xg(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
       enddo
-      
-      icolumn = icolumn + 1
-      write(string,'('',"'',i2,''-Phase '// trim(cell_string) // '"'')') icolumn
-      header = trim(header) // trim(string)
-
+      call OutputAppendToHeader(header,'Phase','',cell_string,icolumn)
     case (G_MODE)
-    
-      header = ',"2-T [C] '// trim(cell_string) // '",' // &
-               '"3-P [Pa] '// trim(cell_string) // '",' // &
-               '"4-State [-] '// trim(cell_string) // '",' // &
-               '"5-Sat(l) '// trim(cell_string) // '",' // &
-               '"6-Sat(g) '// trim(cell_string) // '",' // &
-               '"7-Rho(l) '// trim(cell_string) // '",' // &
-               '"8-Rho(g) '// trim(cell_string) // '",' // &
-               '"9-U(l) '// trim(cell_string) // '",' // &
-               '"10-U(g) '// trim(cell_string) // '",'
-      icolumn = 10
-      do i=1,option%nflowspec
-        icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Xl('',i2,'') '// trim(cell_string) // '",'')') &
-          icolumn,i
-        header = trim(header) // trim(string)
+      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'State','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Sat(l)','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Sat(g)','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Rho(l)','[kg/m^3]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Rho(g)','[kg/m^3]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'U(l)','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'U(g)','[kJ/mol]',cell_string,icolumn)
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xl(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
       enddo
-      do i=1,option%nflowspec
-        icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Xg('',i2,'') '// trim(cell_string) // '",'')') &
-        icolumn,i
-        header = trim(header) // trim(string)
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xg(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
       enddo
-      string = trim(header) // ',"Phase '// trim(cell_string) // '"'
-      
     case(THC_MODE,RICHARDS_MODE)
-    
       if (option%iflowmode == THC_MODE) then
-        header = ',"2-T [C] '// trim(cell_string) // '",' // &
-                 '"3-P [Pa] '// trim(cell_string) // '",' // &
-                 '"4-sl '// trim(cell_string) // '",' // &
-                 '"5-Ul '// trim(cell_string) // '"' 
-        icolumn = 6
-      else
-        header = ',"2-P [Pa] '// trim(cell_string) // '",' // &
-                 '"3-sl '// trim(cell_string) // '"'
-        icolumn = 4
+        call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
       endif
+      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
       if (option%iflowmode == THC_MODE) then
-        do i=1,option%nflowspec
-          icolumn = icolumn + 1
-          write(string,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
-          header = trim(header) // trim(string)
+        call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+        do i = 1, option%nflowspec
+          write(string,'(i2)') i
+          string = 'Xl(' // trim(adjustl(string)) // ')'
+          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
         enddo
       endif
     case default
@@ -2800,556 +2799,27 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 
   ! add porosity to header
   if (output_option%print_porosity) then
-    icolumn = icolumn + 1
-    write(string,'('',"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
-    header = trim(header) // trim(string)
+    call OutputAppendToHeader(header,'Porosity','',cell_string,icolumn)
   endif
   
   write(fid,'(a)',advance="no") trim(header)
   
   ! reactive transport
   if (option%ntrandof > 0) then
-  
-    reaction => realization%reaction
-    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
-      free_mol_char = 'm'
-    else
-      free_mol_char = 'M'
-    endif   
-    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
-      tot_mol_char = 'm'
-    else
-      tot_mol_char = 'M'
-    endif   
-    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
-      sec_mol_char = 'm'
-    else
-      sec_mol_char = 'M'
-    endif   
- 
-    if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
-      if (reaction%species_idx%h_ion_id > 0) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-pH '',a,''"'')',advance="no") icolumn, &
-          trim(cell_string)
-      endif
-    endif
-
-    if (reaction%print_total_component) then
-      do i=1,reaction%naqcomp
-        if (reaction%primary_species_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_tot_'',a,'' '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_free_ion) then
-      do i=1,reaction%naqcomp
-        if (reaction%primary_species_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_free_'',a,'' '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_act_coefs) then
-      do i=1,reaction%naqcomp
-        if (reaction%primary_species_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_gam '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    do i=1,reaction%neqcplx
-      if (reaction%secondary_species_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%secondary_species_names(i)), trim(sec_mol_char), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,reaction%nkinmnrl
-      if (reaction%kinmnrl_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_vf '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinmnrl_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,reaction%nkinmnrl
-      if (reaction%kinmnrl_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_rt '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinmnrl_names(i)), trim(cell_string)  
-      endif
-    enddo
-    
-    do i=1,reaction%nmnrl
-      if (reaction%mnrl_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_si '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%mineral_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,realization%reaction%neqsrfcplxrxn
-      if (reaction%eqsrfcplx_site_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%eqsrfcplx_site_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,realization%reaction%neqsrfcplx
-      if (reaction%eqsrfcplx_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%eqsrfcplx_names(i)), trim(cell_string)
-      endif
-    enddo
-
-    do i=1,realization%reaction%nkinsrfcplxrxn
-      if (reaction%kinsrfcplx_site_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinsrfcplx_site_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,realization%reaction%nkinsrfcplx
-      if (reaction%kinsrfcplx_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinsrfcplx_names(i)), trim(cell_string)
-      endif
-    enddo
-
-    if (associated(reaction%kd_print)) then
-      do i=1,reaction%naqcomp
-        if (reaction%kd_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_kd '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (associated(reaction%total_sorb_print)) then
-      do i=1,reaction%naqcomp
-        if (reaction%total_sorb_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_tot_sorb '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (associated(reaction%total_sorb_mobile_print)) then
-      do i=1,reaction%ncollcomp
-        if (reaction%total_sorb_mobile_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_tot_sorb_mob '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%colloid_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_colloid) then
-      do i=1,reaction%ncoll
-        if (reaction%colloid_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_col_mob_'',a,'' '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%colloid_species_names(i)), trim(tot_mol_char), trim(cell_string)
-        endif
-      enddo
-      do i=1,reaction%ncoll
-        if (reaction%colloid_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_col_imb_'',a,'' '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%colloid_species_names(i)), trim(tot_mol_char), trim(cell_string)
-        endif
-      enddo
-    endif    
-    
-    if (reaction%print_age) then
-      if (reaction%species_idx%tracer_age_id > 0) then
-        icolumn = icolumn + 1
-        write(fid,'('',"Tracer_Age '',i2,''-'',a,''"'')',advance="no") &
-          icolumn, trim(cell_string)
-      endif
-    endif
-
+    header = RTGetTecplotHeader(realization,icolumn)
+    write(fid,'(a)',advance="no") trim(header)
   endif
     
+  header = ''
   if (print_velocities) then
-    icolumn = icolumn + 1
-    write(fid,'('',"'',i2,''-vlx [m/'',a,''] '',a,''"'')',advance="no") &
-      icolumn,trim(realization%output_option%tunit),trim(cell_string)
-    icolumn = icolumn + 1
-    write(fid,'('',"'',i2,''-vly [m/'',a,''] '',a,''"'')',advance="no") &
-      icolumn,trim(realization%output_option%tunit),trim(cell_string)
-    icolumn = icolumn + 1
-    write(fid,'('',"'',i2,''-vlz [m/'',a,''] '',a,''"'')',advance="no") &
-      icolumn,trim(realization%output_option%tunit),trim(cell_string)
+    write(string,'(''[m/'',a,'']'')') trim(realization%output_option%tunit)
+    call OutputAppendToHeader(header,'vlx',string,cell_string,icolumn)
+    call OutputAppendToHeader(header,'vly',string,cell_string,icolumn)
+    call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
+    write(fid,'(a)',advance="no") trim(header)
   endif
 
-end subroutine WriteObservationHeaderForCell
-
-! ************************************************************************** !
-!
-! WriteObservationHeaderForCoord: Print a header for data at a coordinate
-! author: Glenn Hammond
-! date: 04/11/08
-!
-! ************************************************************************** !  
-subroutine WriteObservationHeaderForCoord(fid,realization,region, &
-                                           print_velocities,icolumn)
-
-  use Realization_module
-  use Option_module
-  use Patch_module
-  use Region_module
-  use Reaction_Aux_module
-  
-  implicit none
-  
-  PetscInt :: fid
-  type(realization_type) :: realization
-  type(region_type) :: region
-  PetscBool :: print_velocities
-  
-  PetscInt :: i,icolumn
-  character(len=MAXHEADERLENGTH) :: header
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: cell_string
-  character(len=MAXSTRINGLENGTH) :: coordinate_string
-  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch  
-  type(reaction_type), pointer :: reaction  
-  type(output_option_type), pointer :: output_option    
-  
-  patch => realization%patch
-  option => realization%option
-  output_option => realization%output_option
-  
-!  write(cell_string,*) grid%nL2A(region%cell_ids(icell)) + 1 ! nL2A is zero-based
-!  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
-  cell_string = trim(region%name)
-  
-  110 format(1f12.2)
-  write(x_string,110) region%coordinates(ONE_INTEGER)%x
-  write(y_string,110) region%coordinates(ONE_INTEGER)%y
-  write(z_string,110) region%coordinates(ONE_INTEGER)%z
-  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
-                trim(adjustl(y_string)) // ' ' // &
-                trim(adjustl(z_string)) // ')'
-
-  select case(option%iflowmode)
-    case (IMS_MODE)
-!      header = ',"X [m] '// trim(cell_string) // '",' // &
-!               '"Y [m] '// trim(cell_string) // '",' // &
-!               '"Z [m] '// trim(cell_string) // '",' // &
-       header = ',"2-T [C] '// trim(cell_string) // '",' // &
-               '"3-P [Pa] '// trim(cell_string) // '",' // &
-               '"4-sl '// trim(cell_string) // '",' // &
-               '"5-sg '// trim(cell_string) // '",' // &
-               '"6-Ul '// trim(cell_string) // '",' // &
-               '"7-Ug '// trim(cell_string) // '",'
-        icolumn = 7
-        
-    case (MPH_MODE,FLASH2_MODE)
-    
-!      header = ',"X [m] '// trim(cell_string) // '",' // &
-!               '"Y [m] '// trim(cell_string) // '",' // &
-!               '"Z [m] '// trim(cell_string) // '",' // &
-       header = ',"2-T [C] '// trim(cell_string) // '",' // &
-               '"3-P [Pa] '// trim(cell_string) // '",' // &
-               '"4-sl '// trim(cell_string) // '",' // &
-               '"5-sg '// trim(cell_string) // '",' // &
-               '"6-dl [kg/m^3] '// trim(cell_string) // '",' // &
-               '"7-dg [kg/m^3] '// trim(cell_string) // '",' // &
-               '"8-Ul [kJ/mol] '// trim(cell_string) // '",' // &
-               '"9-Ug [kJ/mol] '// trim(cell_string) // '",' // &
-               '"10-visl [sPa] '// trim(cell_string) // '",' // &
-               '"11-visg [sPa]'// trim(cell_string) // '",'// &
-               '"12-kvrl [1/sPa] '// trim(cell_string) // '",' // &
-               '"13-kvrg [1/sPa] '// trim(cell_string) // '",' 
-        icolumn = 13
-
-      do i=1,option%nflowspec
-        icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Xl('',i2,'') '// trim(cell_string) // '",'')') i
-        header = trim(header) // trim(string)
-      enddo
-      do i=1,option%nflowspec
-        icolumn = icolumn + 1
-        write(string,'(''"'',i2,''-Xg('',i2,'') '// trim(cell_string) // '",'')') i
-        header = trim(header) // trim(string)
-      enddo
-      header = trim(header) // ',"Phase '// trim(cell_string) // '"'
-      
-      icolumn = icolumn + 1
-      write(string,'(''"'',i2,''-Phase '// trim(cell_string) // '",'')') icolumn
-      header = trim(header) // trim(string)
-
-    case (G_MODE)
-    
-      header = ',"2-T [C] '// trim(cell_string) // '",' // &
-               '"3-P [Pa] '// trim(cell_string) // '",' // &
-               '"4-State [-] ' // trim(cell_string) // '",' // &
-               '"5-Sat(l) '// trim(cell_string) // '",' // &
-               '"6-Sat(g) '// trim(cell_string) // '",' // &
-               '"7-Rho(l) '// trim(cell_string) // '",' // &
-               '"8-Rho(g) '// trim(cell_string) // '",' // &
-               '"9-U(l) '// trim(cell_string) // '",' // &
-               '"10-U(g) '// trim(cell_string) // '",'
-        icolumn = 10
-
-      do i=1,option%nflowspec
-        write(string,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
-        header = trim(header) // trim(string)
-      enddo
-      do i=1,option%nflowspec
-        write(string,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
-        header = trim(header) // trim(string)
-      enddo
-      header = trim(header) // ',"Phase '// trim(cell_string) // '"'
-    case(THC_MODE,RICHARDS_MODE)
-      if (option%iflowmode == THC_MODE) then
-!        header = ',"X [m] '// trim(cell_string) // '",' // &
-!                 '"Y [m] '// trim(cell_string) // '",' // &
-!                 '"Z [m] '// trim(cell_string) // '",' // &
-        header = ',"2-T [C] '// trim(cell_string) // '",' // &
-                 '"3-P [Pa] '// trim(cell_string) // '",' // &
-                 '"4-sl '// trim(cell_string) // '",' // &
-                 '"5-Ul '// trim(cell_string) // '"' 
-        icolumn = 5
-      else
-!        header = ',"X [m] '// trim(cell_string) // '",' // &
-!                 '"Y [m] '// trim(cell_string) // '",' // &
-!                 '"Z [m] '// trim(cell_string) // '",' // &
-        header = ',"2-P [Pa] '// trim(cell_string) // '",' // &
-                 '"3-sl '// trim(cell_string) // '"'
-        icolumn = 3
-      endif
-      
-      if (option%iflowmode == THC_MODE) then
-        do i=1,option%nflowspec
-          write(string,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
-          header = trim(header) // trim(string)
-        enddo
-      endif
-    case default
-      header = ''
-  end select
-  write(fid,'(a)',advance="no") trim(header)
-
-  ! add porosity to header
-  if (output_option%print_porosity) then
-    icolumn = icolumn + 1
-    write(string,'(''"'',i2,''-Porosity '// trim(cell_string) // '"'')') icolumn
-    header = trim(header) // trim(string)
-  endif
-
-  ! reactive transport
-  if (option%ntrandof > 0) then
-
-    reaction => realization%reaction
-    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
-      free_mol_char = 'm'
-    else
-      free_mol_char = 'M'
-    endif 
-    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
-      tot_mol_char = 'm'
-    else
-      tot_mol_char = 'M'
-    endif 
-    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
-      sec_mol_char = 'm'
-    else
-      sec_mol_char = 'M'
-    endif 
-
-    if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
-      if (reaction%species_idx%h_ion_id > 0) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-pH '',a,''"'')',advance="no") icolumn,trim(cell_string)
-      endif
-    endif
-
-    if (reaction%print_total_component) then
-      do i=1,reaction%naqcomp
-        if (reaction%primary_species_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
-            icolumn, &
-            trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_free_ion) then
-      do i=1,reaction%naqcomp
-        if (reaction%primary_species_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
-            icolumn, &
-            trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_act_coefs) then
-      do i=1,reaction%naqcomp
-        if (reaction%primary_species_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_gam '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    do i=1,reaction%neqcplx
-      if (reaction%secondary_species_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%secondary_species_names(i)), trim(sec_mol_char), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,reaction%nkinmnrl
-      if (reaction%kinmnrl_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_vf '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinmnrl_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,reaction%nkinmnrl
-      if (reaction%kinmnrl_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_rt '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinmnrl_names(i)), trim(cell_string)  
-      endif
-    enddo
-    
-    do i=1,reaction%nmnrl
-      if (reaction%mnrl_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,''_si '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%mineral_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,realization%reaction%neqsrfcplxrxn
-      if (reaction%eqsrfcplx_site_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%eqsrfcplx_site_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,realization%reaction%neqsrfcplx
-      if (reaction%eqsrfcplx_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%eqsrfcplx_names(i)), trim(cell_string)
-      endif
-    enddo
-
-    do i=1,realization%reaction%nkinsrfcplxrxn
-      if (reaction%kinsrfcplx_site_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinsrfcplx_site_names(i)), trim(cell_string)
-      endif
-    enddo
-    
-    do i=1,realization%reaction%nkinsrfcplx
-      if (reaction%kinsrfcplx_print(i)) then
-        icolumn = icolumn + 1
-        write(fid,'('',"'',i2,''-'',a,'' '',a,''"'')',advance="no") icolumn, &
-          trim(reaction%kinsrfcplx_names(i)), trim(cell_string)
-      endif
-    enddo
-
-    if (associated(reaction%kd_print)) then
-      do i=1,reaction%naqcomp
-        if (reaction%kd_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_kd '',a,''"'')',advance="no") icolumn, &
-            trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (associated(reaction%total_sorb_print)) then
-      do i=1,reaction%naqcomp
-        if (reaction%total_sorb_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_tot_sorb '',a,''"'')',advance="no") &
-            icolumn, trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (associated(reaction%total_sorb_mobile_print)) then
-      do i=1,reaction%ncollcomp
-        if (reaction%total_sorb_mobile_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_tot_sorb_mobile '',a,''"'')',advance="no") &
-            trim(reaction%primary_species_names(i)), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_colloid) then
-      do i=1,reaction%ncoll
-        if (reaction%colloid_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_col_mob_'',a,'' '',a,''"'')',advance="no") &
-            trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
-        endif
-      enddo
-      do i=1,reaction%ncoll
-        if (reaction%colloid_print(i)) then
-          icolumn = icolumn + 1
-          write(fid,'('',"'',i2,''-'',a,''_col_imb_'',a,'' '',a,''"'')',advance="no") &
-            icolumn, &
-            trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
-        endif
-      enddo
-    endif
-    
-    if (reaction%print_age) then
-      if (reaction%species_idx%tracer_age_id > 0) then
-        icolumn = icolumn + 1
-        write(fid,'('',"Tracer_Age '',i2,''-'',a,''"'')',advance="no") &
-          icolumn, trim(cell_string)
-      endif
-    endif
-    
-  endif
-
-  if (print_velocities) then 
-    string = '"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_string) // '"' // &
-             ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_string) // '"' // &
-             ',"vlz [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_string) // '"'
-    write(fid,'(a)',advance="no") trim(string)
-  endif
-
-end subroutine WriteObservationHeaderForCoord
+end subroutine WriteObservationHeader
 
 ! ************************************************************************** !
 !
@@ -4773,7 +4243,8 @@ subroutine OutputVTK(realization)
         case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
-            write(word,'(''Xl('',i1,'')'')') i
+            write(word,'(i2)') i
+            word = 'Xl(' // trim(adjustl(word)) // ')'
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -4784,7 +4255,8 @@ subroutine OutputVTK(realization)
         case(MPH_MODE,FLASH2_MODE,G_MODE)
           ! gas mole fractions
           do i=1,option%nflowspec
-            write(word,'(''Xg('',i1,'')'')') i
+            write(word,'(i2)') i
+            word = 'Xg(' // trim(adjustl(word)) // ')'
             call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -8368,5 +7840,64 @@ subroutine OutputPermeability(realization)
   endif
   
 end subroutine OutputPermeability
+
+! ************************************************************************** !
+!
+! OutputAppendToHeader: Appends formatted strings to header string
+! author: Glenn Hammond
+! date: 10/27/11
+!
+! ************************************************************************** !
+subroutine OutputAppendToHeader(header,variable_string,units_string, &
+                                cell_string, icolumn)
+
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=*) :: variable_string, units_string, cell_string
+  character(len=MAXWORDLENGTH) :: column_string
+  character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj, &
+                                  cell_string_adj
+  PetscInt :: icolumn, len_cell_string, len_units
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  variable_string_adj = variable_string
+  units_string_adj = units_string
+  cell_string_adj = cell_string
+
+  !geh: Shift to left.  Cannot perform on same string since len=*
+  variable_string_adj = adjustl(variable_string_adj)
+  units_string_adj = adjustl(units_string_adj)
+  cell_string_adj = adjustl(cell_string_adj)
+
+  if (icolumn > 0) then
+    icolumn = icolumn + 1
+    write(column_string,'(i4,''-'')') icolumn
+    column_string = trim(adjustl(column_string))
+  else
+    column_string = ''
+  endif
+
+  !geh: this is all to remove the lousy spaces
+  len_units = len_trim(units_string)
+  len_cell_string = len_trim(cell_string)
+  if (len_units > 0 .and. len_cell_string > 0) then
+    write(string,'('',"'',a,a,'' '',a,'' '',a,''"'')') trim(column_string), &
+          trim(variable_string_adj), trim(units_string_adj), &
+          trim(cell_string_adj)
+  else if (len_units > 0 .or. len_cell_string > 0) then
+    if (len_units > 0) then
+      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
+            trim(variable_string_adj), trim(units_string_adj)
+    else
+      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
+            trim(variable_string_adj), trim(cell_string_adj)
+    endif
+  else
+    write(string,'('',"'',a,a,''"'')') trim(column_string), &
+          trim(variable_string_adj)
+  endif
+  header = trim(header) // trim(string)
+
+end subroutine
 
 end module Output_module

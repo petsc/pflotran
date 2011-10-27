@@ -30,6 +30,10 @@ ifdef temp
 TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
 
+ifdef ice
+ICE_FLAG = -DICE
+endif
+
 ifdef chuan_co2
 CHUAN_FLAG = -DCHUAN_CO2
 endif
@@ -80,7 +84,7 @@ endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(DBL_FLAG) $(TEMP_FLAG) $(GPU_FLAGS)\
-				$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG) $(GAUTAM_FLAGS)
+				$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG) $(GAUTAM_FLAGS) $(ICE_FLAG)
 
 CFLAGS		 = 
 FFLAGS		 =
@@ -332,3 +336,4 @@ matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
+utility.o : string.o input.o option.o
