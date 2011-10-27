@@ -5950,7 +5950,8 @@ function RTGetTecplotHeader(realization,icolumn)
   type(realization_type) :: realization
   PetscInt :: icolumn
   
-  character(len=MAXHEADERLENGTH) :: string, string2
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) string
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
@@ -5959,7 +5960,7 @@ function RTGetTecplotHeader(realization,icolumn)
   option => realization%option
   reaction => realization%reaction
   
-  string = ''
+  header = ''
   
   if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
     free_mol_char = 'm'
@@ -5979,15 +5980,15 @@ function RTGetTecplotHeader(realization,icolumn)
     sec_mol_char = 'M'
   endif
   
-if (reaction%print_pH .and. associated(reaction%species_idx)) then
+  if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%species_idx%h_ion_id > 0) then
       if (icolumn > -1) then
         icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-pH"'')') icolumn
+        write(string,'('',"'',i2,''-pH"'')') icolumn
       else
-        write(string2,'('',"pH"'')') 
+        write(string,'('',"pH"'')') 
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   endif
   
@@ -5996,13 +5997,13 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_tot_'',a,''"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_tot_'',a,''"'')') icolumn, &
             trim(reaction%primary_species_names(i)), trim(tot_mol_char)
         else
-          write(string2,'('',"'',a,''_tot_'',a,''"'')') &
+          write(string,'('',"'',a,''_tot_'',a,''"'')') &
             trim(reaction%primary_species_names(i)), trim(tot_mol_char)
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
   endif
@@ -6012,13 +6013,13 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_free_'',a,''"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_free_'',a,''"'')') icolumn, &
             trim(reaction%primary_species_names(i)), trim(free_mol_char)
         else
-          write(string2,'('',"'',a,''_free_'',a,''"'')') &
+          write(string,'('',"'',a,''_free_'',a,''"'')') &
             trim(reaction%primary_species_names(i)), trim(free_mol_char)
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo  
   endif
@@ -6028,12 +6029,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_gam"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_gam"'')') icolumn, &
             trim(reaction%primary_species_names(i))
         else
-          write(string2,'('',"'',a,''_gam"'')') trim(reaction%primary_species_names(i))
+          write(string,'('',"'',a,''_gam"'')') trim(reaction%primary_species_names(i))
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
   endif
@@ -6042,13 +6043,13 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%secondary_species_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_'',a,''"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''_'',a,''"'')') icolumn, &
           trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
       else
-        write(string2,'('',"'',a,''_'',a,''"'')') &
+        write(string,'('',"'',a,''_'',a,''"'')') &
           trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo  
     
@@ -6056,12 +6057,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%kinmnrl_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_vf"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''_vf"'')') icolumn, &
           trim(reaction%kinmnrl_names(i))
       else
-        write(string2,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))    
+        write(string,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))    
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
   
@@ -6069,12 +6070,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%kinmnrl_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_rt"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''_rt"'')') icolumn, &
           trim(reaction%kinmnrl_names(i))
       else
-        write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
+        write(string,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
   
@@ -6082,12 +6083,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%mnrl_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_si"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''_si"'')') icolumn, &
           trim(reaction%mineral_names(i))
       else
-        write(string2,'('',"'',a,''_si"'')') trim(reaction%mineral_names(i))    
+        write(string,'('',"'',a,''_si"'')') trim(reaction%mineral_names(i))    
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
   
@@ -6095,12 +6096,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%eqsrfcplx_site_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  
-        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
           trim(reaction%eqsrfcplx_site_names(i))
       else
-        write(string2,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_site_names(i))
+        write(string,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_site_names(i))
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
   
@@ -6108,12 +6109,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%eqsrfcplx_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  
-        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
           trim(reaction%eqsrfcplx_names(i))
       else
-        write(string2,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_names(i))
+        write(string,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_names(i))
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
   
@@ -6121,12 +6122,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%kinsrfcplx_site_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  
-        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
           trim(reaction%kinsrfcplx_site_names(i))
       else
-        write(string2,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_site_names(i))
+        write(string,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_site_names(i))
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
   
@@ -6134,12 +6135,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%kinsrfcplx_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  
-        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
           trim(reaction%kinsrfcplx_names(i))
       else
-        write(string2,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_names(i))
+        write(string,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_names(i))
       endif
-      string = trim(string) // trim(string2)
+      header = trim(header) // trim(string)
     endif
   enddo
 
@@ -6148,12 +6149,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%kd_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_kd"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_kd"'')') icolumn, &
             trim(reaction%primary_species_names(i))
         else
-          write(string2,'('',"'',a,''_kd"'')') trim(reaction%primary_species_names(i))
+          write(string,'('',"'',a,''_kd"'')') trim(reaction%primary_species_names(i))
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
   endif
@@ -6163,12 +6164,12 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%total_sorb_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_total_sorb"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_total_sorb"'')') icolumn, &
             trim(reaction%primary_species_names(i))
         else
-          write(string2,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
+          write(string,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
   endif
@@ -6178,13 +6179,13 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%total_sorb_mobile_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_total_sorb_mob"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_total_sorb_mob"'')') icolumn, &
             trim(reaction%colloid_species_names(i))
         else
-          write(string2,'('',"'',a,''_total_sorb_mob"'')') &
+          write(string,'('',"'',a,''_total_sorb_mob"'')') &
             trim(reaction%colloid_species_names(i))
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
   endif
@@ -6194,26 +6195,26 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
       if (reaction%colloid_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_col_mob_'',a,''"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_col_mob_'',a,''"'')') icolumn, &
             trim(reaction%colloid_names(i)), trim(tot_mol_char)
         else
-          write(string2,'('',"'',a,''_col_mob_'',a,''"'')') &
+          write(string,'('',"'',a,''_col_mob_'',a,''"'')') &
             trim(reaction%colloid_names(i)), trim(tot_mol_char)
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
     do i=1,reaction%ncoll
       if (reaction%colloid_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_col_imb_'',a,''"'')') icolumn, &
+          write(string,'('',"'',i2,''-'',a,''_col_imb_'',a,''"'')') icolumn, &
             trim(reaction%colloid_names(i)), trim(tot_mol_char)
         else
-          write(string2,'('',"'',a,''_col_imb_'',a,''"'')') &
+          write(string,'('',"'',a,''_col_imb_'',a,''"'')') &
             trim(reaction%colloid_names(i)), trim(tot_mol_char)
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
       endif
     enddo
   endif
@@ -6222,15 +6223,15 @@ if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%species_idx%tracer_age_id > 0) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-Tracer_Age"'')') icolumn
+          write(string,'('',"'',i2,''-Tracer_Age"'')') icolumn
         else
-          write(string2,'('',"Tracer_Age"'')') 
+          write(string,'('',"Tracer_Age"'')') 
         endif
-        string = trim(string) // trim(string2)
+        header = trim(header) // trim(string)
     endif
   endif
     
-  RTGetTecplotHeader = string
+  RTGetTecplotHeader = header
 
 end function RTGetTecplotHeader
 
