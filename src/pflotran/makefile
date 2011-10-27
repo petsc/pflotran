@@ -336,3 +336,4 @@ matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
+utility.o : string.o input.o option.o

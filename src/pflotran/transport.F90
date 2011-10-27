@@ -77,8 +77,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
   sat_up = global_aux_var_up%sat(iphase)
   sat_dn = global_aux_var_dn%sat(iphase)
 
-  temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
-  temp_dn = global_aux_var_dn%temp(iphase)
+  temp_up = global_aux_var_up%temp(1)      ! getting data from global to local variables
+  temp_dn = global_aux_var_dn%temp(1)
   
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up 
@@ -116,8 +116,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
       q = velocity(iphase)
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
-      temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
-      temp_dn = global_aux_var_dn%temp(iphase)
+      temp_up = global_aux_var_up%temp(1)      ! getting data from global to local variables
+      temp_dn = global_aux_var_dn%temp(1)
       if (sat_up > eps .and. sat_dn > eps) then
         stp_up = sat_up*tor_up*por_up 
         stp_dn = sat_dn*tor_dn*por_dn
@@ -185,7 +185,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   sat_up = global_aux_var_up%sat(iphase)
   sat_dn = global_aux_var_dn%sat(iphase)
 
-  temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
+  temp_up = global_aux_var_up%temp(1)      ! getting data from global to local variables
 
 
   select case(ibndtype)
@@ -240,7 +240,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
       q = velocity(iphase)
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
-      temp_up = global_aux_var_up%temp(iphase)      ! getting data from global to local variables
+      temp_up = global_aux_var_up%temp(1)      ! getting data from global to local variables
 
       select case(ibndtype)
         case(DIRICHLET_BC)
