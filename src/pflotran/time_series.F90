@@ -345,7 +345,9 @@ subroutine TimeSeriesDestroy(time_series)
 
   implicit none
   
-  type(time_series_type) :: time_series
+  type(time_series_type), pointer :: time_series
+  
+  if (.not.associated(time_series)) return
   
   if (associated(time_series%times)) deallocate(time_series%times)
   nullify(time_series%times)
@@ -353,6 +355,9 @@ subroutine TimeSeriesDestroy(time_series)
   nullify(time_series%values)  
   if (associated(time_series%cur_value)) deallocate(time_series%cur_value)
   nullify(time_series%cur_value)  
+  
+  deallocate(time_series)
+  nullify(time_series)
 
 end subroutine TimeSeriesDestroy
 

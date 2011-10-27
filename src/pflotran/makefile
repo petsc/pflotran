@@ -270,7 +270,7 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
 level.o : patch.o option.o
 strata.o : input.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
-                structured_grid.o
+                structured_grid.o dataset.o time_series.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \

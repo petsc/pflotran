@@ -872,6 +872,9 @@ subroutine RealizationProcessConditions(realization)
   
   type(realization_type) :: realization
   
+  if (realization%option%nflowdof > 0) then
+    call RealProcessFlowConditions(realization)
+  endif
   if (realization%option%ntrandof > 0) then
     call RealProcessTranConditions(realization)
   endif
@@ -1038,7 +1041,6 @@ subroutine RealProcessSubcontinuumProp(realization)
 end subroutine RealProcessSubcontinuumProp
 
 ! ************************************************************************** !
-! ************************************************************************** !
 !
 ! RealProcessFluidProperties: Sets up linkeage with fluid properties
 ! author: Glenn Hammond
@@ -1079,6 +1081,79 @@ subroutine RealProcessFluidProperties(realization)
   endif
   
 end subroutine RealProcessFluidProperties
+
+! ************************************************************************** !
+!
+! RealProcessFlowConditions: Sets linkage of flow conditions to dataset
+! author: Glenn Hammond
+! date: 10/26/11
+!
+! ************************************************************************** !
+subroutine RealProcessFlowConditions(realization)
+
+  type(realization_type) :: realization
+  
+  type(flow_condition_type), pointer :: cur_flow_condition
+  type(flow_sub_condition_type), pointer :: cur_flow_sub_condition
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: dataset_name
+  PetscInt :: i
+  
+  option => realization%option
+  
+  ! loop over flow conditions looking for linkage to datasets
+  cur_flow_condition => realization%flow_conditions%first
+  do
+    if (.not.associated(cur_flow_condition)) exit
+    !TODO(geh): could destroy the time_series here if dataset allocated
+    select case(option%iflowmode)
+      case(G_MODE)
+      case(RICHARDS_MODE)
+        do i = 1, size(cur_flow_condition%sub_condition_ptr)
+          ! check for dataset in flow_dataset
+          if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                          flow_dataset%dataset)) then
+            dataset_name = cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                          flow_dataset%dataset%name
+            ! delete the dataset since it is solely a placeholder
+            call DatasetDestroy(cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                                flow_dataset%dataset)
+            ! get dataset from list
+            string = 'flow_condition ' // trim(cur_flow_condition%name)
+            cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
+              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+          endif
+          if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                          datum%dataset)) then
+            dataset_name = cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                          datum%dataset%name
+            ! delete the dataset since it is solely a placeholder
+            call DatasetDestroy(cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                                datum%dataset)
+            ! get dataset from list
+            string = 'flow_condition ' // trim(cur_flow_condition%name)
+            cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
+              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+          endif
+          if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                          gradient%dataset)) then
+            dataset_name = cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                          gradient%dataset%name
+            ! delete the dataset since it is solely a placeholder
+            call DatasetDestroy(cur_flow_condition%sub_condition_ptr(i)%ptr% &
+                                gradient%dataset)
+            ! get dataset from list
+            string = 'flow_condition ' // trim(cur_flow_condition%name)
+            cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
+              DatasetGetPointer(realization%datasets,dataset_name,string,option)
+          endif
+        enddo
+    end select
+    cur_flow_condition => cur_flow_condition%next
+  enddo
+
+end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
 !

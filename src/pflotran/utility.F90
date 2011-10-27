@@ -529,6 +529,35 @@ end subroutine Interpolate
 
 ! ************************************************************************** !
 !
+! InterpolateBilinear: Interpolates values between four reference values in 2D
+! author: Glenn Hammond
+! date: 10/26/11
+!
+! ************************************************************************** !
+function InterpolateBilinear(x,y,x1,x2,y1,y2,z1,z2,z3,z4)
+
+  implicit none
+
+  PetscReal :: x,y,x1,x2,y1,y2,z1,z2,z3,z4
+  PetscReal :: InterpolateBilinear
+  
+  
+  !  x1,y2,z3 ------ x2,y2,z4
+  !     |               |
+  !     |               |
+  !     |   x,y         |
+  !     |               |
+  !  x1,y1,z1 ------ x2,y1,z2
+  
+  
+  InterpolateBilinear = (z1*(x2-x)*(y2-y)+z2*(x-x1)*(y2-y)+ &
+                         z3*(x2-x)*(y-y1)+z4*(x-x1)*(y-y1))/ &
+                        ((x2-x1)*(y2-y1))
+
+end function InterpolateBilinear
+
+! ************************************************************************** !
+!
 ! DotProduct1: Computes the dot product between two 3d vectors
 ! author: Glenn Hammond
 ! date: 11/28/07

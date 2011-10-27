@@ -576,6 +576,20 @@ subroutine FlowConditionDatasetVerify(option, condition_name, &
   type(flow_condition_dataset_type) :: dataset
   type(flow_condition_dataset_type) :: default_dataset
   
+  if (associated(dataset%dataset) .or. &
+      associated(default_dataset%dataset)) then
+    call TimeSeriesDestroy(dataset%time_series)
+    call TimeSeriesDestroy(default_dataset%time_series)
+    if (associated(default_dataset%dataset) .and. &
+        .not.associated(dataset%dataset)) then
+      dataset%dataset => default_dataset%dataset
+    endif
+    if (associated(dataset%dataset) .and. &
+        .not.associated(default_dataset%dataset)) then
+      default_dataset%dataset => dataset%dataset
+    endif
+  endif
+  
   if (associated(dataset%time_series)) then
     call TimeSeriesVerify(option, default_time, dataset%time_series, &
                           default_dataset%time_series)
@@ -2935,7 +2949,7 @@ end function FlowConditionIsTransient
 !
 ! FlowSubConditionIsTransient: Returns PETSC_TRUE
 ! author: Glenn Hammond
-! date: 11/26/11
+! date: 10/26/11
 !
 ! ************************************************************************** !
 function FlowSubConditionIsTransient(sub_condition)
@@ -2962,7 +2976,7 @@ end function FlowSubConditionIsTransient
 !
 ! FlowDatasetIsTransient: Returns PETSC_TRUE
 ! author: Glenn Hammond
-! date: 11/26/11
+! date: 10/26/11
 !
 ! ************************************************************************** !
 function FlowDatasetIsTransient(flow_dataset)

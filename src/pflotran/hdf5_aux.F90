@@ -261,7 +261,7 @@ subroutine HDF5ReadDataset(dataset,option)
   allocate(dims_h5(ndims_hdf5))
   allocate(max_dims_h5(ndims_hdf5))
   call h5sget_simple_extent_dims_f(file_space_id,dims_h5,max_dims_h5,hdf5_err)
-  allocate(dataset%dims(dataset%ndims))
+  allocate(dataset%dims(ndims_hdf5))
   dataset%ndims = ndims_hdf5
   dataset%dims = dims_h5
   deallocate(dims_h5)
@@ -308,12 +308,13 @@ subroutine HDF5ReadDataset(dataset,option)
   option%io_buffer = 'Closing hdf5 file: ' // trim(dataset%filename)
   call printMsg(option)  
   call h5fclose_f(file_id,hdf5_err)
-  call h5close_f(hdf5_err)  
+  call h5close_f(hdf5_err)
   
   !TODO(geh): add to event log
   !call PetscLogEventEnd(logging%event_read_ndim_real_array_hdf5,ierr)
                           
 end subroutine HDF5ReadDataset
+
 
 #if defined(PARALLELIO_LIB)
 
