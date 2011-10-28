@@ -19,126 +19,69 @@ contains
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine DatasetLoad(dataset,option,cur_time)
+subroutine DatasetLoad(dataset,option)
 
   use Option_module
   use HDF5_aux_module
+  use Utility_module, only : Equal
 
   implicit none
   
   type(dataset_type) :: dataset
   type(option_type) :: option
-  PetscReal :: cur_time
+
+  PetscBool :: read_dataset
+  PetscBool :: interpolate_dataset
+  PetscInt :: itime
   
-  call HDF5ReadDataset(dataset,option,cur_time)
-  call DatasetReorder(dataset,option)
-  ! calculate min/max values
-  if (associated(dataset%rarray)) then
-    dataset%rmax = maxval(dataset%rarray)
-    dataset%rmin = minval(dataset%rarray)
+    ! update the offset of the data array
+  read_dataset = PETSC_FALSE
+  interpolate_dataset = PETSC_FALSE
+  if (associated(dataset%buffer)) then
+  
+  
+ ! Glenn:  Need to setup waypoints to match times in dataset, like done in timeseries
+  
+  
+  
+    if (.not.Equal(option%time,dataset%buffer%cur_time)) then
+      interpolate_dataset = PETSC_TRUE
+      ! increment time index until within buffer
+      do itime = dataset%buffer%cur_time_index, dataset%buffer%num_times_total
+        if (option%time < dataset%buffer%time_array(itime)) then
+        else
+          dataset%buffer%cur_time_index = itime
+          exit
+        endif
+      enddo
+      ! is time outside range of buffer
+      if (dataset%buffer%cur_time_index > dataset%buffer%time_offset + &
+                                       dataset%buffer%num_times_in_buffer) then
+        read_dataset = PETSC_TRUE
+      endif
+    endif
+  else if (dataset%data_dim == DIM_NULL) then ! has not been read
+    read_dataset = PETSC_TRUE
+    interpolate_dataset = PETSC_TRUE
+  endif
+  
+  if (read_dataset) then
+    call HDF5ReadDataset(dataset,option)
+    call DatasetReorder(dataset,option)
+    interpolate_dataset = PETSC_TRUE ! just to be sure
+  endif
+  if (interpolate_dataset) then
+    call DatasetInterpolateBetweenTimes(dataset,option)
+    if (associated(dataset%buffer)) then
+      dataset%buffer%cur_time = option%time
+    endif
+    ! calculate min/max values
+    if (associated(dataset%rarray)) then
+      dataset%rmax = maxval(dataset%rarray)
+      dataset%rmin = minval(dataset%rarray)
+    endif
   endif
 
 end subroutine DatasetLoad
-
-! ************************************************************************** !
-!
-! DatasetReorder: If a dataset is loaded from an HDF5 file, and it was
-!                 multidimensional in the HDF5 file, the array needs to be
-!                 reordered fro Fortran -> C indexing.  This subroutine
-!                 takes care of the reordering.
-! author: Glenn Hammond
-! date: 10/26/11
-!
-! ************************************************************************** !
-subroutine DatasetReorder(dataset,option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(dataset_type) :: dataset
-  type(option_type) :: option
-  
-  PetscInt, allocatable :: dims(:)
-  PetscReal, allocatable :: temp_real(:)
-  PetscInt :: i, j, k, t
-  PetscInt :: nx, ny, nz, nt, nxXny, nyXnz, nxXnyXnz
-  PetscInt :: count, index, idim
-  
-  ! Not necessary for 1D arrays
-  if (dataset%ndims < 2) return
-  
-  select case(dataset%ndims)
-    case(TWO_INTEGER)
-      nx = dataset%dims(ONE_INTEGER)
-      if (associated(dataset%time_array)) then
-        ny = dataset%buffer_size
-      else
-        ny = dataset%dims(TWO_INTEGER)
-      endif
-      count = 0
-      allocate(temp_real(nx*ny))
-      do i = 1, nx
-        do j = 0, ny-1
-          index = j*nx+i
-          count = count+1
-          temp_real(index) = dataset%rarray(count)
-        enddo
-      enddo  
-    case(THREE_INTEGER)
-      nx = dataset%dims(ONE_INTEGER)
-      ny = dataset%dims(TWO_INTEGER)
-      if (associated(dataset%time_array)) then
-        nz = dataset%buffer_size
-      else
-        nz = dataset%dims(THREE_INTEGER)
-      endif
-      nyXnz = ny*nz
-      count = 0
-      allocate(temp_real(nx*ny*nz))
-      do i = 1, nx
-        do j = 0, ny-1
-          do k = 0, nz-1
-            index = k*nxXny+j*nx+i
-            count = count+1
-            temp_real(index) = dataset%rarray(count)
-          enddo
-        enddo
-      enddo  
-    case(FOUR_INTEGER)
-      nx = dataset%dims(ONE_INTEGER)
-      ny = dataset%dims(TWO_INTEGER)
-      nz = dataset%dims(THREE_INTEGER)
-      if (associated(dataset%time_array)) then
-        nt = dataset%buffer_size
-      else
-        nt = dataset%dims(FOUR_INTEGER)
-      endif
-      nxXny = nx*ny
-      nxXnyXnz = nxXny*nz
-      count = 0
-      allocate(temp_real(nx*ny*nz*nt))
-      do i = 1, nx
-        do j = 0, ny-1
-          do k = 0, nz-1
-            do t = 0, nt-1
-              index = t*nxXnyXnz+k*nxXny+j*nx+i
-              count = count+1
-              temp_real(index) = dataset%rarray(count)
-            enddo
-          enddo
-        enddo
-      enddo  
-    case default
-      write(option%io_buffer,*) dataset%ndims
-      option%io_buffer = 'Dataset reordering not yet supported for rank ' // &
-                         trim(adjustl(option%io_buffer)) // ' array.'
-      call printErrMsg(option)
-  end select
-
-  dataset%rarray = temp_real
-  deallocate(temp_real)
-  
-end subroutine DatasetReorder
 
 end module Dataset_module

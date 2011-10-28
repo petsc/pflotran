@@ -14,6 +14,7 @@ module Material_module
     PetscReal :: permeability(3,3)
     PetscBool :: isotropic_permeability
     PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
+    PetscReal :: permeability_scaling_factor
     character(len=MAXWORDLENGTH) :: permeability_dataset_name
     type(dataset_type), pointer :: permeability_dataset
     PetscReal :: porosity
@@ -76,6 +77,7 @@ function MaterialPropertyCreate()
   material_property%permeability = 0.d0
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
+  material_property%permeability_scaling_factor = 0.d0
   material_property%permeability_pwr = 0.d0
   material_property%permeability_dataset_name = ''
   nullify(material_property%permeability_dataset)
@@ -225,6 +227,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                  'MATERIAL_PROPERTY,PERMEABILITY')
             case('ISOTROPIC')
               material_property%isotropic_permeability = PETSC_TRUE
+            case('PERMEABILITY_SCALING_FACTOR')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability_scaling_factor)
+              call InputErrorMsg(input,option,'permeability scaling factor', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_X')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))

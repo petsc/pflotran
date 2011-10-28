@@ -72,7 +72,6 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   integer(HSIZE_T) :: offset(1), length(1), stride(1)
   PetscMPIInt :: rank_mpi
   PetscInt :: index_count
-  PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_dataset
   PetscInt :: temp_int, i, index
   PetscMPIInt :: int_mpi
@@ -144,7 +143,7 @@ end subroutine HDF5ReadNDimRealArray
 ! date: 10/25/11
 !
 ! ************************************************************************** !
-subroutine HDF5ReadDataset(dataset,option,cur_time)
+subroutine HDF5ReadDataset(dataset,option)
 
   use hdf5
   use Dataset_Aux_module
@@ -154,7 +153,6 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
   
   type(dataset_type) :: dataset
   type(option_type) :: option
-  PetscReal :: cur_time
   
   integer(HID_T) :: file_id
   integer(HID_T) :: file_space_id
@@ -164,16 +162,18 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
   integer(HID_T) :: grp_id
   integer(HID_T) :: attribute_id
   integer(HID_T) :: ndims_hdf5
+  integer(HID_T) :: atype_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
-  integer(HSIZE_T) :: attribute_dim(1)
+  integer(HSIZE_T) :: attribute_dim(3)
   integer(HSIZE_T) :: offset(4), length(4), stride(4)
   integer(HSIZE_T) :: num_data_values
-  PetscInt :: i, temp_int, itime, num_times, temp_array(10)
-  PetscInt :: num_spacial_dims, time_dim
-  PetscMPIInt :: rank_mpi
+  integer(SIZE_T) size_t_int
+  PetscInt :: i, temp_int, temp_array(4)
+  PetscInt :: num_spatial_dims, time_dim, num_times
+  PetscMPIInt :: array_rank_mpi
   PetscBool :: attribute_exists
   PetscBool :: read_times
-  character(len=MAXWORDLENGTH) :: attribute_name, dataset_name
+  character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
 
   !TODO(geh): add to event log
   !call PetscLogEventBegin(logging%event_read_datset_hdf5,ierr)
@@ -198,44 +198,44 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
   call h5gopen_f(file_id,dataset%h5_dataset_name,grp_id,hdf5_err)
 
   ! only want to read on first time through
-  if (dataset%buffer_offset == 0) then
+  if (dataset%data_dim == DIM_NULL) then
     ! read in attributes if they exist
+    attribute_name = "Dimension"
+    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+    if (attribute_exists) then
+      attribute_dim = 1
+      call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
+      size_t_int = MAXWORDLENGTH
+      call h5tset_size_f(atype_id,size_t_int,hdf5_err)
+      call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+      call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
+      call h5aclose_f(attribute_id,hdf5_err)
+      ! set dimensionality of dataset
+      call DatasetSetDimension(dataset,word)
+    else
+      option%io_buffer = &
+        'Dimension attribute must be included in hdf5 dataset file.'
+      call printErrMsg(option)
+    endif
     attribute_name = "Discretization"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
-      attribute_dim(1) = 3
-      allocate(dataset%discretization(3))
+      attribute_dim(1) = DatasetGetNDimensions(dataset)
+      allocate(dataset%discretization(attribute_dim(1)))
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       call h5aread_f(attribute_id,H5T_NATIVE_DOUBLE,dataset%discretization, &
                      attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
-      ! set dimensionality of dataset
-      if (dataset%discretization(1) > 1 .and. &
-          dataset%discretization(2) > 1 .and. &
-          dataset%discretization(3) > 1) then
-        dataset%data_dim = DIM_XYZ
-      else if (dataset%discretization(1) > 1 .and. &
-               dataset%discretization(2) > 1) then
-        dataset%data_dim = DIM_XY
-      else if (dataset%discretization(1) > 1 .and. &
-               dataset%discretization(3) > 1) then
-        dataset%data_dim = DIM_XZ
-      else if (dataset%discretization(2) > 1 .and. &
-               dataset%discretization(3) > 1) then
-        dataset%data_dim = DIM_YZ
-      else if (dataset%discretization(1) > 1) then
-        dataset%data_dim = DIM_X
-      else if (dataset%discretization(2) > 1) then
-        dataset%data_dim = DIM_Y
-      else if (dataset%discretization(3) > 1) then
-        dataset%data_dim = DIM_Z
-      endif
+    else
+      option%io_buffer = &
+        'Discretization attribute must be included in hdf5 dataset file.'
+      call printErrMsg(option)
     endif
     attribute_name = "Origin"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
-      attribute_dim(1) = 3
-      allocate(dataset%origin(3))
+      attribute_dim(1) = DatasetGetNDimensions(dataset)
+      allocate(dataset%origin(attribute_dim(1)))
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       call h5aread_f(attribute_id,H5T_NATIVE_DOUBLE,dataset%origin, &
                      attribute_dim,hdf5_err)
@@ -245,6 +245,7 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
       read_times = PETSC_TRUE
+      dataset%buffer => DatasetBufferCreate()
     else
       read_times = PETSC_FALSE
     endif  
@@ -255,10 +256,10 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
       call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
       call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
       call h5sget_simple_extent_npoints_f(file_space_id,num_data_values,hdf5_err)
-      allocate(dataset%time_array(num_data_values))
-      dataset%time_array = 0.d0
+      allocate(dataset%buffer%time_array(num_data_values))
+      dataset%buffer%time_array = 0.d0
       call PetscLogEventBegin(logging%event_h5dread_f,ierr)
-      rank_mpi = 1
+      array_rank_mpi = 1
       offset(1) = 0
       length(1) = num_data_values
       stride(1) = 1
@@ -266,34 +267,46 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
 #ifndef SERIAL_HDF5
       call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
-      call h5screate_simple_f(rank_mpi,length,memory_space_id,hdf5_err,length)    
-      call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%time_array,length, &
-                     hdf5_err,memory_space_id,file_space_id,prop_id)
+      call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err,length)    
+      call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%buffer%time_array, &
+                     length,hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dread_f,ierr)  
       call h5pclose_f(prop_id,hdf5_err)
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       call h5sclose_f(file_space_id,hdf5_err)
       call h5dclose_f(dataset_id,hdf5_err)
-      dataset%buffer_size = min(dataset%buffer_size,size(dataset%time_array))
-    else
-      dataset%buffer_size = 1
+      dataset%buffer%num_times_total = size(dataset%buffer%time_array)
+      dataset%buffer%time_offset = 0
+      dataset%buffer%cur_time_index = 1
+      attribute_name = "Max Buffer Size"
+      call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+      if (attribute_exists) then
+        attribute_dim(1) = 1
+        call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+        call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,temp_int, &
+                       attribute_dim,hdf5_err)
+        call h5aclose_f(attribute_id,hdf5_err)
+        dataset%buffer%num_times_in_buffer = temp_int
+      endif
+      if (dataset%buffer%num_times_in_buffer == 0) then
+        dataset%buffer%num_times_in_buffer = dataset%buffer%num_times_total
+        if (dataset%buffer%num_times_in_buffer > 20) then
+          dataset%buffer%num_times_in_buffer = 20
+          option%io_buffer = 'Size of dataset buffer truncated to 20.'
+          call printMsg(option)
+        endif
+      endif
     endif
-    dataset%buffer_offset = 1
-  endif ! buffer_offset = 0
+  endif ! dataset%data_dim == DIM_NULL
   
+  num_spatial_dims = DatasetGetNDimensions(dataset)
+  time_dim = -1
   num_times = 1
-  if (associated(dataset%time_array)) then
-    num_times = size(dataset%time_array)
+  if (associated(dataset%buffer)) then
+    num_times = dataset%buffer%num_times_total
+    time_dim = num_spatial_dims + 1
   endif
   
-  ! update the offset of the data array
-  do itime = dataset%buffer_offset, num_times
-    if (cur_time < dataset%time_array(itime)) then
-      dataset%buffer_offset = itime - 1
-      exit
-    endif
-  enddo
-  dataset%buffer_offset = max(dataset%buffer_offset,1)
   
   ! open the "data" dataset
   dataset_name = 'data'
@@ -318,7 +331,7 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
     call h5sget_simple_extent_npoints_f(file_space_id,num_data_values,hdf5_err)
   
     temp_int = dataset%dims(1)
-    do i = 2, min(dataset%ndims,3)
+    do i = 2, num_spatial_dims
       temp_int = temp_int * dataset%dims(i)
     enddo
     if (num_data_values/num_times /= temp_int) then
@@ -329,41 +342,45 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
       option%io_buffer = 'Number of times does not match last dimension of data array.'
       call printErrMsg(option)
     endif
-  
-    allocate(dataset%rarray(num_data_values/num_times*dataset%buffer_size))
+    dataset%array_size = temp_int ! non buffered array
+    allocate(dataset%rarray(dataset%array_size))
+    dataset%rarray = 0.d0
+    if (associated(dataset%buffer)) then
+      ! buffered array
+      dataset%buffer%array_size = dataset%array_size* &
+                                  dataset%buffer%num_times_in_buffer 
+      allocate(dataset%buffer%rarray(dataset%buffer%array_size))
+      dataset%buffer%rarray = 0.d0
+    endif
   endif
 
-  dataset%rarray = 0.d0
   
-  time_dim = -1
-  num_spacial_dims = dataset%ndims 
-  if (associated(dataset%time_array)) then
-    num_spacial_dims = dataset%ndims - 1
-    time_dim = dataset%ndims
-  endif
-  
-  call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+  ! call PetscLogEventBegin(logging%event_h5dread_f,ierr)
  
-  rank_mpi = 1
+  array_rank_mpi = 1
   length = 1
-  temp_int = dataset%dims(1)
-  do i = 2, num_spacial_dims
-    temp_int = temp_int*dataset%dims(i)
-  enddo
-  length(1) = temp_int*min(dataset%buffer_size, &
-                           num_times-dataset%buffer_offset+1)
-  call h5screate_simple_f(rank_mpi,length,memory_space_id,hdf5_err,length)    
+  ! length (or size) must be adjusted according to the size of the 
+  ! remaining data in the file
+  if (time_dim > 0) then
+    length(1) = min(dataset%buffer%array_size, &
+                    (num_times-dataset%buffer%time_offset)* &
+                    dataset%array_size)
+  else
+    length(1) = dataset%array_size
+  endif
+  call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err,length)    
 
   length = 1
   stride = 1
   offset = 0
-  do i = 1, num_spacial_dims
+  do i = 1, num_spatial_dims
     length(i) = dataset%dims(i)
   enddo
   ! cannot read beyond end of the buffer
   if (time_dim > 0) then
-    length(time_dim) = min(dataset%buffer_size,num_times-dataset%buffer_offset+1)
-    offset(time_dim) = dataset%buffer_offset - 1
+    length(time_dim) = min(dataset%buffer%num_times_in_buffer, &
+                           num_times-dataset%buffer%time_offset)
+    offset(time_dim) = dataset%buffer%time_offset
   endif
   
   !geh: for some reason, we have to invert here.  Perhaps because the
@@ -384,8 +401,13 @@ subroutine HDF5ReadDataset(dataset,option,cur_time)
 #endif
   call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
                              hdf5_err,stride,stride) 
-  call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%rarray,length, &
-                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  if (associated(dataset%buffer)) then
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%buffer%rarray,length, &
+                   hdf5_err,memory_space_id,file_space_id,prop_id)
+  else
+    call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%rarray,length, &
+                   hdf5_err,memory_space_id,file_space_id,prop_id)
+  endif
   call PetscLogEventEnd(logging%event_h5dread_f,ierr)  
   call h5pclose_f(prop_id,hdf5_err)
   if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)

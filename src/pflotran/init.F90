@@ -2831,7 +2831,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscInt :: fid = 86
   PetscInt :: status
   PetscInt :: idirection
-  PetscReal :: ratio
+  PetscReal :: ratio, scale
   Vec :: global_vec
   PetscErrorCode :: ierr
   
@@ -2869,14 +2869,20 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
                           group_name,dataset_name,append_realization_id)
       call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
       ratio = 1.d0
+      scale = 1.d0
+      !TODO(geh): fix so that ratio and scale work for perms outside
+      ! of dataset
       if (material_property%vertical_anisotropy_ratio > 0.d0) then
         ratio = material_property%vertical_anisotropy_ratio
       endif
+      if (material_property%permeability_scaling_factor > 0.d0) then
+        scale = material_property%permeability_scaling_factor
+      endif
       do local_id = 1, grid%nlmax
         if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
-          perm_xx_p(local_id) = vec_p(local_id)
-          perm_yy_p(local_id) = vec_p(local_id)
-          perm_zz_p(local_id) = vec_p(local_id)*ratio
+          perm_xx_p(local_id) = vec_p(local_id)*scale
+          perm_yy_p(local_id) = vec_p(local_id)*scale
+          perm_zz_p(local_id) = vec_p(local_id)*ratio*scale
         endif
       enddo
       call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)

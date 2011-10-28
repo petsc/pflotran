@@ -6993,7 +6993,7 @@ subroutine OutputMassBalanceNew(realization)
 
       ! write header
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'  
-      
+      !TODO(geh): change the below to use OutputAppendToHeader()
       icol = 1
       select case(option%iflowmode)
         case(RICHARDS_MODE)
@@ -7898,6 +7898,6 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
   endif
   header = trim(header) // trim(string)
 
-end subroutine
+end subroutine OutputAppendToHeader
 
 end module Output_module

@@ -14,21 +14,31 @@ module Dataset_Aux_module
     PetscInt :: data_dim ! dimensions of data: XY, X, YXZ, etc.
     PetscBool :: realization_dependent
     ! all data stored internally as a 1D array
-    PetscReal, pointer :: time_array(:)
     PetscInt, pointer :: iarray(:)
     PetscReal, pointer :: rarray(:)
-    PetscInt :: cur_time_index
-    PetscInt :: buffer_offset
-    PetscInt :: buffer_index
-    PetscInt :: buffer_size
+    PetscInt :: array_size
     PetscReal :: rmax ! maximum rarray value in dataset
     PetscReal :: rmin ! maximum rarray value in dataset
-    PetscInt :: ndims
-    PetscInt, pointer :: dims(:)
+    PetscInt :: ndims ! excludes the time dimension
+    PetscInt, pointer :: dims(:) ! excludes the time dimension
     PetscReal, pointer :: origin(:)
     PetscReal, pointer :: discretization(:)
+    type(dataset_buffer_type), pointer :: buffer
     type(dataset_type), pointer :: next
   end type dataset_type
+  
+  ! the dataset buffer is designed to hold multiple times
+  type, public :: dataset_buffer_type
+    PetscInt :: num_times_total
+    PetscInt :: num_times_in_buffer
+    PetscReal, pointer :: time_array(:)
+    PetscReal :: cur_time
+    PetscInt :: cur_time_index  
+    PetscInt :: time_offset     ! zero-based offset of buffer start from first time
+    PetscInt :: array_size      ! size of iarray/rarrays
+    PetscInt, pointer :: iarray(:)
+    PetscReal, pointer :: rarray(:)
+  end type dataset_buffer_type
 
   ! dataset types
   PetscInt, parameter :: DATASET_INTEGER = 1
@@ -44,10 +54,16 @@ module Dataset_Aux_module
   PetscInt, parameter, public :: DIM_XYZ = 7
     
   public :: DatasetCreate, &
+            DatasetBufferCreate, &
             DatasetRead, &
             DatasetAddToList, &
             DatasetGetPointer, &
             DatasetInterpolateReal, &
+            DatasetInterpolateBetweenTimes, &
+            DatasetSetDimension, &
+            DatasetGetNDimensions, &
+            DatasetReorder, &
+            DatasetPrint, &
             DatasetDestroy
 
 contains
@@ -56,7 +72,7 @@ contains
 !
 ! DatasetCreate: Creates a dataset object
 ! author: Glenn Hammond
-! date: 01/12/11
+! date: 01/12/11, 10/25,11
 !
 ! ************************************************************************** !
 function DatasetCreate()
@@ -73,26 +89,53 @@ function DatasetCreate()
   dataset%filename = ''
   dataset%realization_dependent = PETSC_FALSE
   dataset%data_type = 0
-  dataset%ndims = 0
+
+  dataset%ndims = 0 ! ndims should not include time dimension
   dataset%rmax = -1.d20
   dataset%rmin = 1.d20
   dataset%data_dim = DIM_NULL
-  nullify(dataset%time_array)
+  dataset%array_size = 0
   nullify(dataset%iarray)
   nullify(dataset%rarray)
   nullify(dataset%dims)
   nullify(dataset%discretization)
   nullify(dataset%origin)
+  nullify(dataset%buffer)
   nullify(dataset%next)
-
-  dataset%cur_time_index = 0
-  dataset%buffer_offset = 0
-  dataset%buffer_index = 0
-  dataset%buffer_size = 2
 
   DatasetCreate => dataset
 
 end function DatasetCreate
+
+! ************************************************************************** !
+!
+! DatasetBufferCreate: Creates a dataset buffer object
+! author: Glenn Hammond
+! date: 10/28/11
+!
+! ************************************************************************** !
+function DatasetBufferCreate()
+  
+  implicit none
+
+  type(dataset_buffer_type), pointer :: DatasetBufferCreate
+  
+  type(dataset_buffer_type), pointer :: dataset_buffer
+
+  allocate(dataset_buffer)
+  dataset_buffer%num_times_total = 0
+  dataset_buffer%num_times_in_buffer = 0
+  dataset_buffer%cur_time_index = 0
+  dataset_buffer%time_offset = 0
+  dataset_buffer%array_size = 0
+  dataset_buffer%cur_time = 0.d0
+  nullify(dataset_buffer%time_array)
+  nullify(dataset_buffer%iarray)
+  nullify(dataset_buffer%rarray)
+  
+  DatasetBufferCreate => dataset_buffer
+
+end function DatasetBufferCreate
 
 ! ************************************************************************** !
 !
@@ -242,6 +285,111 @@ end function DatasetGetPointer
 
 ! ************************************************************************** !
 !
+! DatasetSetDimension: Sets the dimension of the dataset
+! author: Glenn Hammond
+! date: 10/24/11
+!
+! ************************************************************************** !
+subroutine DatasetSetDimension(dataset,word)
+
+  use String_module
+
+  implicit none
+  
+  type(dataset_type) :: dataset
+  character(len=MAXWORDLENGTH) :: word
+
+  call StringToUpper(word)
+  select case(word)
+    case('X')
+      dataset%data_dim = DIM_X
+    case('Y')
+      dataset%data_dim = DIM_Y
+    case('Z')
+      dataset%data_dim = DIM_Z
+    case('XY')
+      dataset%data_dim = DIM_XY
+    case('XZ')
+      dataset%data_dim = DIM_XZ
+    case('YZ')
+      dataset%data_dim = DIM_YZ
+    case('XYZ')
+      dataset%data_dim = DIM_XYZ
+  end select
+      
+end subroutine DatasetSetDimension
+
+! ************************************************************************** !
+!
+! DatasetGetNDimensions: Returns the number of dimensions
+! author: Glenn Hammond
+! date: 10/24/11
+!
+! ************************************************************************** !
+function DatasetGetNDimensions(dataset)
+
+  implicit none
+  
+  type(dataset_type) :: dataset
+  
+  PetscInt :: DatasetGetNDimensions
+
+  select case(dataset%data_dim)
+    case(DIM_X,DIM_Y,DIM_Z)
+      DatasetGetNDimensions = ONE_INTEGER
+    case(DIM_XY,DIM_XZ,DIM_YZ)
+      DatasetGetNDimensions = TWO_INTEGER
+    case(DIM_XYZ)
+      DatasetGetNDimensions = THREE_INTEGER
+    case default
+      DatasetGetNDimensions = ZERO_INTEGER
+  end select
+      
+end function DatasetGetNDimensions
+      
+! ************************************************************************** !
+!
+! DatasetInterpolateBetweenTimes: Interpolates dataset between two buffer times
+! author: Glenn Hammond
+! date: 10/26/11
+!
+! ************************************************************************** !
+subroutine DatasetInterpolateBetweenTimes(dataset,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(dataset_type) :: dataset
+  type(option_type) :: option
+  
+  PetscInt :: array_size
+  PetscReal :: weight2
+  PetscInt :: time1_start, time1_end, time2_start, time2_end
+  
+  if (associated(dataset%rarray)) then
+    ! weight2 = (t-t1)/(t2-t1)
+    weight2 = &
+      (option%time - &
+       dataset%buffer%time_array(dataset%buffer%cur_time_index)) / &
+      (dataset%buffer%time_array(dataset%buffer%cur_time_index+1) - &
+       dataset%buffer%time_array(dataset%buffer%cur_time_index))
+    array_size = size(dataset%rarray)
+    time1_end = array_size*(dataset%buffer%cur_time_index - &
+                            dataset%buffer%time_offset)
+    time1_start = time1_end - array_size + 1
+    time2_end = time1_end + array_size
+    time2_start = time1_start + array_size
+    dataset%rarray = (1.d0-weight2) * &
+                     dataset%buffer%rarray(time1_start:time1_end) + &
+                     weight2 * &
+                     dataset%buffer%rarray(time2_start:time2_end)
+  endif
+
+end subroutine DatasetInterpolateBetweenTimes
+
+! ************************************************************************** !
+!
 ! DatasetInterpolate: Interpolates data from the dataset
 ! author: Glenn Hammond
 ! date: 10/26/11
@@ -366,6 +514,165 @@ end subroutine DatasetGetIJK
 
 ! ************************************************************************** !
 !
+! DatasetReorder: If a dataset is loaded from an HDF5 file, and it was
+!                 multidimensional in the HDF5 file, the array needs to be
+!                 reordered fro Fortran -> C indexing.  This subroutine
+!                 takes care of the reordering.
+! author: Glenn Hammond
+! date: 10/26/11
+!
+! ************************************************************************** !
+subroutine DatasetReorder(dataset,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(dataset_type) :: dataset
+  type(option_type) :: option
+  
+  PetscInt, allocatable :: dims(:)
+  PetscReal, allocatable :: temp_real(:)
+  PetscInt :: i, j, k, t
+  PetscInt :: nx, ny, nz, nt, nxXny, nyXnz, nxXnyXnz
+  PetscInt :: count, index, idim
+  PetscReal, pointer :: rarray(:)
+  
+  ! Not necessary for 1D arrays
+  if (dataset%ndims < 2) return
+
+  if (associated(dataset%buffer)) then
+    rarray => dataset%buffer%rarray
+  else
+    rarray => dataset%rarray
+  endif
+  
+  select case(dataset%ndims)
+    case(TWO_INTEGER)
+      nx = dataset%dims(ONE_INTEGER)
+      if (associated(dataset%buffer)) then
+        ny = dataset%buffer%num_times_in_buffer
+      else
+        ny = dataset%dims(TWO_INTEGER)
+      endif
+      count = 0
+      allocate(temp_real(nx*ny))
+      do i = 1, nx
+        do j = 0, ny-1
+          index = j*nx+i
+          count = count+1
+          temp_real(index) = rarray(count)
+        enddo
+      enddo  
+    case(THREE_INTEGER)
+      nx = dataset%dims(ONE_INTEGER)
+      ny = dataset%dims(TWO_INTEGER)
+      if (associated(dataset%buffer)) then
+        nz = dataset%buffer%num_times_in_buffer
+      else
+        nz = dataset%dims(THREE_INTEGER)
+      endif
+      nxXny = nx*ny
+      count = 0
+      allocate(temp_real(nx*ny*nz))
+      do i = 1, nx
+        do j = 0, ny-1
+          do k = 0, nz-1
+            index = k*nxXny+j*nx+i
+            count = count+1
+            temp_real(index) = rarray(count)
+          enddo
+        enddo
+      enddo  
+    case(FOUR_INTEGER)
+      nx = dataset%dims(ONE_INTEGER)
+      ny = dataset%dims(TWO_INTEGER)
+      nz = dataset%dims(THREE_INTEGER)
+      if (associated(dataset%buffer)) then
+        nt = dataset%buffer%num_times_in_buffer
+      else
+        nt = dataset%dims(FOUR_INTEGER)
+      endif
+      nxXny = nx*ny
+      nxXnyXnz = nxXny*nz
+      count = 0
+      allocate(temp_real(nx*ny*nz*nt))
+      do i = 1, nx
+        do j = 0, ny-1
+          do k = 0, nz-1
+            do t = 0, nt-1
+              index = t*nxXnyXnz+k*nxXny+j*nx+i
+              count = count+1
+              temp_real(index) = rarray(count)
+            enddo
+          enddo
+        enddo
+      enddo  
+    case default
+      write(option%io_buffer,*) dataset%ndims
+      option%io_buffer = 'Dataset reordering not yet supported for rank ' // &
+                         trim(adjustl(option%io_buffer)) // ' array.'
+      call printErrMsg(option)
+  end select
+
+  rarray = temp_real
+  deallocate(temp_real)
+  
+end subroutine DatasetReorder
+
+! ************************************************************************** !
+!
+! DatasetPrint: Prints dataset info
+! author: Glenn Hammond
+! date: 10/26/11
+!
+! ************************************************************************** !
+subroutine DatasetPrint(dataset,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(dataset_type) :: dataset
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+
+  option%io_buffer = 'TODO(geh): add DatasetPrint()'
+  call printMsg(option)
+            
+end subroutine DatasetPrint
+
+! ************************************************************************** !
+!
+! DatasetBufferDestroy: Destroys a dataset buffer
+! author: Glenn Hammond
+! date: 10/28/11
+!
+! ************************************************************************** !
+recursive subroutine DatasetBufferDestroy(dataset_buffer)
+
+  implicit none
+  
+  type(dataset_buffer_type), pointer :: dataset_buffer
+  
+  if (.not.associated(dataset_buffer)) return
+
+  if (associated(dataset_buffer%time_array)) &
+    deallocate(dataset_buffer%time_array)
+  nullify(dataset_buffer%time_array)
+  if (associated(dataset_buffer%iarray)) deallocate(dataset_buffer%iarray)
+  nullify(dataset_buffer%iarray)
+  if (associated(dataset_buffer%rarray)) deallocate(dataset_buffer%rarray)
+  nullify(dataset_buffer%rarray)
+  
+  deallocate(dataset_buffer)
+  nullify(dataset_buffer)
+  
+end subroutine DatasetBufferDestroy
+
+! ************************************************************************** !
+!
 ! DatasetDestroy: Destroys a dataset
 ! author: Glenn Hammond
 ! date: 01/12/11
@@ -379,8 +686,6 @@ recursive subroutine DatasetDestroy(dataset)
   
   if (.not.associated(dataset)) return
 
-  if (associated(dataset%time_array)) deallocate(dataset%time_array)
-  nullify(dataset%time_array)
   if (associated(dataset%iarray)) deallocate(dataset%iarray)
   nullify(dataset%iarray)
   if (associated(dataset%rarray)) deallocate(dataset%rarray)
@@ -389,8 +694,11 @@ recursive subroutine DatasetDestroy(dataset)
   nullify(dataset%dims)
   if (associated(dataset%discretization)) deallocate(dataset%discretization)
   nullify(dataset%discretization)
-  if (associated(dataset%discretization)) deallocate(dataset%discretization)
-  nullify(dataset%discretization)
+  if (associated(dataset%origin)) deallocate(dataset%origin)
+  nullify(dataset%origin)
+  if (associated(dataset%buffer)) then 
+    call DatasetBufferDestroy(dataset%buffer)
+  endif
   
   deallocate(dataset)
   nullify(dataset)

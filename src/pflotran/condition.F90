@@ -2532,11 +2532,28 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
   110 format(6x,a)  
 
   write(option%fid_out,110) 'Datum:'
-  call TimeSeriesPrint(subcondition%datum%time_series,option)
+  if (associated(subcondition%datum%time_series)) then
+    call TimeSeriesPrint(subcondition%datum%time_series,option)
+  endif
+  if (associated(subcondition%datum%dataset)) then
+    call DatasetPrint(subcondition%datum%dataset,option)
+  endif
+  
   write(option%fid_out,110) 'Gradient:'
-  call TimeSeriesPrint(subcondition%gradient%time_series,option)
+  if (associated(subcondition%gradient%time_series)) then
+    call TimeSeriesPrint(subcondition%gradient%time_series,option)
+  endif
+  if (associated(subcondition%gradient%dataset)) then
+    call DatasetPrint(subcondition%gradient%dataset,option)
+  endif
+
   write(option%fid_out,110) 'Dataset:'
-  call TimeSeriesPrint(subcondition%flow_dataset%time_series,option)
+  if (associated(subcondition%flow_dataset%time_series)) then
+    call TimeSeriesPrint(subcondition%flow_dataset%time_series,option)
+  endif
+  if (associated(subcondition%flow_dataset%dataset)) then
+    call DatasetPrint(subcondition%flow_dataset%dataset,option)
+  endif
             
 end subroutine FlowConditionPrintSubCondition
  
