@@ -19,7 +19,7 @@ contains
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine DatasetLoad(dataset,option)
+subroutine DatasetLoad(dataset,option,cur_time)
 
   use Option_module
   use HDF5_aux_module
@@ -28,8 +28,9 @@ subroutine DatasetLoad(dataset,option)
   
   type(dataset_type) :: dataset
   type(option_type) :: option
+  PetscReal :: cur_time
   
-  call HDF5ReadDataset(dataset,option)
+  call HDF5ReadDataset(dataset,option,cur_time)
   call DatasetReorder(dataset,option)
   ! calculate min/max values
   if (associated(dataset%rarray)) then
@@ -60,29 +61,26 @@ subroutine DatasetReorder(dataset,option)
   
   PetscInt, allocatable :: dims(:)
   PetscReal, allocatable :: temp_real(:)
-  PetscInt :: i, j, k
-  PetscInt :: nx, ny, nz, nxXny, nyXnz
+  PetscInt :: i, j, k, t
+  PetscInt :: nx, ny, nz, nt, nxXny, nyXnz, nxXnyXnz
   PetscInt :: count, index, idim
   
   ! Not necessary for 1D arrays
   if (dataset%ndims < 2) return
   
-  allocate(dims(dataset%ndims))
-  dims = dataset%dims
-  do idim = 1, dataset%ndims
-    dataset%dims(idim) = dims(dataset%ndims-idim+1)
-  enddo
-  deallocate(dims)
-  
   select case(dataset%ndims)
     case(TWO_INTEGER)
       nx = dataset%dims(ONE_INTEGER)
-      ny = dataset%dims(TWO_INTEGER)
+      if (associated(dataset%time_array)) then
+        ny = dataset%buffer_size
+      else
+        ny = dataset%dims(TWO_INTEGER)
+      endif
       count = 0
       allocate(temp_real(nx*ny))
-      do j = 1, ny
-        do i = 1, nz
-          index = j+(i-1)*ny
+      do i = 1, nx
+        do j = 0, ny-1
+          index = j*nx+i
           count = count+1
           temp_real(index) = dataset%rarray(count)
         enddo
@@ -90,16 +88,44 @@ subroutine DatasetReorder(dataset,option)
     case(THREE_INTEGER)
       nx = dataset%dims(ONE_INTEGER)
       ny = dataset%dims(TWO_INTEGER)
-      nz = dataset%dims(THREE_INTEGER)
+      if (associated(dataset%time_array)) then
+        nz = dataset%buffer_size
+      else
+        nz = dataset%dims(THREE_INTEGER)
+      endif
       nyXnz = ny*nz
       count = 0
       allocate(temp_real(nx*ny*nz))
-      do k = 1, nz
-        do j = 1, ny
-          do i = 1, nx
-            index = k+(j-1)*nz+(i-1)*nyXnz
+      do i = 1, nx
+        do j = 0, ny-1
+          do k = 0, nz-1
+            index = k*nxXny+j*nx+i
             count = count+1
             temp_real(index) = dataset%rarray(count)
+          enddo
+        enddo
+      enddo  
+    case(FOUR_INTEGER)
+      nx = dataset%dims(ONE_INTEGER)
+      ny = dataset%dims(TWO_INTEGER)
+      nz = dataset%dims(THREE_INTEGER)
+      if (associated(dataset%time_array)) then
+        nt = dataset%buffer_size
+      else
+        nt = dataset%dims(FOUR_INTEGER)
+      endif
+      nxXny = nx*ny
+      nxXnyXnz = nxXny*nz
+      count = 0
+      allocate(temp_real(nx*ny*nz*nt))
+      do i = 1, nx
+        do j = 0, ny-1
+          do k = 0, nz-1
+            do t = 0, nt-1
+              index = t*nxXnyXnz+k*nxXny+j*nx+i
+              count = count+1
+              temp_real(index) = dataset%rarray(count)
+            enddo
           enddo
         enddo
       enddo  

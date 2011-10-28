@@ -17,6 +17,10 @@ module Dataset_Aux_module
     PetscReal, pointer :: time_array(:)
     PetscInt, pointer :: iarray(:)
     PetscReal, pointer :: rarray(:)
+    PetscInt :: cur_time_index
+    PetscInt :: buffer_offset
+    PetscInt :: buffer_index
+    PetscInt :: buffer_size
     PetscReal :: rmax ! maximum rarray value in dataset
     PetscReal :: rmin ! maximum rarray value in dataset
     PetscInt :: ndims
@@ -30,10 +34,14 @@ module Dataset_Aux_module
   PetscInt, parameter :: DATASET_INTEGER = 1
   PetscInt, parameter :: DATASET_REAL = 2
   
-  PetscInt, parameter :: DIM_NULL = 0
-  PetscInt, parameter :: DIM_X = 1
-  PetscInt, parameter :: DIM_Y = 2
-  PetscInt, parameter :: DIM_XY = 3
+  PetscInt, parameter, public :: DIM_NULL = 0
+  PetscInt, parameter, public :: DIM_X = 1
+  PetscInt, parameter, public :: DIM_Y = 2
+  PetscInt, parameter, public :: DIM_Z = 3
+  PetscInt, parameter, public :: DIM_XY = 4
+  PetscInt, parameter, public :: DIM_XZ = 5
+  PetscInt, parameter, public :: DIM_YZ = 6
+  PetscInt, parameter, public :: DIM_XYZ = 7
     
   public :: DatasetCreate, &
             DatasetRead, &
@@ -76,6 +84,12 @@ function DatasetCreate()
   nullify(dataset%discretization)
   nullify(dataset%origin)
   nullify(dataset%next)
+
+  dataset%cur_time_index = 0
+  dataset%buffer_offset = 0
+  dataset%buffer_index = 0
+  dataset%buffer_size = 2
+
   DatasetCreate => dataset
 
 end function DatasetCreate
@@ -255,8 +269,6 @@ subroutine DatasetInterpolateReal(dataset,x,y,z,time,real_value,option)
   call DatasetGetIJK(dataset,x,y,z,i,j,k)
   
   interpolation_method = INTERPOLATION_LINEAR
-  !TODO(geh): fix
-  dataset%data_dim = DIM_XY
   
   select case(interpolation_method)
     case(INTERPOLATION_STEP)
