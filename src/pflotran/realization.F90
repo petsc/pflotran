@@ -1091,6 +1091,10 @@ end subroutine RealProcessFluidProperties
 ! ************************************************************************** !
 subroutine RealProcessFlowConditions(realization)
 
+  use Dataset_module
+
+  implicit none
+
   type(realization_type) :: realization
   
   type(flow_condition_type), pointer :: cur_flow_condition
@@ -1099,6 +1103,7 @@ subroutine RealProcessFlowConditions(realization)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: i
+  type(dataset_type), pointer :: dataset
   
   option => realization%option
   
@@ -1121,8 +1126,11 @@ subroutine RealProcessFlowConditions(realization)
                                 flow_dataset%dataset)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
-            cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
+            dataset => &
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
+            cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
+              dataset
+            call DatasetLoad(dataset,option)
           endif
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
                           datum%dataset)) then
@@ -1133,8 +1141,11 @@ subroutine RealProcessFlowConditions(realization)
                                 datum%dataset)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
-            cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
+            dataset => &
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
+            cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
+              dataset
+            call DatasetLoad(dataset,option)
           endif
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
                           gradient%dataset)) then
@@ -1145,8 +1156,11 @@ subroutine RealProcessFlowConditions(realization)
                                 gradient%dataset)
             ! get dataset from list
             string = 'flow_condition ' // trim(cur_flow_condition%name)
-            cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
+            dataset => &
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
+            cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
+              dataset
+            call DatasetLoad(dataset,option)
           endif
         enddo
     end select
@@ -1894,6 +1908,8 @@ end subroutine RealizationSetDataset
 ! ************************************************************************** !
 subroutine RealizationUpdateProperties(realization)
 
+  implicit none
+
   type(realization_type) :: realization
   
   type(option_type), pointer :: option  
@@ -2544,6 +2560,8 @@ end subroutine RealizationPrintGridStatistics
 !
 ! ************************************************************************** !
 subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
+
+  implicit none
 
   type(realization_type) realization
   PetscReal :: max_dt_cfl_1

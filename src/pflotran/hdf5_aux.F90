@@ -378,8 +378,10 @@ subroutine HDF5ReadDataset(dataset,option)
   enddo
   ! cannot read beyond end of the buffer
   if (time_dim > 0) then
-    length(time_dim) = min(dataset%buffer%num_times_in_buffer, &
-                           num_times-dataset%buffer%time_offset)
+    dataset%buffer%num_times_in_buffer = &
+      min(dataset%buffer%num_times_in_buffer, &
+          num_times-dataset%buffer%time_offset)
+    length(time_dim) = dataset%buffer%num_times_in_buffer
     offset(time_dim) = dataset%buffer%time_offset
   endif
   

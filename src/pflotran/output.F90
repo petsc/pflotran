@@ -7854,8 +7854,8 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
   character(len=MAXHEADERLENGTH) :: header
   character(len=*) :: variable_string, units_string, cell_string
   character(len=MAXWORDLENGTH) :: column_string
-  character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj, &
-                                  cell_string_adj
+  character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj
+  character(len=MAXSTRINGLENGTH) :: cell_string_adj
   PetscInt :: icolumn, len_cell_string, len_units
 
   character(len=MAXSTRINGLENGTH) :: string
