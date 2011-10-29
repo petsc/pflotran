@@ -457,12 +457,12 @@ This gives $2+N_C-1 = N_C+1$ independent variables as required. The variable $Z_
 
 For a two-phase ($\a=l$, $\sc$) system where, for example, $l$ designates the liquid phase $\w$ and $\sc$ designates supercritical $\c$, $Z_i$ can be expressed as
 \EQ
-Z_i \eq \frac{\rho_l s_l X_i^l + \rho_{\sc} s_{\sc} X_i^{\sc}}{\rho_l s_l + \rho_{\sc} s_{\sc}},
+Z_i \eq \frac{\rho_l^{} s_l^{} X_i^l + \rho_{\sc}^{} s_{\sc}^{} X_i^{\sc}}{\rho_l^{} s_l^{} + \rho_{\sc}^{} s_{\sc}^{}},
 \EN
 for molar fluid densities $\rho_l$, $\rho_{\sc}$ and phase saturation $s_l$, $s_{\sc} = 1\!-\!s_l$.
 Solving for $s_g$ gives
 \EQ\label{sg}
-s_g \eq \frac{\rho_l(Z_i-X_i^l)}{\rho_l(Z_i - X_i^l) - \rho_g (Z_i-X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
+s_g \eq \frac{\rho_l(Z_i^{}-X_i^l)}{\rho_l(Z_i^{} - X_i^l) - \rho_g (Z_i^{} -X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
 \EN
 
 To determine the mole fractions $X_i^\a$ from $Z_i$ it is necessary to consider the equilibrium constraints between phases expressed as equality their chemical potentials in the two phases.
@@ -473,7 +473,7 @@ Depending on the value of $Z_\c$ different phases are present in the system.
 The aqueous $\c$ concentration is equal to
 \begin{subequations}\label{fla-sec-c1}
 \BA\label{liq}
-X_i^l = Z_i,
+X_i^l = Z_i^{},
 \EA
 and phase saturations are given by
 \BA
@@ -482,11 +482,11 @@ s_l = 1, \ s_{\sc} =0,
 \end{subequations}
 consistent with Eqn.\eqref{sg}.
 
-\item[Single Gas Phase:] For $Z_\c\!>\!1\!-\!P_\w^{\rm sat}(T)/P_g$, a single supercritical $\c$ phase is the stable phase assemblage.
+\item[Single Gas Phase:] For $Z_\c\!>\! X_\c^{g,\rm eq} \!=\!1\!-\!P_\w^{\rm sat}(T)/P_g$, a single supercritical $\c$ phase is the stable phase assemblage.
 The supercritical $\c$ concentration is equal to
 \begin{subequations}\label{fla-sec-c2}
 \BA\label{gas}
-X_i^{\sc} = Z_i,
+X_i^{\sc} = Z_i^{},
 \EA
 and phase saturations are given by
 \BA
@@ -495,12 +495,12 @@ and phase saturations are given by
 \end{subequations}
 consistent with Eqn.\eqref{sg}.
 
-\item[Two-Phase:] For $Z_\c \!>\! X_\c^{l,{\rm eq}}$ and $Z_\c\!<\!1\!-\!P_\w^{\rm sat}/P_g$, the two phases supercritical $\c$ and a liquid phase coexist.
+\item[Two-Phase:] For $Z_\c \!>\! X_\c^{l,{\rm eq}}$ and $Z_\c\!<\! X_\c^{g,{\rm eq}}\!=\!1\!-\!P_\w^{\rm sat}/P_g$, the two phases supercritical $\c$ and a liquid phase coexist.
 From Section \ref{sec:eqrel} the equilibrium mole fractions of CO$_2$ in the liquid and gas phases are given by Eqns.\eqref{xco2l} and \eqref{xco2g}, respectively.
 Note that the equilibrium composition only depends on temperature and pressure and is independent of $Z_\c$, and thus forms an invariant composition. The gas saturation is determined from Eqn.\eqref{sg}
 \EQ\label{2ph}
-s_{\sc} \eq \frac{\rho_{l} (Z_{\c} - X_{\c}^{l,\rm eq})}
-{\rho_l (Z_{\c} - X_{\c}^{l,\rm eq}) - \rho_{\sc} (Z_{\c} - X_{\c}^{\sc})},
+s_{\sc} \eq \frac{\rho_{l} (Z_{\c}^{} - X_{\c}^{l,\rm eq})}
+{\rho_l (Z_{\c}^{} - X_{\c}^{l,\rm eq}) - \rho_{\sc} (Z_{\c}^{} - X_{\c}^{\sc})},
 \EN
 with $s_l\!=\!1\!-\!s_{\sc}$.
 The density of either the aqueous or supercritical $\c$ phase is obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture density for the phase.

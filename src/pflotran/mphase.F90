@@ -2089,7 +2089,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: p2,p,tmp,t
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   PetscReal :: ug,xphi,henry,sat_pressure
-  PetscReal :: k1, k2, z1, z2,xg, vmco2, vmh2o,sg
+  PetscReal :: k1, k2, z1, z2, xg, vmco2, vmh2o, sg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
 ! PetscReal :: yh2o_in_co2 = 1.d-2
@@ -2239,8 +2239,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
 !         print *,'phase chg: ',xmol(2),xco2eq,mco2,m_nacl,p,t
 
-!          if(xmol(4)+ wat_sat_x > 1.05d0) then
-         if(xmol(2) > xco2eq ) then
+!         if(xmol(4)+ wat_sat_x > 1.05d0) then
+          if(xmol(2) > xco2eq) then
 
         !   Rachford-Rice initial guess: 1=H2O, 2=CO2
             k1 = wat_sat_x !sat_pressure*1.D5/p
@@ -2252,17 +2252,30 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             
        !    calculate initial guess for sg
             sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
-            if(sg>1D-4)then          
-            write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
-       &    '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
-       &    '' Xco2eq='',1pe11.4)') &
-            option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
+            if(sg>1.D-4) then          
+              write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
+       &      '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
+       &      '' Xco2eq='',1pe11.4)') &
+              option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3), &
+                xmol(4),xco2eq
 
-            iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
+              iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
         
-           write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
-            xx_p(dof_offset+3) = sg   
-            ichange = 1
+              write(*,'(''Rachford-Rice: '','' z1, z2='', &
+        &     1p2e12.4,'' xeq='',1pe12.4,'' xg='',1pe12.4, &
+        &     '' sg='',1pe12.4)') z1,z2,xco2eq,xg,sg
+        
+!             write(*,'(''Rachford-Rice: '',''K1,2='',1p2e12.4,'' z1,2='', &
+!       &     1p2e12.4,'' xeq='',1pe12.4,'' xg='',1pe12.4, &
+!       &     '' sg='',1pe12.4,'' dg='',1p2e12.4)') &
+!             k1,k2,z1,z2,xco2eq,xg,sg,den(1),dg
+
+              sg = den(1)*(z2-xco2eq)/(den(1)*(z2-xco2eq) - &
+                dg*(z2-(1.d0-wat_sat_x)))
+              write(*,'(''Rachford-Rice: sg = '',1pe12.4)') sg
+              
+              xx_p(dof_offset+3) = sg   
+              ichange = 1
             endif
           endif
 
