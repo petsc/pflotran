@@ -64,6 +64,7 @@ module Dataset_Aux_module
             DatasetGetNDimensions, &
             DatasetReorder, &
             DatasetPrint, &
+            DatasetGetTimes, &
             DatasetDestroy
 
 contains
@@ -367,6 +368,19 @@ subroutine DatasetInterpolateBetweenTimes(dataset,option)
   PetscReal :: weight2
   PetscInt :: time1_start, time1_end, time2_start, time2_end
   
+  if (dataset%buffer%cur_time_index >= &
+      dataset%buffer%num_times_total) then
+    ! dataset has reached the end of the time array. no interpolation
+    ! needed
+    array_size = size(dataset%rarray)
+    time1_end = array_size*(dataset%buffer%cur_time_index - &
+                            dataset%buffer%time_offset)
+    time1_start = time1_end - array_size + 1
+    dataset%rarray = dataset%buffer%rarray(time1_start:time1_end)
+    dataset%buffer%cur_time_index = -1
+    return
+  endif
+  
   if (associated(dataset%rarray)) then
     ! weight2 = (t-t1)/(t2-t1)
     weight2 = &
@@ -395,7 +409,7 @@ end subroutine DatasetInterpolateBetweenTimes
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine DatasetInterpolateReal(dataset,x,y,z,time,real_value,option)
+subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
 
   use Utility_module, only : InterpolateBilinear
   use Option_module
@@ -403,78 +417,90 @@ subroutine DatasetInterpolateReal(dataset,x,y,z,time,real_value,option)
   implicit none
   
   type(dataset_type) :: dataset
-  PetscReal :: x, y, z, time
+  PetscReal, intent(in) :: xx, yy, zz
+  PetscReal :: time
   PetscReal :: real_value
   type(option_type) :: option
   
   PetscInt :: interpolation_method
   PetscInt :: i, j, k
-  PetscInt :: direction
-  PetscReal :: x1,x2,y1,y2,v1,v2,v3,v4
-  PetscInt :: index, nx
+  PetscReal :: x, y, z
+  PetscReal :: x1, x2, y1, y2
+  PetscReal :: v1, v2, v3, v4
+  PetscInt :: index
   PetscReal :: dx, dy
+  PetscInt :: nx
   
-  call DatasetGetIJK(dataset,x,y,z,i,j,k)
+  call DatasetGetIndices(dataset,xx,yy,zz,i,j,k,x,y,z)
   
   interpolation_method = INTERPOLATION_LINEAR
   
+  ! in the below, i,j,k,xx,yy,zz to not reflect the 
+  ! coordinates of the problem domain in 3D.  They
+  ! are transfored to the dimensions of the dataset
   select case(interpolation_method)
     case(INTERPOLATION_STEP)
     case(INTERPOLATION_LINEAR)
       select case(dataset%data_dim)
-        case(DIM_X,DIM_Y)
-          select case(dataset%data_dim)
-            case(DIM_X)
-              direction = X_DIRECTION
-            case(DIM_Y)
-              direction = Y_DIRECTION
-              i = j
-          end select              
-          ! why not have x return the weight?
-          if (i <= 0 .or. i+1 > dataset%dims(direction)) then 
+        case(DIM_X,DIM_Y,DIM_Z)
+          if (i <= 0 .or. i+1 > dataset%dims(1)) then 
             select case(dataset%data_dim)
-              case(X_DIRECTION)
+              case(DIM_X)
                 option%io_buffer = 'Out of x bounds'
-              case(Y_DIRECTION)
+              case(DIM_Y)
+                option%io_buffer = 'Out of y bounds'
+              case(DIM_Z)
+                option%io_buffer = 'Out of z bounds'
+            end select
+            call printErrMsg(option)
+          endif
+          dx = dataset%discretization(1)
+          x1 = dataset%origin(1) + (i-1)*dx
+          v1 = dataset%rarray(i)
+          v2 = dataset%rarray(i+1)
+          real_value = v1 + (x-x1)/dx*(v2-v1)
+        case(DIM_XY,DIM_XZ,DIM_YZ)
+          if (i <= 0 .or. i+1 > dataset%dims(1)) then
+            select case(dataset%data_dim)
+              case(DIM_XY,DIM_XZ)
+                option%io_buffer = 'Out of x bounds'
+              case(DIM_YZ)
                 option%io_buffer = 'Out of y bounds'
             end select
             call printErrMsg(option)
           endif
-          dx = dataset%discretization(direction)
-          x1 = dataset%origin(direction) + (i-1)*dx
-          v1 = dataset%rarray(i)
-          v2 = dataset%rarray(i+1)
-          real_value = v1 + (x-x1)/dx*(v2-v1)
-        case(DIM_XY)
-          if (i <= 0 .or. i+1 > dataset%dims(X_DIRECTION)) then
-            option%io_buffer = 'Out of x bounds'
+          if (j <= 0 .or. j+1 > dataset%dims(2)) then
+            select case(dataset%data_dim)
+              case(DIM_XY)
+                option%io_buffer = 'Out of y bounds'
+              case(DIM_YZ,DIM_XZ)
+                option%io_buffer = 'Out of z bounds'
+            end select
             call printErrMsg(option)
           endif
-          if (j <= 0 .or. j+1 > dataset%dims(Y_DIRECTION)) then
-            option%io_buffer = 'Out of y bounds'
-            call printErrMsg(option)
-          endif
+          dx = dataset%discretization(1)
+          dy = dataset%discretization(2)
+          nx = dataset%dims(1)
 
-          nx = dataset%dims(X_DIRECTION)
-          dx = dataset%discretization(X_DIRECTION)
-          dy = dataset%discretization(Y_DIRECTION)
-
-          x1 = dataset%origin(X_DIRECTION) + (i-1)*dx
+          x1 = dataset%origin(1) + (i-1)*dx
           x2 = x1 + dx
           
           index = i + (j-1)*nx
           v1 = dataset%rarray(index)
           v2 = dataset%rarray(index+1)
           
-          y1 = dataset%origin(Y_DIRECTION) + (j-1)*dy
+          y1 = dataset%origin(2) + (j-1)*dy
           y2 = y1 + dy
           
-           ! really (j-1+1)
+           ! really (j1-1+1)
           index = i + j*nx
           v3 = dataset%rarray(index)
           v4 = dataset%rarray(index+1)
           
           real_value = InterpolateBilinear(x,y,x1,x2,y1,y2,v1,v2,v3,v4)
+        case(DIM_XYZ)
+          option%io_buffer = 'Trilinear interpolation not yet supported'
+          call printErrMsg(option)
       end select
   end select
   
@@ -482,35 +508,55 @@ end subroutine DatasetInterpolateReal
 
 ! ************************************************************************** !
 !
-! DatasetGetIJK: Returns bounding i, j, k indices for point in dataset
+! DatasetGetIndices: Returns bounding indices for point in dataset
 ! author: Glenn Hammond
 ! date: 10/26/11
 !
 ! ************************************************************************** !
-subroutine DatasetGetIJK(dataset,x,y,z,i,j,k)
+subroutine DatasetGetIndices(dataset,xx,yy,zz,i,j,k,x,y,z)
 
   implicit none
 
   type(dataset_type) :: dataset
-  PetscReal :: x, y, z
+  PetscReal, intent(in)  :: xx, yy, zz
   PetscInt :: i, j, k
+  PetscReal :: x, y, z
   
-  ! get i, j, k indices in dataset
-  if (dataset%dims(X_DIRECTION) > 1) then 
-    i = int((x - dataset%origin(X_DIRECTION))/ &
-            dataset%discretization(X_DIRECTION) + 1.d0)
-  else
-    i = 1
+  select case(dataset%data_dim)
+    ! since these are 1D array, always use first dimension
+    case(DIM_X)
+      x = xx
+    case(DIM_Y)
+      x = yy
+    case(DIM_XY)
+      x = xx
+      y = yy
+    case(DIM_XYZ)
+      x = xx
+      y = yy
+      z = zz
+    case(DIM_Z)
+      x = zz
+    case(DIM_XZ)
+      x = xx
+      y = zz
+    case(DIM_YZ)
+      x = yy
+      y = zz
+  end select
+
+  i = int((x - dataset%origin(1))/ &
+          dataset%discretization(1) + 1.d0)
+  if (dataset%data_dim > DIM_Z) then ! at least 2D
+    j = int((y - dataset%origin(2))/ &
+            dataset%discretization(2) + 1.d0)
   endif
-  if (dataset%dims(Y_DIRECTION) > 1) then 
-    j = int((y - dataset%origin(Y_DIRECTION))/ &
-            dataset%discretization(Y_DIRECTION) + 1.d0)
-  else
-    j = 1
-  endif  
-  !TODO(geh): set up k
+  if (dataset%data_dim > DIM_YZ) then ! at least 3D
+    k = int((z - dataset%origin(3))/ &
+            dataset%discretization(3) + 1.d0)
+  endif
   
-end subroutine DatasetGetIJK
+end subroutine DatasetGetIndices
 
 ! ************************************************************************** !
 !
@@ -642,6 +688,41 @@ subroutine DatasetPrint(dataset,option)
   call printMsg(option)
             
 end subroutine DatasetPrint
+
+! ************************************************************************** !
+!
+! DatasetGetTimes: Fills an array of times based on a dataset
+! author: Glenn Hammond
+! date: 10/26/11
+!
+! ************************************************************************** !
+subroutine DatasetGetTimes(option, dataset, max_sim_time, times)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(dataset_type) :: dataset
+  PetscReal :: max_sim_time
+  PetscReal, pointer :: times(:)
+  
+  PetscInt :: itime
+
+  if (associated(dataset%buffer)) then
+    do itime = 1, size(dataset%buffer%time_array)
+      if (dataset%buffer%time_array(itime) > max_sim_time) exit
+    enddo
+    if (itime >= size(dataset%buffer%time_array)) then
+      allocate(times(size(dataset%buffer%time_array)))
+      times = dataset%buffer%time_array
+    else
+      allocate(times(itime))
+      times(1:itime) = dataset%buffer%time_array(1:itime)
+    endif
+  endif
+ 
+end subroutine DatasetGetTimes
 
 ! ************************************************************************** !
 !

@@ -620,9 +620,19 @@ subroutine FlowConditionDatasetGetTimes(option, sub_condition, &
   type(flow_condition_dataset_type), pointer :: flow_dataset
   
   flow_dataset => sub_condition%flow_dataset
-  
+
+  if (associated(flow_dataset%time_series) .and. &
+      associated(flow_dataset%dataset)) then
+    option%io_buffer = 'FlowConditionDatasetGetTimes() currently does not ' // &
+                       'support both time_series and datasets.'
+    call printErrMsg(option)
+  endif
   if (associated(flow_dataset%time_series)) then
     call TimeSeriesGetTimes(option, flow_dataset%time_series, max_sim_time, &
+                            times)
+  endif
+  if (associated(flow_dataset%dataset)) then
+    call DatasetGetTimes(option, flow_dataset%dataset, max_sim_time, &
                             times)
   endif
  
@@ -3014,7 +3024,9 @@ function FlowDatasetIsTransient(flow_dataset)
     endif
   endif
   if (associated(flow_dataset%dataset)) then
-    !TODO(geh): setup 
+    if (associated(flow_dataset%dataset%buffer)) then
+      FlowDatasetIsTransient = PETSC_TRUE
+    endif
   endif
   
 end function FlowDatasetIsTransient

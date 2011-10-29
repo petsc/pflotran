@@ -38,25 +38,30 @@ subroutine DatasetLoad(dataset,option)
   read_dataset = PETSC_FALSE
   interpolate_dataset = PETSC_FALSE
   if (associated(dataset%buffer)) then
-  
-  
- ! Glenn:  Need to setup waypoints to match times in dataset, like done in timeseries
-  
-  
-  
+    ! if we have reached the last time, no updates needed
+    if (dataset%buffer%cur_time_index == -1) return
     if (.not.Equal(option%time,dataset%buffer%cur_time)) then
       interpolate_dataset = PETSC_TRUE
       ! increment time index until within buffer
-      do itime = dataset%buffer%cur_time_index, dataset%buffer%num_times_total
-        if (option%time < dataset%buffer%time_array(itime)) then
+      itime = dataset%buffer%cur_time_index
+      do
+        if (itime >= dataset%buffer%num_times_total) then
+          dataset%buffer%cur_time_index = dataset%buffer%num_times_total
+          exit
+        endif
+        if (option%time > dataset%buffer%time_array(itime+1)) then
+          itime = itime + 1
         else
           dataset%buffer%cur_time_index = itime
           exit
         endif
       enddo
       ! is time outside range of buffer
-      if (dataset%buffer%cur_time_index > dataset%buffer%time_offset + &
-                                       dataset%buffer%num_times_in_buffer) then
+      if (dataset%buffer%cur_time_index >= dataset%buffer%time_offset + &
+                                           dataset%buffer%num_times_in_buffer &
+          .and. dataset%buffer%cur_time_index < &
+                dataset%buffer%num_times_total) then
+        dataset%buffer%time_offset = dataset%buffer%cur_time_index - 1
         read_dataset = PETSC_TRUE
       endif
     endif

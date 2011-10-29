@@ -830,6 +830,8 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
   PetscInt :: iconn
   
+  !TODO(geh): we shouldn't we not be updating initial conditions
+  !           after the beginning of the simulation???
   call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
 
@@ -1280,14 +1282,26 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       rt_auxvar => cur_constraint_coupler%rt_auxvar
       if (associated(cur_coupler%flow_condition)) then
         if (associated(cur_coupler%flow_condition%pressure)) then
-          global_auxvar%pres = &
-            cur_coupler%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+          if (associated(cur_coupler%flow_condition%pressure% &
+                         flow_dataset%time_series)) then
+            global_auxvar%pres = &
+              cur_coupler%flow_condition%pressure%flow_dataset% &
+                time_series%cur_value(1)
+          else
+            global_auxvar%pres = option%reference_pressure
+          endif
         else
           global_auxvar%pres = option%reference_pressure
         endif
         if (associated(cur_coupler%flow_condition%temperature)) then
-          global_auxvar%temp = &
-            cur_coupler%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+          if (associated(cur_coupler%flow_condition%temperature% &
+                         flow_dataset%time_series)) then
+            global_auxvar%temp = &
+              cur_coupler%flow_condition%temperature%flow_dataset% &
+                time_series%cur_value(1)
+          else
+            global_auxvar%temp = option%reference_temperature
+          endif
         else
           global_auxvar%temp = option%reference_temperature
         endif
