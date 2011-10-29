@@ -678,7 +678,12 @@ subroutine PatchInitAllCouplerAuxVars(patch,reaction,option)
                                option)
   call PatchInitCouplerAuxVars(patch%source_sinks,reaction, &
                                option)
-  
+
+  !geh: This should not be included in PatchUpdateAllCouplerAuxVars
+  ! as it will result in excessive updates to initial conditions
+  ! that are not necessary after the simulation has started time stepping.
+  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
+                                 force_update_flag,option)
   call PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
 end subroutine PatchInitAllCouplerAuxVars
@@ -830,11 +835,8 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
   PetscInt :: iconn
   
-  !TODO(geh): we shouldn't we not be updating initial conditions
-  !           after the beginning of the simulation???
-  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
-                                 force_update_flag,option)
-
+  !geh: no need to update initial conditions as they only need updating
+  !     once as performed in PatchInitCouplerAuxVars()
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
   call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &

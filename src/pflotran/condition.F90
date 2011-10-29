@@ -2645,6 +2645,7 @@ end subroutine FlowConditionUpdate
 subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
 
   use Option_module
+  use Dataset_module
   
   implicit none
   
@@ -2656,7 +2657,7 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
     call TimeSeriesUpdate(option,time,flow_condition_dataset%time_series)
   endif
   if (associated(flow_condition_dataset%dataset)) then
-    !TODO(geh): setup
+    call DatasetLoad(flow_condition_dataset%dataset,option)
   endif
   
 end subroutine FlowSubConditionUpdateDataset

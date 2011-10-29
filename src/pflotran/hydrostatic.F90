@@ -116,7 +116,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       else
         datum_dataset => condition%pressure%datum%dataset
         !TODO(geh): move this to FlowSubConditionUpdateDataset()
-        call DatasetLoad(datum_dataset,option)
+        !call DatasetLoad(datum_dataset,option)
         ! set datum here equal to estimated mid value of dataset
         datum(1:3) = -999.d0
         datum(3) = 0.5d0*(datum_dataset%rmax+datum_dataset%rmin)
