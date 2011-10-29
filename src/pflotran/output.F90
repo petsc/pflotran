@@ -2451,6 +2451,7 @@ subroutine OutputObservationTecplot(realization)
   PetscBool, save :: check_for_observation_points = PETSC_TRUE
   PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
+  PetscInt :: icolumn
 
   call PetscLogEventBegin(logging%event_output_observation,ierr)    
   
@@ -2501,7 +2502,15 @@ subroutine OutputObservationTecplot(realization)
       ! write title
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
       observation => patch%observation%first
-        
+
+      ! must initialize icolumn here so that icolumn does not restart with
+      ! each observation point
+      if (output_option%print_column_ids) then
+        icolumn = 1
+      else
+        icolumn = -1
+      endif
+
       do 
         if (.not.associated(observation)) exit
         
@@ -2514,13 +2523,15 @@ subroutine OutputObservationTecplot(realization)
                 'non-ghosting of vol frac....>? - geh'
               call printErrMsg(option)
               call WriteObservationHeaderForCoord(fid,realization, &
-                                                   observation%region, &
-                                                   observation%print_velocities)
+                                                  observation%region, &
+                                                  observation%print_velocities, &
+                                                  icolumn)
             else
               do icell=1,observation%region%num_cells
                 call WriteObservationHeaderForCell(fid,realization, &
-                                                    observation%region,icell, &
-                                                    observation%print_velocities)
+                                                   observation%region,icell, &
+                                                   observation%print_velocities, &
+                                                   icolumn)
               enddo
             endif
           case(OBSERVATION_FLUX)
@@ -2586,7 +2597,7 @@ end subroutine OutputObservationTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
-                                         print_velocities)
+                                         print_velocities,icolumn)
 
   use Realization_module
   use Grid_module
@@ -2601,6 +2612,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   type(region_type) :: region
   PetscInt :: icell
   PetscBool :: print_velocities
+  PetscInt :: icolumn
   
   PetscInt :: local_id
   character(len=MAXHEADERLENGTH) :: header
@@ -2623,7 +2635,8 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                 ' ' // trim(adjustl(y_string)) // &
                 ' ' // trim(adjustl(z_string)) // ')'
   
-  call WriteObservationHeader(fid,realization,cell_string,print_velocities)
+  call WriteObservationHeader(fid,realization,cell_string,print_velocities, &
+                              icolumn)
 
 end subroutine WriteObservationHeaderForCell
 
@@ -2635,7 +2648,7 @@ end subroutine WriteObservationHeaderForCell
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCoord(fid,realization,region, &
-                                          print_velocities)
+                                          print_velocities,icolumn)
 
   use Realization_module
   use Option_module
@@ -2648,6 +2661,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   type(realization_type) :: realization
   type(region_type) :: region
   PetscBool :: print_velocities
+  PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: cell_string
@@ -2663,7 +2677,8 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                 trim(adjustl(y_string)) // ' ' // &
                 trim(adjustl(z_string)) // ')'
 
-  call WriteObservationHeader(fid,realization,cell_string,print_velocities)
+  call WriteObservationHeader(fid,realization,cell_string,print_velocities, &
+                              icolumn)
 
 end subroutine WriteObservationHeaderForCoord
 
@@ -2675,7 +2690,7 @@ end subroutine WriteObservationHeaderForCoord
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeader(fid,realization,cell_string, &
-                                  print_velocities)
+                                  print_velocities,icolumn)
 
   use Realization_module
   use Option_module
@@ -2687,8 +2702,9 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   type(realization_type) :: realization
   PetscBool :: print_velocities
   character(len=MAXSTRINGLENGTH) :: cell_string
+  PetscInt :: icolumn
   
-  PetscInt :: i, icolumn
+  PetscInt :: i
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
@@ -2697,11 +2713,6 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   option => realization%option
   output_option => realization%output_option
   
-  if (output_option%print_column_ids) then
-    icolumn = 1
-  else
-    icolumn = -1
-  endif
   header = ''
 
   select case(option%iflowmode)
@@ -2712,30 +2723,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
       call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
       call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
-#if 0    
-      header = ',"2-T [C] '// trim(cell_string) // '",' // &
-               '"3-P [Pa] '// trim(cell_string) // '",' // &
-               '"4-sl '// trim(cell_string) // '",' // &
-               '"5-sg '// trim(cell_string) // '",' // &
-               '"6-Ul [MJ/mol] '// trim(cell_string) // '",' // &
-               '"7-Ug [MJ/mol]'// trim(cell_string) // '",'
-      icolumn = 7
-#endif
     case (MPH_MODE, FLASH2_MODE)
-#if 0
-      header = ',"2-T [C] '// trim(cell_string) // '",' // &
-               '"3-P [Pa] '// trim(cell_string) // '",' // &
-               '"4-sl '// trim(cell_string) // '",' // &
-               '"5-sg '// trim(cell_string) // '",' // &
-               '"6-dl [kg/m^3] '// trim(cell_string) // '",' // &
-               '"7-dg [kg/m^3] '// trim(cell_string) // '",' // &
-               '"8-Ul [MJ/mol] '// trim(cell_string) // '",' // &
-               '"9-Ug [MJ/mol] '// trim(cell_string) // '",' // &
-               '"10-visl [sPa] '// trim(cell_string) // '",' // &
-               '"11-visg [sPa] '// trim(cell_string) // '",' // &
-               '"12-kvrl [1/sPa] '// trim(cell_string) // '",' // &
-               '"13-kvrg [1/sPa] '// trim(cell_string) // '",'
-#endif          
       call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
