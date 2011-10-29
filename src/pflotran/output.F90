@@ -2710,15 +2710,15 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
 #if 0    
       header = ',"2-T [C] '// trim(cell_string) // '",' // &
                '"3-P [Pa] '// trim(cell_string) // '",' // &
                '"4-sl '// trim(cell_string) // '",' // &
                '"5-sg '// trim(cell_string) // '",' // &
-               '"6-Ul [KJ/mol] '// trim(cell_string) // '",' // &
-               '"7-Ug [KJ/mol]'// trim(cell_string) // '",'
+               '"6-Ul [MJ/mol] '// trim(cell_string) // '",' // &
+               '"7-Ug [MJ/mol]'// trim(cell_string) // '",'
       icolumn = 7
 #endif
     case (MPH_MODE, FLASH2_MODE)
@@ -2729,8 +2729,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
                '"5-sg '// trim(cell_string) // '",' // &
                '"6-dl [kg/m^3] '// trim(cell_string) // '",' // &
                '"7-dg [kg/m^3] '// trim(cell_string) // '",' // &
-               '"8-Ul [kJ/mol] '// trim(cell_string) // '",' // &
-               '"9-Ug [kJ/mol] '// trim(cell_string) // '",' // &
+               '"8-Ul [MJ/mol] '// trim(cell_string) // '",' // &
+               '"9-Ug [MJ/mol] '// trim(cell_string) // '",' // &
                '"10-visl [sPa] '// trim(cell_string) // '",' // &
                '"11-visg [sPa] '// trim(cell_string) // '",' // &
                '"12-kvrl [1/sPa] '// trim(cell_string) // '",' // &
@@ -2742,8 +2742,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
       call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
       call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
       call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
@@ -2767,8 +2767,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'Sat(g)','',cell_string,icolumn)
       call OutputAppendToHeader(header,'Rho(l)','[kg/m^3]',cell_string,icolumn)
       call OutputAppendToHeader(header,'Rho(g)','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'U(l)','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'U(g)','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'U(l)','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'U(g)','[MJ/mol]',cell_string,icolumn)
       do i = 1, option%nflowspec
         write(string,'(i2)') i
         string = 'Xl(' // trim(adjustl(string)) // ')'
@@ -2786,7 +2786,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
       if (option%iflowmode == THC_MODE) then
-        call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+        call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
         do i = 1, option%nflowspec
           write(string,'(i2)') i
           string = 'Xl(' // trim(adjustl(string)) // ')'
@@ -4548,7 +4548,7 @@ subroutine WriteVTKGrid(fid,realization)
   
     nxp1 = nx+1
     nyp1 = ny+1
-    nyp1 = nz+1
+    nzp1 = nz+1
   
     if (option%myrank == option%io_rank) then
 
