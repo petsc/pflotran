@@ -259,7 +259,7 @@ coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
-	      string.o hdf5_aux.F90 dataset_aux.o time_series.o
+	      string.o hdf5_aux.F90 dataset.o time_series.o
 condition_control.o : realization.o discretization.o region.o option.o grid.o \
 	              field.o coupler.o condition.o connection.o reaction.o \
 		      hdf5.o mfd.o dataset_aux.o
@@ -318,12 +318,13 @@ timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 mass_balance.o input.o string.o reactive_transport.o
-hdf5.o : realization.o discretization.o grid.o region.o patch.o
+hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
-dataset.o : hdf5.o hdf5_aux.o string.o option.o input.o dataset_aux.o
+dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
+dataset_aux.o : string.o utility.o option.o input.o
 time_series.o : string.o option.o input.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
