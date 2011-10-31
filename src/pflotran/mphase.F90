@@ -846,7 +846,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
-  PetscInt :: iphasebc, iphase
+  PetscInt :: iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
@@ -953,14 +953,14 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       enddo
 
       select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
-        case(DIRICHLET_BC,SEEPAGE_BC)
+        case(DIRICHLET_BC,SEEPAGE_BC,HYDROSTATIC_BC)
           iphase = boundary_condition%flow_aux_int_var(1,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphase=int(iphase_loc_p(ghosted_id))                               
       end select
 	  
       call MphaseAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-                          global_aux_vars_bc(sum_connection),iphasebc, &
+                          global_aux_vars_bc(sum_connection),iphase, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option, xphi)
     
