@@ -1,0 +1,54 @@
+pflotran.h5 file README
+
+The pflotran.h5 file is an HDF5 (http://www.hdfgroup.org/HDF5) formatted file.  For viewing the raw data within the file in ASCII, the user may download HDFView from http://www.hdfgroup.org/downloads/index.html#hdfview or use the "h5dump" command, if HDF5 libraries and binaries are installed on the machine of choice.
+
+A VisIt (https://wci.llnl.gov/codes/visit/) loader exists for the pflotran.h5 file and can be selected as "PFLOTRAN" from within the list of available loaders.  Note that in the most recent VisIt releases, the PFLOTRAN "Material ID" is not loaded properly (does not appear), nor do datasets starting with the greater than symbol (i.e. ">"), which is used to define surface sites and surface complexes.
+
+This file currently supports only the structured grid implementation within PFLOTRAN. For structured grids, the file contains un top level group named "Coordinates" that provides the X, Y, and Z locations of the cell faces in a structured grid in 1D datasets.  Therefore, for a grid composed of NX cells in the X direction, NX+1 coordinates are included in the Coordinates/X[m] dataset.  For each time step printed to the file, the file includes a group with a time stamp for it name and datasets within that group named based on the PFLOTRAN dataset printed.  The dataset names are identical for PFLOTRAN dataset groups, whereas the time stamp will differ.  
+
+--"Coordinates" group
+  |
+  --"X [m]" dataset
+  --"Y [m]" dataset
+  --"Z [m]" dataset
+--"Time:  ...." group
+  |
+  --"Time 1" dataset
+  --"Time 2" dataset
+  ...
+  --"Time N" dataset
+
+All datasets are 1D and of size n = nx*ny*nz, ordered in the natural ordering of the grid cell starting at the bottom, lower left corner of the grid and ascending in order based on the right-hand rule (x or i, then y or j, then z or k) such that the index satisfies:
+
+  index = i + j*nx + k*nx*ny
+
+assuming C/C++ style base-zero indexing
+
+The layout of an example file follows:
+
+-- Coordinates
+  |
+  -- X [m]
+  -- Y [m]
+  -- Z [m]
+-- Time:  0.0000E+00 y
+  |
+  -- Ca++
+  -- H+
+  ...
+  -- Pressure
+-- Time:  1.0000E+00 y
+  |
+  -- Ca++
+  -- H+
+  ...
+  -- Pressure
+...
+-- Time:  1.0000E+02 y
+  |
+  -- Ca++
+  -- H+
+  ...
+  -- Pressure
+
+Note that the coordinates are only listed once.
