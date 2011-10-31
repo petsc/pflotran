@@ -895,16 +895,6 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   mol(2) = global_aux_var%sat(1)*global_aux_var%den(1)*aux_var%xmol(2)*porXvol
 
-#ifdef ICE ! Added by Satish Karra, 10/25/11
-  ! Assuming above freezing for now, no s_i considered
-  sat_g = 1 - global_aux_var%sat(1)
-  p_g = 1.01325d5 ! Hardwired for now
-  den_g = p_g/(R_gas_constant*global_aux_var%temp(1))
-  call PSAT(global_aux_var%temp(1), p_sat, ierr)
-  mol_g = p_sat/p_g
-  mol(1) = mol(1) + sat_g*den_g*mol_g*porXvol
-#endif
-
 !  write(*,*) 'por ', por
 !  write(*,*) 'vol ', vol
 !  write(*,*) 'rrdencpr ', rock_dencpr
@@ -916,6 +906,16 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
         aux_var%u * porXvol + &
         (1.d0 - por) * vol * rock_dencpr * global_aux_var%temp(1)
  
+#ifdef ICE ! Added by Satish Karra, 10/25/11
+  ! Assuming above freezing for now, no s_i considered
+  sat_g = 1 - global_aux_var%sat(1)
+  p_g = 1.01325d5 ! Hardwired for now
+  den_g = p_g/(R_gas_constant*global_aux_var%temp(1))
+  call PSAT(global_aux_var%temp(1), p_sat, ierr)
+  mol_g = p_sat/p_g
+  mol(1) = mol(1) + sat_g*den_g*mol_g*porXvol
+#endif
+
 ! Reaction terms here
 !  if (option%run_coupled .and. iireac>0) then
 !H2O
@@ -1186,7 +1186,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     Diffg_dn = 5.d-4
     Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
+    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)*&
+                   (dd_up + dd_dn)
     call PSAT(global_aux_var_up%temp(1), psat_up, dpsat_dt_up, ierr)
     call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
     molg_up = psat_up/p_g
@@ -1195,7 +1196,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     dmolg_dt_up = (1/p_g)*dpsat_dt_up
     ddeng_dt_dn = - p_g/(R_gas_constant*(global_aux_var_dn%temp(1))**2)
     dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
-	dDiffg_dt_up = 0.d0 ! For now assuming diffusivity of water vapor is constant
+    dDiffg_dt_up = 0.d0 ! For now assuming diffusivity of water vapor is constant
     dDiffg_dt_dn = 0.d0
     dDiffg_dp_up = 0.d0
     dDiffg_dp_dn = 0.d0
@@ -1204,20 +1205,20 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 	
     Jup(1,1) = Jup(1,1) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                dsatg_dp_up*deng_up + por_up*satg_up*tor_up*deng_up*dDiffg_dp_up)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area
+               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area 
     Jup(1,2) = Jup(1,2) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                satg_up*ddeng_dt_up + por_up*satg_up*tor_up*deng_up*dDiffg_dt_up)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*dpsat_dt_up/&
+               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area + Ddiffgas_avg*area*dpsat_dt_up/&
                p_g/(dd_up + dd_dn)
 
     Jdn(1,1) = Jdn(1,1) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                dsatg_dp_dn*deng_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dp_dn)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area
+               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area
     Jdn(1,2) = Jdn(1,2) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                satg_dn*ddeng_dt_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dt_dn)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*(-dpsat_dt_dn)/&
-               p_g/(dd_up + dd_dn)
-    
+               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area + Ddiffgas_avg*area*(-dpsat_dt_dn)/&
+               p_g/(dd_up + dd_dn)    
+			   
   endif
 #endif 
 
@@ -1394,7 +1395,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
 !     fluxm(2) = fluxm(2) + difff * .5D0 * (aux_var_up%diff(2) + aux_var_dn%diff(2))* &
 !                (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
       fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
-                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) ! divide by the sum of the distances??
+                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
   endif 
   
 
@@ -1412,7 +1413,8 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
     Diffg_dn = 5.d-4
     Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
+    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)*&
+                   (dd_up + dd_dn)    
     call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
     call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
     molg_up = psat_up/p_g
@@ -1420,8 +1422,6 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
     fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/(dd_up + dd_dn)
   endif
 #endif 
-
-print *, global_aux_var_up%sat(1), global_aux_var_dn%sat(1)
 
 ! conduction term
         
