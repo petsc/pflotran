@@ -5675,41 +5675,53 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
 !       if (option%iflowmode /= MPH_MODE .or. icall>1) then
         if (option%iflowmode /= MPH_MODE .and. option%iflowmode /= FLASH2_MODE) then
-!       Note: the  DIRICHLET_BC is not time dependent in this case (icall)    
-        select case(boundary_condition%tran_condition%itype)
+  !       Note: the  DIRICHLET_BC is not time dependent in this case (icall)    
+          select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
               ! since basis_molarity is in molarity, must convert to molality
                 ! by dividing by density of water (mol/L -> mol/kg)
-              xxbc(istartaq_loc:iendaq_loc) = basis_molarity_p(1:reaction%naqcomp) / &
-                patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+              xxbc(istartaq_loc:iendaq_loc) = &
+                basis_molarity_p(1:reaction%naqcomp) / &
+                patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * &
+                1000.d0
               if (reaction%ncoll > 0) then
-                xxbc(istartcoll_loc:iendcoll_loc) = basis_coll_conc_p(1:reaction%ncoll) / &
-                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                xxbc(istartcoll_loc:iendcoll_loc) = &
+                  basis_coll_conc_p(1:reaction%ncoll) / &
+                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * &
+                  1000.d0
               endif
             case(DIRICHLET_ZERO_GRADIENT_BC)
   !geh            do iphase = 1, option%nphase
                 if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
                   ! same as dirichlet above
-                  xxbc(istartaq_loc:iendaq_loc) = basis_molarity_p(1:reaction%naqcomp) / &
-                    patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                  xxbc(istartaq_loc:iendaq_loc) = &
+                    basis_molarity_p(1:reaction%naqcomp) / &
+                    patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * &
+                  & 1000.d0
                   if (reaction%ncoll > 0) then
-                    xxbc(istartcoll_loc:iendcoll_loc) = basis_coll_conc_p(1:reaction%ncoll) / &
-                      patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                    xxbc(istartcoll_loc:iendcoll_loc) = &
+                      basis_coll_conc_p(1:reaction%ncoll) / &
+                      patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * &
+                      1000.d0
                   endif
                 else
                   ! same as zero_gradient below
                   xxbc(istartaq_loc:iendaq_loc) = xx_loc_p(istartaq:iendaq)
                   if (reaction%ncoll > 0) then
-                    xxbc(istartcoll_loc:iendcoll_loc) = basis_coll_conc_p(1:reaction%ncoll) / &
-                      patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                    xxbc(istartcoll_loc:iendcoll_loc) = &
+                      basis_coll_conc_p(1:reaction%ncoll) / &
+                      patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * &
+                      1000.d0
                   endif
                 endif
   !geh          enddo
             case(ZERO_GRADIENT_BC)
               xxbc(istartaq_loc:iendaq_loc) = xx_loc_p(istartaq:iendaq)
               if (reaction%ncoll > 0) then
-                xxbc(istartcoll_loc:iendcoll_loc) = basis_coll_conc_p(1:reaction%ncoll) / &
-                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                xxbc(istartcoll_loc:iendcoll_loc) = &
+                  basis_coll_conc_p(1:reaction%ncoll) / &
+                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * &
+                  1000.d0
               endif
           end select
           ! no need to update boundary fluid density since it is already set
@@ -5722,28 +5734,41 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
           endif
           if (compute_activity_coefs) then
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
-                                       patch%aux%Global%aux_vars_bc(sum_connection), &
-                                       reaction,option)
+                                        patch%aux%Global%aux_vars_bc(sum_connection), &
+                                        reaction,option)
             if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
               call CO2AqActCoeff(patch%aux%RT%aux_vars_bc(sum_connection), &
-                                 patch%aux%Global%aux_vars_bc(sum_connection), &
-                                 reaction,option) 
-             endif                           
+                                  patch%aux%Global%aux_vars_bc(sum_connection), &
+                                  reaction,option) 
+              endif                           
           endif
           call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
-                               patch%aux%Global%aux_vars_bc(sum_connection), &
-                               reaction,option)
-         else
-           skip_equilibrate_constraint = PETSC_FALSE
-          ! Chuan needs to fill this in.
+                                patch%aux%Global%aux_vars_bc(sum_connection), &
+                                reaction,option)
+        else
+          skip_equilibrate_constraint = PETSC_FALSE
+        ! Chuan needs to fill this in.
           select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
               ! don't need to do anything as the constraint below provides all
               ! the concentrations, etc.
+              
+              !geh: terrible kludge, but should work for now.
+              !geh: the problem is that ...%pri_molal() on first call is zero and 
+              !     PETSC_TRUE is passed into ReactionEquilibrateConstraint() below
+              !     for use_prev_soln_as_guess.  If the previous solution is zero,
+              !     the code will crash.
+              if (patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = 1.d-9
+              endif
             case(DIRICHLET_ZERO_GRADIENT_BC)
                 if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
                   ! don't need to do anything as the constraint below provides all
                   ! the concentrations, etc.
+                  
+                if (patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
+                  patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = 1.d-9
+                endif                  
                 else
                   ! same as zero_gradient below
                   skip_equilibrate_constraint = PETSC_TRUE
@@ -5767,7 +5792,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
           end select
           ! no need to update boundary fluid density since it is already set
           if (.not.skip_equilibrate_constraint) then
-           ! print *,'RT redo constrain on BCs: 1: ', sum_connection
+            ! print *,'RT redo constrain on BCs: 1: ', sum_connection
             call ReactionEquilibrateConstraint(patch%aux%RT%aux_vars_bc(sum_connection), &
               patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
               boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
@@ -5777,7 +5802,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               porosity_loc_p(ghosted_id), &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
-           ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
+            ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
           endif         
         endif
 
@@ -5788,11 +5813,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
                   patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%na_ion_id)
             patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
                   patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%cl_ion_id)
-           else
+            else
             patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
           endif
         endif
-      enddo
+      enddo ! iconn
       boundary_condition => boundary_condition%next
     enddo
 
