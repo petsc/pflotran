@@ -21,7 +21,9 @@ void StructuredGrid::createDA() {
   if (commsize > 1) pnx = 2; 
   if (commsize > 3) pnz = 2; 
 
-  ierr = DMDACreate3d(PETSC_COMM_WORLD,DMDA_NONPERIODIC,DMDA_STENCIL_STAR,
+  ierr = DMDACreate3d(PETSC_COMM_WORLD,
+                    DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE,
+                    DMDA_STENCIL_STAR,
                     nx,ny,nz,pnx,PETSC_DECIDE,pnz,
                     1,1,PETSC_NULL,PETSC_NULL,PETSC_NULL,&da);
 
@@ -729,8 +731,8 @@ PetscInt *StructuredGrid::getLocalCellVertexNaturalIDs(GridCell *cells, GridVert
     VecRestoreArray(natural,&v_ptr);
   }
 
-  VecDestroy(global);
-  VecDestroy(natural);
+  VecDestroy(&global);
+  VecDestroy(&natural);
 
   return vertex_ids;
 
@@ -794,8 +796,8 @@ void StructuredGrid::convertLocalCellDataGtoN(PetscReal *data) {
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 */
 
-  VecDestroy(global);
-  VecDestroy(natural);
+  VecDestroy(&global);
+  VecDestroy(&natural);
 
 }
 
@@ -843,7 +845,8 @@ PetscInt StructuredGrid::getNeighboringProcessor(PetscInt direction) {
 
   PetscInt pnx, pny, pnz;
   DMDAGetInfo(da,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL,
-            &pnx,&pny,&pnz,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL);
+            &pnx,&pny,&pnz,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL,
+            PETSC_NULL,PETSC_NULL);
   PetscInt iproc = myrank%pnx;
   PetscInt jproc = myrank%(pnx*pny)/pnx;
   PetscInt kproc = myrank/(pnx*pny);
@@ -896,12 +899,12 @@ void StructuredGrid::printAO() {
   AO ao;
   ierr = DMDAGetAO(da,&ao);
   AOView(ao,PETSC_VIEWER_STDOUT_WORLD);
-  AODestroy(ao);
+  AODestroy(&ao);
 
 }
 
 
 
 StructuredGrid::~StructuredGrid() {
-  DMDestroy(da);
+  DMDestroy(&da);
 }

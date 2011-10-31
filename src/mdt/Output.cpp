@@ -55,7 +55,7 @@ void Output::printGMSGrid() {
   PetscFPrintf(PETSC_COMM_WORLD,fp,"ACTIVE\n");
   v = grid->getGridCellActivities();
   writeIntVectorInNaturalOrder(fp,v,0);
-  VecDestroy(v);
+  VecDestroy(&v);
 
   PetscFClose(PETSC_COMM_WORLD,fp);
 
@@ -100,7 +100,7 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line
   for (PetscInt i=0; i<grid->num_cells_local; i++) 
     values[i] = PetscInt(v_ptr[i]);
   VecRestoreArray(natural,&v_ptr);
-  VecDestroy(natural);
+  VecDestroy(&natural);
   if (myrank == 0) {
     PetscInt count = 0;
     for (PetscInt i=0; i<grid->num_cells_local; i++) {
@@ -157,7 +157,7 @@ void Output::printBoundarySets() {
     printGMSDataSet(filename,v);
     cur_set = cur_set->next;
   }
-  VecDestroy(v);
+  VecDestroy(&v);
 }
 
 void Output::printHDFMaterialsAndRegions() {

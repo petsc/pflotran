@@ -157,7 +157,7 @@ PetscInt Grid::getVertexIdsNaturalLocal(PetscInt **natural_ids) {
   for (PetscInt ivert=0; ivert<new_local_size; ivert++)
     (*natural_ids)[ivert] = (PetscInt)(vec_ptr[ivert]+0.0001);
   VecRestoreArray(vec,&vec_ptr);
-  VecDestroy(vec);
+  VecDestroy(&vec);
 
   return new_local_size;
 
@@ -204,7 +204,7 @@ PetscInt Grid::getVertexCoordinatesNaturalLocal(PetscReal **coordinates, PetscIn
   for (PetscInt ivert=0; ivert<new_local_size; ivert++)
     (*coordinates)[ivert] = vec_ptr[ivert];
   VecRestoreArray(vec,&vec_ptr);
-  VecDestroy(vec);
+  VecDestroy(&vec);
   return new_local_size;
 
 }

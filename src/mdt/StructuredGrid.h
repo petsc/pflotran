@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "petscsys.h"
-#include "petscdm.h"
+#include "petscdmda.h"
 #include "petscvec.h"
 #include "petscmat.h"
 
