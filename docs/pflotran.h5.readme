@@ -18,7 +18,7 @@ This file currently supports only the structured grid implementation within PFLO
   ...
   --"Time N" dataset
 
-All datasets are 1D, ordered in the natural ordering of the grid cell starting at the bottom, lower left corner of the grid and ascending in order based on the right-hand rule (x or i, then y or j, then z or k) such that the index satisfies:
+All datasets are 1D and of size n = nx*ny*nz, ordered in the natural ordering of the grid cell starting at the bottom, lower left corner of the grid and ascending in order based on the right-hand rule (x or i, then y or j, then z or k) such that the index satisfies:
 
   index = i + j*nx + k*nx*ny
 
