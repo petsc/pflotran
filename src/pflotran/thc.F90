@@ -773,9 +773,10 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
   
 #ifdef ICE
-  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g
-  PetscReal :: dpsat_dt, ddeng_dt, dmolg_dt, dsatg_dp, dsatg_dt
+  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g
+  PetscReal :: dpsat_dt, ddeng_dt, dmolg_dt, dsatg_dp, dsatg_dt, dug_dt
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscReal, parameter :: C_g = 1.86 ! in J/g/K
   PetscErrorCode :: ierr  
 #endif
 
@@ -807,13 +808,17 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   den_g = p_g/(R_gas_constant*global_aux_var%temp(1))
   call PSAT(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
   mol_g = p_sat/p_g
+  u_g = C_g*FMWH2O*global_aux_var%temp(1)
   ddeng_dt = - p_g/(R_gas_constant*(global_aux_var%temp(1))**2)
   dmolg_dt = (1/p_g)*dpsat_dt
-  dsatg_dp = -thc_aux_var%dsat_dp
+  dsatg_dp = - thc_aux_var%dsat_dp
   dsatg_dt = 0.d0 
+  dug_dt = C_g*FMWH2O
   J(1,1) = J(1,1) + dsatg_dp*den_g*mol_g*porXvol
   J(1,2) = J(1,2) + (sat_g*ddeng_dt*mol_g + sat_g*den_g*dmolg_dt &
            + dsatg_dt*den_g*mol_g)*porXvol
+  J(2,1) = J(2,1) + dsatg_dp*den_g*u_g*porXvol
+  J(2,2) = J(2,2) + (sat_g*ddeng_dt*u_g + sat_g*den_g*dug_dt)*porXvol
 #endif
 
   if (option%numerical_derivatives) then
@@ -885,8 +890,9 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   PetscReal :: porXvol, mol(option%nflowspec), eng
 
 #ifdef ICE
-  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g
+  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g
   PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscReal, parameter :: C_g = 1.86 ! in J/g/K at 300K
   PetscErrorCode :: ierr
 #endif
   
@@ -913,7 +919,9 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   den_g = p_g/(R_gas_constant*global_aux_var%temp(1))
   call PSAT(global_aux_var%temp(1), p_sat, ierr)
   mol_g = p_sat/p_g
+  u_g = C_g*FMWH2O*global_aux_var%temp(1)
   mol(1) = mol(1) + sat_g*den_g*mol_g*porXvol
+  eng = eng + sat_g*den_g*u_g*porXvol
 #endif
 
 ! Reaction terms here
@@ -1186,8 +1194,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     Diffg_dn = 5.d-4
     Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)*&
-                   (dd_up + dd_dn)
+    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
     call PSAT(global_aux_var_up%temp(1), psat_up, dpsat_dt_up, ierr)
     call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
     molg_up = psat_up/p_g
@@ -1205,19 +1212,19 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 	
     Jup(1,1) = Jup(1,1) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                dsatg_dp_up*deng_up + por_up*satg_up*tor_up*deng_up*dDiffg_dp_up)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area 
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area 
     Jup(1,2) = Jup(1,2) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                satg_up*ddeng_dt_up + por_up*satg_up*tor_up*deng_up*dDiffg_dt_up)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area + Ddiffgas_avg*area*dpsat_dt_up/&
-               p_g/(dd_up + dd_dn)
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*dpsat_dt_up/&
+               p_g
 
     Jdn(1,1) = Jdn(1,1) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                dsatg_dp_dn*deng_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dp_dn)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area
     Jdn(1,2) = Jdn(1,2) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                satg_dn*ddeng_dt_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dt_dn)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)**2*area + Ddiffgas_avg*area*(-dpsat_dt_dn)/&
-               p_g/(dd_up + dd_dn)    
+               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*(-dpsat_dt_dn)/&
+               p_g  
 			   
   endif
 #endif 
@@ -1413,13 +1420,12 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
     Diffg_dn = 5.d-4
     Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
-    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)*&
-                   (dd_up + dd_dn)    
+    Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
     call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
     call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
     molg_up = psat_up/p_g
     molg_dn = psat_dn/p_g
-    fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/(dd_up + dd_dn)
+    fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)
   endif
 #endif 
 
