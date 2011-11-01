@@ -218,8 +218,7 @@ Even this relatively simple system involves a complex system of nonlinear partia
 
 There are several different approaches possible for solving the governing multiphase-multicomponent flow and transport equations depending on the choice of independent variables. The total number of independent variables is determined by the Gibbs phase rule. 
 For a nonisothermal system derived from $N_P$ single fluid phases\symbolfootnote[2]{For a system with $N_P$ pure phases (e.g. $l$, $g$), there are $2^{N_P}\!-\!1$ possible phase combinations  (e.g. $l$, $g$, $lg$).} (e.g. $l$, $g$) and $N_C$ components (e.g. H$_2$O, CO$_2$), there are $N_C+1$ independent variables or degrees of freedom including temperature. 
-Note that the number of degrees of freedom is independent of the number of possible phases in the system. To see this, the variables representing the system and the constraints imposed on the variables are listed in Table~\ref{tdof}.
-
+Note that the number of degrees of freedom is independent of the number of  phases that are present in the system. To see this, the variables representing the system and the constraints imposed on them are listed in Table~\ref{tdof}.
 
 \begin{table}[h]\centering
 \caption{Variables and constraints in a multiphase-multicomponent system.}
@@ -228,20 +227,20 @@ Note that the number of degrees of freedom is independent of the number of possi
 \vspace{3mm}
 %\renewcommand{\tabcolsep}{1cm}
 \renewcommand{\arraystretch}{1.25}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-Variable & Number & Number & Constraint Condition\\
-&Variables&Constraints&\\
+Variable & Symbol & Number of & Number of & Constraint Condition\\
+&&Variables&Constraints&\\
 \midrule
-$T$ & 1 & 0 & ---\\
-$P_\a$ & $N_P$ & $N_P\!-\!1$ & $P_{c,\a\b} = P_\b - P_\a$\\
-$s_\a$ & $N_P$ & 1 & $\sum_\a s_\a=1$\\
-$X_i^\a$ & $N_P N_C$ & $N_P$ & $\sum_i X_i^\a=1$\\
+Temperature & $T$ & 1 & 0 & ---\\
+Pressure & $P_\a$ & $N_P$ & $N_P\!-\!1$ & $P_{c,\a\b} = P_\b - P_\a$\\
+Saturation & $s_\a$ & $N_P$ & 1 & $\sum_\a s_\a=1$\\
+Mole Fraction & $X_i^\a$ & $N_P N_C$ & $N_P$ & $\sum_i X_i^\a=1$\\
 ---&---& $N_C(N_P\!-\!1)$ & $\mu_i^\a = \mu_i^\b$\\
 \midrule
-Total: & $N_P(N_C+2)+1$ & $N_P (N_C + 2)-N_C$\\
+Total: && $N_P(N_C+2)+1$ & $N_P (N_C + 2)-N_C$\\
 \midrule
-Net: & \multicolumn{2}{c}{$N_C+1$}\\
+Net: && \multicolumn{2}{c}{$N_C+1$}\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -262,13 +261,13 @@ Other composition variables may also be defined and are useful to what follows. 
 \EQ
 \zeta_\a \eq \frac{N_\a}{N} \eq \dfrac{\displaystyle\sum\limits_i n_i^\a}{\displaystyle\sum_{i'\a'} n_{i'}^{\a'}}, \ \ \ \ \ \ \ \sum_\a \zeta_\a =1.
 \EN
-And the total component mole fraction $z_i$ is defined by
+The total component mole fraction $Z_i$ is defined by
 \EQ\label{sumzi}
 Z_i \eq \frac{N_i}{N} \eq \dfrac{\displaystyle\sum_\a n_i^\a}{\displaystyle\sum_\a n_\a}, \ \ \ \ \ \ \ \sum_i Z_i=1.
 \EN
 These quantities are related by the expression
 \EQ
-Z_i \eq \frac{1}{N}\sum_\a n_i^\a \eq \sum_\a \frac{n_i^\a}{N_\a} \frac{N_\a}{N} \eq\sum_\a X_i^\a \zeta_\a.
+Z_i \eq \frac{1}{N}\sum_\a n_i^\a \eq \sum_\a \frac{n_i^\a}{N_\a} \frac{N_\a}{N} \eq\sum_\a \zeta_\a X_i^\a.
 \EN
 It follows from the definition of $Z_i$ that
 \EQ\label{zi}
@@ -300,7 +299,13 @@ and
 &\eq \varphi s_\a \rho_\a.
 \EA
 \end{subequations}
-The formulation of the mass conservation equations in terms of $Z_i$ is used in the FLASH approach and avoids variable switching.
+The formulation of the mass conservation equations in terms of $Z_i$ as a presistent variable is used in the FLASH approach to avoid the necessity for variable switching.
+
+Note that for a system consisting of a single phase, the expression for $Z_i$ reduces to
+\EQ
+Z_i \eq X_i^\a, \ \ \ \ \ \text{(pure phase $\a$)},
+\EN
+according to Eqn.\eqref{zi}.
 
 \subsection{Mass Conservation Equations}
 
@@ -325,7 +330,7 @@ W_\a \eq \sum_i W_i X_i^\a,
 \EN
 where $W_i$ is the formula weight of the $i$th component. 
 
-Introducing $Z_i$ into the mass conservation equations gives the alternative form
+Introducing $Z_i$ into the mass conservation equations using Eqn.\eqref{zi} gives the alternative form
 \EQ\label{mczi}
 \frac{\p}{\p t} \Big(\varphi Z_i \sum_\a s_\a\rho_\a\Big) + \bnabla\cdot\sum_\a \bF_i^\a \eq Q_i.
 \EN
@@ -386,6 +391,8 @@ $W_{\c} = 44.0098$ kg/kmol
 
 \subsubsection{Mixture Properties}
 
+The mixture density for CO$_2$ dissolved in H$_2$O (liquid phase) is derived from Duan et al. (2008). For supercritical CO$_2$ a mixture density is not needed because of the low concentration of H$_2$O in the supercritical CO$_2$ phase.
+
 \subsection{Capillary Pressure}
 
 The pressure $P_\a$ of fluid phase $\a$ is related to the fluid pressure of phase $\b$ through the capillary pressure $P_{\a\b}^c$
@@ -393,6 +400,77 @@ The pressure $P_\a$ of fluid phase $\a$ is related to the fluid pressure of phas
 P_{\a\b}^c \eq P_\b - P_\a,
 \EN
 where $P_\b$ is assumed to be the non-wetting phase, in this case supercritical CO$_2$, and $P_\a$ refers to the wetting phase in this case brine. Capillary pressure is related to saturation $s_\a$ using, for example, van Genuchten or Brooks-Cory correlations.
+
+\subsubsection{van Genuchten Relations}
+
+Irreducible liquid saturation described by the van Genuchten (1980) relation is given by
+\EQ\label{seff}
+s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-m}, 
+\EN 
+where $p_c$ represents the capillary pressure [Pa], and the effective liquid saturation $s_e$ is defined by 
+\EQ 
+s_e \eq \frac{s_l^{} - s_l^r}{s_l^0 - s_l^r}, 
+\EN 
+where $s_l^{}$ denotes liquid saturation, $s_l^r$ denotes the residual saturation, and $s_l^0$ denotes the maximum saturation. The constants $n$ and $m$ are related by the expressions 
+\EQ\label{lambda} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
+\EN 
+The inverse relation is given by
+\EQ
+P_c \eq \frac{1}{\alpha} \left[\left(s_e\right)^{-1/m} -1 \right]^{1/n}.
+\EN
+The derivative of $P_c$ with respect to saturation is given by
+\EQ
+\frac{dP_c}{ds_e} \eq -\frac{P_c}{nm} \dfrac{s_e^{-(1+1/m)}}{s_e^{-1/m}-1}.
+\EN
+
+The relative permeability for the liquid phase is given by
+\EQ\label{krl} 
+k_{rl} \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2, 
+\EN 
+and for the gas phase by
+\EQ 
+k_{rg} \eq 1 - k_{rl}.
+\EN 
+Note that $k_{rl}$ = 0 for saturations below the residual saturation. 
+The derivative of $k_{rl}$ with respect to saturation is given by
+\EQ
+\frac{dk_{rl}}{ds_e} \eq \frac{1}{2} \frac{k_{rl}}{s_e} + 2 \sqrt{s_e}
+\left\{1-\left[1-s_e^{1/m} \right]^m\right\}
+\left[1-s_e^{1/m} \right]^{m-1} s_e^{1/m-1}.
+\EN
+
+\subsubsection{Brooks-Corey Relations}
+
+Irreducible liquid saturation described by the Brooks-Corey (19??) relation 
+\EQ\label{seffbc}
+s_e \eq \left( \alpha |P_c| \right)^{-\lambda}, 
+\EN 
+with the inverse relation given by
+\EQ
+P_c \eq \frac{1}{\alpha} \left(s_e\right)^{-1/\lambda}.
+\EN
+The derivative of $P_c$ with respect to saturation is given by
+\EQ
+\frac{dP_c}{ds_e} \eq -\dfrac{P_c}{\lambda s_e}.
+\EN
+
+The relative permeability function is given by 
+\BA 
+k_{rl} &= \left(s_e \right)^{(2+3\lambda)/\lambda},\nonumber\\
+&= \left( \alpha |P_c| \right)^{-(2+3\lambda)}, \label{krlbc}
+\EA 
+for the liquid phase, and for the gas phase as
+\EQ 
+k_{rg} \eq 1 - k_{rl}.
+\EN 
+Note that $k_{rl}$ = 0 for saturations below the residual saturation. 
+The derivative of $k_{rl}$ with respect to saturation is given by
+\EQ
+\frac{dk_{rl}}{ds_e} \eq \frac{2+3\lambda}{\lambda} \dfrac{k_{rl}}{s_e}.
+\EN
+
+\subsubsection{Linear}
 
 \subsection{Supercritical CO$_2$--H$_2$O Equilibrium Relations}
 \label{sec:eqrel}
@@ -425,9 +503,9 @@ The fugacity is given by
 \EQ
 f_\c^{} \eq \phi_\c^{} P_\c^{g} \eq \phi_\c^{} X_\c^g P_g^{},
 \EN
-with fugacity coefficient $\phi_\c$, where the mole fraction of $\c$ in the supercritical (gas) phase, $X_\c^g$, is assumed to be given by
+with fugacity coefficient $\phi_\c$, where the equilibrium mole fraction of $\c$ in the supercritical (gas) phase, $X_\c^{g,\rm eq}$, is assumed to be given by
 \EQ\label{xco2g}
-X_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
+X_\c^{g,\rm eq} \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
 \EN
 with total gas pressure $P_g$ equal to
 \EQ\label{totalp}
@@ -453,23 +531,40 @@ where $W_\w$ denotes the formula weight of water.
 \subsection{Phase Change Criteria}
 
 In the FLASH approach the primary variables are $P$, $T$ and the total mole fraction $Z_i$ of the $i$th component summed over all phases.
-This gives $2+N_C-1 = N_C+1$ independent variables as required. The variable $Z_i$ is a persistent degree of freedom throughout the simulation. From the knowledge of $Z_i$ it is possible to obtain the stable phase assemblage, the volume fraction $s_\a$ of each phase present in the system, and its composition in terms of $X_i^\a$. 
+This gives $2+N_C-1 = N_C+1$ independent variables as required. The variable $Z_i$ is a persistent degree of freedom throughout the simulation. From the knowledge of $Z_i$ it is possible to obtain the stable phase assemblage, the volume fraction $s_\a$ of each phase present in the system, and its composition in terms of $X_i^\a$ as indicated in Table~\ref{tphase}. 
+
+\begin{table}[h]\centering
+\caption{Phase Transitions}
+\label{tphase}
+
+\vspace{3mm}
+
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{cc}
+\toprule
+Region & Stable Phase(s)\\
+\midrule
+$Z_\c^{} \leq X_\c^{l,\rm eq}$ & liquid\\
+$X_\c^{l,\rm eq} < Z_\c^{} < X_\c^{g,\rm eq}$ & two-phase\\
+$X_\c^{g,\rm eq} \leq Z_\c^{}$ & gas\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 For a two-phase ($\a=l$, $\sc$) system where, for example, $l$ designates the liquid phase $\w$ and $\sc$ designates supercritical $\c$, $Z_i$ can be expressed as
 \EQ
 Z_i \eq \frac{\rho_l^{} s_l^{} X_i^l + \rho_{\sc}^{} s_{\sc}^{} X_i^{\sc}}{\rho_l^{} s_l^{} + \rho_{\sc}^{} s_{\sc}^{}},
 \EN
-for molar fluid densities $\rho_l$, $\rho_{\sc}$ and phase saturation $s_l$, $s_{\sc} = 1\!-\!s_l$.
-Solving for $s_g$ gives
+for molar fluid densities $\rho_l$, $\rho_{\sc}$ and phase saturation $s_l$, $s_{\sc} \!=\! 1\!-\!s_l$.
+Solving this equation for $s_g$ gives
 \EQ\label{sg}
-s_g \eq \frac{\rho_l(Z_i^{}-X_i^l)}{\rho_l(Z_i^{} - X_i^l) - \rho_g (Z_i^{} -X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
+s_g \eq \frac{\rho_l^{} (Z_i^{}-X_i^l)}{\rho_l^{} (Z_i^{} - X_i^l) - \rho_g^{} (Z_i^{} -X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
 \EN
 
 To determine the mole fractions $X_i^\a$ from $Z_i$ it is necessary to consider the equilibrium constraints between phases expressed as equality their chemical potentials in the two phases.
-
-Depending on the value of $Z_\c$ different phases are present in the system.
+Depending on the value of $Z_\c$ different phases are present in the system (see Table~\ref{tphase}).
 \begin{description}
-\item[Single Liquid Phase:] For $Z_\c \!<\! X_\c^{l,{\rm eq}}$, a single aqueous ($\w$) phase is the stable phase assemblage.
+\item[Single Liquid Phase:] For $Z_\c \!\leq\! X_\c^{l,{\rm eq}}$, a single aqueous ($\w$) phase is the stable phase assemblage.
 The aqueous $\c$ concentration is equal to
 \begin{subequations}\label{fla-sec-c1}
 \BA\label{liq}
@@ -482,7 +577,7 @@ s_l = 1, \ s_{\sc} =0,
 \end{subequations}
 consistent with Eqn.\eqref{sg}.
 
-\item[Single Gas Phase:] For $Z_\c\!>\! X_\c^{g,\rm eq} \!=\!1\!-\!P_\w^{\rm sat}(T)/P_g$, a single supercritical $\c$ phase is the stable phase assemblage.
+\item[Single Gas Phase:] For $Z_\c\!\geq\! X_\c^{g,\rm eq} \!=\!1\!-\!P_\w^{\rm sat}(T)/P_g$, a single supercritical $\c$ phase is the stable phase assemblage.
 The supercritical $\c$ concentration is equal to
 \begin{subequations}\label{fla-sec-c2}
 \BA\label{gas}
@@ -495,27 +590,27 @@ and phase saturations are given by
 \end{subequations}
 consistent with Eqn.\eqref{sg}.
 
-\item[Two-Phase:] For $Z_\c \!>\! X_\c^{l,{\rm eq}}$ and $Z_\c\!<\! X_\c^{g,{\rm eq}}\!=\!1\!-\!P_\w^{\rm sat}/P_g$, the two phases supercritical $\c$ and a liquid phase coexist.
+\item[Two-Phase:] For $X_\c^{l,{\rm eq}} \!<\! Z_\c \!<\! X_\c^{g,{\rm eq}}\!=\!1\!-\!P_\w^{\rm sat}/P_g$, the two phases supercritical $\c$ and a liquid phase coexist.
 From Section \ref{sec:eqrel} the equilibrium mole fractions of CO$_2$ in the liquid and gas phases are given by Eqns.\eqref{xco2l} and \eqref{xco2g}, respectively.
 Note that the equilibrium composition only depends on temperature and pressure and is independent of $Z_\c$, and thus forms an invariant composition. The gas saturation is determined from Eqn.\eqref{sg}
 \EQ\label{2ph}
-s_{\sc} \eq \frac{\rho_{l} (Z_{\c}^{} - X_{\c}^{l,\rm eq})}
-{\rho_l (Z_{\c}^{} - X_{\c}^{l,\rm eq}) - \rho_{\sc} (Z_{\c}^{} - X_{\c}^{\sc})},
+s_{\sc} \eq \frac{\rho_{l}^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq})}
+{\rho_l^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq}) - \rho_{\sc}^{} (Z_{\c}^{} - X_{\c}^{\sc})},
 \EN
 with $s_l\!=\!1\!-\!s_{\sc}$.
-The density of either the aqueous or supercritical $\c$ phase is obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture density for the phase.
+The density of either the aqueous or supercritical $\c$ phase is obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture rules for the phase.
 \end{description}
 
 \section{Numerical Implementation}
 
-\subsection{Independent Variables}
+\subsection{Finite Volume Discretization: Independent Variables}
 
 In the following the so-called Flash method is used in which a persistent set of independent variables exist regardless of the which phases are present in the system within any particular control volume and time $t$. This approach is advantageous for use with multilevel solvers to avoid changes in the independent variables on different levels within a patch as could occur in the variable switching approach.
 Significant simplifications are possible for a two-phase--two-component system such as characterizes the liquid plus supercritical CO$_2$ system considered here. For this system $N_P=2$ $(l,\,g)$, and $N_C=2$ $(\rm H_2O,\, CO_2)$. Three distinct states exist in the system corresponding to single liquid, single gas and two-phase liquid-gas states. The three independent variables are taken as $P$, $T$, and $Z_\c$.
 
-\subsection{Finite Volume Discretization}
+%\subsection{Finite Volume Discretization}
 
-\subsubsection{Residual Function}
+\subsection{Residual Function}
 
 Using a finite volume discretization approach, the governing flow and transport equations are discretized according to a sum of accumulation, flux and source/sink terms providing the residual function $R_{in}$ for the $i$th component at the $n$th control volume and $k+1$st time step $\Delta t_{k+1}$ given by
 \BA
@@ -548,7 +643,7 @@ and
 Q_n \eq \sum_i Q_{in}.
 \EN
 
-\subsubsection{Interface Properties}
+\subsection{Interface Properties}
 
 Shown in Table~\ref{tinterface} is the interface averaging assumption made for each quantity listed.
 
@@ -574,7 +669,7 @@ Diffusion & $s_\a\tau_\a D_\a$ & Harmonic & $\dfrac{(s_\a\tau_\a D_\a)_1(s_\a\ta
 \end{tabular}
 \end{table}
 
-\subsubsection{Jacobian Matrix}
+\subsection{Jacobian Matrix}
 
 The Jacobian matrix for an isothermal system has the form
 \EQ
@@ -596,6 +691,234 @@ For a nonisothermal system there is an addition equation for the temperature
 \end{bmatrix}.
 \EN
 
+\subsubsection{Single Liquid Phase}
+
+\noindent Total accumulation:
+\EQ
+M_{P} \eq \varphi \rho_l,
+\EN
+\BA
+\delta M_{P} &\eq \varphi \delta\rho_l,\nonumber\\
+&\eq \varphi\rho_{lP}^{}\delta P.
+\EA
+
+\noindent $Z_\c$:
+\EQ
+M_{P} \eq \varphi \rho_l,
+\EN
+\BA
+\delta M_{P} &\eq \varphi (\delta\rho_l Z+\rho_l\delta Z),\nonumber\\
+&\eq \varphi(\rho_{lP}^{}\delta P + \rho_l\delta Z).
+\EA
+
+\subsubsection{Single Gas Phase}
+
+\noindent Total accumulation:
+\EQ
+M_{P} \eq \varphi \rho_g,
+\EN
+\BA
+\delta M_{P} &\eq \varphi \delta\rho_g,\nonumber\\
+&\eq \varphi\rho_{gP}^{}\delta P.
+\EA
+
+\noindent $Z_\c$:
+\EQ
+M_{P} \eq \varphi \rho_l,
+\EN
+\BA
+\delta M_{P} &\eq \varphi (\delta\rho_l Z+\rho_l\delta Z),\nonumber\\
+&\eq \varphi(\rho_{lP}^{}\delta P + \rho_l\delta Z).
+\EA
+
+\subsubsection{Two-Phase}
+
+\noindent Total accumulation:
+\EQ
+M_{P} \eq \varphi (s_l\rho_l+s_g\rho_g),
+\EN
+\BA
+\delta M_{P} &\eq \varphi (s_l\delta\rho_l+s_g\delta\rho_g )+\varphi (\rho_g-\rho_l)\delta s_g,\nonumber\\
+&\eq \varphi(s_l\rho_{lP}^{}+s_g\rho_{gP})\delta P + \varphi (\rho_g-\rho_l) s_{gP}^{} \delta P.
+\EA
+
+\noindent $Z_\c$:
+\EQ
+M_{Z} \eq \varphi Z(s_l\rho_l+s_g\rho_g),
+\EN
+\BA
+\delta M_{Z} &\eq \varphi Z(s_l^{}\delta\rho_l^{}+s_g^{}\delta\rho_g^{})+\varphi Z(\rho_g^{}-\rho_l^{}) \delta s_g + \varphi (s_l\rho_l^{}+s_g\rho_g^{}) \delta Z,\nonumber\\
+&\eq \varphi Z(s_l\rho_{lP}^{}+s_g^{}\rho_{gP}^{})\delta P + \varphi Z(\rho_g^{}-\rho_l^{}) s_{gP}^{} \delta P \nonumber\\
+&\qquad + \varphi Z(\rho_g^{}-\rho_l^{}) s_{gZ}^{} \delta Z + \varphi (s_l^{}\rho_l^{}+s_g^{}\rho_g^{}) \delta Z.
+\EA
+
+Derivatives of $s_g (P,\, T,\,Z)$:
+\BA
+s_{gZ}^{} & \eq \frac{\p s_g}{\p Z},\\
+& \eq \frac{\rho_l^{}\rho_g^{} (X_i^g - X_i^l)}{\rho_l^{}(Z-X_i^l) - \rho_g^{}(Z-X_i^g)},
+\EA
+\BA
+s_{gP}^{} &\eq \frac{\p s_g}{\p P},\\
+& \eq \cdots
+\EA
+
+\subsection{Flux}
+
+The flux in the $x,\,y,\,z$-directions for the pressure equation is defined as
+\begin{subequations}
+\EQ
+\Delta_x f_x \eq \Delta_x \left(f_{lx}+f_{gx}\right) \eq \left(\rho_l q_l+\rho_g q_g \right)_{i+1/2}^{n+1} A_{i+1/2}-\left( \rho_l q_l+\rho_g q_g \right)_{i-1/2}^{n+1}A_{i-1/2},
+\EN
+\EQ
+\Delta_y f_y \eq \Delta_y \left(f_{ly}+f_{gy}\right) \eq \left(\rho_l q_l+\rho_g q_g \right)_{j+1/2}^{n+1} A_{j+1/2} -\left(\rho_l q_l+\rho_g q_g \right)_{j-1/2}^{n+1} A_{j-1/2},
+\EN
+and
+\EQ
+\Delta_z f_z \eq \Delta_z \left(f_{lz}+f_{gz}\right) \eq \left(\rho_l q_l+\rho_g q_g \right)_{k+1/2}^{n+1} A_{k+1/2} -\left(\rho_l q_l+\rho_g q_g \right)_{k-1/2}^{n+1} A_{k-1/2}.
+\EN
+\end{subequations}
+
+Similarly for the $Z_\c-$equation with $c$ = $\c$ one has
+\begin{subequations}
+\BA
+\Delta_x f_{cx} \eq \Delta_x \left(f_{cx}^l+f_{cx}^g\right) \eq &\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g\right)_{i+1/2}^{n+1} A_{i+1/2}\nonumber\\
+&-\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{i-1/2}^{n+1}A_{i-1/2},
+\EA
+\BA
+\Delta_y f_{cy} \eq \Delta_y \left(f_{cy}^l+f_{cy}^g\right) \eq &\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{j+1/2}^{n+1} A_{j+1/2} \nonumber\\
+&- \left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{j-1/2}^{n+1} A_{j-1/2},
+\EA
+and
+\BA
+\Delta_z f_{cz} \eq \Delta_z \left(f_{cz}^l+f_{cz}^g\right) \eq &\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{k+1/2}^{n+1} A_{k+1/2} \nonumber\\
+&- \left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{k-1/2}^{n+1} A_{k-1/2}.
+\EA
+\end{subequations}
+
+\begin{table}[h]\centering
+\caption{Interface weighting scheme.}
+\label{twt}
+
+\vspace{3mm}
+
+\begin{tabular}{lcr}
+\toprule
+Property & Symbol & \multicolumn{1}{r}{Interface Average}\\
+\midrule
+Density & $\rho_\a$ & Arithmetic Average\\
+%$H_\a$ & Arithmetic Average\\
+Permeability & $k$ & Harmonic Average\\
+Mobility & $\lambda_\a$ & Upstream Weighting\\
+Mole Fraction & $X_i^{\a}$ & Upstream Weighting\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The liquid flux at the $i-1/2$ face is given by
+\EQ
+f_{x,i-1/2}^l \eq \frac{(k \lambda_l \rho_l)_{i-1/2}}{d_i+d_{i-1}} \Phi_{li} A_{i-1/2},
+\EN
+where the potential difference $\Phi_{li}$ between grid blocks separated by a vertical distance $\Delta z_i$ is given by
+\EQ
+\Phi_{li} \eq \Delta P_i^l - \gamma_{l,i-1/2} \Delta z_i,
+\EN
+where
+\EQ
+\Delta P_i^l \eq P_{i}^l -P_{i-1}^l.
+\EN
+The mobility $\lambda_l$ given by
+\EQ
+\lambda_l \eq \frac{k_{l}}{\mu_l},
+\EN
+where $k_l$ denotes the relative permeability in general a nonlinear function of saturation, and $\gamma_l$ is defined by
+\EQ
+\gamma_l \eq W_l \rho_l g,
+\EN
+with $g$ the acceleration of gravity.
+
+The permeability is calculated as the harmonic average of $k_{i-1}$ and $k_i$, the density is taken as the arithmetic average, and the mobility is averaged based on a weighting factor applied to the upstream block. Thus
+\BA
+k_{i-1/2} \eq \frac{(d_i+d_{i-1})k_ik_{i-1}}{d_i k_{i-1}+d_{i-1} k_i},\\
+\EA
+The fluid density at the interface is given by
+\EQ
+\rho_{l,i-1/2} \eq \frac{d_i\rho_{l,i}+d_{i-1}\rho_{l,i-1}}{d_i+d_{i-1}},
+\EN
+and the mobility is upstream weighted
+\EQ
+\lambda_{l,i-1/2} \eq \lambda_{lu},
+\EN
+where the subscript $u$ refers to the upstream block. 
+Upstream weighting is also used for the $\c$ mole fraction $X_\c^{l,\,g}$.
+\EQ
+(X_\c^{l,\,g})_{i-1/2}^{} \eq (X_\c^{l,\,g})_{u}^{}.
+\EN
+
+Substituting the averages as defined above, the flux at the
+interface is given by
+\EQ\label{liqflx}
+f_{x,i-1/2}^l \eq \T_{x,i-1/2}^{} \, \rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \Delta\Phi_{li}^{},
+\EN
+where the transmissibility is defined by
+\EQ
+\T_{x,i-1/2} \eq \frac{k_i k_{i-1}}{d_i k_{i-1} + d_{i-1} k_i} A_{i-1/2}.
+\EN
+Note that for $i \!=\! 1$, the transmissibility $\T_x$ is set to zero, as it is at $n_x\!+\!1$, the outermost interface. This in essence sets the
+boundary condition of zero flux at the boundary of the system. If
+the permeability is constant with time, $\T_x$ remains unchanged. 
+
+Similarly, the gas flux can be written analogously as:
+\EQ\label{qxg}
+f_{x,i-1/2}^g \eq \T_{x,i-1/2}^{} \, \rho_{g,i-1/2}^{} \, \lambda_{g,i-1/2}^{} \, \Phi_{gi}^{},
+\EN
+where
+\EQ
+\Phi_{gi} \eq \Delta P_i^g - \gamma_g \Delta z_i,
+\EN
+with
+\EQ
+\Delta P_i^g \eq P_{i}^g - P_{i-1}^g.
+\EN
+Fluxes in $y$- and $z$-directions have similar forms. 
+
+\subsubsection{Single Liquid Phase}
+
+The change in liquid flux is given by
+\EQ\begin{split}\label{delf}
+\delta f_{l,i-1/2} &\eq \T_{i-1/2}^{} \, \delta(\rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \Phi_{li}^{}),\\
+&\eq \T_{i-1/2}^{} \, (\delta\rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \Phi_{li}^{}+ \rho_{l,i-1/2}^{} \, \delta\lambda_{l,i-1/2}^{} \, \Phi_{li}^{} + \rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \delta\Phi_{li}^{}),\\
+& \eq \T_{i-1/2} \left[\Phi_{li} \, \lambda_{l,i-1/2} \, \delta \rho_{l,i-1/2} + \Phi_{li} \, \rho_{l,i-1/2} \, \delta \lambda_{l,i-1/2}  \right.\\
+& \left. \qquad + \rho_{l,i-1/2} \, \lambda_{l,i-1/2} \, (\delta \Delta P_{i}^l -\delta \gamma_l \Delta z_i)\right],
+%-\rho_{l,i-1/2} \, \lambda_{l,i-1/2} \, \delta \Delta P_{ci} 
+%+ 2\alpha_{li} \, \delta \rho_{l,i-1/2}
+\end{split}
+\EN
+where
+\begin{align}
+\delta \lambda_l &= \frac{d \lambda_l}{ds_g} \delta s_g,\\
+%\Delta P_{c,i} &= P_{c,i} - P_{c,{i-1}},\\
+%\delta P_c &= \frac{dP_c}{ds_g} \delta s_g,\\
+%\alpha_{li} &= \frac{\lambda_{l,i-1/2}}{2} \left(\Phi_{li} - \rho_{l,i-1/2} W_l g \Delta z_i \right).
+\end{align}
+The change in $\c$ flux in the liquid phase can be written in terms of the pressure equation flux and a diffusion term
+\EQ
+\delta \left(f_l X_c^l + f_D^l\right)_{i-1/2} \eq X_{cu}^l \delta f_{l,i-1/2} + f_{l,i-1/2} \delta X_{c,i-1/2}^l + \delta (f_D^l)_{i-1/2}.
+\EN
+where
+\EQ
+(f_D^l)_{i-1/2} \eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
+\EN
+Upstream weighting is used for the $\c$ mole fraction $X_\c^l$.
+
+\subsubsection{Single Gas Phase}
+
+\subsubsection{Two-Phase}
+
+\subsection{Source/Sink}
+
+\EQ
+Q_n \eq q_n X_{\c,n}^g V_n,
+\EN
 
 \section{Example Problem}
 
@@ -604,6 +927,8 @@ An example problem using PFLOTRAN is presented to provide a benchmark problem fo
 Results are shown in Figures~\ref{f10y} and \ref{f250y} for times of 10 and 250 years, respectively, for saturation (left) and dissolved CO$_2$ (right). Fingering of dissolved CO$_2$ occurs in the H$_2$O phase as evident in Figure~\ref{f250y}.
 
 Shown in Figure~\ref{fmass} is the total moles of CO$_2$ in the H$_2$O (blue curve) and supercritical CO$_2$ (red curve) phases. The peak in CO$_2$ in the supercritical CO$_2$ phase occurs at 10 years when injection is halted. With increasing time the CO$_2$ in the H$_2O$ increases with time and the supercritical CO$_2$ phase dissipates.
+
+Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^g$ are plotted at the injection well as a function of time. Note the discontinuity in the slope of these quantities as supercritical CO$_2$ is formed at approximately 0.0004 years indicated by the vertical line in the gas saturation $s_g$. A sharp drop in these quantities is observed at 10 years when injection is halted. The relatively flat top of the curves for $Z_\c$ and $s_g$ is caused by the residual saturation in this problem with a value of 0.1.
 
 \begin{figure}[h]
 \includegraphics[scale=0.25]{./figs/sg-10y.png}
@@ -622,23 +947,35 @@ Shown in Figure~\ref{fmass} is the total moles of CO$_2$ in the H$_2$O (blue cur
 \caption{Moles of CO$_2$ as a function of time in H$_2$ and supercritical CO$_2$ phases.}\label{fmass}
 \end{figure}
 
+\begin{figure}\centering
+\includegraphics[scale=0.45]{./figs/zco2}
+\caption{Plot showing $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^g$ as functions of time at the injection well.}\label{fzco2}
+\end{figure}
+
 \newpage
 \section{References}
+\begin{description}
+\item Duan Z., and Sun, R. (2003) An improved model calculating CO2 solubility in pure water and aqueous NaCl solutions from 273 to 533 K andfrom 0 to 2000 bar, Chemical Geology 193, 257--271.
 
-Span, R., Wagner, W. (1996) A New Equation of State for Carbon Dioxide Covering the Fluid Region from the Triple-Point Temperature to 1100 K at Pressures up to 800 MPa, J. Phys. Chem. Ref. Data, 25, 6, 1509--1596.
+\item Duan, Z., Hu, J., Li, D., and Mao, S. (2008) Densities of the CO$_2$-H$_2$O and CO$_2$-H$_2$O-NaCl Systems up to 647 K and 100 MPa, Energy \& Fuels, 22, 1666--1674.
 
-Revised Release on the IAPS Formulation 1985 for the Thermal Conductivity of Ordinary Water Substance, International Association for the Properties of Water and Steam, London, 1998, 23. 
+\item Li D., and Duan, Z. (2007)The speciation equilibrium coupling with phase equilibrium in the H2OÐCO2ÐNaCl system from 0 to 250 $^\circ$C, from 0 to 1000 bar,and from 0 to 5 molality of NaCl, Chemical Geology 244, 730--751.
 
-Thermal conductivity and viscosity
+\item Span, R., Wagner, W. (1996) A New Equation of State for Carbon Dioxide Covering the Fluid Region from the Triple-Point Temperature to 1100 K at Pressures up to 800 MPa, J. Phys. Chem. Ref. Data, 25, 6, 1509--1596.
 
-Kestin, J.; Sengers, J.V.; Kamgar-Parsi, B.; Levelt Sengers, J.M.H., Thermophysical Properties of Fluid H2O, J. Phys. Chem. Ref. Data, 1984, 13, 1, 175-183.
+\item Revised Release on the IAPS Formulation 1985 for the Thermal Conductivity of Ordinary Water Substance, International Association for the Properties of Water and Steam, London, 1998, 23. 
 
-Viscosity
+%Thermal conductivity and viscosity
 
-IAPWS, Revised Release on the IAPS Formulation 1985 for the Viscosity of Ordinary Water Substance, International Association for the Properties of Water and Steam, Erlangen, Germany, 1997, 15.
+\item Kestin, J., Sengers, J.V., Kamgar-Parsi, B., Levelt Sengers, J.M.H. (1984) Thermophysical Properties of Fluid H2O, J. Phys. Chem. Ref. Data, 13, 1, 175--183.
 
-\bibliographystyle{plainnat}
-\bibliography{./reference-new}
+%Viscosity
+
+\item IAPWS, Revised Release on the IAPS Formulation 1985 for the Viscosity of Ordinary Water Substance, International Association for the Properties of Water and Steam, Erlangen, Germany, 1997, 15.
+\end{description}
+
+%\bibliographystyle{plainnat}
+%\bibliography{./reference-new}
 
 
 \end{document}
