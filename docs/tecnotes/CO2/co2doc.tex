@@ -704,11 +704,11 @@ M_{P} \eq \varphi \rho_l,
 
 \noindent $Z_\c$:
 \EQ
-M_{P} \eq \varphi \rho_l,
+M_{Z} \eq \varphi \rho_l Z,
 \EN
 \BA
-\delta M_{P} &\eq \varphi (\delta\rho_l Z+\rho_l\delta Z),\nonumber\\
-&\eq \varphi(\rho_{lP}^{}\delta P + \rho_l\delta Z).
+\delta M_{Z} &\eq \varphi (\delta\rho_l Z+\rho_l\delta Z),\nonumber\\
+&\eq \varphi(\rho_{lP}^{}Z\delta P + \rho_l\delta Z).
 \EA
 
 \subsubsection{Single Gas Phase}
@@ -724,11 +724,11 @@ M_{P} \eq \varphi \rho_g,
 
 \noindent $Z_\c$:
 \EQ
-M_{P} \eq \varphi \rho_l,
+M_{Z} \eq \varphi \rho_l Z,
 \EN
 \BA
-\delta M_{P} &\eq \varphi (\delta\rho_l Z+\rho_l\delta Z),\nonumber\\
-&\eq \varphi(\rho_{lP}^{}\delta P + \rho_l\delta Z).
+\delta M_{Z} &\eq \varphi (\delta\rho_l Z+\rho_l\delta Z),\nonumber\\
+&\eq \varphi(\rho_{lP}^{}Z\delta P + \rho_l\delta Z).
 \EA
 
 \subsubsection{Two-Phase}
@@ -744,27 +744,35 @@ M_{P} \eq \varphi (s_l\rho_l+s_g\rho_g),
 
 \noindent $Z_\c$:
 \EQ
-M_{Z} \eq \varphi Z(s_l\rho_l+s_g\rho_g),
+M_{Z} \eq \varphi(s_l\rho_l+s_g\rho_g) Z,
 \EN
 \BA
-\delta M_{Z} &\eq \varphi Z(s_l^{}\delta\rho_l^{}+s_g^{}\delta\rho_g^{})+\varphi Z(\rho_g^{}-\rho_l^{}) \delta s_g + \varphi (s_l\rho_l^{}+s_g\rho_g^{}) \delta Z,\nonumber\\
-&\eq \varphi Z(s_l\rho_{lP}^{}+s_g^{}\rho_{gP}^{})\delta P + \varphi Z(\rho_g^{}-\rho_l^{}) s_{gP}^{} \delta P \nonumber\\
-&\qquad + \varphi Z(\rho_g^{}-\rho_l^{}) s_{gZ}^{} \delta Z + \varphi (s_l^{}\rho_l^{}+s_g^{}\rho_g^{}) \delta Z.
+\delta M_{Z} &\eq \varphi (s_l^{}\delta\rho_l^{} + s_g^{}\delta\rho_g^{}) Z
++ \varphi (\rho_g^{}-\rho_l^{}) Z \delta s_g 
++ \varphi (s_l\rho_l^{}+s_g\rho_g^{})\delta Z,\nonumber\\
+&\eq \varphi (s_l^{}\rho_{lP}^{}+s_g^{}\rho_{gP}^{})Z\delta P 
++ \varphi (\rho_g^{}-\rho_l^{})Z s_{gP}^{} \delta P \nonumber\\
+&\qquad + \varphi (\rho_g^{}-\rho_l^{}) Z s_{gZ}^{} \delta Z 
++ \varphi (s_l^{}\rho_l^{}+s_g^{}\rho_g^{}) \delta Z.
 \EA
 
 Derivatives of $s_g (P,\, T,\,Z)$:
+\begin{subequations}
 \BA
 s_{gZ}^{} & \eq \frac{\p s_g}{\p Z},\\
 & \eq \frac{\rho_l^{}\rho_g^{} (X_i^g - X_i^l)}{\rho_l^{}(Z-X_i^l) - \rho_g^{}(Z-X_i^g)},
 \EA
+\end{subequations}
+\begin{subequations}
 \BA
 s_{gP}^{} &\eq \frac{\p s_g}{\p P},\\
 & \eq \cdots
 \EA
+\end{subequations}
 
 \subsection{Flux}
 
-The flux in the $x,\,y,\,z$-directions for the pressure equation is defined as
+The total flux in the $x,\,y,\,z$-directions for the pressure equation is defined as
 \begin{subequations}
 \EQ
 \Delta_x f_x \eq \Delta_x \left(f_{lx}+f_{gx}\right) \eq \left(\rho_l q_l+\rho_g q_g \right)_{i+1/2}^{n+1} A_{i+1/2}-\left( \rho_l q_l+\rho_g q_g \right)_{i-1/2}^{n+1}A_{i-1/2},
@@ -814,7 +822,7 @@ Mole Fraction & $X_i^{\a}$ & Upstream Weighting\\
 \end{tabular}
 \end{table}
 
-The liquid flux at the $i-1/2$ face is given by
+The liquid flux at the $i\!-\!1/2$ face can be expressed as
 \EQ
 f_{x,i-1/2}^l \eq \frac{(k \lambda_l \rho_l)_{i-1/2}}{d_i+d_{i-1}} \Phi_{li} A_{i-1/2},
 \EN
@@ -826,11 +834,11 @@ where
 \EQ
 \Delta P_i^l \eq P_{i}^l -P_{i-1}^l.
 \EN
-The mobility $\lambda_l$ given by
+The mobility $\lambda_l$ is given by
 \EQ
 \lambda_l \eq \frac{k_{l}}{\mu_l},
 \EN
-where $k_l$ denotes the relative permeability in general a nonlinear function of saturation, and $\gamma_l$ is defined by
+where $k_l$ denotes the relative permeability, in general a nonlinear function of saturation, and the quantity $\gamma_l$ is defined by
 \EQ
 \gamma_l \eq W_l \rho_l g,
 \EN
@@ -888,7 +896,7 @@ The change in liquid flux is given by
 \delta f_{l,i-1/2} &\eq \T_{i-1/2}^{} \, \delta(\rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \Phi_{li}^{}),\\
 &\eq \T_{i-1/2}^{} \, (\delta\rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \Phi_{li}^{}+ \rho_{l,i-1/2}^{} \, \delta\lambda_{l,i-1/2}^{} \, \Phi_{li}^{} + \rho_{l,i-1/2}^{} \, \lambda_{l,i-1/2}^{} \, \delta\Phi_{li}^{}),\\
 & \eq \T_{i-1/2} \left[\Phi_{li} \, \lambda_{l,i-1/2} \, \delta \rho_{l,i-1/2} + \Phi_{li} \, \rho_{l,i-1/2} \, \delta \lambda_{l,i-1/2}  \right.\\
-& \left. \qquad + \rho_{l,i-1/2} \, \lambda_{l,i-1/2} \, (\delta \Delta P_{i}^l -\delta \gamma_l \Delta z_i)\right],
+& \left. \qquad + \rho_{l,i-1/2} \, \lambda_{l,i-1/2} \, (\delta \Delta P_{i}^l - \Delta z_i \delta \gamma_l)\right],
 %-\rho_{l,i-1/2} \, \lambda_{l,i-1/2} \, \delta \Delta P_{ci} 
 %+ 2\alpha_{li} \, \delta \rho_{l,i-1/2}
 \end{split}
