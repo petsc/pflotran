@@ -2121,6 +2121,10 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item {\tt Name}
 \item [\keyend]
 
+\item [REDOX\_SPECIES] ~
+\item {\tt Name}
+\item [\keyend]
+
 \item[GAS\_SPECIES] ~
 \item {\tt Name}
 \item [\keyend]
@@ -2290,6 +2294,18 @@ CHEMISTRY
   /
   ...
 END
+\end{verbatim}
+
+Deactivate redox equilibrium reactions for the listed redox pairs:
+\begin{verbatim}
+REDOX_SPECIES
+  Fe++
+  Fe+++
+  SO4--
+  HS-
+  Acetate-
+  Ethanol(aq)
+/
 \end{verbatim}
 
 \begin{center}
@@ -3145,18 +3161,19 @@ END
 \item[SCREEN \ PERIODIC] {\tt <integer>}: print to screen every <integer> time steps.
 \item[PERIODIC \ TIME] {\tt <float>} \ {\tt Unit}
 \item[PERIODIC \ TIMESTEP] {\tt <float>} \ {\tt Unit}
-\item[PERIODIC\_OBSERVATION \ TIME] \ {\tt <float>} \ {\tt <unit>}: \ output the results at observation points at times specified by the actual time
-\item[PERIODIC\_OBSERVATION \ TIMESTEP] \ {\tt <integer>}: \ output the results at observation points at specified time steps 
-\item[NO\_PRINT\_INITIAL:] \ the initial state of the system will not be printed to the output file if this card is activated
-\item[NO\_PRINT\_FINAL:] \ the final state of the system will not be printed to the output file if this card is activated
+\item[PERIODIC\_OBSERVATION \ TIME] \ {\tt <float>} \ {\tt <unit>}: \ output the results at observation points and mass balance output at specified output times
+\item[PERIODIC\_OBSERVATION \ TIMESTEP] \ {\tt <integer>}: \ output the results at observation points and mass balance output at specified time steps 
+\item[NO\_PRINT\_INITIAL] \ the initial state of the system will not be printed to the output file if this card is activated
+\item[NO\_PRINT\_FINAL] \ the final state of the system will not be printed to the output file if this card is activated
+\item[PRINT\_COLUMN\_IDS] print column numbers in observation and mass balance output files
 \item[FORMAT] \ <file format>: \ specify the snapshot in time file type. Options available are: 
 \begin{deflist}{0000000000000000000000}
-\item[TECPLOT BLOCK]
+\item[TECPLOT BLOCK] -TecPlot block format
 \item[TECPLOT POINT] -requires a single processor run
 \item[HDF5] -produces single HDF5 file {\tt pflotran.h5}
 \item[HDF5 MULTIPLE\_FILES] -produces a separate HDF5 file at each output time
 \item[MAD]
-\item[VTK] -not supported
+\item[VTK] -VTK format (not currently supported)
 \end{deflist}
 %\item[FORMAT \ TECPLOT \ BLOCK]
 %\item[FORMAT \ HDF5]
