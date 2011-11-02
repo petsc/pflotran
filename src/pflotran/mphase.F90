@@ -1419,7 +1419,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         else if(option%co2eos == EOS_MRK) then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
           call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
+          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+          enth_src_co2 = enth_src_co2*FMWCO2*option%scale
         else
           call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
         endif
@@ -1521,6 +1522,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
     case default
       print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
+  deallocate(msrc)
       
 end subroutine MphaseSourceSink
 
@@ -2667,7 +2669,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (option%compute_mass_balance_new) then
         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-          Res(:)/option%flow_dt
+         Res(:)/option%flow_dt
       endif
   
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
