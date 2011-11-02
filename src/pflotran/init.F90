@@ -1856,6 +1856,8 @@ subroutine InitReadInput(simulation)
                       output_option%tecplot_format = TECPLOT_POINT_FORMAT
                     case('BLOCK')
                       output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+                    case('FEBRICK')
+                      output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
                     case default
                       option%io_buffer = 'TECPLOT format (' // trim(word) // &
                                          ') not recongnized.'
@@ -1864,6 +1866,9 @@ subroutine InitReadInput(simulation)
                   if (output_option%tecplot_format == TECPLOT_POINT_FORMAT &
                       .and. option%mycommsize > 1) then
                     output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+                  endif
+                  if (grid%itype == UNSTRUCTURED_GRID) then
+                    output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
                   endif
                 case ('VTK')
                   output_option%print_vtk = PETSC_TRUE

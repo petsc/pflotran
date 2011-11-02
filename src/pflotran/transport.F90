@@ -126,7 +126,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
         weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-		if (iphase == 2) then
+      if (iphase == 2) then
           diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
                                weight*rt_parameter%diffusion_coefficient(iphase)
 
@@ -142,11 +142,11 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
                     exp(rt_parameter%diffusion_activation_energy(iphase) &
                     /R_gas_constant*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
           weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
-		               (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
+            (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
           diffusion(iphase) = diffusion(iphase) + weight_new - &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 #endif
-	    endif
+        endif
       endif
     enddo
   endif
@@ -261,14 +261,14 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
          !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
             if ( iphase == 2) then
               diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
-                                  weight*rt_parameter%diffusion_coefficient(iphase)
+                weight*rt_parameter%diffusion_coefficient(iphase)
 #ifdef TEMP_DEPENDENT_LOGK   
               T_ref_inv = 1.d0/(25.d0 + 273.15d0)
-		      temp_up = global_aux_var_up%temp(1)      
+              temp_up = global_aux_var_up%temp(1)      
               diffusion(iphase) = diffusion(iphase) + &
-                                  weight*rt_parameter%diffusion_coefficient(iphase)* &
-                                  (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-                                  R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+                weight*rt_parameter%diffusion_coefficient(iphase)* &
+                (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+                R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
             endif
           endif    
@@ -281,20 +281,20 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
               weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           !   need to account for multiple phases
           !   units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              if ( iphase == 2) then
-              diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
+              if (iphase == 2) then
+                diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                                   weight*rt_parameter%diffusion_coefficient(iphase)
 #ifdef TEMP_DEPENDENT_LOGK   
-              T_ref_inv = 1.d0/(25.d0 + 273.15d0)
-		      temp_up = global_aux_var_up%temp(1)      
-              diffusion(iphase) = diffusion(iphase) + &
-                                  weight*rt_parameter%diffusion_coefficient(iphase)* &
-                                  (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-                                  R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+                T_ref_inv = 1.d0/(25.d0 + 273.15d0)
+                temp_up = global_aux_var_up%temp(1)      
+                diffusion(iphase) = diffusion(iphase) + &
+                weight*rt_parameter%diffusion_coefficient(iphase)* &
+                (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+                R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
+              endif
             endif 
           endif
-		  
         case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
       end select
     enddo
