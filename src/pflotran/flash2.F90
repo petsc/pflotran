@@ -957,9 +957,9 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   msrc = mmsrc(1:nsrcpara)
   qsrc_phase = 0.d0
  ! if (present(ireac)) iireac=ireac
-  if (energy_flag) then
-    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
-  endif         
+!  if (energy_flag) then
+!    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
+!  endif         
  
   select case(isrctype)
     case(MASS_RATE_SS)
@@ -1011,7 +1011,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         else
           call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
         endif
-              
+  
         Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
         if (energy_flag) &
          Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
@@ -1109,7 +1109,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
     case default
     print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
-  deallocate(msrc)
+!  deallocate(msrc)
   
 end subroutine Flash2SourceSink
 
@@ -3173,7 +3173,8 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   aux_vars_bc => patch%aux%Flash2%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
@@ -3258,17 +3259,16 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
+      
       call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
-
      if (option%compute_mass_balance_new) then
          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
          Res(:)/option%flow_dt
       endif
-  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
       patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
