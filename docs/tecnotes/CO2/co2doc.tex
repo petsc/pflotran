@@ -903,24 +903,46 @@ The change in liquid flux is given by
 \EN
 where
 \begin{align}
-\delta \lambda_l &= \frac{d \lambda_l}{ds_g} \delta s_g,\\
+\delta \lambda_l &= \frac{d \lambda_l}{ds_g} \delta s_g.
 %\Delta P_{c,i} &= P_{c,i} - P_{c,{i-1}},\\
 %\delta P_c &= \frac{dP_c}{ds_g} \delta s_g,\\
 %\alpha_{li} &= \frac{\lambda_{l,i-1/2}}{2} \left(\Phi_{li} - \rho_{l,i-1/2} W_l g \Delta z_i \right).
 \end{align}
-The change in $\c$ flux in the liquid phase can be written in terms of the pressure equation flux and a diffusion term
+The change in $c=\c$ flux in the liquid phase can be written in terms of the pressure equation flux and a diffusion term
 \EQ
-\delta \left(f_l X_c^l + f_D^l\right)_{i-1/2} \eq X_{cu}^l \delta f_{l,i-1/2} + f_{l,i-1/2} \delta X_{c,i-1/2}^l + \delta (f_D^l)_{i-1/2}.
+\delta \left(f_l X_c^l + f_D^l\right)_{i-1/2} \eq X_{cu}^l \delta f_{l,i-1/2} + f_{l,i-1/2} \delta X_{c,i-1/2}^l + \delta (f_{cD}^l)_{i-1/2}.
 \EN
 where
 \EQ
-(f_D^l)_{i-1/2} \eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
+(f_{cD}^l)_{i-1/2} \eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
 \EN
-Upstream weighting is used for the $\c$ mole fraction $X_\c^l$.
+Upstream weighting is used for the $\c$ mole fraction $X_\c^l$. The derivative of the diffusive flux is given by
+\BA
+\delta(f_{cD}^l)_{i-1/2} &\eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \delta\big(X_{\c,i}^l-X_{\c,i-1}^l\big) \nonumber\\
+&\qquad-\frac{\delta(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
+\EA
+
+
+The derivative of the mole fraction $X_c^\a$ depends on the state of the system
+\EQ
+\delta X_c^\a \eq \left\{
+\renewcommand{\arraystretch}{1.35}
+\begin{array}{llc}
+0, & \text{two-phase:} & X_\c^{l,\rm eq} < Z < X_c^{g,\rm eq}\\
+\delta Z, & \text{single phase:} & Z \leq X_\c^{l,\rm eq} \ \text{or} \ X_\c^{g,\rm eq} \leq Z
+\end{array}
+\right..
+\EN
 
 \subsubsection{Single Gas Phase}
 
-\subsubsection{Two-Phase}
+The gas phase flux for advection is similar to the liquid phase. The diffusive flux has the form
+\EQ
+f_{cD}^g \eq -\phi\tau D_{va}^0 \left(\dfrac{T}{T_K}\right)^\theta \dfrac{P_0}{P_g} s_g\nabla X_c^g,
+\EN
+with $T_K = 273.15~^\circ$K, $P_0$ represents a reference pressure, $\tau$ is tortuosity, and $\theta$ is a parameter, typically with the value 1.8. 
+
+%\subsubsection{Two-Phase}
 
 \subsection{Source/Sink}
 
@@ -957,7 +979,7 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 \begin{figure}\centering
 \includegraphics[scale=0.45]{./figs/zco2}
-\caption{Plot showing $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^g$ as functions of time at the injection well.}\label{fzco2}
+\caption{Plot showing $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^g$ as functions of time at the injection well. The total mole fraction $Z_\c$ is piecewise continuous with a change in slope at phase changes and when the CO$_2$ saturation reaches the residual saturation.}\label{fzco2}
 \end{figure}
 
 \newpage
@@ -967,7 +989,7 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 \item Duan, Z., Hu, J., Li, D., and Mao, S. (2008) Densities of the CO$_2$-H$_2$O and CO$_2$-H$_2$O-NaCl Systems up to 647 K and 100 MPa, Energy \& Fuels, 22, 1666--1674.
 
-\item Li D., and Duan, Z. (2007) The speciation equilibrium coupling with phase equilibrium in the H2O�CO2�NaCl system from 0 to 250 $^\circ$C, from 0 to 1000 bar, and from 0 to 5 molality of NaCl, Chemical Geology 244, 730--751.
+\item Li D., and Duan, Z. (2007) The speciation equilibrium coupling with phase equilibrium in the H$_2$O-CO$_2$-NaCl system from 0 to 250 $^\circ$C, from 0 to 1000 bar, and from 0 to 5 molality of NaCl, Chemical Geology 244, 730--751.
 
 \item Span, R., Wagner, W. (1996) A New Equation of State for Carbon Dioxide Covering the Fluid Region from the Triple-Point Temperature to 1100 K at Pressures up to 800 MPa, J. Phys. Chem. Ref. Data, 25, 6, 1509--1596.
 
@@ -975,7 +997,7 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 %Thermal conductivity and viscosity
 
-\item Kestin, J., Sengers, J.V., Kamgar-Parsi, B., Levelt Sengers, J.M.H. (1984) Thermophysical Properties of Fluid H2O, J. Phys. Chem. Ref. Data, 13, 1, 175--183.
+\item Kestin, J., Sengers, J.V., Kamgar-Parsi, B., Levelt Sengers, J.M.H. (1984) Thermophysical Properties of Fluid H$_2$O, J. Phys. Chem. Ref. Data, 13, 1, 175--183.
 
 %Viscosity
 

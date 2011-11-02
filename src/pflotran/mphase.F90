@@ -2089,7 +2089,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: p2,p,tmp,t
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   PetscReal :: ug,xphi,henry,sat_pressure
-  PetscReal :: k1, k2, z1, z2, xg, vmco2, vmh2o, sg
+  PetscReal :: k1, k2, z1, z2, xg, vmco2, vmh2o, sg, sgg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
 ! PetscReal :: yh2o_in_co2 = 1.d-2
@@ -2270,9 +2270,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !       &     '' sg='',1pe12.4,'' dg='',1p2e12.4)') &
 !             k1,k2,z1,z2,xco2eq,xg,sg,den(1),dg
 
-              sg = den(1)*(z2-xco2eq)/(den(1)*(z2-xco2eq) - &
+              sgg = den(1)*(z2-xco2eq)/(den(1)*(z2-xco2eq) - &
                 dg*(z2-(1.d0-wat_sat_x)))
-              write(*,'(''Rachford-Rice: sg = '',1pe12.4)') sg
+              write(*,'(''Rachford-Rice: sg = '',1p2e12.4)') sgg,sg
               
               xx_p(dof_offset+3) = sg   
               ichange = 1
