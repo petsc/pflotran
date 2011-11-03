@@ -38,7 +38,7 @@ module Output_module
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
-            OutputPermeability
+            OutputPermeability, OutputPrintCouplers
 
 contains
 
@@ -8491,5 +8491,113 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
   header = trim(header) // trim(string)
 
 end subroutine OutputAppendToHeader
+
+! ************************************************************************** !
+!
+! OutputPrintCouplers: Prints values of auxilliary variables associated with
+!                      couplers (boundary and initial conditions, source
+!                      sinks).  Note that since multiple connections for
+!                      couplers can exist for a single cell, the latter will
+!                      overwrite the former.
+! author: Glenn Hammond
+! date: 11/02/11
+!
+! ************************************************************************** !
+subroutine OutputPrintCouplers(realization,istep)
+
+  use Realization_module
+  use Coupler_module
+  use Connection_module
+  use Option_module
+  use Debug_module
+  use Field_module
+  use Patch_module
+  use Level_module
+  use Grid_module
+  use Input_module
+
+  type(realization_type) :: realization
+  PetscInt :: istep
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: cur_patch
+  type(level_type), pointer :: cur_level
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: coupler
+  type(flow_debug_type), pointer :: flow_debug
+  type(grid_type), pointer :: grid
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string, coupler_string
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: local_id, iconn, iauxvar
+  PetscErrorCode :: ierr
+  
+  
+  option => realization%option
+  flow_debug => realization%debug
+  field => realization%field
+
+  if (len_trim(flow_debug%coupler_string) == 0) then
+    option%io_buffer = &
+      'Coupler debugging requested, but no string of coupler names was included.'
+    call printErrMsg(option)
+  endif
+  
+  coupler_string = flow_debug%coupler_string
+  ierr = 0
+  do
+    call InputReadWord(coupler_string,word,PETSC_TRUE,ierr)
+    if (ierr /= 0) exit
+    
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        iauxvar = RICHARDS_PRESSURE_DOF
+      case default
+        option%io_buffer = &
+          'OutputPrintCouplers() not yet supported for this flow mode'
+        call printErrMsg(option)
+    end select
+    
+    cur_level => realization%level_list%first
+    do 
+      if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        grid => cur_patch%grid
+        coupler => CouplerGetPtrFromList(word,cur_patch%boundary_conditions)
+        call VecZeroEntries(field%work,ierr)
+        call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+        if (associated(coupler)) then
+          cur_connection_set => coupler%connection_set
+          do iconn = 1, cur_connection_set%num_connections
+            local_id = cur_connection_set%id_dn(iconn)
+            if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+            vec_ptr(local_id) = coupler%flow_aux_real_var(iauxvar,iconn)
+          enddo
+        endif
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+        cur_patch => cur_patch%next
+      enddo
+      cur_level => cur_level%next
+    enddo
+
+    if (istep > 0) then
+      write(string,*) istep
+      string = adjustl(string)
+    else 
+      string = ''
+    endif
+    string = trim(word) // trim(string)
+    if (len_trim(option%group_prefix) > 1) then
+      string = trim(string) // trim(option%group_prefix)
+    endif
+    string = trim(string) // '.tec'
+    call OutputVectorTecplot(string,word,realization,field%work)
+      
+  enddo
+
+end subroutine OutputPrintCouplers
 
 end module Output_module
