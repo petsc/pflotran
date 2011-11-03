@@ -362,7 +362,8 @@ subroutine OutputTecplotBlock(realization)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      header2 = RTGetTecplotHeader(realization,icolumn)
+      string = ''
+      header2 = RTGetTecplotHeader(realization,string,icolumn)
       header = trim(header) // trim(header2)
     endif
 
@@ -915,7 +916,8 @@ subroutine OutputTecplotFEBrick(realization)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      header2 = RTGetTecplotHeader(realization,icolumn)
+      string = ''
+      header2 = RTGetTecplotHeader(realization,string,icolumn)
       header = trim(header) // trim(header2)
     endif
 
@@ -1937,7 +1939,8 @@ subroutine OutputTecplotPoint(realization)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      header2 = RTGetTecplotHeader(realization,icolumn)
+      string = ''
+      header2 = RTGetTecplotHeader(realization,string,icolumn)
       header = trim(header) // trim(header2)
     endif
 
@@ -3319,7 +3322,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   
   ! reactive transport
   if (option%ntrandof > 0) then
-    header = RTGetTecplotHeader(realization,icolumn)
+    header = RTGetTecplotHeader(realization,cell_string,icolumn)
     write(fid,'(a)',advance="no") trim(header)
   endif
     
