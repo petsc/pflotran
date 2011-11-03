@@ -184,6 +184,10 @@ subroutine StrataRead(strata,input,option)
         strata%material_property_filename = string
       case('INACTIVE')
         strata%active = PETSC_FALSE
+      case default
+        option%io_buffer = 'Keyword "' // trim(keyword) // &
+          '" in STRATA block not recognized.'
+        call printErrMsg(option)
     end select 
   
   enddo  
