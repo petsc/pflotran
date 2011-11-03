@@ -91,6 +91,7 @@
 \renewcommand{\b}{{\beta}}
 \renewcommand{\e}{{\epsilon}}
 \newcommand{\s}{{\sigma}}
+\renewcommand{\t}{{\tau}}
 \renewcommand{\sc}{{g}}
 \newcommand{\w}{{\rm H_2O}}
 \newcommand{\air}{{\rm N_2}}
@@ -120,6 +121,7 @@
 \newcommand{\bD}{\boldsymbol{D}}
 \newcommand{\bE}{\boldsymbol{E}}
 \newcommand{\bF}{\boldsymbol{F}}
+\renewcommand{\bf}{\boldsymbol{f}}
 \newcommand{\bG}{\boldsymbol{G}}
 \newcommand{\bg}{\boldsymbol{g}}
 \newcommand{\bi}{\boldsymbol{i}}
@@ -363,20 +365,18 @@ H_\a \eq U_\a + \frac{P_\a}{\rho_\a}.
 \subsection{Material Properties}
 
 Material fluid properties for density, viscosity, internal energy and enthalpy are needed for pure H$_2$O and supercritical CO$_2$, and in the case of nonisothermal systems internal energy and enthalpy. In addition, mixture properties for CO$_2$ dissolved in H$_2$O and H$_2$O dissolved in supercritical CO$_2$ are needed. 
-
-
 Each phase $\a$ is a mixture of species H$_2$O and CO$_2$. 
 %For H$_2$O, $W_{\rm H_2O} = 18.01534$ kg/mol, and for CO$_2$, $W_{\c} = 44.0098$ kg/kmol.
 
 
 \subsubsection{Pure H$_2$O}
 
-The density, viscosity, internal energy, and enthalpy of pure H$_2$O are taken from the steam tables [International Formulation Committee of the Sixth International Conference on Properties of Steam, (1967)] and is valid for the pressure and temperature range of $0 < P < 1000$ bars, and $0 < T < 800$\degc. In addition, the saturation curve of H$_2$O, $P_{\rm sat}(T)$ and its inverse relation $T_{\rm sat}(P_v)$, for vapor pressure $P_v$, are also provided.
+The density, viscosity, internal energy, and enthalpy of pure H$_2$O are taken from the steam tables [International Formulation Committee of the Sixth International Conference on Properties of Steam, (1967)] and is valid for the pressure and temperature range of $0 \!<\! P \!<\! 1000$ bars, and $0 \!<\! T \!<\! 800$\degc. In addition, the saturation curve of H$_2$O, $P_{\rm sat}(T)$ and its inverse relation $T_{\rm sat}(P_v)$, for vapor pressure $P_v$, are also provided.
 
 \noindent
-Critical temperature ($T_c$)	373.946\degc\\
-Critical pressure ($P_c$)	220.640 bar\\
-Critical density ($\rho_c$)	322.000000 kg/m$^3$\\
+Critical temperature ($T_c$) 373.946\degc\\
+Critical pressure ($P_c$) 220.640 bar\\
+Critical density ($\rho_c$) 322.000000 kg/m$^3$\\
 $W_{\rm H_2O} = 18.01534$ kg/mol
 
 \subsubsection{Supercritical CO$_2$}
@@ -386,7 +386,7 @@ Material properties of supercritical CO$_2$ are obtained from an equation of sta
 \noindent
 Critical temperature: ($T_c$) 30.9782\degc\\
 Critical pressure: ($P_c$)	73.773 bar\\
-Critical density: ($\rho_c$)	467.600 kg/m$^3$\\
+Critical density: ($\rho_c$) 467.600 kg/m$^3$\\
 $W_{\c} = 44.0098$ kg/kmol
 
 \subsubsection{Mixture Properties}
@@ -534,7 +534,7 @@ In the FLASH approach the primary variables are $P$, $T$ and the total mole frac
 This gives $2+N_C-1 = N_C+1$ independent variables as required. The variable $Z_i$ is a persistent degree of freedom throughout the simulation. From the knowledge of $Z_i$ it is possible to obtain the stable phase assemblage, the volume fraction $s_\a$ of each phase present in the system, and its composition in terms of $X_i^\a$ as indicated in Table~\ref{tphase}. 
 
 \begin{table}[h]\centering
-\caption{Phase Transitions}
+\caption{Phase Transition}
 \label{tphase}
 
 \vspace{3mm}
@@ -552,13 +552,26 @@ $X_\c^{g,\rm eq} \leq Z_\c^{}$ & gas\\
 \end{table}
 
 For a two-phase ($\a=l$, $\sc$) system where, for example, $l$ designates the liquid phase $\w$ and $\sc$ designates supercritical $\c$, $Z_i$ can be expressed as
-\EQ
+\EQ\label{zisg}
 Z_i \eq \frac{\rho_l^{} s_l^{} X_i^l + \rho_{\sc}^{} s_{\sc}^{} X_i^{\sc}}{\rho_l^{} s_l^{} + \rho_{\sc}^{} s_{\sc}^{}},
 \EN
 for molar fluid densities $\rho_l$, $\rho_{\sc}$ and phase saturation $s_l$, $s_{\sc} \!=\! 1\!-\!s_l$.
 Solving this equation for $s_g$ gives
 \EQ\label{sg}
 s_g \eq \frac{\rho_l^{} (Z_i^{}-X_i^l)}{\rho_l^{} (Z_i^{} - X_i^l) - \rho_g^{} (Z_i^{} -X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
+\EN
+
+For single phase liquid or gas systems it follows that Eqn.\eqref{zisg} reduces to
+\EQ
+Z_i \eq X_i^\a, \ (\a=l,\,g),
+\EN
+and 
+\EQ
+s_g \eq \left\{
+\begin{array}{ll}
+1 & \a=g\\
+0 & \a=l
+\end{array}\right..
 \EN
 
 To determine the mole fractions $X_i^\a$ from $Z_i$ it is necessary to consider the equilibrium constraints between phases expressed as equality their chemical potentials in the two phases.
@@ -598,7 +611,7 @@ s_{\sc} \eq \frac{\rho_{l}^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq})}
 {\rho_l^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq}) - \rho_{\sc}^{} (Z_{\c}^{} - X_{\c}^{\sc})},
 \EN
 with $s_l\!=\!1\!-\!s_{\sc}$.
-The density of either the aqueous or supercritical $\c$ phase is obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture rules for the phase.
+The densities of the aqueous and supercritical $\c$ phases are obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture rules for the phase.
 \end{description}
 
 \section{Numerical Implementation}
@@ -606,33 +619,33 @@ The density of either the aqueous or supercritical $\c$ phase is obtained from a
 \subsection{Finite Volume Discretization: Independent Variables}
 
 In the following the so-called Flash method is used in which a persistent set of independent variables exist regardless of the which phases are present in the system within any particular control volume and time $t$. This approach is advantageous for use with multilevel solvers to avoid changes in the independent variables on different levels within a patch as could occur in the variable switching approach.
-Significant simplifications are possible for a two-phase--two-component system such as characterizes the liquid plus supercritical CO$_2$ system considered here. For this system $N_P=2$ $(l,\,g)$, and $N_C=2$ $(\rm H_2O,\, CO_2)$. Three distinct states exist in the system corresponding to single liquid, single gas and two-phase liquid-gas states. The three independent variables are taken as $P$, $T$, and $Z_\c$.
+Significant simplifications are possible for a two-phase--two-component system such as characterizes the liquid plus supercritical CO$_2$ system considered here. For this system $N_P=2$ $(l,\,g)$, and $N_C=2$ $(\rm H_2O,\, CO_2)$. Three distinct states exist in the system corresponding to single liquid, single gas and two-phase liquid-gas states. For a nonisothermal system the three independent variables are taken as $P$, $T$, and $Z_\c$.
 
 %\subsection{Finite Volume Discretization}
 
 \subsection{Residual Function}
 
-Using a finite volume discretization approach, the governing flow and transport equations are discretized according to a sum of accumulation, flux and source/sink terms providing the residual function $R_{in}$ for the $i$th component at the $n$th control volume and $k+1$st time step $\Delta t_{k+1}$ given by
+Using a finite volume discretization approach, the governing flow and transport equations are discretized according to a sum of accumulation, flux and source/sink terms providing the residual function $R_{in}$ for the $i$th component at the $n$th control volume and $\t+1$st time step $\Delta t_{\t+1}$ given by
 \BA
-R_{in}^{k+1} \eq & \left[\big(\varphi  Z_i\sum_\a s_\a \rho_\a\big)_n^{k+1}-(\varphi Z_i\sum_\a s_\a\rho_\a)_n^k \right] \frac{V_n}{\Delta t_{k+1}} 
-+ \sum_{\a n'} (F_i^\a )_{nn'}^{k+1} A_{nn'}
-- Q_{in}^{k+1} V_n,
+R_{in}^{\t+1} \eq & \left[\big(\varphi  Z_i\sum_\a s_\a \rho_\a\big)_n^{\t+1}-(\varphi Z_i\sum_\a s_\a\rho_\a)_n^\t \right] \frac{V_n}{\Delta t_{\t+1}} 
++ \sum_{\a n'} (F_i^\a )_{nn'}^{\t+1} A_{nn'}
+- Q_{in}^{\t+1} V_n,
 \EA
 formulated in terms of the primary variables $T,\, P,\, Z_i$ for use with the flash approach.
-In this equation the sum over $n'$ is over all control volumes which are connected to the $n$th control volume with volume $V_n$ and interfacial area $A_{nn'}$. The discritzed form of the flux $(F_{i^\a})_{nn'}^{k+1}$ is given by
+In this equation the sum over $n'$ is over all control volumes which are connected to the $n$th control volume with volume $V_n$ and interfacial area $A_{nn'}$. The discritzed form of the flux $(F_{i^\a})_{nn'}^{\t+1}$ is given by
 \EQ
-(F_i^\a)_{nn'}^{k+1} \eq (q_{\a}\rho_{\a}X_{i}^{\a})_{nn'}^{k+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{k+1} \frac{X_{i n'}^{\a, k+1}-X_{i n}^{\a,k+1}}{d_{n'}+d_n},
+(F_i^\a)_{nn'}^{\t+1} \eq (q_{\a}\rho_{\a}X_{i}^{\a})_{nn'}^{\t+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{\t+1} \frac{X_{i n'}^{\a, \t+1}-X_{i n}^{\a,\t+1}}{d_{n'}+d_n},
 \EN
 consisting of contributions from advection and diffusion, where the distances $d_n$, $d_{n'}$ refer to the perpendicular distance from the control volume center to the interface. Special consideration is necessary for quantities evaluated at the interface $n\!-\!n'$ denoted by $(~)_{nn'}$.
 In evaluating the residual function the quantities $s_\a$ and $X_i^\a$ are expressed as functions of $Z_i$.
 
 By summing over all components and making use of the constraint condition Eqn.\eqref{sumzi} it is possible to eliminate one residual component equation and replace it with the pressure equation
 \BA
-R_{n}^{k+1} \eq &\sum_\a \Big[\big(\varphi s_\a \rho_\a)_n^{k+1} -(\varphi s_\a \rho_\a)_n^k \Big] \frac{V_n}{\Delta t_{k+1}} + \sum_{\a n'} (F_\a )_{nn'}^{k+1} A_{nn'}- Q_{n}^{k+1} V_n,
+R_{n}^{\t+1} \eq &\sum_\a \Big[\big(\varphi s_\a \rho_\a)_n^{\t+1} -(\varphi s_\a \rho_\a)_n^\t \Big] \frac{V_n}{\Delta t_{\t}} + \sum_{\a n'} (F_\a )_{nn'}^{\t+1} A_{nn'}- Q_{n}^{\t+1} V_n,
 \EA
 with
 \EQ
-(F_\a)_{nn'}^{k+1} \eq \sum_i (F_i^\a)_{nn'}^{k+1} \eq (q_{\a}\rho_{\a})_{nn'}^{k+1},
+(F_\a)_{nn'}^{\t+1} \eq \sum_i (F_i^\a)_{nn'}^{\t+1} \eq (q_{\a}\rho_{\a})_{nn'}^{\t+1},
 \EN
 where
 \EQ
@@ -642,6 +655,8 @@ and
 \EQ
 Q_n \eq \sum_i Q_{in}.
 \EN
+
+The above formulation applies to both structured and unstructured grids, and cartesian, spherical or cylindrical geometries with appropriately chosen surface areas and volumes.
 
 \subsection{Interface Properties}
 
@@ -685,11 +700,51 @@ For a nonisothermal system there is an addition equation for the temperature
 \renewcommand{\arraystretch}{2.0} 
 \bJ \eq 
 \begin{bmatrix}
-\dfrac{\p R_p}{\p P} & \dfrac{\p R_p}{\p T} & \dfrac{\p R_p}{\p Z} \\
+\dfrac{\p R_P}{\p P} & \dfrac{\p R_P}{\p T} & \dfrac{\p R_P}{\p Z} \\
 \dfrac{\p R_T}{\p P} & \dfrac{\p R_T}{\p T} & \dfrac{\p R_T}{\p Z} \\
 \dfrac{\p R_Z}{\p P} & \dfrac{\p R_Z}{\p T} & \dfrac{\p R_Z}{\p Z}
 \end{bmatrix}.
 \EN
+
+\subsection{Isothermal System}
+
+For an isothermal system the governing equations for the two-component system consisting of H$_2$O and CO$_2$ with independent variables $P$ and $Z$, have the following form for the pressure equation
+\EQ
+\frac{\p}{\p t} M + \bnabla\cdot\bf \eq Q,
+\EN
+and
+\EQ
+\frac{\p}{\p t} MZ + \bnabla\cdot(\bf_l X_c^l + \bf_g X_c^g + \bf_{Dc}^l + \bf_{Dc}^g) \eq Q Z,
+\EN
+for the total $c$ = CO$_2$ mole fraction $Z$. In these equations
+\EQ
+M \eq \varphi (s_l^{} \rho_l^{} + s_g^{} \rho_g^{}),
+\EN
+and
+\EQ
+\bf \eq \bf_l^{} + \bf_g^{},
+\EN
+with
+\EQ
+\bf_l^{} \eq \bq_l^{} \rho_l^{} + \bf_{Dc}^l.
+\EN
+and
+\EQ
+\bf_g^{} \eq \bq_l^{} \rho_g^{} + \bf_{Dc}^g.
+\EN
+
+The Jacobian matrix elements are calculated for a 3D nine-point orthogonal stencil using the notation for the $(i,\,j,\,k)$th-grid block
+\BA
+R_n \eq \frac{\Delta_t M_n}{\Delta t}V_n &+ f_{i+1/2} A_{i+1/2}-f_{i-1/2} A_{i-1/2} \nonumber\\
+&+ f_{j+1/2} A_{j+1/2}-f_{j-1/2} A_{j-1/2}\nonumber\\
+&+ f_{k+1/2} A_{k+1/2}-f_{k-1/2} A_{k-1/2},
+\EA
+with
+\EQ
+\Delta_t M_n \eq M_n^{\tau+1}-M_n^\tau,
+\EN
+and
+with $n\!=\!i\!+\!(j\!-\!1)N_x \!+\! (k\!-\!1)N_x N_y$, where number of grid blocks in the $x$, $y$ and $z$ directions are equal to $N_x$, $N_y$ and $N_z$ with volume $V_n$ and interfacial area $A_{nn'}$. A fully implicit formulation is used with the flux terms evaluated at the new time level $\tau+1$.
 
 \subsubsection{Single Liquid Phase}
 
@@ -699,8 +754,13 @@ M_{P} \eq \varphi \rho_l,
 \EN
 \BA
 \delta M_{P} &\eq \varphi \delta\rho_l,\nonumber\\
-&\eq \varphi\rho_{lP}^{}\delta P.
+&\eq \varphi\rho_{lP}^{}\delta P,
 \EA
+where the notation
+\EQ
+\rho_{lP}^{} \eq \left(\frac{\p\rho_l}{\p P}\right)_{Z},
+\EN
+is used.
 
 \noindent $Z_\c$:
 \EQ
@@ -790,16 +850,22 @@ Similarly for the $Z_\c-$equation with $c$ = $\c$ one has
 \begin{subequations}
 \BA
 \Delta_x f_{cx} \eq \Delta_x \left(f_{cx}^l+f_{cx}^g\right) \eq &\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g\right)_{i+1/2}^{n+1} A_{i+1/2}\nonumber\\
-&-\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{i-1/2}^{n+1}A_{i-1/2},
+&-\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{i-1/2}^{n+1} A_{i-1/2}\nonumber\\
+&+\big[(f_{cD}^l)_{i+1/2} + (f_{cD}^g)_{i+1/2}\big] A_{i+1/2}\nonumber\\
+&-\big[(f_{cD}^l)_{i-1/2} + (f_{cD}^g)_{i-1/2}\big] A_{i-1/2},
 \EA
 \BA
 \Delta_y f_{cy} \eq \Delta_y \left(f_{cy}^l+f_{cy}^g\right) \eq &\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{j+1/2}^{n+1} A_{j+1/2} \nonumber\\
-&- \left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{j-1/2}^{n+1} A_{j-1/2},
+&- \left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{j-1/2}^{n+1} A_{j-1/2}\nonumber\\
+&+\big[(f_{cD}^l)_{j+1/2} + (f_{cD}^g)_{j+1/2}\big] A_{j+1/2}\nonumber\\
+&-\big[(f_{cD}^l)_{j-1/2} + (f_{cD}^g)_{j-1/2}\big] A_{j-1/2},
 \EA
 and
 \BA
 \Delta_z f_{cz} \eq \Delta_z \left(f_{cz}^l+f_{cz}^g\right) \eq &\left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{k+1/2}^{n+1} A_{k+1/2} \nonumber\\
-&- \left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{k-1/2}^{n+1} A_{k-1/2}.
+&- \left(\rho_l q_l X_c^l+\rho_g q_g X_c^g \right)_{k-1/2}^{n+1} A_{k-1/2}\nonumber\\
+&+\big[(f_{cD}^l)_{k+1/2} + (f_{cD}^g)_{k+1/2}\big] A_{k+1/2}\nonumber\\
+&-\big[(f_{cD}^l)_{k-1/2} + (f_{cD}^g)_{k-1/2}\big] A_{k-1/2}.
 \EA
 \end{subequations}
 
@@ -903,24 +969,46 @@ The change in liquid flux is given by
 \EN
 where
 \begin{align}
-\delta \lambda_l &= \frac{d \lambda_l}{ds_g} \delta s_g,\\
+\delta \lambda_l &= \frac{d \lambda_l}{ds_g} \delta s_g.
 %\Delta P_{c,i} &= P_{c,i} - P_{c,{i-1}},\\
 %\delta P_c &= \frac{dP_c}{ds_g} \delta s_g,\\
 %\alpha_{li} &= \frac{\lambda_{l,i-1/2}}{2} \left(\Phi_{li} - \rho_{l,i-1/2} W_l g \Delta z_i \right).
 \end{align}
-The change in $\c$ flux in the liquid phase can be written in terms of the pressure equation flux and a diffusion term
+The change in $c=\c$ flux in the liquid phase can be written in terms of the pressure equation flux and a diffusion term
 \EQ
-\delta \left(f_l X_c^l + f_D^l\right)_{i-1/2} \eq X_{cu}^l \delta f_{l,i-1/2} + f_{l,i-1/2} \delta X_{c,i-1/2}^l + \delta (f_D^l)_{i-1/2}.
+\delta \left(f_l X_c^l + f_D^l\right)_{i-1/2} \eq X_{cu}^l \delta f_{l,i-1/2} + f_{l,i-1/2} \delta X_{c,i-1/2}^l + \delta (f_{cD}^l)_{i-1/2}.
 \EN
 where
 \EQ
-(f_D^l)_{i-1/2} \eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
+(f_{cD}^l)_{i-1/2} \eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
 \EN
-Upstream weighting is used for the $\c$ mole fraction $X_\c^l$.
+Upstream weighting is used for the $\c$ mole fraction $X_\c^l$. The derivative of the diffusive flux is given by
+\BA
+\delta(f_{cD}^l)_{i-1/2} &\eq -\frac{(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \delta\big(X_{\c,i}^l-X_{\c,i-1}^l\big) \nonumber\\
+&\qquad-\frac{\delta(\varphi s_l \rho_l D_l)_{i-1/2}}{d_i+d_{i-1}} \big(X_{\c,i}^l-X_{\c,i-1}^l\big).
+\EA
+
+
+The derivative of the mole fraction $X_c^\a$ depends on the state of the system
+\EQ
+\delta X_c^\a \eq \left\{
+\renewcommand{\arraystretch}{1.35}
+\begin{array}{llc}
+0, & \text{two-phase:} & X_\c^{l,\rm eq} < Z < X_c^{g,\rm eq}\\
+\delta Z, & \text{single phase:} & Z \leq X_\c^{l,\rm eq} \ \text{or} \ X_\c^{g,\rm eq} \leq Z
+\end{array}
+\right..
+\EN
 
 \subsubsection{Single Gas Phase}
 
-\subsubsection{Two-Phase}
+The gas phase flux for advection is similar to the liquid phase. The diffusive flux has the form
+\EQ
+f_{cD}^g \eq -\phi\tau D_{va}^0 \left(\dfrac{T}{T_K}\right)^\theta \dfrac{P_0}{P_g} s_g\nabla X_c^g,
+\EN
+with $T_K = 273.15~^\circ$K, $P_0$ represents a reference pressure, $\tau$ is tortuosity, and $\theta$ is a parameter, typically with the value 1.8. 
+
+%\subsubsection{Two-Phase}
 
 \subsection{Source/Sink}
 
@@ -957,7 +1045,7 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 \begin{figure}\centering
 \includegraphics[scale=0.45]{./figs/zco2}
-\caption{Plot showing $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^g$ as functions of time at the injection well.}\label{fzco2}
+\caption{Plot showing $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^g$ as functions of time at the injection well. The total mole fraction $Z_\c$ is piecewise continuous with a change in slope at phase changes and when the CO$_2$ saturation reaches the residual saturation.}\label{fzco2}
 \end{figure}
 
 \newpage
@@ -967,7 +1055,7 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 \item Duan, Z., Hu, J., Li, D., and Mao, S. (2008) Densities of the CO$_2$-H$_2$O and CO$_2$-H$_2$O-NaCl Systems up to 647 K and 100 MPa, Energy \& Fuels, 22, 1666--1674.
 
-\item Li D., and Duan, Z. (2007) The speciation equilibrium coupling with phase equilibrium in the H2O�CO2�NaCl system from 0 to 250 $^\circ$C, from 0 to 1000 bar, and from 0 to 5 molality of NaCl, Chemical Geology 244, 730--751.
+\item Li D., and Duan, Z. (2007) The speciation equilibrium coupling with phase equilibrium in the H$_2$O-CO$_2$-NaCl system from 0 to 250 $^\circ$C, from 0 to 1000 bar, and from 0 to 5 molality of NaCl, Chemical Geology 244, 730--751.
 
 \item Span, R., Wagner, W. (1996) A New Equation of State for Carbon Dioxide Covering the Fluid Region from the Triple-Point Temperature to 1100 K at Pressures up to 800 MPa, J. Phys. Chem. Ref. Data, 25, 6, 1509--1596.
 
@@ -975,7 +1063,7 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 %Thermal conductivity and viscosity
 
-\item Kestin, J., Sengers, J.V., Kamgar-Parsi, B., Levelt Sengers, J.M.H. (1984) Thermophysical Properties of Fluid H2O, J. Phys. Chem. Ref. Data, 13, 1, 175--183.
+\item Kestin, J., Sengers, J.V., Kamgar-Parsi, B., Levelt Sengers, J.M.H. (1984) Thermophysical Properties of Fluid H$_2$O, J. Phys. Chem. Ref. Data, 13, 1, 175--183.
 
 %Viscosity
 
