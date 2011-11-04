@@ -210,104 +210,11 @@
 
 \section{Scope}
 
-This report provides the governing equations, constitutive relations and numerical considerations for implementing the two-phase--two-component system H$_2$O--CO$_2$ into the SAMRAI parallel adaptive mesh refinement framework. Phases considered are liquid water (H$_2$O) and supercritical carbon dioxide (CO$_2$) designated as $\a = l,\, g$, respectively. Components consist of H$_2$O and CO$_2$ designated by the subscript $i=1,\,2$, respectively. The system considered may be either isothermal, in which case an energy balance equation is not necessary, or nonisothermal increasing the number of degrees of freedom by one.
+This report provides the governing equations, constitutive relations and numerical considerations for implementing the two-phase--two-component system H$_2$O--CO$_2$ into the SAMRAI parallel adaptive mesh refinement framework. Phases considered are liquid water (H$_2$O) and supercritical carbon dioxide (CO$_2$) designated as $\a = l,\, g$, respectively. Components consist of H$_2$O and CO$_2$ designated alternatively by the subscripts $i$ = $w$ and $c$, respectively. The system considered may be either isothermal, in which case an energy balance equation is not necessary, or nonisothermal increasing the number of degrees of freedom by one.
 
-Even this relatively simple system involves a complex system of nonlinear partial differential equations combined with complex equations of state for material properties and chemical solubility at the relevant temperatures and pressures.
+Even this relatively simple system involves a complex set of nonlinear partial differential equations combined with complex equations of state for material properties and chemical solubility at the relevant temperatures and pressures.
 
 \section{Governing Equations}
-
-\subsection{Composition Variables}
-
-There are several different approaches possible for solving the governing multiphase-multicomponent flow and transport equations depending on the choice of independent variables. The total number of independent variables is determined by the Gibbs phase rule. 
-For a nonisothermal system derived from $N_P$ single fluid phases\symbolfootnote[2]{For a system with $N_P$ pure phases (e.g. $l$, $g$), there are $2^{N_P}\!-\!1$ possible phase combinations  (e.g. $l$, $g$, $lg$).} (e.g. $l$, $g$) and $N_C$ components (e.g. H$_2$O, CO$_2$), there are $N_C+1$ independent variables or degrees of freedom including temperature. 
-Note that the number of degrees of freedom is independent of the number of  phases that are present in the system. To see this, the variables representing the system and the constraints imposed on them are listed in Table~\ref{tdof}.
-
-\begin{table}[h]\centering
-\caption{Variables and constraints in a multiphase-multicomponent system.}
-\label{tdof}
-
-\vspace{3mm}
-%\renewcommand{\tabcolsep}{1cm}
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{lcccc}
-\toprule
-Variable & Symbol & Number of & Number of & Constraint Condition\\
-&&Variables&Constraints&\\
-\midrule
-Temperature & $T$ & 1 & 0 & ---\\
-Pressure & $P_\a$ & $N_P$ & $N_P\!-\!1$ & $P_{c,\a\b} = P_\b - P_\a$\\
-Saturation & $s_\a$ & $N_P$ & 1 & $\sum_\a s_\a=1$\\
-Mole Fraction & $X_i^\a$ & $N_P N_C$ & $N_P$ & $\sum_i X_i^\a=1$\\
----&---& $N_C(N_P\!-\!1)$ & $\mu_i^\a = \mu_i^\b$\\
-\midrule
-Total: && $N_P(N_C+2)+1$ & $N_P (N_C + 2)-N_C$\\
-\midrule
-Net: && \multicolumn{2}{c}{$N_C+1$}\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-For any particular control volume the quantity $n_i^\a$, equal to the number of moles of the $i$th component in phase $\a$, completely determines the chemical composition of the system. The total number of moles in phase $\a$, $n_\a$ is obtained by summing $n_i^\a$ over all components:
-\EQ
-N_\a \eq \sum_i n_i^\a.
-\EN
-The total number of moles in the system is then
-\EQ
-N \eq \sum_\a N_\a.
-\EN
-The mole fraction $X_i^\a$ of the $i$th species relative to phase $\a$ is thus defined as
-\EQ\label{sumx}
-X_i^\a \eq \frac{n_i^\a}{N_\a}, \ \ \ \ \ \ \ \sum_i X_i^\a =1.
-\EN
-Other composition variables may also be defined and are useful to what follows. The phase mole fraction $\zeta_\a$ is defined as
-\EQ
-\zeta_\a \eq \frac{N_\a}{N} \eq \dfrac{\displaystyle\sum\limits_i n_i^\a}{\displaystyle\sum_{i'\a'} n_{i'}^{\a'}}, \ \ \ \ \ \ \ \sum_\a \zeta_\a =1.
-\EN
-The total component mole fraction $Z_i$ is defined by
-\EQ\label{sumzi}
-Z_i \eq \frac{N_i}{N} \eq \dfrac{\displaystyle\sum_\a n_i^\a}{\displaystyle\sum_\a n_\a}, \ \ \ \ \ \ \ \sum_i Z_i=1.
-\EN
-These quantities are related by the expression
-\EQ
-Z_i \eq \frac{1}{N}\sum_\a n_i^\a \eq \sum_\a \frac{n_i^\a}{N_\a} \frac{N_\a}{N} \eq\sum_\a \zeta_\a X_i^\a.
-\EN
-It follows from the definition of $Z_i$ that
-\EQ\label{zi}
-Z_i \eq \dfrac{\displaystyle\sum_\a s_\a \rho_\a X_i^\a}{\displaystyle\sum_{\a} s_\a \rho_\a},
-\EN
-with molar density $\rho_\a$ and fluid volume fraction $s_\a$ for phase $\a$. The quantity $s_\a$ is defined as the ratio of fluid volume $V_\a$ of phase $\a$ to pore volume $V_p$
-\EQ
-s_\a \eq \frac{V_\a}{V_p},
-\EN
-and satisfies the relation
-\EQ
-\sum_\a s_\a \eq 1.
-\EN
-The pore volume $V_p$ is equal to the sum of all fluid phase volumes $V_\a$
-\EQ
-V_p \eq \sum_\a V_\a.
-\EN
-Eqn.\eqref{zi} then follows from the relations
-\begin{subequations}
-\BA
-\frac{n_i^\a}{V} &\eq \frac{n_i^\a}{N_\a}\frac{N_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
-&\eq \varphi s_\a \rho_\a X_i^\a,
-\EA
-\end{subequations}
-and
-\begin{subequations}
-\BA
-\frac{N_\a}{V} &\eq \frac{N_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
-&\eq \varphi s_\a \rho_\a.
-\EA
-\end{subequations}
-The formulation of the mass conservation equations in terms of $Z_i$ as a presistent variable is used in the FLASH approach to avoid the necessity for variable switching.
-
-Note that for a system consisting of a single phase, the expression for $Z_i$ reduces to
-\EQ
-Z_i \eq X_i^\a, \ \ \ \ \ \text{(pure phase $\a$)},
-\EN
-according to Eqn.\eqref{zi}.
 
 \subsection{Mass Conservation Equations}
 
@@ -355,264 +262,10 @@ The energy conservation equation can be written in the form
 \sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q_e,
 \EN
 as the sum of contributions from each fluid phase and rock,
-with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term. Internal energy and ethalpy are related through the thermodynamic expression
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term. Internal energy and enthalpy are related through the thermodynamic expression
 \EQ
 H_\a \eq U_\a + \frac{P_\a}{\rho_\a}.
 \EN
-
-\section{Constitutive Relations}
-
-\subsection{Material Properties}
-
-Material fluid properties for density, viscosity, internal energy and enthalpy are needed for pure H$_2$O and supercritical CO$_2$, and in the case of nonisothermal systems internal energy and enthalpy. In addition, mixture properties for CO$_2$ dissolved in H$_2$O and H$_2$O dissolved in supercritical CO$_2$ are needed. 
-Each phase $\a$ is a mixture of species H$_2$O and CO$_2$. 
-%For H$_2$O, $W_{\rm H_2O} = 18.01534$ kg/mol, and for CO$_2$, $W_{\c} = 44.0098$ kg/kmol.
-
-
-\subsubsection{Pure H$_2$O}
-
-The density, viscosity, internal energy, and enthalpy of pure H$_2$O are taken from the steam tables [International Formulation Committee of the Sixth International Conference on Properties of Steam, (1967)] and is valid for the pressure and temperature range of $0 \!<\! P \!<\! 1000$ bars, and $0 \!<\! T \!<\! 800$\degc. In addition, the saturation curve of H$_2$O, $P_{\rm sat}(T)$ and its inverse relation $T_{\rm sat}(P_v)$, for vapor pressure $P_v$, are also provided.
-
-\noindent
-Critical temperature ($T_c$) 373.946\degc\\
-Critical pressure ($P_c$) 220.640 bar\\
-Critical density ($\rho_c$) 322.000000 kg/m$^3$\\
-$W_{\rm H_2O} = 18.01534$ kg/mol
-
-\subsubsection{Supercritical CO$_2$}
-
-Material properties of supercritical CO$_2$ are obtained from an equation of state such as Span and Wagner (1996) for density, viscosity, internal energy, enthalpy, fugacity, and fugacity coefficient as functions of temperature and pressure.
-
-\noindent
-Critical temperature: ($T_c$) 30.9782\degc\\
-Critical pressure: ($P_c$)	73.773 bar\\
-Critical density: ($\rho_c$) 467.600 kg/m$^3$\\
-$W_{\c} = 44.0098$ kg/kmol
-
-\subsubsection{Mixture Properties}
-
-The mixture density for CO$_2$ dissolved in H$_2$O (liquid phase) is derived from Duan et al. (2008). For supercritical CO$_2$ a mixture density is not needed because of the low concentration of H$_2$O in the supercritical CO$_2$ phase.
-
-\subsection{Capillary Pressure}
-
-The pressure $P_\a$ of fluid phase $\a$ is related to the fluid pressure of phase $\b$ through the capillary pressure $P_{\a\b}^c$
-\EQ
-P_{\a\b}^c \eq P_\b - P_\a,
-\EN
-where $P_\b$ is assumed to be the non-wetting phase, in this case supercritical CO$_2$, and $P_\a$ refers to the wetting phase in this case brine. Capillary pressure is related to saturation $s_\a$ using, for example, van Genuchten or Brooks-Cory correlations.
-
-\subsubsection{van Genuchten Relations}
-
-Irreducible liquid saturation described by the van Genuchten (1980) relation is given by
-\EQ\label{seff}
-s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-m}, 
-\EN 
-where $p_c$ represents the capillary pressure [Pa], and the effective liquid saturation $s_e$ is defined by 
-\EQ 
-s_e \eq \frac{s_l^{} - s_l^r}{s_l^0 - s_l^r}, 
-\EN 
-where $s_l^{}$ denotes liquid saturation, $s_l^r$ denotes the residual saturation, and $s_l^0$ denotes the maximum saturation. The constants $n$ and $m$ are related by the expressions 
-\EQ\label{lambda} 
-m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
-\EN 
-The inverse relation is given by
-\EQ
-P_c \eq \frac{1}{\alpha} \left[\left(s_e\right)^{-1/m} -1 \right]^{1/n}.
-\EN
-The derivative of $P_c$ with respect to saturation is given by
-\EQ
-\frac{dP_c}{ds_e} \eq -\frac{P_c}{nm} \dfrac{s_e^{-(1+1/m)}}{s_e^{-1/m}-1}.
-\EN
-
-The relative permeability for the liquid phase is given by
-\EQ\label{krl} 
-k_{rl} \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2, 
-\EN 
-and for the gas phase by
-\EQ 
-k_{rg} \eq 1 - k_{rl}.
-\EN 
-Note that $k_{rl}$ = 0 for saturations below the residual saturation. 
-The derivative of $k_{rl}$ with respect to saturation is given by
-\EQ
-\frac{dk_{rl}}{ds_e} \eq \frac{1}{2} \frac{k_{rl}}{s_e} + 2 \sqrt{s_e}
-\left\{1-\left[1-s_e^{1/m} \right]^m\right\}
-\left[1-s_e^{1/m} \right]^{m-1} s_e^{1/m-1}.
-\EN
-
-\subsubsection{Brooks-Corey Relations}
-
-Irreducible liquid saturation described by the Brooks-Corey (19??) relation 
-\EQ\label{seffbc}
-s_e \eq \left( \alpha |P_c| \right)^{-\lambda}, 
-\EN 
-with the inverse relation given by
-\EQ
-P_c \eq \frac{1}{\alpha} \left(s_e\right)^{-1/\lambda}.
-\EN
-The derivative of $P_c$ with respect to saturation is given by
-\EQ
-\frac{dP_c}{ds_e} \eq -\dfrac{P_c}{\lambda s_e}.
-\EN
-
-The relative permeability function is given by 
-\BA 
-k_{rl} &= \left(s_e \right)^{(2+3\lambda)/\lambda},\nonumber\\
-&= \left( \alpha |P_c| \right)^{-(2+3\lambda)}, \label{krlbc}
-\EA 
-for the liquid phase, and for the gas phase as
-\EQ 
-k_{rg} \eq 1 - k_{rl}.
-\EN 
-Note that $k_{rl}$ = 0 for saturations below the residual saturation. 
-The derivative of $k_{rl}$ with respect to saturation is given by
-\EQ
-\frac{dk_{rl}}{ds_e} \eq \frac{2+3\lambda}{\lambda} \dfrac{k_{rl}}{s_e}.
-\EN
-
-\subsubsection{Linear}
-
-\subsection{Supercritical CO$_2$--H$_2$O Equilibrium Relations}
-\label{sec:eqrel}
-
-For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). 
-
-Equilibrium of supercritical CO$_2$ with an aqueous solution is described by the reactions
-\begin{subequations}
-\EQ\label{co2}
-{\rm CO}_2^l \arrows {\rm CO}_2^g,
-\EN
-and
-\EQ\label{h2o}
-{\rm H_2O}^l \arrows {\rm H_2O}^g.
-\EN
-\end{subequations}
-The mass action equation corresponding to reaction \eqref{co2} is given by
-\EQ\label{massactco2}
-K_\c^{\rm eq} \eq \frac{f_\c^{}}{a_\c^{\rm eq}} 
-\eq \frac{\phi_\c^{} P_\c^g}{a_\c^{\rm eq}} 
-\eq \frac{\phi_\c^{} X_\c^g P_g^{}}{a_\c^{\rm eq}},
-\EN
-with equilibrium constant $K_\c^{\rm eq}$.
-The activity of $\c$ in the aqueous solution is related to its molality $m_\c^{\rm eq}$ by
-\EQ
-a_\c^{\rm eq} \eq \gamma_\c^{\rm eq} m_\c^{\rm eq},
-\EN
-where $\gamma_\c$ denotes the activity coefficient.
-The fugacity is given by
-\EQ
-f_\c^{} \eq \phi_\c^{} P_\c^{g} \eq \phi_\c^{} X_\c^g P_g^{},
-\EN
-with fugacity coefficient $\phi_\c$, where the equilibrium mole fraction of $\c$ in the supercritical (gas) phase, $X_\c^{g,\rm eq}$, is assumed to be given by
-\EQ\label{xco2g}
-X_\c^{g,\rm eq} \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
-\EN
-with total gas pressure $P_g$ equal to
-\EQ\label{totalp}
-P_g \eq P_\c^g + P_\w^{\rm sat}(T),
-\EN
-and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. 
-The equilibrium concentration of CO$_2$ in the aqueous solution in terms of molality units is thus given by
-\EQ
-m_\c^{\rm eq} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{\rm eq}}  P_g^{}.
-\EN
-Molality is related to mole fraction $X_\c^{l,{\rm eq}}$ by the equation
-\begin{subequations}
-\EQ\label{xco2l}
-X_\c^{l,{\rm eq}} \eq\frac{W_\w m_\c^{\rm eq}}{1 + W_\w m_\c^{\rm eq}},
-\EN
-and conversely mole fraction is related to molality by the inverse relation
-\EQ
-m_\c^{\rm eq} \eq \frac{X_\c^{l,{\rm eq}}}{W_\w(1-X_\c^{l,{\rm eq}})},
-\EN
-\end{subequations}
-where $W_\w$ denotes the formula weight of water. 
-
-\subsection{Phase Change Criteria}
-
-In the FLASH approach the primary variables are $P$, $T$ and the total mole fraction $Z_i$ of the $i$th component summed over all phases.
-This gives $2+N_C-1 = N_C+1$ independent variables as required. The variable $Z_i$ is a persistent degree of freedom throughout the simulation. From the knowledge of $Z_i$ it is possible to obtain the stable phase assemblage, the volume fraction $s_\a$ of each phase present in the system, and its composition in terms of $X_i^\a$ as indicated in Table~\ref{tphase}. 
-
-\begin{table}[h]\centering
-\caption{Phase Transition}
-\label{tphase}
-
-\vspace{3mm}
-
-\renewcommand{\arraystretch}{1.5}
-\begin{tabular}{cc}
-\toprule
-Region & Stable Phase(s)\\
-\midrule
-$Z_\c^{} \leq X_\c^{l,\rm eq}$ & liquid\\
-$X_\c^{l,\rm eq} < Z_\c^{} < X_\c^{g,\rm eq}$ & two-phase\\
-$X_\c^{g,\rm eq} \leq Z_\c^{}$ & gas\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-For a two-phase ($\a=l$, $\sc$) system where, for example, $l$ designates the liquid phase $\w$ and $\sc$ designates supercritical $\c$, $Z_i$ can be expressed as
-\EQ\label{zisg}
-Z_i \eq \frac{\rho_l^{} s_l^{} X_i^l + \rho_{\sc}^{} s_{\sc}^{} X_i^{\sc}}{\rho_l^{} s_l^{} + \rho_{\sc}^{} s_{\sc}^{}},
-\EN
-for molar fluid densities $\rho_l$, $\rho_{\sc}$ and phase saturation $s_l$, $s_{\sc} \!=\! 1\!-\!s_l$.
-Solving this equation for $s_g$ gives
-\EQ\label{sg}
-s_g \eq \frac{\rho_l^{} (Z_i^{}-X_i^l)}{\rho_l^{} (Z_i^{} - X_i^l) - \rho_g^{} (Z_i^{} -X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
-\EN
-
-For single phase liquid or gas systems it follows that Eqn.\eqref{zisg} reduces to
-\EQ
-Z_i \eq X_i^\a, \ (\a=l,\,g),
-\EN
-and 
-\EQ
-s_g \eq \left\{
-\begin{array}{ll}
-1 & \a=g\\
-0 & \a=l
-\end{array}\right..
-\EN
-
-To determine the mole fractions $X_i^\a$ from $Z_i$ it is necessary to consider the equilibrium constraints between phases expressed as equality their chemical potentials in the two phases.
-Depending on the value of $Z_\c$ different phases are present in the system (see Table~\ref{tphase}).
-\begin{description}
-\item[Single Liquid Phase:] For $Z_\c \!\leq\! X_\c^{l,{\rm eq}}$, a single aqueous ($\w$) phase is the stable phase assemblage.
-The aqueous $\c$ concentration is equal to
-\begin{subequations}\label{fla-sec-c1}
-\BA\label{liq}
-X_i^l = Z_i^{},
-\EA
-and phase saturations are given by
-\BA
-s_l = 1, \ s_{\sc} =0,
-\EA
-\end{subequations}
-consistent with Eqn.\eqref{sg}.
-
-\item[Single Gas Phase:] For $Z_\c\!\geq\! X_\c^{g,\rm eq} \!=\!1\!-\!P_\w^{\rm sat}(T)/P_g$, a single supercritical $\c$ phase is the stable phase assemblage.
-The supercritical $\c$ concentration is equal to
-\begin{subequations}\label{fla-sec-c2}
-\BA\label{gas}
-X_i^{\sc} = Z_i^{},
-\EA
-and phase saturations are given by
-\BA
- s_l = 0, \ s_{\sc} =1,
-\EA
-\end{subequations}
-consistent with Eqn.\eqref{sg}.
-
-\item[Two-Phase:] For $X_\c^{l,{\rm eq}} \!<\! Z_\c \!<\! X_\c^{g,{\rm eq}}\!=\!1\!-\!P_\w^{\rm sat}/P_g$, the two phases supercritical $\c$ and a liquid phase coexist.
-From Section \ref{sec:eqrel} the equilibrium mole fractions of CO$_2$ in the liquid and gas phases are given by Eqns.\eqref{xco2l} and \eqref{xco2g}, respectively.
-Note that the equilibrium composition only depends on temperature and pressure and is independent of $Z_\c$, and thus forms an invariant composition. The gas saturation is determined from Eqn.\eqref{sg}
-\EQ\label{2ph}
-s_{\sc} \eq \frac{\rho_{l}^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq})}
-{\rho_l^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq}) - \rho_{\sc}^{} (Z_{\c}^{} - X_{\c}^{\sc})},
-\EN
-with $s_l\!=\!1\!-\!s_{\sc}$.
-The densities of the aqueous and supercritical $\c$ phases are obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture rules for the phase.
-\end{description}
 
 \section{Numerical Implementation}
 
@@ -708,15 +361,15 @@ For a nonisothermal system there is an addition equation for the temperature
 
 \subsection{Isothermal System}
 
-For an isothermal system the governing equations for the two-component system consisting of H$_2$O and CO$_2$ with independent variables $P$ and $Z$, have the following form for the pressure equation
+For an isothermal system the governing equations for the two-component system consisting of H$_2$O and CO$_2$ with independent variables pressure $P$ and total CO$_2$ mole fraction $Z_c$, have the following form 
 \EQ
 \frac{\p}{\p t} M + \bnabla\cdot\bf \eq Q,
 \EN
-and
+for the pressure equation, and
 \EQ
-\frac{\p}{\p t} MZ + \bnabla\cdot(\bf_l X_c^l + \bf_g X_c^g + \bf_{Dc}^l + \bf_{Dc}^g) \eq Q Z,
+\frac{\p}{\p t} MZ_c + \bnabla\cdot(\bf_l X_c^l + \bf_g X_c^g + \bf_{Dc}^l + \bf_{Dc}^g) \eq Q_{c},
 \EN
-for the total $c$ = CO$_2$ mole fraction $Z$. In these equations
+for the total $c$ = CO$_2$ mole fraction $Z_c$. In these equations
 \EQ
 M \eq \varphi (s_l^{} \rho_l^{} + s_g^{} \rho_g^{}),
 \EN
@@ -726,18 +379,38 @@ and
 \EN
 with
 \EQ
-\bf_l^{} \eq \bq_l^{} \rho_l^{} + \bf_{Dc}^l.
+\bf_l^{} \eq \bq_l^{} \rho_l^{},
 \EN
 and
 \EQ
-\bf_g^{} \eq \bq_l^{} \rho_g^{} + \bf_{Dc}^g.
+\bf_g^{} \eq \bq_l^{} \rho_g^{}.
 \EN
+The liquid and gas diffusive fluxes $\bf_{Dc}^l$ and $\bf_{Dc}^g$ have the form
+\EQ
+\bf_{Dc}^l \eq -\varphi \tau s_l^{} \rho_l^{} D_l \bnabla X_c^l,
+\EN
+and
+\EQ
+\bf_{Dc}^g \eq -\phi\tau s_g D_{g}^0 \left(\dfrac{T}{T_K}\right)^\theta \dfrac{P_0}{P_g}\nabla X_c^g,
+\EN
+with $T_K = 273.15$ K, $P_0$ represents a reference pressure, $\tau$ is tortuosity, $\theta$ is a parameter, typically with the value 1.8, and $D_{g}^0$ denotes the diffusion coefficient at reference conditions with the typical value $2.13 \times 10^{-5}$ m$^2$/s. 
+
+The source/sink terms are given by
+\EQ
+Q \eq \Big[W_\w^{-1} q_{l}^{M} + W_\c^{-1} q_{g}^{M}\Big] \delta(\br-\br_W),
+\EN
+and
+\EQ
+Q_c \eq \Big[W_\w^{-1} q_l^M X_c^l + W_\c^{-1} q_g^M X_c^g\Big]\delta(\br-\br_W),
+\EN
+where $q_{\a}^M$ denotes the mass rate [kg/s] for injection and withdrawal at the well located at $\br_W$. A positive value represents injection and a negative value withdrawal.
 
 The Jacobian matrix elements are calculated for a 3D nine-point orthogonal stencil using the notation for the $(i,\,j,\,k)$th-grid block
 \BA
 R_n \eq \frac{\Delta_t M_n}{\Delta t}V_n &+ f_{i+1/2} A_{i+1/2}-f_{i-1/2} A_{i-1/2} \nonumber\\
 &+ f_{j+1/2} A_{j+1/2}-f_{j-1/2} A_{j-1/2}\nonumber\\
-&+ f_{k+1/2} A_{k+1/2}-f_{k-1/2} A_{k-1/2},
+&+ f_{k+1/2} A_{k+1/2}-f_{k-1/2} A_{k-1/2}\nonumber\\
+& - \Big[W_\w^{-1} q_{l}^{M} + W_\c^{-1} q_{g}^{M}\Big] V_W \delta_{nW},
 \EA
 with
 \EQ
@@ -815,20 +488,6 @@ M_{Z} \eq \varphi(s_l\rho_l+s_g\rho_g) Z,
 &\qquad + \varphi (\rho_g^{}-\rho_l^{}) Z s_{gZ}^{} \delta Z 
 + \varphi (s_l^{}\rho_l^{}+s_g^{}\rho_g^{}) \delta Z.
 \EA
-
-Derivatives of $s_g (P,\, T,\,Z)$:
-\begin{subequations}
-\BA
-s_{gZ}^{} & \eq \frac{\p s_g}{\p Z},\\
-& \eq \frac{\rho_l^{}\rho_g^{} (X_i^g - X_i^l)}{\rho_l^{}(Z-X_i^l) - \rho_g^{}(Z-X_i^g)},
-\EA
-\end{subequations}
-\begin{subequations}
-\BA
-s_{gP}^{} &\eq \frac{\p s_g}{\p P},\\
-& \eq \cdots
-\EA
-\end{subequations}
 
 \subsection{Flux}
 
@@ -1012,9 +671,19 @@ with $T_K = 273.15~^\circ$K, $P_0$ represents a reference pressure, $\tau$ is to
 
 \subsection{Source/Sink}
 
+The source/sink terms are given by
 \EQ
-Q_n \eq q_n X_{\c,n}^g V_n,
+Q_n \eq \Big[W_\w^{-1} q_{l}^{M} + W_\c^{-1} q_{g}^{M}\Big] V_n \delta_{nW},
 \EN
+and
+\EQ
+Q_{cn} \eq \Big[W_\w^{-1} q_l^M X_c^l + W_\c^{-1} q_g^M X_c^g\Big] V_n \delta_{nW}.
+\EN
+
+\BA
+q_\a^M>0, \ \ \ \d Q_n = 0, \d Q_{cn}=0,\\
+q_\a^M<0, \ \ \ \d Q_n = \cdots, \d Q_{cn}=\cdots,
+\EA
 
 \section{Example Problem}
 
@@ -1072,9 +741,411 @@ Finally, in Figure~\ref{fzco2} the quantities $Z_\c$, $s_g$, $X_\c^l$ and $X_\c^
 
 %\bibliographystyle{plainnat}
 %\bibliography{./reference-new}
+\clearpage
 
+\section*{Appendix A: Composition Variables}
+\addcontentsline{toc}{section}{\protect\numberline{}{Appendix A: Composition Variables}} 
+
+
+\renewcommand{\theequation}{A-\arabic{equation}}
+\setcounter{equation}{0}
+
+There are several different approaches possible for solving the governing multiphase-multicomponent flow and transport equations depending on the choice of independent variables. The total number of independent variables is determined by the Gibbs phase rule. 
+For a nonisothermal system derived from $N_P$ single fluid phases\symbolfootnote[2]{For a system with $N_P$ pure phases (e.g. $l$, $g$), there are $2^{N_P}\!-\!1$ possible phase combinations  (e.g. $l$, $g$, $lg$).} (e.g. $l$, $g$) and $N_C$ components (e.g. H$_2$O, CO$_2$), there are $N_C+1$ independent variables or degrees of freedom including temperature. 
+Note that the number of degrees of freedom is independent of the number of  phases that are present in the system. To see this, the variables representing the system and the constraints imposed on them are listed in Table~\ref{tdof}.
+
+\begin{table}[h]\centering
+\caption{Variables and constraints in a multiphase-multicomponent system.}
+\label{tdof}
+
+\vspace{3mm}
+%\renewcommand{\tabcolsep}{1cm}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lcccc}
+\toprule
+Variable & Symbol & Number of & Number of & Constraint Condition\\
+&&Variables&Constraints&\\
+\midrule
+Temperature & $T$ & 1 & 0 & ---\\
+Pressure & $P_\a$ & $N_P$ & $N_P\!-\!1$ & $P_{c,\a\b} = P_\b - P_\a$\\
+Saturation & $s_\a$ & $N_P$ & 1 & $\sum_\a s_\a=1$\\
+Mole Fraction & $X_i^\a$ & $N_P N_C$ & $N_P$ & $\sum_i X_i^\a=1$\\
+---&---& $N_C(N_P\!-\!1)$ & $\mu_i^\a = \mu_i^\b$\\
+\midrule
+Total: && $N_P(N_C+2)+1$ & $N_P (N_C + 2)-N_C$\\
+\midrule
+Net: && \multicolumn{2}{c}{$N_C+1$}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For any particular control volume the quantity $n_i^\a$, equal to the number of moles of the $i$th component in phase $\a$, completely determines the chemical composition of the system. The total number of moles in phase $\a$, $n_\a$ is obtained by summing $n_i^\a$ over all components:
+\EQ
+N_\a \eq \sum_i n_i^\a.
+\EN
+The total number of moles in the system is then
+\EQ
+N \eq \sum_\a N_\a.
+\EN
+The mole fraction $X_i^\a$ of the $i$th species relative to phase $\a$ is thus defined as
+\EQ\label{sumx}
+X_i^\a \eq \frac{n_i^\a}{N_\a}, \ \ \ \ \ \ \ \sum_i X_i^\a =1.
+\EN
+Other composition variables may also be defined and are useful to what follows. The phase mole fraction $\zeta_\a$ is defined as
+\EQ
+\zeta_\a \eq \frac{N_\a}{N} \eq \dfrac{\displaystyle\sum\limits_i n_i^\a}{\displaystyle\sum_{i'\a'} n_{i'}^{\a'}}, \ \ \ \ \ \ \ \sum_\a \zeta_\a =1.
+\EN
+The total component mole fraction $Z_i$ is defined by
+\EQ\label{sumzi}
+Z_i \eq \frac{N_i}{N} \eq \dfrac{\displaystyle\sum_\a n_i^\a}{\displaystyle\sum_\a n_\a}, \ \ \ \ \ \ \ \sum_i Z_i=1.
+\EN
+These quantities are related by the expression
+\EQ
+Z_i \eq \frac{1}{N}\sum_\a n_i^\a \eq \sum_\a \frac{n_i^\a}{N_\a} \frac{N_\a}{N} \eq\sum_\a \zeta_\a X_i^\a.
+\EN
+It follows from the definition of $Z_i$ that
+\EQ\label{zi}
+Z_i \eq \dfrac{\displaystyle\sum_\a s_\a \rho_\a X_i^\a}{\displaystyle\sum_{\a} s_\a \rho_\a},
+\EN
+with molar density $\rho_\a$ and fluid volume fraction $s_\a$ for phase $\a$. The quantity $s_\a$ is defined as the ratio of fluid volume $V_\a$ of phase $\a$ to pore volume $V_p$
+\EQ
+s_\a \eq \frac{V_\a}{V_p},
+\EN
+and satisfies the relation
+\EQ
+\sum_\a s_\a \eq 1.
+\EN
+The pore volume $V_p$ is equal to the sum of all fluid phase volumes $V_\a$
+\EQ
+V_p \eq \sum_\a V_\a.
+\EN
+Eqn.\eqref{zi} then follows from the relations
+\begin{subequations}
+\BA
+\frac{n_i^\a}{V} &\eq \frac{n_i^\a}{N_\a}\frac{N_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi s_\a \rho_\a X_i^\a,
+\EA
+\end{subequations}
+and
+\begin{subequations}
+\BA
+\frac{N_\a}{V} &\eq \frac{N_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi s_\a \rho_\a.
+\EA
+\end{subequations}
+The formulation of the mass conservation equations in terms of $Z_i$ as a presistent variable is used in the FLASH approach to avoid the necessity for variable switching.
+
+Note that for a system consisting of a single phase, the expression for $Z_i$ reduces to
+\EQ
+Z_i \eq X_i^\a, \ \ \ \ \ \text{(pure phase $\a$)},
+\EN
+according to Eqn.\eqref{zi}.
+
+\renewcommand{\theequation}{B-\arabic{equation}}
+\setcounter{equation}{0}
+
+\section*{Appendix B: Constitutive Relations}
+\addcontentsline{toc}{section}{\protect\numberline{}{Appendix B: Constitutive Relations}} 
+
+\renewcommand{\thesubsection}{B-\arabic{subsection}}
+\setcounter{subsection}{0}
+
+\subsection{Material Properties}
+
+Material fluid properties for density, viscosity, internal energy and enthalpy are needed for pure H$_2$O and supercritical CO$_2$, and in the case of nonisothermal systems internal energy and enthalpy. In addition, mixture properties for CO$_2$ dissolved in H$_2$O and H$_2$O dissolved in supercritical CO$_2$ are needed. 
+Each phase $\a$ is a mixture of species H$_2$O and CO$_2$. 
+%For H$_2$O, $W_{\rm H_2O} = 18.01534$ kg/mol, and for CO$_2$, $W_{\c} = 44.0098$ kg/kmol.
+
+
+\subsubsection{Pure H$_2$O}
+
+The density, viscosity, internal energy, and enthalpy of pure H$_2$O are taken from the steam tables [International Formulation Committee of the Sixth International Conference on Properties of Steam, (1967)] and is valid for the pressure and temperature range of $0 \!<\! P \!<\! 1000$ bars, and $0 \!<\! T \!<\! 800$\degc. In addition, the saturation curve of H$_2$O, $P_{\rm sat}(T)$ and its inverse relation $T_{\rm sat}(P_v)$, for vapor pressure $P_v$, are also provided.
+
+\noindent
+Critical temperature ($T_c$) 373.946\degc\\
+Critical pressure ($P_c$) 220.640 bar\\
+Critical density ($\rho_c$) 322.000000 kg/m$^3$\\
+$W_{\rm H_2O} = 18.01534$ kg/mol
+
+\subsubsection{Supercritical CO$_2$}
+
+Material properties of supercritical CO$_2$ are obtained from an equation of state such as Span and Wagner (1996) for density, viscosity, internal energy, enthalpy, fugacity, and fugacity coefficient as functions of temperature and pressure.
+
+\noindent
+Critical temperature: ($T_c$) 30.9782\degc\\
+Critical pressure: ($P_c$)	73.773 bar\\
+Critical density: ($\rho_c$) 467.600 kg/m$^3$\\
+$W_{\c} = 44.0098$ kg/kmol
+
+\subsubsection{Mixture Properties}
+
+The mixture density for CO$_2$ dissolved in H$_2$O (liquid phase) is derived from Duan et al. (2008). For supercritical CO$_2$ a mixture density is not needed because of the low concentration of H$_2$O in the supercritical CO$_2$ phase.
+
+\subsection{Capillary Pressure}
+
+The pressure $P_\a$ of fluid phase $\a$ is related to the fluid pressure of phase $\b$ through the capillary pressure $P_{\a\b}^c$
+\EQ
+P_{\a\b}^c \eq P_\b - P_\a,
+\EN
+where $P_\b$ is assumed to be the non-wetting phase, in this case supercritical CO$_2$, and $P_\a$ refers to the wetting phase in this case brine. Capillary pressure is related to saturation $s_\a$ using, for example, van Genuchten or Brooks-Cory correlations.
+
+\subsubsection{van Genuchten Relations}
+
+Irreducible liquid saturation described by the van Genuchten (1980) relation is given by
+\EQ\label{seff}
+s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-m}, 
+\EN 
+where $p_c$ represents the capillary pressure [Pa], and the effective liquid saturation $s_e$ is defined by 
+\EQ 
+s_e \eq \frac{s_l^{} - s_l^r}{s_l^0 - s_l^r}, 
+\EN 
+where $s_l^{}$ denotes liquid saturation, $s_l^r$ denotes the residual saturation, and $s_l^0$ denotes the maximum saturation. The constants $n$ and $m$ are related by the expressions 
+\EQ\label{lambda} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
+\EN 
+The inverse relation is given by
+\EQ
+P_c \eq \frac{1}{\alpha} \left[\left(s_e\right)^{-1/m} -1 \right]^{1/n}.
+\EN
+The derivative of $P_c$ with respect to saturation is given by
+\EQ
+\frac{dP_c}{ds_e} \eq -\frac{P_c}{nm} \dfrac{s_e^{-(1+1/m)}}{s_e^{-1/m}-1}.
+\EN
+
+The relative permeability for the liquid phase is given by
+\EQ\label{krl} 
+k_{rl} \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2, 
+\EN 
+and for the gas phase by
+\EQ 
+k_{rg} \eq 1 - k_{rl}.
+\EN 
+Note that $k_{rl}$ = 0 for saturations below the residual saturation. 
+The derivative of $k_{rl}$ with respect to saturation is given by
+\EQ
+\frac{dk_{rl}}{ds_e} \eq \frac{1}{2} \frac{k_{rl}}{s_e} + 2 \sqrt{s_e}
+\left\{1-\left[1-s_e^{1/m} \right]^m\right\}
+\left[1-s_e^{1/m} \right]^{m-1} s_e^{1/m-1}.
+\EN
+
+\subsubsection{Brooks-Corey Relations}
+
+Irreducible liquid saturation described by the Brooks-Corey (19??) relation 
+\EQ\label{seffbc}
+s_e \eq \left( \alpha |P_c| \right)^{-\lambda}, 
+\EN 
+with the inverse relation given by
+\EQ
+P_c \eq \frac{1}{\alpha} \left(s_e\right)^{-1/\lambda}.
+\EN
+The derivative of $P_c$ with respect to saturation is given by
+\EQ
+\frac{dP_c}{ds_e} \eq -\dfrac{P_c}{\lambda s_e}.
+\EN
+
+The relative permeability function is given by 
+\BA 
+k_{rl} &= \left(s_e \right)^{(2+3\lambda)/\lambda},\nonumber\\
+&= \left( \alpha |P_c| \right)^{-(2+3\lambda)}, \label{krlbc}
+\EA 
+for the liquid phase, and for the gas phase as
+\EQ 
+k_{rg} \eq 1 - k_{rl}.
+\EN 
+Note that $k_{rl}$ = 0 for saturations below the residual saturation. 
+The derivative of $k_{rl}$ with respect to saturation is given by
+\EQ
+\frac{dk_{rl}}{ds_e} \eq \frac{2+3\lambda}{\lambda} \dfrac{k_{rl}}{s_e}.
+\EN
+
+\subsubsection{Linear}
+
+\section*{Appendix C: Supercritical CO$_2$--H$_2$O Equilibrium Relations}
+\label{sec:eqrel}
+\addcontentsline{toc}{section}{\protect\numberline{}{Appendix C: Supercritical CO$_2$--H$_2$O Equilibrium Relations}} 
+\renewcommand{\theequation}{C-\arabic{equation}}
+\setcounter{equation}{0}
+
+For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). 
+
+Equilibrium of supercritical CO$_2$ with an aqueous solution is described by the reactions
+\begin{subequations}
+\EQ\label{co2}
+{\rm CO}_2^l \arrows {\rm CO}_2^g,
+\EN
+and
+\EQ\label{h2o}
+{\rm H_2O}^l \arrows {\rm H_2O}^g.
+\EN
+\end{subequations}
+The mass action equation corresponding to reaction \eqref{co2} is given by
+\EQ\label{massactco2}
+K_\c^{\rm eq} \eq \frac{f_\c^{}}{a_\c^{\rm eq}} 
+\eq \frac{\phi_\c^{} P_\c^g}{a_\c^{\rm eq}} 
+\eq \frac{\phi_\c^{} X_\c^g P_g^{}}{a_\c^{\rm eq}},
+\EN
+with equilibrium constant $K_\c^{\rm eq}$.
+The activity of $\c$ in the aqueous solution is related to its molality $m_\c^{\rm eq}$ by
+\EQ
+a_\c^{\rm eq} \eq \gamma_\c^{\rm eq} m_\c^{\rm eq},
+\EN
+where $\gamma_\c$ denotes the activity coefficient.
+The fugacity is given by
+\EQ
+f_\c^{} \eq \phi_\c^{} P_\c^{g} \eq \phi_\c^{} X_\c^g P_g^{},
+\EN
+with fugacity coefficient $\phi_\c$, where the equilibrium mole fraction of $\c$ in the supercritical (gas) phase, $X_\c^{g,\rm eq}$, is assumed to be given by
+\EQ\label{xco2g}
+X_\c^{g,\rm eq} \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
+\EN
+with total gas pressure $P_g$ equal to
+\EQ\label{totalp}
+P_g \eq P_\c^g + P_\w^{\rm sat}(T),
+\EN
+and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. 
+The equilibrium concentration of CO$_2$ in the aqueous solution in terms of molality units is thus given by
+\EQ\label{m_to_x}
+m_\c^{\rm eq} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{\rm eq}}  P_g^{}.
+\EN
+Molality is related to mole fraction $X_\c^{l,{\rm eq}}$ by the equation
+\begin{subequations}
+\EQ\label{xco2l}
+X_\c^{l,{\rm eq}} \eq\frac{W_\w m_\c^{\rm eq}}{1 + W_\w m_\c^{\rm eq}},
+\EN
+and conversely mole fraction is related to molality by the inverse relation
+\EQ
+m_\c^{\rm eq} \eq \frac{X_\c^{l,{\rm eq}}}{W_\w(1-X_\c^{l,{\rm eq}})},
+\EN
+\end{subequations}
+where $W_\w$ denotes the formula weight of water. Substituting Eqn.\eqref{m_to_x} gives
+\EQ
+X_\c^l \eq \frac{W_\w \widetilde K_\c^{} \big(P_g-P_w^{\rm sat}(T)\big)}{1+W_\w \widetilde K_\c^{} \big(P_g-P_w^{\rm sat}(T)\big)},
+\EN
+using Eqn.\eqref{xco2g}, where
+\EQ
+\widetilde K_\c \eq \big(K_\c^{\rm eq}\big)^{-1} \frac{\phi_\c}{\gamma_\c}.
+\EN
+The derivative with respect to pressure $P_g$ needed to construct the Jacobian matrix is given approximately by
+\EQ
+\frac{\p X_\c^l}{\p P_g} \eq \frac{W_\w \widetilde K_\c^{}}{\left(1+W_\w \widetilde K_\c^{} \big(P_g-P_w^{\rm sat}(T)\big)\right)^2}.
+\EN
+This expression ignores the derivative of the fugacity coefficient $\phi_\c$.
+
+\section*{Appendix D: Phase Change Criteria}
+\addcontentsline{toc}{section}{\protect\numberline{}{Appendix D: Phase Change Criteria}} 
+
+\renewcommand{\theequation}{D-\arabic{equation}}
+\setcounter{equation}{0}
+
+
+In the FLASH approach the primary variables are $P$, $T$ and the total mole fraction $Z_i$ of the $i$th component summed over all phases.
+This gives $2+N_C-1 = N_C+1$ independent variables as required. The variable $Z_i$ is a persistent degree of freedom throughout the simulation. From the knowledge of $Z_i$ it is possible to obtain the stable phase assemblage, the volume fraction $s_\a$ of each phase present in the system, and its composition in terms of $X_i^\a$ as indicated in Table~\ref{tphase}. 
+
+\begin{table}[h]\centering
+\caption{Phase Transition}
+\label{tphase}
+
+\vspace{3mm}
+
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{cc}
+\toprule
+Region & Stable Phase(s)\\
+\midrule
+$Z_\c^{} \leq X_\c^{l,\rm eq}$ & liquid\\
+$X_\c^{l,\rm eq} < Z_\c^{} < X_\c^{g,\rm eq}$ & two-phase\\
+$X_\c^{g,\rm eq} \leq Z_\c^{}$ & gas\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For a two-phase ($\a=l$, $\sc$) system where, for example, $l$ designates the liquid phase $\w$ and $\sc$ designates supercritical $\c$, $Z_i$ can be expressed as
+\EQ\label{zisg}
+Z_i \eq \frac{\rho_l^{} s_l^{} X_i^l + \rho_{\sc}^{} s_{\sc}^{} X_i^{\sc}}{\rho_l^{} s_l^{} + \rho_{\sc}^{} s_{\sc}^{}},
+\EN
+for molar fluid densities $\rho_l$, $\rho_{\sc}$ and phase saturation $s_l$, $s_{\sc} \!=\! 1\!-\!s_l$.
+Solving this equation for $s_g$ gives
+\EQ\label{sg}
+s_g \eq \frac{\rho_l^{} (Z_i^{}-X_i^l)}{\rho_l^{} (Z_i^{} - X_i^l) - \rho_g^{} (Z_i^{} -X_i^g)}, \ \ \ \ \ (i= {\rm H_2O,\, CO_2}).
+\EN
+
+One has for the derivatives of $s_g (P,\, T,\,Z)$:
+\begin{subequations}
+\BA
+s_{gZ}^{} & \eq \frac{\p s_g}{\p Z},\\
+& \eq \frac{\rho_l^{}\rho_g^{} (X_i^g - X_i^l)}{\rho_l^{}(Z-X_i^l) - \rho_g^{}(Z-X_i^g)},
+\EA
+\end{subequations}
+\begin{subequations}
+\BA
+s_{gP}^{} &\eq \frac{\p s_g}{\p P},\\
+& \eq \frac{Z_i-X_i^l}{D}\left[\rho_{lP}^{} - \frac{\rho_l}{D}\left(\rho_{lP}^{}(Z_i-X_i^l) - \rho_{gP}^{} (Z_i-X_i^g)\right)\right]\nonumber\\
+&\qquad -\frac{\rho_l}{D} \left[X_{iP}^l - \frac{Z_i-X_i^l}{D}\left( \rho_l^{} X_{iP}^l - \rho_g^{} X_{iP}^g \right)
+\right],
+\EA
+\end{subequations}
+where
+\EQ
+D \eq \rho_l^{} (Z_i^{} - X_i^l) - \rho_g^{} (Z_i^{} -X_i^g).
+\EN
+
+For single phase liquid or gas systems it follows that Eqn.\eqref{zisg} reduces to
+\EQ
+Z_i \eq X_i^\a, \ (\a=l,\,g),
+\EN
+and 
+\EQ
+s_g \eq \left\{
+\begin{array}{ll}
+1 & \a=g\\
+0 & \a=l
+\end{array}\right..
+\EN
+
+To determine the mole fractions $X_i^\a$ from $Z_i$ it is necessary to consider the equilibrium constraints between phases expressed as equality their chemical potentials in the two phases.
+Depending on the value of $Z_\c$ different phases are present in the system (see Table~\ref{tphase}).
+\begin{description}
+\item[Single Liquid Phase:] For $Z_\c \!\leq\! X_\c^{l,{\rm eq}}$, a single aqueous ($\w$) phase is the stable phase assemblage.
+The aqueous $\c$ concentration is equal to
+\begin{subequations}\label{fla-sec-c1}
+\BA\label{liq}
+X_i^l = Z_i^{},
+\EA
+and phase saturations are given by
+\BA
+s_l = 1, \ s_{\sc} =0,
+\EA
+\end{subequations}
+consistent with Eqn.\eqref{sg}.
+
+\item[Single Gas Phase:] For $Z_\c\!\geq\! X_\c^{g,\rm eq} \!=\!1\!-\!P_\w^{\rm sat}(T)/P_g$, a single supercritical $\c$ phase is the stable phase assemblage.
+The supercritical $\c$ concentration is equal to
+\begin{subequations}\label{fla-sec-c2}
+\BA\label{gas}
+X_i^{\sc} = Z_i^{},
+\EA
+and phase saturations are given by
+\BA
+ s_l = 0, \ s_{\sc} =1,
+\EA
+\end{subequations}
+consistent with Eqn.\eqref{sg}.
+
+\item[Two-Phase:] For $X_\c^{l,{\rm eq}} \!<\! Z_\c \!<\! X_\c^{g,{\rm eq}}\!=\!1\!-\!P_\w^{\rm sat}/P_g$, the two phases supercritical $\c$ and a liquid phase coexist.
+From Section \ref{sec:eqrel} the equilibrium mole fractions of CO$_2$ in the liquid and gas phases are given by Eqns.\eqref{xco2l} and \eqref{xco2g}, respectively.
+Note that the equilibrium composition only depends on temperature and pressure and is independent of $Z_\c$, and thus forms an invariant composition. The gas saturation is determined from Eqn.\eqref{sg}
+\EQ\label{2ph}
+s_{\sc} \eq \frac{\rho_{l}^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq})}
+{\rho_l^{} (Z_{\c}^{} - X_{\c}^{l,\rm eq}) - \rho_{\sc}^{} (Z_{\c}^{} - X_{\c}^{\sc,\rm eq})},
+\EN
+with $s_l\!=\!1\!-\!s_{\sc}$.
+The densities of the aqueous and supercritical $\c$ phases are obtained from an equation of state, as a function of $P$, $T$ and $X_i^{l,\,g}$, based on the mixture rules for the phase.
+\end{description}
 
 \end{document}
+
+========================================================================
+========================================================================
 
 Activity coefficients and standard state potentials are related by
 \BA
