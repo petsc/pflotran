@@ -240,6 +240,11 @@ module Option_module
     module procedure printMsg2
   end interface
 
+  interface printErrMsgByRank
+    module procedure printErrMsgByRank1
+    module procedure printErrMsgByRank2
+  end interface
+  
   interface printErrMsg
     module procedure printErrMsg1
     module procedure printErrMsg2
@@ -254,6 +259,7 @@ module Option_module
             OutputOptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
+            printErrMsgByRank, &
             printWrnMsg, &
             printMsg, &
             OptionDestroy, &
@@ -700,6 +706,49 @@ subroutine printErrMsg2(option,string)
   stop
   
 end subroutine printErrMsg2
+ 
+! ************************************************************************** !
+!
+! printErrMsgByRank1: Prints the error message from processor with error along
+!               with rank
+! author: Glenn Hammond
+! date: 11/04/11
+!
+! ************************************************************************** !
+subroutine printErrMsgByRank1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  call printErrMsgByRank2(option,option%io_buffer)
+  
+end subroutine printErrMsgByRank1
+
+! ************************************************************************** !
+!
+! printErrMsgByRank2: Prints the error message from processor with error along
+!               with rank
+! author: Glenn Hammond
+! date: 11/04/11
+!
+! ************************************************************************** !
+subroutine printErrMsgByRank2(option,string)
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=*) :: string
+  
+  character(len=MAXWORDLENGTH) :: word
+  
+  write(word,*) option%myrank
+  print *
+  print *, 'ERROR(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  print *, 'Stopping!'
+  stop
+  
+end subroutine printErrMsgByRank2
  
 ! ************************************************************************** !
 !
