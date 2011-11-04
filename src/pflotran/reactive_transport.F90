@@ -5964,7 +5964,7 @@ end subroutine RTMaxChange
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function RTGetTecplotHeader(realization,icolumn)
+function RTGetTecplotHeader(realization,cell_string,icolumn)
 
   use Realization_module
   use Option_module
@@ -5972,6 +5972,7 @@ function RTGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXHEADERLENGTH) :: RTGetTecplotHeader
+  character(len=MAXSTRINGLENGTH) cell_string
   type(realization_type) :: realization
   PetscInt :: icolumn
   
@@ -6007,28 +6008,17 @@ function RTGetTecplotHeader(realization,icolumn)
   
   if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%species_idx%h_ion_id > 0) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-pH"'')') icolumn
-      else
-        write(string,'('',"pH"'')') 
-      endif
-      header = trim(header) // trim(string)
+      string = 'pH'
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   endif
   
   if (reaction%print_total_component) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_tot_'',a,''"'')') icolumn, &
-            trim(reaction%primary_species_names(i)), trim(tot_mol_char)
-        else
-          write(string,'('',"'',a,''_tot_'',a,''"'')') &
-            trim(reaction%primary_species_names(i)), trim(tot_mol_char)
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%primary_species_names(i)) // '_tot_' // &
+                 trim(tot_mol_char)
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
   endif
@@ -6036,15 +6026,9 @@ function RTGetTecplotHeader(realization,icolumn)
   if (reaction%print_free_ion) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_free_'',a,''"'')') icolumn, &
-            trim(reaction%primary_species_names(i)), trim(free_mol_char)
-        else
-          write(string,'('',"'',a,''_free_'',a,''"'')') &
-            trim(reaction%primary_species_names(i)), trim(free_mol_char)
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%primary_species_names(i)) // '_free_' // &
+                 trim(free_mol_char)
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo  
   endif
@@ -6052,134 +6036,74 @@ function RTGetTecplotHeader(realization,icolumn)
   if (reaction%print_act_coefs) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_gam"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
-        else
-          write(string,'('',"'',a,''_gam"'')') trim(reaction%primary_species_names(i))
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%primary_species_names(i)) // '_gam'
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
   endif
   
   do i=1,reaction%neqcplx
     if (reaction%secondary_species_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-'',a,''_'',a,''"'')') icolumn, &
-          trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
-      else
-        write(string,'('',"'',a,''_'',a,''"'')') &
-          trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%secondary_species_names(i)) // &
+               '_' // trim(sec_mol_char)
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo  
     
   do i=1,reaction%nkinmnrl
     if (reaction%kinmnrl_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-'',a,''_vf"'')') icolumn, &
-          trim(reaction%kinmnrl_names(i))
-      else
-        write(string,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))    
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%kinmnrl_names(i)) // '_vf'
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
   
   do i=1,reaction%nkinmnrl
     if (reaction%kinmnrl_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-'',a,''_rt"'')') icolumn, &
-          trim(reaction%kinmnrl_names(i))
-      else
-        write(string,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%kinmnrl_names(i)) // '_rt'
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
   
   do i=1,reaction%nmnrl
     if (reaction%mnrl_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string,'('',"'',i2,''-'',a,''_si"'')') icolumn, &
-          trim(reaction%mineral_names(i))
-      else
-        write(string,'('',"'',a,''_si"'')') trim(reaction%mineral_names(i))    
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%mineral_names(i)) // '_si'
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
   
   do i=1,realization%reaction%neqsrfcplxrxn
     if (reaction%eqsrfcplx_site_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1  
-        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%eqsrfcplx_site_names(i))
-      else
-        write(string,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_site_names(i))
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%eqsrfcplx_site_names(i))
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
   
   do i=1,realization%reaction%neqsrfcplx
     if (reaction%eqsrfcplx_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1  
-        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%eqsrfcplx_names(i))
-      else
-        write(string,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_names(i))
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%eqsrfcplx_names(i))
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
   
   do i=1,realization%reaction%nkinsrfcplxrxn
     if (reaction%kinsrfcplx_site_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1  
-        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%kinsrfcplx_site_names(i))
-      else
-        write(string,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_site_names(i))
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%kinsrfcplx_site_names(i))
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
   
   do i=1,realization%reaction%nkinsrfcplx
     if (reaction%kinsrfcplx_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1  
-        write(string,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%kinsrfcplx_names(i))
-      else
-        write(string,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_names(i))
-      endif
-      header = trim(header) // trim(string)
+      string = trim(reaction%kinsrfcplx_names(i))
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   enddo
 
   if (associated(reaction%kd_print)) then
     do i=1,reaction%naqcomp
       if (reaction%kd_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_kd"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
-        else
-          write(string,'('',"'',a,''_kd"'')') trim(reaction%primary_species_names(i))
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%primary_species_names(i)) // '_kd'
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
   endif
@@ -6187,14 +6111,8 @@ function RTGetTecplotHeader(realization,icolumn)
   if (associated(reaction%total_sorb_print)) then
     do i=1,reaction%naqcomp
       if (reaction%total_sorb_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_total_sorb"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
-        else
-          write(string,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%primary_species_names(i)) // '_total_sorb'
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
   endif
@@ -6202,15 +6120,8 @@ function RTGetTecplotHeader(realization,icolumn)
   if (associated(reaction%total_sorb_mobile_print)) then
     do i=1,reaction%ncollcomp
       if (reaction%total_sorb_mobile_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_total_sorb_mob"'')') icolumn, &
-            trim(reaction%colloid_species_names(i))
-        else
-          write(string,'('',"'',a,''_total_sorb_mob"'')') &
-            trim(reaction%colloid_species_names(i))
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%colloid_species_names(i)) // '_total_sorb_mob'
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
   endif
@@ -6218,41 +6129,24 @@ function RTGetTecplotHeader(realization,icolumn)
   if (reaction%print_colloid) then
     do i=1,reaction%ncoll
       if (reaction%colloid_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_col_mob_'',a,''"'')') icolumn, &
-            trim(reaction%colloid_names(i)), trim(tot_mol_char)
-        else
-          write(string,'('',"'',a,''_col_mob_'',a,''"'')') &
-            trim(reaction%colloid_names(i)), trim(tot_mol_char)
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%colloid_names(i)) // '_col_mob_' // &
+                 trim(tot_mol_char)
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
     do i=1,reaction%ncoll
       if (reaction%colloid_print(i)) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-'',a,''_col_imb_'',a,''"'')') icolumn, &
-            trim(reaction%colloid_names(i)), trim(tot_mol_char)
-        else
-          write(string,'('',"'',a,''_col_imb_'',a,''"'')') &
-            trim(reaction%colloid_names(i)), trim(tot_mol_char)
-        endif
-        header = trim(header) // trim(string)
+        string = trim(reaction%colloid_names(i)) // '_col_imb_' // &
+                 trim(tot_mol_char)
+        call RTAppendToHeader(header,string,cell_string,icolumn)
       endif
     enddo
   endif
   
   if (reaction%print_age) then
     if (reaction%species_idx%tracer_age_id > 0) then
-        if (icolumn > -1) then
-          icolumn = icolumn + 1
-          write(string,'('',"'',i2,''-Tracer_Age"'')') icolumn
-        else
-          write(string,'('',"Tracer_Age"'')') 
-        endif
-        header = trim(header) // trim(string)
+      string = 'Tracer_Age'
+      call RTAppendToHeader(header,string,cell_string,icolumn)
     endif
   endif
     
@@ -6441,6 +6335,50 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   enddo
 
 end subroutine RTCheckpointKineticSorption
+
+! ************************************************************************** !
+!
+! RTAppendToHeader: Appends formatted strings to header string
+! author: Glenn Hammond
+! date: 10/27/11
+!
+! ************************************************************************** !
+subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
+
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=*) :: variable_string
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXSTRINGLENGTH) :: variable_string_adj
+  character(len=MAXWORDLENGTH) :: column_string
+  PetscInt :: icolumn
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: len_cell_string
+
+  variable_string_adj = variable_string
+  !geh: Shift to left.  Cannot perform on same string since len=*
+  variable_string_adj = adjustl(variable_string_adj)
+
+  if (icolumn > 0) then
+    icolumn = icolumn + 1
+    write(column_string,'(i4,''-'')') icolumn
+    column_string = trim(adjustl(column_string))
+  else
+    column_string = ''
+  endif
+
+  !geh: this is all to remove the lousy spaces
+  len_cell_string = len_trim(cell_string) 
+  if (len_cell_string > 0) then
+    write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
+          trim(variable_string_adj), trim(cell_string)
+  else
+    write(string,'('',"'',a,a,''"'')') trim(variable_string_adj), &
+          trim(cell_string)
+  endif
+  header = trim(header) // trim(string)
+
+end subroutine RTAppendToHeader
 
 ! ************************************************************************** !
 !

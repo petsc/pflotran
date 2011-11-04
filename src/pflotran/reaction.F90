@@ -1462,9 +1462,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: Jac(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: indices(reaction%naqcomp)
   PetscReal :: norm
+  PetscReal :: max_abs_res
   PetscReal :: prev_molal(reaction%naqcomp)
-  PetscReal, parameter :: tol = 1.d-12
-  PetscReal, parameter :: tol_loose = 1.d-6
   PetscBool :: compute_activity_coefs
 
   PetscInt :: constraint_id(reaction%naqcomp)
@@ -1922,6 +1921,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       end select
     enddo
     
+    max_abs_res = maxval(abs(Res))
+    
     ! scale Jacobian
     do icomp = 1, reaction%naqcomp
       norm = max(1.d0,maxval(abs(Jac(icomp,:))))
@@ -1963,7 +1964,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
     
     ! check for convergence
-    if (maxval(dabs(res)) < tol) then
+    if (max_abs_res < reaction%max_residual_tolerance) then
       ! need some sort of convergence before we kick in activities
       if (compute_activity_coefs) exit
       compute_activity_coefs = PETSC_TRUE

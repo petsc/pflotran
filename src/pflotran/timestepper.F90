@@ -272,7 +272,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   use Option_module
   use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
-                            OutputPermeability
+                            OutputPermeability, OutputPrintCouplers
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
@@ -503,6 +503,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     flow_stepper%start_time_step = flow_stepper%steps + 1
   if (associated(tran_stepper)) &
     tran_stepper%start_time_step = tran_stepper%steps + 1
+  
+  if (realization%debug%print_couplers) then
+    call OutputPrintCouplers(realization,0)
+  endif  
   do
 
     if (OptionPrintToScreen(option) .and. &
@@ -612,6 +616,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       option%tran_time = tran_stepper%target_time
       call PetscLogStagePop(ierr)
     endif
+
+    if (realization%debug%print_couplers) then
+      call OutputPrintCouplers(realization,master_stepper%steps)
+    endif  
 
     ! update solution variables
     

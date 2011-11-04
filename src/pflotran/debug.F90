@@ -16,6 +16,7 @@ module Debug_module
     PetscBool :: print_numerical_derivatives
 
     PetscBool :: print_couplers
+    character(len=MAXSTRINGLENGTH) :: coupler_string
     PetscBool :: print_waypoints
   end type flow_debug_type
   
@@ -64,6 +65,7 @@ function DebugCreateFlow()
   debug%print_numerical_derivatives = PETSC_FALSE
   
   debug%print_couplers = PETSC_FALSE
+  debug%coupler_string = ''
   debug%print_waypoints = PETSC_FALSE
 
   DebugCreateFlow => debug
@@ -141,12 +143,17 @@ subroutine DebugReadFlow(debug,input,option)
         debug%norm_Jacobian = PETSC_TRUE
       case('PRINT_COUPLERS','PRINT_COUPLER')
         debug%print_couplers = PETSC_TRUE
+        debug%coupler_string = trim(adjustl(input%buf))
       case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED','VIEW_JACOBIAN_DETAILED')
         debug%matview_Jacobian_detailed = PETSC_TRUE
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')
         debug%print_numerical_derivatives = PETSC_TRUE
       case('WAYPOINTS')
         debug%print_waypoints = PETSC_TRUE
+      case default
+        option%io_buffer = 'Option "' // trim(keyword) // &
+          '" not recognized under DEBUG.'
+        call printErrMsg(option)
     end select 
   
   enddo  
