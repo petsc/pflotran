@@ -1456,12 +1456,15 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
 
   PetscReal :: Res(reaction%naqcomp)
+  PetscReal :: update(reaction%naqcomp)
   PetscReal :: total_conc(reaction%naqcomp)
   PetscReal :: free_conc(reaction%naqcomp)
   PetscReal :: guess(reaction%naqcomp)
   PetscReal :: Jac(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: indices(reaction%naqcomp)
   PetscReal :: norm
+  PetscReal :: maximum_residual, maximum_relative_change
+  PetscReal :: ratio, min_ratio
   PetscReal :: prev_molal(reaction%naqcomp)
   PetscBool :: compute_activity_coefs
 
@@ -1474,7 +1477,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: convert_molar_to_molal
   
   PetscBool :: charge_balance_warning_flag = PETSC_FALSE
-
+  PetscBool :: use_log_formulation
+  
   PetscReal :: Jac_num(reaction%naqcomp)
   PetscReal :: Res_pert, pert, prev_value
 
@@ -1920,28 +1924,48 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       end select
     enddo
     
-    ! scale Jacobian
-    do icomp = 1, reaction%naqcomp
-      norm = max(1.d0,maxval(abs(Jac(icomp,:))))
-      norm = 1.d0/norm
-      Res(icomp) = Res(icomp)*norm
-      Jac(icomp,:) = Jac(icomp,:)*norm
-    enddo
-
-    ! for derivatives with respect to ln conc
-    do icomp = 1, reaction%naqcomp
-      Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
-    enddo
+    maximum_residual = maxval(abs(Res))
     
-    call ludcmp(Jac,reaction%naqcomp,indices,icomp)
-    call lubksb(Jac,reaction%naqcomp,indices,Res)
-
+    if (reaction%use_log_formulation) then
+      ! force at least 4 log updates, then cycle the next 5 updates between
+      ! log/linear.  This improves convergence of linear problems or 
+      ! primary components with no complexes, reactions, etc. (e.g. tracers)
+      if (num_iterations > 3 .and. num_iterations < 9) then
+        use_log_formulation = (mod(num_iterations,2) == 0)
+      else
+        use_log_formulation = PETSC_TRUE
+      endif
+    else
+      use_log_formulation = PETSC_FALSE
+    endif
+      
+    call RSolve(Res,Jac,rt_auxvar%pri_molal,update,reaction%naqcomp, &
+                use_log_formulation)
+    
     prev_molal = rt_auxvar%pri_molal
 
-    Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
-    
-    rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-Res)
+    if (use_log_formulation) then
+      update = dsign(1.d0,update)*min(dabs(update),reaction%max_dlnC)
+      rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
+    else ! linear upage
+      ! ensure non-negative concentration
+      min_ratio = 1.d20 ! large number
+      do icomp = 1, reaction%ncomp
+        if (prev_molal(icomp) <= update(icomp)) then
+          ratio = abs(prev_molal(icomp)/update(icomp))
+          if (ratio < min_ratio) min_ratio = ratio
+        endif
+      enddo
+      if (min_ratio < 1.d0) then
+        ! scale by 0.99 to make the update slightly smaller than the min_ratio
+        update = update*min_ratio*0.99d0
+      endif
+      rt_auxvar%pri_molal = prev_molal - update
+    endif
 
+    maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
+                                         prev_molal))
+    
     num_iterations = num_iterations + 1
     
     if (mod(num_iterations,1000) == 0) then
@@ -1961,7 +1985,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
     
     ! check for convergence
-    if (maxval(dabs(res)) < reaction%max_residual_tolerance) then
+    if (maximum_residual < reaction%max_residual_tolerance .and. &
+        maximum_relative_change < reaction%max_relative_change_tolerance) then
       ! need some sort of convergence before we kick in activities
       if (compute_activity_coefs) exit
       compute_activity_coefs = PETSC_TRUE
@@ -3198,7 +3223,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     
     if (maxval(abs(residual)) < reaction%max_residual_tolerance) exit
 
-
     call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp, &
                 reaction%use_log_formulation)
     
@@ -3222,7 +3246,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
       endif
       rt_auxvar%pri_molal = prev_molal - update
     endif
-    
 
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
