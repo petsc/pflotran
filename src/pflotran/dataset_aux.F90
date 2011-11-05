@@ -92,7 +92,7 @@ function DatasetCreate()
   dataset%realization_dependent = PETSC_FALSE
   dataset%data_type = 0
 
-  dataset%cell_centered = PETSC_TRUE
+  dataset%cell_centered = PETSC_FALSE
   dataset%ndims = 0 ! ndims should not include time dimension
   dataset%rmax = -1.d20
   dataset%rmin = 1.d20
