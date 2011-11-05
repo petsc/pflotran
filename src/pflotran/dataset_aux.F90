@@ -13,6 +13,7 @@ module Dataset_Aux_module
     PetscInt :: data_type
     PetscInt :: data_dim ! dimensions of data: XY, X, YXZ, etc.
     PetscBool :: realization_dependent
+    PetscBool :: cell_centered
     ! all data stored internally as a 1D array
     PetscInt, pointer :: iarray(:)
     PetscReal, pointer :: rarray(:)
@@ -91,6 +92,7 @@ function DatasetCreate()
   dataset%realization_dependent = PETSC_FALSE
   dataset%data_type = 0
 
+  dataset%cell_centered = PETSC_FALSE
   dataset%ndims = 0 ! ndims should not include time dimension
   dataset%rmax = -1.d20
   dataset%rmin = 1.d20
@@ -279,7 +281,7 @@ function DatasetGetPointer(dataset_list, dataset_name, debug_string, option)
   if (.not.found) then
     option%io_buffer = 'Dataset "' // trim(dataset_name) // '" in "' // &
              trim(debug_string) // '" not found among available datasets.'
-    call printErrMsg(option)    
+    call printErrMsgByRank(option)    
   endif
 
 end function DatasetGetPointer
@@ -430,6 +432,7 @@ subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
   PetscInt :: index
   PetscReal :: dx, dy
   PetscInt :: nx
+  character(len=MAXWORDLENGTH) :: word
   
   call DatasetGetIndices(dataset,xx,yy,zz,i,j,k,x,y,z)
   
@@ -443,46 +446,54 @@ subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
     case(INTERPOLATION_LINEAR)
       select case(dataset%data_dim)
         case(DIM_X,DIM_Y,DIM_Z)
-          if (i <= 0 .or. i+1 > dataset%dims(1)) then 
+          if (i < 1 .or. i+1 > dataset%dims(1)) then 
+            write(word,*) i
+            word = adjustl(word)
             select case(dataset%data_dim)
               case(DIM_X)
-                option%io_buffer = 'Out of x bounds'
+                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
               case(DIM_Y)
-                option%io_buffer = 'Out of y bounds'
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
               case(DIM_Z)
-                option%io_buffer = 'Out of z bounds'
+                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
             end select
-            call printErrMsg(option)
+            call printErrMsgByRank(option)
           endif
           dx = dataset%discretization(1)
           x1 = dataset%origin(1) + (i-1)*dx
+          if (dataset%cell_centered) x1 = x1 + 0.5d0*dx
           v1 = dataset%rarray(i)
           v2 = dataset%rarray(i+1)
           real_value = v1 + (x-x1)/dx*(v2-v1)
         case(DIM_XY,DIM_XZ,DIM_YZ)
-          if (i <= 0 .or. i+1 > dataset%dims(1)) then
+          if (i < 1 .or. i+1 > dataset%dims(1)) then
+            write(word,*) i
+            word = adjustl(word)
             select case(dataset%data_dim)
               case(DIM_XY,DIM_XZ)
-                option%io_buffer = 'Out of x bounds'
+                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
               case(DIM_YZ)
-                option%io_buffer = 'Out of y bounds'
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
             end select
-            call printErrMsg(option)
+            call printErrMsgByRank(option)
           endif
-          if (j <= 0 .or. j+1 > dataset%dims(2)) then
+          if (j < 1 .or. j+1 > dataset%dims(2)) then
+            write(word,*) j
+            word = adjustl(word)
             select case(dataset%data_dim)
               case(DIM_XY)
-                option%io_buffer = 'Out of y bounds'
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
               case(DIM_YZ,DIM_XZ)
-                option%io_buffer = 'Out of z bounds'
+                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
             end select
-            call printErrMsg(option)
+            call printErrMsgByRank(option)
           endif
           dx = dataset%discretization(1)
           dy = dataset%discretization(2)
           nx = dataset%dims(1)
 
           x1 = dataset%origin(1) + (i-1)*dx
+          if (dataset%cell_centered) x1 = x1 + 0.5d0*dx
           x2 = x1 + dx
           
           index = i + (j-1)*nx
@@ -490,6 +501,7 @@ subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
           v2 = dataset%rarray(index+1)
           
           y1 = dataset%origin(2) + (j-1)*dy
+          if (dataset%cell_centered) y1 = y1 + 0.5d0*dy
           y2 = y1 + dy
           
            ! really (j1-1+1)
@@ -500,7 +512,7 @@ subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
           real_value = InterpolateBilinear(x,y,x1,x2,y1,y2,v1,v2,v3,v4)
         case(DIM_XYZ)
           option%io_buffer = 'Trilinear interpolation not yet supported'
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
       end select
   end select
   
@@ -545,15 +557,31 @@ subroutine DatasetGetIndices(dataset,xx,yy,zz,i,j,k,x,y,z)
       y = zz
   end select
 
-  i = int((x - dataset%origin(1))/ &
-          dataset%discretization(1) + 1.d0)
-  if (dataset%data_dim > DIM_Z) then ! at least 2D
-    j = int((y - dataset%origin(2))/ &
-            dataset%discretization(2) + 1.d0)
-  endif
-  if (dataset%data_dim > DIM_YZ) then ! at least 3D
-    k = int((z - dataset%origin(3))/ &
-            dataset%discretization(3) + 1.d0)
+  if (dataset%cell_centered) then
+    i = int((x - dataset%origin(1))/ &
+            dataset%discretization(1) + 0.5d0)
+    i = max(1,min(i,dataset%dims(1)-1))
+    if (dataset%data_dim > DIM_Z) then ! at least 2D
+      j = int((y - dataset%origin(2))/ &
+              dataset%discretization(2) + 0.5d0)
+      j = max(1,min(j,dataset%dims(2)-1))
+    endif
+    if (dataset%data_dim > DIM_YZ) then ! at least 3D
+      k = int((z - dataset%origin(3))/ &
+              dataset%discretization(3) + 0.5d0)
+      k = max(1,min(k,dataset%dims(3)-1))
+    endif
+  else
+    i = int((x - dataset%origin(1))/ &
+            dataset%discretization(1) + 1.d0)
+    if (dataset%data_dim > DIM_Z) then ! at least 2D
+      j = int((y - dataset%origin(2))/ &
+              dataset%discretization(2) + 1.d0)
+    endif
+    if (dataset%data_dim > DIM_YZ) then ! at least 3D
+      k = int((z - dataset%origin(3))/ &
+              dataset%discretization(3) + 1.d0)
+    endif
   endif
   
 end subroutine DatasetGetIndices
@@ -658,7 +686,7 @@ subroutine DatasetReorder(dataset,option)
       write(option%io_buffer,*) dataset%ndims
       option%io_buffer = 'Dataset reordering not yet supported for rank ' // &
                          trim(adjustl(option%io_buffer)) // ' array.'
-      call printErrMsg(option)
+      call printErrMsgByRank(option)
   end select
 
   rarray = temp_real

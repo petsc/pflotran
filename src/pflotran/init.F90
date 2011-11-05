@@ -1974,6 +1974,12 @@ subroutine InitReadInput(simulation)
           end select
         enddo
 
+        if (associated(flow_stepper)) then
+          flow_stepper%dt_min = default_stepper%dt_min
+        endif
+        if (associated(tran_stepper)) then
+          tran_stepper%dt_min = default_stepper%dt_min
+        endif
         option%flow_dt = default_stepper%dt_min
         option%tran_dt = default_stepper%dt_min
       
