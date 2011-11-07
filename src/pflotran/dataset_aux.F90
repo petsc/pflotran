@@ -367,8 +367,11 @@ subroutine DatasetInterpolateBetweenTimes(dataset,option)
   type(option_type) :: option
   
   PetscInt :: array_size
+  PetscInt :: time_interpolation_method
   PetscReal :: weight2
   PetscInt :: time1_start, time1_end, time2_start, time2_end
+  
+  time_interpolation_method = INTERPOLATION_STEP
   
   if (dataset%buffer%cur_time_index >= &
       dataset%buffer%num_times_total) then
@@ -384,22 +387,31 @@ subroutine DatasetInterpolateBetweenTimes(dataset,option)
   endif
   
   if (associated(dataset%rarray)) then
-    ! weight2 = (t-t1)/(t2-t1)
-    weight2 = &
-      (option%time - &
-       dataset%buffer%time_array(dataset%buffer%cur_time_index)) / &
-      (dataset%buffer%time_array(dataset%buffer%cur_time_index+1) - &
-       dataset%buffer%time_array(dataset%buffer%cur_time_index))
-    array_size = size(dataset%rarray)
-    time1_end = array_size*(dataset%buffer%cur_time_index - &
-                            dataset%buffer%time_offset)
-    time1_start = time1_end - array_size + 1
-    time2_end = time1_end + array_size
-    time2_start = time1_start + array_size
-    dataset%rarray = (1.d0-weight2) * &
-                     dataset%buffer%rarray(time1_start:time1_end) + &
-                     weight2 * &
-                     dataset%buffer%rarray(time2_start:time2_end)
+    select case(time_interpolation_method)
+      case(INTERPOLATION_STEP)
+        array_size = size(dataset%rarray)
+        time1_end = array_size*(dataset%buffer%cur_time_index - &
+                                dataset%buffer%time_offset)
+        time1_start = time1_end - array_size + 1
+        dataset%rarray = dataset%buffer%rarray(time1_start:time1_end)
+      case(INTERPOLATION_LINEAR)
+        ! weight2 = (t-t1)/(t2-t1)
+        weight2 = &
+          (option%time - &
+            dataset%buffer%time_array(dataset%buffer%cur_time_index)) / &
+          (dataset%buffer%time_array(dataset%buffer%cur_time_index+1) - &
+            dataset%buffer%time_array(dataset%buffer%cur_time_index))
+        array_size = size(dataset%rarray)
+        time1_end = array_size*(dataset%buffer%cur_time_index - &
+                                dataset%buffer%time_offset)
+        time1_start = time1_end - array_size + 1
+        time2_end = time1_end + array_size
+        time2_start = time1_start + array_size
+        dataset%rarray = (1.d0-weight2) * &
+                          dataset%buffer%rarray(time1_start:time1_end) + &
+                          weight2 * &
+                          dataset%buffer%rarray(time2_start:time2_end)
+    end select
   endif
 
 end subroutine DatasetInterpolateBetweenTimes
@@ -424,7 +436,7 @@ subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
   PetscReal :: real_value
   type(option_type) :: option
   
-  PetscInt :: interpolation_method
+  PetscInt :: spatial_interpolation_method
   PetscInt :: i, j, k
   PetscReal :: x, y, z
   PetscReal :: x1, x2, y1, y2
@@ -436,12 +448,12 @@ subroutine DatasetInterpolateReal(dataset,xx,yy,zz,time,real_value,option)
   
   call DatasetGetIndices(dataset,xx,yy,zz,i,j,k,x,y,z)
   
-  interpolation_method = INTERPOLATION_LINEAR
+  spatial_interpolation_method = INTERPOLATION_LINEAR
   
   ! in the below, i,j,k,xx,yy,zz to not reflect the 
   ! coordinates of the problem domain in 3D.  They
   ! are transfored to the dimensions of the dataset
-  select case(interpolation_method)
+  select case(spatial_interpolation_method)
     case(INTERPOLATION_STEP)
     case(INTERPOLATION_LINEAR)
       select case(dataset%data_dim)
