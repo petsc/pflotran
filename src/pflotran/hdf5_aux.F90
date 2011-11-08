@@ -249,7 +249,7 @@ subroutine HDF5ReadDataset(dataset,option)
     else
       read_times = PETSC_FALSE
     endif  
-    attribute_name = "CELL_CENTERED"
+    attribute_name = "Cell_Centered"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
       dataset%cell_centered = PETSC_TRUE
