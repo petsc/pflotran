@@ -35,7 +35,6 @@ module THC_Aux_module
     PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
-	PetscReal, pointer :: vapor_diffusion_coefficient
     PetscReal, pointer :: diffusion_activation_energy(:)
   end type thc_parameter_type
   
@@ -255,6 +254,10 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
                                    por,perm, &
                                    option)
     dpw_dp = 0
+#ifdef ICE
+    pw = global_aux_var%pres(1)
+    dpw_dp = 1.d0
+#endif
   else
     iphase = 1
     aux_var%pc = 0.d0
@@ -281,6 +284,13 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
     dw_dp = 0.d0
     hw_dp = 0.d0
   endif
+  
+#ifdef ICE
+  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+              option%scale,ierr)
+  call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
+  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
+#endif
  
 ! aux_var%den = dw_mol
 ! aux_var%den_kg = dw_kg
@@ -309,6 +319,12 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
     aux_var%dh_dp = 0.d0
     aux_var%du_dp = 0.d0
   endif
+
+#ifdef ICE
+  aux_var%dh_dp = hw_dp
+  aux_var%du_dp = hw_dp - (dpw_dp/dw_mol-pw/(dw_mol*dw_mol)*dw_dp)*option%scale
+#endif
+
   aux_var%dh_dt = hw_dt
   aux_var%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
 
