@@ -55,6 +55,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: pressure_gradient(3), piezometric_head_gradient(3), datum(3)
   PetscReal :: temperature_gradient(3), concentration_gradient(3)
   PetscReal :: gravity_magnitude
+  PetscReal :: z_offset
   
   type(dataset_type), pointer :: datum_dataset
   
@@ -120,6 +121,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         ! set datum here equal to estimated mid value of dataset
         datum(1:3) = -999.d0
         datum(3) = 0.5d0*(datum_dataset%rmax+datum_dataset%rmin)
+        ! round the number to the nearest whole number
+        datum(3) = int(datum(3))
       endif
       pressure_at_datum = &
         condition%pressure%flow_dataset%time_series%cur_value(1)
@@ -145,8 +148,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     ! compute the vertical gradient based on a 1 meter vertical spacing and
     ! interpolate the values from that array
     if (associated(datum_dataset)) then
-      max_z = max(grid%z_max_global,datum_dataset%rmax)+1.d0
-      min_z = min(grid%z_min_global,datum_dataset%rmin)-1.d0
+      temp_real = grid%z_max_global - grid%z_min_global
+      max_z = max(grid%z_max_global,datum_dataset%rmax+temp_real)+1.d0
+      min_z = min(grid%z_min_global,datum_dataset%rmin-temp_real)-1.d0
     else
       max_z = max(grid%z_max_global,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
       min_z = min(grid%z_min_global,datum(Z_DIRECTION))-1.d0
@@ -293,11 +297,13 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                                     0.d0,temp_real,option)
         ! temp_real is now the real datum
         dist_z = grid%z(ghosted_id)-dz_conn-temp_real
+        z_offset = temp_real-datum(Z_DIRECTION)
       else
         ! note the negative (-) d?_conn is required due to the offset of the boundary face
         dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)
         dist_y = grid%y(ghosted_id)-dy_conn-datum(Y_DIRECTION)
         dist_z = grid%z(ghosted_id)-dz_conn-datum(Z_DIRECTION)
+        z_offset = 0.d0
       endif
     end if
 
@@ -305,9 +311,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
       if (grid%itype==STRUCTURED_GRID_MIMETIC) then
-        dist_z_for_pressure = conn_set_ptr%cntr(3,conn_id) - z(ipressure)
+        dist_z_for_pressure = conn_set_ptr%cntr(3,conn_id)-(z(ipressure) + z_offset)
       else 
-        dist_z_for_pressure = grid%z(ghosted_id)-dz_conn-z(ipressure)
+        dist_z_for_pressure = grid%z(ghosted_id)-dz_conn-(z(ipressure) + z_offset)
       end if
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &

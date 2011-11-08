@@ -148,6 +148,7 @@ subroutine HDF5ReadDataset(dataset,option)
   use hdf5
   use Dataset_Aux_module
   use Option_module
+  use Units_module
   
   implicit none
   
@@ -173,6 +174,7 @@ subroutine HDF5ReadDataset(dataset,option)
   PetscMPIInt :: array_rank_mpi
   PetscBool :: attribute_exists
   PetscBool :: read_times
+  PetscReal :: units_conversion
   character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
 
   !TODO(geh): add to event log
@@ -258,6 +260,19 @@ subroutine HDF5ReadDataset(dataset,option)
     endif  
 
     if (read_times) then
+      units_conversion = 1.d0
+      attribute_name = "Time Units"
+      call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+      if (attribute_exists) then
+        attribute_dim = 1
+        call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
+        size_t_int = MAXWORDLENGTH
+        call h5tset_size_f(atype_id,size_t_int,hdf5_err)
+        call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+        call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
+        call h5aclose_f(attribute_id,hdf5_err)
+        units_conversion = UnitsConvertToInternal(word,option)
+      endif
       ! open the "time" dataset, if it exists
       dataset_name = 'time'
       call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
@@ -277,6 +292,7 @@ subroutine HDF5ReadDataset(dataset,option)
       call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err,length)    
       call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%buffer%time_array, &
                      length,hdf5_err,memory_space_id,file_space_id,prop_id)
+      dataset%buffer%time_array = dataset%buffer%time_array * units_conversion
       call PetscLogEventEnd(logging%event_h5dread_f,ierr)  
       call h5pclose_f(prop_id,hdf5_err)
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)

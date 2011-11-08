@@ -1947,7 +1947,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (use_log_formulation) then
       update = dsign(1.d0,update)*min(dabs(update),reaction%max_dlnC)
       rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
-    else ! linear upage
+    else ! linear update
       ! ensure non-negative concentration
       min_ratio = 1.d20 ! large number
       do icomp = 1, reaction%ncomp
@@ -1961,6 +1961,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         update = update*min_ratio*0.99d0
       endif
       rt_auxvar%pri_molal = prev_molal - update
+      ! could use:
+      ! rt_auxvar%pri_molal = prev_molal - update * minval(abs(prev_molal/update))
     endif
 
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
