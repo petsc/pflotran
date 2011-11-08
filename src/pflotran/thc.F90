@@ -151,7 +151,9 @@ subroutine THCSetupPatch(realization)
   !Copy the values in the thc_parameter from the global realization 
   do i = 1, size(realization%material_property_array)
     patch%aux%THC%thc_parameter%dencpr(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%rock_density  
+      realization%material_property_array(i)%ptr%rock_density*option%scale* &
+        realization%material_property_array(i)%ptr%specific_heat
+ 
     patch%aux%THC%thc_parameter%ckwet(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_wet  
     patch%aux%THC%thc_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
@@ -799,7 +801,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
            (thc_aux_var%dden_dt*thc_aux_var%u + &  ! pull %sat outside
             global_aux_var%den(1)*thc_aux_var%du_dt)*porXvol +  &
            (1.d0 - por)*vol*rock_dencpr 
-  J(3,3) = 0.d0 
+  J(3,3) = 0.d0
 
 #ifdef ICE ! Added by Satish Karra, 10/25/11
   ! Assuming above freezing for now, no s_i considered
