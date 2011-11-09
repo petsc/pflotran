@@ -1229,22 +1229,21 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 	
     Jup(1,1) = Jup(1,1) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                dsatg_dp_up*deng_up + por_up*satg_up*tor_up*deng_up*dDiffg_dp_up)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area 
+               (molg_up - molg_dn)*area 
     Jup(1,2) = Jup(1,2) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                satg_up*ddeng_dt_up + por_up*satg_up*tor_up*deng_up*dDiffg_dt_up)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*dpsat_dt_up/&
-               p_g
-
+               (molg_up - molg_dn)*area + Ddiffgas_avg*area*dmolg_dt_up
+               
     Jdn(1,1) = Jdn(1,1) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                dsatg_dp_dn*deng_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dp_dn)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area
+               (molg_up - molg_dn)*area
     Jdn(1,2) = Jdn(1,2) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                satg_dn*ddeng_dt_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dt_dn)*&
-               (molg_up - molg_dn)/(dd_up + dd_dn)*area + Ddiffgas_avg*area*(-dpsat_dt_dn)/&
-               p_g  
-			   
+               (molg_up - molg_dn)*area + Ddiffgas_avg*area*(-dmolg_dt_dn)
+               			   
   endif
 #endif 
+
 
 
 ! conduction term
@@ -1722,7 +1721,6 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     T_ref = 25.d0 ! in deg C 
     Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.d0)/ &
                (T_ref + 273.d0))**(1.8)    
-    Diffg_dn = Diffg_ref
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
     Ddiffgas_avg = Ddiffgas_dn/dd_up
     call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
@@ -1737,7 +1735,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     Jdn(1,1) = Jdn(1,1) + Ddiffgas_avg/satg_dn*dsatg_dp_dn*(molg_up - molg_dn)*area
     Jdn(1,2) = Jdn(1,2) + (Ddiffgas_avg/deng_dn*ddeng_dt_dn + &
                Ddiffgas_avg/Diffg_dn*dDiffg_dt_dn)*(molg_up - molg_dn)*area + &
-               Ddiffgas_avg*(-1/p_g)*dpsat_dt_dn
+               Ddiffgas_avg*area*(-dmolg_dt_dn)
   endif
 #endif   
 
