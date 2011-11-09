@@ -999,7 +999,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
   PetscReal :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert_up, pert_dn, &
             res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
-			
+
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
   PetscReal :: p_g
@@ -1162,7 +1162,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     ddifff_dp_up = diffdp*0.25D0*(aux_var_up%dsat_dp*(global_aux_var_up%den(1) + global_aux_var_dn%den(1))+ &
                   (global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_up%dden_dp)
     ddifff_dt_up = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_up%dden_dt
-	! Need to add a term due to temperature dependence on diffusivity
+! Need to add a term due to temperature dependence on diffusivity
     ddifff_dp_dn = diffdp*0.25D0*(aux_var_dn%dsat_dp*(global_aux_var_up%den(1) + global_aux_var_dn%den(1))+ &
                   (global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_dn%dden_dp)
     ddifff_dt_dn = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_dn%dden_dt
@@ -1225,7 +1225,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     dDiffg_dp_dn = 0.d0
     dsatg_dp_up = - aux_var_up%dsat_dp
     dsatg_dp_dn = - aux_var_dn%dsat_dp
-	
+
     Jup(1,1) = Jup(1,1) + Ddiffgas_avg**2/Ddiffgas_up**2*dd_up*(por_up*tor_up*Diffg_up*&
                dsatg_dp_up*deng_up + por_up*satg_up*tor_up*deng_up*dDiffg_dp_up)*&
                (molg_up - molg_dn)*area 
@@ -1239,7 +1239,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     Jdn(1,2) = Jdn(1,2) + Ddiffgas_avg**2/Ddiffgas_dn**2*dd_dn*(por_dn*tor_dn*Diffg_dn*&
                satg_dn*ddeng_dt_dn + por_dn*satg_dn*tor_dn*deng_dn*dDiffg_dt_dn)*&
                (molg_up - molg_dn)*area + Ddiffgas_avg*area*(-dmolg_dt_dn)
-               			   
+                 
   endif
 #endif 
 
