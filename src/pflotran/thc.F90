@@ -814,7 +814,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   call PSAT(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
   mol_g = p_sat/p_g
   C_g = C_wv*mol_g*FMWH2O + C_a*(1 - mol_g)*FMWAIR !in MJ/mol
-  u_g = C_g*(global_aux_var%temp(1) + 273.15)
+  u_g = C_g*(global_aux_var%temp(1) + 273.15d0)
   ddeng_dt = - p_g/(R_gas_constant*(global_aux_var%temp(1) + 273.15d0)**2)
   dmolg_dt = (1/p_g)*dpsat_dt
   dsatg_dp = - thc_aux_var%dsat_dp
@@ -1191,7 +1191,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     enddo  
   endif 
 
-
 #ifdef ICE
   ! Added by Satish Karra, 10/25/11
   ! Now looking at above freezing only
@@ -1205,10 +1204,10 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     Diffg_ref = 5.d-4 ! Reference diffusivity, need to read from input file
     p_ref = 1.01325d5 ! in Pa
     T_ref = 25.d0 ! in deg C
-    Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + 273.d0)/ &
-               (T_ref + 273.d0))**(1.8)  
-    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.d0)/ &
-               (T_ref + 273.d0))**(1.8)    
+    Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + 273.15d0)/ &
+               (T_ref + 273.15d0))**(1.8)  
+    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.15d0)/ &
+               (T_ref + 273.15d0))**(1.8)    
     Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
     Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
@@ -1220,8 +1219,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     dmolg_dt_up = (1/p_g)*dpsat_dt_up
     ddeng_dt_dn = - p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0)**2)
     dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
-    dDiffg_dt_up = 1.8*Diffg_up/(global_aux_var_up%temp(1) + 273.d0)
-    dDiffg_dt_dn = 1.8*Diffg_dn/(global_aux_var_dn%temp(1) + 273.d0)
+    dDiffg_dt_up = 1.8*Diffg_up/(global_aux_var_up%temp(1) + 273.15d0)
+    dDiffg_dt_dn = 1.8*Diffg_dn/(global_aux_var_dn%temp(1) + 273.15d0)
     dDiffg_dp_up = 0.d0
     dDiffg_dp_dn = 0.d0
     dsatg_dp_up = - aux_var_up%dsat_dp
@@ -1436,10 +1435,10 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
     Diffg_ref = 5.d-4 ! Reference diffusivity, need to read from input file
     p_ref = 1.01325d5 ! in Pa
     T_ref = 25.d0 ! in deg C
-    Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + 273.d0)/ &
-               (T_ref + 273.d0))**(1.8)  
-    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.d0)/ &
-               (T_ref + 273.d0))**(1.8)
+    Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + 273.15d0)/ &
+               (T_ref + 273.15d0))**(1.8)  
+    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.15d0)/ &
+               (T_ref + 273.15d0))**(1.8)
     Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
     Ddiffgas_avg = (Ddiffgas_up * Ddiffgas_dn)/(dd_up*Ddiffgas_dn + dd_dn*Ddiffgas_up)
@@ -1707,7 +1706,6 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
       endif
   end select
   
-  
 #ifdef ICE
   ! Added by Satish Karra, 11/08/11
   ! Now looking at above freezing only
@@ -1719,16 +1717,17 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     Diffg_ref = 5.d-4 ! Reference diffusivity, need to read from input file
     p_ref = 1.01325d5 ! in Pa
     T_ref = 25.d0 ! in deg C 
-    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.d0)/ &
-               (T_ref + 273.d0))**(1.8)    
+    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.15d0)/ &
+               (T_ref + 273.15d0))**(1.8)    
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
     Ddiffgas_avg = Ddiffgas_dn/dd_up
+    call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
     call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
     molg_up = psat_up/p_g
     molg_dn = psat_dn/p_g
     ddeng_dt_dn = - p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0)**2)
     dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
-    dDiffg_dt_dn = 1.8*Diffg_dn/(global_aux_var_dn%temp(1) + 273.d0)
+    dDiffg_dt_dn = 1.8*Diffg_dn/(global_aux_var_dn%temp(1) + 273.15d0)
     dDiffg_dp_dn = 0.d0
     dsatg_dp_dn = - aux_var_dn%dsat_dp
 
@@ -1958,8 +1957,8 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
     Diffg_ref = 5.d-4 ! Reference diffusivity, need to read from input file
     p_ref = 1.01325d5 ! in Pa
     T_ref = 25.d0 ! in deg C
-    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.d0)/ &
-               (T_ref + 273.d0))**(1.8)
+    Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.15d0)/ &
+               (T_ref + 273.15d0))**(1.8)
     Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
     Ddiffgas_avg = Ddiffgas_dn/dd_up
     call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
@@ -1969,6 +1968,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
     fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)
   endif
 #endif 
+
 
   ! Conduction term
   select case(ibndtype(THC_TEMPERATURE_DOF))
