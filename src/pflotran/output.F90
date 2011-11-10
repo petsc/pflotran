@@ -4821,7 +4821,7 @@ subroutine OutputVTK(realization)
   
   if (option%myrank == option%io_rank) close(IUNIT3)
 
-#if 0  
+#if 1
   if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesVTK(realization)
   endif
@@ -4861,7 +4861,7 @@ subroutine OutputVTK(realization)
       
 end subroutine OutputVTK
 
-#if 0
+#if 1
 ! ************************************************************************** !
 !
 ! OutputVelocitiesVTK: Print velocities to Tecplot file in BLOCK format
@@ -4890,6 +4890,7 @@ subroutine OutputVelocitiesVTK(realization)
   type(output_option_type), pointer :: output_option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
   Vec :: global_vec
   Vec :: natural_vec
 
@@ -4904,7 +4905,7 @@ subroutine OutputVelocitiesVTK(realization)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.tec'
+    filename = trim(output_option%plot_name) // '-vel.vtk'
   else  
     if (output_option%plot_number < 10) then
       write(string,'("00",i1)') output_option%plot_number  
@@ -4916,16 +4917,23 @@ subroutine OutputVelocitiesVTK(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.tec'
+               '-vel-' // trim(string) // '.vtk'
   endif
   
   if (option%myrank == option%io_rank) then
-   option%io_buffer = '--> write tecplot velocity output file: ' // &
+   option%io_buffer = '--> write vtk velocity output file: ' // &
                       trim(filename)
     call printMsg(option)                      
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
+    write(IUNIT3,'(''# vtk DataFile Version 2.0'')')
+    ! write title
+    write(IUNIT3,'(''PFLOTRAN output'')')
+    write(IUNIT3,'(''ASCII'')')
+    write(IUNIT3,'(''DATASET UNSTRUCTURED_GRID'')')
+    
+#if 0
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
@@ -4967,7 +4975,7 @@ subroutine OutputVelocitiesVTK(realization)
       string = trim(string) // ' DATAPACKING=BLOCK'
     endif
     write(IUNIT3,'(a)') trim(string)
-
+#endif
   endif
   
   ! write blocks
@@ -4980,37 +4988,43 @@ subroutine OutputVelocitiesVTK(realization)
   ! write out coordinates
   call WriteVTKGrid(IUNIT3,realization)
 
-  word = 'velx
+  word = 'Vlx'
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+  word = 'Vly'
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+  word = 'Vlz'
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
   if (option%nphase > 1) then
+    word = 'Vgx'
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+    word = 'Vgy'
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+    word = 'Vgz'
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
   endif
 
   ! material id
+  word = 'Material_ID'
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
