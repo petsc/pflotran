@@ -7793,7 +7793,18 @@ subroutine OutputMassBalanceNew(realization)
       open(unit=fid,file=filename,action="write",status="replace")
 
       ! write header
-      write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'  
+      write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
+      
+      if (option%iflowmode > 0) then
+        write(fid,'(a)',advance="no") '"dt_flow[' // trim(output_option%tunit) // ']"'
+        icol = icol + 1
+      endif
+      
+      if (option%ntrandof > 0) then
+        write(fid,'(a)',advance="no") '"dt_tran[' // trim(output_option%tunit) // ']"'
+        icol = icol + 1
+      endif
+      
       header = ''
       select case(option%iflowmode)
         case(RICHARDS_MODE)
@@ -7940,6 +7951,7 @@ subroutine OutputMassBalanceNew(realization)
   endif
 
   if (option%nflowdof > 0) then
+    write(fid,100,advance="no") option%flow_dt/output_option%tconv
     sum_kg = 0.d0
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -7966,6 +7978,7 @@ subroutine OutputMassBalanceNew(realization)
   endif
   
   if (option%ntrandof > 0) then
+    write(fid,100,advance="no") option%tran_dt/output_option%tconv
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
     int_mpi = option%nphase*option%ntrandof
