@@ -7951,7 +7951,8 @@ subroutine OutputMassBalanceNew(realization)
   endif
 
   if (option%nflowdof > 0) then
-    write(fid,100,advance="no") option%flow_dt/output_option%tconv
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%flow_dt/output_option%tconv
     sum_kg = 0.d0
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -7978,7 +7979,8 @@ subroutine OutputMassBalanceNew(realization)
   endif
   
   if (option%ntrandof > 0) then
-    write(fid,100,advance="no") option%tran_dt/output_option%tconv
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%tran_dt/output_option%tconv
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
     int_mpi = option%nphase*option%ntrandof
