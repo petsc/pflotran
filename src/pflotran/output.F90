@@ -4785,6 +4785,17 @@ subroutine OutputVTK(realization)
   
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
+    
+      if (reaction%print_pH .and. associated(reaction%species_idx)) then
+        if (reaction%species_idx%h_ion_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = 'pH'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      endif
+    
+    
       if (reaction%print_total_component) then
         do i=1,reaction%naqcomp
           call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
