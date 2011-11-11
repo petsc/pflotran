@@ -7796,12 +7796,12 @@ subroutine OutputMassBalanceNew(realization)
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
       
       if (option%iflowmode > 0) then
-        write(fid,'(a)',advance="no") '"dt_flow[' // trim(output_option%tunit) // ']"'
+        write(fid,'(a)',advance="no") ',"dt_flow[' // trim(output_option%tunit) // ']"'
         icol = icol + 1
       endif
       
       if (option%ntrandof > 0) then
-        write(fid,'(a)',advance="no") '"dt_tran[' // trim(output_option%tunit) // ']"'
+        write(fid,'(a)',advance="no") ',"dt_tran[' // trim(output_option%tunit) // ']"'
         icol = icol + 1
       endif
       
