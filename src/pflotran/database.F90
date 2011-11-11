@@ -3385,6 +3385,10 @@ subroutine BasisPrint(reaction,title,option)
   type(surface_complex_type), pointer :: cur_srfcplx
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
+  
+  character(len=MAXSTRINGLENGTH) :: reactant_string, product_string
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: fid
 
   PetscInt :: ispec, itemp
 
@@ -3394,6 +3398,7 @@ subroutine BasisPrint(reaction,title,option)
 130 format(a,100f11.4)
 140 format(a,f6.2)
 150 format(a,es11.4,a)
+160 format(i2,a)
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,*)
@@ -3438,6 +3443,11 @@ subroutine BasisPrint(reaction,title,option)
       write(option%fid_out,*)
       write(option%fid_out,*) 'Secondary Species: None'
     endif
+!#define WRITE_LATEX
+#ifdef WRITE_LATEX
+    fid = 86
+    open(fid,file="rxns.txt",action="write")
+#endif
     do
       if (.not.associated(cur_aq_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
@@ -3447,16 +3457,46 @@ subroutine BasisPrint(reaction,title,option)
       if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
+#ifdef WRITE_LATEX
+        reactant_string = cur_aq_spec%name
+        product_string = ''
+#endif
         do ispec = 1, cur_aq_spec%dbaserxn%nspec
           write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
                           cur_aq_spec%dbaserxn%spec_name(ispec)
+#ifdef WRITE_LATEX
+          if (dabs(cur_aq_spec%dbaserxn%stoich(ispec)) > 1.d0) then
+            write(word,160) int(dabs(cur_aq_spec%dbaserxn%stoich(ispec))+1.e-10), &
+                          ' ' // trim(cur_aq_spec%dbaserxn%spec_name(ispec))
+            word = adjustl(word)
+          else
+            word = cur_aq_spec%dbaserxn%spec_name(ispec)
+          endif
+          if (cur_aq_spec%dbaserxn%stoich(ispec) < 0.d0) then
+            reactant_string = trim(reactant_string) // ' + ' // trim(word)
+          else
+            if (len_trim(product_string) > 0) then
+              product_string = trim(product_string) // ' + ' // trim(word)
+            else
+              product_string = word
+            endif
+          endif
+#endif          
         enddo
         write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
+#ifdef WRITE_LATEX
+      write(word,130) '', cur_aq_spec%dbaserxn%logK(2)
+      write(fid,*) trim(reactant_string) // ' $~\rightleftharpoons~$ ' // &
+        trim(product_string) // ' & ' // trim(adjustl(word)) // ' \\'
+#endif
       write(option%fid_out,*)
       cur_aq_spec => cur_aq_spec%next
     enddo
+#ifdef WRITE_LATEX
+    close(fid)
+#endif
     
     cur_gas_spec => reaction%gas_species_list
     if (associated(cur_gas_spec)) then

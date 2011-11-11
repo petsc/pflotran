@@ -69,6 +69,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   xm_nacl = xm_nacl /(1.d3 + xm_nacl)
   
   nullify(pressure_array)
+  nullify(datum_dataset)
   
   delta_z = min((grid%z_max_global-grid%z_min_global/500),1.d0)
   temperature_at_datum = option%reference_temperature
