@@ -35,7 +35,6 @@ module THC_Aux_module
     PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
-	PetscReal, pointer :: vapor_diffusion_coefficient
     PetscReal, pointer :: diffusion_activation_energy(:)
   end type thc_parameter_type
   
@@ -309,6 +308,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
     aux_var%dh_dp = 0.d0
     aux_var%du_dp = 0.d0
   endif
+
   aux_var%dh_dt = hw_dt
   aux_var%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
 

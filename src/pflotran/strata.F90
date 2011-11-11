@@ -15,6 +15,7 @@ module Strata_module
     PetscBool :: active
     character(len=MAXWORDLENGTH) :: material_property_name  ! character string defining name of material to be applied
     character(len=MAXSTRINGLENGTH) :: material_property_filename  ! character string defining name of file containing materia ids
+    PetscBool :: realization_dependent
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     PetscInt :: imaterial_property                       ! id of material in material array/list
     PetscInt :: iregion                                  ! id of region in region array/list
@@ -67,6 +68,7 @@ function StrataCreate1()
   strata%active = PETSC_TRUE
   strata%material_property_name = ""
   strata%material_property_filename = ""
+  strata%realization_dependent = PETSC_FALSE
   strata%region_name = ""
   strata%iregion = 0
   strata%imaterial_property = 0
@@ -152,6 +154,7 @@ subroutine StrataRead(strata,input,option)
 
   use Input_module
   use Option_module
+  use String_module
   
   implicit none
   
@@ -180,6 +183,11 @@ subroutine StrataRead(strata,input,option)
       case('MATERIAL')
         call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'material property name','STRATA')
+        if (StringCompareIgnoreCase(string,'realization_dependent')) then
+          strata%realization_dependent = PETSC_TRUE
+          call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
+          call InputErrorMsg(input,option,'material property name','STRATA')
+        endif
         strata%material_property_name = string
         strata%material_property_filename = string
       case('INACTIVE')

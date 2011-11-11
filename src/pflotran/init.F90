@@ -2179,8 +2179,8 @@ subroutine assignMaterialPropToRegions(realization)
         if (.not.associated(strata)) exit
         ! Read in cell by cell material ids if they exist
         if (.not.associated(strata%region) .and. strata%active) then
-          call readMaterialsFromFile(realization, &
-                                       strata%material_property_filename)
+          call readMaterialsFromFile(realization,strata%realization_dependent, &
+                                     strata%material_property_filename)
         ! Otherwise, set based on region
         else if (strata%active) then
           update_ghosted_material_ids = PETSC_TRUE
@@ -2710,7 +2710,7 @@ end subroutine readRegionFiles
 ! date: 1/03/08
 !
 ! ************************************************************************** !
-subroutine readMaterialsFromFile(realization,filename)
+subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 
   use Realization_module
   use Field_module
@@ -2726,6 +2726,7 @@ subroutine readMaterialsFromFile(realization,filename)
   implicit none
   
   type(realization_type) :: realization
+  PetscBool :: realization_dependent
   character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
@@ -2753,27 +2754,13 @@ subroutine readMaterialsFromFile(realization,filename)
   if (index(filename,'.h5') > 0) then
     group_name = 'Materials'
     dataset_name = 'Material Ids'
-#if 0    
-! For now, skip realization dependent material ids, or at least this should 
-! not be based on the realization id as it prevents the use of a single set 
-! of material ids - geh
- 
-    if (option%id > 0) then
-      append_realization_id = PETSC_TRUE
-    else
-      append_realization_id = PETSC_FALSE
-    endif
-#else
-    append_realization_id = PETSC_FALSE
-#endif    
-
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                     option)
     call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
                                     option)
     call HDF5ReadCellIndexedIntegerArray(realization,global_vec, &
                                          filename,group_name, &
-                                         dataset_name,append_realization_id)
+                                         dataset_name,realization_dependent)
     call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
 
     call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)

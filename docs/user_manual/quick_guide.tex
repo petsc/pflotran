@@ -611,7 +611,15 @@ The governing mass conservation equations for the geochemical transport mode for
 \nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
 &\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
 \EA
-where the sums over $\a$ are over all fluid phases in the system, and where $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
+and
+\EQ
+\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\EN
+for minerals with molar volume $\overline V_m$, mineral reaction rate $I_m$ and mineral volume fraction $\varphi_m$ referenced to an REV and satisfying
+\EQ
+\varphi + \sum_m \varphi_m \eq 1. 
+\EN
+Sums over $\a$ in Eqn.\eqref{rteqn} are over all fluid phases in the system. The quantity $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
 \EQ
 \Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a.
 \EN
@@ -666,7 +674,20 @@ and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction
 \EN
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
- 
+
+Porosity, permeability and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
+\EQ
+\varphi \eq 1-\sum_m\varphi_m,
+\EN
+\EQ
+k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
+\EN
+and
+\EQ
+a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n,
+\EN
+where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals that do not completely dissolve.
+
 \subsubsection{Sorption}
 
 Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surface complexation reactions for both equilibrium and multirate formulations.

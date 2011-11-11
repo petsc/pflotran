@@ -70,7 +70,7 @@ type, public :: mphase_auxvar_elem_type
      type(Mphase_parameter_type), pointer :: mphase_parameter
      type(Mphase_auxvar_type), pointer :: aux_vars(:)
      type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
-	 type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)
+     type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)
   end type Mphase_type
 
   

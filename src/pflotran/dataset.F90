@@ -71,13 +71,14 @@ subroutine DatasetLoad(dataset,option)
     endif
   else if (dataset%data_dim == DIM_NULL) then ! has not been read
     read_dataset = PETSC_TRUE
-    interpolate_dataset = PETSC_TRUE
   endif
   
   if (read_dataset) then
     call HDF5ReadDataset(dataset,option)
     call DatasetReorder(dataset,option)
-    interpolate_dataset = PETSC_TRUE ! just to be sure
+    if (associated(dataset%buffer)) then
+      interpolate_dataset = PETSC_TRUE ! just to be sure
+    endif
   endif
   if (interpolate_dataset) then
     call DatasetInterpolateBetweenTimes(dataset,option)

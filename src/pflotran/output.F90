@@ -4630,6 +4630,7 @@ subroutine OutputVTK(realization)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
@@ -4648,6 +4649,24 @@ subroutine OutputVTK(realization)
   field => realization%field
   reaction => realization%reaction
   output_option => realization%output_option
+  
+  if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+    free_mol_char = 'm'
+  else
+    free_mol_char = 'M'
+  endif
+  
+  if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+    tot_mol_char = 'm'
+  else
+    tot_mol_char = 'M'
+  endif
+  
+  if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+    sec_mol_char = 'm'
+  else
+    sec_mol_char = 'M'
+  endif
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
@@ -4785,11 +4804,23 @@ subroutine OutputVTK(realization)
   
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
+    
+      if (reaction%print_pH .and. associated(reaction%species_idx)) then
+        if (reaction%species_idx%h_ion_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = 'pH'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      endif
+    
+    
       if (reaction%print_total_component) then
         do i=1,reaction%naqcomp
           call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
+          word = trim(reaction%primary_species_names(i)) // '_tot_' // trim(tot_mol_char)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word, &
                                       natural_vec,VTK_REAL)
         enddo
       endif
@@ -4797,16 +4828,147 @@ subroutine OutputVTK(realization)
         do i=1,reaction%naqcomp
           call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
+          word = trim(reaction%primary_species_names(i)) // '_free_' // trim(free_mol_char)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word, &
                                       natural_vec,VTK_REAL)
         enddo
       endif    
-      do i=1,reaction%nkinmnrl
-        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%kinmnrl_names(i), &
-                                    natural_vec,VTK_REAL)
+      if (reaction%print_act_coefs) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            word = trim(reaction%primary_species_names(i)) // '_gam'
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          endif
+        enddo
+      endif
+      do i=1,reaction%neqcplx
+        if (reaction%secondary_species_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%secondary_species_names(i)) // &
+               '_' // trim(sec_mol_char)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
       enddo
+      do i=1,reaction%nkinmnrl
+        if (reaction%kinmnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinmnrl_names(i)) // '_vf'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word, &
+                                    natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%nkinmnrl
+        if (reaction%kinmnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinmnrl_names(i)) // '_rt'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word, &
+                                    natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%nmnrl
+        if (reaction%mnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinmnrl_names(i)) // '_si'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinsrfcplx_site_names(i))
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplx
+        if (reaction%eqsrfcplx_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%eqsrfcplx_names(i))
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%nkinsrfcplxrxn
+        if (reaction%kinsrfcplx_site_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinsrfcplx_site_names(i))
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%nkinsrfcplx
+        if (reaction%kinsrfcplx_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinsrfcplx_names(i))
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      if (associated(reaction%kd_print)) then
+        do i=1,reaction%naqcomp
+          if (reaction%kd_print(i)) then      
+            call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            word = trim(reaction%primary_species_names(i)) // '_kd'
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          endif
+        enddo
+      endif
+      if (associated(reaction%total_sorb_print)) then
+        do i=1,reaction%naqcomp
+          if (reaction%total_sorb_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            word = trim(reaction%primary_species_names(i)) // '_total_sorb'
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            word = trim(reaction%colloid_species_names(i)) // '_total_sorb_mob'
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            word = trim(reaction%colloid_names(i)) // '_col_mob_' // &
+                 trim(tot_mol_char)
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            word = trim(reaction%colloid_names(i)) // '_col_imb_' // &
+                 trim(tot_mol_char)
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,AGE, &
+            reaction%species_idx%tracer_age_id,reaction%species_idx%tracer_aq_id)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = 'Tracer_Age'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      endif
     endif
   endif
   
@@ -4821,7 +4983,7 @@ subroutine OutputVTK(realization)
   
   if (option%myrank == option%io_rank) close(IUNIT3)
 
-#if 0  
+#if 1
   if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesVTK(realization)
   endif
@@ -4861,7 +5023,7 @@ subroutine OutputVTK(realization)
       
 end subroutine OutputVTK
 
-#if 0
+#if 1
 ! ************************************************************************** !
 !
 ! OutputVelocitiesVTK: Print velocities to Tecplot file in BLOCK format
@@ -4890,6 +5052,7 @@ subroutine OutputVelocitiesVTK(realization)
   type(output_option_type), pointer :: output_option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
   Vec :: global_vec
   Vec :: natural_vec
 
@@ -4904,7 +5067,7 @@ subroutine OutputVelocitiesVTK(realization)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.tec'
+    filename = trim(output_option%plot_name) // '-vel.vtk'
   else  
     if (output_option%plot_number < 10) then
       write(string,'("00",i1)') output_option%plot_number  
@@ -4916,16 +5079,23 @@ subroutine OutputVelocitiesVTK(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.tec'
+               '-vel-' // trim(string) // '.vtk'
   endif
   
   if (option%myrank == option%io_rank) then
-   option%io_buffer = '--> write tecplot velocity output file: ' // &
+   option%io_buffer = '--> write vtk velocity output file: ' // &
                       trim(filename)
     call printMsg(option)                      
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
+    write(IUNIT3,'(''# vtk DataFile Version 2.0'')')
+    ! write title
+    write(IUNIT3,'(''PFLOTRAN output'')')
+    write(IUNIT3,'(''ASCII'')')
+    write(IUNIT3,'(''DATASET UNSTRUCTURED_GRID'')')
+    
+#if 0
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
@@ -4967,7 +5137,7 @@ subroutine OutputVelocitiesVTK(realization)
       string = trim(string) // ' DATAPACKING=BLOCK'
     endif
     write(IUNIT3,'(a)') trim(string)
-
+#endif
   endif
   
   ! write blocks
@@ -4980,37 +5150,43 @@ subroutine OutputVelocitiesVTK(realization)
   ! write out coordinates
   call WriteVTKGrid(IUNIT3,realization)
 
-  word = 'velx
+  word = 'Vlx'
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+  word = 'Vly'
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+  word = 'Vlz'
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
   if (option%nphase > 1) then
+    word = 'Vgx'
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+    word = 'Vgy'
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
 
+    word = 'Vgz'
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
   endif
 
   ! material id
+  word = 'Material_ID'
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
+  call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -7617,7 +7793,18 @@ subroutine OutputMassBalanceNew(realization)
       open(unit=fid,file=filename,action="write",status="replace")
 
       ! write header
-      write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'  
+      write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
+      
+      if (option%iflowmode > 0) then
+        write(fid,'(a)',advance="no") '"dt_flow[' // trim(output_option%tunit) // ']"'
+        icol = icol + 1
+      endif
+      
+      if (option%ntrandof > 0) then
+        write(fid,'(a)',advance="no") '"dt_tran[' // trim(output_option%tunit) // ']"'
+        icol = icol + 1
+      endif
+      
       header = ''
       select case(option%iflowmode)
         case(RICHARDS_MODE)
@@ -7764,6 +7951,8 @@ subroutine OutputMassBalanceNew(realization)
   endif
 
   if (option%nflowdof > 0) then
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%flow_dt/output_option%tconv
     sum_kg = 0.d0
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -7790,6 +7979,8 @@ subroutine OutputMassBalanceNew(realization)
   endif
   
   if (option%ntrandof > 0) then
+    if (option%myrank == option%io_rank) &
+      write(fid,100,advance="no") option%tran_dt/output_option%tconv
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
     int_mpi = option%nphase*option%ntrandof

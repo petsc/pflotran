@@ -218,42 +218,104 @@ Even this relatively simple system involves a complex set of nonlinear partial d
 
 \subsection{Mass Conservation Equations}
 
-The governing equations for mass conservation of each component $i$ can be written in the form
-\EQ\label{massconv}
-\sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a X_i^\a\big) + \bnabla\cdot\bF_i^\a \right\} \eq Q_i,
+The governing equations for mass conservation of the $w$ = H$_2$O and $c$ = CO$_2$ components with phases $l$ = liquid H$_2$O and $g$ = supercritical CO$_2$, can be written in the form
+\begin{subequations}
+\EQ\label{massconv1}
+\frac{\p}{\p t} \varphi \big( s_l \rho_l X_w^l + s_g \rho_g X_w^g\big) + \bnabla\cdot\bF_w \eq Q_w,
 \EN
-with flux
+and
+\EQ\label{massconv2}
+\frac{\p}{\p t} \varphi \big( s_l \rho_l X_c^l + s_g \rho_g X_c^g\big) + \bnabla\cdot\bF_c \eq Q_c,
+\EN
+\end{subequations}
+with fluxes
+\begin{subequations}
 \EQ
-\bF_i^\a \eq \bq_\a \rho_\a X_i^\a -\varphi s_\a \rho_\a D_\a \bnabla X_i^\a,
+\bF_w \eq \bq_l \rho_l X_w^l+ \bq_g \rho_g X_w^g -\varphi s_l \rho_l D_l \bnabla X_w^l-\varphi s_g \rho_g D_g \bnabla X_w^g,
 \EN
-consisting of contributions from advection and diffusion/dispersion summed over all fluid phases $\a$.
-In these equations $\varphi$ denotes the porosity, $s_\a$ the fluid volume fraction, $\rho_\a$ molar density, $D_\a$ diffusion/dispersion coefficient, and $X_i^\a$ mole fraction of the $i$th component in fluid phase $\a$. The quantity $Q_i$ denotes a source/sink term. The sum over $\a$ is over all fluid phases present in a particular control volume. 
-The Darcy velocity $\bq_\a$ is given by the expression
+and 
 \EQ
-\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \Big(P_\a - W_\a\rho_\a g z\Big),
+\bF_c \eq \bq_l \rho_l X_c^l+ \bq_g \rho_g X_c^g -\varphi s_l \rho_l D_l \bnabla X_c^l-\varphi s_g \rho_g D_g \bnabla X_c^g,
 \EN
-for pressure $P_\a$ viscosity $\mu_\a$, formula weight $W_\a$, acceleration of gravity $g$, and elevation $z$.
-The formula weight $W_\a$ for phase $\a$ consisting of a mixture of $N_C$ components is given by
+\end{subequations}
+consisting of contributions from advection and diffusion/dispersion summed over all fluid phases.
+In these equations 
+\begin{itemize}
+\item $\varphi$: porosity [---]
+\item $s_l$: the volume fraction in fluid phase liquid water [---]
+\item $s_g$: the volume fraction in fluid phase supercritical CO$_2$ [---]
+\item $\rho_l$: molar density of liquid water [mol/m$^3$]
+\item $\rho_g$: molar density of supercritical CO$_2$ [mol/m$^3$]
+\item $D_l$: diffusion/dispersion coefficient for liquid water phase [m$^2$/s]
+\item $D_g$: diffusion/dispersion coefficient for supercritical CO$_2$ phase [m$^2$/s]
+\item $X_w^l$: mole fraction of the H$_2$O component in fluid phase liquidwater [---] 
+\item $X_w^g$: mole fraction of the H$_2$O component in fluid phase supercritical CO$_2$ [---]
+\item $X_c^l$: mole fraction of the CO$_2$ component in fluid phase liquid water [---]
+\item $X_c^g$: mole fraction of the CO$_2$ component in fluid phase supercritical CO$_2$ [---]
+\item $Q_w$: source/sink term for H$_2$O component equation [mol/m$^3$/s]
+\item $Q_c$: source/sink term for  CO$_2$ component equation [mol/m$^3$/s]
+\item $\bq_l$: Darcy velocity for liquid water phase [m/s]
+\item $\bq_g$: Darcy velocity for supercritical CO$_2$ phase [m/s]
+\end{itemize}
+The equations are over all fluid phases present in a particular control volume. 
+The Darcy velocities $\bq_l$ and $\bq_g$ are given by the expressions
+\begin{subequations}
+\EQ
+\bq_l \eq -\frac{kk_l}{\mu_l} \bnabla \Big(P_l - W_l\rho_l g z\Big),
+\EN
+and
+\EQ
+\bq_g \eq -\frac{kk_g}{\mu_g} \bnabla \Big(P_g - W_g\rho_g g z\Big),
+\EN
+\end{subequations}
+with:
+\begin{itemize}
+\item  $P_l$: pressure of fluid phase liquid water [Pa]
+\item  $P_g$: pressure of fluid phase supercritical CO$_2$ [Pa]
+\item $\mu_l$: viscosity of fluid phase liquid water [Pa s]
+\item $\mu_g$: viscosity of fluid phase supercritical CO$_2$ [Pa s]
+\item $W_l$: formula weight for the fluid phase liquid water [kg/mol]
+\item $W_g$: formula weight for the fluid phase supercritical CO$_2$ [kg/mol]
+\item g: acceleration of gravity [m/s$^2$]
+\item $z$: elevation [m]
+\end{itemize}
+
+The formula weight $W_\a$ for phase $\a$ consisting of a mixture of $N_C$ components is given in general by
 \EQ
 W_\a \eq \sum_i W_i^{} X_i^\a,
 \EN
-where $W_i$ is the formula weight of the $i$th component. 
-
-Introducing $Z_i$ into the mass conservation equations using Eqn.\eqref{zi} gives the alternative form
-\EQ\label{mczi}
-\frac{\p}{\p t} \Big(\varphi Z_i \sum_\a s_\a\rho_\a\Big) + \bnabla\cdot\sum_\a \bF_i^\a \eq Q_i.
-\EN
-In this equation the $N_C+1$ unknown variables are $(T, \, P,\, Z_2, \ldots,\, Z_{N_C})$, with $Z_1$ eliminated through the constraint $\sum Z_i\!=\!1$. To solve the resulting system of equations it is necessary to express $s_\a$ and $X_i^\a$ as functions of $Z_i$. 
-
-Summing Eqns.\eqref{massconv} or \eqref{mczi} over all components $i$ and making use of Eqn.\eqref{sumx} or Eqn.\eqref{sumzi} leads to the continuity equation
-\EQ\label{masstot}
-\sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a \big) + \bnabla\cdot \big(\bq_\a \rho_\a \big)\right\} \eq Q,
-\EN
-with
+where $W_i$ [kg/mol] is the formula weight of the $i$th component. 
+Substituting, the formula weights into the equations for the Darcy velocities we obtain:
+\begin{subequations}
 \EQ
-Q \eq \sum_i Q_i.
+\bq_l \eq -\frac{kk_l}{\mu_l} \bnabla \Big(P_l - W_w X_w^l \rho_l g z - W_c X_c^l \rho_l g z \Big),
 \EN
-The equation for $i$ = H$_2$O in Eqn.\eqref{massconv} may be replaced with Eqn.\eqref{masstot}, for example, thereby eliminating the need to consider the diffusion term for H$_2$O.
+and
+\EQ
+\bq_g \eq -\frac{kk_g}{\mu_g} \bnabla \Big(P_g - W_w X_w^g \rho_l g z - W_c X_c^g \rho_g g z \Big).
+\EN
+\end{subequations}
+
+We can reformulate Eqns.\eqref{massconv1} and \eqref{massconv2} into an equivalent form which is used in the FLASH method. First, by noting from Eqn.\eqref{sumx} that:
+\begin{subequations}
+\EQ
+X_w^l+X_c^l =1,
+\EN
+and
+\EQ
+X_w^g+X_c^g =1,
+\EN
+\end{subequations}
+and summing Eqns.\eqref{massconv1}-\eqref{massconv2} we obtain the pressure equation that we will use in place of Eqn.\eqref{massconv1}:
+\EQ\label{massconv3}
+\frac{\p}{\p t} \varphi \big( s_l \rho_l + s_g \rho_g \big) + \bnabla\cdot(\bq_l \rho_l + \bq_g \rho_g ) \eq Q_w+Q_c,
+\EN
+
+Secondly, we reformulate Eqn.\eqref{massconv2} in terms of the total component mole fraction for CO$_2$, $Z_c$, using the definition in Eqn.\eqref{zi} to obtain the equation we will use in place of Eqn.\eqref{massconv2}:
+\EQ\label{mczc}
+\frac{\p}{\p t} \varphi \Big( (s_l \rho_l + s_g \rho_g)Z_c \Big) + \bnabla\cdot \bF_c \eq Q_c.
+\EN
+In this equation the $3$ unknown variables are $(T, \, P,\, Z_c)$. To solve the resulting system of equations it is necessary to express $s_\a$ and $X_i^\a$ as functions of $Z_i$. 
 
 \subsection{Energy Conservation}
 

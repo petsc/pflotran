@@ -432,6 +432,8 @@ subroutine HDF5ReadDataset(dataset,option)
   else
     call h5dread_f(dataset_id,H5T_NATIVE_DOUBLE,dataset%rarray,length, &
                    hdf5_err,memory_space_id,file_space_id,prop_id)
+    dataset%rmax = maxval(dataset%rarray)
+    dataset%rmin = minval(dataset%rarray)
   endif
   call PetscLogEventEnd(logging%event_h5dread_f,ierr)  
   call h5pclose_f(prop_id,hdf5_err)

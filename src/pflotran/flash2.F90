@@ -4321,15 +4321,15 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     
       ! for now, just assume diagonal tensor
       perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+        perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
+        perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
 
       perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+        perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
+        perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
+!     iphas_up = iphase_loc_p(ghosted_id_up)
+!     iphas_dn = iphase_loc_p(ghosted_id_dn)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
