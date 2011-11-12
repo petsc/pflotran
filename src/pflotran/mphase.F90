@@ -922,6 +922,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     endif
     iphase_loc_p(ghosted_id) = iphase
   enddo
+  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -2496,18 +2497,18 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-     if(grid%nG2L(ng)<0)cycle
-     if (associated(patch%imat)) then
-        if (patch%imat(ng) <= 0) cycle
-     endif
+    if (grid%nG2L(ng) < 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ng) <= 0) cycle
+    endif
         
-     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
-     iphase =int(iphase_loc_p(ng))
-     ghosted_id = ng
-     call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-                      global_aux_vars(ng), iphase,&
-                      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-                      realization%fluid_properties,option, xphi)
+    istart = (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    iphase = int(iphase_loc_p(ng))
+    ghosted_id = ng
+    call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+      global_aux_vars(ng), iphase,&
+      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+      realization%fluid_properties,option, xphi)
 
 #if 1
      if( associated(global_aux_vars))then
@@ -2540,25 +2541,25 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
            else
                mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
-           if( mphase%delx(3,ng) < 1D-8 .and.  mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
-           if( mphase%delx(3,ng) >-1D-8 .and.  mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
+           if( mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
+           if( mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
         case(2)  
-           if(xx_loc_p((ng-1)*option%nflowdof+3) <0.9995)then
+           if(xx_loc_p((ng-1)*option%nflowdof+3) < 0.9995)then
                mphase%delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            else
                mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
-           if( mphase%delx(3,ng) < 1D-8 .and.  mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
-           if( mphase%delx(3,ng) >-1D-8 .and.  mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
+           if( mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
+           if( mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
         case(3)
-           if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
+           if(xx_loc_p((ng-1)*option%nflowdof+3) <= 0.9)then
               mphase%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            else
               mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
            
-           if( mphase%delx(3,ng) < 1D-12 .and.  mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) = 1D-12
-           if( mphase%delx(3,ng) >-1D-12 .and.  mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-12
+           if( mphase%delx(3,ng) < 1D-12 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) = 1D-12
+           if( mphase%delx(3,ng) >-1D-12 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-12
         
            if(( mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
               mphase%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6

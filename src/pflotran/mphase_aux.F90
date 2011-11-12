@@ -427,7 +427,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg * option%scale
     aux_var%pc(2)=0D0
-    aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+
+!   aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+    aux_var%diff(option%nflowspec+1:option%nflowspec*2) = &
+      fluid_properties%gas_diffusion_coefficient
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
     aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
@@ -436,7 +439,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     aux_var%h(1) = hw
     aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
-    aux_var%diff(1:option%nflowspec) = 1D-9
+    aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   ! fluid_properties%diff_base(1)
 
   

@@ -83,7 +83,7 @@ function GeneralAuxCreate(option)
 
   allocate(aux%general_parameter)
   allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
-  aux%general_parameter%diffusion_coefficient = 0.d0
+  aux%general_parameter%diffusion_coefficient = 1.d-9
   allocate(aux%general_parameter%thermal_conductivity(option%nphase))
   aux%general_parameter%thermal_conductivity = 0.d0
 

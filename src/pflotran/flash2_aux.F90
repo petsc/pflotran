@@ -270,9 +270,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
   PetscReal :: Qkco2, mco2,xco2eq
   PetscReal :: tmp 
-  PetscInt :: iflag
-!  PetscReal :: Qkco2, mco2,xco2eq   
-  
+  PetscInt :: iflag  
   
   aux_var%sat = 0.d0
   aux_var%h = 0.d0
@@ -290,10 +288,6 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   p = aux_var%pres
   t = aux_var%temp
-
-!  if(x(3)<0.D0)x(3)=0.D0
-!  if(x(3)>1.D0)x(3)=1.D0
-  
 
 ! ********************* Gas phase properties ***********************
     call PSAT(t, sat_pressure, ierr)
@@ -345,7 +339,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
       xphi = 1.D0
     endif
  
-!*********** Get Salniity properties ***********************
+!*********** Get Salinity properties ***********************
     m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
     if (option%ntrandof>0) then
       m_na = global_aux_var%m_nacl(1)
@@ -366,18 +360,6 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl) 
    
     tmp= Henry/p
-!  print *,xla
-
-!   if ( p < sat_pressure) then
-   ! T > water boiling point
-!     iphase =2
-!     aux_var%xmol(4)=x(3)
-!     aux_var%xmol(3)=1.D0-xmol(4) 
-!	 aux_var%xmol(2)=xmol(4)/tmp
-!	 aux_var%xmol(1)=1.D0- xmol(2)
-!	 aux_var%satu(1)=1.D-8
-!	 aux_var%satu(2)=1.D0
-!   else  
     if(x(3)< xco2eq)then
       ! water only
       aux_var%xmol(2)=x(3)
@@ -404,14 +386,18 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
       aux_var%xmol(4)= 1D0 - aux_var%xmol(3)
     endif 
 
-! **************  Gas pahse properties ********************
+! **************  Gas phase properties ********************
     aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
     pw = p
     call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg * option%scale
-    aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+    
+!   aux_var%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
+    aux_var%diff(option%nflowspec+1:option%nflowspec*2) = &
+      fluid_properties%gas_diffusion_coefficient
+      
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
 !  z factor    
@@ -422,9 +408,9 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     aux_var%h(1) = hw
     aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
-    aux_var%diff(1:option%nflowspec) = 1D-9
-  ! fluid_properties%diff_base(1) need more work here.
-
+    
+    aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
+  ! fluid_properties%diff_base(1) need more work here. Add temp. dependence.
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
@@ -482,8 +468,8 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     aux_var%sat(2) = aux_var%den(1)* ( x(3) - aux_var%xmol(2))/&
       (aux_var%den(2) * (aux_var%xmol(4)-x(3)) - aux_var%den(1)*(aux_var%xmol(2)-x(3)))
     if(aux_var%sat(2) >1D0 .or. aux_var%sat(2) <0D0) print *,'z->s error: ',aux_var%sat(2)
-    if(aux_var%sat(2) >1D0) aux_var%sat(2) = 1D0
-    if(aux_var%sat(2) <0D0) aux_var%sat(2) = 0D0  
+    if(aux_var%sat(2) > 1D0) aux_var%sat(2) = 1D0
+    if(aux_var%sat(2) < 0D0) aux_var%sat(2) = 0D0  
     aux_var%sat(1) = 1D0 - aux_var%sat(2)
   end select
  

@@ -90,7 +90,7 @@ function THCAuxCreate(option)
 
   allocate(aux%thc_parameter%diffusion_coefficient(option%nphase))
   allocate(aux%thc_parameter%diffusion_activation_energy(option%nphase))
-  aux%thc_parameter%diffusion_coefficient = 0.d0
+  aux%thc_parameter%diffusion_coefficient = 1.d-9
   aux%thc_parameter%diffusion_activation_energy = 0.d0
 
   THCAuxCreate => aux
