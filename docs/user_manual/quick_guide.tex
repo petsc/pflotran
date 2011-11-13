@@ -3192,11 +3192,11 @@ END
 \item[FORMAT] \ <file format>: \ specify the snapshot in time file type. Options available are: 
 \begin{deflist}{0000000000000000000000}
 \item[TECPLOT BLOCK] -TecPlot block format
-\item[TECPLOT POINT] -requires a single processor run
+\item[TECPLOT POINT] -TecPlot point format (requires a single processor)
 \item[HDF5] -produces single HDF5 file {\tt pflotran.h5}
 \item[HDF5 MULTIPLE\_FILES] -produces a separate HDF5 file at each output time
-\item[MAD]
-\item[VTK] -VTK format (not currently supported)
+\item[MAD] - (not supported)
+\item[VTK] -VTK format
 \end{deflist}
 %\item[FORMAT \ TECPLOT \ BLOCK]
 %\item[FORMAT \ HDF5]
@@ -3432,10 +3432,8 @@ RESTART pflotran.chk3000
 \item[SATURATION\_FUNCTION] \ {\tt Name}
 
 \begin{deflist}{000}
-\item[SATURATION\_FUNCTION\_TYPE] \ {\bf VAN\_GENUCHTEN}
-\item[SATURATION\_FUNCTION\_TYPE] \ {\bf MUALEM}
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ {\bf VAN\_GENUCHTEN}
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ {\bf MUALEM}
+\item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf BROOKS\_COREY}, {\bf THOMEER\_COREY}, {\bf NMT\_EXP}, {\bf PRUESS\_1}]
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf MUALEM}, {\bf BURDINE}]
 \item[RESIDUAL\_SATURATION] \ {\tt Value}
 \item[LAMBDA] \ {\tt Value} [---]
 \item[ALPHA] \ {\tt Value} [Pa$^{-1}$]

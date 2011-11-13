@@ -1178,7 +1178,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         uxmol=0.D0
 
         ! note uxmol only contains one phase xmol
-        if (dphi>=0.D0) then
+        if (dphi >= 0.D0) then
            ukvr = aux_var_up%kvr(np)
            uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
@@ -1193,12 +1193,12 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
         if (ukvr>floweps) then
            v_darcy= Dq * ukvr * dphi
-           vv_darcy(np)=v_darcy
+           vv_darcy(np) = v_darcy
            q = v_darcy * area
-           do ispec =1, option%nflowspec
-             fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
+           do ispec = 1, option%nflowspec
+             fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo  
-          ! if(option%use_isothermal == PETSC_FALSE)&
+          ! if(option%use_isothermal == PETSC_FALSE) &
             fluxe = fluxe + q*density_ave*uh 
         endif
      endif
@@ -1525,17 +1525,19 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     ! Diffusion term   
   select case(ibndtype(3))
   case(DIRICHLET_BC) 
-     !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-     !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+     !if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
+     !  diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
+     !  (aux_var_up%den+aux_var_dn%den)
         do np = 1, option%nphase
-          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
-              diff =diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
-                    (aux_var_up%den(np)+aux_var_up%den(np))
-           do ispec = 1, option%nflowspec
-              fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
+          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps) then
+            diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
+              (aux_var_up%den(np)+aux_var_up%den(np))
+            do ispec = 1, option%nflowspec
+              fluxm(ispec) = fluxm(ispec) + diff * &
+                   aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
                    (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
                    -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
-           enddo
+            enddo
           endif         
         enddo
      

@@ -48,15 +48,15 @@ module Saturation_Function_module
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID
 
-! Permeability function defination ************************ 
+! Permeability function definition ************************ 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
   PetscInt, parameter :: THOMEER_COREY = 3
-  PetscInt, parameter :: NMT_EXP= 4
-  PetscInt, parameter :: PRUESS_1= 5
+  PetscInt, parameter :: NMT_EXP = 4
+  PetscInt, parameter :: PRUESS_1 = 5
 
 
-! Saturation function function defination ************************ 
+! Saturation function function definition ************************ 
   PetscInt, parameter :: DEFAULT = 0
   PetscInt, parameter :: BURDINE = 1
   PetscInt, parameter :: MUALEM = 2

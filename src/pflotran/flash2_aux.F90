@@ -305,7 +305,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             else
               iflag = 1
-              call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
+              call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag, &
                      option%itable)
             endif
