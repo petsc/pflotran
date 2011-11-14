@@ -155,9 +155,9 @@ subroutine THCSetupPatch(realization)
         realization%material_property_array(i)%ptr%specific_heat
  
     patch%aux%THC%thc_parameter%ckwet(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%thermal_conductivity_wet  
+      realization%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
     patch%aux%THC%thc_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%thermal_conductivity_dry
+      realization%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
   enddo 
 
   do i = 1, size(realization%saturation_function_array)
