@@ -10,6 +10,7 @@ module Dataset_Aux_module
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: h5_dataset_name
     character(len=MAXSTRINGLENGTH) :: filename
+    PetscInt :: max_buffer_size
     PetscInt :: data_type
     PetscInt :: data_dim ! dimensions of data: XY, X, YXZ, etc.
     PetscBool :: realization_dependent
@@ -91,6 +92,7 @@ function DatasetCreate()
   dataset%filename = ''
   dataset%realization_dependent = PETSC_FALSE
   dataset%data_type = 0
+  dataset%max_buffer_size = 0
 
   dataset%cell_centered = PETSC_FALSE
   dataset%ndims = 0 ! ndims should not include time dimension
@@ -201,6 +203,9 @@ subroutine DatasetRead(dataset,input,option)
 #endif
       case('REALIZATION_DEPENDENT')
         dataset%realization_dependent = PETSC_TRUE
+      case('MAX_BUFFER_SIZE') 
+        call InputReadInt(input,option,dataset%max_buffer_size)
+        call InputErrorMsg(input,option,'max_buffer_size','DATASET')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in dataset'    
