@@ -38,6 +38,10 @@ ifdef ice
 ICE_FLAG = -DICE
 endif
 
+ifdef vapor
+VAPOR_FLAG = -DVAPOR
+endif
+
 ifdef chuan_co2
 CHUAN_FLAG = -DCHUAN_CO2
 endif
@@ -90,7 +94,7 @@ MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG)\
 					 $(PCL_FLAG) $(DBL_FLAG) $(TEMP_FLAG) $(GPU_FLAGS)\
 				$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG)\
-				 $(GAUTAM_FLAGS) $(ICE_FLAG)
+				 $(GAUTAM_FLAGS) $(ICE_FLAG) $(VAPOR_FLAG) 
 
 CFLAGS		 = 
 FFLAGS		 =

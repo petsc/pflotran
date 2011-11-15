@@ -280,7 +280,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
     dw_dp = 0.d0
     hw_dp = 0.d0
   endif
- 
+
 ! aux_var%den = dw_mol
 ! aux_var%den_kg = dw_kg
   global_aux_var%den = dw_mol

@@ -1551,7 +1551,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
        fluxe = fluxe + cond
     case(NEUMANN_BC)
-       fluxe = fluxe + aux_vars(2)*area*1.d-6 
+       fluxe = fluxe + aux_vars(2)*area*option%scale
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
   end select

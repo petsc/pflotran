@@ -1841,7 +1841,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
         fluxe = fluxe + cond
       case(NEUMANN_BC)
-        fluxe = fluxe + aux_vars(MPH_TEMPERATURE_DOF)*area*1.d-6 
+        fluxe = fluxe + aux_vars(MPH_TEMPERATURE_DOF)*area*option%scale
 	  ! aux_vars(MPH_TEMPERATURE_DOF) stores heat flux, 1.d-6 is to convert
 	  ! from W to MW, Added by Satish Karra 10/05/11
       case(ZERO_GRADIENT_BC)
