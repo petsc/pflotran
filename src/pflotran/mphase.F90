@@ -1652,9 +1652,9 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         ind = ispec + (np-1)*option%nflowspec
         
         if (aux_var_up%xmol(ind) > aux_var_dn%xmol(ind)) then
-          upweight = 0.d0
-        else
           upweight = 1.d0
+        else
+          upweight = 0.d0
         endif
         
         fluxm(ispec) = fluxm(ispec) + difff * &
