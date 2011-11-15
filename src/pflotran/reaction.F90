@@ -931,6 +931,9 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
             case('RATE_CONSTANT')
 !             read rate constant
               call InputReadDouble(input,option,tstrxn%rate)
+              if (tstrxn%rate < 0.d0) then
+                tstrxn%rate = 10.d0**tstrxn%rate
+              endif
               call InputErrorMsg(input,option,'rate',error_string)
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
