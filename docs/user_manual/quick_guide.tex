@@ -669,7 +669,7 @@ k_{ml} (T) \eq k_{ml}^0 \exp\left[\frac{E_{ml}}{R}\Big(\frac{1}{T_0}-\frac{1}{T}
 \EN
 where $k_{ml}^0$ refers to the rate constant at the reference temperature $T_0$ taken as 25\degc, with $T$ in units of Kelvin, $E_{ml}$ denotes the activation energy (kJ/mol),
 and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction with the form
-\EQ
+\EQ\label{prefactor}
 \P_{ml} \eq \prod_i\dfrac{\big(\gamma_i m_i\big)^{\a_{il}^m}}{1+K_{ml}\big(\gamma_i m_i\big)^{\b_{il}^m} },
 \EN
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
@@ -2161,15 +2161,28 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[MINERAL\_KINETICS] ~
 
 \begin{deflist}{000000000000000000000}
-\item [{\tt Mineral Name}]
-\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s] \ \ \ \ If Value $<$ 0, Value = 10$^{\rm Value}$
+\item [Mineral Name]
+\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s] \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
 \item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] \ \ \ Referenced to rate constant at 25\degc.
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
+\item [PREFACTOR] ~
+\begin{deflist}{0000}
+\item [RATE\_CONSTANT] \ {\tt Value} \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] 
+\item [PREFACTOR\_SPECIES] \ {\tt Name}
+\begin{deflist}{0000}
+\item [ALPHA] \ {\tt Value}
+\item [BETA] \ {\tt Value}
+\item [ATTENUATION\_COEF] \ {\tt Value}
+\end{deflist}
+\item [\keyend]
+\end{deflist}
 \item [\keyend]
 \end{deflist}
 
+\item [\keyend]
 \item [\keyend]
 
 \item[SORPTION] ~
@@ -2372,8 +2385,40 @@ END
 
 \noindent
 {\bf Examples:}
+
+\noindent
+{\bf PREFACTOR (see Eqn.\eqref{prefactor}):}
 \begin{verbatim}
-...
+MINERAL_KINETICS
+Quartz 
+  RATE_CONSTANT -17.99d0
+  ACTIVATION_ENERGY 87.7d0
+/
+Albite 
+  PREFACTOR
+    RATE_CONSTANT -16.56d0
+    ACTIVATION_ENERGY 69.8d0
+  /
+  PREFACTOR
+    RATE_CONSTANT -14.16d0
+    ACTIVATION_ENERGY 65.0d0
+    PREFACTOR_SPECIES H+
+      ALPHA           0.457d0
+    : BETA
+    : ATTENUATION_COEF
+    /
+  /
+  PREFACTOR
+    RATE_CONSTANT -19.6d0
+    ACTIVATION_ENERGY 71.0d0
+    PREFACTOR_SPECIES H+
+      ALPHA           -0.572d0
+    : BETA
+    : ATTENUATION_COEF
+    /
+  /
+/
+END
 \end{verbatim}
 
 %========================================================================
