@@ -18,7 +18,7 @@ module water_eos_module
 
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
             wateos, wateos_noderiv, density, nacl_den, nacl_vis, cowat, steameos, &
-            Tsat
+            Tsat, DensityIce, InternalEnergyIce
 
 contains
 
@@ -1409,5 +1409,64 @@ c-------tsp = delT/dps, delT = 1.
 #endif
 
 end subroutine Tsat
+
+!===============================================================================
+! DensityIce: Subroutine to calculate the density of ice at given temperature
+!             and pressure
+!
+! Written by Satish Karra
+! Date: 11/16/11
+! T is in deg C, P is in Pa, density is in mol/m3
+!===============================================================================
+
+subroutine DensityIce(T, P, den_ice)
+
+  implicit none
+  
+  PetscReal :: T
+  PetscReal :: P
+  PetscReal :: den_ice
+  PetscReal :: alpha, beta 
+  PetscInt :: ierr
+  PetscReal, parameter :: P_ref = 1.d5
+  
+  alpha = 3.3d-10
+  beta = 1.53d-4
+
+  den_ice = 50942.4*(1.d0 + alpha*(P - P_ref) - beta*(T)) !in mol/m3
+  
+end subroutine DensityIce
+
+
+!===============================================================================
+! InternalEnergyIce: Subroutine to calculate the internal energy of ice at given
+!                    temperature and pressure
+!
+! Written by Satish Karra
+! Date: 11/16/11
+! T is in deg C, internal energy is in J/mol
+!===============================================================================
+
+subroutine InternalEnergyIce(T, u_ice)
+
+  implicit none
+
+  PetscReal :: T
+  PetscReal :: u_ice
+  PetscInt :: ierr
+  PetscReal, parameter :: a = -10.6644d0
+  PetscReal, parameter :: b = 0.1698d0
+  PetscReal, parameter :: c = 198148.d0
+  PetscReal, parameter :: T_ref = 273.15d0
+
+  ! from Maier-Kelly type fit (integrated tref to t)
+  ! in J/mol
+
+  u_ice = a*(T) + b/2.d0*((T + T_ref)**(2.d0) - T_ref**(2.d0)) + &
+          c*(1.d0/T_ref - 1.d0/(T + T_ref))
+  u_ice = u_ice - HEAT_OF_FUSION*FMWH2O*1.d-3   ! J/mol
+  
+end subroutine InternalEnergyIce
+
 
 end module water_eos_module
