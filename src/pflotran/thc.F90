@@ -1479,7 +1479,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   call PSAT(global_aux_var_dn%temp(1), psat_dn, ierr)
   molg_up = psat_up/p_g
   molg_dn = psat_dn/p_g
-    
+  
   if (molg_up > molg_dn) then 
     upweight = 0.d0
   else 
@@ -1489,6 +1489,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
   fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
              (dd_up + dd_dn)
+             
 ! endif
 #endif 
 

@@ -311,7 +311,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
 
   aux_var%dh_dt = hw_dt
   aux_var%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
-
+  
 end subroutine THCAuxVarCompute
 
 ! ************************************************************************** !
