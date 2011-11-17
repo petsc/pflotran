@@ -214,7 +214,7 @@ end interface
 
   ! Initialize flow databases (e.g. span wagner, etc.)
   select case(option%iflowmode)
-    case(MPH_MODE, FLASH2_MODE)
+    case(MPH_MODE, FLASH2_MODE, IMS_MODE)
       call init_span_wanger(realization)
   end select
   
