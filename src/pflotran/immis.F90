@@ -1460,44 +1460,44 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
  
  
-! Multiphase flash calculation is more expansive, so calculate once per iterration
+! Multiphase flash calculation is more expensive, so calculate once per iteration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-     if(grid%nG2L(ng)<0)cycle
-     if (associated(patch%imat)) then
+    if(grid%nG2L(ng)<0)cycle
+    if (associated(patch%imat)) then
         if (patch%imat(ng) <= 0) cycle
-     endif
+    endif
         
-     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
-     iphase =int(iphase_loc_p(ng))
-     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option)
+    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    iphase =int(iphase_loc_p(ng))
+    call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+      realization%fluid_properties,option)
 
-     if (option%numerical_derivatives) then
-        patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+    if (option%numerical_derivatives) then
+      patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         patch%aux%Immis%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
         if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           patch%aux%Immis%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
-         else
-            patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
-         endif
+          patch%aux%Immis%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+        else
+          patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+        endif
            
-         if( patch%aux%Immis%delx(3,ng) < 1D-12 .and.  patch%aux%Immis%delx(3,ng)>=0.D0) patch%aux%Immis%delx(3,ng) = 1D-12
-         if( patch%aux%Immis%delx(3,ng) >-1D-12 .and.  patch%aux%Immis%delx(3,ng)<0.D0) patch%aux%Immis%delx(3,ng) =-1D-12
+        if( patch%aux%Immis%delx(3,ng) < 1D-12 .and.  patch%aux%Immis%delx(3,ng)>=0.D0) patch%aux%Immis%delx(3,ng) = 1D-12
+        if( patch%aux%Immis%delx(3,ng) >-1D-12 .and.  patch%aux%Immis%delx(3,ng)<0.D0) patch%aux%Immis%delx(3,ng) =-1D-12
         
-         if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+        if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
             patch%aux%Immis%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
-         endif
-         if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            patch%aux%Immis%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
-         endif
-         call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng),&
-            aux_vars(ng)%aux_var_elem(1:option%nflowdof),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-            realization%fluid_properties,option)
+        endif
+        if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+          patch%aux%Immis%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
+        endif
+        call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng),&
+          aux_vars(ng)%aux_var_elem(1:option%nflowdof),&
+          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+          realization%fluid_properties,option)
       endif
    enddo
 #endif
@@ -1545,34 +1545,34 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
-!    hsrc1=0D0
-!    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-!    csrc1 = csrc1 / FMWCO2
-!    msrc(1)=qsrc1; msrc(2) =csrc1
-     msrc(:)= psrc(:)
-     msrc(1) =  msrc(1) / FMWH2O
-     msrc(2) =  msrc(2) / FMWCO2
+!     hsrc1=0D0
+!     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+!     csrc1 = csrc1 / FMWCO2
+!     msrc(1)=qsrc1; msrc(2) =csrc1
+      msrc(:)= psrc(:)
+      msrc(1) =  msrc(1) / FMWH2O
+      msrc(2) =  msrc(2) / FMWCO2
 
-     cur_connection_set => source_sink%connection_set
+      cur_connection_set => source_sink%connection_set
     
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      call ImmisSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
-                            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
+      do iconn = 1, cur_connection_set%num_connections      
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        if (associated(patch%imat)) then
+          if (patch%imat(ghosted_id) <= 0) cycle
+        endif
+        call ImmisSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
  
-      r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
-      r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      patch%aux%Immis%res_old_AR(local_id,jh2o)= patch%aux%Immis%res_old_AR(local_id,jh2o) &
+       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
+       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
+       patch%aux%Immis%res_old_AR(local_id,jh2o)= patch%aux%Immis%res_old_AR(local_id,jh2o) &
            - Res(jh2o)
-      patch%aux%Immis%res_old_AR(local_id,jco2)= patch%aux%Immis%res_old_AR(local_id,jco2) &
+       patch%aux%Immis%res_old_AR(local_id,jco2)= patch%aux%Immis%res_old_AR(local_id,jco2) &
            - Res(jco2)
-      if (enthalpy_flag)then
-        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        patch%aux%Immis%res_old_AR(local_id,option%nflowdof)= &
+       if (enthalpy_flag) then
+         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
+         patch%aux%Immis%res_old_AR(local_id,option%nflowdof)= &
              patch%aux%Immis%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
@@ -1621,23 +1621,23 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
-          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+       do idof =1, option%nflowdof   
+         select case(boundary_condition%flow_condition%itype(idof))
+           case(DIRICHLET_BC)
+             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+         case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
-          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-!          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+!            iphase = int(iphase_loc_p(ghosted_id))
+         end select
+      enddo
 
  
-    call ImmisAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+      call ImmisAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
 
-    call ImmisBCFlux(boundary_condition%flow_condition%itype, &
+      call ImmisBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
@@ -1648,15 +1648,15 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
-    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) = &
-         patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) = &
+        patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    enddo
+    boundary_condition => boundary_condition%next
   enddo
-  boundary_condition => boundary_condition%next
- enddo
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
@@ -1723,7 +1723,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Immis%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
-     if (local_id_up>0) then
+      if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
         istart = iend-option%nflowdof+1
         r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
@@ -1749,25 +1749,25 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   end select
   
   do local_id = 1, grid%nlmax
-     if (associated(patch%imat)) then
-        if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
-     endif
+    if (associated(patch%imat)) then
+      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    endif
 
-     istart = 1 + (local_id-1)*option%nflowdof
-     if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
-     if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+    istart = 1 + (local_id-1)*option%nflowdof
+    if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+    if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
   enddo
 
 ! print *,'finished rp vol scale'
   if(option%use_isothermal) then
-     do local_id = 1, grid%nlmax  ! For each local node do...
-        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-        if (associated(patch%imat)) then
-           if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        istart = 3 + (local_id-1)*option%nflowdof
-        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-     enddo
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      istart = 3 + (local_id-1)*option%nflowdof
+      r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
+    enddo
   endif
   !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
@@ -1827,9 +1827,9 @@ subroutine SAMRSetCurrentJacobianPatch(mat,patch)
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
-       Mat :: mat
-       PetscFortranAddr :: patch
-     end subroutine SAMRSetCurrentJacobianPatch
+      Mat :: mat
+      PetscFortranAddr :: patch
+    end subroutine SAMRSetCurrentJacobianPatch
   end interface
 
   SNES :: snes
