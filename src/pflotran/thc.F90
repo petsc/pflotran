@@ -422,12 +422,22 @@ subroutine THCUpdateAuxVarsPatch(realization)
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
    
+#ifdef ICE
+    call THCAuxVarComputeIce(xx_loc_p(istart:iend), &
+        thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+        iphase, &
+        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
+        option)
+#else
     call THCAuxVarCompute(xx_loc_p(istart:iend), &
         thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
         iphase, &
         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
         porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
         option)
+#endif
+
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
@@ -460,12 +470,22 @@ subroutine THCUpdateAuxVarsPatch(realization)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
 
+#ifdef ICE
+      call THCAuxVarComputeIce(xxbc,thc_aux_vars_bc(sum_connection), &
+                      global_aux_vars_bc(sum_connection), &
+                      iphasebc, &
+                      realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                      porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
+                      option)
+#else
       call THCAuxVarCompute(xxbc,thc_aux_vars_bc(sum_connection), &
                       global_aux_vars_bc(sum_connection), &
                       iphasebc, &
                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
                       option)
+#endif
+
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -620,12 +640,23 @@ subroutine THCUpdateFixedAccumPatch(realization)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
+
+#ifdef ICE
+    call THCAuxVarComputeIce(xx_p(istart:iend), &
+                       thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                       iphase, &
+                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
+                       option)
+#elseif
     call THCAuxVarCompute(xx_p(istart:iend), &
                        thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
+#endif
+
     iphase_loc_p(ghosted_id) = iphase
     call THCAccumulation(thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
@@ -842,8 +873,15 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
       x_pert(ideriv) = x_pert(ideriv) + pert
+
+#ifdef ICE
+      call THCAuxVarComputeIce(x_pert,thc_aux_var_pert,global_aux_var_pert,iphase,sat_func, &
+                                 0.d0,0.d0,option)
+#else
       call THCAuxVarCompute(x_pert,thc_aux_var_pert,global_aux_var_pert,iphase,sat_func, &
                                  0.d0,0.d0,option)
+#endif
+
 #if 0      
       select case(ideriv)
         case(1)
@@ -1314,6 +1352,16 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       x_pert_dn = x_dn
       x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+
+#ifdef ICE
+      call THCAuxVarComputeIce(x_pert_up,aux_var_pert_up, &
+                            global_aux_var_pert_up, &
+                            iphase,sat_func_up, &
+                            0.d0,0.d0,option)
+      call THCAuxVarComputeIce(x_pert_dn,aux_var_pert_dn, &
+                            global_aux_var_pert_dn,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+#elseif
       call THCAuxVarCompute(x_pert_up,aux_var_pert_up, &
                             global_aux_var_pert_up, &
                             iphase,sat_func_up, &
@@ -1321,6 +1369,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       call THCAuxVarCompute(x_pert_dn,aux_var_pert_dn, &
                             global_aux_var_pert_dn,iphase,sat_func_dn, &
                             0.d0,0.d0,option)
+#endif
+
       call THCFlux(aux_var_pert_up,global_aux_var_pert_up, &
                    por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                    aux_var_dn,global_aux_var_dn, &
@@ -1847,12 +1897,23 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
       if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
         x_pert_up(ideriv) = x_pert_dn(ideriv)
       endif   
+
+#ifdef ICE
+      call THCAuxVarComputeIce(x_pert_dn,aux_var_pert_dn, &
+                            global_aux_var_pert_dn,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+      call THCAuxVarComputeIce(x_pert_up,aux_var_pert_up, &
+                            global_aux_var_pert_up,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+#elseif
       call THCAuxVarCompute(x_pert_dn,aux_var_pert_dn, &
                             global_aux_var_pert_dn,iphase,sat_func_dn, &
                             0.d0,0.d0,option)
       call THCAuxVarCompute(x_pert_up,aux_var_pert_up, &
                             global_aux_var_pert_up,iphase,sat_func_dn, &
                             0.d0,0.d0,option)
+#endif
+
       call THCBCFlux(ibndtype,aux_vars,aux_var_pert_up,global_aux_var_pert_up, &
                     aux_var_pert_dn,global_aux_var_pert_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
