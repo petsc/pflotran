@@ -648,7 +648,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
-#elseif
+#else
     call THCAuxVarCompute(xx_p(istart:iend), &
                        thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                        iphase, &
@@ -941,6 +941,15 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   PetscReal, parameter :: C_wv = 1.005d-6 ! in MJ/g/K
   PetscErrorCode :: ierr
 #endif
+
+#ifdef ICE
+  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
+  PetscReal :: sat_i, den_i, u_i
+  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
+  PetscReal, parameter :: C_a = 1.86d-6 ! in MJ/g/K at 300K
+  PetscReal, parameter :: C_wv = 1.005d-6 ! in MJ/g/K
+  PetscErrorCode :: ierr
+#endif
   
 ! TechNotes, THC Mode: First term of Equation 8
   porXvol = por*vol
@@ -970,6 +979,22 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   u_g = C_g*(global_aux_var%temp(1) + 273.15d0)
   mol(1) = mol(1) + sat_g*den_g*mol_g*porXvol
   eng = eng + sat_g*den_g*u_g*porXvol
+#endif
+
+#ifdef ICE 
+  ! SK, 11/17/11
+  sat_g = aux_var%sat_gas
+  sat_i = aux_var%sat_ice
+  u_i = aux_var%u_ice
+  den_i = aux_var%den_ice
+  p_g = option%reference_pressure
+  den_g = p_g/(R_gas_constant*(global_aux_var%temp(1) + 273.15d0))
+  call PSAT(global_aux_var%temp(1), p_sat, ierr)
+  mol_g = p_sat/p_g
+  C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !SK: might be different
+  u_g = C_g*(global_aux_var%temp(1) + 273.15d0)
+  mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
+  eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
 #endif
  
 ! Reaction terms here
@@ -1361,7 +1386,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       call THCAuxVarComputeIce(x_pert_dn,aux_var_pert_dn, &
                             global_aux_var_pert_dn,iphase,sat_func_dn, &
                             0.d0,0.d0,option)
-#elseif
+#else
       call THCAuxVarCompute(x_pert_up,aux_var_pert_up, &
                             global_aux_var_pert_up, &
                             iphase,sat_func_up, &
@@ -1905,7 +1930,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
       call THCAuxVarComputeIce(x_pert_up,aux_var_pert_up, &
                             global_aux_var_pert_up,iphase,sat_func_dn, &
                             0.d0,0.d0,option)
-#elseif
+#else
       call THCAuxVarCompute(x_pert_dn,aux_var_pert_dn, &
                             global_aux_var_pert_dn,iphase,sat_func_dn, &
                             0.d0,0.d0,option)
