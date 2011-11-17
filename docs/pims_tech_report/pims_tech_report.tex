@@ -12,8 +12,6 @@
 \usepackage{graphicx}
 \usepackage{longtable}
 \usepackage{subfigure}
-%\usepackage{here}
-\usepackage{ssss}
 \usepackage{booktabs}
 %\usepackage{toc_entr}
 
@@ -268,21 +266,25 @@ Los Alamos National Laboratory, an affirmative action/equal opportunity employer
 
 
 \section{Governing equations}
-PIMS, parallel immiscible multiphase flow simulator. is a simplified version of PFLOTRAN
-by removing the most dependences on thermodynamic calculations, since for immiscible system, the solubility is zero for every component. Then the number of component is the same as the number of phases,  and the degree of freedom on every node if isothermal system is consider. This totally immiscible assumption also remove the variable switching strategy, which may be the most tricky part of PFLOTRAN, and may cause trouble for multi-level solvers. \\
-The governing equations solved by PIMS could be read as:
 
+PIMS, parallel immiscible multiphase flow simulator is a simplified version of the PFLOTRAN MPHASE mode in which the dependencies on thermodynamic relations have been removed, since for immiscible systems, the solubility is zero for every component. Then the number of component is the same as the number of phases, and the degree of freedom on every node if isothermal system is consider. This totally immiscible assumption also removes the variable switching strategy used in MPHASE, which may be the most difficult part of PFLOTRAN, and may cause problems for multi-level solvers. 
+
+The governing equations solved by PIMS are given by
 \EQ\label{mass}
-\frac{\p}{\p t}\bigg[\varphi (\rho_i s_i)\bigg] + \bnabla\cdot \bigg(\rho_i  \bq_i \bigg) \eq S_i,
+\frac{\p}{\p t}\big[\varphi (\rho_i s_i)\big] + \bnabla\cdot \big(\rho_i  \bq_i \big) \eq Q_i,
 \EN
-where $\varphi$ is porosity,  $s_i$, $\rho_i$ is $i$ phase saturation and density, $q_i$ is $i$ phase velocity, $S_i$ is the source/sink term. Thus, the number of equations is equal to number of phases. 
-The selection of primary variables are pressure $p$ and phase saturations $s_i, i=1,...,n-1$, if incompressibility of all phases or one of them is assumed. In this case, the reference pressure has to be specified as a boundary condition.\\ 
-The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
-Compared with PFLOTRAN, PIMS conserves mass instead of molar numbers. 
+where $\varphi$ is porosity, $s_i$, $\rho_i$ refer to the $i$th phase saturation and density, $q_i$ is $i$th phase velocity, and $Q_i$ is the source/sink term. Thus, the number of equations is equal to number of phases. 
+The selection of primary variables are pressure $p$ and $n\!-\!1$ independent phase saturation variables $s_i, i=1,...,n\!-\!1$ with
+\EQ
+\sum_{i=1}^n s_i = 1.
+\EN
+%, if incompressibility of all phases or one of them is assumed. In this case, the reference pressure has to be specified as a boundary condition.
+%The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
+Compared to the PFLOTRAN MPHASE mode, PIMS conserves mass instead of molar numbers. 
 
 \section{PETSc Solver}
 PIMS is using PETSc SNES nonlinear solver. 
-Note: the pre-conditioner option "-pc\_factor \_nonzeros\_along\_diagonal" is needed to reduce the chance to get zero pivot. Since for incompressible fluid, if the phase saturation is lower than its residual, the mass balance equation for that phase is independent of pressure and adjacent nodes' saturation. 
+Note: the pre-conditioner option \break {\tt -pc\_factor\_nonzeros\_along\_diagonal} is needed to reduce the chance of getting zero pivot errors. Since for an incompressible fluid, if the phase saturation is lower than its residual, the mass balance equation for that phase is independent of pressure and its adjacent nodes' saturation. 
 
 
 
