@@ -808,10 +808,21 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 #ifdef VAPOR
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
   PetscReal :: dpsat_dt, ddeng_dt, dmolg_dt, dsatg_dp, dsatg_dt, dug_dt
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal, parameter :: C_wv = 1.86d-6 ! in MJ/g/K
   PetscReal, parameter :: C_a = 1.005d-6 ! in MJ/g/K
   PetscErrorCode :: ierr  
+#endif
+
+#ifdef ICE
+  PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
+  PetscReal :: dpsat_dt, ddeng_dt, dmolg_dt, dsatg_dp, dsatg_dt, dug_dt
+  PetscReal :: sat_i, den_i, u_i
+  PetscReal :: dsati_dp, dsati_dt
+  PetscReal :: ddeni_dp, ddeni_dt
+  PetscReal :: dui_dt
+  PetscReal, parameter :: C_a = 1.86d-6 ! in MJ/g/K at 300K
+  PetscReal, parameter :: C_wv = 1.005d-6 ! in MJ/g/K
+  PetscErrorCode :: ierr
 #endif
 
   porXvol = por*vol
@@ -841,23 +852,57 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   ! Assuming above freezing for now, no s_i considered
   sat_g = 1.d0 - global_aux_var%sat(1)
   p_g = option%reference_pressure ! set to reference pressure
-  den_g = p_g/(R_gas_constant*(global_aux_var%temp(1) + 273.15d0))
+  den_g = p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0))
   call PSAT(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
   mol_g = p_sat/p_g
   C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !in MJ/mol,expression might be different
   u_g = C_g*(global_aux_var%temp(1) + 273.15d0)
-  ddeng_dt = - p_g/(R_gas_constant*(global_aux_var%temp(1) + 273.15d0)**2)
+  ddeng_dt = - p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0)**2)
   dmolg_dt = dpsat_dt/p_g
   dsatg_dp = - thc_aux_var%dsat_dp
   dsatg_dt = 0.d0 
   dug_dt = C_g
   J(1,1) = J(1,1) + dsatg_dp*den_g*mol_g*porXvol
-  J(1,2) = J(1,2) + (sat_g*ddeng_dt*mol_g + sat_g*den_g*dmolg_dt &
-                  + dsatg_dt*den_g*mol_g)*porXvol
+  J(1,2) = J(1,2) + (sat_g*ddeng_dt*mol_g + sat_g*den_g*dmolg_dt + &
+                    dsatg_dt*den_g*mol_g)*porXvol
   J(3,1) = J(3,1) + dsatg_dp*den_g*u_g*porXvol
   J(3,2) = J(3,2) + (sat_g*ddeng_dt*u_g + sat_g*den_g*dug_dt)*porXvol
 #endif
 
+#ifdef ICE 
+  ! SK, 11/17/11
+  sat_g = thc_aux_var%sat_gas
+  sat_i = thc_aux_var%sat_ice
+  u_i = thc_aux_var%u_ice
+  den_i = thc_aux_var%den_ice
+  p_g = option%reference_pressure ! set to reference pressure
+  den_g = p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0))
+  call PSAT(global_aux_var%temp(1), p_sat, dpsat_dt, ierr)
+  mol_g = p_sat/p_g
+  C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !in MJ/mol,expression might be different
+  u_g = C_g*(global_aux_var%temp(1) + 273.15d0)
+  ddeng_dt = - p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0)**2)
+  dmolg_dt = dpsat_dt/p_g
+  dsatg_dp = thc_aux_var%dsat_gas_dp
+  dsatg_dt = thc_aux_var%dsat_gas_dt
+  dug_dt = C_g
+  dsati_dt = thc_aux_var%dsat_ice_dt
+  dsati_dp = thc_aux_var%dsat_ice_dp
+  ddeni_dt = thc_aux_var%dden_ice_dt
+  ddeni_dp = thc_aux_var%dden_ice_dp
+  dui_dt = thc_aux_var%du_ice_dt
+ 
+  J(1,1) = J(1,1) + (dsatg_dp*den_g*mol_g + dsati_dp*den_i + &
+                    sat_i*ddeni_dp)*porXvol
+  J(1,2) = J(1,2) + (dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
+                    sat_g*den_g*dmolg_dt + dsati_dt*den_i +sat_i*ddeni_dt)* &
+                    porXvol
+  J(3,1) = J(3,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
+                    sat_i*ddeni_dp*u_i)*porXvol
+  J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
+                    sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
+                    sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
+#endif
 
   if (option%numerical_derivatives) then
     allocate(thc_aux_var_pert%xmol(option%nflowspec),thc_aux_var_pert%diff(option%nflowspec))
@@ -936,7 +981,6 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
 
 #ifdef VAPOR
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal, parameter :: C_a = 1.86d-6 ! in MJ/g/K at 300K
   PetscReal, parameter :: C_wv = 1.005d-6 ! in MJ/g/K
   PetscErrorCode :: ierr
@@ -945,7 +989,6 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
 #ifdef ICE
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
   PetscReal :: sat_i, den_i, u_i
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal, parameter :: C_a = 1.86d-6 ! in MJ/g/K at 300K
   PetscReal, parameter :: C_wv = 1.005d-6 ! in MJ/g/K
   PetscErrorCode :: ierr
@@ -972,7 +1015,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   ! Assuming above freezing for now, no s_i considered
   sat_g = 1.d0 - global_aux_var%sat(1)
   p_g = option%reference_pressure ! set to reference pressure
-  den_g = p_g/(R_gas_constant*(global_aux_var%temp(1) + 273.15d0))
+  den_g = p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0))
   call PSAT(global_aux_var%temp(1), p_sat, ierr)
   mol_g = p_sat/p_g
   C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !sk might be different
@@ -981,6 +1024,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   eng = eng + sat_g*den_g*u_g*porXvol
 #endif
 
+
 #ifdef ICE 
   ! SK, 11/17/11
   sat_g = aux_var%sat_gas
@@ -988,7 +1032,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   u_i = aux_var%u_ice
   den_i = aux_var%den_ice
   p_g = option%reference_pressure
-  den_g = p_g/(R_gas_constant*(global_aux_var%temp(1) + 273.15d0))
+  den_g = p_g/(IDEAL_GAS_CONST*(global_aux_var%temp(1) + 273.15d0))
   call PSAT(global_aux_var%temp(1), p_sat, ierr)
   mol_g = p_sat/p_g
   C_g = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR !SK: might be different
@@ -996,12 +1040,6 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
   eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
 #endif
- 
-! Reaction terms here
-!  if (option%run_coupled .and. iireac>0) then
-!H2O
-!    mol(1)= mol(1) - option%flow_dt * option%rtot(node_no,1)
-!  endif
 
   Res(1:option%nflowdof-1) = mol(:)
   Res(option%nflowdof) = eng
@@ -1067,7 +1105,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
   PetscReal :: p_g
   PetscReal :: deng_up, deng_dn
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: psat_up, psat_dn
   PetscReal :: molg_up, molg_dn
   PetscReal :: satg_up, satg_dn
@@ -1261,8 +1298,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   satg_dn = 1 - global_aux_var_dn%sat(1)
 !  if ((satg_up > eps) .and. (satg_dn > eps)) then
   p_g = option%reference_pressure  ! set to reference pressure
-  deng_up = p_g/(R_gas_constant*(global_aux_var_up%temp(1) + 273.15d0))
-  deng_dn = p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0))
+  deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))
+  deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))
   ! Assuming above freezing, sg = 1-sl, pg = den_g*R*T
     
   Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
@@ -1279,10 +1316,10 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
   molg_up = psat_up/p_g
   molg_dn = psat_dn/p_g
-  ddeng_dt_up = - p_g/(R_gas_constant*(global_aux_var_up%temp(1) + &
+  ddeng_dt_up = - p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + &
                   273.15d0)**2)
   dmolg_dt_up = (1/p_g)*dpsat_dt_up
-  ddeng_dt_dn = - p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + &
+  ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + &
                   273.15d0)**2)
   dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
   dDiffg_dt_up = 1.8*Diffg_up/(global_aux_var_up%temp(1) + 273.15d0)
@@ -1462,7 +1499,6 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
   PetscReal :: p_g
   PetscReal :: deng_up, deng_dn
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: psat_up, psat_dn
   PetscReal :: molg_up, molg_dn
   PetscReal :: satg_up, satg_dn
@@ -1536,8 +1572,8 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   satg_dn = 1.d0 - global_aux_var_dn%sat(1)
 ! if ((satg_up > eps) .and. (satg_dn > eps)) then
   p_g = option%reference_pressure ! set to reference pressure
-  deng_up = p_g/(R_gas_constant*(global_aux_var_up%temp(1) + 273.15d0))
-  deng_dn = p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0))
+  deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))
+  deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))
   ! Assuming above freezing, sg = 1-sl, pg = deng*R*T
     
   Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
@@ -1640,7 +1676,6 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
   PetscReal :: p_g
   PetscReal :: deng_up, deng_dn
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: psat_up, psat_dn
   PetscReal :: molg_up, molg_dn
   PetscReal :: satg_up, satg_dn
@@ -1837,8 +1872,8 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
       satg_dn = 1 - global_aux_var_dn%sat(1)
       if ((satg_up > eps) .and. (satg_dn > eps)) then
         p_g = option%reference_pressure  ! set to reference pressure
-        deng_up = p_g/(R_gas_constant*(global_aux_var_up%temp(1) + 273.15d0))
-        deng_dn = p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0))
+        deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))
+        deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))
         ! Assuming above freezing, sg = 1-sl, pg = den_g*R*T
         
         Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
@@ -1855,7 +1890,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
         call PSAT(global_aux_var_dn%temp(1), psat_dn, dpsat_dt_dn, ierr)
         molg_up = psat_up/p_g
         molg_dn = psat_dn/p_g
-        ddeng_dt_dn = - p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + &
+        ddeng_dt_dn = - p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + &
                         273.15d0)**2)
         dmolg_dt_dn = (1/p_g)*dpsat_dt_dn
         dDiffg_dt_dn = 1.8*Diffg_dn/(global_aux_var_dn%temp(1) + 273.15d0)
@@ -1990,7 +2025,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   PetscReal :: Ddiffgas_avg, Ddiffgas_dn, Ddiffgas_up
   PetscReal :: p_g
   PetscReal :: deng_dn, deng_up
-  PetscReal, parameter :: R_gas_constant = 8.3144621 ! Gas constant in J/mol/K
   PetscReal :: psat_dn, psat_up
   PetscReal :: molg_dn, molg_up
   PetscReal :: satg_dn, satg_up
@@ -2105,8 +2139,8 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       satg_dn = 1 - global_aux_var_dn%sat(1)
 !pcl  if ((satg_up > eps) .and. (satg_dn > eps)) then
       p_g = option%reference_pressure ! set to reference pressure
-      deng_up = p_g/(R_gas_constant*(global_aux_var_up%temp(1) + 273.15d0))
-      deng_dn = p_g/(R_gas_constant*(global_aux_var_dn%temp(1) + 273.15d0))
+      deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))
+      deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))
         
       Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
       p_ref = 1.01325d5 ! in Pa

@@ -693,6 +693,21 @@ implicit none
         dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         function_B = 1.d0/Se
         dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc
+        select case(saturation_function%permeability_function_itype)
+          case(MUALEM)
+            one_over_m = 1.d0/m
+            Se_one_over_m = Se**one_over_m
+            liquid_relative_perm = sqrt(Se)*(1.d0 - (1.d0 - Se_one_over_m)**m)** &
+                                   2.d0
+            dkr_Se = 0.5d0*liquid_relative_perm/Se + &
+                     2.d0*Se**(one_over_m - 0.5d0)* &
+                     (1.d0 - Se_one_over_m)**(m - 1.d0)* &
+                     (1.d0 - (1.d0 - Se_one_over_m)**m)
+            dkr_pc = dkr_Se*dSe_pc
+          case default
+            option%io_buffer = 'Ice module only supports Mualem' 
+            call printErrMsg(option)
+        end select
       endif
       if (temperature + 273.15d0 >= T_0) then
         function_A = 1.d0
@@ -710,23 +725,7 @@ implicit none
         dfunc_A_temp = (gamma/T_0)*1.d0/(Se_temp**(2.d0))*(-m)* &
                        ((one_plus_pc_il_alpha_n)**(-m - 1.d0))*n* &
                        (pc_il**(n - 1.d0))*(alpha**n)
-      endif
-      ! compute relative permeability
-      select case(saturation_function%permeability_function_itype)
-        case(MUALEM)
-          one_over_m = 1.d0/m
-          Se_one_over_m = Se**one_over_m
-          liquid_relative_perm = sqrt(Se)*(1.d0 - (1.d0 - Se_one_over_m)**m)** &
-                                 2.d0
-          dkr_Se = 0.5d0*liquid_relative_perm/Se + &
-                   2.d0*Se**(one_over_m - 0.5d0)* &
-                        (1.d0 - Se_one_over_m)**(m - 1.d0)* &
-                        (1.d0 - (1.d0 - Se_one_over_m)**m)
-          dkr_pc = dkr_Se*dSe_pc
-        case default
-          option%io_buffer = 'Ice module only supports Mualem' 
-          call printErrMsg(option)
-      end select    
+      endif           
     case default
       option%io_buffer = 'Ice module only supports Van Genuchten'
       call printErrMsg(option)

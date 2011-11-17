@@ -415,8 +415,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%xmol = 0.d0
   aux_var%kvr = 0.d0
   aux_var%diff = 0.d0
-  kr = 0.d0
- 
+   
   global_aux_var%pres = x(1)  
   global_aux_var%temp = x(2)
  
@@ -500,6 +499,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dden_ice_dp = dden_ice_dP
   aux_var%u_ice = u_ice*option%scale
   aux_var%du_ice_dt = du_ice_dT*option%scale
+
 
 end subroutine THCAuxVarComputeIce
 #endif
