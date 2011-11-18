@@ -12,6 +12,7 @@ type, public :: Immis_auxvar_elem_type
   PetscReal , pointer :: sat(:)
   PetscReal , pointer :: den(:)
   PetscReal , pointer :: avgmw(:)
+  PetscReal , pointer :: vis(:)
   PetscReal , pointer :: h(:)
   PetscReal , pointer :: u(:)
   PetscReal , pointer :: pc(:)
@@ -145,6 +146,7 @@ subroutine ImmisAuxVarInit(aux_var,option)
     allocate ( aux_var%aux_var_elem(nvar)%sat(option%nphase))
     allocate ( aux_var%aux_var_elem(nvar)%den(option%nphase))
     allocate ( aux_var%aux_var_elem(nvar)%avgmw(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%vis(option%nphase))
     allocate ( aux_var%aux_var_elem(nvar)%h(option%nphase))
     allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
     allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
@@ -159,6 +161,7 @@ subroutine ImmisAuxVarInit(aux_var,option)
     aux_var%aux_var_elem(nvar)%sat = 0.d0
     aux_var%aux_var_elem(nvar)%den = 0.d0
     aux_var%aux_var_elem(nvar)%avgmw = 0.d0
+    aux_var%aux_var_elem(nvar)%vis = 0.d0
     aux_var%aux_var_elem(nvar)%h = 0.d0
     aux_var%aux_var_elem(nvar)%u = 0.d0
     aux_var%aux_var_elem(nvar)%pc = 0.d0
@@ -195,6 +198,7 @@ subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
   aux_var2%avgmw = aux_var%avgmw
+  aux_var2%vis = aux_var%vis
   aux_var2%h = aux_var%h
   aux_var2%u = aux_var%u
   aux_var2%pc = aux_var%pc
@@ -253,7 +257,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal ::  p, t, temp, p2, err
+  PetscReal :: p, t, temp, p2, err
   PetscReal :: henry
   PetscReal :: dg, dddp, dddt
   PetscReal :: fg, dfgdp, dfgdt, xphi
@@ -270,6 +274,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   aux_var%u = 0.d0
   aux_var%den = 0.d0
   aux_var%avgmw = 0.d0
+! aux_var%vis = 0.d0
   aux_var%pc = 0.d0
   aux_var%kvr = 0.d0
 ! aux_var%xmol = 0.d0
@@ -413,6 +418,8 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 !                                   option)
     aux_var%kvr(2) = kr(2)/visg     
     aux_var%kvr(1) = kr(1)/visl
+    aux_var%vis(2) = visg     
+    aux_var%vis(1) = visl
 
 end subroutine ImmisAuxVarCompute_NINC
 
@@ -474,7 +481,9 @@ subroutine ImmisAuxVarDestroy(aux_var)
   if (associated(aux_var%den))deallocate(aux_var%den)
   nullify(aux_var%den)
   if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%u)
+  nullify(aux_var%avgmw)
+  if (associated(aux_var%vis))deallocate(aux_var%vis)
+  nullify(aux_var%vis)
 end subroutine ImmisAuxVarDestroy
 
 ! ************************************************************************** !

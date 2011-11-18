@@ -2748,13 +2748,13 @@ function ImmisGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
   
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
-  else
-    write(string2,'('',"PHASE"'')')
-  endif
-  string = trim(string) // trim(string2)
+! if (icolumn > -1) then
+!   icolumn = icolumn + 1
+!   write(string2,'('',"'',i2,''-PHASE"'')') icolumn
+! else
+!   write(string2,'('',"PHASE"'')')
+! endif
+! string = trim(string) // trim(string2)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -2774,17 +2774,73 @@ function ImmisGetTecplotHeader(realization, icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
+    write(string2,'('',"'',i2,''-D(l)"'')') icolumn
   else
-    write(string2,'('',"u(l)"'')')
+    write(string2,'('',"D(l)"'')')
   endif
   string = trim(string) // trim(string2)
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
+    write(string2,'('',"'',i2,''-D(g)"'')') icolumn
   else
-    write(string2,'('',"u(g)"'')')
+    write(string2,'('',"D(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-U(l)"'')') icolumn
+  else
+    write(string2,'('',"U(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-U(g)"'')') icolumn
+  else
+    write(string2,'('',"U(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Vis(l)"'')') icolumn
+  else
+    write(string2,'('',"Vis(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Vis(g)"'')') icolumn
+  else
+    write(string2,'('',"Vis(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Mob(l)"'')') icolumn
+  else
+    write(string2,'('',"Mob(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Mob(g)"'')') icolumn
+  else
+    write(string2,'('',"Mob(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
+  else
+    write(string2,'('',"PHASE"'')')
   endif
   string = trim(string) // trim(string2)
 
