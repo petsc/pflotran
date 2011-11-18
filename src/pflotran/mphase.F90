@@ -1337,11 +1337,11 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 
   type(mphase_auxvar_elem_type) :: aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%nflowdof) 
+  PetscReal :: Res(1:option%nflowdof) 
   PetscReal, pointer :: mmsrc(:)
-  PetscReal psrc(option%nphase),tsrc,hsrc,csrc 
-  PetscInt isrctype
-  PetscInt nsrcpara
+  PetscReal :: psrc(option%nphase),tsrc,hsrc,csrc 
+  PetscInt :: isrctype
+  PetscInt :: nsrcpara
   PetscBool :: energy_flag
   PetscReal :: qsrc_phase(:) ! volumetric rate of injection/extraction for each phase
      
@@ -1357,11 +1357,11 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   PetscInt :: iflag
   PetscErrorCode :: ierr
   
-  Res=0D0
+  Res = 0.D0
   allocate(msrc(nsrcpara))
   msrc = mmsrc(1:nsrcpara)
 
- ! if (present(ireac)) iireac=ireac
+! if (present(ireac)) iireac=ireac
 ! if (energy_flag) then
 !   Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
 ! endif         
@@ -1395,7 +1395,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
           rho = aux_var%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
-              if( option%itable >=4) then
+              if(option%itable >=4) then
                 call co2_sw_interp(aux_var%pres*1.D-6, &
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
@@ -1427,7 +1427,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         endif
               
         Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
+        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + msrc(2) * &
           enth_src_co2 *option%flow_dt
         endif
 

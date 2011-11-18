@@ -159,8 +159,8 @@ subroutine MphaseAuxVarInit(aux_var,option)
      allocate ( aux_var%aux_var_elem(nvar)%vis(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
      allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
-     if(nvar>0)&
-     aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
+     if(nvar>0) &
+       aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
 
      aux_var%aux_var_elem(nvar)%pres = 0.d0
      aux_var%aux_var_elem(nvar)%temp = 0.d0

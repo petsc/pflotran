@@ -872,12 +872,12 @@ end subroutine ImmisAccumulation
 ! date: 10/12/08
 !
 ! ************************************************************************** !  
-subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_flag, option)
+subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
+                           qsrc_phase,energy_flag,option)
 
   use Option_module
-  
-   use water_eos_module
-!   use gas_eos_module  
+  use water_eos_module
+! use gas_eos_module  
   use co2eos_module
   use span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
@@ -887,112 +887,200 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
 
   type(Immis_auxvar_elem_type) :: aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%nflowdof) 
-  PetscReal mmsrc(option%nflowspec), psrc(option%nphase),tsrc,hsrc 
-  PetscInt isrctype
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal, pointer :: mmsrc(:)
+! PetscReal :: mmsrc(option%nflowspec), psrc(option%nphase),tsrc,hsrc 
+  PetscReal :: psrc(option%nphase),tsrc,hsrc 
+  PetscInt :: isrctype
+  PetscInt :: nsrcpara
   PetscBool :: energy_flag
+  PetscReal :: qsrc_phase(:) ! volumetric rate of injection/extraction for each phase
      
-  PetscReal :: msrc(option%nflowspec),dw_kg, dw_mol,dddt,dddp
+  PetscReal, allocatable :: msrc(:)
+! PetscReal :: msrc(option%nflowspec),dw_kg, dw_mol,dddt,dddp
+  PetscReal :: dw_kg, dw_mol,dddt,dddp
   PetscReal :: enth_src_h2o, enth_src_co2 
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
+  PetscReal :: well_status, well_diameter
+  PetscReal :: pressure_bh, well_factor, pressure_max, pressure_min
+  PetscReal :: well_inj_water, well_inj_co2
   PetscInt  :: np
   PetscInt :: iflag
   PetscErrorCode :: ierr
   
-  Res=0D0
- ! if (present(ireac)) iireac=ireac
-      if (energy_flag) then
-        Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
-      endif         
+  Res = 0.D0
+  allocate(msrc(nsrcpara))
+  msrc = mmsrc(1:nsrcpara)
+
+! if (present(ireac)) iireac=ireac
+! if (energy_flag) then
+!   Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
+! endif         
+
+  qsrc_phase = 0.d0
  
-   select case(isrctype)
-     case(MASS_RATE_SS)
-        msrc(:)=mmsrc(:)
-             if (msrc(1) > 0.d0) then ! H2O injection
+  select case(isrctype)
+    case(MASS_RATE_SS)
+      msrc(1) =  msrc(1) / FMWH2O
+      msrc(2) =  msrc(2) / FMWCO2
+      if (msrc(1) /= 0.d0) then ! H2O injection
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        Res(jh2o) = Res( jh2o) + msrc(1) *option%flow_dt
-        if (energy_flag) &
-             Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
+!       Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
+!       Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
+        Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
+        Res(jco2) = Res(jco2) + msrc(1)*option%flow_dt
+        if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + &
+          msrc(1)*enth_src_h2o*option%flow_dt
+          
+        ! store volumetric rate for ss_fluid_fluxes()
+        qsrc_phase(1) = msrc(1)/dw_mol
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
-!        call printErrMsg(option,"concentration source not yet implemented in Immis")
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+!       call printErrMsg(option,"concentration source not yet implemented in Immis")
+        if(option%co2eos == EOS_SPAN_WAGNER) then
          !  span-wagner
           rho = aux_var%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
-              if( option%itable >=4) then
+              if(option%itable >=4) then
               call co2_sw_interp(aux_var%pres*1.D-6,&
-                  tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+                tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+                eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
-              iflag = 1
-              call co2_span_wagner(aux_var%pres*1.D-6,&
+                iflag = 1
+                call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
-             case(3) 
+            case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
                      enth_src_co2, eng, fg)
           end select     
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
-            enth_src_co2 = enth_src_co2 * FMWCO2
-      else if(option%co2eos == EOS_MRK)then
+          enth_src_co2 = enth_src_co2 * FMWCO2
+          
+          ! store volumetric rate for ss_fluid_fluxes()
+          ! qsrc_phase [m^3/sec] = msrc [kmol/sec] / [kg/m^3] * [kg/kmol]  
+          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+          
+        else if(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
-            call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
+          call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
+          qsrc_phase(2) = msrc(2)*rho/FMWCO2
+          enth_src_co2 = enth_src_co2*FMWCO2*option%scale
       else
          call printErrMsg(option,'pflow Immis ERROR: Need specify CO2 EOS')
       endif
               
       Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-      if (energy_flag) &
-         Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
+      if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + msrc(2) * &
+           enth_src_co2 *option%flow_dt
        endif
 
-     case(-1) ! production well
-     ! if node pessure is lower than the given extraction pressure, shut it down
-         Dq = psrc(2) ! well parameter, read in input file
-                      ! Take the place of 2nd parameter 
-        ! Flow term
-        do np = 1, option%nphase
-          dphi = aux_var%pres - aux_var%pc(np)- psrc(1)
-          if (dphi>=0.D0) then ! outflow only
+
+    case(WELL_SS) ! production well
+     !if node pessure is lower than the given extraction pressure, shut it down
+    ! Flow term
+!  well parameter explaination
+!   1. well status. 1 injection; -1 production; 0 shut in
+!                   2 rate controled injection (same as rate_ss, with max pressure control, not completed yet) 
+!                  -2 rate controled production(not implemented for now) 
+!
+!   2. well factor [m^3],  the effective permeability [m^2/s]
+!   3. bottomhole pressure:  [Pa]
+!   4. max pressure: [Pa]
+!   5. min pressure: [Pa]   
+!   6. preferred mass flux of water [kg/s]
+!   7. preferred mass flux of Co2 [kg/s]
+!   8. well diameter, not used now
+!   9. skin factor, not used now
+
+      well_status = msrc(1)
+      well_factor = msrc(2)
+      pressure_bh = msrc(3)
+      pressure_max = msrc(4)
+      pressure_min = msrc(5)
+      well_inj_water = msrc(6)
+      well_inj_co2 = msrc(7)
+    
+!     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
+
+    ! production well (well status = -1)
+      if( dabs(well_status + 1D0) < 1D-1) then 
+        if(aux_var%pres > pressure_min) then
+          Dq = well_factor 
+          do np = 1, option%nphase
+            dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
+            if (dphi>=0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
+              if(ukvr<1e-20) ukvr=0D0
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
-                 v_darcy = Dq * ukvr * dphi
-                 Res(np) =Res(np)- v_darcy* aux_var%den(np) 
-                 if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
+                v_darcy = Dq * ukvr * dphi
+                ! store volumetric rate for ss_fluid_fluxes()
+                qsrc_phase(1) = -1.d0*v_darcy
+                Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
+!                 aux_var%xmol((np-1)*option%nflowspec+1)*
+                  option%flow_dt
+                Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
+!                 aux_var%xmol((np-1)*option%nflowspec+2)*
+                  option%flow_dt
+                if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)* &
+                  aux_var%h(np)*option%flow_dt
+              ! print *,'produce: ',np,v_darcy
               endif
-           endif
-        enddo
-       ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
-         
-    case(1) ! injetion well with constant pressure
-         Dq = psrc(2) ! well parameter, read in input file
+            endif
+          enddo
+        endif
+      endif 
+     !print *,'well-prod: ',  aux_var%pres,psrc(1), res
+    ! injection well (well status = 2)
+      if( dabs(well_status - 2.D0) < 1.D-1) then 
+
+        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
+          option%scale,ierr)
+
+        Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        do np = 1, option%nphase
-          dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
-          if (dphi>=0.D0) then ! outflow only
+        if( aux_var%pres < pressure_max)then  
+          do np = 1, option%nphase
+            dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
+            if (dphi>=0.D0) then ! outflow only
               ukvr = aux_var%kvr(np)
-              v_darcy=0D0
+              v_darcy=0.D0
               if (ukvr*Dq>floweps) then
-                 v_darcy = Dq * ukvr * dphi
-                 Res(np) =Res(np)- v_darcy* aux_var%den(np) 
-                 if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
-               endif
-           endif
-        enddo 
+                v_darcy = Dq * ukvr * dphi
+                ! store volumetric rate for ss_fluid_fluxes()
+                qsrc_phase(1) = v_darcy
+                Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
+!                 aux_var%xmol((np-1)*option%nflowspec+1) * option%flow_dt
+!                 (1.d0-csrc) * option%flow_dt
+                  option%flow_dt
+                Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
+!                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
+!                 csrc * option%flow_dt
+                  option%flow_dt
+!               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+!                 aux_var%h(np)*option%flow_dt
+                if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
+                  enth_src_h2o*option%flow_dt
+                
+!               print *,'inject: ',np,v_darcy
+              endif
+            endif
+          enddo
+        endif
+      endif    
     case default
-        print *,'Unrecognized Source/Sink condition: ', isrctype 
-   end select      
+      print *,'Unrecognized Source/Sink condition: ', isrctype 
+  end select      
+  deallocate(msrc)
       
 end subroutine ImmisSourceSink
 
@@ -1409,7 +1497,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof), v_darcy(realization%option%nphase)
   PetscReal :: xxbc(realization%option%nflowdof)
-  PetscReal :: msrc(1:realization%option%nflowspec)
+! PetscReal :: msrc(1:realization%option%nflowspec)
   PetscReal :: psrc(1:realization%option%nphase)
   PetscViewer :: viewer
 
@@ -1423,9 +1511,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  PetscReal, pointer :: msrc(:)
+
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
+  PetscInt :: nsrcpara
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
@@ -1540,7 +1631,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
       
-    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    if (associated(source_sink%flow_condition%pressure)) then
+      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    endif
 !    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
@@ -1549,9 +1642,26 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !     csrc1 = csrc1 / FMWCO2
 !     msrc(1)=qsrc1; msrc(2) =csrc1
-      msrc(:)= psrc(:)
-      msrc(1) =  msrc(1) / FMWH2O
-      msrc(2) =  msrc(2) / FMWCO2
+!     msrc(:)= psrc(:)
+!     msrc(1) =  msrc(1) / FMWH2O
+!     msrc(2) =  msrc(2) / FMWCO2
+      
+!clu add
+ select case(source_sink%flow_condition%itype(1))
+   case(MASS_RATE_SS)
+     msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+     nsrcpara = 2
+   case(WELL_SS)
+     msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+     nsrcpara = 7 + option%nflowspec 
+     
+!    print *,'src/sink: ',nsrcpara,msrc
+   case default
+     print *, 'IMS mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
+     stop  
+   end select
+
+!clu end change
 
       cur_connection_set => source_sink%connection_set
     
@@ -1561,18 +1671,28 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
         if (associated(patch%imat)) then
           if (patch%imat(ghosted_id) <= 0) cycle
         endif
-        call ImmisSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
-            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
+        call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+            source_sink%flow_condition%itype(1),Res, &
+            patch%ss_fluid_fluxes(:,sum_connection), &
+            enthalpy_flag, option)
+
+!     if (option%compute_mass_balance_new) then
+!       global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
+!         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+!        Res(:)/option%flow_dt
+!     endif
  
-       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
-       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-       patch%aux%Immis%res_old_AR(local_id,jh2o)= patch%aux%Immis%res_old_AR(local_id,jh2o) &
-           - Res(jh2o)
-       patch%aux%Immis%res_old_AR(local_id,jco2)= patch%aux%Immis%res_old_AR(local_id,jco2) &
-           - Res(jco2)
+       r_p((local_id-1)*option%nflowdof + jh2o) = &
+         r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
+       r_p((local_id-1)*option%nflowdof + jco2) = &
+         r_p((local_id-1)*option%nflowdof + jco2) - Res(jco2)
+       patch%aux%Immis%res_old_AR(local_id,jh2o) = &
+         patch%aux%Immis%res_old_AR(local_id,jh2o) - Res(jh2o)
+       patch%aux%Immis%res_old_AR(local_id,jco2) = &
+         patch%aux%Immis%res_old_AR(local_id,jco2) - Res(jco2)
        if (enthalpy_flag) then
          r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-         patch%aux%Immis%res_old_AR(local_id,option%nflowdof)= &
+         patch%aux%Immis%res_old_AR(local_id,option%nflowdof) = &
              patch%aux%Immis%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
@@ -1942,11 +2062,13 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
-  PetscReal :: msrc(1:realization%option%nflowspec)
-  PetscReal :: psrc(1:realization%option%nphase)
+  PetscReal, pointer :: msrc(:)
+! PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscReal :: psrc(1:realization%option%nphase), ss_flow(1:realization%option%nphase)
   PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
                dvdp, xphi
   PetscInt :: iphasebc                
+  PetscInt :: nsrcpara  
   
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -2029,7 +2151,9 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    !   enthalpy_flag = PETSC_FALSE
    ! endif
 
-    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    if (associated(source_sink%flow_condition%pressure)) then
+      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    endif
     tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
  !   hsrc1=0.D0
@@ -2037,33 +2161,46 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
-      msrc(:)= psrc(:)
-      msrc(1) =  msrc(1) / FMWH2O
-      msrc(2) =  msrc(2) / FMWCO2
+!     msrc(:)= psrc(:)
+!     msrc(1) =  msrc(1) / FMWH2O
+!     msrc(2) =  msrc(2) / FMWCO2
+
+!clu add
+    select case(source_sink%flow_condition%itype(1))
+      case(MASS_RATE_SS)
+        msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+        nsrcpara= 2
+      case(WELL_SS)
+        msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+        nsrcpara = 7 + option%nflowspec 
+      case default
+        print *, 'ims mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
+        stop  
+    end select
  
-      cur_connection_set => source_sink%connection_set
+    cur_connection_set => source_sink%connection_set
  
-       do iconn = 1, cur_connection_set%num_connections      
+    do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-!      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
-!      endif         
-     do nvar =1, option%nflowdof
-       call ImmisSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
-                            source_sink%flow_condition%itype(1), Res,enthalpy_flag, option)
+!     if (enthalpy_flag) then
+!       r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+!     endif         
+      do nvar =1, option%nflowdof
+        call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
+        source_sink%flow_condition%itype(1),Res,ss_flow,enthalpy_flag, option)
       
-       ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
-       if (enthalpy_flag) & 
+        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
+        ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+        if (enthalpy_flag) & 
            ResInc(local_id,option%nflowdof,nvar)=&
            ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
 
-     enddo 
+      enddo 
     enddo
     source_sink => source_sink%next
   enddo

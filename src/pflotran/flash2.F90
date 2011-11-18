@@ -2163,7 +2163,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
@@ -3511,7 +3511,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
-  PetscInt ::  natural_id_up,natural_id_dn
+  PetscInt :: natural_id_up,natural_id_dn
   
   PetscReal :: Jup(1:realization%option%nflowdof,1:realization%option%nflowdof), &
             Jdn(1:realization%option%nflowdof,1:realization%option%nflowdof)
@@ -3528,7 +3528,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: distance_gravity
   PetscReal :: Res(realization%option%nflowdof) 
   PetscReal :: xxbc(1:realization%option%nflowdof), delxbc(1:realization%option%nflowdof)
-  PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof,&
+  PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof, &
            realization%option%nflowdof)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch

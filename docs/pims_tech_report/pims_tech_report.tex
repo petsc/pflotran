@@ -267,11 +267,11 @@ Los Alamos National Laboratory, an affirmative action/equal opportunity employer
 
 \section{Governing equations}
 
-PIMS, parallel immiscible multiphase flow simulator is a simplified version of the PFLOTRAN MPHASE mode in which the dependencies on thermodynamic relations have been removed, since for immiscible systems, the solubility is zero for every component. Then the number of component is the same as the number of phases, and the degree of freedom on every node if isothermal system is consider. This totally immiscible assumption also removes the variable switching strategy used in MPHASE, which may be the most difficult part of PFLOTRAN, and may cause problems for multi-level solvers. 
+PIMS, parallel immiscible multiphase flow simulator, is a simplified version of the PFLOTRAN MPHASE mode in which the dependency on thermodynamic relations have been removed, since for immiscible systems the solubility is identically zero for each component. In this case the number of components is equal to the number of phases, or degrees of freedom associated with each node for an isothermal system. The immiscible property removes the variable switching strategy used in MPHASE, which may be the most numerically difficult part of PFLOTRAN, and may cause problems for multi-level solvers. 
 
 The governing equations solved by PIMS are given by
 \EQ\label{mass}
-\frac{\p}{\p t}\big[\varphi (\rho_i s_i)\big] + \bnabla\cdot \big(\rho_i  \bq_i \big) \eq Q_i,
+\frac{\p}{\p t}\big(\varphi\rho_i^{} s_i^{}\big) + \bnabla\cdot \big(\rho_i^{} \bq_i \big) \eq Q_i,
 \EN
 where $\varphi$ is porosity, $s_i$, $\rho_i$ refer to the $i$th phase saturation and density, $q_i$ is $i$th phase velocity, and $Q_i$ is the source/sink term. Thus, the number of equations is equal to number of phases. 
 The selection of primary variables are pressure $p$ and $n\!-\!1$ independent phase saturation variables $s_i, i=1,...,n\!-\!1$ with

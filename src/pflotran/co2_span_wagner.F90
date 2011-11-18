@@ -67,7 +67,7 @@ subroutine initialize_span_wagner(itable,myrank)
 
       allocate(co2_prop_spwag(0:ntab_p,0:ntab_t,1:15))
       
-      iitable=0
+      iitable=0      
       if(present(itable)) iitable=itable
 
       denc = 467.6d0
