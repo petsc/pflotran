@@ -294,7 +294,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     err=1.D0
     p2 = p
 
-    if(p2>=5d4)then
+    if(p2 >= 5.d4)then
       if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
         select case(option%itable)  
@@ -360,34 +360,34 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl) 
    
     tmp= Henry/p
-    if(x(3)< xco2eq)then
+    if (x(3) < xco2eq) then
       ! water only
       aux_var%xmol(2)=x(3)
-      aux_var%xmol(1)=1.D0- aux_var%xmol(2)
+      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
       aux_var%xmol(4)=aux_var%xmol(2)*tmp
-      aux_var%xmol(3)=1.D0- aux_var%xmol(4)  
+      aux_var%xmol(3)=1.D0 - aux_var%xmol(4)  
       aux_var%sat(1)=1.D0
       aux_var%sat(2)=0.D0
       iphase = 1
-    elseif(x(3)>(1D0-sat_pressure/p))then
+    elseif (x(3) > (1.D0-sat_pressure/p)) then
 	    !gas only
       iphase =2
       aux_var%xmol(4)=x(3)
-      aux_var%xmol(3)=1.D0-aux_var%xmol(4) 
+      aux_var%xmol(3)=1.D0 - aux_var%xmol(4) 
       aux_var%xmol(2)=aux_var%xmol(4)/tmp
-      aux_var%xmol(1)=1.D0- aux_var%xmol(2)
-      aux_var%sat(1)=0D0 !1.D-8
+      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
+      aux_var%sat(1)=0.D0 !1.D-8
       aux_var%sat(2)=1.D0
     else 
       iphase = 3
       aux_var%xmol(1)=1.D0 - xco2eq
       aux_var%xmol(2)= xco2eq
       aux_var%xmol(3)= sat_pressure/p*aux_var%xmol(1) 
-      aux_var%xmol(4)= 1D0 - aux_var%xmol(3)
+      aux_var%xmol(4)= 1.D0 - aux_var%xmol(3)
     endif 
 
 ! **************  Gas phase properties ********************
-    aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
+    aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
     call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
@@ -425,17 +425,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 !duan mixing **************************
 #ifdef DUANDEN
-  tk = t + 273.15D0; xco2= aux_var%xmol(2)
-  call nacl_den(t, p*1D-6, 0.D0, pw_kg)
-  pw_kg=pw_kg*1D3  
-  x1=1.D0-xco2;
-  vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
-  vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
-  vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
-  vphi =  x1* ((1D0-y_nacl)*fmwh2o + y_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
-  aux_var%den(1) =(x1* ((1D0 - y_nacl) * fmwh2o + y_nacl * fmwnacl)+ xco2*fmwco2)*1D-3 / vphi;
-!  if(iphase==3) print *, 'Duan den=', aux_var%den(1)
-  aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
+  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************

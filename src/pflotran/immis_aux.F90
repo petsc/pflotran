@@ -306,7 +306,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
     err=1.D0
     p2 = p
 
-    if(p2>=5d4)then
+    if(p2 >= 5.d4)then
        if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
           select case(option%itable)  

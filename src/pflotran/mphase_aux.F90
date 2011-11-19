@@ -76,7 +76,7 @@ type, public :: mphase_auxvar_elem_type
   
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
-              MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC,&
+            MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC, &
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
@@ -337,13 +337,13 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     err=1.D0
     p2 = p
 
-    if(p2 >= 5.d4) then
+    if (p2 >= 5.d4) then
        
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+      if (option%co2eos == EOS_SPAN_WAGNER) then
 ! ************ Span-Wagner EOS ********************             
         select case(option%itable)  
           case(0,1,2,4,5)
-            if( option%itable >=4) then
+            if (option%itable >=4) then
                 ! print *,' interp', itable
               call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
@@ -368,7 +368,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
             hg= hg * FMWCO2
             xphi = fg/p2
           end select
-       elseif(option%co2eos == EOS_MRK)then
+          
+       elseif (option%co2eos == EOS_MRK) then
+       
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
           call CO2(t, p2,  dg,fg, xphi, hg)
           call visco2( t,dg,visg)
@@ -400,9 +402,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     henry = 1.D0 / (FMWH2O*1.D-3) / (henry*1.D-5) / xphi 
     if(present(xphico2)) xphico2 = xphi
    
-    mco2 = (p - sat_pressure)*1D-5 * Qkco2
+    mco2 = (p - sat_pressure)*1.D-5 * Qkco2
     xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl) 
-!   question here :m_nacl or m_na+m_cl ?
+!   question here: m_nacl or m_na+m_cl ?
    
     select case(iphase)     
     case(1)
@@ -459,35 +461,25 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !  if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
 !     m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
 !     m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
-!     m_nacl=m_na
-!     if(m_cl>m_nacl) m_nacl=m_cl
+!     m_nacl = m_na
+!     if(m_cl > m_nacl) m_nacl=m_cl
 !   endif  
 
-    y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
+    y_nacl = m_nacl/(m_nacl + 1.D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
-    aux_var%avgmw(1)= aux_var%xmol(1)*((1D0 - y_nacl) * FMWH2O&
-       + y_nacl * FMWNACL) + aux_var%xmol(2) * FMWCO2
+    aux_var%avgmw(1) = aux_var%xmol(1)*((1.D0 - y_nacl)*FMWH2O &
+       + y_nacl*FMWNACL) + aux_var%xmol(2)*FMWCO2
 
 !duan mixing **************************
 #ifdef DUANDEN
-  tk = t + 273.15D0; xco2= aux_var%xmol(2)
-  call nacl_den(t, p*1D-6, 0.D0, pw_kg)
-  pw_kg=pw_kg*1D3  
-  x1=1.D0-xco2;
-  vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
-  vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
-  vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
-  vphi =  x1* ((1D0-y_nacl)*fmwh2o + y_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
-  aux_var%den(1) =(x1* ((1D0 - y_nacl) * fmwh2o + y_nacl * fmwnacl)+ xco2*fmwco2)*1D-3 / vphi;
-!  if(iphase==3) print *, 'Duan den=', aux_var%den(1)
-  aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
+  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************
 #ifdef GARCIA
   vphi=1D-6*(37.51D0 + t&
        *(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
-  aux_var%den(1)=dw_kg/(1D0-(FMWCO2*1D-3-dw_kg*vphi)&
+  aux_var%den(1)=dw_kg/(1D0-(FMWCO2*1D-3-dw_kg*vphi) &
        *aux_var%xmol(2)/(aux_var%avgmw(1)*1D-3))
   aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
 #endif  

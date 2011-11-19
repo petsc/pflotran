@@ -100,7 +100,7 @@ subroutine init_span_wanger(realization)
   type(realization_type) :: realization
   PetscMPIInt :: myrank
 
-  if (realization%option%co2eos == EOS_SPAN_WAGNER)then
+  if (realization%option%co2eos == EOS_SPAN_WAGNER) then
     select case(realization%option%itable)
        case(0,1,2)
          call initialize_span_wagner(realization%option%itable,realization%option%myrank)
@@ -112,7 +112,7 @@ subroutine init_span_wanger(realization)
          call sw_spline_read
        case default
          print *, 'Wrong table option : STOP'
-      stop
+         stop
     end select
   endif
 end subroutine init_span_wanger

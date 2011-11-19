@@ -7897,6 +7897,16 @@ subroutine OutputMassBalanceNew(realization)
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' CO2 Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
+          case(IMS_MODE)
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,'[kmol]','',icol)
+            string = trim(coupler%name) // ' CO2 Mass'
+            call OutputAppendToHeader(header,string,'[kmol]','',icol)
+            units = '[kmol/' // trim(output_option%tunit) // ']'
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,units,'',icol)
+            string = trim(coupler%name) // ' CO2 Mass'
+            call OutputAppendToHeader(header,string,units,'',icol)
         end select
         write(fid,'(a)',advance="no") trim(header)
         

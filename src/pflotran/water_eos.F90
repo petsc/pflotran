@@ -17,7 +17,7 @@ module water_eos_module
   end interface
 
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
-            wateos, wateos_noderiv, density, nacl_den, nacl_vis, cowat, steameos, &
+            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
             Tsat, DensityIce, InternalEnergyIce
 
 contains
@@ -1220,7 +1220,34 @@ subroutine density (tc,p,d)
     return
   end subroutine density
   
-  
+
+subroutine duan_mix_den (t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
+
+!Duan et al. (2008) Energy and Fuels, v 22, 1666-1674.
+
+implicit none
+
+real*8 :: t,tk,p,xco2,xmol,x1,y_nacl,vphi_a1,vphi_a2,vphi,denmix,pw_kg,dw_kg,avgmw
+
+real*8 :: fmwh2o = 18.01534d0
+real*8 :: fmwco2 = 44.0098d0
+real*8 :: fmwnacl = 58.44277d0
+
+!duan mixing **************************
+  tk = t + 273.15D0; xco2 = xmol;
+  call nacl_den(t, p*1.D-6, 0.D0, pw_kg)
+  pw_kg = pw_kg*1.D3;
+  x1 = 1.D0-xco2;
+  vphi_a1 = (0.3838402D-3*tk - 0.5595385D0)*tk + 0.30429268D3 + &
+            (-0.72044305D5 + 0.63003388D7/tk)/tk;  
+  vphi_a2 = (-0.57709332D-5*tk + 0.82764653D-2)*tk - 0.43813556D1 + &
+            (0.10144907D4 - 0.86777045D5/tk)/tk;  
+  vphi = (1.D0 + vphi_a1 + vphi_a2*p*1.D-6)*(fmwh2o*1.D-3/pw_kg); 
+  vphi = x1*((1.D0 - y_nacl)*fmwh2o + y_nacl*fmwnacl)*1.D-3/dw_kg + xco2*vphi;
+  denmix = (x1*((1.D0 - y_nacl)*fmwh2o + y_nacl*fmwnacl) + xco2*fmwco2)*1.D-3/vphi;
+  denmix = denmix/avgmw
+end subroutine duan_mix_den
+
 
 subroutine nacl_den (t,p,xnacl,dnacl)
 

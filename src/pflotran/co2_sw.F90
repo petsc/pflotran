@@ -346,7 +346,7 @@ subroutine interp(x1,x2,y)
 
     isucc=1
 
- ! Check wether the table block covers the saturation line, missed special case.
+ ! Check whether the table block covers the saturation line, missed special case.
     icross =0
     if (ifinetable) then
       call vappr(co2_prop_spwag(i1,j1,TWO_INTEGER),ps,tmp,tmp2,ELEVEN_INTEGER)
