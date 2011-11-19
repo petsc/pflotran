@@ -42,11 +42,12 @@ module Immis_module
   PetscInt, parameter :: jh2o=1, jco2=2
 
   public ImmisResidual,ImmisJacobian, &
-         ImmisUpdateFixedAccumulation,ImmisTimeCut,&
-         ImmisSetup,ImmisUpdateReason,&
-         ImmisMaxChange, ImmisUpdateSolution, &
-         ImmisGetTecplotHeader, ImmisInitializeTimestep, &
-         ImmisUpdateAuxVars
+         ImmisUpdateFixedAccumulation,ImmisTimeCut, &
+         ImmisSetup,ImmisUpdateReason, &
+         ImmisMaxChange,ImmisUpdateSolution, &
+         ImmisGetTecplotHeader,ImmisInitializeTimestep, &
+         ImmisUpdateAuxVars, &
+         ImmisComputeMassBalance
 
 contains
 
@@ -237,6 +238,160 @@ subroutine ImmisSetupPatch(realization)
   call ImmisCreateZeroArray(patch,option)
 
 end subroutine ImmisSetupPatch
+
+! ************************************************************************** !
+!
+! ImmisComputeMassBalance: 
+! author: Glenn Hammond
+! date: 02/22/08
+!
+! ************************************************************************** !
+subroutine ImmisComputeMassBalance(realization,mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  mass_balance = 0.d0
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call ImmisComputeMassBalancePatch(realization,mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine ImmisComputeMassBalance
+
+! ************************************************************************** !
+!
+! ImmisComputeMassBalancePatch: Initializes mass balance
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(immis_auxvar_type), pointer :: immis_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iphase
+  PetscInt :: ispec_start, ispec_end, ispec
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  immis_aux_vars => patch%aux%immis%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume * saturation * density
+    do iphase = 1, option%nphase
+      do ispec = 1, option%nflowspec
+        mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
+          immis_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
+          immis_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
+          porosity_loc_p(ghosted_id)*volume_p(local_id)
+      enddo
+    enddo
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine ImmisComputeMassBalancePatch
+
+! ************************************************************************** !
+!
+! ImmisZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine ImmisZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Immis%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Immis%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Immis%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+  
+  if (patch%aux%Mphase%num_aux_ss > 0) then
+    do iconn =1, patch%aux%Immis%num_aux_ss
+      global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+
+end subroutine ImmisZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
 ! Immisinitguesscheckpatch: 
@@ -680,19 +835,113 @@ end subroutine ImmisInitializeTimestep
 subroutine ImmisUpdateSolution(realization)
 
   use Realization_module
+  use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  
+  field => realization%field
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+!     call ImmisUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
 
 ! make room for hysteric s-Pc-kr
 
 end subroutine ImmisUpdateSolution
 
+! ************************************************************************** !
+!
+! ImmisUpdateSolutionPatch: Updates mass balance 
+! author: PCL
+! 
+! date: 11/18/11
+!
+! ************************************************************************** !
+subroutine ImmisUpdateSolutionPatch(realization)
+
+  use Realization_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+
+  if (realization%option%compute_mass_balance_new) then
+    call ImmisUpdateMassBalancePatch(realization)
+  endif
+
+end subroutine ImmisUpdateSolutionPatch
+
+! ************************************************************************** !
+!
+! ImmisUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine ImmisUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%immis%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%immis%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
+  
+  if (patch%aux%immis%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%immis%num_aux_ss
+      global_aux_vars_ss(iconn)%mass_balance = &
+        global_aux_vars_ss(iconn)%mass_balance + &
+        global_aux_vars_ss(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
+
+end subroutine ImmisUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
@@ -866,8 +1115,7 @@ end subroutine ImmisAccumulation
 
 ! ************************************************************************** !
 !
-! ImmisAccumulation: Computes the non-fixed portion of the accumulation
-!                       term for the residual
+! ImmisSourceSink: Computes source/sink
 ! author: Chuan Lu
 ! date: 10/12/08
 !
@@ -1507,7 +1755,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(Immis_parameter_type), pointer :: immis_parameter
-  type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  
+  type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:), aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+  
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1570,27 +1823,27 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         patch%aux%Immis%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-          patch%aux%Immis%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
-        else
-          patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
-        endif
+      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
+        patch%aux%Immis%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+      else
+        patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+      endif
            
-        if( patch%aux%Immis%delx(3,ng) < 1D-12 .and.  patch%aux%Immis%delx(3,ng)>=0.D0) patch%aux%Immis%delx(3,ng) = 1D-12
-        if( patch%aux%Immis%delx(3,ng) >-1D-12 .and.  patch%aux%Immis%delx(3,ng)<0.D0) patch%aux%Immis%delx(3,ng) =-1D-12
+      if(patch%aux%Immis%delx(3,ng) < 1D-12 .and.  patch%aux%Immis%delx(3,ng)>=0.D0) patch%aux%Immis%delx(3,ng) = 1D-12
+      if(patch%aux%Immis%delx(3,ng) >-1D-12 .and.  patch%aux%Immis%delx(3,ng)<0.D0) patch%aux%Immis%delx(3,ng) =-1D-12
         
-        if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+      if((patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
             patch%aux%Immis%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
-        endif
-        if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+      endif
+      if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
           patch%aux%Immis%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
-        endif
-        call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng),&
+      endif
+      call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng),&
           aux_vars(ng)%aux_var_elem(1:option%nflowdof),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option)
-      endif
-   enddo
+    endif
+  enddo
 #endif
 
    patch%aux%Immis%res_old_AR=0.D0
@@ -1647,31 +1900,31 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !     msrc(2) =  msrc(2) / FMWCO2
       
 !clu add
- select case(source_sink%flow_condition%itype(1))
-   case(MASS_RATE_SS)
-     msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
-     nsrcpara = 2
-   case(WELL_SS)
-     msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
-     nsrcpara = 7 + option%nflowspec 
+    select case(source_sink%flow_condition%itype(1))
+      case(MASS_RATE_SS)
+      msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+      nsrcpara = 2
+    case(WELL_SS)
+      msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+      nsrcpara = 7 + option%nflowspec 
      
-!    print *,'src/sink: ',nsrcpara,msrc
-   case default
-     print *, 'IMS mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
-     stop  
-   end select
+!     print *,'src/sink: ',nsrcpara,msrc
+    case default
+      print *, 'IMS mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
+      stop  
+    end select
 
 !clu end change
 
-      cur_connection_set => source_sink%connection_set
+    cur_connection_set => source_sink%connection_set
     
-      do iconn = 1, cur_connection_set%num_connections      
-        local_id = cur_connection_set%id_dn(iconn)
-        ghosted_id = grid%nL2G(local_id)
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
             source_sink%flow_condition%itype(1),Res, &
             patch%ss_fluid_fluxes(:,sum_connection), &
             enthalpy_flag, option)
@@ -1679,22 +1932,22 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !     if (option%compute_mass_balance_new) then
 !       global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
 !         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-!        Res(:)/option%flow_dt
+!         Res(:)/option%flow_dt
 !     endif
  
-       r_p((local_id-1)*option%nflowdof + jh2o) = &
-         r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
-       r_p((local_id-1)*option%nflowdof + jco2) = &
-         r_p((local_id-1)*option%nflowdof + jco2) - Res(jco2)
-       patch%aux%Immis%res_old_AR(local_id,jh2o) = &
-         patch%aux%Immis%res_old_AR(local_id,jh2o) - Res(jh2o)
-       patch%aux%Immis%res_old_AR(local_id,jco2) = &
-         patch%aux%Immis%res_old_AR(local_id,jco2) - Res(jco2)
-       if (enthalpy_flag) then
-         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-         patch%aux%Immis%res_old_AR(local_id,option%nflowdof) = &
+      r_p((local_id-1)*option%nflowdof + jh2o) = &
+           r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
+      r_p((local_id-1)*option%nflowdof + jco2) = &
+           r_p((local_id-1)*option%nflowdof + jco2) - Res(jco2)
+      patch%aux%Immis%res_old_AR(local_id,jh2o) = &
+           patch%aux%Immis%res_old_AR(local_id,jh2o) - Res(jh2o)
+      patch%aux%Immis%res_old_AR(local_id,jco2) = &
+           patch%aux%Immis%res_old_AR(local_id,jco2) - Res(jco2)
+      if (enthalpy_flag) then
+        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
+           patch%aux%Immis%res_old_AR(local_id,option%nflowdof) = &
              patch%aux%Immis%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
-       endif 
+      endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
     enddo
@@ -1768,10 +2021,22 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
+
+#if 0
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) - Res(1)
+        ! contribution to internal 
+!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
+!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
+      endif
+#endif
+
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) = &
         patch%aux%Immis%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
     enddo
@@ -1832,13 +2097,13 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       D_dn = immis_parameter%ckwet(ithrm_dn)
 
       call ImmisFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight,option,v_darcy,Res)
+                tortuosity_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
+                dd_up,perm_up,D_up, &
+                aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                tortuosity_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
+                dd_dn,perm_dn,D_dn, &
+                cur_connection_set%area(iconn),distance_gravity, &
+                upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Immis%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
@@ -1863,9 +2128,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 ! adjust residual to R/dt
   select case (option%idt_switch) 
   case(1) 
-     r_p(:) = r_p(:)/option%flow_dt
+    r_p(:) = r_p(:)/option%flow_dt
   case(-1)
-     if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+    if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax

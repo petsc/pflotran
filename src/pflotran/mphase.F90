@@ -42,10 +42,10 @@ module Mphase_module
   PetscInt, parameter :: jh2o=1, jco2=2
 
   public MphaseResidual,MphaseJacobian, &
-         MphaseUpdateFixedAccumulation,MphaseTimeCut,&
-         MphaseSetup,MphaseUpdateReason,&
-         MphaseMaxChange, MphaseUpdateSolution, &
-         MphaseGetTecplotHeader, MphaseInitializeTimestep, &
+         MphaseUpdateFixedAccumulation,MphaseTimeCut, &
+         MphaseSetup,MphaseUpdateReason, &
+         MphaseMaxChange,MphaseUpdateSolution, &
+         MphaseGetTecplotHeader,MphaseInitializeTimestep, &
          MphaseUpdateAuxVars, init_span_wanger, &
          MphaseComputeMassBalance
 
@@ -1082,14 +1082,14 @@ subroutine MphaseUpdateSolution(realization)
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
-      cur_patch => cur_level%patch_list%first
-        do 
-          if (.not.associated(cur_patch)) exit
-          realization%patch => cur_patch
-          call MphaseUpdateSolutionPatch(realization)
-          cur_patch => cur_patch%next
-          enddo
-      cur_level => cur_level%next
+    cur_patch => cur_level%patch_list%first
+    do 
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call MphaseUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
   enddo
 
 ! make room for hysteric s-Pc-kr
@@ -2325,8 +2325,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                xx_loc_p(:), xx_p(:), yy_p(:),&
                tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-                          
-               
+
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
   PetscInt :: iphase

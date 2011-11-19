@@ -7730,6 +7730,8 @@ subroutine OutputMassBalanceNew(realization)
   
   use Richards_module
   use Mphase_module
+  use Immis_module
+  use THC_module
   use Reactive_Transport_module
   use General_module
   
@@ -7968,6 +7970,8 @@ subroutine OutputMassBalanceNew(realization)
         call RichardsComputeMassBalance(realization,sum_kg(1,:))
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
+      case(IMS_MODE)
+        call ImmisComputeMassBalance(realization,sum_kg(:,:))
       case(G_MODE)
         option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
         call printErrMsg(option)
