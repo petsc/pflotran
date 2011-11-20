@@ -206,7 +206,6 @@ common_obj = ${common_src}option.o \
 	${common_src}richards.o\
 	${common_src}general.o\
 	${common_src}condition_control.o \
-	${common_src}mass_balance.o \
 	${common_src}general_grid.o \
 	${common_src}checkpoint.o \
 	${common_src}convergence.o \
@@ -251,7 +250,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
-	richards.o thc.o discretization.o logging.o mass_balance.o \
+	richards.o thc.o discretization.o logging.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o
@@ -331,11 +330,10 @@ flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
 	realization.o grid.o option.o field.o solver.o \
 	output.o convergence.o checkpoint.o waypoint.o logging.o \
-	mass_balance.o input.o string.o reactive_transport.o
+	input.o string.o reactive_transport.o
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
-mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
 dataset_aux.o : string.o utility.o option.o input.o

@@ -43,7 +43,7 @@ subroutine Init(simulation)
   use Convergence_module
   use Waypoint_module
   use Patch_module
-  use Mass_Balance_module
+! use Mass_Balance_module
   use Logging_module  
   use Database_module
   use Input_module
