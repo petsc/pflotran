@@ -1227,11 +1227,11 @@ subroutine duan_mix_den (t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
 
 implicit none
 
-real*8 :: t,tk,p,xco2,xmol,x1,y_nacl,vphi_a1,vphi_a2,vphi,denmix,pw_kg,dw_kg,avgmw
+PetscReal :: t,tk,p,xco2,xmol,x1,y_nacl,vphi_a1,vphi_a2,vphi,denmix,pw_kg,dw_kg,avgmw
 
-real*8 :: fmwh2o = 18.01534d0
-real*8 :: fmwco2 = 44.0098d0
-real*8 :: fmwnacl = 58.44277d0
+PetscReal :: fmwh2o = 18.01534d0
+PetscReal :: fmwco2 = 44.0098d0
+PetscReal :: fmwnacl = 58.44277d0
 
 !duan mixing **************************
   tk = t + 273.15D0; xco2 = xmol;
@@ -1263,10 +1263,10 @@ PetscErrorCode  :: ierr
 !rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
 !      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
 !      - 0.333d0*p**2 - 0.002d0*t*p**2)
-call wateos_noderiv(t, p*1D6, rw0, rw_mol,hw,1.D-6, ierr)
+call wateos_noderiv(t,p*1D6,rw0,rw_mol,hw,1.D-6,ierr)
 rw0=rw0*1.d-3
-dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl  &
-        + 1.d-6*(300d0*p - 2400d0*p*xnacl + t*(80d0 &
+dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl &
+        + 1.d-6*(300.d0*p - 2400.d0*p*xnacl + t*(80.d0 &
         + 3.d0*t - 3300.d0*xnacl - 13.d0*p + 47.d0*p*xnacl)))
 
 return

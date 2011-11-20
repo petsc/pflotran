@@ -386,7 +386,7 @@ subroutine ImmisZeroMassBalDeltaPatch(realization)
   endif
   
   if (patch%aux%Mphase%num_aux_ss > 0) then
-    do iconn =1, patch%aux%Immis%num_aux_ss
+    do iconn = 1, patch%aux%Immis%num_aux_ss
       global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
@@ -1786,6 +1786,10 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
  ! call ImmisUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%ImmisAux%aux_vars_up_to_date = PETSC_FALSE 
+ 
+  if (option%compute_mass_balance_new) then
+!   call ImmisZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -1808,15 +1812,15 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-    if(grid%nG2L(ng)<0)cycle
+    if (grid%nG2L(ng) < 0) cycle
     if (associated(patch%imat)) then
-        if (patch%imat(ng) <= 0) cycle
+      if (patch%imat(ng) <= 0) cycle
     endif
         
-    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
-    iphase =int(iphase_loc_p(ng))
-    call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+    istart = (ng-1)*option%nflowdof + 1; iend = istart -1 + option%nflowdof
+    iphase = int(iphase_loc_p(ng))
+    call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0), &
+      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
 
     if (option%numerical_derivatives) then
@@ -1829,18 +1833,20 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
         patch%aux%Immis%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
       endif
            
-      if(patch%aux%Immis%delx(3,ng) < 1D-12 .and.  patch%aux%Immis%delx(3,ng)>=0.D0) patch%aux%Immis%delx(3,ng) = 1D-12
-      if(patch%aux%Immis%delx(3,ng) >-1D-12 .and.  patch%aux%Immis%delx(3,ng)<0.D0) patch%aux%Immis%delx(3,ng) =-1D-12
+      if (patch%aux%Immis%delx(3,ng) < 1D-12 .and. patch%aux%Immis%delx(3,ng) >= 0.D0) &
+        patch%aux%Immis%delx(3,ng) = 1D-12
+      if (patch%aux%Immis%delx(3,ng) > -1D-12 .and. patch%aux%Immis%delx(3,ng) < 0.D0) &
+        patch%aux%Immis%delx(3,ng) = -1D-12
         
-      if((patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
-            patch%aux%Immis%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
+      if ((patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
+        patch%aux%Immis%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
       endif
-      if(( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-          patch%aux%Immis%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
+      if (( patch%aux%Immis%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+        patch%aux%Immis%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
       endif
-      call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng),&
-          aux_vars(ng)%aux_var_elem(1:option%nflowdof),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+      call ImmisAuxVarCompute_Winc(xx_loc_p(istart:iend),patch%aux%Immis%delx(:,ng), &
+          aux_vars(ng)%aux_var_elem(1:option%nflowdof), &
+          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
           realization%fluid_properties,option)
     endif
   enddo

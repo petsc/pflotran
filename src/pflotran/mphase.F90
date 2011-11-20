@@ -433,7 +433,7 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
   endif
   
   if (patch%aux%Mphase%num_aux_ss > 0) then
-    do iconn =1, patch%aux%Mphase%num_aux_ss
+    do iconn = 1, patch%aux%Mphase%num_aux_ss
       global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
     enddo
   endif

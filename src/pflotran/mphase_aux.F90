@@ -345,11 +345,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
           case(0,1,2,4,5)
             if (option%itable >=4) then
                 ! print *,' interp', itable
-              call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
+              call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg, &
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             else
               iflag = 1
-              call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
+              call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg, &
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag, &
                      option%itable)
             endif
@@ -410,25 +410,25 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     case(1)
       aux_var%xmol(4) = aux_var%xmol(2)*henry/p   
       aux_var%xmol(3) = 1.D0-aux_var%xmol(4)
-      if (aux_var%xmol(3)<0.D0) aux_var%xmol(3) = 0.D0
-     !     if(xmol(3)<0.D0) xmol(3)=0.D0
+      if (aux_var%xmol(3) < 0.D0) aux_var%xmol(3) = 0.D0
+!     if(xmol(3) < 0.D0) xmol(3)=0.D0
     case(2)   
       aux_var%xmol(2) = p*aux_var%xmol(4)/henry
-      aux_var%xmol(1) = 1.D0-aux_var%xmol(2)
+      aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
     case(3)
       temp= sat_pressure / p
       aux_var%xmol(2) = xco2eq
-      aux_var%xmol(1) = 1D0- xco2eq
+      aux_var%xmol(1) = 1.D0 - xco2eq
       aux_var%xmol(3) = temp
-      aux_var%xmol(4) = 1.D0-temp            
+      aux_var%xmol(4) = 1.D0 - temp            
     end select
-    aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
+    aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
     call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg * option%scale
-    aux_var%pc(2)=0D0
+    aux_var%pc(2) = 0.D0
 
 !   aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
     aux_var%diff(option%nflowspec+1:option%nflowspec*2) = &
@@ -454,8 +454,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
-! ideal mixing    
-  !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
+!  ideal mixing    
+!  den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 !  m_nacl=option%m_nacl
 !  if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
@@ -472,6 +472,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
 !duan mixing **************************
 #ifdef DUANDEN
+!                 units: t [C], p [MPa], dw_kg [kg/m^3]
   call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
@@ -597,7 +598,9 @@ end subroutine MphaseAuxVarDestroy
 !
 ! ************************************************************************** !
 subroutine MphaseAuxDestroy(aux, option)
-use option_module
+
+  use option_module
+  
   implicit none
 
   type(mphase_type), pointer :: aux
@@ -610,17 +613,25 @@ use option_module
     do ielem = 0, option%nflowdof 
       call MphaseAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
     enddo
-  enddo  
+    deallocate(aux%aux_vars)
+  enddo
+  nullify(aux%aux_vars)
+  
   do iaux = 1, aux%num_aux_bc
     do ielem = 0, option%nflowdof 
       call MphaseAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
     enddo
-  enddo 
-    do iaux = 1, aux%num_aux_bc
+    deallocate(aux%aux_vars_bc)
+  enddo
+  nullify(aux%aux_vars_bc)
+  
+  do iaux = 1, aux%num_aux_ss
     do ielem = 0, option%nflowdof 
       call MphaseAuxVarDestroy(aux%aux_vars_ss(iaux)%aux_var_elem(ielem))
     enddo
+    deallocate(aux%aux_vars_ss)
   enddo
+  nullify(aux%aux_vars_ss)
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   nullify(aux%aux_vars)

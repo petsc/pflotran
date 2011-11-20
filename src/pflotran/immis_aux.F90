@@ -1,5 +1,7 @@
 module Immis_Aux_module
-use Mphase_pckr_module
+
+  use Mphase_pckr_module
+  
   implicit none
   
   private 
@@ -508,12 +510,25 @@ subroutine ImmisAuxDestroy(aux, option)
     do ielem= 0, option%nflowdof 
       call ImmisAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
     enddo
-  enddo  
+    deallocate(aux%aux_vars)
+  enddo
+  nullify(aux%aux_vars)
+  
   do iaux = 1, aux%num_aux_bc
     do ielem= 0, option%nflowdof 
       call ImmisAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
     enddo
-  enddo  
+    deallocate(aux%aux_vars_bc)
+  enddo
+  nullify(aux%aux_vars_bc)
+  
+  do iaux = 1, aux%num_aux_ss
+    do ielem = 0, option%nflowdof 
+      call ImmisAuxVarDestroy(aux%aux_vars_ss(iaux)%aux_var_elem(ielem))
+    enddo
+    deallocate(aux%aux_vars_ss)
+  enddo
+  nullify(aux%aux_vars_ss)
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   nullify(aux%aux_vars)
