@@ -301,23 +301,28 @@ subroutine HDF5ReadDataset(dataset,option)
       dataset%buffer%num_times_total = size(dataset%buffer%time_array)
       dataset%buffer%time_offset = 0
       dataset%buffer%cur_time_index = 1
-      attribute_name = "Max Buffer Size"
-      call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
-      if (attribute_exists) then
-        attribute_dim(1) = 1
-        call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
-        call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,temp_int, &
-                       attribute_dim,hdf5_err)
-        call h5aclose_f(attribute_id,hdf5_err)
-        dataset%buffer%num_times_in_buffer = temp_int
-      endif
-      if (dataset%buffer%num_times_in_buffer == 0) then
-        dataset%buffer%num_times_in_buffer = dataset%buffer%num_times_total
-        if (dataset%buffer%num_times_in_buffer > 20) then
-          dataset%buffer%num_times_in_buffer = 20
-          option%io_buffer = 'Size of dataset buffer truncated to 20.'
-          call printMsg(option)
+      ! if maximum buffer size has not been set in the PFLOTRAN input file
+      if (dataset%max_buffer_size == 0) then
+        attribute_name = "Max Buffer Size"
+        call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+        if (attribute_exists) then
+          attribute_dim(1) = 1
+          call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+          call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,temp_int, &
+                         attribute_dim,hdf5_err)
+          call h5aclose_f(attribute_id,hdf5_err)
+          dataset%buffer%num_times_in_buffer = temp_int
         endif
+        if (dataset%buffer%num_times_in_buffer == 0) then
+          dataset%buffer%num_times_in_buffer = dataset%buffer%num_times_total
+          if (dataset%buffer%num_times_in_buffer > 20) then
+            dataset%buffer%num_times_in_buffer = 20
+            option%io_buffer = 'Size of dataset buffer truncated to 20.'
+            call printMsg(option)
+          endif
+        endif
+      else
+        dataset%buffer%num_times_in_buffer = dataset%max_buffer_size
       endif
     endif
   endif ! dataset%data_dim == DIM_NULL

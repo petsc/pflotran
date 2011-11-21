@@ -227,13 +227,11 @@ subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
     case(LIQUID_DENSITY)
       do i=1, patch%aux%Global%num_aux
         patch%aux%Global%aux_vars(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%aux_vars(i)%den(option%liquid_phase) = value/ &
-                                                                FMWH2O
+        patch%aux%Global%aux_vars(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
       do i=1, realization%patch%aux%Global%num_aux_bc
         patch%aux%Global%aux_vars_bc(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%aux_vars_bc(i)%den(option%liquid_phase) = value/ &
-                                                                   FMWH2O
+        patch%aux%Global%aux_vars_bc(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
     case(LIQUID_SATURATION)
       do i=1, patch%aux%Global%num_aux

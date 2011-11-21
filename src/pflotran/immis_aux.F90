@@ -1,5 +1,7 @@
 module Immis_Aux_module
-use Mphase_pckr_module
+
+  use Mphase_pckr_module
+  
   implicit none
   
   private 
@@ -7,20 +9,21 @@ use Mphase_pckr_module
 #include "definitions.h"
 
 type, public :: Immis_auxvar_elem_type
-   PetscReal :: pres
-    PetscReal :: temp
-    PetscReal , pointer :: sat(:)
-    PetscReal , pointer :: den(:)
-    PetscReal , pointer :: avgmw(:)
-    PetscReal , pointer :: h(:)
-    PetscReal , pointer :: u(:)
-    PetscReal , pointer :: pc(:)
-    PetscReal , pointer :: kvr(:)
-!    PetscReal , pointer :: xmol(:)
-!    PetscReal , pointer :: diff(:)
-    PetscReal , pointer :: hysdat(:)
-    PetscReal :: zco2
-!     PetscReal :: vis
+  PetscReal :: pres
+  PetscReal :: temp
+  PetscReal , pointer :: sat(:)
+  PetscReal , pointer :: den(:)
+  PetscReal , pointer :: avgmw(:)
+  PetscReal , pointer :: vis(:)
+  PetscReal , pointer :: h(:)
+  PetscReal , pointer :: u(:)
+  PetscReal , pointer :: pc(:)
+  PetscReal , pointer :: kvr(:)
+! PetscReal , pointer :: xmol(:)
+! PetscReal , pointer :: diff(:)
+  PetscReal , pointer :: hysdat(:)
+  PetscReal :: zco2
+!    PetscReal :: vis
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
@@ -60,10 +63,11 @@ type, public :: Immis_auxvar_elem_type
 
      PetscBool :: aux_vars_up_to_date
      PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc
+     PetscInt :: num_aux, num_aux_bc, num_aux_ss
      type(Immis_parameter_type), pointer :: immis_parameter
      type(Immis_auxvar_type), pointer :: aux_vars(:)
      type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
+     type(Immis_auxvar_type), pointer :: aux_vars_ss(:)
 
      PetscReal, pointer :: res_old_AR(:,:), res_old_FL(:,:), delx(:,:)
   end type Immis_type
@@ -142,29 +146,31 @@ subroutine ImmisAuxVarInit(aux_var,option)
   allocate(aux_var%aux_var_elem(0)%hysdat(4))
  
   do nvar = 0, option%nflowdof
-     allocate ( aux_var%aux_var_elem(nvar)%sat(option%nphase))
-     allocate ( aux_var%aux_var_elem(nvar)%den(option%nphase))
-     allocate ( aux_var%aux_var_elem(nvar)%avgmw(option%nphase))
-     allocate ( aux_var%aux_var_elem(nvar)%h(option%nphase))
-     allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
-     allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
-     allocate ( aux_var%aux_var_elem(nvar)%kvr(option%nphase))
- !    allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
- !    allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
-     if(nvar>0)&
-     aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
+    allocate ( aux_var%aux_var_elem(nvar)%sat(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%den(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%avgmw(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%vis(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%h(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
+    allocate ( aux_var%aux_var_elem(nvar)%kvr(option%nphase))
+!   allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
+!   allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
+    if(nvar>0) &
+      aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
 
-     aux_var%aux_var_elem(nvar)%pres = 0.d0
-     aux_var%aux_var_elem(nvar)%temp = 0.d0
-     aux_var%aux_var_elem(nvar)%sat = 0.d0
-     aux_var%aux_var_elem(nvar)%den = 0.d0
-     aux_var%aux_var_elem(nvar)%avgmw = 0.d0
-     aux_var%aux_var_elem(nvar)%h = 0.d0
-     aux_var%aux_var_elem(nvar)%u = 0.d0
-     aux_var%aux_var_elem(nvar)%pc = 0.d0
-     aux_var%aux_var_elem(nvar)%kvr = 0.d0
- !    aux_var%aux_var_elem(nvar)%xmol = 0.d0
- !    aux_var%aux_var_elem(nvar)%diff = 0.d0
+    aux_var%aux_var_elem(nvar)%pres = 0.d0
+    aux_var%aux_var_elem(nvar)%temp = 0.d0
+    aux_var%aux_var_elem(nvar)%sat = 0.d0
+    aux_var%aux_var_elem(nvar)%den = 0.d0
+    aux_var%aux_var_elem(nvar)%avgmw = 0.d0
+    aux_var%aux_var_elem(nvar)%vis = 0.d0
+    aux_var%aux_var_elem(nvar)%h = 0.d0
+    aux_var%aux_var_elem(nvar)%u = 0.d0
+    aux_var%aux_var_elem(nvar)%pc = 0.d0
+    aux_var%aux_var_elem(nvar)%kvr = 0.d0
+!   aux_var%aux_var_elem(nvar)%xmol = 0.d0
+!   aux_var%aux_var_elem(nvar)%diff = 0.d0
 #if 0
      aux_var%aux_var_elem(nvar)%dsat_dp = 0.d0
      aux_var%aux_var_elem(nvar)%dden_dp = 0.d0
@@ -195,6 +201,7 @@ subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
   aux_var2%avgmw = aux_var%avgmw
+  aux_var2%vis = aux_var%vis
   aux_var2%h = aux_var%h
   aux_var2%u = aux_var%u
   aux_var2%pc = aux_var%pc
@@ -214,8 +221,8 @@ subroutine ImmisAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%du_dp = aux_var%du_dp
   aux_var2%du_dt = aux_var%du_dt  
 #endif
-!  aux_var2%xmol = aux_var%xmol
-!  aux_var2%diff = aux_var%diff
+! aux_var2%xmol = aux_var%xmol
+! aux_var2%diff = aux_var%diff
 
 end subroutine ImmisAuxVarCopy
 
@@ -253,7 +260,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal ::  p, t, temp, p2, err
+  PetscReal :: p, t, temp, p2, err
   PetscReal :: henry
   PetscReal :: dg, dddp, dddt
   PetscReal :: fg, dfgdp, dfgdt, xphi
@@ -270,6 +277,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   aux_var%u = 0.d0
   aux_var%den = 0.d0
   aux_var%avgmw = 0.d0
+! aux_var%vis = 0.d0
   aux_var%pc = 0.d0
   aux_var%kvr = 0.d0
 ! aux_var%xmol = 0.d0
@@ -278,21 +286,21 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
  
   aux_var%pres = x(1)  
   aux_var%temp = x(2)
-  p= aux_var%pres
-  t= aux_var%temp
+  p = aux_var%pres
+  t = aux_var%temp
 
-  if(x(3)<0.D0)x(3)=0.D0
-  if(x(3)>1.D0)x(3)=1.D0
+  if(x(3)<0.D0)x(3) = 0.D0
+  if(x(3)>1.D0)x(3) = 1.D0
   
-  aux_var%sat(2)=x(3)
-  if(aux_var%sat(2)< 0.D0)then
-!     print *,'tran:',iphase, x(1:3)
-     aux_var%sat(2)= 0.D0
-   endif
-!   if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
-     aux_var%sat(1)=1.D0 - aux_var%sat(2)
-        aux_var%pc(:)=0.D0
-        temp = 1D-2
+  aux_var%sat(2) = x(3)
+  if (aux_var%sat(2) < 0.D0) then
+!   print *,'tran:',iphase, x(1:3)
+    aux_var%sat(2) = 0.D0
+  endif
+! if(aux_var%sat(2) > 1.D0) print *,'tran:',iphase, x(1:3)
+  aux_var%sat(1) = 1.D0 - aux_var%sat(2)
+  aux_var%pc(:) = 0.D0
+  temp = 1.D-2
 
 
 ! ********************* Gas phase properties ***********************
@@ -300,7 +308,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
     err=1.D0
     p2 = p
 
-    if(p2>=5d4)then
+    if(p2 >= 5.d4)then
        if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
           select case(option%itable)  
@@ -375,45 +383,46 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   call nacl_vis(t,p*1D-6,xm_nacl,visl)
 
 !FEHM mixing ****************************
-!  den(1) = xmol(2)*dg + xmol(1)*dw_mol
+! den(1) = xmol(2)*dg + xmol(1)*dw_mol
 ! ideal mixing    
-  !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
+! den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 ! Garcia mixing **************************
   x_nacl =  option%m_nacl/( option%m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
-  aux_var%avgmw(1)= (1D0 - x_nacl) * FMWH2O&
-       + x_nacl * FMWNACL
-  aux_var%den(1)=dw_kg/aux_var%avgmw(1)
+  aux_var%avgmw(1) = (1.D0 - x_nacl) * FMWH2O + x_nacl * FMWNACL
+  aux_var%den(1) = dw_kg/aux_var%avgmw(1)
   
        
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 ***********
- !   den(1)= 949.7109D0 + p * (0.559684D-6 - 0.00097D-12 * p) &  
+ !  den(1) = 949.7109D0 + p * (0.559684D-6 - 0.00097D-12 * p) &  
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  
- !  den(1)=dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
- !  den(1)=den(1)/avgmw(1)
+ !  den(1) = dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
+ !  den(1) = den(1)/avgmw(1)
 !******************************** 2 phase S-Pc-kr relation ***********************************
     aux_var%pc =0.D0
 
-      if(saturation_function%hysteresis_id <=0.1D0 ) then 
-         call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
+    if (saturation_function%hysteresis_id <=0.1D0 ) then 
+      call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
-        pw=p !-pc(1)
+      pw=p !-pc(1)
      
-       else
-          call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
+    else
+      call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
-     end if
+    end if
 
-!    call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
+!   call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
 !                                   ds_dp,dkr_dp, &
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-       aux_var%kvr(2)=kr(2)/visg     
-       aux_var%kvr(1) = kr(1)/visl
+    aux_var%kvr(2) = kr(2)/visg     
+    aux_var%kvr(1) = kr(1)/visl
+    aux_var%vis(2) = visg     
+    aux_var%vis(1) = visl
 
 end subroutine ImmisAuxVarCompute_NINC
 
@@ -460,22 +469,24 @@ subroutine ImmisAuxVarDestroy(aux_var)
 
   type(Immis_auxvar_elem_type) :: aux_var
   
-!  if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
-!  nullify(aux_var%xmol)
-!  if (associated(aux_var%diff))deallocate(aux_var%diff)
-!  nullify(aux_var%diff)
+! if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
+! nullify(aux_var%xmol)
+! if (associated(aux_var%diff))deallocate(aux_var%diff)
+! nullify(aux_var%diff)
   if (associated(aux_var%pc))deallocate(aux_var%pc)
   nullify(aux_var%pc)
- if (associated(aux_var%sat))deallocate(aux_var%sat)
+  if (associated(aux_var%sat))deallocate(aux_var%sat)
   nullify(aux_var%sat)
- if (associated(aux_var%u))deallocate(aux_var%u)
+  if (associated(aux_var%u))deallocate(aux_var%u)
   nullify(aux_var%u)
- if (associated(aux_var%h))deallocate(aux_var%h)
+  if (associated(aux_var%h))deallocate(aux_var%h)
   nullify(aux_var%h)
- if (associated(aux_var%den))deallocate(aux_var%den)
+  if (associated(aux_var%den))deallocate(aux_var%den)
   nullify(aux_var%den)
- if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%u)
+  if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
+  nullify(aux_var%avgmw)
+  if (associated(aux_var%vis))deallocate(aux_var%vis)
+  nullify(aux_var%vis)
 end subroutine ImmisAuxVarDestroy
 
 ! ************************************************************************** !
@@ -486,7 +497,7 @@ end subroutine ImmisAuxVarDestroy
 !
 ! ************************************************************************** !
 subroutine ImmisAuxDestroy(aux, option)
-use option_module
+  use option_module
   implicit none
 
   type(Immis_type), pointer :: aux
@@ -499,12 +510,25 @@ use option_module
     do ielem= 0, option%nflowdof 
       call ImmisAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
     enddo
-  enddo  
+    deallocate(aux%aux_vars)
+  enddo
+  nullify(aux%aux_vars)
+  
   do iaux = 1, aux%num_aux_bc
     do ielem= 0, option%nflowdof 
       call ImmisAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
     enddo
-  enddo  
+    deallocate(aux%aux_vars_bc)
+  enddo
+  nullify(aux%aux_vars_bc)
+  
+  do iaux = 1, aux%num_aux_ss
+    do ielem = 0, option%nflowdof 
+      call ImmisAuxVarDestroy(aux%aux_vars_ss(iaux)%aux_var_elem(ielem))
+    enddo
+    deallocate(aux%aux_vars_ss)
+  enddo
+  nullify(aux%aux_vars_ss)
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   nullify(aux%aux_vars)

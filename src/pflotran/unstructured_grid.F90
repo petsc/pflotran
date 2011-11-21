@@ -2177,9 +2177,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   call VecRestoreArrayF90(local_vec2,vec_p,ierr)
 
   ! now the cell ids 
-  !
-  ! GB: Loop below finds the local vertex id for ghosted cells and populates
-  !     cell_vertices_0(:,:).
   do ivertex=1, max_vertex_count  
     call VecZeroEntries(local_vec1,ierr)
     call VecGetArrayF90(local_vec1,vec_p,ierr)
@@ -2196,10 +2193,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
 
     call VecGetArrayF90(local_vec2,vec_p,ierr)
 
-  ! GB: Since in unstructred mesh all ghosted cells are at the end of array, 
-  !     the starting value of the for loop is modified
-    do ghosted_id = unstructured_grid%num_cells_local + 1, & 
-                    unstructured_grid%num_cells_ghosted 
+    do ghosted_id = 1, unstructured_grid%num_cells_ghosted 
       do ivert=1, unstructured_grid%num_vertices_local 
         vert_id = ltog(ivert) 
         if (vert_id == vec_p(ghosted_id))  exit 
@@ -2210,12 +2204,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   end do 
   deallocate(ltog)
 
-  ! GB: There is no need to dealloacte and reallocate memory. Additionally the
-  !     starting value of the for loop is modified.
-  !deallocate( unstructured_grid%cell_vertices_0) 
-  !allocate(unstructured_grid%cell_vertices_0(0:max_vertex_count,unstructured_grid%num_cells_ghosted) ) 
-  do ghosted_id = unstructured_grid%num_cells_local + 1, & 
-                  unstructured_grid%num_cells_ghosted 
+  deallocate( unstructured_grid%cell_vertices_0) 
+  allocate(unstructured_grid%cell_vertices_0(0:max_vertex_count,unstructured_grid%num_cells_ghosted) ) 
+  do ghosted_id = 1, unstructured_grid%num_cells_ghosted 
     do ivertex=0, max_vertex_count  
       unstructured_grid%cell_vertices_0(ivertex,ghosted_id)= cell_vertices_0(ivertex,ghosted_id) 
     end do 

@@ -109,7 +109,7 @@ subroutine Flash2Setup(realization)
        case(0,1,2)
          call initialize_span_wagner(realization%option%itable,realization%option%myrank)
        case(4,5)
-         call initialize_span_wagner(0,realization%option%myrank)
+         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank)
          call initialize_sw_interp(realization%option%itable, realization%option%myrank)
        case(3)
          call sw_spline_read
@@ -1178,7 +1178,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         uxmol=0.D0
 
         ! note uxmol only contains one phase xmol
-        if (dphi>=0.D0) then
+        if (dphi >= 0.D0) then
            ukvr = aux_var_up%kvr(np)
            uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
@@ -1193,12 +1193,12 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
         if (ukvr>floweps) then
            v_darcy= Dq * ukvr * dphi
-           vv_darcy(np)=v_darcy
+           vv_darcy(np) = v_darcy
            q = v_darcy * area
-           do ispec =1, option%nflowspec
-             fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
+           do ispec = 1, option%nflowspec
+             fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo  
-          ! if(option%use_isothermal == PETSC_FALSE)&
+          ! if(option%use_isothermal == PETSC_FALSE) &
             fluxe = fluxe + q*density_ave*uh 
         endif
      endif
@@ -1525,17 +1525,19 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     ! Diffusion term   
   select case(ibndtype(3))
   case(DIRICHLET_BC) 
-     !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-     !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+     !if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
+     !  diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
+     !  (aux_var_up%den+aux_var_dn%den)
         do np = 1, option%nphase
-          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps)then
-              diff =diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))*&
-                    (aux_var_up%den(np)+aux_var_up%den(np))
-           do ispec = 1, option%nflowspec
-              fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
+          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps) then
+            diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
+              (aux_var_up%den(np)+aux_var_up%den(np))
+            do ispec = 1, option%nflowspec
+              fluxm(ispec) = fluxm(ispec) + diff * &
+                   aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
                    (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
                    -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
-           enddo
+            enddo
           endif         
         enddo
      
@@ -1549,7 +1551,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
        fluxe = fluxe + cond
     case(NEUMANN_BC)
-       fluxe = fluxe + aux_vars(2)*area*1.d-6 
+       fluxe = fluxe + aux_vars(2)*area*option%scale
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
   end select
@@ -2161,7 +2163,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
@@ -3509,7 +3511,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
-  PetscInt ::  natural_id_up,natural_id_dn
+  PetscInt :: natural_id_up,natural_id_dn
   
   PetscReal :: Jup(1:realization%option%nflowdof,1:realization%option%nflowdof), &
             Jdn(1:realization%option%nflowdof,1:realization%option%nflowdof)
@@ -3526,7 +3528,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: distance_gravity
   PetscReal :: Res(realization%option%nflowdof) 
   PetscReal :: xxbc(1:realization%option%nflowdof), delxbc(1:realization%option%nflowdof)
-  PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof,&
+  PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof, &
            realization%option%nflowdof)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch

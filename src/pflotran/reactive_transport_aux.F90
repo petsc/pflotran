@@ -217,7 +217,7 @@ function RTAuxCreate(option)
   allocate(aux%rt_parameter)
   allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
   allocate(aux%rt_parameter%diffusion_activation_energy(option%nphase))
-  aux%rt_parameter%diffusion_coefficient = 0.d0
+  aux%rt_parameter%diffusion_coefficient = 1.d-9
   aux%rt_parameter%diffusion_activation_energy = 0.d0
   aux%rt_parameter%dispersivity = 0.d0
   aux%rt_parameter%ncomp = 0

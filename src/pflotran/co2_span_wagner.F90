@@ -67,8 +67,8 @@ subroutine initialize_span_wagner(itable,myrank)
 
       allocate(co2_prop_spwag(0:ntab_p,0:ntab_t,1:15))
       
-      iitable=0
-      if(present(itable)) iitable=itable
+      iitable = 0      
+      if (present(itable)) iitable=itable
 
       denc = 467.6d0
       tc = 304.1282d0
@@ -406,7 +406,7 @@ subroutine initialize_span_wagner(itable,myrank)
     if (iitable == 1) then
       print *,'Writing Table lookup file ...'
       if (myrank==0) print *,'--> open co2data.dat'
-      open(unit=122,file='co2data.dat',status='old',iostat=status)
+      open(unit=122,file='co2data.dat',status='unknown',iostat=status)
       if (status /= 0) then
         print *, 'file: co2data.dat not found.  Copy from pflotran/database directory.'
         stop
@@ -429,9 +429,14 @@ subroutine initialize_span_wagner(itable,myrank)
   endif
   
   if (iitable == 2) then
-    if (myrank==0) print *,'Reading Table ...'
-    if (myrank==0) print *,'--> open co2data0.dat'
-    open(unit=122,file='co2data0.dat',status='unknown')
+    if (myrank == 0) print *,'Reading Table ...'
+    if (myrank == 0) print *,'--> open co2data0.dat'
+    open(unit = 122,file='co2data0.dat',status='old',iostat=status)
+    if (status /= 0) then
+      print *, 'file: co2data0.dat not found.  Copy from pflotran/database directory.'
+      stop
+    endif
+!   open(unit=122,file='co2data0.dat',status='old')
     read(122,*)
     read(122,*)
     read(122,*)

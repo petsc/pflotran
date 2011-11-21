@@ -106,7 +106,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%den_kg_store = 0.d0
 
   select case(option%iflowmode)
-    case( IMS_MODE, MPH_MODE, FLASH2_MODE)
+    case(IMS_MODE, MPH_MODE, FLASH2_MODE)
       allocate(aux_var%xmass(option%nphase))
       aux_var%xmass = 1.d0
       allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
@@ -148,7 +148,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
       nullify(aux_var%reaction_rate)
       nullify(aux_var%reaction_rate_store)
   end select
-
+  
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(option%nflowspec,option%nphase))
     aux_var%mass_balance = 0.d0
