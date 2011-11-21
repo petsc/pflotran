@@ -3028,7 +3028,7 @@ subroutine OutputObservationTecplot(realization)
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
-      write(fid,'(a)',advance="no") ' "Time[' // trim(output_option%tunit) // ']"'
+      write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'
       observation => patch%observation%first
 
       ! must initialize icolumn here so that icolumn does not restart with
@@ -7793,7 +7793,7 @@ subroutine OutputMassBalanceNew(realization)
       open(unit=fid,file=filename,action="write",status="replace")
 
       ! write header
-      write(fid,'(a)',advance="no") ' "Time[' // trim(output_option%tunit) // ']"'  
+      write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'  
       
       header = ''
       if (option%iflowmode > 0) then
