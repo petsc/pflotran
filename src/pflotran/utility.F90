@@ -1003,4 +1003,47 @@ function Equal(value1, value2)
   
 end function Equal
 
+! ************************************************************************** !
+!
+! BestFloat: Returns the best format for a floating point number
+! author: Glenn Hammond
+! date: 11/21/11
+!
+! ************************************************************************** !
+function BestFloat(float,upper_bound,lower_bound)
+
+  implicit none
+  
+  PetscReal :: float
+  PetscReal :: upper_bound
+  PetscReal :: lower_bound
+
+  character(len=MAXWORDLENGTH) :: BestFloat
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: i
+  
+100 format(f12.3)
+101 format(es12.2)
+102 format(es12.4)
+
+  if (dabs(float) <= upper_bound .and. dabs(float) >= lower_bound) then
+    write(word,100) float
+    word = adjustl(word)
+    do i = len_trim(word), 1, -1
+      if (word(i:i) == '0') then
+        word(i:i) = ' '
+      else
+        exit
+      endif
+    enddo
+  else if (dabs(float) < lower_bound) then
+    write(word,101) float
+  else
+    write(word,102) float
+  endif
+  
+  BestFloat = adjustl(word)
+  
+end function BestFloat
+
 end module Utility_module

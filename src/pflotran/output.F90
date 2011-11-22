@@ -3141,7 +3141,8 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   use Option_module
   use Patch_module
   use Region_module
-
+  use Utility_module, only : BestFloat
+  
   implicit none
   
   PetscInt :: fid
@@ -3164,10 +3165,9 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
 
   ! add coordinate of cell center
-  110 format(1f12.2)
-  write(x_string,110) grid%x(grid%nL2G(local_id))
-  write(y_string,110) grid%y(grid%nL2G(local_id))
-  write(z_string,110) grid%z(grid%nL2G(local_id))
+  x_string = BestFloat(grid%x(grid%nL2G(local_id)),1.d4,1.d-2)
+  y_string = BestFloat(grid%y(grid%nL2G(local_id)),1.d4,1.d-2)
+  z_string = BestFloat(grid%z(grid%nL2G(local_id)),1.d4,1.d-2)
   cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // &
                 ' ' // trim(adjustl(y_string)) // &
                 ' ' // trim(adjustl(z_string)) // ')'
@@ -3191,6 +3191,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   use Option_module
   use Patch_module
   use Region_module
+  use Utility_module, only : BestFloat
   
   implicit none
   
@@ -3206,10 +3207,9 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   
   cell_string = trim(region%name)
   
-  110 format(1f12.2)
-  write(x_string,110) region%coordinates(ONE_INTEGER)%x
-  write(y_string,110) region%coordinates(ONE_INTEGER)%y
-  write(z_string,110) region%coordinates(ONE_INTEGER)%z
+  x_string = BestFloat(region%coordinates(ONE_INTEGER)%x,1.d4,1.d-2)
+  y_string = BestFloat(region%coordinates(ONE_INTEGER)%y,1.d4,1.d-2)
+  z_string = BestFloat(region%coordinates(ONE_INTEGER)%z,1.d4,1.d-2)
   cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
                 trim(adjustl(y_string)) // ' ' // &
                 trim(adjustl(z_string)) // ')'

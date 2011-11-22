@@ -120,8 +120,6 @@ end interface
 
   nullify(flow_solver)
   nullify(tran_solver)
-
-
   
   realization%input => InputCreate(IUNIT1,option%input_filename)
 

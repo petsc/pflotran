@@ -1753,10 +1753,28 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
 
   call VecDestroy(vertices_new,ierr)
-  
+
   unstructured_grid%nlmax = unstructured_grid%num_cells_local
   unstructured_grid%ngmax = unstructured_grid%num_cells_local + &
        unstructured_grid%num_ghost_cells
+
+  ! store the cell type
+  allocate(unstructured_grid%cell_type_ghosted(unstructured_grid%ngmax))
+  do ghosted_id = 1, unstructured_grid%ngmax
+    ! Determine number of faces and cell-type of the current cell
+    select case(unstructured_grid%cell_vertices_0(0,ghosted_id))
+      case(8)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = HEX_TYPE
+      case(6)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = WEDGE_TYPE
+      case(4)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = TET_TYPE
+      case default
+        write(*,*),ghosted_id, unstructured_grid%cell_vertices_0(0,ghosted_id), option%myrank
+        option%io_buffer = 'Cell type not recognized'
+        call printErrMsg(option)
+    end select
+  enddo
 
 #endif
   
@@ -2216,24 +2234,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   call VecDestroy(local_vec2,ierr) 
 
   !sp end 
-  ! store the cell type
-  allocate(unstructured_grid%cell_type_ghosted(unstructured_grid%ngmax))
-  do ghosted_id = 1, unstructured_grid%ngmax
-    ! Determine number of faces and cell-type of the current cell
-    select case(unstructured_grid%cell_vertices_0(0,ghosted_id))
-      case(8)
-        unstructured_grid%cell_type_ghosted(ghosted_id) = HEX_TYPE
-      case(6)
-        unstructured_grid%cell_type_ghosted(ghosted_id) = WEDGE_TYPE
-      case(4)
-        unstructured_grid%cell_type_ghosted(ghosted_id) = TET_TYPE
-      case default
-        write(*,*),ghosted_id, unstructured_grid%cell_vertices_0(0,ghosted_id), option%myrank
-        option%io_buffer = 'Cell type not recognized'
-        call printErrMsg(option)
-    end select
-  enddo
-   
 
   ! create mappings of [cells,faces,vertices] to [cells,faces,vertices]
   allocate(face_to_vertex(MAX_VERT_PER_FACE,MAX_DUALS*unstructured_grid%num_cells_ghosted))
