@@ -1459,9 +1459,9 @@ subroutine DensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
   PetscReal, parameter :: alpha = 3.3d-10
   PetscReal, parameter :: beta = 1.53d-4
 
-  den_ice = 5.09424d4*(1.d0 + alpha*(P - P_ref) - beta*(T)) !in mol/m3
-  dden_ice_dT = 5.09424d4*(-beta)
-  dden_ice_dP = 5.09424d4*alpha
+  den_ice = 5.09424d1*(1.d0 + alpha*(P - P_ref) - beta*(T)) !in Kmol/m3
+  dden_ice_dT = 5.09424d1*(-beta)
+  dden_ice_dP = 5.09424d1*alpha
   
 end subroutine DensityIce
 
@@ -1493,8 +1493,8 @@ subroutine InternalEnergyIce(T, u_ice, du_ice_dT)
 
   u_ice = a*(T) + b/2.d0*((T + T_ref)**(2.d0) - T_ref**(2.d0)) + &
           c*(1.d0/T_ref - 1.d0/(T + T_ref))
-  u_ice = u_ice - HEAT_OF_FUSION*FMWH2O*1.d-3   ! J/mol
-  du_ice_dT = a + b*(T + T_ref) + c/((T + T_ref)**(2.d0))
+  u_ice = u_ice - HEAT_OF_FUSION*FMWH2O*1.d-3   ! kJ/kmol
+  du_ice_dT = a + b*(T + T_ref) + c/((T + T_ref)**(2.d0)) !kJ/kmol/K
   
 end subroutine InternalEnergyIce
 

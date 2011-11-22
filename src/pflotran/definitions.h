@@ -24,7 +24,7 @@ PetscReal, parameter :: LN_TO_LOG = 0.434294481904d0
 
 ! constants
 PetscReal, parameter :: IDEAL_GAS_CONST = 8.314472d0   
-PetscReal, parameter :: HEAT_OF_FUSION = 3.34d5 
+PetscReal, parameter :: HEAT_OF_FUSION = 3.34d5  ! J/kg
 
 PetscInt, parameter :: ZERO_INTEGER = 0
 PetscInt, parameter :: ONE_INTEGER = 1
