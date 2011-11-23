@@ -358,6 +358,7 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   aux_var%dh_dt = hw_dt
   aux_var%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
   
+ 
 end subroutine THCAuxVarCompute
 
 
@@ -497,8 +498,8 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%den_ice = den_ice
   aux_var%dden_ice_dt = dden_ice_dT
   aux_var%dden_ice_dp = dden_ice_dP
-  aux_var%u_ice = u_ice*option%scale
-  aux_var%du_ice_dt = du_ice_dT*option%scale
+  aux_var%u_ice = u_ice*1.d-3                  !kJ/kmol --> MJ/kmol
+  aux_var%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
 
 
 end subroutine THCAuxVarComputeIce
