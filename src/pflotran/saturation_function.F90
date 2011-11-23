@@ -681,6 +681,7 @@ implicit none
         function_B = 1.d0
         liquid_relative_perm = 1.d0
         dfunc_B_pl = 0.d0
+        dkr_pc = 0.d0
       else
         alpha = saturation_function%alpha
         pc = option%reference_pressure - liquid_pressure
@@ -709,12 +710,13 @@ implicit none
             call printErrMsg(option)
         end select
       endif
-      if (temperature + 273.15d0 >= T_0) then
+      if (temperature >= 0.d0) then
         function_A = 1.d0
         dfunc_A_temp = 0.d0
       else
         gamma = den_ice*heat_of_fusion*interfacial_tensions_ratio
-        pc_il = gamma*(T_0 - (temperature + 273.15d0))/T_0
+        pc_il = gamma*(-(temperature))/T_0
+        alpha = saturation_function%alpha
         m = saturation_function%m
         n = 1.d0/(1.d0 - m)
         pc_il_alpha = pc_il*alpha
