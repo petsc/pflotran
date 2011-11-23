@@ -1813,9 +1813,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           if (local_count /= region%num_cells) then
             deallocate(region%cell_ids)
             allocate(region%cell_ids(local_count))
-            region%cell_ids(1:local_count) = temp_int_array(1:local_count)
-            region%num_cells=local_count 
+            region%num_cells = local_count 
           endif
+          region%cell_ids(1:local_count) = temp_int_array(1:local_count)
           deallocate(temp_int_array)
 #else
           call GridLocalizeRegionsForUGrid(grid, region, option)
@@ -1915,6 +1915,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
   PetscInt, pointer               :: ia_p(:), ja_p(:)
   PetscInt                        :: n,rstart,rend,icol(1)
   PetscInt                        :: index
+  PetscInt                        :: vertex_id_natural
   PetscOffset                     :: iia,jja,aaa,iicol
   PetscBool                       :: done,found
   PetscScalar                     :: aa(1)
@@ -2106,7 +2107,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       do ii = 1, ugrid%cell_vertices_0(0, local_id)
         call MatSetValues(mat_vert2cell, &
                           1, &
-                          ugrid%cell_vertices_nindex(ii, local_id), &
+                          ugrid%cell_vertices_natural(ii, local_id), &
                           1, &
                           natural_id-1, &
                           natural_id-1.0d0, &
@@ -2265,11 +2266,13 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id) ! 1-based
       do jj = 1, MAX_VERT_PER_FACE
-        if ( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
+!geh        if ( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
+        vertex_id_natural = ugrid%vertex_ids_natural(ugrid%face_to_vertex(jj,ii))
+        if (vertex_id_natural > 0) then
           call VecSetValues(vec_cell2facevert,1, &
                         (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
                         tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
-                        ugrid%face_to_vertex_nindex(jj, ii) - 1.d0, &
+                        vertex_id_natural - 1.d0, &
                         INSERT_VALUES, ierr)
         endif
       enddo 

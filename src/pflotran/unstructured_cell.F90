@@ -25,6 +25,7 @@ module Unstructured_Cell_module
             UCellComputeVolume, &
             UCellComputePlane, &
             UCellGetPlaneIntercept, &
+            UCellProjectPointOntoPlane, &
             UCellComputeDistanceFromPlane, &
             UCellGetNVertices, &
             UCellGetNFaces, &
@@ -181,6 +182,35 @@ subroutine UCellComputePlane(plane,point1,point2,point3)
   plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
 
 end subroutine UCellComputePlane
+
+! ************************************************************************** !
+!
+! UCellProjectPointOntoPlane: Computes the intercept of a point with a plane
+! author: Glenn Hammond
+! date: 11/22/11
+!
+! ************************************************************************** !
+subroutine UCellProjectPointOntoPlane(plane,point,intercept)
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point_type) :: point
+  type(point_type) :: intercept
+
+  PetscReal :: scalar
+  
+  ! plane equation:
+  !   A*x + B*y + C*z + D = 0
+
+  scalar = (plane%A*point%x + plane%B*point%y + plane%C*point%z + plane%D) / &
+           (plane%A*plane%A + plane%B*plane%B + plane%C*plane%C)
+  
+  intercept%x = point%x - plane%A * scalar
+  intercept%y = point%y - plane%B * scalar
+  intercept%z = point%z - plane%C * scalar
+
+end subroutine UCellProjectPointOntoPlane
 
 ! ************************************************************************** !
 !

@@ -254,7 +254,7 @@ subroutine InputReadStringErrorMsg2(input, option)
 
   if (InputError(input)) then
     option%io_buffer = 'While reading in string in "' // &
-                       trim(input%err_buf) // '.'
+                       trim(input%err_buf) // '".'
     call printErrMsg(option)
   endif
 

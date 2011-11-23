@@ -7242,47 +7242,48 @@ subroutine GetCellConnections(grid, vec)
   type(grid_type) :: grid
   type(unstructured_grid_type),pointer :: ugrid
   Vec :: vec
-  PetscInt :: direction  
   PetscInt :: local_id
+  PetscInt :: offset
+  PetscInt :: ivertex
   PetscReal, pointer :: vec_ptr(:)
   
   ugrid => grid%unstructured_grid
   
-  call VecGetArrayF90(vec, vec_ptr, ierr)
+  call GridVecGetArrayF90(grid, vec, vec_ptr, ierr)
 
   do local_id=1, ugrid%num_cells_local
+    offset = (local_id-1)*8
     select case(ugrid%cell_type_ghosted(local_id))
       case(HEX_TYPE)
-        vec_ptr((local_id-1)*8 + 1) = ugrid%cell_vertices_nindex(1,local_id) + 1
-        vec_ptr((local_id-1)*8 + 2) = ugrid%cell_vertices_nindex(2,local_id) + 1
-        vec_ptr((local_id-1)*8 + 3) = ugrid%cell_vertices_nindex(3,local_id) + 1
-        vec_ptr((local_id-1)*8 + 4) = ugrid%cell_vertices_nindex(4,local_id) + 1
-        vec_ptr((local_id-1)*8 + 5) = ugrid%cell_vertices_nindex(5,local_id) + 1
-        vec_ptr((local_id-1)*8 + 6) = ugrid%cell_vertices_nindex(6,local_id) + 1
-        vec_ptr((local_id-1)*8 + 7) = ugrid%cell_vertices_nindex(7,local_id) + 1
-        vec_ptr((local_id-1)*8 + 8) = ugrid%cell_vertices_nindex(8,local_id) + 1
+        do ivertex = 1, 8
+          vec_ptr(offset + ivertex) = &
+            ugrid%cell_vertices_natural(ivertex,local_id) + 1
+        enddo
       case(WEDGE_TYPE)
-        vec_ptr((local_id-1)*8 + 1) = ugrid%cell_vertices_nindex(1,local_id) + 1
-        vec_ptr((local_id-1)*8 + 2) = ugrid%cell_vertices_nindex(1,local_id) + 1
-        vec_ptr((local_id-1)*8 + 3) = ugrid%cell_vertices_nindex(4,local_id) + 1
-        vec_ptr((local_id-1)*8 + 4) = ugrid%cell_vertices_nindex(4,local_id) + 1
-        vec_ptr((local_id-1)*8 + 5) = ugrid%cell_vertices_nindex(3,local_id) + 1
-        vec_ptr((local_id-1)*8 + 6) = ugrid%cell_vertices_nindex(2,local_id) + 1
-        vec_ptr((local_id-1)*8 + 7) = ugrid%cell_vertices_nindex(5,local_id) + 1
-        vec_ptr((local_id-1)*8 + 8) = ugrid%cell_vertices_nindex(6,local_id) + 1
+        vec_ptr(offset + 1) = ugrid%cell_vertices_natural(1,local_id) + 1
+        vec_ptr(offset + 2) = ugrid%cell_vertices_natural(1,local_id) + 1
+        vec_ptr(offset + 3) = ugrid%cell_vertices_natural(4,local_id) + 1
+        vec_ptr(offset + 4) = ugrid%cell_vertices_natural(4,local_id) + 1
+        vec_ptr(offset + 5) = ugrid%cell_vertices_natural(3,local_id) + 1
+        vec_ptr(offset + 6) = ugrid%cell_vertices_natural(2,local_id) + 1
+        vec_ptr(offset + 7) = ugrid%cell_vertices_natural(5,local_id) + 1
+        vec_ptr(offset + 8) = ugrid%cell_vertices_natural(6,local_id) + 1
       case (TET_TYPE)
-        vec_ptr((local_id-1)*8 + 1) = ugrid%cell_vertices_nindex(1,local_id) + 1
-        vec_ptr((local_id-1)*8 + 2) = ugrid%cell_vertices_nindex(1,local_id) + 1
-        vec_ptr((local_id-1)*8 + 3) = ugrid%cell_vertices_nindex(4,local_id) + 1
-        vec_ptr((local_id-1)*8 + 4) = ugrid%cell_vertices_nindex(4,local_id) + 1
-        vec_ptr((local_id-1)*8 + 5) = ugrid%cell_vertices_nindex(3,local_id) + 1
-        vec_ptr((local_id-1)*8 + 6) = ugrid%cell_vertices_nindex(2,local_id) + 1
-        vec_ptr((local_id-1)*8 + 7) = ugrid%cell_vertices_nindex(4,local_id) + 1
-        vec_ptr((local_id-1)*8 + 8) = ugrid%cell_vertices_nindex(4,local_id) + 1
+        ! from Tecplot 360 Data Format Guide
+        ! n1=vert1,n2=vert2,n3=n4=vert3,n5=vern5=n6=n7=n8=vert4
+        do ivertex = 1, 3
+          vec_ptr(offset + ivertex) = &
+            ugrid%cell_vertices_natural(ivertex,local_id) + 1
+        enddo
+        vec_ptr(offset + 4) = ugrid%cell_vertices_natural(3,local_id) + 1
+        do ivertex = 5, 8
+          vec_ptr(offset + ivertex) = &
+            ugrid%cell_vertices_natural(4,local_id) + 1
+        enddo
     end select
   enddo
 
-  call VecRestoreArrayF90(vec, vec_ptr, ierr)
+  call GridVecRestoreArrayF90(grid, vec, vec_ptr, ierr)
 
 end subroutine GetCellConnections
 
