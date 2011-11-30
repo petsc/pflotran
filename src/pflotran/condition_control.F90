@@ -429,8 +429,8 @@ subroutine CondControlAssignTranInitCond(realization)
   
   PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscInt :: irxn, isite
-  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:)
+  PetscInt :: irxn, isite, imnrl
+  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -514,6 +514,35 @@ subroutine CondControlAssignTranInitCond(realization)
                                   INSERT_VALUES,ierr)
           endif
         enddo
+
+        ! read in heterogeneous mineral volume fractions
+        if (associated(constraint_coupler%minerals)) then
+          do imnrl = 1, reaction%nkinmnrl
+            if (constraint_coupler%minerals%external_dataset(imnrl)) then
+              re_equilibrate_at_each_cell = PETSC_TRUE
+              string = 'constraint ' // trim(constraint_coupler%constraint_name)
+              dataset => DatasetGetPointer(realization%datasets, &
+                           constraint_coupler%minerals%constraint_aux_string(imnrl), &
+                           string,option)
+              string = '' ! group name
+              string2 = dataset%h5_dataset_name ! dataset name
+              call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                                dataset%filename, &
+                                                string,string2, &
+                                                dataset%realization_dependent)
+              call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc,ONEDOF)
+              call GridVecGetArrayF90(grid,field%work_loc,vec_p,ierr)
+              do icell=1,initial_condition%region%num_cells
+                local_id = initial_condition%region%cell_ids(icell)
+                ghosted_id = grid%nL2G(local_id)
+                rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
+                rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
+              enddo
+              call GridVecRestoreArrayF90(grid,field%work_loc,vec_p,ierr)
+            endif
+          enddo
+        endif
+          
         if (.not.option%use_isothermal) then
           re_equilibrate_at_each_cell = PETSC_TRUE
         endif
@@ -546,6 +575,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 global_aux_vars(ghosted_id),reaction, &
                 constraint_coupler%constraint_name, &
                 constraint_coupler%aqueous_species, &
+                constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
                 porosity_loc(ghosted_id), &
@@ -561,6 +591,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 global_aux_vars(ghosted_id),reaction, &
                 constraint_coupler%constraint_name, &
                 constraint_coupler%aqueous_species, &
+                constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
                 porosity_loc(ghosted_id), &
@@ -589,15 +620,15 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           ! mineral volume fractions
           if (associated(constraint_coupler%minerals)) then
-            do idof = 1, reaction%nkinmnrl
-              rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
-                constraint_coupler%minerals%basis_vol_frac(idof)
-              rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                constraint_coupler%minerals%basis_vol_frac(idof)
-              rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
-                constraint_coupler%minerals%basis_area(idof)
-              rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
-                constraint_coupler%minerals%basis_area(idof)
+            do imnrl = 1, reaction%nkinmnrl
+              rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = &
+                constraint_coupler%minerals%basis_vol_frac(imnrl)
+              rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
+                constraint_coupler%minerals%basis_vol_frac(imnrl)
+              rt_aux_vars(ghosted_id)%mnrl_area0(imnrl) = &
+                constraint_coupler%minerals%basis_area(imnrl)
+              rt_aux_vars(ghosted_id)%mnrl_area(imnrl) = &
+                constraint_coupler%minerals%basis_area(imnrl)
             enddo
           endif
           ! kinetic surface complexes

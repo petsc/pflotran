@@ -1225,10 +1225,14 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   PetscInt :: constraint_id(reaction%naqcomp)
   PetscBool :: external_dataset(reaction%naqcomp)
   
+  character(len=MAXWORDLENGTH) :: mnrl_constraint_aux_string(reaction%nkinmnrl)
+  PetscBool :: mnrl_external_dataset(reaction%nkinmnrl)
+  
   constraint_id = 0
   constraint_aux_string = ''
   constraint_type = 0
   constraint_conc = 0.d0
+  external_dataset = PETSC_FALSE
   
   ! aqueous species
   do icomp = 1, reaction%naqcomp
@@ -1310,6 +1314,8 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   ! minerals
   if (reaction%use_full_geochemistry .and. associated(mineral_constraint)) then
     constraint_mnrl_name = ''
+    mnrl_constraint_aux_string = ''
+    mnrl_external_dataset = PETSC_FALSE
     do imnrl = 1, reaction%nkinmnrl
       found = PETSC_FALSE
       do jmnrl = 1, reaction%nkinmnrl
@@ -1332,11 +1338,15 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
         mineral_constraint%basis_area(jmnrl) = &
           mineral_constraint%constraint_area(imnrl)
         constraint_mnrl_name(jmnrl) = mineral_constraint%names(imnrl)
+        mnrl_constraint_aux_string(jmnrl) = mineral_constraint%constraint_aux_string(imnrl)
+        mnrl_external_dataset(jmnrl) = mineral_constraint%external_dataset(imnrl)
       endif  
     enddo
     mineral_constraint%names = constraint_mnrl_name
     mineral_constraint%constraint_vol_frac = mineral_constraint%basis_vol_frac
     mineral_constraint%constraint_area = mineral_constraint%basis_area
+    mineral_constraint%constraint_aux_string = mnrl_constraint_aux_string
+    mineral_constraint%external_dataset = mnrl_external_dataset
   endif
 
   ! surface complexes
@@ -1418,6 +1428,7 @@ end subroutine ReactionProcessConstraint
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
+                                         mineral_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
                                          porosity1, &
@@ -1439,6 +1450,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscInt :: num_iterations
@@ -1520,7 +1532,14 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molal_to_molar = 1.d0
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
-  
+
+  if (associated(mineral_constraint)) then 
+    rt_auxvar%mnrl_volfrac0 = mineral_constraint%constraint_vol_frac
+    rt_auxvar%mnrl_volfrac = mineral_constraint%constraint_vol_frac
+    rt_auxvar%mnrl_area0 = mineral_constraint%constraint_area
+    rt_auxvar%mnrl_area = mineral_constraint%constraint_area
+  endif
+
   if (associated(colloid_constraint)) then      
     colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
     colloid_constraint%basis_conc_imb = colloid_constraint%constraint_conc_imb        
@@ -4095,9 +4114,9 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
-!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
-!                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
+!geh        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 1
       case(COLLOID_SURFACE)
         mobile_fraction = reaction%colloid_mobile_fraction(reaction%eqsrfcplx_rxn_to_surf(irxn))
@@ -4509,9 +4528,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     !WARNING! the below assumes site density multiplicative factor
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
-!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
-!                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
+!geh        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(COLLOID_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
 !        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &

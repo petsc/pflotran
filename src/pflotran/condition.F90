@@ -1654,7 +1654,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: icomp
+  PetscInt :: icomp, imnrl
   PetscInt :: isrfcplx
   PetscInt :: length
   type(aq_species_constraint_type), pointer :: aq_species_constraint
@@ -1791,16 +1791,16 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 
         mineral_constraint => MineralConstraintCreate(reaction,option)
 
-        icomp = 0
+        imnrl = 0
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,'CONSTRAINT, MINERALS')
           
           if (InputCheckExit(input,option)) exit          
           
-          icomp = icomp + 1
+          imnrl = imnrl + 1
 
-          if (icomp > reaction%nkinmnrl) then
+          if (imnrl > reaction%nkinmnrl) then
             option%io_buffer = &
                      'Number of mineral constraints exceeds number of ' // &
                      'kinetic minerals in constraint: ' // &
@@ -1808,23 +1808,41 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
             call printErrMsg(option)
           endif
           
-          call InputReadWord(input,option,mineral_constraint%names(icomp), &
-                          PETSC_TRUE)
+          call InputReadWord(input,option,mineral_constraint%names(imnrl), &
+                             PETSC_TRUE)
           call InputErrorMsg(input,option,'mineral name', &
-                          'CONSTRAINT, MINERALS')  
+                             'CONSTRAINT, MINERALS')  
           option%io_buffer = 'Constraint Minerals: ' // &
-                             trim(mineral_constraint%names(icomp))
+                             trim(mineral_constraint%names(imnrl))
           call printMsg(option)
-          call InputReadDouble(input,option,mineral_constraint%constraint_vol_frac(icomp))
-          call InputErrorMsg(input,option,'volume fraction', &
-                          'CONSTRAINT, MINERALS')          
-          call InputReadDouble(input,option,mineral_constraint%constraint_area(icomp))
+
+          ! volume fraction
+          string = trim(input%buf)
+          call InputReadWord(string,word,PETSC_TRUE,ierr)
+          ! if a dataset
+          if (StringCompareIgnoreCase(word,'DATASET')) then
+            input%buf = trim(string)
+            call InputReadWord(input,option,mineral_constraint% &
+                                constraint_aux_string(imnrl),PETSC_TRUE)
+            call InputErrorMsg(input,option,'dataset name', &
+                            'CONSTRAINT, MINERALS, VOL FRAC')
+            mineral_constraint%external_dataset(imnrl) = PETSC_TRUE
+            ! set vol frac to -999.d0 to catch bugs
+            mineral_constraint%constraint_vol_frac(imnrl) = -999.d0
+          else
+            call InputReadDouble(input,option,mineral_constraint%constraint_vol_frac(imnrl))
+            call InputErrorMsg(input,option,'volume fraction', &
+                               'CONSTRAINT, MINERALS')   
+          endif
+
+          ! specific surface area
+          call InputReadDouble(input,option,mineral_constraint%constraint_area(imnrl))
           call InputErrorMsg(input,option,'area', &
                           'CONSTRAINT, MINERALS')          
         
         enddo  
         
-        if (icomp < reaction%nkinmnrl) then
+        if (imnrl < reaction%nkinmnrl) then
           option%io_buffer = &
                    'Mineral lists in constraints must provide a volume ' // &
                    'fraction and surface area for all kinetic minerals ' // &

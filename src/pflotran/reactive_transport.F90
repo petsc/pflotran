@@ -5797,6 +5797,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
               boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
               boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+              boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
               porosity_loc_p(ghosted_id), &

@@ -1326,6 +1326,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
+                            cur_constraint_coupler%minerals, &
                             cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%colloids, &
                             option%reference_porosity, &
