@@ -1533,11 +1533,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
 
-  if (associated(mineral_constraint)) then 
-    rt_auxvar%mnrl_volfrac0 = mineral_constraint%constraint_vol_frac
-    rt_auxvar%mnrl_volfrac = mineral_constraint%constraint_vol_frac
-    rt_auxvar%mnrl_area0 = mineral_constraint%constraint_area
-    rt_auxvar%mnrl_area = mineral_constraint%constraint_area
+  if (associated(mineral_constraint)) then
+    do imnrl = 1, reaction%nkinmnrl
+      ! if read from a dataset, the mineral volume frac has already been set.
+      if (.not.mineral_constraint%external_dataset(imnrl)) then
+        rt_auxvar%mnrl_volfrac0(imnrl) = mineral_constraint%constraint_vol_frac(imnrl)
+        rt_auxvar%mnrl_volfrac(imnrl) = mineral_constraint%constraint_vol_frac(imnrl)
+      endif
+      rt_auxvar%mnrl_area0(imnrl) = mineral_constraint%constraint_area(imnrl)
+      rt_auxvar%mnrl_area(imnrl) = mineral_constraint%constraint_area(imnrl)
+    enddo
   endif
 
   if (associated(colloid_constraint)) then      
