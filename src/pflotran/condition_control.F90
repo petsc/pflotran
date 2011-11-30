@@ -623,7 +623,7 @@ subroutine CondControlAssignTranInitCond(realization)
             do imnrl = 1, reaction%nkinmnrl
               ! if read from a dataset, the vol frac was set above.  Don't want to
               ! overwrite
-              if (.not.mineral_constraint%external_dataset(imnrl)) then
+              if (.not.constraint_coupler%minerals%external_dataset(imnrl)) then
                 rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = &
                   constraint_coupler%minerals%basis_vol_frac(imnrl)
                 rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
