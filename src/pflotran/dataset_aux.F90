@@ -186,21 +186,6 @@ subroutine DatasetRead(dataset,input,option)
         call InputReadNChars(input,option,dataset%filename, &
                              MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','DATASET')
-!TODO(geh): remove is here after 10/30/11
-#if 0        
-      case('TYPE') 
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'type','DATASET')
-        call StringToUpper(word)
-        select case (trim(word))
-          case('HETEROGENEOUS')
-            dataset%itype = DATASET_HETEROGENEOUS
-          case default
-            option%io_buffer = 'Dataset type: ' // trim(word) // &
-                               ' not recognized in dataset'    
-            call printErrMsg(option)
-        end select
-#endif
       case('REALIZATION_DEPENDENT')
         dataset%realization_dependent = PETSC_TRUE
       case('MAX_BUFFER_SIZE') 

@@ -337,11 +337,6 @@ subroutine OutputTecplotBlock(realization)
              '"Y [m]",' // &
              '"Z [m]"'
 
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      header = trim(string) // ',"Porosity"'
-    endif
-
     ! write flow variables
     header2 = ''
     select case(option%iflowmode)
@@ -360,9 +355,6 @@ subroutine OutputTecplotBlock(realization)
     end select
     header = trim(header) // trim(header2)
 
-    ! write material ids
-    header = trim(header) // ',"Material_ID"'
-    
     ! write transport variables
     if (option%ntrandof > 0) then
       string = ''
@@ -370,8 +362,13 @@ subroutine OutputTecplotBlock(realization)
       header = trim(header) // trim(header2)
     endif
 
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      header = trim(string) // ',"Porosity"'
+    endif
+
     ! write material ids
-!   header = trim(header) // ',"Material_ID"'
+    header = trim(header) // ',"Material_ID"'
 
     if (associated(output_option%plot_variables)) then
       do i = 1, size(output_option%plot_variables)
@@ -442,13 +439,6 @@ subroutine OutputTecplotBlock(realization)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-  endif
-
-  ! write out porosity first
-  if (output_option%print_porosity) then
-    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
   endif
@@ -746,7 +736,14 @@ subroutine OutputTecplotBlock(realization)
       endif
     endif
   endif
-  
+
+  ! porosity
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
+
   ! material id
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -894,11 +891,6 @@ subroutine OutputTecplotFEBrick(realization)
              '"Y [m]",' // &
              '"Z [m]"'
 
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      header = trim(string) // ',"Porosity"'
-    endif
-
     ! write flow variables
     header2 = ''
     select case(option%iflowmode)
@@ -917,9 +909,6 @@ subroutine OutputTecplotFEBrick(realization)
     end select
     header = trim(header) // trim(header2)
 
-    ! write material ids
-    header = trim(header) // ',"Material_ID"'
-    
     ! write transport variables
     if (option%ntrandof > 0) then
       string = ''
@@ -927,8 +916,13 @@ subroutine OutputTecplotFEBrick(realization)
       header = trim(header) // trim(header2)
     endif
 
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      header = trim(string) // ',"Porosity"'
+    endif
+
     ! write material ids
-!   header = trim(header) // ',"Material_ID"'
+    header = trim(header) // ',"Material_ID"'
 
     if (associated(output_option%plot_variables)) then
       do i = 1, size(output_option%plot_variables)
@@ -1289,6 +1283,13 @@ subroutine OutputTecplotFEBrick(realization)
       endif
     endif
   endif
+
+  ! write out porosity
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
   
   ! material id
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
@@ -1404,8 +1405,8 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-    string = trim(string) // ',"Material_ID"'
 
+    string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -1920,11 +1921,6 @@ subroutine OutputTecplotPoint(realization)
       icolumn = -1
     endif
 
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      call OutputAppendToHeader(header,'Porosity','','',icolumn)
-    endif
-        
     ! write flow variables
     header2 = ''
     select case(option%iflowmode)
@@ -1943,9 +1939,6 @@ subroutine OutputTecplotPoint(realization)
     end select
     header = trim(header) // trim(header2)
 
-    ! write material ids
-    call OutputAppendToHeader(header,'Material_ID','','',icolumn)
-    
     ! write transport variables
     if (option%ntrandof > 0) then
       string = ''
@@ -1953,8 +1946,13 @@ subroutine OutputTecplotPoint(realization)
       header = trim(header) // trim(header2)
     endif
 
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      call OutputAppendToHeader(header,'Porosity','','',icolumn)
+    endif
+        
     ! write material ids
-!   call OutputAppendToHeader(header,'Material_ID','','',icolumn)
+    call OutputAppendToHeader(header,'Material_ID','','',icolumn)
 
     if (associated(output_option%plot_variables)) then
       do i = 1, size(output_option%plot_variables)
@@ -1984,13 +1982,6 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') grid%y(ghosted_id)
     write(IUNIT3,1000,advance='no') grid%z(ghosted_id)
 
-    ! porosity
-    if (output_option%print_porosity) then
-      value = RealizGetDatasetValueAtCell(realization,POROSITY, &
-                                          ZERO_INTEGER,ghosted_id)
-      write(IUNIT3,1000,advance='no') value
-    endif
-    
     select case(option%iflowmode)
       case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
 
@@ -2276,6 +2267,13 @@ subroutine OutputTecplotPoint(realization)
       endif
     endif
     
+    ! porosity
+    if (output_option%print_porosity) then
+      value = RealizGetDatasetValueAtCell(realization,POROSITY, &
+                                          ZERO_INTEGER,ghosted_id)
+      write(IUNIT3,1000,advance='no') value
+    endif
+    
     ! material id
     value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
                                             ZERO_INTEGER,ghosted_id)
@@ -2405,6 +2403,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
+    
     string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
@@ -3321,12 +3320,6 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
     case default
       header = ''
   end select
-
-  ! add porosity to header
-  if (output_option%print_porosity) then
-    call OutputAppendToHeader(header,'Porosity','',cell_string,icolumn)
-  endif
-  
   write(fid,'(a)',advance="no") trim(header)
   
   ! reactive transport
@@ -3334,9 +3327,16 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
     header = RTGetTecplotHeader(realization,cell_string,icolumn)
     write(fid,'(a)',advance="no") trim(header)
   endif
-    
-  header = ''
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    header = ''
+    call OutputAppendToHeader(header,'Porosity','',cell_string,icolumn)
+    write(fid,'(a)',advance="no") trim(header)
+  endif
+  
   if (print_velocities) then
+    header = ''
     write(string,'(''[m/'',a,'']'')') trim(realization%output_option%tunit)
     call OutputAppendToHeader(header,'vlx',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vly',string,cell_string,icolumn)
@@ -3559,12 +3559,6 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
   end select
 
-  ! porosity
-  if (output_option%print_porosity) then
-    write(fid,110,advance="no") &
-      RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
-  endif  
-
   if (option%ntrandof > 0) then
     reaction => realization%reaction
     ghosted_id = grid%nL2G(local_id)
@@ -3697,6 +3691,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     endif
   endif
           
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
+  endif  
+
 end subroutine WriteObservationDataForCell
 
 ! ************************************************************************** !
@@ -3986,16 +3986,6 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                         count,ghosted_ids))
   end select
 
-  ! porosity
-  if (output_option%print_porosity) then
-    write(fid,110,advance="no") &
-      OutputGetVarFromArrayAtCoord(realization,POROSITY,ZERO_INTEGER, &
-                                   region%coordinates(ONE_INTEGER)%x, &
-                                   region%coordinates(ONE_INTEGER)%y, &
-                                   region%coordinates(ONE_INTEGER)%z, &
-                                   count,ghosted_ids)
-  endif
-
   if (option%ntrandof > 0) then
     reaction => realization%reaction
     if (associated(reaction)) then
@@ -4197,7 +4187,17 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       endif
     endif
   endif
-    
+  
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      OutputGetVarFromArrayAtCoord(realization,POROSITY,ZERO_INTEGER, &
+                                   region%coordinates(ONE_INTEGER)%x, &
+                                   region%coordinates(ONE_INTEGER)%y, &
+                                   region%coordinates(ONE_INTEGER)%z, &
+                                   count,ghosted_ids)
+  endif
+
 end subroutine WriteObservationDataForCoord
 
 ! ************************************************************************** !
@@ -4981,6 +4981,14 @@ subroutine OutputVTK(realization)
     endif
   endif
   
+  ! porosity
+  if (output_option%print_porosity) then
+    word = 'Porosity'
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
+  endif
+
   ! material id
   word = 'Material_ID'
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
@@ -5992,17 +6000,6 @@ end subroutine SAMRWritePlotData
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
 
-#if !defined(SAMR_HAVE_HDF5)
-  if (output_option%print_porosity) then
-    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
-    if (.not.(option%use_samr)) then
-      string = "Porosity"
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                         grp_id,H5T_NATIVE_DOUBLE)
-    endif
-  endif
-#endif
-
   select case(option%iflowmode)
   
     case(FLASH2_MODE, MPH_MODE,THC_MODE, IMS_MODE,&
@@ -6582,8 +6579,19 @@ end subroutine SAMRWritePlotData
     endif
   endif
   
+#if !defined(SAMR_HAVE_HDF5)
+  ! porosity
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    if (.not.(option%use_samr)) then
+      string = "Porosity"
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                         grp_id,H5T_NATIVE_DOUBLE)
+    endif
+  endif
+#endif
+  
   ! material id
-
   if (.not.(option%use_samr)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     string = "Material_ID"

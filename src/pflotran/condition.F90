@@ -1828,7 +1828,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                             'CONSTRAINT, MINERALS, VOL FRAC')
             mineral_constraint%external_dataset(imnrl) = PETSC_TRUE
             ! set vol frac to -999.d0 to catch bugs
-            mineral_constraint%constraint_vol_frac(imnrl) = -999.d0
+            mineral_constraint%constraint_vol_frac(imnrl) = sqrt(-1.)
           else
             call InputReadDouble(input,option,mineral_constraint%constraint_vol_frac(imnrl))
             call InputErrorMsg(input,option,'volume fraction', &

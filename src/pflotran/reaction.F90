@@ -4119,9 +4119,8 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-!geh        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
-        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
-                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+                  rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 1
       case(COLLOID_SURFACE)
         mobile_fraction = reaction%colloid_mobile_fraction(reaction%eqsrfcplx_rxn_to_surf(irxn))
@@ -4533,7 +4532,6 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     !WARNING! the below assumes site density multiplicative factor
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-!geh        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
                        rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(COLLOID_SURFACE)

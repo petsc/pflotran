@@ -75,7 +75,7 @@ MATERIAL_PROPERTY soil1
   SATURATION_FUNCTION default
 END
 
-:=========================== material properties ==============================
+:=========================== saturation functions =============================
 SATURATION_FUNCTION default
 END
 
