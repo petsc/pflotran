@@ -252,7 +252,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
 	richards.o thc.o discretization.o logging.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
-	velocity.o dataset.o
+	velocity.o dataset.o condition_control.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
@@ -330,7 +330,7 @@ flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
 	realization.o grid.o option.o field.o solver.o \
 	output.o convergence.o checkpoint.o waypoint.o logging.o \
-	input.o string.o reactive_transport.o
+	input.o string.o reactive_transport.o condition_control.o
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
