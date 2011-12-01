@@ -114,6 +114,10 @@ else
  include ${PETSC_DIR}/conf/rules
 endif
 
+ifdef dm_create
+  GLENN_FLAGS += -DDM_CREATE
+endif
+
 ifdef dmda_old
   GLENN_FLAGS += -DDMDA_OLD
 endif
