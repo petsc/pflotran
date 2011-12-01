@@ -973,17 +973,17 @@ subroutine OutputTecplotFEBrick(realization)
   call DiscretizationCreateVector(discretization, ONEDOF, natural_vec, NATURAL, &
                                   option)  
 
-  call GetVertexCoordinates(grid, global_vertex_vec, X_COORDINATE)
+  call GetVertexCoordinates(grid, global_vertex_vec, X_COORDINATE, option)
   call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
   call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL, grid%unstructured_grid%num_vertices_global)
   call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
 
-  call GetVertexCoordinates(grid, global_vertex_vec, Y_COORDINATE)
+  call GetVertexCoordinates(grid, global_vertex_vec, Y_COORDINATE, option)
   call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
   call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL, grid%unstructured_grid%num_vertices_global)
   call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
 
-  call GetVertexCoordinates(grid, global_vertex_vec, Z_COORDINATE)
+  call GetVertexCoordinates(grid, global_vertex_vec, Z_COORDINATE, option)
   call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
   call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL, grid%unstructured_grid%num_vertices_global)
   call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
@@ -7200,36 +7200,68 @@ end subroutine GetCoordinates
 ! date: 11/01/2011
 !
 ! ************************************************************************** !
-subroutine GetVertexCoordinates(grid,vec,direction)
+subroutine GetVertexCoordinates(grid,vec,direction,option)
 
   use Grid_module
+  use Option_module
   
   implicit none
   
   type(grid_type) :: grid
   Vec :: vec
   PetscInt :: direction
+  type(option_type) :: option
   
   PetscInt :: ivertex
   PetscReal, pointer :: vec_ptr(:)
+  PetscInt, allocatable :: indices(:)
+  PetscReal, allocatable :: values(:)
   
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-  
-  if (direction == X_COORDINATE) then
-    do ivertex = 1,grid%unstructured_grid%num_vertices_local
-      vec_ptr(ivertex) = grid%unstructured_grid%vertices(ivertex)%x
-    enddo
-  else if (direction == Y_COORDINATE) then
-    do ivertex = 1,grid%unstructured_grid%num_vertices_local
-      vec_ptr(ivertex) = grid%unstructured_grid%vertices(ivertex)%y
-    enddo
-  else if (direction == Z_COORDINATE) then
-    do ivertex = 1,grid%unstructured_grid%num_vertices_local
-      vec_ptr(ivertex) = grid%unstructured_grid%vertices(ivertex)%z
-    enddo
+  if (option%mycommsize == 1) then
+    call VecGetArrayF90(vec,vec_ptr,ierr)
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%num_vertices_local
+          vec_ptr(ivertex) = grid%unstructured_grid%vertices(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%num_vertices_local
+          vec_ptr(ivertex) = grid%unstructured_grid%vertices(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%num_vertices_local
+          vec_ptr(ivertex) = grid%unstructured_grid%vertices(ivertex)%z
+        enddo
+    end select
+    call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  else
+    ! initialize to -999 to catch bugs
+    call VecSet(vec,-999.d0,ierr)
+    allocate(values(grid%unstructured_grid%num_vertices_local))
+    allocate(indices(grid%unstructured_grid%num_vertices_local))
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%num_vertices_local
+          values(ivertex) = grid%unstructured_grid%vertices(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%num_vertices_local
+          values(ivertex) = grid%unstructured_grid%vertices(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%num_vertices_local
+          values(ivertex) = grid%unstructured_grid%vertices(ivertex)%z
+        enddo
+    end select
+    indices(:) = grid%unstructured_grid%vertex_ids_natural(:)-1
+    call VecSetValues(vec,grid%unstructured_grid%num_vertices_local, &
+                      indices,values,INSERT_VALUES,ierr)
+    call VecAssemblyBegin(vec,ierr)
+    deallocate(values)
+    deallocate(indices)
+    call VecAssemblyEnd(vec,ierr)
   endif
   
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine GetVertexCoordinates
 
