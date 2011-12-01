@@ -737,6 +737,8 @@ implicit none
   gas_saturation = liquid_saturation*(function_B - 1.d0)
   ice_saturation = liquid_saturation*(function_A - 1.d0)
   
+! print *,'ice: ',liquid_saturation,gas_saturation,ice_saturation
+  
   dsl_pl = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_B_pl)
   dsl_temp = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_A_temp)
   
