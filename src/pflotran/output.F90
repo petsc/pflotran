@@ -480,7 +480,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1027,7 +1027,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -2019,7 +2019,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! gas saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE,THC_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -3473,7 +3473,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
  ! gas saturation
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
@@ -3851,7 +3851,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! gas saturation
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
       ! gas saturation
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
@@ -4758,7 +4758,7 @@ subroutine OutputVTK(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
           word = 'Gas_Saturation'
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -6055,7 +6055,7 @@ end subroutine SAMRWritePlotData
 
       ! gas saturation
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
           if (.not.(option%use_samr)) then

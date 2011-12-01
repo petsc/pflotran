@@ -902,6 +902,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
+ 
 #endif
 
   if (option%numerical_derivatives) then
@@ -1397,10 +1398,9 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 
 #ifdef ICE
   ! Added by Satish Karra, updated 11/11/11
-  ! Now looking at above freezing only
   satg_up = aux_var_up%sat_gas
   satg_dn = aux_var_dn%sat_gas
-!  if ((satg_up > eps) .and. (satg_dn > eps)) then
+  if ((satg_up > eps) .and. (satg_dn > eps)) then
   p_g = option%reference_pressure  ! set to reference pressure
   deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
   deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
@@ -1431,12 +1431,13 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   dDiffg_dp_dn = 0.d0
   dsatg_dp_up = aux_var_up%dsat_gas_dp
   dsatg_dp_dn = aux_var_dn%dsat_gas_dp
-    
+     
   if (molg_up > molg_dn) then 
     upweight = 0.d0
   else 
     upweight = 1.d0
-  endif
+  endif 
+
   Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
 #if 0
   Jup(1,1) = Jup(1,1) + upweight*(por_up*tor_up*Diffg_up*dsatg_dp_up* &
@@ -1474,7 +1475,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
              ddeng_dt_dn + deng_dn*dDiffg_dp_dn)*(molg_up - molg_dn) &
              + Ddiffgas_avg*(-dmolg_dt_dn))/(dd_up + dd_dn)*area
 #endif
-!  endif
+  endif
 #endif 
 
 
@@ -1727,7 +1728,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   ! Now looking at above freezing only
   satg_up = aux_var_up%sat_gas
   satg_dn = aux_var_dn%sat_gas
-! if ((satg_up > eps) .and. (satg_dn > eps)) then
+ if ((satg_up > eps) .and. (satg_dn > eps)) then
   p_g = option%reference_pressure ! set to reference pressure
   deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
   deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
@@ -1758,7 +1759,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
              (dd_up + dd_dn)
              
-! endif
+ endif
 #endif 
 
 ! conduction term
@@ -2045,7 +2046,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
       ! Now looking at above freezing only
       satg_up = 1 - global_aux_var_up%sat(1)
       satg_dn = 1 - global_aux_var_dn%sat(1)
-      if ((satg_up > eps) .and. (satg_dn > eps)) then
+      if ((satg_dn > eps)) then
         p_g = option%reference_pressure  ! set to reference pressure
         deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + &
                   273.15d0))*1.d-3
@@ -2413,7 +2414,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   ! Added by Satish Karra,
       satg_up = aux_var_up%sat_gas
       satg_dn = aux_var_dn%sat_gas
-! if ((satg_up > eps) .and. (satg_dn > eps)) then
+ if ((satg_up > eps) .and. (satg_dn > eps)) then
       p_g = option%reference_pressure ! set to reference pressure
       deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
       deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
@@ -2442,7 +2443,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
       fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
                  dd_up*area
-!  endif
+  endif
 #endif 
 
     case(NEUMANN_BC)
@@ -3735,6 +3736,24 @@ function THCGetTecplotHeader(realization,icolumn)
     write(string2,'('',"Sl"'')')
   endif
   string = trim(string) // trim(string2)
+
+#ifdef ICE
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Sg"'')') icolumn
+  else
+    write(string2,'('',"Sg"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+!  if (icolumn > -1) then
+!    icolumn = icolumn + 1
+!    write(string2,'('',"'',i2,''-Si"'')') icolumn
+!  else
+!    write(string2,'('',"Si"'')')
+!  endif
+!  string = trim(string) // trim(string2)
+#endif
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
