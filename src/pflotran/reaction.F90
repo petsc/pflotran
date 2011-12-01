@@ -1477,7 +1477,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: update(reaction%naqcomp)
   PetscReal :: total_conc(reaction%naqcomp)
   PetscReal :: free_conc(reaction%naqcomp)
-  PetscReal :: guess(reaction%naqcomp)
   PetscReal :: Jac(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: indices(reaction%naqcomp)
   PetscReal :: norm
@@ -1562,14 +1561,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     return
   endif
   
-  ! set initial guess
-  
-  if (use_prev_soln_as_guess) then
-    guess = rt_auxvar%pri_molal
-  else
-    guess = 1.d-9
-  endif
-
   ! if using multirate reaction, we need to turn it off to equilibrate the system
   ! then turn it back on
   kinmr_nrate_store = 0
@@ -1604,18 +1595,25 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   endif
 #endif  
   
+  if (use_prev_soln_as_guess) then
+    free_conc = rt_auxvar%pri_molal
+  else
+    free_conc = 1.d-9
+  endif
   total_conc = 0.d0
   do icomp = 1, reaction%naqcomp
     select case(constraint_type(icomp))
       case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
         total_conc(icomp) = conc(icomp)*convert_molal_to_molar
-        free_conc(icomp) = guess(icomp)
+        ! free_conc guess set above
       case(CONSTRAINT_FREE)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal
       case(CONSTRAINT_LOG)
         free_conc(icomp) = (10.d0**conc(icomp))*convert_molar_to_molal
       case(CONSTRAINT_CHARGE_BAL)
-        free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
+        if (.not.use_prev_soln_as_guess) then
+          free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
+        endif
       case(CONSTRAINT_PH)
         ! check if H+ id set
         if (associated(reaction%species_idx)) then
@@ -1643,19 +1641,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           endif
         endif        
       case(CONSTRAINT_MINERAL)
-        free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
+        if (.not.use_prev_soln_as_guess) then
+          free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
+        endif
       case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
         if (conc(icomp) <= 0.d0) then ! log form
           conc(icomp) = 10.d0**conc(icomp) ! conc log10 partial pressure gas
         endif
-        free_conc(icomp) = guess(icomp)
+        ! free_conc guess set above
     end select
   enddo
   
   rt_auxvar%pri_molal = free_conc
 
   num_iterations = 0
-  compute_activity_coefs = PETSC_FALSE
+
+  ! if previous solution is provided as a guess, it should be close enough
+  ! to use activity coefficients right away. - geh
+  ! essentially the same as:
+  !   compute_activity_coefficients = (use_prev_soln_as_guess == PETSC_TRUE)
+  compute_activity_coefs = use_prev_soln_as_guess
   
   do
 
