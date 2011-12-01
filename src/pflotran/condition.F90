@@ -1662,6 +1662,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscErrorCode :: ierr
+  PetscReal :: tempreal
 
   call PetscLogEventBegin(logging%event_tran_constraint_read,ierr)
 
@@ -1828,7 +1829,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                             'CONSTRAINT, MINERALS, VOL FRAC')
             mineral_constraint%external_dataset(imnrl) = PETSC_TRUE
             ! set vol frac to NaN to catch bugs
-            mineral_constraint%constraint_vol_frac(imnrl) = sqrt(-1.)
+            tempreal = -1.d0
+            mineral_constraint%constraint_vol_frac(imnrl) = sqrt(tempreal)
           else
             call InputReadDouble(input,option,mineral_constraint%constraint_vol_frac(imnrl))
             call InputErrorMsg(input,option,'volume fraction', &
