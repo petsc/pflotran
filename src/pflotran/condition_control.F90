@@ -451,7 +451,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscBool :: re_equilibrate_at_each_cell
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(dataset_type), pointer :: dataset
-  PetscInt :: dataset_to_idof(20)
+  PetscInt :: dataset_to_idof(realization%reaction%naqcomp)
   PetscInt :: idataset, num_datasets
   PetscBool :: use_dataset
   PetscReal :: ave_num_iterations
@@ -564,10 +564,11 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           if (re_equilibrate_at_each_cell) then
             if (use_dataset) then
+              offset = (ghosted_id-1)*option%ntrandof
               do idataset = 1, num_datasets
                 ! remember that xx_loc_p holds the data set values that were read in
                 constraint_coupler%aqueous_species%constraint_conc(dataset_to_idof(idataset)) = &
-                  xx_loc_p(ibegin+dataset_to_idof(idataset)-1)
+                  xx_loc_p(offset+dataset_to_idof(idataset))
               enddo
             endif
             if (icell == 1) then
