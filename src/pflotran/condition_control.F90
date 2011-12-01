@@ -464,8 +464,6 @@ subroutine CondControlAssignTranInitCond(realization)
   reaction => realization%reaction
   
   iphase = 1
-  re_equilibrate_at_each_cell = PETSC_FALSE
-  use_dataset = PETSC_FALSE
   
   cur_level => realization%level_list%first
   do 
@@ -491,6 +489,8 @@ subroutine CondControlAssignTranInitCond(realization)
         
         constraint_coupler => initial_condition%tran_condition%cur_constraint_coupler
 
+        re_equilibrate_at_each_cell = PETSC_FALSE
+        use_dataset = PETSC_FALSE
         num_datasets = 0
         dataset_to_idof = 0
         do idof = 1, reaction%naqcomp ! primary aqueous concentrations
