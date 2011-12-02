@@ -2016,8 +2016,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       enddo
 200   format(a12,1x,1p2e12.4)
       if (num_iterations >= 10000) then
+        print *, 'cell id (natural):', option%iflag 
+        print *, 'constraint:', conc
+        print *, 'constraint type:', constraint_type
+        print *, 'free_conc:', free_conc
         option%io_buffer = 'Stopping due to excessive iteration count!'
-        call printErrMsg(option)
+        call printErrMsgByRank(option)
       endif
     endif
     
@@ -2065,7 +2069,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         option%io_buffer = 'Free site concentration for site ' // &
           trim(reaction%kinsrfcplx_site_names(isite)) // &
           ' is less than zero.'
-        call printErrMsg(option)
+        call printErrMsgByRank(option)
       endif
     enddo
     srfcplx_constraint%constraint_free_site_conc = rt_auxvar%kinsrfcplx_free_site_conc
@@ -3637,7 +3641,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       if (II < 0.d0) then
         write(option%io_buffer,*) 'ionic strength negative! it =',it, &
           ' I= ',I,II,den,didi,dcdi,sum
-        call printErrMsg(option)        
+        call printErrMsgByRank(option)        
       endif
     
   ! compute activity coefficients

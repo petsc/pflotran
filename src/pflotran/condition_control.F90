@@ -571,6 +571,7 @@ subroutine CondControlAssignTranInitCond(realization)
                   xx_loc_p(offset+dataset_to_idof(idataset))
               enddo
             endif
+            option%iflag = grid%nL2A(local_id)
             if (icell == 1) then
               call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                 global_aux_vars(ghosted_id),reaction, &
@@ -599,6 +600,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%num_iterations, &
                 PETSC_TRUE,option)
             endif
+            option%iflag = 0
             ave_num_iterations = ave_num_iterations + &
               constraint_coupler%num_iterations
           endif
