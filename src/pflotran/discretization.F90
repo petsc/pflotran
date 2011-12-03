@@ -19,9 +19,7 @@ module Discretization_module
 #include "finclude/petscmat.h90"
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
-#ifndef DMDA_OLD
 #include "finclude/petscdmda.h"
-#endif
 
   type, public :: dm_ptr_type
     DM :: sgdm  ! structured grid dm (PETSc DM)
