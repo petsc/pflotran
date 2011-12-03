@@ -1443,7 +1443,7 @@ end subroutine Tsat
 !
 ! Written by Satish Karra
 ! Date: 11/16/11
-! T is in deg C, P is in Pa, density is in mol/m3
+! T is in deg C, P is in Pa, density is in kmol/m3
 !===============================================================================
 
 subroutine DensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)

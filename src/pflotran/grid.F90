@@ -2267,12 +2267,12 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       natural_id = grid%nG2A(ghosted_id) ! 1-based
       do jj = 1, MAX_VERT_PER_FACE
 !geh        if ( ugrid%face_to_vertex_nindex(jj, ii) > 0 ) then
-        vertex_id_natural = ugrid%vertex_ids_natural(ugrid%face_to_vertex(jj,ii))
-        if (vertex_id_natural > 0) then
+!gb     vertex_id_natural = ugrid%vertex_ids_natural(ugrid%face_to_vertex(jj,ii))
+        if (ugrid%face_to_vertex_natural(jj,ii) > 0) then
           call VecSetValues(vec_cell2facevert,1, &
                         (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
                         tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
-                        vertex_id_natural - 1.d0, &
+                        ugrid%face_to_vertex_natural(jj, ii) - 1.d0, &
                         INSERT_VALUES, ierr)
         endif
       enddo 
@@ -2282,7 +2282,6 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
     call VecAssemblyEnd(  vec_cell2facevert, ierr) !
     deallocate(tmp_int_array)
-
 #if GB_DEBUG
     call PetscViewerASCIIOpen(option%mycomm, 'vec_cell2facevert.out', viewer, ierr)
     call VecView(vec_cell2facevert, viewer,ierr)

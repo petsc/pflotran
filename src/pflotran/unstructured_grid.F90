@@ -40,7 +40,14 @@ module Unstructured_Grid_module
     PetscInt, pointer :: face_to_cell_ghosted(:,:) !
 !geh: Should not need face_to_vertex_nindex() as one could use face_to_vertex() 
 !     and vertex_ids_nindex() to get the same result.
-!    PetscInt, pointer :: face_to_vertex_nindex(:,:)
+!gb: face_to_vertex_natural is required in GridLocalizeRegionsForUGrid() and needs
+!   to be saved because:
+!   (i) face_to_vertex() - Removes the duplicate faces, and the algorithm in
+!       GridLocalizeRegionsForUGrid() assumes presence of ALL faces.
+!   (ii) More importantly, face_to_vertex() eventually has vertex indices in
+!       local index (different from natural index, when using multiple processors).
+!   Note: A region in the inputfile will be described in terms of natural index.
+    PetscInt, pointer :: face_to_vertex_natural(:,:)
     PetscInt, pointer :: face_to_vertex(:,:)
     PetscInt, pointer :: cell_to_face_ghosted(:,:)
     PetscInt, pointer :: vertex_ids_natural(:)
@@ -180,6 +187,7 @@ function UGridCreate()
   nullify(unstructured_grid%cell_vertices_0)
   nullify(unstructured_grid%cell_vertices_natural)
   nullify(unstructured_grid%face_to_cell_ghosted)
+  nullify(unstructured_grid%face_to_vertex_natural)
   nullify(unstructured_grid%face_to_vertex)
   nullify(unstructured_grid%cell_to_face_ghosted)
   nullify(unstructured_grid%vertex_ids_natural)
@@ -1760,25 +1768,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%nlmax = unstructured_grid%num_cells_local
   unstructured_grid%ngmax = unstructured_grid%num_cells_local + &
        unstructured_grid%num_ghost_cells
-
-  ! store the cell type
-  allocate(unstructured_grid%cell_type_ghosted(unstructured_grid%ngmax))
-  do ghosted_id = 1, unstructured_grid%ngmax
-    ! Determine number of faces and cell-type of the current cell
-    select case(unstructured_grid%cell_vertices_0(0,ghosted_id))
-      case(8)
-        unstructured_grid%cell_type_ghosted(ghosted_id) = HEX_TYPE
-      case(6)
-        unstructured_grid%cell_type_ghosted(ghosted_id) = WEDGE_TYPE
-      case(4)
-        unstructured_grid%cell_type_ghosted(ghosted_id) = TET_TYPE
-      case default
-        write(*,*),ghosted_id, unstructured_grid%cell_vertices_0(0,ghosted_id), option%myrank
-        option%io_buffer = 'Cell type not recognized'
-        call printErrMsg(option)
-    end select
-  enddo
-
+  unstructured_grid%num_cells_ghosted = &
+    unstructured_grid%num_cells_local + unstructured_grid%num_ghost_cells
 #endif
   
 end subroutine UGridDecompose
@@ -2263,6 +2254,27 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
 
   !sp end 
 
+  ! store the cell type
+  ! gb: Moved from the end of subroutine UGridDecompose(), because when
+  !     running with multiple processors, information about ghosted cells
+  !     is not set by the end of UGridDecompse()
+  allocate(unstructured_grid%cell_type_ghosted(unstructured_grid%ngmax))
+  do ghosted_id = 1, unstructured_grid%num_cells_ghosted
+    ! Determine number of faces and cell-type of the current cell
+    select case(unstructured_grid%cell_vertices_0(0,ghosted_id))
+      case(8)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = HEX_TYPE
+      case(6)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = WEDGE_TYPE
+      case(4)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = TET_TYPE
+      case default
+        option%io_buffer = 'Cell type not recognized: '
+        call printErrMsg(option)
+    end select
+  enddo
+
+
   ! create mappings of [cells,faces,vertices] to [cells,faces,vertices]
   allocate(face_to_vertex(MAX_VERT_PER_FACE,MAX_DUALS*unstructured_grid%num_cells_ghosted))
   face_to_vertex = -999
@@ -2273,7 +2285,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(vertex_to_cell(0:MAX_CELLS_SHARING_A_VERTEX,unstructured_grid%num_vertices_local))
   vertex_to_cell = 0
 
-  
+  allocate(unstructured_grid%face_to_vertex_natural(MAX_VERT_PER_FACE, &
+           MAX_DUALS*unstructured_grid%num_cells_ghosted))
+  unstructured_grid%face_to_vertex_natural = -999
   allocate(unstructured_grid%face_to_cell_ghosted(1,MAX_DUALS*unstructured_grid%num_cells_ghosted))
   unstructured_grid%face_to_cell_ghosted = -999
   allocate(unstructured_grid%cell_to_face_ghosted(MAX_DUALS,&
@@ -2317,6 +2331,10 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       do ivertex = 1, nvertices
         face_to_vertex(ivertex,face_count) = &
           unstructured_grid%cell_vertices_0(vertex_ids4(ivertex),ghosted_id)+1
+          if (face_to_vertex(ivertex,face_count) > 0) then
+            unstructured_grid%face_to_vertex_natural(ivertex,face_count) = &
+              unstructured_grid%vertex_ids_natural(face_to_vertex(ivertex,face_count))
+          endif
       enddo
     enddo
   enddo
@@ -3628,6 +3646,9 @@ subroutine UGridDestroy(unstructured_grid)
   if (associated(unstructured_grid%face_to_cell_ghosted))&
     deallocate(unstructured_grid%face_to_cell_ghosted)
   nullify(unstructured_grid%face_to_cell_ghosted)
+  if (associated(unstructured_grid%face_to_vertex_natural))&
+    deallocate(unstructured_grid%face_to_vertex_natural)
+  nullify(unstructured_grid%face_to_vertex_natural)
   if (associated(unstructured_grid%face_to_vertex))&
     deallocate(unstructured_grid%face_to_vertex)
   nullify(unstructured_grid%face_to_vertex)

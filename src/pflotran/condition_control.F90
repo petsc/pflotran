@@ -464,8 +464,6 @@ subroutine CondControlAssignTranInitCond(realization)
   reaction => realization%reaction
   
   iphase = 1
-  re_equilibrate_at_each_cell = PETSC_FALSE
-  use_dataset = PETSC_FALSE
   
   cur_level => realization%level_list%first
   do 
@@ -491,6 +489,8 @@ subroutine CondControlAssignTranInitCond(realization)
         
         constraint_coupler => initial_condition%tran_condition%cur_constraint_coupler
 
+        re_equilibrate_at_each_cell = PETSC_FALSE
+        use_dataset = PETSC_FALSE
         num_datasets = 0
         dataset_to_idof = 0
         do idof = 1, reaction%naqcomp ! primary aqueous concentrations
@@ -571,6 +571,7 @@ subroutine CondControlAssignTranInitCond(realization)
                   xx_loc_p(offset+dataset_to_idof(idataset))
               enddo
             endif
+            option%iflag = grid%nL2A(local_id)
             if (icell == 1) then
               call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                 global_aux_vars(ghosted_id),reaction, &
@@ -599,6 +600,7 @@ subroutine CondControlAssignTranInitCond(realization)
                 constraint_coupler%num_iterations, &
                 PETSC_TRUE,option)
             endif
+            option%iflag = 0
             ave_num_iterations = ave_num_iterations + &
               constraint_coupler%num_iterations
           endif

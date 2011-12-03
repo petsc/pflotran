@@ -624,7 +624,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
   select case(option%iflowmode)
-    case(MPH_MODE, IMS_MODE, FLASH2_MODE)
+    case(MPH_MODE, IMS_MODE, FLASH2_MODE, THC_MODE)
       ! Gas density
       call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
                              ZERO_INTEGER)

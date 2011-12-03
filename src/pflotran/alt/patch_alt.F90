@@ -910,9 +910,17 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = 0.d0
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+#ifdef ICE
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_gas
+#else
+              vec_ptr(local_id) = 0.d0
+#endif 
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
@@ -1082,8 +1090,14 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%THC%aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
             value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             value = 0.d0
+          case(GAS_SATURATION)
+#ifdef ICE
+            value = patch%aux%THC%aux_vars(ghosted_id)%sat_gas
+#else
+            value = 0.d0
+#endif 
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
@@ -1215,7 +1229,11 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
             do local_id=1,grid%nlmax
               patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_gas = vec_ptr(local_id)
+            enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
               patch%aux%THC%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)

@@ -1517,9 +1517,17 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = 0.d0
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+#ifdef ICE
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_gas
+#else
+              vec_ptr(local_id) = 0.d0
+#endif 
             enddo
           case(LIQUID_VISCOSITY)
             do local_id=1,grid%nlmax
@@ -2129,8 +2137,14 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%THC%aux_vars(ghosted_id)%vis
           case(LIQUID_MOBILITY)
             value = patch%aux%THC%aux_vars(ghosted_id)%kvr
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             value = 0.d0
+          case(GAS_SATURATION)
+#ifdef ICE
+            value = patch%aux%THC%aux_vars(ghosted_id)%sat_gas
+#else
+            value = 0.d0
+#endif
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
@@ -2495,7 +2509,20 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
                 patch%aux%Global%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
               enddo
             endif
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_SATURATION)
+#ifdef ICE
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_gas = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%sat_gas = vec_ptr(ghosted_id)
+              enddo
+            endif
+#else
+#endif
           case(LIQUID_VISCOSITY)
           case(GAS_VISCOSITY)
           case(LIQUID_MOLE_FRACTION)
