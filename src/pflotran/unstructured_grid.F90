@@ -1824,6 +1824,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   IS :: is_tmp
   Vec :: vec_tmp
   PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: ndof_word
+  character(len=MAXSTRINGLENGTH) :: string
   
   PetscViewer :: viewer
 
@@ -1833,7 +1835,11 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ugdm%ndof = ndof
 
 #if UGRID_DEBUG
-  call printMsg(option,'Vectors')
+  write(ndof_word,*) ndof
+  ndof_word = adjustl(ndof_word)
+  ndof_word = '_' // trim(ndof_word)
+  string = 'Vectors' // ndof_word
+  call printMsg(option,string)
 #endif
 
   ! create global vec
@@ -1868,7 +1874,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_local_petsc.out',viewer,ierr)
+  string = 'is_local_petsc' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_local_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1883,12 +1890,14 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_local.out',viewer,ierr)
+  string = 'is_ghosts_local' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_ghosts_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
   
 #if UGRID_DEBUG
+  string = 'Index Sets' // ndof_word
   call printMsg(option,'Index Sets')
 #endif
 
@@ -1902,7 +1911,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_petsc.out',viewer,ierr)
+  string = 'is_ghosts_petsc' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_ghosts_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1917,7 +1927,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_local_local.out',viewer,ierr)
+  string = 'is_local_local' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_local_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1932,7 +1943,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_local.out',viewer,ierr)
+  string = 'is_ghosted_local' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_ghosted_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1951,41 +1963,47 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)
+  string = 'is_ghosted_petsc' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_ghosted_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
                  
   ! create a local to global mapping
 #if UGRID_DEBUG
-  call printMsg(option,'ISLocalToGlobalMapping')
+  string = 'ISLocalToGlobalMapping' // ndof_word
+  call printMsg(option,string)
 #endif
 
   call ISLocalToGlobalMappingCreateIS(ugdm%is_ghosted_petsc, &
                                       ugdm%mapping_ltog,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'mapping_ltog.out',viewer,ierr)
+  string = 'mapping_ltog' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISLocalToGlobalMappingView(ugdm%mapping_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
                
   ! create a block local to global mapping 
 #if UGRID_DEBUG
-  call printMsg(option,'ISLocalToGlobalMappingBlock')
+  string = 'ISLocalToGlobalMappingBlock' // ndof_word
+  call printMsg(option,string)
 #endif
 
   call ISLocalToGlobalMappingBlock(ugdm%mapping_ltog,ndof, &
                                    ugdm%mapping_ltogb,ierr)
                                       
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'mapping_ltogb.out',viewer,ierr)
+  string = 'mapping_ltogb' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISLocalToGlobalMappingView(ugdm%mapping_ltogb,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
 #if UGRID_DEBUG
-  call printMsg(option,'local to global')
+  string = 'local to global' // ndof_word
+  call printMsg(option,string)
 #endif
 
   ! Create local to global scatter
@@ -1993,13 +2011,15 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                         ugdm%is_local_petsc,ugdm%scatter_ltog,ierr)
                         
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'scatter_ltog.out',viewer,ierr)
+  string = 'scatter_ltog' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecScatterView(ugdm%scatter_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
 #if UGRID_DEBUG
-  call printMsg(option,'global to local')
+  string = 'global to local' // ndof_word
+  call printMsg(option,string)
 #endif
 
   ! Create global to local scatter
@@ -2007,13 +2027,15 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
                         ugdm%is_ghosted_local,ugdm%scatter_gtol,ierr)
                         
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol.out',viewer,ierr)
+  string = 'scatter_gtol' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecScatterView(ugdm%scatter_gtol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
 #if UGRID_DEBUG
-  call printMsg(option,'local to local')
+  string = 'local to local' // ndof_word
+  call printMsg(option,string)
 #endif
   
   ! Create local to local scatter.  Essentially remap the global to local as
@@ -2024,7 +2046,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call ISRestoreIndicesF90(ugdm%is_local_local,int_ptr,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'scatter_ltol.out',viewer,ierr)
+  string = 'scatter_ltol' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecScatterView(ugdm%scatter_ltol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -2058,7 +2081,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   deallocate(int_array)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_local_natural.out',viewer,ierr)
+  string = 'is_local_natural' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call ISView(ugdm%is_local_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -2071,7 +2095,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecDestroy(vec_tmp,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'scatter_gton.out',viewer,ierr)
+  string = 'scatter_gton' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecScatterView(ugdm%scatter_gton,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
