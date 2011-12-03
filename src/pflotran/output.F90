@@ -1317,7 +1317,6 @@ subroutine OutputTecplotFEBrick(realization)
   
 #ifdef GLENN
   call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
-  call GetCellConnections(grid, global_cconn_vec)
   call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
                            GLOBAL,option) 
   call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
@@ -1327,9 +1326,13 @@ subroutine OutputTecplotFEBrick(realization)
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr) 
-  
-  call VecDestroy(global_vec, ierr)
-  call VecDestroy(natural_vec, ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  call WriteTecplotDataSetNumPerLine(IUNIT3,realization,vec_ptr, &
+                                     TECPLOT_INTEGER, &
+                                     grid%unstructured_grid%nlmax*8,8)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
 #else  
   call VecCreateMPI(option%mycomm, grid%unstructured_grid%num_cells_local*8, &
@@ -2762,267 +2765,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   call PetscLogEventEnd(logging%event_output_str_grid_tecplot,ierr) 
                             
 end subroutine WriteTecplotStructuredGrid
-#if 0
-! ************************************************************************** !
-!
-! WriteTecplotUGridConnectivity: Writes out connectivity for an unstructured
-!                                grid
-! author: Glenn Hammond
-! date: 12/01/11
-!
-! ************************************************************************** !
-subroutine WriteTecplotUGridConnectivity(fid,realization,array,datatype,size_flag)
 
-  use Realization_module
-  use Grid_module
-  use Unstructured_Grid_module
-  use Option_module
-  use Patch_module
-
-  implicit none
-  
-  PetscInt :: fid
-  type(realization_type) :: realization
-  
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch  
-  type(unstructured_grid_type),pointer :: ugrid
-!  PetscInt :: i
-!  PetscInt :: max_proc, max_proc_prefetch
-!  PetscMPIInt :: iproc_mpi, recv_size_mpi
-!  PetscInt :: max_local_size
-!  PetscMPIInt :: local_size_mpi
-!  PetscInt :: istart, iend, num_in_array
-!  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
-!  PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
-!  PetscReal, allocatable :: real_data(:), real_data_recv(:)
-
-  Vec :: global_vec, natural_vec
-  PetscInt :: local_id
-  PetscInt :: offset
-  PetscInt :: ivertex
-  PetscReal, pointer :: vec_ptr(:)
-
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  ugrid => realization%patch%grid%unstructured_grid
-
-  call UGridCreateUGDM(ugrid,ugdm_element,EIGHT_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
-                           GLOBAL,option) 
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
-                           NATURAL,option) 
-  
-  call GridVecGetArrayF90(grid,global_vec,vec_ptr,ierr)
-  do local_id=1, ugrid%num_cells_local
-    offset = (local_id-1)*8
-    select case(ugrid%cell_type_ghosted(local_id))
-      case(HEX_TYPE)
-        do ivertex = 1, 8
-          vec_ptr(offset + ivertex) = &
-            ugrid%cell_vertices_natural(ivertex,local_id) + 1
-        enddo
-      case(WEDGE_TYPE)
-        vec_ptr(offset + 1) = ugrid%cell_vertices_natural(1,local_id) + 1
-        vec_ptr(offset + 2) = ugrid%cell_vertices_natural(1,local_id) + 1
-        vec_ptr(offset + 3) = ugrid%cell_vertices_natural(4,local_id) + 1
-        vec_ptr(offset + 4) = ugrid%cell_vertices_natural(4,local_id) + 1
-        vec_ptr(offset + 5) = ugrid%cell_vertices_natural(3,local_id) + 1
-        vec_ptr(offset + 6) = ugrid%cell_vertices_natural(2,local_id) + 1
-        vec_ptr(offset + 7) = ugrid%cell_vertices_natural(5,local_id) + 1
-        vec_ptr(offset + 8) = ugrid%cell_vertices_natural(6,local_id) + 1
-      case (TET_TYPE)
-        ! from Tecplot 360 Data Format Guide
-        ! n1=vert1,n2=vert2,n3=n4=vert3,n5=vern5=n6=n7=n8=vert4
-        do ivertex = 1, 3
-          vec_ptr(offset + ivertex) = &
-            ugrid%cell_vertices_natural(ivertex,local_id) + 1
-        enddo
-        vec_ptr(offset + 4) = ugrid%cell_vertices_natural(3,local_id) + 1
-        do ivertex = 5, 8
-          vec_ptr(offset + ivertex) = &
-            ugrid%cell_vertices_natural(4,local_id) + 1
-        enddo
-    end select
-  enddo
-  call GridVecRestoreArrayF90(grid,global_vec,vec_ptr,ierr)
-  
-1000 format(es13.6)
-1001 format(10(es13.6,1x))
-!1000 format(es16.9)
-!1001 format(10(es16.9,1x))
-  
-  ! maximum number of initial messages  
-#define HANDSHAKE  
-  max_proc = option%io_handshake_buffer_size
-  max_proc_prefetch = option%io_handshake_buffer_size / 10
-
-  call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER_MPI, &
-                         MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
-      max_local_size_saved = max_local_size
-      write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
-      call printMsg(option)
-    endif
-    max_local_size = max_local_size_saved
-    local_size_mpi = grid%nlmax
-  endif
-  
-  ! transfer the data to an integer or real array
-  if (datatype == TECPLOT_INTEGER) then
-    allocate(integer_data(max_local_size+10))
-    allocate(integer_data_recv(max_local_size))
-    do i=1,local_size_mpi
-      integer_data(i) = int(array(i))
-    enddo
-  else
-    allocate(real_data(max_local_size+10))
-    allocate(real_data_recv(max_local_size))
-    do i=1,local_size_mpi
-      real_data(i) = array(i)
-    enddo
-  endif
-  
-  ! communicate data to processor 0, round robin style
-  if (option%myrank == option%io_rank) then
-    if (datatype == TECPLOT_INTEGER) then
-      ! This approach makes output files identical, regardless of processor
-      ! distribution.  It is necessary when diffing files.
-      iend = 0
-      do
-        istart = iend+1
-        if (iend+10 > local_size_mpi) exit
-        iend = istart+9
-        write(fid,'(10(i6,x))') integer_data(istart:iend)
-      enddo
-      ! shift remaining data to front of array
-      integer_data(1:local_size_mpi-iend) = integer_data(iend+1:local_size_mpi)
-      num_in_array = local_size_mpi-iend
-    else
-      iend = 0
-      do
-        istart = iend+1
-        if (iend+10 > local_size_mpi) exit
-        iend = istart+9
-        write(fid,1001) real_data(istart:iend)
-      enddo
-      ! shift remaining data to front of array
-      real_data(1:local_size_mpi-iend) = real_data(iend+1:local_size_mpi)
-      num_in_array = local_size_mpi-iend
-    endif
-    do iproc_mpi=1,option%mycommsize-1
-#ifdef HANDSHAKE    
-      if (option%io_handshake_buffer_size > 0 .and. &
-          iproc_mpi+max_proc_prefetch >= max_proc) then
-        max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
-                       option%mycomm,ierr)
-      endif
-#endif      
-      call MPI_Probe(iproc_mpi,MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
-      recv_size_mpi = status_mpi(MPI_TAG)
-      if (datatype == 0) then
-        call MPI_Recv(integer_data_recv,recv_size_mpi,MPIU_INTEGER,iproc_mpi, &
-                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
-        if (recv_size_mpi > 0) then
-          integer_data(num_in_array+1:num_in_array+recv_size_mpi) = &
-                                             integer_data_recv(1:recv_size_mpi)
-          num_in_array = num_in_array+recv_size_mpi
-        endif
-        iend = 0
-        do
-          istart = iend+1
-          if (iend+10 > num_in_array) exit
-          iend = istart+9
-          write(fid,'(10(i3,x))') integer_data(istart:iend)
-        enddo
-        if (iend > 0) then
-          integer_data(1:num_in_array-iend) = integer_data(iend+1:num_in_array)
-          num_in_array = num_in_array-iend
-        endif
-      else
-        call MPI_Recv(real_data_recv,recv_size_mpi,MPI_DOUBLE_PRECISION,iproc_mpi, &
-                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
-        if (recv_size_mpi > 0) then
-          real_data(num_in_array+1:num_in_array+recv_size_mpi) = &
-                                             real_data_recv(1:recv_size_mpi)
-          num_in_array = num_in_array+recv_size_mpi
-        endif
-        iend = 0
-        do
-          istart = iend+1
-          if (iend+10 > num_in_array) exit
-          iend = istart+9
-          write(fid,1001) real_data(istart:iend)
-        enddo
-        if (iend > 0) then
-          real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
-          num_in_array = num_in_array-iend
-        endif
-      endif
-    enddo
-#ifdef HANDSHAKE    
-    if (option%io_handshake_buffer_size > 0) then
-      max_proc = -1
-      call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
-                     option%mycomm,ierr)
-    endif
-#endif      
-    ! Print the remaining values, if they exist
-    if (datatype == 0) then
-      if (num_in_array > 0) &
-        write(fid,'(10(i3,x))') integer_data(1:num_in_array)
-    else
-      if (num_in_array > 0) &
-        write(fid,1001) real_data(1:num_in_array)
-    endif
-  else
-#ifdef HANDSHAKE    
-    if (option%io_handshake_buffer_size > 0) then
-      do
-        if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
-      enddo
-    endif
-#endif    
-    if (datatype == TECPLOT_INTEGER) then
-      call MPI_Send(integer_data,local_size_mpi,MPIU_INTEGER,option%io_rank, &
-                    local_size_mpi,option%mycomm,ierr)
-    else
-      call MPI_Send(real_data,local_size_mpi,MPI_DOUBLE_PRECISION,option%io_rank, &
-                    local_size_mpi,option%mycomm,ierr)
-    endif
-#ifdef HANDSHAKE    
-    if (option%io_handshake_buffer_size > 0) then
-      do
-        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
-        if (max_proc < 0) exit
-      enddo
-    endif
-#endif
-#undef HANDSHAKE
-  endif
-      
-  if (datatype == TECPLOT_INTEGER) then
-    deallocate(integer_data)
-  else
-    deallocate(real_data)
-  endif
-
-  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
-  
-  call VecDestroy(global_vec, ierr)
-  call VecDestroy(natural_vec, ierr)
-  call UGridDMDestroy(ugdm_element)  
-  
-end subroutine WriteTecplotUGridConnectivity
-#endif
 ! ************************************************************************** !
 !
 ! WriteTecplotDataSet: Writes data from an array within a block
@@ -3045,6 +2788,39 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscReal :: array(:)
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
+
+  PetscInt, parameter :: num_per_line = 10
+
+  call WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
+                                     size_flag,num_per_line) 
+  
+end subroutine WriteTecplotDataSet
+
+! ************************************************************************** !
+!
+! WriteTecplotDataSetNumPerLine: Writes data from an array within a block
+!                                of a Tecplot file with a specified number
+!                                of values per line
+! author: Glenn Hammond
+! date: 10/25/07, 12/02/11
+!
+! ************************************************************************** !
+subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
+                                         size_flag,num_per_line)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscReal :: array(:)
+  PetscInt :: datatype
+  PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
+  PetscInt :: num_per_line
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -3059,16 +2835,27 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
-1000 format(es13.6)
-1001 format(10(es13.6,1x))
-!1000 format(es16.9)
-!1001 format(10(es16.9,1x))
   
+1000 format(100(i2,1x))
+1001 format(100(i4,1x))
+1002 format(100(i6,1x))
+1003 format(100(i8,1x))
+1004 format(100(i10,1x))
+1010 format(100(es13.6,1x))
+
   patch => realization%patch
   grid => patch%grid
   option => realization%option
 
   call PetscLogEventBegin(logging%event_output_write_tecplot,ierr)    
+
+  ! if num_per_line exceeds 100, need to change the format statement below
+  if (num_per_line > 100) then
+    option%io_buffer = 'Number of values to be written to line in ' // &
+      'WriteTecplotDataSetNumPerLine() exceeds 100.  ' // &
+      'Must fix format statements.'
+    call printErrMsg(option)
+  endif
 
   ! maximum number of initial messages  
 #define HANDSHAKE  
@@ -3116,9 +2903,20 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > local_size_mpi) exit
-        iend = istart+9
-        write(fid,'(10(i6,x))') integer_data(istart:iend)
+        if (iend+num_per_line > local_size_mpi) exit
+        iend = istart+(num_per_line-1)
+        i = abs(maxval(integer_data(istart:iend)))
+        if (i < 10) then
+          write(fid,1000) integer_data(istart:iend)
+        else if (i < 1000) then
+          write(fid,1001) integer_data(istart:iend)
+        else if (i < 100000) then
+          write(fid,1002) integer_data(istart:iend)
+        else if (i < 10000000) then
+          write(fid,1003) integer_data(istart:iend)
+        else
+          write(fid,1004) integer_data(istart:iend)
+        endif
       enddo
       ! shift remaining data to front of array
       integer_data(1:local_size_mpi-iend) = integer_data(iend+1:local_size_mpi)
@@ -3127,9 +2925,10 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > local_size_mpi) exit
-        iend = istart+9
-        write(fid,1001) real_data(istart:iend)
+        if (iend+num_per_line > local_size_mpi) exit
+        iend = istart+(num_per_line-1)
+        ! if num_per_line exceeds 100, need to change the format statement below
+        write(fid,1010) real_data(istart:iend)
       enddo
       ! shift remaining data to front of array
       real_data(1:local_size_mpi-iend) = real_data(iend+1:local_size_mpi)
@@ -3157,9 +2956,20 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         iend = 0
         do
           istart = iend+1
-          if (iend+10 > num_in_array) exit
-          iend = istart+9
-          write(fid,'(10(i3,x))') integer_data(istart:iend)
+          if (iend+num_per_line > local_size_mpi) exit
+          iend = istart+(num_per_line-1)
+          i = abs(maxval(integer_data(istart:iend)))
+          if (i < 10) then
+            write(fid,1000) integer_data(istart:iend)
+          else if (i < 1000) then
+            write(fid,1001) integer_data(istart:iend)
+          else if (i < 100000) then
+            write(fid,1002) integer_data(istart:iend)
+          else if (i < 10000000) then
+            write(fid,1003) integer_data(istart:iend)
+          else
+            write(fid,1004) integer_data(istart:iend)
+          endif
         enddo
         if (iend > 0) then
           integer_data(1:num_in_array-iend) = integer_data(iend+1:num_in_array)
@@ -3176,9 +2986,10 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         iend = 0
         do
           istart = iend+1
-          if (iend+10 > num_in_array) exit
-          iend = istart+9
-          write(fid,1001) real_data(istart:iend)
+          if (iend+num_per_line > local_size_mpi) exit
+          iend = istart+(num_per_line-1)
+          ! if num_per_line exceeds 100, need to change the format statement below
+          write(fid,1010) real_data(istart:iend)
         enddo
         if (iend > 0) then
           real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
@@ -3196,10 +3007,21 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     ! Print the remaining values, if they exist
     if (datatype == 0) then
       if (num_in_array > 0) &
-        write(fid,'(10(i3,x))') integer_data(1:num_in_array)
+        i = abs(maxval(integer_data(1:num_in_array)))
+        if (i < 10) then
+          write(fid,1000) integer_data(1:num_in_array)
+        else if (i < 1000) then
+          write(fid,1001) integer_data(1:num_in_array)
+        else if (i < 100000) then
+          write(fid,1002) integer_data(1:num_in_array)
+        else if (i < 10000000) then
+          write(fid,1003) integer_data(1:num_in_array)
+        else
+          write(fid,1004) integer_data(1:num_in_array)
+        endif
     else
       if (num_in_array > 0) &
-        write(fid,1001) real_data(1:num_in_array)
+        write(fid,1010) real_data(1:num_in_array)
     endif
   else
 #ifdef HANDSHAKE    
@@ -3238,7 +3060,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 
   call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
-end subroutine WriteTecplotDataSet
+end subroutine WriteTecplotDataSetNumPerLine
 
 ! ************************************************************************** !
 !
