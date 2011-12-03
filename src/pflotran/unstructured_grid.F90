@@ -34,6 +34,7 @@ module Unstructured_Grid_module
     PetscInt :: num_hash
     !geh begin added
     !geh end added
+    PetscInt, pointer :: cell_type(:)
     PetscInt, pointer :: cell_type_ghosted(:)
     PetscInt, pointer :: cell_vertices_0(:,:) ! vertices for each grid cell (zero-based)
     PetscInt, pointer :: cell_vertices_natural(:,:) ! vertices for each grid cell (natural index 0-based)
@@ -183,6 +184,7 @@ function UGridCreate()
   unstructured_grid%nmax = 0
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
+  nullify(unstructured_grid%cell_type)
   nullify(unstructured_grid%cell_type_ghosted)
   nullify(unstructured_grid%cell_vertices_0)
   nullify(unstructured_grid%cell_vertices_natural)
@@ -1770,6 +1772,25 @@ subroutine UGridDecompose(unstructured_grid,option)
        unstructured_grid%num_ghost_cells
   unstructured_grid%num_cells_ghosted = &
     unstructured_grid%num_cells_local + unstructured_grid%num_ghost_cells
+
+#ifdef GLENN
+  allocate(unstructured_grid%cell_type(unstructured_grid%nlmax))
+  do local_id = 1, unstructured_grid%nlmax
+    ! Determine number of faces and cell-type of the current cell
+    select case(unstructured_grid%cell_vertices_0(0,local_id))
+      case(8)
+        unstructured_grid%cell_type(local_id) = HEX_TYPE
+      case(6)
+        unstructured_grid%cell_type(local_id) = WEDGE_TYPE
+      case(4)
+        unstructured_grid%cell_type(local_id) = TET_TYPE
+      case default
+        option%io_buffer = 'Cell type not recognized: '
+        call printErrMsg(option)
+    end select
+  enddo
+#endif
+  
 #endif
   
 end subroutine UGridDecompose
@@ -3028,7 +3049,7 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
     enddo
 #ifdef GLENN
     ! TODO(geh): check if nL2G is working correctly
-    centroid = UCellComputeCentroid(unstructured_grid%cell_type_ghosted(nL2G(local_id)),vertex_8)
+    centroid = UCellComputeCentroid(unstructured_grid%cell_type(local_id),vertex_8)
 #else
     select case (unstructured_grid%cell_vertices_0(0,local_id))
       case(8)
@@ -3206,8 +3227,9 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,option)
   PetscInt :: face_vertex_ids(4)
   PetscInt :: num_vertices, iface, cell_type, num_faces, face_type
 
-  do ghosted_id = 1, unstructured_grid%num_cells_ghosted
-    cell_type = unstructured_grid%cell_type_ghosted(ghosted_id)
+  do local_id = 1, unstructured_grid%nlmax
+    ghosted_id = local_id
+    cell_type = unstructured_grid%cell_type(local_id)
     num_vertices = UCellGetNVertices(cell_type)
     cell_vertex_ids_before(1:num_vertices) = &
       unstructured_grid%cell_vertices_0(1:num_vertices,ghosted_id)+1
@@ -3215,7 +3237,6 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,option)
     point%x = x(ghosted_id)
     point%y = y(ghosted_id)
     point%z = z(ghosted_id)
-    cell_type = unstructured_grid%cell_type_ghosted(ghosted_id)
     num_faces = UCellGetNFaces(cell_type)
     do iface = 1, num_faces
       face_type = UCellGetFaceType(cell_type,iface)
@@ -3613,6 +3634,9 @@ subroutine UGridDestroy(unstructured_grid)
     
   if (.not.associated(unstructured_grid)) return
 
+  if (associated(unstructured_grid%cell_type)) &
+    deallocate(unstructured_grid%cell_type)
+  nullify(unstructured_grid%cell_type)
   if (associated(unstructured_grid%cell_type_ghosted)) &
     deallocate(unstructured_grid%cell_type_ghosted)
   nullify(unstructured_grid%cell_type_ghosted)
