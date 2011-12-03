@@ -364,7 +364,7 @@ subroutine OutputTecplotBlock(realization)
 
     ! add porosity to header
     if (output_option%print_porosity) then
-      header = trim(string) // ',"Porosity"'
+      header = trim(header) // ',"Porosity"'
     endif
 
     ! write material ids
@@ -918,7 +918,7 @@ subroutine OutputTecplotFEBrick(realization)
 
     ! add porosity to header
     if (output_option%print_porosity) then
-      header = trim(string) // ',"Porosity"'
+      header = trim(header) // ',"Porosity"'
     endif
 
     ! write material ids
