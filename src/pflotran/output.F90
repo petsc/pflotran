@@ -52,6 +52,7 @@ contains
 subroutine OutputInit(realization,num_steps)
 
   use Realization_module
+  use Option_module
 
   implicit none
   
@@ -70,6 +71,10 @@ subroutine OutputInit(realization,num_steps)
     hdf5_first = PETSC_FALSE
     mass_balance_first = PETSC_FALSE
   endif
+
+#ifdef GLENN_NEW_IO
+  call OutputOptionPlotVariablesInit(realization%output_option)
+#endif
 
 end subroutine OutputInit
 
@@ -380,7 +385,11 @@ subroutine OutputTecplotBlock(realization)
     endif
 
     write(IUNIT3,'(a)') trim(header)
-  
+
+#ifdef GLENN_NEW_IO
+    call OutputOptionPlotVarFinalize(output_option)
+#endif
+
     ! write zone header
     if ((realization%discretization%itype == STRUCTURED_GRID).or. &
         (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
@@ -947,6 +956,10 @@ subroutine OutputTecplotFEBrick(realization)
         comma_count = comma_count + 1
       endif
     enddo
+
+#ifdef GLENN_NEW_IO
+    call OutputOptionPlotVarFinalize(output_option)
+#endif
 
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12,'' ELEMENTS='',i12)') &
@@ -1991,7 +2004,11 @@ subroutine OutputTecplotPoint(realization)
     endif
 
     write(IUNIT3,'(a)') trim(header)
-  
+
+#ifdef GLENN_NEW_IO    
+    call OutputOptionPlotVarFinalize(output_option)
+#endif
+
     ! write zone header
     write(header,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
                    &'', K='',i5)') &

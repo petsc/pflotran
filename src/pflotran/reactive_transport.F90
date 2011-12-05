@@ -6011,6 +6011,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%species_idx%h_ion_id > 0) then
       string = 'pH'
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option,PH, &
+                                       reaction%species_idx%h_ion_id, &
+                                       ZERO_INTEGER)
+#endif
     endif
   endif
   
@@ -6020,6 +6025,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%primary_species_names(i)) // '_tot_' // &
                  trim(tot_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         reaction%print_tot_conc_type,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
   endif
@@ -6030,6 +6040,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%primary_species_names(i)) // '_free_' // &
                  trim(free_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         reaction%print_free_conc_type,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo  
   endif
@@ -6039,6 +6054,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%primary_species_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_gam'
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         PRIMARY_ACTIVITY_COEF,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
   endif
@@ -6048,6 +6068,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       string = trim(reaction%secondary_species_names(i)) // &
                '_' // trim(sec_mol_char)
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       reaction%print_secondary_conc_type,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo  
     
@@ -6055,6 +6080,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%kinmnrl_print(i)) then
       string = trim(reaction%kinmnrl_names(i)) // '_vf'
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       MINERAL_VOLUME_FRACTION,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
   
@@ -6062,6 +6092,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%kinmnrl_print(i)) then
       string = trim(reaction%kinmnrl_names(i)) // '_rt'
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       MINERAL_RATE,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
   
@@ -6069,6 +6104,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%mnrl_print(i)) then
       string = trim(reaction%mineral_names(i)) // '_si'
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       MINERAL_SATURATION_INDEX,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
   
@@ -6076,6 +6116,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%eqsrfcplx_site_print(i)) then
       string = trim(reaction%eqsrfcplx_site_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       SURFACE_CMPLX_FREE,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
   
@@ -6083,6 +6128,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%eqsrfcplx_print(i)) then
       string = trim(reaction%eqsrfcplx_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       SURFACE_CMPLX,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
   
@@ -6090,6 +6140,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%kinsrfcplx_site_print(i)) then
       string = trim(reaction%kinsrfcplx_site_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       KIN_SURFACE_CMPLX_FREE,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
   
@@ -6097,6 +6152,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%kinsrfcplx_print(i)) then
       string = trim(reaction%kinsrfcplx_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       KIN_SURFACE_CMPLX,i, &
+                                       ZERO_INTEGER)
+#endif
     endif
   enddo
 
@@ -6105,6 +6165,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%kd_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_kd'
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         PRIMARY_KD,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
   endif
@@ -6114,6 +6179,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%total_sorb_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_total_sorb'
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         TOTAL_SORBED,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
   endif
@@ -6123,6 +6193,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%total_sorb_mobile_print(i)) then
         string = trim(reaction%colloid_species_names(i)) // '_total_sorb_mob'
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         TOTAL_SORBED_MOBILE,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
   endif
@@ -6133,6 +6208,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%colloid_names(i)) // '_col_mob_' // &
                  trim(tot_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         COLLOID_MOBILE,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
     do i=1,reaction%ncoll
@@ -6140,6 +6220,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%colloid_names(i)) // '_col_imb_' // &
                  trim(tot_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         COLLOID_IMMOBILE,i, &
+                                         ZERO_INTEGER)
+#endif
       endif
     enddo
   endif
@@ -6148,6 +6233,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%species_idx%tracer_age_id > 0) then
       string = 'Tracer_Age'
       call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                 AGE,reaction%species_idx%tracer_age_id, &
+                                 reaction%species_idx%tracer_aq_id)
+#endif
     endif
   endif
     

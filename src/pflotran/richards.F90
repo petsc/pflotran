@@ -6305,6 +6305,10 @@ function RichardsGetTecplotHeader(realization,icolumn)
     write(string2,'('',"P [Pa]"'')') 
   endif
   string = trim(string) // trim(string2)
+#ifdef GLENN_NEW_IO
+  call OutputOptionAddPlotVariable(realization%output_option,PRESSURE, &
+                             ZERO_INTEGER,ZERO_INTEGER)
+#endif
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -6313,6 +6317,10 @@ function RichardsGetTecplotHeader(realization,icolumn)
     write(string2,'('',"sl"'')') 
   endif
   string = trim(string) // trim(string2)
+#ifdef GLENN_NEW_IO
+  call OutputOptionAddPlotVariable(realization%output_option, &
+                                   LIQUID_SATURATION,ZERO_INTEGER,ZERO_INTEGER)
+#endif
  
   RichardsGetTecplotHeader = string
 
