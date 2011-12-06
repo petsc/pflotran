@@ -1858,7 +1858,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   
 #ifdef ENABLE_UNSTRUCTURED  
   PetscInt, pointer :: int_ptr(:)
-  PetscInt :: istart, iend
   PetscInt :: local_id, ghosted_id
   PetscInt :: idof
   IS :: is_tmp
@@ -1892,13 +1891,14 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecSetBlockSize(ugdm%local_vec,ndof,ierr)
   
   ! IS for global numbering of local, non-ghosted cells
-  call VecGetOwnershipRange(ugdm%global_vec,istart,iend,ierr)
+!geh  call VecGetOwnershipRange(ugdm%global_vec,istart,iend,ierr)
   ! ISCreateBlock requires block ids, not indices.  Therefore, istart should be
   ! the offset of the block from the beginning of the vector.
-  istart = istart / ndof
+!geh  istart = istart / ndof
   allocate(int_array(unstructured_grid%nlmax))
   do local_id = 1, unstructured_grid%nlmax
-    int_array(local_id) = (local_id-1)+istart
+ !geh   int_array(local_id) = (local_id-1)+istart
+    int_array(local_id) = (local_id-1) + unstructured_grid%global_offset
   enddo
 
   ! arguments for ISCreateBlock():
@@ -1996,7 +1996,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for petsc numbering of local ghosted cells
   allocate(int_array(unstructured_grid%ngmax))
   do local_id = 1, unstructured_grid%nlmax
-    int_array(local_id) = istart+(local_id-1)
+!geh    int_array(local_id) = istart+(local_id-1)
+    int_array(local_id) = (local_id-1) + unstructured_grid%global_offset
   enddo
   do ghosted_id = 1,unstructured_grid%num_ghost_cells
     int_array(unstructured_grid%nlmax+ghosted_id) = &
@@ -2100,11 +2101,12 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! Create index set of local non-ghosted Petsc ordering
   call VecCreateMPI(option%mycomm,unstructured_grid%nlmax, &
                     PETSC_DETERMINE,vec_tmp,ierr)
-  call VecGetOwnershipRange(vec_tmp,istart,iend,ierr)
+!geh  call VecGetOwnershipRange(vec_tmp,istart,iend,ierr)
   call VecDestroy(vec_tmp,ierr)
   allocate(int_array(unstructured_grid%nlmax))
   do local_id = 1, unstructured_grid%nlmax 
-    int_array(local_id) = (local_id-1)+istart
+!geh    int_array(local_id) = (local_id-1)+istart
+    int_array(local_id) = (local_id-1) + unstructured_grid%global_offset
   enddo
   call ISCreateGeneral(option%mycomm,unstructured_grid%nlmax, &
                        int_array,PETSC_COPY_VALUES,is_tmp,ierr) 
