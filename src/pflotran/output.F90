@@ -153,13 +153,13 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
         case (TECPLOT_BLOCK_FORMAT)
           call OutputTecplotBlock(realization)
         case (TECPLOT_FEBRICK_FORMAT)
-          if(option%mycommsize == 1 ) then
+!geh          if(option%mycommsize == 1 ) then
             call OutputTecplotFEBrick(realization)
-          else
-            option%io_buffer = 'FEBrick output is currently supported for ' //&
-                               ' single proc only'
-            call printMsg(option)
-          endif  
+!geh          else
+!geh            option%io_buffer = 'FEBrick output is currently supported for ' //&
+!geh                               ' single proc only'
+!geh            call printMsg(option)
+!geh          endif  
       end select
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
@@ -981,29 +981,27 @@ subroutine OutputTecplotFEBrick(realization)
 
   ! write blocks
   ! write out data sets
-  call VecCreateMPI(option%mycomm, grid%unstructured_grid%num_vertices_global, &
-                        PETSC_DETERMINE, global_vertex_vec, ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global,global_vertex_vec,ierr)
   call DiscretizationCreateVector(discretization, ONEDOF, global_vec,GLOBAL, &
                                   option)  
   call DiscretizationCreateVector(discretization, ONEDOF, natural_vec, NATURAL, &
                                   option)  
 
+  call VecGetLocalSize(global_vertex_vec,i,ierr)
   call GetVertexCoordinates(grid, global_vertex_vec, X_COORDINATE, option)
   call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL, &
-                           grid%unstructured_grid%num_vertices_global)
+  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
   call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
 
   call GetVertexCoordinates(grid, global_vertex_vec, Y_COORDINATE, option)
   call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL, &
-                           grid%unstructured_grid%num_vertices_global)
+  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
   call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
 
   call GetVertexCoordinates(grid, global_vertex_vec, Z_COORDINATE, option)
   call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL, &
-                           grid%unstructured_grid%num_vertices_global)
+  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
   call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
 
   call VecDestroy(global_vertex_vec, ierr)

@@ -1572,9 +1572,9 @@ subroutine UGridDecompose(unstructured_grid,option)
       if (dual_id < 1) exit
       count = count + 1
       ! flag ghosted cells in dual as negative
-!TODO(geh): delete the line below if -dual_id does not matter
-!geh: but it does matter as ghosted neighbors in duals should have an id < 0.
-!sp      if (dual_id > num_cells_local_new) dual_id = -dual_id
+      !geh: these negative dual ids are used later in UGridDMCreateJacobian() to specify
+      !     off processor connectity in the Jacobian
+      if (dual_id > num_cells_local_new) dual_id = -dual_id
       unstructured_grid%cell_neighbors_local_ghosted(idual,local_id) = dual_id
     enddo
     ! set the # of duals in for the cell
@@ -1904,6 +1904,9 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   
   ! IS for global numbering of local, non-ghosted cells
   call VecGetOwnershipRange(ugdm%global_vec,istart,iend,ierr)
+  ! ISCreateBlock requires block ids, not indices.  Therefore, istart should be
+  ! the offset of the block from the beginning of the vector.
+  istart = istart / ndof
   allocate(int_array(unstructured_grid%num_cells_local))
   do local_id = 1, unstructured_grid%num_cells_local
     int_array(local_id) = (local_id-1)+istart
@@ -1955,7 +1958,8 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ! IS for local numbering of ghosts cells
   allocate(int_array(unstructured_grid%num_ghost_cells))
   do ghosted_id = 1, unstructured_grid%num_ghost_cells
-    int_array(ghosted_id) = (unstructured_grid%ghost_cell_ids_petsc(ghosted_id)-1)
+    int_array(ghosted_id) = &
+      (unstructured_grid%ghost_cell_ids_petsc(ghosted_id)-1)
   enddo
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_ghost_cells, &
                      int_array,PETSC_COPY_VALUES,ugdm%is_ghosts_petsc,ierr)
@@ -2433,8 +2437,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         nfaces = 4
     end select
     do local_id2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-      ! Selet a neighboring cell
-      cell_id2 =  unstructured_grid%cell_neighbors_local_ghosted(local_id2,local_id)
+      ! Select a neighboring cell
+      ! ghosted neighbors have a negative id
+      cell_id2 =  abs(unstructured_grid%cell_neighbors_local_ghosted(local_id2,local_id))
       cell_type2 = unstructured_grid%cell_type_ghosted(local_id2)
       ! If cell-id is neighbor is lower, skip it
       if (cell_id2 <= cell_id) cycle
@@ -2578,7 +2583,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   do local_id = 1, unstructured_grid%num_cells_local !sp   was num_cells_ghosted 
     cell_id = local_id
     do local_id2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-      cell_id2 =  unstructured_grid%cell_neighbors_local_ghosted(local_id2,local_id)
+      ! ghosted neighbors have a negative id
+      cell_id2 =  abs(unstructured_grid%cell_neighbors_local_ghosted(local_id2,local_id))
       if (cell_id2 <= cell_id) cycle
       num_match = 0
       do ivertex = 1, unstructured_grid%cell_vertices_0(0,cell_id)
@@ -2744,9 +2750,11 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       dual_id = unstructured_grid%cell_neighbors_local_ghosted(idual,local_id)
       ! count all ghosted connections (dual_id < 0)
       ! only count connection with cells of larger ids to avoid double counts
-!      if (dual_id < 0 .or. local_id < dual_id) then
-      if (dual_id > 0 .and. local_id < dual_id) then !sp 
-          nconn = nconn + 1
+!geh: we need to cound all local connection, but just once (local_id < dual_id) and all
+!      ghosted connections (dual_id < 0)
+      if (dual_id < 0 .or. local_id < dual_id) then
+!geh: Nope      if (dual_id > 0 .and. local_id < dual_id) then !sp 
+        nconn = nconn + 1
       endif
     enddo
   enddo
@@ -2763,6 +2771,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   do local_id = 1, unstructured_grid%num_cells_local
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
       dual_local_id = unstructured_grid%cell_neighbors_local_ghosted(idual,local_id)
+      ! abs(dual_local_id) to accommodate connections to ghost cells where the dual
+      ! id is < 0.
       if (local_id < abs(dual_local_id)) then 
         iconn = iconn + 1
         ! find face
