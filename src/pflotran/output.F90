@@ -2962,7 +2962,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
 #endif      
       call MPI_Probe(iproc_mpi,MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
       recv_size_mpi = status_mpi(MPI_TAG)
-      if (datatype == 0) then
+      if (datatype == PETSC_INTEGER) then
         call MPI_Recv(integer_data_recv,recv_size_mpi,MPIU_INTEGER,iproc_mpi, &
                       MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
         if (recv_size_mpi > 0) then
@@ -2973,7 +2973,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
         iend = 0
         do
           istart = iend+1
-          if (iend+num_per_line > local_size_mpi) exit
+          if (iend+num_per_line > num_in_array) exit
           iend = istart+(num_per_line-1)
           i = abs(maxval(integer_data(istart:iend)))
           if (i < 10) then
@@ -3003,7 +3003,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
         iend = 0
         do
           istart = iend+1
-          if (iend+num_per_line > local_size_mpi) exit
+          if (iend+num_per_line > num_in_array) exit
           iend = istart+(num_per_line-1)
           ! if num_per_line exceeds 100, need to change the format statement below
           write(fid,1010) real_data(istart:iend)
@@ -3022,7 +3022,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
     endif
 #endif      
     ! Print the remaining values, if they exist
-    if (datatype == 0) then
+    if (datatype == TECPLOT_INTEGER) then
       if (num_in_array > 0) &
         i = abs(maxval(integer_data(1:num_in_array)))
         if (i < 10) then
