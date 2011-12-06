@@ -445,7 +445,6 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call UGridRead(un_str_grid,filename,option)
             endif
             grid%unstructured_grid => un_str_grid
-            grid%nmax = un_str_grid%num_cells_global
           case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
             if (nx*ny*nz <= 0) &
               call printErrMsg(option,'NXYZ not set correctly for structured grid.')

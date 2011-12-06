@@ -1806,7 +1806,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           do count=1,region%num_cells
             local_id = GridGetLocalIdFromNaturalId( grid, region%cell_ids(count))
             if (local_id <= 0) cycle
-            if (local_id > grid%unstructured_grid%num_cells_local) cycle
+            if (local_id > grid%unstructured_grid%nlmax) cycle
             local_count = local_count + 1
             temp_int_array(local_count) = local_id
           enddo
@@ -1934,9 +1934,9 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
   
   if (associated(region%cell_ids)) then
     
-    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
                       vec_cell_ids, ierr)
-    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
                       vec_cell_ids_loc, ierr)
     
     call VecZeroEntries(vec_cell_ids, ierr)
@@ -1974,9 +1974,9 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call PetscViewerDestroy(viewer, ierr)
 #endif
 
-    allocate(tmp_int_array(ugrid%num_cells_local))
+    allocate(tmp_int_array(ugrid%nlmax))
     count = 0
-    do ghosted_id = 1, ugrid%num_cells_ghosted
+    do ghosted_id = 1, ugrid%ngmax
       local_id = grid%nG2L(ghosted_id)
       if (local_id < 1) cycle
       count = count + 1
@@ -1985,16 +1985,16 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     enddo
     
     tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+    call ISCreateBlock(option%mycomm, 1, ugrid%nlmax, &
                         tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
     
     call VecGetOwnershipRange(vec_cell_ids_loc,istart,iend,ierr)
-    do ii=1,ugrid%num_cells_local
+    do ii=1,ugrid%nlmax
       tmp_int_array(ii) = ii + istart
     enddo
 
     tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+    call ISCreateBlock(option%mycomm, 1, ugrid%nlmax, &
                         tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
     deallocate(tmp_int_array)
     
@@ -2018,7 +2018,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     
     call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
     count = 0
-    do ii=1, ugrid%num_cells_local
+    do ii=1, ugrid%nlmax
       if (v_loc_p(ii) == 1) count = count + 1
     enddo
     
@@ -2026,7 +2026,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     if (count > 0) then
       allocate(tmp_int_array(count))
       count = 0
-      do ii =1, ugrid%num_cells_local
+      do ii =1, ugrid%nlmax
         if (v_loc_p(ii) == 1) then
           count = count + 1
           tmp_int_array(count) = ii
@@ -2095,7 +2095,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     !    cell
     !
     call MatCreateMPIAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
-                          ugrid%num_vertices_global, ugrid%num_cells_global, &
+                          ugrid%num_vertices_global, ugrid%nmax, &
                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
                           mat_vert2cell, ierr)
@@ -2248,7 +2248,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     !  i+1-th cell j-th face vertex-3
     !
     call VecCreateMPI(option%mycomm, PETSC_DECIDE, &
-                      ugrid%num_cells_global*MAX_DUALS*MAX_VERT_PER_FACE, &
+                      ugrid%nmax*MAX_DUALS*MAX_VERT_PER_FACE, &
                       vec_cell2facevert, ierr)
 
     ! Initialize vector
@@ -2256,10 +2256,10 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call VecAssemblyBegin(vec_cell2facevert, ierr) ! vertex-id is 0-based
     call VecAssemblyEnd(  vec_cell2facevert, ierr) !
             
-    allocate(tmp_int_array(ugrid%num_cells_local))
+    allocate(tmp_int_array(ugrid%nlmax))
     tmp_int_array = 0
       
-    do ii = 1, MAX_DUALS*ugrid%num_cells_ghosted
+    do ii = 1, MAX_DUALS*ugrid%ngmax
       ghosted_id = ugrid%face_to_cell_ghosted(1, ii)
       if (ghosted_id < 0 ) exit
       local_id   = grid%nG2L(ghosted_id)
@@ -2495,13 +2495,13 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call VecRestoreArrayF90(vec_cell2facevert_reg_subset, v_loc_p, ierr)
 
 
-    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
                       vec_cell_ids, ierr)
-    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
                       vec_cell_ids_loc, ierr)
-    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
                       vec_face_ids, ierr)
-    call VecCreateMPI(option%mycomm, ugrid%num_cells_local, PETSC_DECIDE, &
+    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
                       vec_face_ids_loc, ierr)
     
     call VecSet(vec_cell_ids, 0.d0, ierr)
@@ -2546,9 +2546,9 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call PetscViewerDestroy(viewer, ierr)
 #endif
 
-    allocate(tmp_int_array(ugrid%num_cells_local))
+    allocate(tmp_int_array(ugrid%nlmax))
     count = 0
-    do ghosted_id=1,ugrid%num_cells_ghosted
+    do ghosted_id=1,ugrid%ngmax
       local_id = grid%nG2L(ghosted_id)
       if (local_id < 1) cycle
       count = count + 1
@@ -2557,17 +2557,17 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     enddo
 
     tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+    call ISCreateBlock(option%mycomm, 1, ugrid%nlmax, &
                       tmp_int_array, PETSC_COPY_VALUES, &
                       is_from, ierr)
     
     call VecGetOwnershipRange(vec_cell_ids_loc, istart, iend, ierr)
-    do ii = 1, ugrid%num_cells_local
+    do ii = 1, ugrid%nlmax
       tmp_int_array(ii) = ii + istart
     enddo
 
     tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, ugrid%num_cells_local, &
+    call ISCreateBlock(option%mycomm, 1, ugrid%nlmax, &
                         tmp_int_array, PETSC_COPY_VALUES, &
                         is_to, ierr)
     deallocate(tmp_int_array)
@@ -2597,7 +2597,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr)
     call VecGetArrayF90(vec_face_ids_loc, v_loc2_p, ierr)
     count = 0
-    do ii = 1, ugrid%num_cells_local
+    do ii = 1, ugrid%nlmax
       if (v_loc_p(ii) == 1) count = count + 1
     enddo
     
@@ -2606,7 +2606,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       allocate(tmp_int_array(count))
       allocate(tmp_int_array2(count))
       count = 0
-      do ii = 1, ugrid%num_cells_local
+      do ii = 1, ugrid%nlmax
         if (v_loc_p(ii) == 1) then
           count = count + 1
           tmp_int_array(count) = ii
