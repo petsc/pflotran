@@ -2100,7 +2100,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
                           MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
                           mat_vert2cell, ierr)
     
-    do ghosted_id = 1, ugrid%num_cells_ghosted
+    do ghosted_id = 1, ugrid%ngmax
       local_id = grid%nG2L(ghosted_id)
       if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id)

@@ -17,7 +17,6 @@ module Unstructured_Grid_module
 #endif
 
   type, public :: unstructured_grid_type
-    PetscInt :: num_cells_ghosted ! number of local and ghosted cells on the process
     PetscInt :: num_ghost_cells   ! number of ghost cells (only) on processor
     PetscInt :: num_vertices_global ! number of vertices in entire problem domain
     PetscInt :: num_vertices_local  ! number of vertices in local grid cells
