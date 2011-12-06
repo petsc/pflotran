@@ -2962,7 +2962,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
 #endif      
       call MPI_Probe(iproc_mpi,MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
       recv_size_mpi = status_mpi(MPI_TAG)
-      if (datatype == PETSC_INTEGER) then
+      if (datatype == TECPLOT_INTEGER) then
         call MPI_Recv(integer_data_recv,recv_size_mpi,MPIU_INTEGER,iproc_mpi, &
                       MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
         if (recv_size_mpi > 0) then
