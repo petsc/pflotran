@@ -88,7 +88,9 @@ module Unstructured_Grid_module
   end type ugdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
-  !  PetscInt, parameter :: WEDGE_TYPE        = 2
+  !  PetscInt, parameter :: TET_TYPE          = 2
+  !  PetscInt, parameter :: WEDGE_TYPE        = 3
+  !  PetscInt, parameter :: PYR_TYPE          = 4
   !  PetscInt, parameter :: TRI_FACE_TYPE     = 1
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_CELL = 8
@@ -453,10 +455,12 @@ subroutine UGridRead(unstructured_grid,filename,option)
         select case(word)
           case('H')
             num_vertices = 8
-          case('T')
-            num_vertices = 4
           case('W')
             num_vertices = 6
+          case('P')
+            num_vertices = 5
+          case('T')
+            num_vertices = 4
         end select
 #else
         call InputReadInt(input,option,num_vertices)
@@ -1818,6 +1822,8 @@ subroutine UGridDecompose(unstructured_grid,option)
         unstructured_grid%cell_type(local_id) = HEX_TYPE
       case(6)
         unstructured_grid%cell_type(local_id) = WEDGE_TYPE
+      case(5)
+        unstructured_grid%cell_type(local_id) = PYR_TYPE
       case(4)
         unstructured_grid%cell_type(local_id) = TET_TYPE
       case default
@@ -2330,6 +2336,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         unstructured_grid%cell_type_ghosted(ghosted_id) = HEX_TYPE
       case(6)
         unstructured_grid%cell_type_ghosted(ghosted_id) = WEDGE_TYPE
+      case(5)
+        unstructured_grid%cell_type_ghosted(ghosted_id) = PYR_TYPE
       case(4)
         unstructured_grid%cell_type_ghosted(ghosted_id) = TET_TYPE
       case default
@@ -2365,7 +2373,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     select case(cell_type)
       case(HEX_TYPE)
         nfaces = 6
-      case(WEDGE_TYPE)
+      case(WEDGE_TYPE,PYR_TYPE)
         nfaces = 5
       case(TET_TYPE)
         nfaces = 4
@@ -2388,6 +2396,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
             nvertices = 3
           else
             nvertices = 4
+          endif
+        case(PYR_TYPE)
+          if (iface > 4) then
+            nvertices = 4
+          else
+            nvertices = 3
           endif
         case(TET_TYPE)
           nvertices = 3
@@ -2431,7 +2445,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     select case(cell_type)
       case(HEX_TYPE)
         nfaces = 6
-      case(WEDGE_TYPE)
+      case(WEDGE_TYPE,PYR_TYPE)
         nfaces = 5
       case(TET_TYPE)
         nfaces = 4
@@ -2447,7 +2461,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       select case(cell_type2)
         case(HEX_TYPE)
           nfaces2 = 6
-        case(WEDGE_TYPE)
+        case(WEDGE_TYPE,PYR_TYPE)
           nfaces2 = 5
         case(TET_TYPE)
           nfaces2 = 4
@@ -2465,6 +2479,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
               nvertices = 3
             else
               nvertices = 4
+            endif
+          case(PYR_TYPE)
+            if (iface > 4) then
+              nvertices = 4
+            else
+              nvertices = 3
             endif
           case(TET_TYPE)
             nvertices = 3
@@ -2506,6 +2526,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                   nvertices2 = 3
                 else
                   nvertices2 = 4
+                endif
+              case(PYR_TYPE)
+                if (iface2 > 4) then
+                  nvertices2 = 4
+                else
+                  nvertices2 = 3
                 endif
               case(TET_TYPE)
                 nvertices2 = 3
