@@ -965,7 +965,7 @@ subroutine OutputTecplotFEBrick(realization)
     write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12,'' ELEMENTS='',i12)') &
                    option%time/output_option%tconv, &
                    grid%unstructured_grid%num_vertices_global, &
-                   grid%unstructured_grid%num_cells_global 
+                   grid%unstructured_grid%nmax 
      string = trim(string) // ', DATAPACKING=BLOCK'
      string = trim(string) // ', ZONETYPE=FEBRICK'
      if (comma_count > 3) then
@@ -1346,14 +1346,14 @@ subroutine OutputTecplotFEBrick(realization)
   call VecDestroy(natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
 #else  
-  call VecCreateMPI(option%mycomm, grid%unstructured_grid%num_cells_local*8, &
+  call VecCreateMPI(option%mycomm, grid%unstructured_grid%nlmax*8, &
                     PETSC_DETERMINE, global_cconn_vec, ierr)
   call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_INTEGER, &
-                           grid%unstructured_grid%num_cells_global*8)
+                           grid%unstructured_grid%nmax*8)
   call GetCellConnections(grid, global_cconn_vec)
   call VecGetArrayF90(global_cconn_vec, vec_ptr, ierr)
   call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_INTEGER, &
-                           grid%unstructured_grid%num_cells_global*8)
+                           grid%unstructured_grid%nmax*8)
   call VecRestoreArrayF90(global_cconn_vec, vec_ptr, ierr)
 
   call VecDestroy(global_cconn_vec, ierr)
@@ -7418,7 +7418,7 @@ subroutine GetCellConnections(grid, vec)
 
   ! initialize
   vec_ptr = -999.d0
-  do local_id=1, ugrid%num_cells_local
+  do local_id=1, ugrid%nlmax
     offset = (local_id-1)*8
     select case(ugrid%cell_type_ghosted(local_id))
       case(HEX_TYPE)

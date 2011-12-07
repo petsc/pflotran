@@ -31,7 +31,8 @@ module Unstructured_Cell_module
             UCellGetNFaces, &
             UCellGetNFaceVertices, &
             UCellGetFaceType, &
-            UCellGetFaceVertices
+            UCellGetFaceVertices, &
+            UCellGetNFaceVertsandVerts
             
 contains
 
@@ -465,6 +466,31 @@ function UCellGetFaceType(cell_type,iface)
   end select
   
 end function UCellGetFaceType
+
+! ************************************************************************** !
+!
+! UCellGetNFaceVertsandVerts: returns the numbber of vertices for a face and
+!                             the vertices
+! author: Glenn Hammond
+! date: 12/06/11
+!
+! ************************************************************************** !
+subroutine UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
+                                      vertex_ids)
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  PetscInt :: cell_type
+  PetscInt :: iface
+  PetscInt :: nvertices
+  PetscInt :: vertex_ids(*)
+  
+  nvertices = UCellGetNFaceVertices(cell_type,iface)
+  call UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
+
+end subroutine UCellGetNFaceVertsandVerts
 
 ! ************************************************************************** !
 !
