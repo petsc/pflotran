@@ -421,9 +421,9 @@ function UCellGetNFaceVertices(cell_type,iface)
       endif
     case(PYR_TYPE)
       if (iface > 4) then
-        UCellGetNFaceVertices = 3
-      else 
         UCellGetNFaceVertices = 4
+      else 
+        UCellGetNFaceVertices = 3
       endif
     case(TET_TYPE)
       UCellGetNFaceVertices = 3
@@ -448,7 +448,7 @@ function UCellGetFaceType(cell_type,iface)
   
   select case(cell_type)
     case(HEX_TYPE)
-      UCellGetFaceType = TRI_FACE_TYPE
+      UCellGetFaceType = QUAD_FACE_TYPE
     case(WEDGE_TYPE)
       if (iface > 3) then
         UCellGetFaceType = TRI_FACE_TYPE

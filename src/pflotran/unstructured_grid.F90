@@ -2198,7 +2198,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscBool :: match_found
   PetscInt :: face_count
   PetscInt :: count, i
-  PetscInt :: iface, iface2
+  PetscInt :: iface, iface2, iside
   PetscInt :: face_id, face_id2
   PetscInt :: ghosted_id, ghosted_id2
   PetscInt :: local_id, local_id2
@@ -2208,7 +2208,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt :: vertex_id, vertex_id2
   PetscInt :: vertex_ids4(4)
   PetscInt :: nfaces, nfaces2, nvertices, nvertices2, cell_type, cell_type2
-  PetscInt :: face_type
+  PetscInt :: face_type, face_type2
   PetscBool:: face_found, vertex_found
   
   PetscReal :: v1(3), v2(3), v3(3), n1(3), n2(3), n_up_dn(3)
@@ -2404,11 +2404,11 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     cell_id = local_id
     cell_type = unstructured_grid%cell_type_ghosted(local_id)
     nfaces = UCellGetNFaces(cell_type)
-    do local_id2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
+    do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
       ! Select a neighboring cell
       ! ghosted neighbors have a negative id
-      cell_id2 =  abs(unstructured_grid%cell_neighbors_local_ghosted(local_id2,local_id))
-      cell_type2 = unstructured_grid%cell_type_ghosted(local_id2)
+      cell_id2 =  abs(unstructured_grid%cell_neighbors_local_ghosted(idual,local_id))
+      cell_type2 = unstructured_grid%cell_type_ghosted(cell_id2)
       ! If cell-id is neighbor is lower, skip it
       if (cell_id2 <= cell_id) cycle
       ! Find the number of vertices for neighboring cell
@@ -2510,104 +2510,10 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         write(*,*),'No shared face found: rank=',option%myrank, 'local_id_id',cell_id,'local_id_id2',cell_id2
         call printErrMsg(option)
       endif
-    enddo ! local_id2-loop
+    enddo ! idual-loop
   enddo  ! local_id-loop
 #endif ! #ifdef MIXED_UMESH
 
-   
-
-#ifndef MIXED_UMESH
-  ! remove duplicate faces
-  ! fill face ids
-  do local_id = 1, unstructured_grid%nlmax !sp   was num_cells_ghosted 
-    cell_id = local_id
-    do local_id2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-      ! ghosted neighbors have a negative id
-      cell_id2 =  abs(unstructured_grid%cell_neighbors_local_ghosted(local_id2,local_id))
-      if (cell_id2 <= cell_id) cycle
-      num_match = 0
-      do ivertex = 1, unstructured_grid%cell_vertices_0(0,cell_id)
-        vertex_id = unstructured_grid%cell_vertices_0(ivertex,cell_id)+1
-        do ivertex2 = 1, unstructured_grid%cell_vertices_0(0,cell_id2)
-          vertex_id2 = unstructured_grid%cell_vertices_0(ivertex2,cell_id2)+1
-          if (vertex_id == vertex_id2) then
-            num_match = num_match + 1
-            vertex_ids4(num_match) = vertex_id
-            exit
-          endif
-        enddo
-        if (num_match > 3) exit
-      enddo
-      if (num_match > 3) then
-        ! now find the shared face
-        match_found = PETSC_TRUE
-        do iface = 1, 6
-          face_id = cell_to_face(iface,cell_id)
-          found_count = 0
-          do ivertex = 1, 4
-            do ivertex2 = 1, 4
-              if (face_to_vertex(ivertex,face_id) == vertex_ids4(ivertex2)) then
-                found_count = found_count + 1
-                exit
-              endif
-            enddo
-          enddo
-          if (found_count > 3) exit
-        enddo
-        if (found_count > 3) then
-          do iface2 = 1, 6
-            face_id2 = cell_to_face(iface2,cell_id2)
-            found_count = 0
-            do ivertex = 1, 4
-              do ivertex2 = 1, 4
-                if (face_to_vertex(ivertex,face_id2) == vertex_ids4(ivertex2)) then
-                  found_count = found_count + 1
-                  exit
-                endif
-              enddo
-            enddo
-            if (found_count > 3) exit
-          enddo
-          if (found_count <= 3) then
-            match_found = PETSC_FALSE
-          else
-            ! remove duplicate face
-            if (face_id2 > face_id) then
-#ifdef UGRID_DEBUG
-              write(string,*) option%myrank, face_id2, ' -> ', face_id
-              option%io_buffer = 'Duplicated face removed:' // string
-              call printMsg(option)
-#endif
-              cell_to_face(iface2,cell_id2) = face_id
-              ! flag as removed
-              face_to_cell(1,face_id2) = -face_to_cell(1,face_id2)
-              face_to_cell(2,face_id) = cell_id2
-            else
-#ifdef UGRID_DEBUG
-              write(string,*) option%myrank, face_id, ' -> ', face_id2
-              option%io_buffer = 'Duplicated face removed:' // string
-              call printMsg(option)
-#endif
-              cell_to_face(iface,cell_id) = face_id2
-              ! flag as removed
-              face_to_cell(1,face_id) = -face_to_cell(1,face_id)
-              face_to_cell(2,face_id2) = cell_id
-            endif
-          endif
-        else
-          match_found = PETSC_FALSE
-        endif  
-        if (.not.match_found) then
-          option%io_buffer = 'Matching faces not found'
-          call printErrMsg(option)
-        endif
-      endif    
-    enddo
-  enddo
-
-#endif ! #ifndef MIXED_UMESH
-
-  
   ! count up the # of faces
   face_count = 0
   do iface = 1, size(face_to_cell,2)
@@ -2709,17 +2615,18 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   iconn = 0
   do local_id = 1, unstructured_grid%nlmax
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-      dual_local_id = unstructured_grid%cell_neighbors_local_ghosted(idual,local_id)
-      ! abs(dual_local_id) to accommodate connections to ghost cells where the dual
-      ! id is < 0.
+      dual_local_id = &
+        unstructured_grid%cell_neighbors_local_ghosted(idual,local_id)
+      ! abs(dual_local_id) to accommodate connections to ghost cells where 
+      ! the dual id is < 0.
       if (local_id < abs(dual_local_id)) then 
         iconn = iconn + 1
         ! find face
         found = PETSC_FALSE
         do iface = 1, unstructured_grid%cell_vertices_0(0,local_id)
           face_id = cell_to_face(iface,local_id)
-          do local_id2 = 1,2
-            cell_id2 = face_to_cell(local_id2,face_id)
+          do iside = 1,2
+            cell_id2 = face_to_cell(iside,face_id)
             if (cell_id2 == abs(dual_local_id)) then
               found = PETSC_TRUE
               exit
@@ -2734,11 +2641,37 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           option%io_buffer = 'face not found in connection loop' // string 
           call printErrMsg(option)
         endif
+        face_type = &
+          UCellGetFaceType(unstructured_grid%cell_type_ghosted(local_id),iface)
+        found = PETSC_FALSE
+        do iface2 = 1, unstructured_grid%cell_vertices_0(0,cell_id2)
+          if (cell_to_face(iface,local_id) == &
+              cell_to_face(iface2,cell_id2)) then
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo
+        if (found) then
+          face_type2 = &
+            UCellGetFaceType(unstructured_grid%cell_type_ghosted(cell_id2), &
+                                                                 iface2)
+          if (face_type /= face_type2) then
+            write(string,*) option%myrank, local_id, cell_id2 
+            option%io_buffer = 'face types do not match' // string 
+            call printErrMsg(option)
+          endif
+        else
+          write(string,*) option%myrank, iface, cell_id2
+          option%io_buffer = 'global face not found' // string 
+          call printErrMsg(option)
+        endif
+#if 0
         if (unstructured_grid%face_to_vertex(4,face_id) < 0) then
           face_type = TRI_FACE_TYPE
         else
           face_type = QUAD_FACE_TYPE
         endif
+#endif
         connections%id_up(iconn) = local_id
         connections%id_dn(iconn) = abs(dual_local_id)
         ! need to add the surface areas, distance, etc.
@@ -3300,14 +3233,14 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ugdm%mapping_ltog,ierr)
-!        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
       case(MATBAIJ)
         call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ugdm%mapping_ltog,ierr)
-!        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
       case default
         option%io_buffer = 'MatType not recognized in UGridDMCreateJacobian'
         call printErrMsg(option)
