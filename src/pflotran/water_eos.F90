@@ -807,7 +807,8 @@ subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
     PetscReal, intent(out) :: hg,hgp,hgt
     PetscErrorCode, intent(out) :: ierr
   
-    PetscInt, save :: n(8),ll(8),x(8,2),z(8,3),xi1,xl0,xl1,xl2
+    PetscInt, save :: n(8),ll(8),x(8,2),z(8,3)
+    PetscReal, save :: xi1,xl0,xl1,xl2
     PetscReal, save :: b(8,2),bb(0:9,0:6)
     PetscReal :: sumbx(8),sumbxt(8)
   

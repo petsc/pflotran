@@ -1459,6 +1459,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
   use Option_module
   use Field_module
   
+  use Immis_Aux_module
   use Mphase_Aux_module
   use THC_Aux_module
   use Richards_Aux_module
@@ -1753,6 +1754,10 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
+            enddo
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(2)
@@ -1764,10 +1769,6 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           case(GAS_DENSITY) 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(2)
-            enddo
-          case(LIQUID_ENERGY)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
             enddo
         end select
       else if (associated(patch%aux%General)) then
