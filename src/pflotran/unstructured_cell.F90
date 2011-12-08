@@ -595,7 +595,7 @@ subroutine UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
           vertex_ids(1) = 1
           vertex_ids(2) = 4
           vertex_ids(3) = 3
-          vertex_ids(3) = 2
+          vertex_ids(4) = 2
        case default
           option%io_buffer='Cell PYR_TYPE has only 5 faces'
           call printErrMsg(option)
