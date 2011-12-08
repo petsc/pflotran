@@ -6324,7 +6324,7 @@ end subroutine SAMRWritePlotData
     
       ! liquid mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction-'',i1)') i
@@ -6342,7 +6342,7 @@ end subroutine SAMRWritePlotData
       
       ! gas mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)      
+        case (MPH_MODE,FLASH2_MODE,G_MODE)      
           do i=1,option%nflowspec
              call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
              write(string,'(''Gas Mole Fraction-'',i1)') i
