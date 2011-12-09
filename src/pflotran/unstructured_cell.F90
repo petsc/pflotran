@@ -32,7 +32,9 @@ module Unstructured_Cell_module
             UCellGetNFaceVertices, &
             UCellGetFaceType, &
             UCellGetFaceVertices, &
-            UCellGetNFaceVertsandVerts
+            UCellGetNFaceVertsandVerts, &
+            UCellTypeToWord, &
+            UCellFaceTypeToWord
             
 contains
 
@@ -466,6 +468,58 @@ function UCellGetFaceType(cell_type,iface)
   end select
   
 end function UCellGetFaceType
+
+! ************************************************************************** !
+!
+! UCellTypeToWord: Returns type of cell as a string
+! author: Glenn Hammond
+! date: 12/09/11
+!
+! ************************************************************************** !
+function UCellTypeToWord(cell_type)
+
+  implicit none
+  
+  PetscInt :: cell_type
+
+  character(len=MAXWORDLENGTH) :: UCellTypeToWord
+  
+  select case(cell_type)
+    case(HEX_TYPE)
+      UCellTypeToWord = 'hexahedron'
+    case(WEDGE_TYPE)
+      UCellTypeToWord = 'wedge'
+    case(PYR_TYPE)
+      UCellTypeToWord = 'pyramid'
+    case(TET_TYPE)
+      UCellTypeToWord = 'tetrahedron'
+  end select
+  
+end function UCellTypeToWord
+
+! ************************************************************************** !
+!
+! UCellFaceTypeToWord: Returns type of cell face as a string
+! author: Glenn Hammond
+! date: 12/09/11
+!
+! ************************************************************************** !
+function UCellFaceTypeToWord(face_type)
+
+  implicit none
+  
+  PetscInt :: face_type
+
+  character(len=MAXWORDLENGTH) :: UCellFaceTypeToWord
+  
+  select case(face_type)
+    case(TRI_FACE_TYPE)
+      UCellFaceTypeToWord = 'triangle'
+    case(QUAD_FACE_TYPE)
+      UCellFaceTypeToWord = 'quadrilateral'
+  end select
+  
+end function UCellFaceTypeToWord
 
 ! ************************************************************************** !
 !

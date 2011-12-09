@@ -409,7 +409,7 @@ subroutine RealizationCreateDiscretization(realization)
                                    discretization%dm_1dof%ugdm) 
 #ifdef GLENN
       call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
-                                    grid%y,grid%z,option)
+                                    grid%y,grid%z,grid%nL2A,option)
 #endif
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 

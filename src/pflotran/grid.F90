@@ -2107,7 +2107,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       do ii = 1, ugrid%cell_vertices_0(0, local_id)
         call MatSetValues(mat_vert2cell, &
                           1, &
-                          ugrid%cell_vertices_natural(ii, local_id), &
+                          ugrid%cell_vertices_natural_0(ii, local_id), &
                           1, &
                           natural_id-1, &
                           natural_id-1.0d0, &

@@ -91,6 +91,7 @@ PetscInt, parameter :: FLASH2_MODE = 6
 PetscInt, parameter :: G_MODE = 7
 
 ! grid types
+PetscInt, parameter :: NULL_GRID = 0
 PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
 PetscInt, parameter :: AMR_GRID = 3

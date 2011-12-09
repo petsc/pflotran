@@ -420,8 +420,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   enddo  
 
   if (first_time) then ! first time read
-
     select case(discretization%itype)
+      case(NULL_GRID)
+        option%io_buffer = 'Discretization type not defined under ' // &
+                           'keyword GRID.' 
+        call printErrMsg(option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
         grid => GridCreate()
         select case(discretization%itype)
