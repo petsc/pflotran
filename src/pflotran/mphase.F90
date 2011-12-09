@@ -894,7 +894,6 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!     global_aux_vars(ghosted_id)%sat_store = 
       global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
       global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
