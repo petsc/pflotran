@@ -1827,11 +1827,6 @@ subroutine UGridDecompose(unstructured_grid,option)
         option%io_buffer = 'Cell type not recognized: '
         call printErrMsg(option)
     end select
-    write(*,'(i3,'': cell:'',i3,a,8i3)')  &
-      option%myrank, &
-      unstructured_grid%cell_ids_natural(local_id), &
-      trim(UCellTypeToWord(unstructured_grid%cell_type(local_id))), &
-      (unstructured_grid%cell_vertices_natural_0(ivertex,local_id)+1,ivertex=1,8)
   enddo
 #endif
   
