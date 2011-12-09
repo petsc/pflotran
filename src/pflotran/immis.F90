@@ -735,16 +735,19 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
+
  ! update global variables
     if( associated(global_aux_vars))then
-     
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%temp = aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+      
+!     print *,'immis: update_global:den ',global_aux_vars(ghosted_id)%den_kg(:), &
+!                               aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
     else
       print *,'Not associated global for IMS'
     endif
