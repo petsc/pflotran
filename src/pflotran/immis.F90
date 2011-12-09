@@ -465,7 +465,7 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
   type(option_type), pointer :: option 
   PetscReal, pointer :: xx_p(:), yy_p(:) 
   PetscInt :: n,n0,re
-  PetscInt :: re0, iipha
+  PetscInt :: re0
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -507,7 +507,7 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
            endif
      end do
   
-    if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
+    if(re<=0) print *,'Sat out of Region at: ',n,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
 
@@ -700,8 +700,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
-  PetscInt :: iphasebc, iphase
-  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
@@ -1004,8 +1003,8 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
   type(Immis_parameter_type), pointer :: immis_parameter
   type(Immis_auxvar_type), pointer :: aux_vars(:)
 
-  PetscInt :: ghosted_id, local_id, istart, iend, iphase
-  PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscInt :: ghosted_id, local_id, istart, iend
+  PetscReal, pointer :: xx_p(:), icap_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tortuosity_loc_p(:), volume_p(:), &
                         ithrm_loc_p(:), accum_p(:)
                           
@@ -1652,7 +1651,6 @@ end interface
   
  
 !  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
  ! check initial guess -----------------------------------------------
   ierr = ImmisInitGuessCheck(realization)
   if(ierr<0)then
@@ -1666,7 +1664,6 @@ end interface
   ! Communication -----------------------------------------
   ! These 3 must be called before ImmisUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
   call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
@@ -1731,9 +1728,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                           
                
-  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:), ithrm_loc_p(:)
 
-  PetscInt :: iphase
   PetscInt :: icap_up, icap_dn, ithrm_up, ithrm_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: dd, f_up, f_dn, ff
@@ -1805,7 +1801,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-!  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
  
  
 ! Multiphase flash calculation is more expensive, so calculate once per iteration
@@ -1818,7 +1813,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     endif
         
     istart = (ng-1)*option%nflowdof + 1; iend = istart -1 + option%nflowdof
-    iphase = int(iphase_loc_p(ng))
     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0), &
       realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
@@ -1923,13 +1917,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !clu end change
 
     cur_connection_set => source_sink%connection_set
-    
+    sum_connection = 0
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
+      sum_connection = sum_connection + 1
       call ImmisSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
             source_sink%flow_condition%itype(1),Res, &
             patch%ss_fluid_fluxes(:,sum_connection), &
@@ -2007,7 +2000,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
          case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-!            iphase = int(iphase_loc_p(ghosted_id))
          end select
       enddo
 
@@ -2181,7 +2173,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-!  call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
@@ -2290,8 +2281,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                           xx_loc_p(:), tortuosity_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
-  PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
+  PetscReal, pointer :: icap_loc_p(:), ithrm_loc_p(:)
+  PetscInt :: icap,icap_up,icap_dn
   PetscInt :: ii, jj
   PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
   PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
@@ -2338,7 +2329,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: psrc(1:realization%option%nphase), ss_flow(1:realization%option%nphase)
   PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
                dvdp, xphi
-  PetscInt :: iphasebc                
   PetscInt :: nsrcpara  
   
   PetscViewer :: viewer
@@ -2383,7 +2373,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-!  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 
  ResInc = 0.D0
 #if 1
@@ -2526,7 +2515,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          !iphasebc = int(iphase_loc_p(ghosted_id))
           delxbc(idof)=patch%aux%Immis%delx(idof,ghosted_id)
        end select
     enddo
@@ -2645,9 +2633,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
-
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       D_up = immis_parameter%ckwet(ithrm_up)
@@ -2745,7 +2730,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-! call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 ! print *,'end jac'
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
