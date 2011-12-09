@@ -1915,7 +1915,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
   PetscInt, pointer               :: ia_p(:), ja_p(:)
   PetscInt                        :: n,rstart,rend,icol(1)
   PetscInt                        :: index
-  PetscInt                        :: vertex_id_natural
+  PetscInt                        :: vertex_id
   PetscOffset                     :: iia,jja,aaa,iicol
   PetscBool                       :: done,found
   PetscScalar                     :: aa(1)
@@ -2105,9 +2105,11 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id)
       do ii = 1, ugrid%cell_vertices_0(0, local_id)
+        vertex_id = ugrid%cell_vertices_0(ii, local_id)
+!geh: I believe that this is incorrect since MatSetValues uses petsc ordering
         call MatSetValues(mat_vert2cell, &
                           1, &
-                          ugrid%cell_vertices_natural_0(ii, local_id), &
+                          ugrid%vertex_ids_natural(vertex_id), &
                           1, &
                           natural_id-1, &
                           natural_id-1.0d0, &

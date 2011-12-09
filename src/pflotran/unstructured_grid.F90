@@ -29,7 +29,6 @@ module Unstructured_Grid_module
     PetscInt, pointer :: cell_type(:)
     PetscInt, pointer :: cell_type_ghosted(:)
     PetscInt, pointer :: cell_vertices_0(:,:) ! vertices for each grid cell (zero-based)
-    PetscInt, pointer :: cell_vertices_natural_0(:,:) ! vertices for each grid cell (natural index 0-based)
     PetscInt, pointer :: face_to_cell_ghosted(:,:) !
 !geh: Should not need face_to_vertex_nindex() as one could use face_to_vertex() 
 !     and vertex_ids_nindex() to get the same result.
@@ -178,7 +177,6 @@ function UGridCreate()
   nullify(unstructured_grid%cell_type)
   nullify(unstructured_grid%cell_type_ghosted)
   nullify(unstructured_grid%cell_vertices_0)
-  nullify(unstructured_grid%cell_vertices_natural_0)
   nullify(unstructured_grid%face_to_cell_ghosted)
   nullify(unstructured_grid%face_to_vertex_natural)
   nullify(unstructured_grid%face_to_vertex)
@@ -1654,11 +1652,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(unstructured_grid%cell_vertices_0)
   allocate(unstructured_grid%cell_vertices_0(0:max_vertex_count, &
                                              num_cells_local_new))
-  allocate(unstructured_grid%cell_vertices_natural_0(1:max_vertex_count, &
-                                                  num_cells_local_new))
   ! initialize to -999 (for error checking later)
   unstructured_grid%cell_vertices_0 = -999
-  unstructured_grid%cell_vertices_natural_0 = -999
   ! initialized the 0 entry (which stores the # of vertices in each cell) 
   ! to zero
   unstructured_grid%cell_vertices_0(0,:) = 0
@@ -1677,9 +1672,6 @@ subroutine UGridDecompose(unstructured_grid,option)
       ! load the permuted value back into the petsc vector
       vec_ptr(ivertex + vertex_ids_offset + (local_id-1)*stride) = &
         int_array4(vertex_id)
-!TODO(geh): no need to store natural cell vertices for each cell -- remove
-      unstructured_grid%cell_vertices_natural_0(count,local_id) = &
-          int_array3(unstructured_grid%cell_vertices_0(count,local_id) + 1) -1
     enddo
   enddo
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
@@ -3615,9 +3607,6 @@ subroutine UGridDestroy(unstructured_grid)
   if (associated(unstructured_grid%cell_neighbors_local_ghosted)) &
     deallocate(unstructured_grid%cell_neighbors_local_ghosted)
   nullify(unstructured_grid%cell_neighbors_local_ghosted)
-  if (associated(unstructured_grid%cell_vertices_natural_0))&
-    deallocate(unstructured_grid%cell_vertices_natural_0)
-  nullify(unstructured_grid%cell_vertices_natural_0)
   if (associated(unstructured_grid%face_to_cell_ghosted))&
     deallocate(unstructured_grid%face_to_cell_ghosted)
   nullify(unstructured_grid%face_to_cell_ghosted)
