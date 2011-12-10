@@ -433,7 +433,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
         num_vertices = MAX_VERT_PER_CELL
-#ifdef MIXED_UMESH
 #ifdef GLENN
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'element type',card)
@@ -460,7 +459,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
           option%io_buffer = 'Only cells with 6 or 8 vertices supported'
           call printErrMsg(option)
         endif
-#endif
 #endif
         do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
@@ -1438,7 +1436,12 @@ subroutine UGridDecompose(unstructured_grid,option)
   !      of local and 100 is used to ensure that if this is not true, the array
   !       is still large enough
   max_ghost_cell_count = max(num_cells_local_new,100)
+#ifndef GLENN
   allocate(unstructured_grid%ghost_cell_ids_petsc(max_ghost_cell_count))
+#else
+  allocate(int_array_pointer(max_ghost_cell_count))
+  int_array_pointer = 0
+#endif
   ! loop over all duals and find the off-processor cells on the other
   ! end of a dual
   do local_id=1, num_cells_local_new
@@ -1446,6 +1449,7 @@ subroutine UGridDecompose(unstructured_grid,option)
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       found = PETSC_FALSE
       if (dual_id < 1) exit
+#ifndef GLENN
       !TODO(geh): add back in check based on global offset to determine whether
       !           a cell is ghosted or not, must faster (see changeset 
       !           b97f7c29bc38)
@@ -1477,14 +1481,29 @@ subroutine UGridDecompose(unstructured_grid,option)
           if (ghost_cell_count > max_ghost_cell_count) then
             call reallocateIntArray(unstructured_grid%ghost_cell_ids_petsc, &
                 max_ghost_cell_count)
-            endif
+          endif
             unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count) = dual_id
             ! flag the id as negative for ghost cell and set to current count
             vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
               -ghost_cell_count
-          end if 
+        endif 
+      endif
+#else
+      if (dual_id <= unstructured_grid%global_offset .or. &
+          dual_id > unstructured_grid%global_offset + num_cells_local_new) then
+        ghost_cell_count = ghost_cell_count + 1
+        ! reallocate the ghost cell array if necessary
+        if (ghost_cell_count > max_ghost_cell_count) then
+          call reallocateIntArray(int_array_pointer,max_ghost_cell_count)
         endif
-     enddo
+        int_array_pointer(ghost_cell_count) = dual_id
+        vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
+          ghost_cell_count
+        ! temporarily store the index of the int_array_pointer
+        ! flag negative
+      endif
+#endif
+    enddo
   enddo
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
 
@@ -1496,6 +1515,77 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
  
 
+#ifdef GLENN
+  if (ghost_cell_count > 0) then
+    ! sort ghost cell ids
+    allocate(int_array2(ghost_cell_count))
+    do ghosted_id = 1, ghost_cell_count
+      int_array2(ghosted_id) = ghosted_id
+    enddo
+
+    ! sort with permutation
+    ! int_array_pointer = ghost ids unsorted before and after
+    ! int_array2 = permutation
+    ! convert to 0-based
+    int_array_pointer = int_array_pointer-1
+    int_array2 = int_array2 - 1
+    call PetscSortIntWithPermutation(ghost_cell_count,int_array_pointer, &
+                                     int_array2,ierr)
+    ! convert to 1-based
+    int_array_pointer = int_array_pointer+1
+    int_array2 = int_array2 + 1
+
+    ! determine how many duplicates
+    allocate(int_array3(ghost_cell_count))
+    int_array3 = 0
+    temp_int = 1
+    int_array3(temp_int) = int_array_pointer(int_array2(1))
+    ! do not change ghosted_id = 1 to ghosted_id = 2 as the first value in
+    ! int_array2() will not be set correctly.
+    do ghosted_id = 1, ghost_cell_count
+      if (int_array_pointer(int_array3(temp_int)) < &
+            int_array_pointer(int_array2(ghosted_id))) then
+        temp_int = temp_int + 1
+        int_array3(temp_int) = int_array_pointer(int_array2(ghosted_id))
+      endif
+      int_array2(ghosted_id) = temp_int
+    enddo
+  
+    ghost_cell_count = temp_int
+    allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
+    unstructured_grid%ghost_cell_ids_petsc = 0
+
+    unstructured_grid%ghost_cell_ids_petsc(1:ghost_cell_count) = &
+      int_array3(1:ghost_cell_count)
+
+    ! remap of duals of ghost cells
+    call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
+    do local_id=1, num_cells_local_new
+      do idual = 1, max_dual
+        dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+        if (dual_id < 1) exit
+        ! check off processor
+        if (dual_id <= unstructured_grid%global_offset .or. &
+            dual_id > unstructured_grid%global_offset + num_cells_local_new) then
+          ! add num_cells_local_new to set the ghosted index 
+          vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
+            int_array2(dual_id) + num_cells_local_new
+        endif
+      enddo
+    enddo
+    call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+
+    deallocate(int_array_pointer)
+    nullify(int_array_pointer)
+    deallocate(int_array2)
+    deallocate(int_array3)
+  endif
+
+  unstructured_grid%num_ghost_cells = ghost_cell_count
+  unstructured_grid%ngmax = &
+    num_cells_local_new + ghost_cell_count
+
+#else
   unstructured_grid%num_ghost_cells = ghost_cell_count
   unstructured_grid%ngmax = &
     num_cells_local_new + ghost_cell_count
@@ -1548,6 +1638,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array2)
         
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+#endif
 
 #if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_local.out', &
