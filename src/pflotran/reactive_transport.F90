@@ -6449,7 +6449,7 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
   variable_string_adj = variable_string
   !geh: Shift to left.  Cannot perform on same string since len=*
   variable_string_adj = adjustl(variable_string_adj)
-
+  
   if (icolumn > 0) then
     icolumn = icolumn + 1
     write(column_string,'(i4,''-'')') icolumn
@@ -6460,6 +6460,8 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
 
   !geh: this is all to remove the lousy spaces
   len_cell_string = len_trim(cell_string) 
+
+#ifdef GLENN_NEW_IO
   if (len_cell_string > 0) then
     write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
           trim(variable_string_adj), trim(cell_string)
@@ -6467,6 +6469,10 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
     write(string,'('',"'',a,a,''"'')') trim(variable_string_adj), &
           trim(cell_string)
   endif
+#else
+  write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
+          trim(variable_string_adj), trim(cell_string)
+#endif
   header = trim(header) // trim(string)
 
 end subroutine RTAppendToHeader

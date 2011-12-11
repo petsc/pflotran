@@ -354,9 +354,9 @@ subroutine OutputTecplotBlock(realization)
       case(THC_MODE)
         header2 = THCGetTecplotHeader(realization,icolumn)
       case(RICHARDS_MODE)
-       header2 = RichardsGetTecplotHeader(realization,icolumn)
+        header2 = RichardsGetTecplotHeader(realization,icolumn)
       case(G_MODE)
-       header2 = GeneralGetTecplotHeader(realization,icolumn)
+        header2 = GeneralGetTecplotHeader(realization,icolumn)
     end select
     header = trim(header) // trim(header2)
 
@@ -8182,11 +8182,19 @@ subroutine OutputMassBalanceNew(realization)
                     option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
-      do iphase = 1, option%nphase
-        do ispec = 1, option%nflowspec
-          write(fid,110,advance="no") sum_kg_global(ispec,iphase)
-        enddo
-      enddo
+      select case(option%iflowmode)
+        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,G_MODE)
+          do iphase = 1, option%nphase
+            do ispec = 1, option%nflowspec
+              write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+            enddo
+          enddo
+        case(IMS_MODE)
+          do iphase = 1, option%nphase
+            ispec = iphase
+            write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+          enddo
+      end select
     endif
   endif
   

@@ -326,12 +326,13 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
     endif
     ! mass = volume * saturation * density
     do iphase = 1, option%nphase
-      do ispec = 1, option%nflowspec
+!     do ispec = 1, option%nflowspec
+      ispec = iphase
         mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
           immis_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
           immis_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
           porosity_loc_p(ghosted_id)*volume_p(local_id)
-      enddo
+!     enddo
     enddo
   enddo
 
