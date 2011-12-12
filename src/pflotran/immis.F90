@@ -386,7 +386,7 @@ subroutine ImmisZeroMassBalDeltaPatch(realization)
     enddo
   endif
   
-  if (patch%aux%Mphase%num_aux_ss > 0) then
+  if (patch%aux%Immis%num_aux_ss > 0) then
     do iconn = 1, patch%aux%Immis%num_aux_ss
       global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
     enddo
@@ -1782,13 +1782,18 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   immis_parameter => patch%aux%Immis%immis_parameter
   aux_vars => patch%aux%Immis%aux_vars
   aux_vars_bc => patch%aux%Immis%aux_vars_bc
+  aux_vars_ss => patch%aux%Immis%aux_vars_ss
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  
 
  ! call ImmisUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%ImmisAux%aux_vars_up_to_date = PETSC_FALSE 
  
   if (option%compute_mass_balance_new) then
-!   call ImmisZeroMassBalDeltaPatch(realization)
+   call ImmisZeroMassBalDeltaPatch(realization)
   endif
 
 ! now assign access pointer to local variables
@@ -1932,11 +1937,11 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
             patch%ss_fluid_fluxes(:,sum_connection), &
             enthalpy_flag, option)
 
-!     if (option%compute_mass_balance_new) then
-!       global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
-!         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-!         Res(:)/option%flow_dt
-!     endif
+     if (option%compute_mass_balance_new) then
+       global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
+         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+         Res(:)/option%flow_dt
+     endif
  
       r_p((local_id-1)*option%nflowdof + jh2o) = &
            r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
@@ -2024,7 +2029,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
          distance_gravity,option, &
          v_darcy,Res)
 
-#if 0
+!#if 0
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
         global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) = &
@@ -2033,7 +2038,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
-#endif
+!#endif
 
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
       iend = local_id*option%nflowdof
