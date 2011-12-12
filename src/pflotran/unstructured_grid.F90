@@ -1893,7 +1893,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%ngmax = &
     num_cells_local_new + unstructured_grid%num_ghost_cells
 
-#ifdef GLENN
   allocate(unstructured_grid%cell_type(unstructured_grid%nlmax))
   do local_id = 1, unstructured_grid%nlmax
     ! Determine number of faces and cell-type of the current cell
@@ -1911,7 +1910,6 @@ subroutine UGridDecompose(unstructured_grid,option)
         call printErrMsg(option)
     end select
   enddo
-#endif
   
   unstructured_grid%nlmax = num_cells_local_new  
   unstructured_grid%global_offset = global_offset_new  
@@ -3063,17 +3061,9 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-#ifdef GLENN
+
     ! TODO(geh): check if nL2G is working correctly
     centroid = UCellComputeCentroid(unstructured_grid%cell_type(local_id),vertex_8)
-#else
-    select case (unstructured_grid%cell_vertices_0(0,local_id))
-      case(8)
-        centroid = UCellComputeCentroid(HEX_TYPE,vertex_8)
-      case(6)
-        centroid = UCellComputeCentroid(WEDGE_TYPE,vertex_8)
-    end select
-#endif    
     grid_x(local_id) = centroid(1)
     grid_y(local_id) = centroid(2)
     grid_z(local_id) = centroid(3)
@@ -3199,16 +3189,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,nL2G,volume)
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-#ifdef GLENN
     volume_p(local_id) = UCellComputeVolume(unstructured_grid%cell_type_ghosted(nL2G(local_id)),vertex_8)
-#else
-      select case (unstructured_grid%cell_vertices_0(0,ghosted_id))
-        case(8)
-          volume_p(local_id) = UCellComputeVolume(HEX_TYPE,vertex_8)
-        case(6)
-          volume_p(local_id) = UCellComputeVolume(WEDGE_TYPE,vertex_8)
-      end select
-#endif      
   enddo
       
   call VecRestoreArrayF90(volume,volume_p,ierr)
