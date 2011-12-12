@@ -1543,7 +1543,8 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! do not change ghosted_id = 1 to ghosted_id = 2 as the first value in
     ! int_array2() will not be set correctly.
     do ghosted_id = 1, ghost_cell_count
-      if (int_array_pointer(int_array3(temp_int)) < &
+!print *, option%myrank, ' : ', ghosted_id, temp_int, int_array3(temp_int), int_array2(ghosted_id), int_array_pointer(int_array3(temp_int)), int_array_pointer(int_array2(ghosted_id))
+      if (int_array3(temp_int) < &
             int_array_pointer(int_array2(ghosted_id))) then
         temp_int = temp_int + 1
         int_array3(temp_int) = int_array_pointer(int_array2(ghosted_id))
