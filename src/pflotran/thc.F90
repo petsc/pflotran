@@ -902,7 +902,6 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
- 
 #endif
 
   if (option%numerical_derivatives) then
@@ -943,6 +942,9 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
           print *, 'dkvr_dt:', thc_aux_var%dkvr_dt, (thc_aux_var_pert%kvr-thc_aux_var%kvr)/pert
           print *, 'dh_dt:', thc_aux_var%dh_dt, (thc_aux_var_pert%h-thc_aux_var%h)/pert
           print *, 'du_dt:', thc_aux_var%du_dt, (thc_aux_var_pert%u-thc_aux_var%u)/pert
+!          print *, 'ddeni_dt:', thc_aux_var%dden_ice_dt, (thc_aux_var_pert%den_ice - thc_aux_var%den_ice)/pert
+!          print *, 'dsati_dt:', thc_aux_var%dsat_ice_dt, (thc_aux_var_pert%sat_ice - thc_aux_var%sat_ice)/pert
+!          print *, 'dsatg_dt:', thc_aux_var%dsat_gas_dt, (thc_aux_var_pert%sat_gas - thc_aux_var%sat_gas)/pert
       end select     
 #endif     
       call THCAccumulation(thc_aux_var_pert,global_aux_var_pert, &
@@ -1725,14 +1727,12 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
 
 #ifdef ICE
   ! Added by Satish Karra, 10/24/11
-  ! Now looking at above freezing only
   satg_up = aux_var_up%sat_gas
   satg_dn = aux_var_dn%sat_gas
  if ((satg_up > eps) .and. (satg_dn > eps)) then
   p_g = option%reference_pressure ! set to reference pressure
   deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
   deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
-  ! Assuming above freezing, sg = 1-sl, pg = deng*R*T
     
   Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
   p_ref = 1.01325d5 ! in Pa
@@ -2378,7 +2378,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   ! Added by Satish Karra,
       satg_up = 1 - global_aux_var_up%sat(1)
       satg_dn = 1 - global_aux_var_dn%sat(1)
-!pcl  if ((satg_up > eps) .and. (satg_dn > eps)) then
       p_g = option%reference_pressure ! set to reference pressure
       deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
       deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
@@ -2407,7 +2406,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
       fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
                  dd_up*area
-!pcl  endif
 #endif 
 
 #ifdef ICE
@@ -3746,13 +3744,13 @@ function THCGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
 
-!  if (icolumn > -1) then
-!    icolumn = icolumn + 1
-!    write(string2,'('',"'',i2,''-Si"'')') icolumn
-!  else
-!    write(string2,'('',"Si"'')')
-!  endif
-!  string = trim(string) // trim(string2)
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Si"'')') icolumn
+  else
+    write(string2,'('',"Si"'')')
+  endif
+  string = trim(string) // trim(string2)
 #endif
 
   if (icolumn > -1) then

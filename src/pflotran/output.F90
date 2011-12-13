@@ -494,7 +494,17 @@ subroutine OutputTecplotBlock(realization)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
-    
+
+#ifdef ICE    
+      ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+#endif
+
       ! liquid density
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1049,6 +1059,16 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
+#ifdef ICE
+      ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+#endif
+
       ! liquid density
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -2068,7 +2088,17 @@ subroutine OutputTecplotPoint(realization)
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
-      
+
+#ifdef ICE
+        ! ice saturation
+        select case(option%iflowmode)
+          case(THC_MODE)
+            value = RealizGetDatasetValueAtCell(realization,ICE_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+#endif      
+
         ! liquid density
         select case(option%iflowmode)
           case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
@@ -3602,6 +3632,15 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
 
+#ifdef ICE
+ ! ice saturation
+  select case(option%iflowmode)
+    case(THC_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,ICE_SATURATION,ZERO_INTEGER,ghosted_id)
+  end select
+#endif
+
   ! liquid density
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -3984,6 +4023,20 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                      region%coordinates(ONE_INTEGER)%z, &
                                      count,ghosted_ids)
   end select
+
+#ifdef ICE
+! ice saturation
+  select case(option%iflowmode)
+    case(THC_MODE)
+      ! ice saturation
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,ICE_SATURATION,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+#endif
 
   ! liquid density
   select case(option%iflowmode)
@@ -4888,6 +4941,17 @@ subroutine OutputVTK(realization)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
       end select
+
+#ifdef ICE
+      ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          word = 'Ice_Saturation'
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+#endif
     
       ! liquid energy
       select case(option%iflowmode)
@@ -6193,6 +6257,24 @@ end subroutine SAMRWritePlotData
              current_component=current_component+1
           endif
       end select
+
+#ifdef ICE
+      ! ice saturation
+      select case(option%iflowmode)
+        case (THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          string = "Ice Saturation"
+          if (.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if (first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+#endif
       
       ! liquid density
       select case(option%iflowmode)
