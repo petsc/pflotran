@@ -158,31 +158,34 @@ subroutine ImmisSetupPatch(realization)
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
 
   PetscInt :: ghosted_id, iconn, sum_connection, ipara
-  type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(Immis_auxvar_type), pointer :: aux_vars(:)
+  type(Immis_auxvar_type), pointer :: aux_vars_bc(:)  
+  type(Immis_auxvar_type), pointer :: aux_vars_ss(:)  
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-  print *,' ims setup get patch'
+
   patch%aux%Immis => ImmisAuxCreate()
   
 !  option%io_buffer = 'Before Immis can be run, the thc_parameter object ' // &
 !                     'must be initialized with the proper variables ' // &
 !                     'ImmisAuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
-  print *,' ims setup get Aux', option%nphase, size(realization%saturation_function_array)     
+! print *,' ims setup get Aux', option%nphase, size(realization%saturation_function_array)     
 ! immis_parameters create *********************************************
 ! Sir
   allocate(patch%aux%Immis%Immis_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
-   print *,' ims setup get patch: sir, allocated'                                
+                                
   do ipara = 1, size(realization%saturation_function_array)
     patch%aux%Immis%immis_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
       realization%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
-  print *,' ims setup get patch: sir'
+
 ! dencpr  
   allocate(patch%aux%Immis%Immis_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
@@ -200,19 +203,19 @@ subroutine ImmisSetupPatch(realization)
 
 ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
-  print *,' ims setup get Aux alloc', grid%ngmax
+  ! print *,' ims setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
     call ImmisAuxVarInit(aux_vars(ghosted_id),option)
   enddo
   patch%aux%Immis%aux_vars => aux_vars
   patch%aux%Immis%num_aux = grid%ngmax
-  print *,' ims setup get Aux init'
+  ! print *,' ims setup get Aux init'
 
   allocate(patch%aux%Immis%delx(option%nflowdof, grid%ngmax))
   allocate(patch%aux%Immis%res_old_AR(grid%nlmax,option%nflowdof))
   allocate(patch%aux%Immis%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
-  print *,' ims setup allocate app array'
+  ! print *,' ims setup allocate app array'
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -224,15 +227,32 @@ subroutine ImmisSetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
   allocate(aux_vars_bc(sum_connection))
-  print *,' ims setup get AuxBc alloc', sum_connection
+  ! print *,' ims setup get AuxBc alloc', sum_connection
   do iconn = 1, sum_connection
     call ImmisAuxVarInit(aux_vars_bc(iconn),option)
   enddo
   patch%aux%Immis%aux_vars_bc => aux_vars_bc
   patch%aux%Immis%num_aux_bc = sum_connection
+  
+ ! Allocate source /sink  
+  source_sink => patch%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
+    sum_connection = sum_connection + &
+                     source_sink%connection_set%num_connections
+    source_sink => source_sink%next
+  enddo
+  allocate(aux_vars_ss(sum_connection))
+  do iconn = 1, sum_connection
+    call ImmisAuxVarInit(aux_vars_ss(iconn),option)
+  enddo
+  patch%aux%Immis%aux_vars_ss => aux_vars_ss
+  patch%aux%Immis%num_aux_ss = sum_connection
+  
   option%numerical_derivatives = PETSC_TRUE
 
-  print *,' ims setup get AuxBc point'
+  ! print *,' ims setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call ImmisCreateZeroArray(patch,option)
@@ -253,7 +273,8 @@ subroutine ImmisComputeMassBalance(realization,mass_balance)
   use Patch_module
 
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec,1)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -293,7 +314,8 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
   implicit none
   
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec,1)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -328,7 +350,7 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
     do iphase = 1, option%nphase
 !     do ispec = 1, option%nflowspec
       ispec = iphase
-        mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
+      mass_balance(ispec,1) = mass_balance(ispec,1) + &
           immis_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
           immis_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
           porosity_loc_p(ghosted_id)*volume_p(local_id)
@@ -1087,33 +1109,32 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
   PetscInt :: ispec, np, iireac
   PetscReal :: porXvol, mol(option%nflowspec), eng
   
- ! if (present(ireac)) iireac=ireac
+! if (present(ireac)) iireac=ireac
 
   porXvol = por*vol
   mol=0.d0; eng=0.D0
   do np = 1, option%nphase
-        mol(np) = mol(np) + aux_var%sat(np) * &
-             aux_var%den(np)
-     eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
+    mol(np) = mol(np) + aux_var%sat(np) * aux_var%den(np)
+    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
-  eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
+  eng = eng * porXvol + (1.d0 - por) * vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
 ! Note if iireac >0, then it is the node global index
- ! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
+! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
 !H2O
- !    mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
- !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
- ! endif
+!   mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
+!   mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
+! endif
   
-   !if(option%use_isothermal)then
-   !   Res(1:option%nflowdof)=mol(:)
-   !else
-      Res(1:option%nphase)=mol(:)
-      Res(option%nflowdof)=eng
-  ! endif
+! if (option%use_isothermal) then
+!   Res(1:option%nflowdof) = mol(:)
+! else
+    Res(1:option%nphase) = mol(:)
+    Res(option%nflowdof) = eng
+! endif
 end subroutine ImmisAccumulation
 
 ! ************************************************************************** !
@@ -1720,7 +1741,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   type(realization_type) :: realization
 
   PetscErrorCode :: ierr
-  PetscInt :: i, jn
+  PetscInt :: i, iphase, jn
   PetscInt :: ip1, ip2
   PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
@@ -1754,6 +1775,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(immis_type), pointer :: immis
   type(Immis_parameter_type), pointer :: immis_parameter
   
   type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:), aux_vars_ss(:)
@@ -1779,6 +1801,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
+  immis => patch%aux%Immis
   immis_parameter => patch%aux%Immis%immis_parameter
   aux_vars => patch%aux%Immis%aux_vars
   aux_vars_bc => patch%aux%Immis%aux_vars_bc
@@ -1880,9 +1903,11 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     patch%aux%Immis%res_old_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
+
 #if 1
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
+  sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
     !print *, 'RES s/s begin'
@@ -1903,10 +1928,10 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !     hsrc1=0D0
 !     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
 !     csrc1 = csrc1 / FMWCO2
-!     msrc(1)=qsrc1; msrc(2) =csrc1
-!     msrc(:)= psrc(:)
-!     msrc(1) =  msrc(1) / FMWH2O
-!     msrc(2) =  msrc(2) / FMWCO2
+!     msrc(1) = qsrc1; msrc(2) =csrc1
+!     msrc(:) = psrc(:)
+!     msrc(1) = msrc(1) / FMWH2O
+!     msrc(2) = msrc(2) / FMWCO2
       
 !clu add
     select case(source_sink%flow_condition%itype(1))
@@ -1926,7 +1951,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !clu end change
 
     cur_connection_set => source_sink%connection_set
-    sum_connection = 0
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -1937,11 +1961,11 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
             patch%ss_fluid_fluxes(:,sum_connection), &
             enthalpy_flag, option)
 
-     if (option%compute_mass_balance_new) then
-       global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
-         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-         Res(:)/option%flow_dt
-     endif
+      if (option%compute_mass_balance_new) then
+        global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+            Res(:)/option%flow_dt
+      endif
  
       r_p((local_id-1)*option%nflowdof + jh2o) = &
            r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
@@ -1962,6 +1986,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     source_sink => source_sink%next
   enddo
 #endif
+
 #if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
@@ -2029,16 +2054,14 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
          distance_gravity,option, &
          v_darcy,Res)
 
-!#if 0
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) - Res(1)
-        ! contribution to internal 
-!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
+        do iphase = 1, option%nphase
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(iphase,iphase) = &
+            global_aux_vars_bc(sum_connection)%mass_balance_delta(iphase,iphase) - &
+            Res(iphase)/option%flow_dt
+        enddo
       endif
-!#endif
 
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
       iend = local_id*option%nflowdof
@@ -2050,6 +2073,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif
+
 #if 1
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -2847,10 +2871,10 @@ subroutine ImmisCreateZeroArray(patch,option)
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
   endif
-  print *,'zero rows=', n_zero_rows
+! print *,'zero rows=', n_zero_rows
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
-  print *,'zero rows allocated' 
+! print *,'zero rows allocated' 
   zero_rows_local = 0
   zero_rows_local_ghosted = 0
   ncount = 0
@@ -2882,13 +2906,13 @@ subroutine ImmisCreateZeroArray(patch,option)
     enddo
 #endif
   endif
-print *,'zero rows point 1'
+!print *,'zero rows point 1'
   patch%aux%Immis%n_zero_rows = n_zero_rows
-print *,'zero rows point 2'
+!print *,'zero rows point 2'
   patch%aux%Immis%zero_rows_local => zero_rows_local
-print *,'zero rows point 3'  
+!print *,'zero rows point 3'  
   patch%aux%Immis%zero_rows_local_ghosted => zero_rows_local_ghosted
-print *,'zero rows point 4'
+!print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Immis%inactive_cells_exist = PETSC_TRUE
@@ -2897,7 +2921,7 @@ print *,'zero rows point 4'
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
- print *,'zero rows', flag
+! print *,'zero rows', flag
 end subroutine ImmisCreateZeroArray
 
 ! ************************************************************************** !

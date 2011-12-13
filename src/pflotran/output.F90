@@ -8027,6 +8027,11 @@ subroutine OutputMassBalanceNew(realization)
                                     '[kmol]','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
                                     '[kmol]','',icol)
+        case(IMS_MODE)
+          call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
+                                    '[kmol]','',icol)
+          call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
+                                    '[kmol]','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
 
@@ -8076,17 +8081,7 @@ subroutine OutputMassBalanceNew(realization)
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' Air Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
-          case(MPH_MODE)
-            string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kmol]','',icol)
-            string = trim(coupler%name) // ' CO2 Mass'
-            call OutputAppendToHeader(header,string,'[kmol]','',icol)
-            units = '[kmol/' // trim(output_option%tunit) // ']'
-            string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,units,'',icol)
-            string = trim(coupler%name) // ' CO2 Mass'
-            call OutputAppendToHeader(header,string,units,'',icol)
-          case(IMS_MODE)
+          case(MPH_MODE,IMS_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'[kmol]','',icol)
             string = trim(coupler%name) // ' CO2 Mass'
@@ -8160,6 +8155,8 @@ subroutine OutputMassBalanceNew(realization)
     write(fid,100,advance="no") option%time/output_option%tconv
   endif
 
+! print out global mass balance
+
   if (option%nflowdof > 0) then
     if (option%myrank == option%io_rank) &
       write(fid,100,advance="no") option%flow_dt/output_option%tconv
@@ -8170,7 +8167,7 @@ subroutine OutputMassBalanceNew(realization)
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(IMS_MODE)
-        call ImmisComputeMassBalance(realization,sum_kg(:,:))
+        call ImmisComputeMassBalance(realization,sum_kg(:,1))
       case(G_MODE)
         option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
         call printErrMsg(option)
@@ -8192,7 +8189,7 @@ subroutine OutputMassBalanceNew(realization)
         case(IMS_MODE)
           do iphase = 1, option%nphase
             ispec = iphase
-            write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+            write(fid,110,advance="no") sum_kg_global(ispec,1)
           enddo
       end select
     endif
@@ -8329,7 +8326,6 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-!#if 0
         case(MPH_MODE)
         ! print out cumulative H2O & CO2 fluxes
           sum_kg = 0.d0
@@ -8370,7 +8366,47 @@ subroutine OutputMassBalanceNew(realization)
               write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
             endif
           enddo
-!#endif
+
+        case(IMS_MODE)
+        ! print out cumulative H2O & CO2 fluxes
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+            enddo
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)
+            endif
+          enddo
+          
+        ! print out H2O & CO2 fluxes
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+            enddo
+
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+!           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
+
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
+            endif
+          enddo
         case(G_MODE)
       end select
     endif
