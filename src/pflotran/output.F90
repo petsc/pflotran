@@ -8091,6 +8091,9 @@ subroutine OutputMassBalanceNew(realization)
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass','[kg]','',icol)
+        case(THC_MODE)
+          call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
+                                    '[kg]','',icol)
         case(G_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     '[mol]','',icol)
@@ -8153,6 +8156,12 @@ subroutine OutputMassBalanceNew(realization)
             units = '[kg/' // trim(output_option%tunit) // ']'
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
+          case(THC_MODE)
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            units = '[kg/' // trim(output_option%tunit) // ']'
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,units,'',icol)
           case(G_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'[mol]','',icol)
@@ -8209,6 +8218,9 @@ subroutine OutputMassBalanceNew(realization)
           case(RICHARDS_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               trim(adjustl(word)) // 'm Water Mass [kg]"'
+          case(THC_MODE)
+            write(fid,'(a)',advance="no") ',"' // &
+              trim(adjustl(word)) // 'm Water Mass [kg]"'
         end select
         
         if (option%ntrandof > 0) then
@@ -8246,6 +8258,8 @@ subroutine OutputMassBalanceNew(realization)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsComputeMassBalance(realization,sum_kg(1,:))
+      case(THC_MODE)
+        call THCComputeMassBalance(realization,sum_kg(1,:))
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(IMS_MODE)
@@ -8262,7 +8276,7 @@ subroutine OutputMassBalanceNew(realization)
                         
     if (option%myrank == option%io_rank) then
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,G_MODE)
+        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,G_MODE,THC_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
@@ -8374,6 +8388,41 @@ subroutine OutputMassBalanceNew(realization)
 
       select case(option%iflowmode)
         case(RICHARDS_MODE)
+          ! print out cumulative H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+          enddo
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global
+          endif
+
+          ! print out H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+          enddo
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+          sum_kg = sum_kg*FMWH2O
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
+          endif
+
+       case(THC_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections

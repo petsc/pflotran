@@ -318,7 +318,103 @@ subroutine THCComputeMassBalancePatch(realization,mass_balance)
   
 end subroutine THCComputeMassBalancePatch
 
+! ************************************************************************** !
+!
+! THCZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Satish Karra
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine THCZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
 
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%THC%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%THC%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%THC%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+ 
+end subroutine THCZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+!
+! THCUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine THCUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%THC%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance = &
+      patch%aux%Global%aux_vars(iconn)%mass_balance + &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O* &
+      option%flow_dt
+  enddo
+#endif
+
+  if (patch%aux%THC%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%THC%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
+
+
+end subroutine THCUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
@@ -530,16 +626,60 @@ end subroutine THCInitializeTimestep
 subroutine THCUpdateSolution(realization)
 
   use Realization_module
+  use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
+  field => realization%field
+    
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call THCUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
 
 end subroutine THCUpdateSolution
+
+! ************************************************************************** !
+!
+! THCUpdateSolutionPatch: Updates data in module after a successful time 
+!                             step
+! author: Satish Karra
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine THCUpdateSolutionPatch(realization)
+
+  use Realization_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+
+  if (realization%option%compute_mass_balance_new) then
+    call THCUpdateMassBalancePatch(realization)
+  endif
+
+end subroutine THCUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
@@ -2689,6 +2829,10 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
   patch%aux%THC%aux_vars_up_to_date = PETSC_FALSE
+  if (option%compute_mass_balance_new) then
+    call THCZeroMassBalDeltaPatch(realization)
+  endif
+
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
