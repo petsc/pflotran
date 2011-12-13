@@ -1495,7 +1495,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
 
   iphase = 1
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE)
@@ -1530,6 +1530,12 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
               vec_ptr(local_id) = 0.d0
 #endif 
             enddo
+#ifdef ICE
+          case(ICE_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_ice
+            enddo
+#endif
           case(LIQUID_VISCOSITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%vis
@@ -1555,6 +1561,8 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
             call printErrMsg(option,'TEMPERATURE not supported by Richards')
           case(GAS_SATURATION)
             call printErrMsg(option,'GAS_SATURATION not supported by Richards')
+          case(ICE_SATURATION)
+            call printErrMsg(option,'ICE_SATURATION not supported by Richards')
           case(GAS_DENSITY)
             call printErrMsg(option,'GAS_DENSITY not supported by Richards')
           case(LIQUID_MOLE_FRACTION)
@@ -2119,7 +2127,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
              
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
          LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE)
@@ -2145,6 +2153,10 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%THC%aux_vars(ghosted_id)%sat_gas
 #else
             value = 0.d0
+#endif
+#ifdef ICE
+          case(ICE_SATURATION)
+            value = patch%aux%THC%aux_vars(ghosted_id)%sat_ice
 #endif
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
@@ -2523,6 +2535,18 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
 #else
+#endif
+#ifdef ICE
+          case(ICE_SATURATION)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_ice = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%sat_ice = vec_ptr(ghosted_id)
+              enddo
+            endif
 #endif
           case(LIQUID_VISCOSITY)
           case(GAS_VISCOSITY)

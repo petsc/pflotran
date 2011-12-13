@@ -494,7 +494,17 @@ subroutine OutputTecplotBlock(realization)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
-    
+
+#ifdef ICE    
+      ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+#endif
+
       ! liquid density
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -1049,6 +1059,16 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
+#ifdef ICE
+      ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+#endif
+
       ! liquid density
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -2069,7 +2089,17 @@ subroutine OutputTecplotPoint(realization)
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
-      
+
+#ifdef ICE
+        ! ice saturation
+        select case(option%iflowmode)
+          case(THC_MODE)
+            value = RealizGetDatasetValueAtCell(realization,ICE_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+#endif      
+
         ! liquid density
         select case(option%iflowmode)
           case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
@@ -3603,6 +3633,15 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
 
+#ifdef ICE
+ ! ice saturation
+  select case(option%iflowmode)
+    case(THC_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,ICE_SATURATION,ZERO_INTEGER,ghosted_id)
+  end select
+#endif
+
   ! liquid density
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -3985,6 +4024,20 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                      region%coordinates(ONE_INTEGER)%z, &
                                      count,ghosted_ids)
   end select
+
+#ifdef ICE
+! ice saturation
+  select case(option%iflowmode)
+    case(THC_MODE)
+      ! ice saturation
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,ICE_SATURATION,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+#endif
 
   ! liquid density
   select case(option%iflowmode)
@@ -4889,6 +4942,17 @@ subroutine OutputVTK(realization)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
       end select
+
+#ifdef ICE
+      ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          word = 'Ice_Saturation'
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+#endif
     
       ! liquid energy
       select case(option%iflowmode)
@@ -6194,6 +6258,24 @@ end subroutine SAMRWritePlotData
              current_component=current_component+1
           endif
       end select
+
+#ifdef ICE
+      ! ice saturation
+      select case(option%iflowmode)
+        case (THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          string = "Ice Saturation"
+          if (.not.(option%use_samr)) then
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if (first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+#endif
       
       ! liquid density
       select case(option%iflowmode)
@@ -8010,6 +8092,9 @@ subroutine OutputMassBalanceNew(realization)
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass','[kg]','',icol)
+        case(THC_MODE)
+          call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
+                                    '[kg]','',icol)
         case(G_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     '[mol]','',icol)
@@ -8025,6 +8110,11 @@ subroutine OutputMassBalanceNew(realization)
           call OutputAppendToHeader(header,'Global CO2 Mass in Water Phase', &
                                     '[kmol]','',icol)
           call OutputAppendToHeader(header,'Global Water Mass in Gas Phase', &
+                                    '[kmol]','',icol)
+          call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
+                                    '[kmol]','',icol)
+        case(IMS_MODE)
+          call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
                                     '[kmol]','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
                                     '[kmol]','',icol)
@@ -8067,6 +8157,12 @@ subroutine OutputMassBalanceNew(realization)
             units = '[kg/' // trim(output_option%tunit) // ']'
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
+          case(THC_MODE)
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            units = '[kg/' // trim(output_option%tunit) // ']'
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,units,'',icol)
           case(G_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'[mol]','',icol)
@@ -8077,17 +8173,7 @@ subroutine OutputMassBalanceNew(realization)
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' Air Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
-          case(MPH_MODE)
-            string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kmol]','',icol)
-            string = trim(coupler%name) // ' CO2 Mass'
-            call OutputAppendToHeader(header,string,'[kmol]','',icol)
-            units = '[kmol/' // trim(output_option%tunit) // ']'
-            string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,units,'',icol)
-            string = trim(coupler%name) // ' CO2 Mass'
-            call OutputAppendToHeader(header,string,units,'',icol)
-          case(IMS_MODE)
+          case(MPH_MODE,IMS_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'[kmol]','',icol)
             string = trim(coupler%name) // ' CO2 Mass'
@@ -8133,6 +8219,9 @@ subroutine OutputMassBalanceNew(realization)
           case(RICHARDS_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               trim(adjustl(word)) // 'm Water Mass [kg]"'
+          case(THC_MODE)
+            write(fid,'(a)',advance="no") ',"' // &
+              trim(adjustl(word)) // 'm Water Mass [kg]"'
         end select
         
         if (option%ntrandof > 0) then
@@ -8161,6 +8250,8 @@ subroutine OutputMassBalanceNew(realization)
     write(fid,100,advance="no") option%time/output_option%tconv
   endif
 
+! print out global mass balance
+
   if (option%nflowdof > 0) then
     if (option%myrank == option%io_rank) &
       write(fid,100,advance="no") option%flow_dt/output_option%tconv
@@ -8168,10 +8259,12 @@ subroutine OutputMassBalanceNew(realization)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsComputeMassBalance(realization,sum_kg(1,:))
+      case(THC_MODE)
+        call THCComputeMassBalance(realization,sum_kg(1,:))
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(IMS_MODE)
-        call ImmisComputeMassBalance(realization,sum_kg(:,:))
+        call ImmisComputeMassBalance(realization,sum_kg(:,1))
       case(G_MODE)
         option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
         call printErrMsg(option)
@@ -8184,7 +8277,7 @@ subroutine OutputMassBalanceNew(realization)
                         
     if (option%myrank == option%io_rank) then
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,G_MODE)
+        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,G_MODE,THC_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
@@ -8193,7 +8286,7 @@ subroutine OutputMassBalanceNew(realization)
         case(IMS_MODE)
           do iphase = 1, option%nphase
             ispec = iphase
-            write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+            write(fid,110,advance="no") sum_kg_global(ispec,1)
           enddo
       end select
     endif
@@ -8330,7 +8423,41 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-!#if 0
+       case(THC_MODE)
+          ! print out cumulative H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+          enddo
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global
+          endif
+
+          ! print out H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+          enddo
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+          sum_kg = sum_kg*FMWH2O
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
+          endif
+
         case(MPH_MODE)
         ! print out cumulative H2O & CO2 fluxes
           sum_kg = 0.d0
@@ -8371,7 +8498,47 @@ subroutine OutputMassBalanceNew(realization)
               write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
             endif
           enddo
-!#endif
+
+        case(IMS_MODE)
+        ! print out cumulative H2O & CO2 fluxes
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+            enddo
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)
+            endif
+          enddo
+          
+        ! print out H2O & CO2 fluxes
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+            enddo
+
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+!           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
+
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
+            endif
+          enddo
         case(G_MODE)
       end select
     endif

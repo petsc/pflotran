@@ -318,7 +318,103 @@ subroutine THCComputeMassBalancePatch(realization,mass_balance)
   
 end subroutine THCComputeMassBalancePatch
 
+! ************************************************************************** !
+!
+! THCZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Satish Karra
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine THCZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
 
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%THC%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%THC%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%THC%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+ 
+end subroutine THCZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+!
+! THCUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine THCUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%THC%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance = &
+      patch%aux%Global%aux_vars(iconn)%mass_balance + &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O* &
+      option%flow_dt
+  enddo
+#endif
+
+  if (patch%aux%THC%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%THC%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
+
+
+end subroutine THCUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
@@ -530,16 +626,60 @@ end subroutine THCInitializeTimestep
 subroutine THCUpdateSolution(realization)
 
   use Realization_module
+  use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
+  field => realization%field
+    
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call THCUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
 
 end subroutine THCUpdateSolution
+
+! ************************************************************************** !
+!
+! THCUpdateSolutionPatch: Updates data in module after a successful time 
+!                             step
+! author: Satish Karra
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine THCUpdateSolutionPatch(realization)
+
+  use Realization_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+
+  if (realization%option%compute_mass_balance_new) then
+    call THCUpdateMassBalancePatch(realization)
+  endif
+
+end subroutine THCUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
@@ -902,7 +1042,6 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
- 
 #endif
 
   if (option%numerical_derivatives) then
@@ -943,6 +1082,9 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
           print *, 'dkvr_dt:', thc_aux_var%dkvr_dt, (thc_aux_var_pert%kvr-thc_aux_var%kvr)/pert
           print *, 'dh_dt:', thc_aux_var%dh_dt, (thc_aux_var_pert%h-thc_aux_var%h)/pert
           print *, 'du_dt:', thc_aux_var%du_dt, (thc_aux_var_pert%u-thc_aux_var%u)/pert
+!          print *, 'ddeni_dt:', thc_aux_var%dden_ice_dt, (thc_aux_var_pert%den_ice - thc_aux_var%den_ice)/pert
+!          print *, 'dsati_dt:', thc_aux_var%dsat_ice_dt, (thc_aux_var_pert%sat_ice - thc_aux_var%sat_ice)/pert
+!          print *, 'dsatg_dt:', thc_aux_var%dsat_gas_dt, (thc_aux_var_pert%sat_gas - thc_aux_var%sat_gas)/pert
       end select     
 #endif     
       call THCAccumulation(thc_aux_var_pert,global_aux_var_pert, &
@@ -1725,14 +1867,12 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
 
 #ifdef ICE
   ! Added by Satish Karra, 10/24/11
-  ! Now looking at above freezing only
   satg_up = aux_var_up%sat_gas
   satg_dn = aux_var_dn%sat_gas
  if ((satg_up > eps) .and. (satg_dn > eps)) then
   p_g = option%reference_pressure ! set to reference pressure
   deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
   deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
-  ! Assuming above freezing, sg = 1-sl, pg = deng*R*T
     
   Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
   p_ref = 1.01325d5 ! in Pa
@@ -2378,7 +2518,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   ! Added by Satish Karra,
       satg_up = 1 - global_aux_var_up%sat(1)
       satg_dn = 1 - global_aux_var_dn%sat(1)
-!pcl  if ((satg_up > eps) .and. (satg_dn > eps)) then
       p_g = option%reference_pressure ! set to reference pressure
       deng_up = p_g/(IDEAL_GAS_CONST*(global_aux_var_up%temp(1) + 273.15d0))*1.d-3
       deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
@@ -2407,7 +2546,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
       fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
                  dd_up*area
-!pcl  endif
 #endif 
 
 #ifdef ICE
@@ -2691,6 +2829,10 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
   patch%aux%THC%aux_vars_up_to_date = PETSC_FALSE
+  if (option%compute_mass_balance_new) then
+    call THCZeroMassBalDeltaPatch(realization)
+  endif
+
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -3746,13 +3888,13 @@ function THCGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
 
-!  if (icolumn > -1) then
-!    icolumn = icolumn + 1
-!    write(string2,'('',"'',i2,''-Si"'')') icolumn
-!  else
-!    write(string2,'('',"Si"'')')
-!  endif
-!  string = trim(string) // trim(string2)
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-Si"'')') icolumn
+  else
+    write(string2,'('',"Si"'')')
+  endif
+  string = trim(string) // trim(string2)
 #endif
 
   if (icolumn > -1) then

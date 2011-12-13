@@ -1282,15 +1282,14 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
   mol=0.d0; eng=0.D0
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
-      mol(ispec) = mol(ispec) + aux_var%sat(np) * &
-        aux_var%den(np) * &
+      mol(ispec) = mol(ispec) + aux_var%sat(np) * aux_var%den(np) * &
         aux_var%xmol(ispec + (np-1)*option%nflowspec)
     enddo
     eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
-  eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
+  eng = eng * porXvol + (1.d0 - por) * vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
 ! Note if iireac >0, then it is the node global index
@@ -1298,18 +1297,20 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
   if(option%ntrandof > 0)then 
     if (iireac>0) then
      !H2O
-      mol(1) = mol(1) + vol * global_aux_var%reaction_rate_store(1)* option%flow_dt *1D-3 
+      mol(1) = mol(1) + vol * global_aux_var%reaction_rate_store(1) * &
+               option%flow_dt*1D-3 
       !CO2     
-      mol(2) = mol(2) + vol * global_aux_var%reaction_rate_store(2)* option%flow_dt *1D-3
+      mol(2) = mol(2) + vol * global_aux_var%reaction_rate_store(2) * &
+               option%flow_dt*1D-3
     endif
   endif
   
-   !if(option%use_isothermal)then
-   !   Res(1:option%nflowdof)=mol(:)
-   !else
-  Res(1:option%nflowdof-1) = mol(:)
-  Res(option%nflowdof) = eng
-  ! endif
+! if (option%use_isothermal)then
+!   Res(1:option%nflowdof) = mol(:)
+! else
+    Res(1:option%nflowdof-1) = mol(:)
+    Res(option%nflowdof) = eng
+! endif
 end subroutine MphaseAccumulation
 
 ! ************************************************************************** !
@@ -2549,19 +2550,19 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 !geh remove
 !geh    msrc(:)= psrc(:)
 !clu add
- select case(source_sink%flow_condition%itype(1))
-   case(MASS_RATE_SS)
-     msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
-     nsrcpara= 2
-   case(WELL_SS)
-     msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
-     nsrcpara = 7 + option%nflowspec 
+  select case(source_sink%flow_condition%itype(1))
+    case(MASS_RATE_SS)
+      msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
+      nsrcpara= 2
+    case(WELL_SS)
+      msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
+      nsrcpara = 7 + option%nflowspec 
      
 !    print *,'src/sink: ',nsrcpara,msrc
-   case default
-     print *, 'mphase mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
-     stop  
-   end select
+    case default
+      print *, 'mphase mode does not support source/sink type: ', source_sink%flow_condition%itype(1)
+      stop  
+  end select
 
 !clu end change
 
@@ -2576,25 +2577,26 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1, &
                             aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
-                            ! fluid flux [m^3/sec] = Res [kmol/mol] / den [kmol/m^3]
+                    ! fluid flux [m^3/sec] = Res [kmol/mol] / den [kmol/m^3]
                             patch%ss_fluid_fluxes(:,sum_connection), &
-                            enthalpy_flag, option)
+                            enthalpy_flag,option)
 
   ! included by SK, 08/23/11 to print mass fluxes at source/sink						
       if (option%compute_mass_balance_new) then
         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-         Res(:)/option%flow_dt
+          Res(:)/option%flow_dt
       endif
   
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
       mphase%res_old_AR(local_id,jh2o) = mphase%res_old_AR(local_id,jh2o) - Res(jh2o)    
       mphase%res_old_AR(local_id,jco2) = mphase%res_old_AR(local_id,jco2) - Res(jco2)    
-      if (enthalpy_flag)then
-        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
+      if (enthalpy_flag) then
+        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+          Res(option%nflowdof)
         mphase%res_old_AR(local_id,option%nflowdof) = &
-             mphase%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+          mphase%res_old_AR(local_id,option%nflowdof) - Res(option%nflowdof)
       endif 
   !   else if (qsrc1 < 0.d0) then ! withdrawal
   !   endif
@@ -2602,6 +2604,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     source_sink => source_sink%next
   enddo
 #endif
+
 #if 1
  ! print *, 'Mphase residual patch 3' 
    ! Boundary Flux Terms -----------------------------------

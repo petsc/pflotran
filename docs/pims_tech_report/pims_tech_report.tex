@@ -273,14 +273,39 @@ The governing equations solved by PIMS are given by
 \EQ\label{mass}
 \frac{\p}{\p t}\big(\varphi\rho_i^{} s_i^{}\big) + \bnabla\cdot \big(\rho_i^{} \bq_i \big) \eq Q_i,
 \EN
-where $\varphi$ is porosity, $s_i$, $\rho_i$ refer to the $i$th phase saturation and density, $q_i$ is $i$th phase velocity, and $Q_i$ is the source/sink term. Thus, the number of equations is equal to number of phases. 
+where $\varphi$ is porosity, $s_i$, $\rho_i$ refer to the $i$th phase saturation and density, respectively, $\bq_i$ is the Darcy velocity of the $i$th phase given by
+\EQ
+\bq_i \eq -\frac{k}{\mu_i} \big(\bnabla p-\rho_i g \hat\bz\big), 
+\EN
+with permeability $k$ and fluid viscosity $\mu_i$, and $Q_i$ is the source/sink term.  
 The selection of primary variables are pressure $p$ and $n\!-\!1$ independent phase saturation variables $s_i, i=1,...,n\!-\!1$ with
 \EQ
 \sum_{i=1}^n s_i = 1.
 \EN
+The mass conservation equations are coupled to the energy balance equation given by
+\EQ
+\frac{\p}{\p t} \Big(\varphi\sum_i s_i\rho_i U_i + (1-\varphi) \rho_r C_r T\Big) + \bnabla\cdot\Big(\sum_i\rho_i\bq_iH_i - \kappa\bnabla T\Big) \eq Q_e,
+\EN
+where $U_i$, $H_i$ denote the internal energy and enthalpy of the $i$th fluid phase, $\kappa$ denotes the thermal conductivity of the bulk porous medium, $\rho_r$, $C_r$ denote the rock density and heat capacity, and $T$ refers to the temperature.
 %, if incompressibility of all phases or one of them is assumed. In this case, the reference pressure has to be specified as a boundary condition.
 %The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
-Compared to the PFLOTRAN MPHASE mode, PIMS conserves mass instead of molar numbers. 
+Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{n-1}$).
+
+Compared to the MPHASE mode in PFLOTRAN, PIMS conserves mass instead of molar numbers. Global mass conservation implies the equation
+\EQ
+\frac{dM_i}{dt} \eq \int_V Q_idV - \int_{\p V} \rho_i \bq_i \cdot \bdS
+\EN
+where the total mass of the $i$th phase is defined as
+\EQ
+M_i \eq \int_V \varphi \rho_i s_i dV.
+\EN
+\BA
+\int_0^t \frac{dM_i}{dt}dt &\eq M_i(t)-M_i^0,\\
+&\eq \int_0^t dt \int_V Q_idV - \int_0^t dt \int_{\p V} \rho_i \bq_i \cdot \bdS
+\EA
+\EQ
+M_i(t+\Delta t) = M_i(t) + \Delta t \int_V Q_i dV - \Delta t \int_{\p V} \rho_i \bq_i \cdot \bdS.
+\EN
 
 \section{PETSc Solver}
 PIMS is using PETSc SNES nonlinear solver. 
@@ -288,8 +313,38 @@ Note: the pre-conditioner option \break {\tt -pc\_factor\_nonzeros\_along\_diago
 
 
 
+\section{Numerical Implementation}
 
+Newton-Raphson equations:
+\EQ
+\left[
+\begin{array}{ccc}
+J_{\rm H_2O,\,\rm H_2O} & J_{\rm H_2O,\,\rm CO_2} & J_{\rm H_2O,\,\rm E}\\
+J_{\rm CO_2,\,\rm H_2O} & J_{\rm CO_2,\,\rm CO_2} & J_{\rm CO_2,\,\rm E}\\
+J_{\rm E,\,\rm H_2O} & J_{\rm E,\,\rm CO_2} & J_{\rm E,\,E}
+\end{array}
+\right]
+\left[
+\begin{array}{c}
+\delta X_{\rm H_2O}\\
+\delta X_{\rm CO_2}\\
+\delta X_{\rm E}
+\end{array}
+\right]
+\eq
+-\left[
+\begin{array}{c}
+R_{\rm H_2O}\\
+R_{\rm CO_2}\\
+R_{\rm E}
+\end{array}
+\right]
+\EN
 
+Residual:
+\EQ
+R_i \eq \Big[(\varphi s_i\rho_i)_n^{k+1} - (\varphi s_i\rho_i)_n^k\Big] V_n + \Delta t \sum_{n'} \rho_{inn'} q_{inn'} A_{nn'} - \Delta t Q_i V_n,
+\EN
 
 
 \end{document}
