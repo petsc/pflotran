@@ -433,7 +433,8 @@ subroutine UGridRead(unstructured_grid,filename,option)
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
         num_vertices = MAX_VERT_PER_CELL
-#ifdef GLENN
+!#ifdef GLENN
+#if 1
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'element type',card)
         call StringToUpper(word)
@@ -1489,8 +1490,8 @@ subroutine UGridDecompose(unstructured_grid,option)
         endif 
       endif
 #else
-      if (dual_id <= unstructured_grid%global_offset .or. &
-          dual_id > unstructured_grid%global_offset + num_cells_local_new) then
+      if (dual_id <= global_offset_new .or. &
+          dual_id > global_offset_new + num_cells_local_new) then
         ghost_cell_count = ghost_cell_count + 1
         ! reallocate the ghost cell array if necessary
         if (ghost_cell_count > max_ghost_cell_count) then
@@ -1543,7 +1544,6 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! do not change ghosted_id = 1 to ghosted_id = 2 as the first value in
     ! int_array2() will not be set correctly.
     do ghosted_id = 1, ghost_cell_count
-!print *, option%myrank, ' : ', ghosted_id, temp_int, int_array3(temp_int), int_array2(ghosted_id), int_array_pointer(int_array3(temp_int)), int_array_pointer(int_array2(ghosted_id))
       if (int_array3(temp_int) < &
             int_array_pointer(int_array2(ghosted_id))) then
         temp_int = temp_int + 1
@@ -1566,8 +1566,8 @@ subroutine UGridDecompose(unstructured_grid,option)
         dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
         if (dual_id < 1) exit
         ! check off processor
-        if (dual_id <= unstructured_grid%global_offset .or. &
-            dual_id > unstructured_grid%global_offset + num_cells_local_new) then
+        if (dual_id <= global_offset_new .or. &
+            dual_id > global_offset_new + num_cells_local_new) then
           ! add num_cells_local_new to set the ghosted index 
           vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
             int_array2(dual_id) + num_cells_local_new
@@ -1617,8 +1617,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
   ! fill with the sorted ids
   do ghosted_id = 1, ghost_cell_count
-    unstructured_grid%ghost_cell_ids_petsc(int_array2(ghosted_id)) = &
-      int_array(ghosted_id)
+    unstructured_grid%ghost_cell_ids_petsc(ghosted_id) = &
+      int_array(int_array2(ghosted_id))
   enddo
     
   ! now, rearrange the ghost cell ids of the dual accordingly
@@ -1894,7 +1894,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%ngmax = &
     num_cells_local_new + unstructured_grid%num_ghost_cells
 
-#ifdef GLENN
   allocate(unstructured_grid%cell_type(unstructured_grid%nlmax))
   do local_id = 1, unstructured_grid%nlmax
     ! Determine number of faces and cell-type of the current cell
@@ -1912,7 +1911,6 @@ subroutine UGridDecompose(unstructured_grid,option)
         call printErrMsg(option)
     end select
   enddo
-#endif
   
   unstructured_grid%nlmax = num_cells_local_new  
   unstructured_grid%global_offset = global_offset_new  
@@ -3064,17 +3062,9 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-#ifdef GLENN
+
     ! TODO(geh): check if nL2G is working correctly
     centroid = UCellComputeCentroid(unstructured_grid%cell_type(local_id),vertex_8)
-#else
-    select case (unstructured_grid%cell_vertices_0(0,local_id))
-      case(8)
-        centroid = UCellComputeCentroid(HEX_TYPE,vertex_8)
-      case(6)
-        centroid = UCellComputeCentroid(WEDGE_TYPE,vertex_8)
-    end select
-#endif    
     grid_x(local_id) = centroid(1)
     grid_y(local_id) = centroid(2)
     grid_z(local_id) = centroid(3)
@@ -3200,16 +3190,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,nL2G,volume)
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-#ifdef GLENN
     volume_p(local_id) = UCellComputeVolume(unstructured_grid%cell_type_ghosted(nL2G(local_id)),vertex_8)
-#else
-      select case (unstructured_grid%cell_vertices_0(0,ghosted_id))
-        case(8)
-          volume_p(local_id) = UCellComputeVolume(HEX_TYPE,vertex_8)
-        case(6)
-          volume_p(local_id) = UCellComputeVolume(WEDGE_TYPE,vertex_8)
-      end select
-#endif      
   enddo
       
   call VecRestoreArrayF90(volume,volume_p,ierr)

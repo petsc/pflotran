@@ -506,7 +506,7 @@ end subroutine MphaseUpdateMassBalancePatch
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-  function MphaseInitGuessCheck(realization)
+function MphaseInitGuessCheck(realization)
  
   use Realization_module
   use Level_module
@@ -536,14 +536,14 @@ end subroutine MphaseUpdateMassBalancePatch
     cur_level => cur_level%next
   enddo
 
-   call MPI_Barrier(option%mycomm,ierr)
-   if (option%mycommsize > 1) then
-      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+  call MPI_Barrier(option%mycomm,ierr)
+  if (option%mycommsize > 1) then
+    call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                          option%mycomm,ierr)
-      if(ipass0 < option%mycommsize) ipass=-1
-   endif
-   MphaseInitGuessCheck =ipass
- end function MphaseInitGuessCheck
+    if(ipass0 < option%mycommsize) ipass=-1
+  endif
+  MphaseInitGuessCheck =ipass
+end function MphaseInitGuessCheck
 
 ! ************************************************************************** !
 ! Mphaseinitguesscheckpatch: 
@@ -551,12 +551,12 @@ end subroutine MphaseUpdateMassBalancePatch
 ! date: 12/10/07
 !
 ! ************************************************************************** !
- subroutine MPhaseUpdateReasonPatch(reason,realization)
-   use Realization_module
-   use Patch_module
-   use Field_module
-   use Option_module
-   use Grid_module
+subroutine MPhaseUpdateReasonPatch(reason,realization)
+  use Realization_module
+  use Patch_module
+  use Field_module
+  use Option_module
+  use Grid_module
 
   implicit none
  
@@ -576,78 +576,76 @@ end subroutine MphaseUpdateMassBalancePatch
   patch => realization%patch
   grid => patch%grid
 
-  re=1
+  re = 1
  
-  if(re>0)then
-     call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
-     call GridVecGetArrayF90(grid,field%flow_yy, yy_p, ierr)
-     call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
+  if (re > 0) then
+    call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+    call GridVecGetArrayF90(grid,field%flow_yy, yy_p, ierr)
+    call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
   
-     do n = 1,grid%nlmax
+    do n = 1,grid%nlmax
 !**** clu-Ignore inactive cells with inactive materials **************
-        if (associated(patch%imat)) then
-           if (patch%imat(grid%nL2G(n)) <= 0) cycle
-        endif
-        n0=(n-1)* option%nflowdof
-        iipha=int(iphase_loc_p(grid%nL2G(n)))
+      if (associated(patch%imat)) then
+        if (patch%imat(grid%nL2G(n)) <= 0) cycle
+      endif
+      n0 = (n-1)* option%nflowdof
+      iipha=int(iphase_loc_p(grid%nL2G(n)))
   
 ! ******** Too huge change in pressure ****************     
-        if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (1000.0D0 * option%dpmxe))then
-           re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
-           exit
-        endif
+      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (1000.0D0 * option%dpmxe)) then
+        re = 0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
+        exit
+      endif
 
 ! ******** Too huge change in temperature ****************
-        if(dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
-           re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
-           exit
-        endif
+      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
+        re = 0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
+        exit
+      endif
  
 ! ******* Check 0 <= sat/con <= 1 **************************
-        select case(iipha)
+      select case(iipha)
         case (1)
-           if(xx_p(n0 + 3) > 1.0D0)then
-              re=0; exit
-           endif
-           if(xx_p(n0 + 3) < 0D0)then
-              if(xx_p(n0 + 3) > -1D-14)then
-                 xx_p(n0 + 3) =0.D0
-              else  
-        
- !        print *,'MPhaseUpdate: ',iipha,n,n0,option%nflowdof,xx_p(n0+3)
-          
-                 re=0; exit
+          if (xx_p(n0 + 3) > 1.0D0) then
+            re = 0; exit
+          endif
+          if (xx_p(n0 + 3) < 0D0) then
+            if (xx_p(n0 + 3) > -1D-14) then
+              xx_p(n0 + 3) = 0.D0
+            else
+!             print *,'MPhaseUpdate: ',iipha,n,n0,option%nflowdof,xx_p(n0+3)
+              re = 0; exit
             endif          ! clu removed 05/02/2011
           endif
         case (2)
-           if(xx_p(n0 + 3) > 1.0D0)then
-              re=0; exit
-           endif
-           if(xx_p(n0 + 3) < 0D-0)then
-            if(xx_p(n0 + 3) > -1D-14)then
-                 xx_p(n0 + 3) =0.D0
-              else  
-              re=0; exit
+          if (xx_p(n0 + 3) > 1.0D0) then
+            re=0; exit
+          endif
+          if (xx_p(n0 + 3) < 0D-0) then
+            if (xx_p(n0 + 3) > -1D-14) then
+              xx_p(n0 + 3) = 0.D0
+            else  
+              re = 0; exit
             endif 
-           endif
+          endif
         case (3)
-           if(xx_p(n0 + 3) > 1.D0)then
-              re=0; exit
-           endif
-           if(xx_p(n0 + 3) < 0.)then
-            if(xx_p(n0 + 3) > -1D-14)then
-                 xx_p(n0 + 3) =0.D0
-              else  
-              re=0; exit
+          if (xx_p(n0 + 3) > 1.D0) then
+            re=0; exit
+          endif
+          if (xx_p(n0 + 3) < 0.) then
+            if (xx_p(n0 + 3) > -1D-14) then
+              xx_p(n0 + 3) = 0.D0
+            else  
+              re = 0; exit
             endif  
-           endif
-        end select
-     end do
+          endif
+      end select
+    end do
   
-!    if(re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
-     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
-     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-     call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
+!   if (re <= 0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
+    call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+    call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
+    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
   endif
   ! print *,' update reason', grid%myrank, re,n,grid%nlmax
