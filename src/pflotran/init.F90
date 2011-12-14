@@ -162,7 +162,7 @@ end interface
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
-  
+    
   ! initialize transport mode
   if (option%ntrandof > 0) then
     tran_solver => tran_stepper%solver
@@ -2019,6 +2019,7 @@ subroutine setFlowMode(option)
       option%iflowmode = THC_MODE
       option%nphase = 1
       option%liquid_phase = 1      
+      option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
     case('RICHARDS')
