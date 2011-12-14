@@ -1086,7 +1086,12 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
 
   ! petsc will call parmetis to calculate the graph/dual
+#if defined(PETSC_HAVE_PARMETIS)
   call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+#else
+  option%io_buffer = 'Must compile with Parmetis in order to use unstructured grids.'
+  call printErrMsg(option)
+#endif
   call MatDestroy(Adj_mat,ierr)
   !TODO(geh): Why do I deallocate here when it says that it is not necessary 
   !           above? And why does the code not crash?
@@ -1467,7 +1472,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         endif
         int_array_pointer(ghost_cell_count) = dual_id
         vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
-          ghost_cell_count
+          -ghost_cell_count
         ! temporarily store the index of the int_array_pointer
         ! flag negative
       endif
@@ -1512,7 +1517,6 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! do not change ghosted_id = 1 to ghosted_id = 2 as the first value in
     ! int_array2() will not be set correctly.
     do ghosted_id = 1, ghost_cell_count
-!print *, option%myrank, ' : ', ghosted_id, temp_int, int_array3(temp_int), int_array2(ghosted_id), int_array_pointer(int_array3(temp_int)), int_array_pointer(int_array2(ghosted_id))
       if (int_array3(temp_int) < &
             int_array_pointer(int_array2(ghosted_id))) then
         temp_int = temp_int + 1
@@ -1520,7 +1524,7 @@ subroutine UGridDecompose(unstructured_grid,option)
       endif
       int_array2(ghosted_id) = temp_int
     enddo
-  
+
     ghost_cell_count = temp_int
     allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
     unstructured_grid%ghost_cell_ids_petsc = 0
@@ -1532,14 +1536,14 @@ subroutine UGridDecompose(unstructured_grid,option)
     call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
     do local_id=1, num_cells_local_new
       do idual = 1, max_dual
+        ! dual_id is now the negative of the local unsorted ghost cell id
         dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
-        if (dual_id < 1) exit
-        ! check off processor
-        if (dual_id <= global_offset_new .or. &
-            dual_id > global_offset_new + num_cells_local_new) then
-          ! add num_cells_local_new to set the ghosted index 
+        ! dual_id = 0: not assigned
+        ! dual_id > 0: assigned to local cell
+        ! dual_id < 0: assigned to ghost cell
+        if (dual_id < 0) then
           vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
-            int_array2(dual_id) + num_cells_local_new
+            int_array2(-dual_id) + num_cells_local_new
         endif
       enddo
     enddo
@@ -1580,14 +1584,15 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! convert to 1-based
   int_array2 = int_array2+1
 
-
   ! resize ghost cell array down to ghost_cell_count
   deallocate(unstructured_grid%ghost_cell_ids_petsc)
   allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
   ! fill with the sorted ids
   do ghosted_id = 1, ghost_cell_count
-    unstructured_grid%ghost_cell_ids_petsc(int_array2(ghosted_id)) = &
-      int_array(ghosted_id)
+!    unstructured_grid%ghost_cell_ids_petsc(int_array2(ghosted_id)) = &
+!      int_array(ghosted_id)
+    unstructured_grid%ghost_cell_ids_petsc(ghosted_id) = &
+      int_array(int_array2(ghosted_id))
   enddo
     
   ! now, rearrange the ghost cell ids of the dual accordingly
@@ -2557,10 +2562,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       
       ! Check that one shared face was found between the Cell and Neighboring-Cell
       if (.not.face_found) then
-        write(string,*),'rank=',option%myrank, 'local_id_id',cell_id,'local_id_id2',cell_id2
+        write(string,*),'rank=',option%myrank, 'local_id',cell_id,'local_id2',cell_id2
         option%io_buffer='No shared face found: ' // string // '\n'
-        write(*,*),'No shared face found: rank=',option%myrank, 'local_id_id',cell_id,'local_id_id2',cell_id2
-        call printErrMsg(option)
+        call printErrMsgByRank(option)
       endif
     enddo ! idual-loop
   enddo  ! local_id-loop
