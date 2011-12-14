@@ -1272,11 +1272,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   call MPI_Exscan(num_cells_local_new,global_offset_new, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
-  !geh: this was not being deallocated
-  deallocate(unstructured_grid%cell_vertices_0)
-  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
-                                             num_cells_local_new))
-  unstructured_grid%cell_vertices_0 = 0
   allocate(unstructured_grid%cell_ids_natural(num_cells_local_new))
   unstructured_grid%cell_ids_natural = 0
   
