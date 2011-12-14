@@ -291,6 +291,15 @@ where $U_i$, $H_i$ denote the internal energy and enthalpy of the $i$th fluid ph
 %The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
 Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{n-1}$).
 
+\subsection*{Initial \& Boundary Conditions}
+\addcontentsline{toc}{subsection}{\protect\numberline{}{\bf Initial \& Boundary Conditions}} 
+
+At $t=0$ it is necessary to specify the pressure and temperature: $p(\br,\,0)$ and $T(\br,\,0)$, and the phase saturations $s_i(\br,\,0)$ at position vector $\br$.
+
+Boundary conditions involve specifying Dirichlet, Neumann or zero gradient conditions for the independent variables at the boundary.
+
+\section{Global Mass Conservation}
+
 Compared to the MPHASE mode in PFLOTRAN, PIMS conserves mass instead of molar numbers. Global mass conservation implies the equation
 \EQ
 \frac{dM_i}{dt} \eq \int_V Q_idV - \int_{\p V} \rho_i \bq_i \cdot \bdS

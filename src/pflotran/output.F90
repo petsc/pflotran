@@ -3036,7 +3036,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
 #endif      
     ! Print the remaining values, if they exist
     if (datatype == TECPLOT_INTEGER) then
-      if (num_in_array > 0) &
+      if (num_in_array > 0) then
         i = abs(maxval(integer_data(1:num_in_array)))
         if (i < 10) then
           write(fid,1000) integer_data(1:num_in_array)
@@ -3049,6 +3049,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
         else
           write(fid,1004) integer_data(1:num_in_array)
         endif
+      endif
     else
       if (num_in_array > 0) &
         write(fid,1010) real_data(1:num_in_array)

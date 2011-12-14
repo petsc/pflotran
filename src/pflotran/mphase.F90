@@ -933,16 +933,16 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-! Added the following by Satish Karra 10/05/11	  
-        do idof =1, option%nflowdof   
+! Added the following by Satish Karra 10/05/11
+      do idof = 1, option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(HYDROSTATIC_BC)
             xxbc(MPH_PRESSURE_DOF) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
-            if(idof>=MPH_TEMPERATURE_DOF)then
+            if (idof >= MPH_TEMPERATURE_DOF) then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-            endif 
+            endif
           case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -954,7 +954,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         case(DIRICHLET_BC,SEEPAGE_BC,HYDROSTATIC_BC)
           iphase = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          iphase=int(iphase_loc_p(ghosted_id))                               
+          iphase = int(iphase_loc_p(ghosted_id))                               
       end select
 	  
       call MphaseAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
