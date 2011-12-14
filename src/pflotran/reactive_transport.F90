@@ -6461,18 +6461,13 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
   !geh: this is all to remove the lousy spaces
   len_cell_string = len_trim(cell_string) 
 
-#ifdef GLENN_NEW_IO
   if (len_cell_string > 0) then
     write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
           trim(variable_string_adj), trim(cell_string)
   else
-    write(string,'('',"'',a,a,''"'')') trim(variable_string_adj), &
-          trim(cell_string)
+    write(string,'('',"'',a,a,''"'')') trim(column_string), &
+          trim(variable_string_adj)
   endif
-#else
-  write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
-          trim(variable_string_adj), trim(cell_string)
-#endif
   header = trim(header) // trim(string)
 
 end subroutine RTAppendToHeader

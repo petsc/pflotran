@@ -1346,8 +1346,6 @@ subroutine OutputTecplotFEBrick(realization)
   call VecDestroy(global_vec,ierr)
   
   
-!#ifdef GLENN
-#if 1
   call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
   call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
                            GLOBAL,option) 
@@ -1366,22 +1364,8 @@ subroutine OutputTecplotFEBrick(realization)
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
-#else  
-  call VecCreateMPI(option%mycomm, grid%unstructured_grid%nlmax*8, &
-                    PETSC_DETERMINE, global_cconn_vec, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_INTEGER, &
-                           grid%unstructured_grid%nmax*8)
-  call GetCellConnections(grid, global_cconn_vec)
-  call VecGetArrayF90(global_cconn_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_INTEGER, &
-                           grid%unstructured_grid%nmax*8)
-  call VecRestoreArrayF90(global_cconn_vec, vec_ptr, ierr)
-
-  call VecDestroy(global_cconn_vec, ierr)
-#endif
 
   if (option%myrank == option%io_rank) close(IUNIT3)
-
 
 end subroutine OutputTecplotFEBrick
 

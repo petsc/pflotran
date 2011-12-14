@@ -1799,7 +1799,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       !sp start
       select case(grid%itype) 
         case(UNSTRUCTURED_GRID)
-#ifdef GLENN
+!#ifdef GLENN
+#if 1
           allocate(temp_int_array(region%num_cells))
           temp_int_array = 0
           local_count=0

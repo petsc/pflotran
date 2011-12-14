@@ -360,39 +360,23 @@ subroutine UGridRead(unstructured_grid,filename,option)
   input => InputCreate(fileid,filename)
 
 ! Format of unstructured grid file
-! Currently assumes hexahedron
+! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
+! vertn(H) = 8
+! vertn(T) = 4
+! vertn(W) = 6
+! vertn(P) = 5
 ! -----------------------------------------------------------------
 ! num_cells num_vertices  (integers)
-! vert1 vert2 vert3 ... vert8  ! for cell 1 (integers)
-! vert1 vert2 vert3 ... vert8  ! for cell 2
+! type vert1 vert2 vert3 ... vertn  ! for cell 1 (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 2
 ! ...
 ! ...
-! vert1 vert2 vert3 ... vert8  ! for cell num_cells
+! type vert1 vert2 vert3 ... vertn  ! for cell num_cells
 ! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
 ! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
 ! ...
 ! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
 ! -----------------------------------------------------------------
-
-!
-! Note: When compiled with -DMIXED_FLAG the input file needs to be
-!       modified. Each line corresponding to a cell now needs to contain
-!       number of vertices as the first entry. Presnetly (4/25/2011)
-!       only hexahedron and wedge cell-types supported
-!
-! -----------------------------------------------------------------
-! num_cells num_vertices  (integers)
-! nverts vert1 vert2 vert3 ... vert8  ! for cell 1 (integers)
-! nverts vert1 vert2 vert3 ... vert8  ! for cell 2
-! ...
-! ...
-! nverts vert1 vert2 vert3 ... vert8  ! for cell num_cells
-! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
-! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
-! ...
-! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
-! -----------------------------------------------------------------
-!
 
   card = 'Unstructured Grid'
 
@@ -433,8 +417,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
         num_vertices = MAX_VERT_PER_CELL
-!#ifdef GLENN
-#if 1
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'element type',card)
         call StringToUpper(word)
@@ -448,19 +430,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
           case('T')
             num_vertices = 4
         end select
-#else
-        call InputReadInt(input,option,num_vertices)
-        call InputErrorMsg(input,option,'num_vertices',card)
-        if (num_vertices > MAX_VERT_PER_CELL) then
-          option%io_buffer = 'Cells verticies exceed maximum number of vertices'
-          call printErrMsg(option)
-        endif
-        if ((num_vertices /= 8).and.(num_vertices /= 6)) then
-          write(*,*),num_vertices
-          option%io_buffer = 'Only cells with 6 or 8 vertices supported'
-          call printErrMsg(option)
-        endif
-#endif
         do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
           call InputErrorMsg(input,option,'vertex id',card)
@@ -966,7 +935,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
   
-#ifdef ENABLE_UNSTRUCTURED  
   PetscInt :: local_id, local_id2
   PetscInt :: ghosted_id
   PetscInt :: ivertex
@@ -1544,6 +1512,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! do not change ghosted_id = 1 to ghosted_id = 2 as the first value in
     ! int_array2() will not be set correctly.
     do ghosted_id = 1, ghost_cell_count
+!print *, option%myrank, ' : ', ghosted_id, temp_int, int_array3(temp_int), int_array2(ghosted_id), int_array_pointer(int_array3(temp_int)), int_array_pointer(int_array2(ghosted_id))
       if (int_array3(temp_int) < &
             int_array_pointer(int_array2(ghosted_id))) then
         temp_int = temp_int + 1
@@ -1617,8 +1586,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
   ! fill with the sorted ids
   do ghosted_id = 1, ghost_cell_count
-    unstructured_grid%ghost_cell_ids_petsc(ghosted_id) = &
-      int_array(int_array2(ghosted_id))
+    unstructured_grid%ghost_cell_ids_petsc(int_array2(ghosted_id)) = &
+      int_array(ghosted_id)
   enddo
     
   ! now, rearrange the ghost cell ids of the dual accordingly
@@ -1915,8 +1884,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%nlmax = num_cells_local_new  
   unstructured_grid%global_offset = global_offset_new  
 
-#endif
-  
 end subroutine UGridDecompose
 
 ! ************************************************************************** !
@@ -1952,7 +1919,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   PetscInt :: ndof
   type(option_type) :: option
   
-#ifdef ENABLE_UNSTRUCTURED  
   PetscInt, pointer :: int_ptr(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: idof
@@ -2243,10 +2209,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  
-    
-#endif
-  
 end subroutine UGridCreateUGDM
 
 ! ************************************************************************** !
@@ -2273,7 +2235,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   VecScatter :: scatter_ltol 
 
   type(connection_set_type), pointer :: connections
-#ifdef ENABLE_UNSTRUCTURED
   PetscInt :: nconn, iconn
   PetscInt :: idual, dual_id
 
@@ -2470,7 +2431,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     enddo
   enddo
 
-#ifdef MIXED_UMESH
   !
   ! Remove duplicate faces:
   !
@@ -2604,7 +2564,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       endif
     enddo ! idual-loop
   enddo  ! local_id-loop
-#endif ! #ifdef MIXED_UMESH
 
   ! count up the # of faces
   face_count = 0
@@ -2757,13 +2716,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           option%io_buffer = 'global face not found' // string 
           call printErrMsg(option)
         endif
-#if 0
-        if (unstructured_grid%face_to_vertex(4,face_id) < 0) then
-          face_type = TRI_FACE_TYPE
-        else
-          face_type = QUAD_FACE_TYPE
-        endif
-#endif
         connections%id_up(iconn) = local_id
         connections%id_dn(iconn) = abs(dual_local_id)
         ! need to add the surface areas, distance, etc.
@@ -2929,7 +2881,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   deallocate(vertex_to_cell)
   deallocate(dual_to_face)
 
-#endif        
   UGridComputeInternConnect => connections
 
 end function UGridComputeInternConnect
@@ -3062,7 +3013,6 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
       vertex_8(ivertex)%z = &
         unstructured_grid%vertices(vertex_id)%z
     enddo
-
     ! TODO(geh): check if nL2G is working correctly
     centroid = UCellComputeCentroid(unstructured_grid%cell_type(local_id),vertex_8)
     grid_x(local_id) = centroid(1)
