@@ -497,7 +497,7 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
           ! allocate arrays that match the number of connections
           select case(option%iflowmode)
 
-            case(THC_MODE,RICHARDS_MODE)
+            case(THC_MODE,RICHARDS_MODE,MIS_MODE)
            
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
@@ -603,7 +603,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       update = PETSC_FALSE
       select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE)
+        case(THC_MODE,MPH_MODE, MIS_MODE)
           if (force_update_flag .or. &
               flow_condition%pressure%dataset%is_transient .or. &
               flow_condition%pressure%gradient%is_transient .or. &
@@ -739,7 +739,7 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
         enddo
       enddo
 #endif      
-    case(THC_MODE,MPH_MODE)
+    case(THC_MODE,MPH_MODE,MIS_MODE)
       if (option%myrank == 0) then
         print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
         stop

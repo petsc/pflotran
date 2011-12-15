@@ -39,7 +39,7 @@ module Miscible_module
   PetscReal, parameter :: zerocut =0.D0  !1D-8
   
 
-  PetscInt, parameter :: jh2o=1
+  PetscInt, parameter :: jh2o=1, jglyc=2
 
 ! PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
   
@@ -48,7 +48,7 @@ module Miscible_module
          MiscibleSetup,MiscibleUpdateReason,&
          MiscibleMaxChange, MiscibleUpdateSolution, &
          MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
-         MiscibleUpdateAuxVars
+         MiscibleUpdateAuxVars,MiscibleComputeMassBalance
 
 contains
 
@@ -152,7 +152,7 @@ subroutine MiscibleSetupPatch(realization)
   print *,' Miscible setup get patch'
   patch%aux%Miscible => MiscibleAuxCreate()
   
-!  option%io_buffer = 'Before Miscible can be run, the thc_parameter object ' // &
+!  option%io_buffer = 'Before Miscible can be run, the Miscible_parameter object ' // &
 !                     'must be initialized with the proper variables ' // &
 !                     'MiscibleAuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
@@ -229,6 +229,201 @@ subroutine MiscibleSetupPatch(realization)
   call MiscibleCreateZeroArray(patch,option)
 
 end subroutine MiscibleSetupPatch
+
+! ************************************************************************** !
+!
+! MiscibleomputeMassBalance: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalance: need to be checked
+! ************************************************************************** !
+subroutine MiscibleComputeMassBalance(realization, mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+   
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  mass_balance = 0.d0
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call MiscibleComputeMassBalancePatch(realization, mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine MiscibleComputeMassBalance    
+
+! ************************************************************************** !
+!
+! MiscibleomputeMassBalancePatch: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalancePatch: need to be checked
+! ************************************************************************** !
+subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  global_aux_vars => patch%aux%Global%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume*saturation*density
+    mass_balance = mass_balance + &
+      global_aux_vars(ghosted_id)%den_kg* &
+      global_aux_vars(ghosted_id)%sat* &
+      porosity_loc_p(ghosted_id)*volume_p(local_id)
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine MiscibleComputeMassBalancePatch
+
+! ************************************************************************** !
+!
+! MiscibleZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Satish Karra
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine MiscibleZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Miscible%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Miscible%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+ 
+end subroutine MiscibleZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+!
+! MiscibleUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine MiscibleUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Miscible%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance = &
+      patch%aux%Global%aux_vars(iconn)%mass_balance + &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O* &
+      option%flow_dt
+  enddo
+#endif
+
+  if (patch%aux%Miscible%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
+
+
+end subroutine MiscibleUpdateMassBalancePatch
 
 ! ************************************************************************** !
 ! Miscibleinitguesscheckpatch: 
@@ -311,7 +506,7 @@ subroutine MiscibleUpdateReasonPatch(reason,realization)
   grid => patch%grid
 
   re=1
- #if 0
+#if 0
   if(re>0)then
      call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
      call GridVecGetArrayF90(grid,field%flow_yy, yy_p, ierr)
@@ -579,16 +774,14 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
     call MiscibleAuxVarCompute_NINC(xx_loc_p(istart:iend), &
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        global_aux_vars(ghosted_id), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
                       
  ! update global variables
     if( associated(global_aux_vars))then
     
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres 
 !      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-!      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%sat(:)= 1D0
 !     global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
@@ -604,7 +797,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
 !      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
 !                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
 !                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
-      global_aux_vars(ghosted_id)%xmass(:) = 0.0
+!      global_aux_vars(ghosted_id)%xmass(:) = 0.0
     else
       print *,'Not associated global for Miscible'
     endif
@@ -639,18 +832,16 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
  
      call MiscibleAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          global_aux_vars_bc(sum_connection), &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         realization%fluid_properties, option, xphi)
+                         realization%fluid_properties, option)
 
      if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
+        global_aux_vars_bc(sum_connection)%sat(:)=1.D0
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-        global_aux_vars_bc(sum_connection)%xmass(:)= 0.0
-  !    global_aux_vars(ghosted_id)%den_kg_store
+!       global_aux_vars_bc(sum_connection)%xmass(:)= 0.0
+!       global_aux_vars(ghosted_id)%den_kg_store
       endif
 
     enddo
@@ -858,7 +1049,7 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
         aux_var%xmol(ispec + (np-1)*option%nflowspec)
     enddo
 ! if(option%use_isothermal == PETSC_FALSE) &
-    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
+!    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
@@ -936,58 +1127,15 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
     case(MASS_RATE_SS)
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWGLYC
-      if (msrc(1) /= 0.d0) then ! H2O injection
-        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+      if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
+!        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
-        Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
-        if (energy_flag) &
-          Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
-        qsrc_phase(1) = msrc(1)/dw_mol
-        
+        Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
+        Res(jglyc) = Res(jglyc) + msrc(2)*option%flow_dt
       endif  
-    
-      if (msrc(2) > 0.d0) then ! CO2 injection
-!        call printErrMsg(option,"concentration source not yet implemented in Miscible")
-        if(option%co2eos == EOS_SPAN_WAGNER) then
-         !  span-wagner
-          rho = aux_var%den(jco2)*FMWCO2  
-          select case(option%itable)  
-            case(0,1,2,4,5)
-              if( option%itable >=4) then
-                call co2_sw_interp(aux_var%pres*1.D-6,&
-                  tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
-              else
-                iflag = 1
-              call co2_span_wagner(aux_var%pres*1.D-6,&
-                  tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
-              endif 
-            case(3) 
-              call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
-                     enth_src_co2, eng, fg)
-          end select     
-
-         !  units: rho [kg/m^3]; csrc1 [kmol/s]
-          enth_src_co2 = enth_src_co2 * FMWCO2
-          qsrc_phase(2) = msrc(2)*rho/FMWCO2
-            
-        else if(option%co2eos == EOS_MRK)then
-! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
-            call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
-            qsrc_phase(2) = msrc(2)*rho/FMWCO2
-        else
-          call printErrMsg(option,'pflow Miscible ERROR: Need specify CO2 EOS')
-        endif
-  
-        Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-        if (energy_flag) &
-         Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
-      endif
-!  End of mass rate inplementation
+#if 0   
+ !  End of mass rate inplementation
     case(WELL_SS) ! production well
      !if node pessure is lower than the given extraction pressure, shut it down
     ! Flow term
@@ -1076,7 +1224,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
             endif
           enddo
         endif
-      endif    
+      endif
+#endif          
     case default
     print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
@@ -1153,12 +1302,12 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            ukvr = aux_var_up%kvr(np)
            uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
+!           uh = aux_var_up%h(np)
         else
            ukvr = aux_var_dn%kvr(np)
            uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
+!           uh = aux_var_dn%h(np)
         endif
    
 
@@ -1170,7 +1319,7 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
              fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo  
           ! if(option%use_isothermal == PETSC_FALSE) &
-            fluxe = fluxe + q*density_ave*uh 
+!            fluxe = fluxe + q*density_ave*uh 
         endif
      endif
 
@@ -1264,12 +1413,12 @@ subroutine MiscibleFluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, 
            ukvr = aux_var_up%kvr(np)
            uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
+!           uh = aux_var_up%h(np)
         else
            ukvr = aux_var_dn%kvr(np)
            uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
+!           uh = aux_var_dn%h(np)
         endif
    
 
@@ -1281,7 +1430,7 @@ subroutine MiscibleFluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, 
              fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo  
         ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q*density_ave*uh 
+!            fluxe = fluxe + q*density_ave*uh 
         endif
      endif
    end do
@@ -1897,8 +2046,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscInt :: nsrcpara
   PetscReal, pointer :: msrc(:)
-
-
+  
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -1962,17 +2110,15 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
      ! iphase =int(iphase_loc_p(ng))
      call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option, xphi)
+          realization%fluid_properties,option)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
      if( associated(global_aux_vars))then
        global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+!      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+       global_aux_vars(ghosted_id)%sat(:)=1D0
 !      global_aux_vars(ghosted_id)%sat_store =
-       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
        global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
@@ -1985,28 +2131,28 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
 
      if (option%numerical_derivatives) then
         delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         else
-            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         endif
-         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+        do idof = 2, option%nflowdof
+          if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
+             delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+           else
+              delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+           endif
+           if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
+           if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
 
-           
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-         endif
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-         endif
+             
+           if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
+              delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
+           endif
+           if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
+              delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
+           endif
+         end do
 
          patch%aux%Miscible%delx(:,ng)=delx(:)
          call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
 !         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
@@ -2074,7 +2220,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
       case(MASS_RATE_SS)
         msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
         nsrcpara= 2
-      case(WELL_SS)
+      case(WELL_SS) ! Well not implemented yet
         msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
         nsrcpara = 7 + option%nflowspec 
       case default
@@ -2171,16 +2317,13 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
  
     call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option)
 #if 1
     if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
+!      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)= 1.0
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
       global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
@@ -2311,16 +2454,6 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isothermal) then
-     do local_id = 1, grid%nlmax  ! For each local node do...
-        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-        if (associated(patch%imat)) then
-           if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        istart = 3 + (local_id-1)*option%nflowdof
-        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-     enddo
-  endif
 
 
   if (patch%aux%Miscible%inactive_cells_exist) then
@@ -2649,16 +2782,15 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
  
     call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-           realization%fluid_properties, option,xphi)
+           realization%fluid_properties, option)
 
     if( associated(global_aux_vars_bc))then
       global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+!      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)=1D0
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+      global_aux_vars_bc(sum_connection)%fugacoeff(1)=1D0
       global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
@@ -2969,17 +3101,15 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
      ! iphase =int(iphase_loc_p(ng))
     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option, xphi)
+          realization%fluid_properties,option)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
     if(associated(global_aux_vars)) then
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres
+!      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:)=1D0
 !      global_aux_vars(ghosted_id)%sat_store =
-      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+      global_aux_vars(ghosted_id)%fugacoeff(1)=1D0
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
@@ -2992,28 +3122,28 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
     if (option%numerical_derivatives) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-      delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
- 
-      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9) then
-        delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-      else
-        delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-      endif
-      if(delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-      if(delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+         
+     do idof = 2, option%nflowdof
+      if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
+         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+       else
+          delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+       endif
+       if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
+       if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
 
-           
-      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
-            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-      endif
-      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
-            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-      endif
+         
+       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
+          delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
+       endif
+       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
+          delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
+       endif
+     end do
 
       patch%aux%Miscible%delx(:,ng)=delx(:)
       call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
 !         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
@@ -3201,9 +3331,9 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
          Res(:)/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
-      r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
+      r_p((local_id-1)*option%nflowdof + jglyc) = r_p((local_id-1)*option%nflowdof + jglyc)-Res(jglyc)
       patch%aux%Miscible%Resold_AR(local_id,jh2o)= patch%aux%Miscible%Resold_AR(local_id,jh2o) - Res(jh2o)    
-      patch%aux%Miscible%Resold_AR(local_id,jco2)= patch%aux%Miscible%Resold_AR(local_id,jco2) - Res(jco2)    
+      patch%aux%Miscible%Resold_AR(local_id,jglyc)= patch%aux%Miscible%Resold_AR(local_id,jglyc) - Res(jglyc)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
         patch%aux%Miscible%Resold_AR(local_id,option%nflowdof)=&
@@ -3556,7 +3686,7 @@ subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
-      enthalpy_flag = PETSC_TRUE
+      enthalpy_flag = PETSC_FALSE
    ! else
    !   enthalpy_flag = PETSC_FALSE
    ! endif
@@ -3602,7 +3732,7 @@ subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                             enthalpy_flag, option)
       
        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+       ResInc(local_id,jglyc,nvar)=  ResInc(local_id,jglyc,nvar) - Res(jglyc)
 #if 0
        if (enthalpy_flag) & 
            ResInc(local_id,option%nflowdof,nvar)=&
@@ -3679,12 +3809,10 @@ subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  
     call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
     call MiscibleAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
@@ -3895,30 +4023,6 @@ subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
  ! call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-#if 0
-! zero out isothermal and inactive cells
-#ifdef ISOTHERMAL
-  zero = 0.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
-  do i=1, n_zero_rows
-    ii = mod(zero_rows_local(i),option%nflowdof)
-    ip1 = zero_rows_local_ghosted(i)
-    if (ii == 0) then
-      ip2 = ip1-1
-    elseif (ii == option%nflowdof-1) then
-      ip2 = ip1+1
-    else
-      ip2 = ip1
-    endif
-    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
-  enddo
-
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-#else
-#endif
-#endif
 
   if (patch%aux%Miscible%inactive_cells_exist) then
     f_up = 1.d0
@@ -4147,12 +4251,10 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
  
     call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
     call MiscibleAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
@@ -4182,12 +4284,10 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
      endif
 
      ra=0.D0
-     max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
            ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_BC(local_id,neq))&
               /patch%aux%Miscible%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
    
@@ -4195,7 +4295,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
@@ -4579,7 +4679,7 @@ end interface
                             enthalpy_flag, option)
 
        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+       ResInc(local_id,jglyc,nvar)=  ResInc(local_id,jglyc,nvar) - Res(jglyc)
        if (enthalpy_flag) & 
            ResInc(local_id,option%nflowdof,nvar)=&
            ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
@@ -4604,7 +4704,6 @@ end interface
         do nvar=1, option%nflowdof
            ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_AR(local_id,neq))&
               /patch%aux%Miscible%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
    
@@ -4766,23 +4865,8 @@ subroutine MiscibleCreateZeroArray(patch,option)
           zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
           zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
-      else
-#ifdef ISOTHERMAL
-        ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%nflowdof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-#endif
       endif
     enddo
-  else
-#ifdef ISOTHERMAL
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%nflowdof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-    enddo
-#endif
   endif
 !print *,'zero rows point 1'
   patch%aux%Miscible%n_zero_rows = n_zero_rows
@@ -4826,7 +4910,8 @@ subroutine MiscibleMaxChange(realization)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscReal :: dsmax, max_S  
+  PetscReal :: dsmax
+  PetscInt :: idof
   PetscErrorCode :: ierr 
 
   option => realization%option
@@ -4841,9 +4926,13 @@ subroutine MiscibleMaxChange(realization)
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
-  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax,ierr)
 
+  do idof = 1,option%nflowdof-1 
+    dsmax=0D0
+    call VecStrideNorm(field%flow_dxx,idof,NORM_INFINITY,dsmax,ierr)
+    if(dsmax>option%dcmax) option%dcmax=dsmax
+  enddo
+  
 #if 0
   do
     if (.not.associated(cur_level)) exit
@@ -4914,13 +5003,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
   
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
-  else
-    write(string2,'('',"PHASE"'')')
-  endif
-  string = trim(string) // trim(string2)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4930,13 +5012,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-S(g)"'')') icolumn
-  else
-    write(string2,'('',"S(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4946,13 +5021,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-d(g)"'')') icolumn
-  else
-    write(string2,'('',"d(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4962,13 +5030,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-vis(g)"'')') icolumn
-  else
-    write(string2,'('',"vis(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4978,13 +5039,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-kvr(g)"'')') icolumn
-  else
-    write(string2,'('',"kvr(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4994,13 +5048,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
-  else
-    write(string2,'('',"u(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
   do i=1,option%nflowspec
     if (icolumn > -1) then
       icolumn = icolumn + 1
@@ -5011,15 +5058,6 @@ function MiscibleGetTecplotHeader(realization, icolumn)
     string = trim(string) // trim(string2)
   enddo
 
-  do i=1,option%nflowspec
-    if (icolumn > -1) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-Xg('',i2,'')"'')') icolumn, i
-    else
-      write(string2,'('',"Xg('',i2,'')"'')') i
-    endif
-    string = trim(string) // trim(string2)
-  enddo
 
   MiscibleGetTecplotHeader = string
 

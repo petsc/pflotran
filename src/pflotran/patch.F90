@@ -758,7 +758,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
 
-            case(MPH_MODE, IMS_MODE, FLASH2_MODE)
+            case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
 !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_real_var(option%nflowdof,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
@@ -993,7 +993,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
             endif
             
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE) ! updated 10/17/11 
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE, MIS_MODE) ! updated 10/17/11 
             coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                         flow_condition%iphase
             select case(flow_condition%pressure%itype)
@@ -1194,6 +1194,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
       case(THC_MODE)
       case(MPH_MODE)
       case(IMS_MODE)
+      case(MIS_MODE)
       case(FLASH2_MODE)
     end select 
 

@@ -1,10 +1,7 @@
 module Miscible_Aux_module
-use Mphase_pckr_module
   implicit none
   
   private 
-!#define GARCIA 1
-#define DUANDEN 1
 
 #include "definitions.h"
 
@@ -225,11 +222,11 @@ end subroutine MiscibleAuxVarCopy
 
 subroutine Water_glycal_density( y,p, dkg)
   implicit none
-  PetscReal y, p
+  PetscReal y, p ! water mass fraction
   PetscReal dkg
 
   dkg = ((0.0806*y-0.203)*y + 0.0873)*y + 1.0341D0
-  dkg = (4.49758D-10* y +(1D0-y)*5D-10)*(p-1.01325D5) + denw
+  dkg = (4.49758D-10* y +(1D0-y)*5D-10)*(p-1.01325D5) + dkg
  
 end subroutine Water_glycal_density       
 ! ************************************************************************** !
@@ -241,7 +238,7 @@ end subroutine Water_glycal_density
 !
 ! ************************************************************************** !
 subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
-             saturation_function,fluid_properties,option)
+             fluid_properties,option)
 
   use Option_module
   use Global_Aux_module  
@@ -251,12 +248,12 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   type(option_type) :: option
   type(fluid_property_type) :: fluid_properties
-  type(saturation_function_type) :: saturation_function
+!  type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(Miscible_auxvar_elem_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
   PetscInt :: iphase
-  PetscReal, optional :: xphico2
+ 
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
@@ -267,9 +264,8 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   PetscReal :: eng,hg, dhdp, dhdt
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
-  PetscReal :: m_na,m_cl,m_nacl, xm_nacl, x_nacl, y_nacl, vphi             
-  PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
-  PetscReal :: Qkco2, mco2,xco2eq
+  PetscReal :: tk, visw 
+  PetscReal :: denw, yh2o
   PetscReal :: tmp 
   PetscInt :: iflag  
   
@@ -289,34 +285,34 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   tmp=sum(aux_var%xmol)
   aux_var%xmol(1) = 1D0 - tmp
 
-  auc_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
-  y = aux_var%xmol(1)*FMWH2O/aux_var%avgmw(1)
-  call Water_glycal_density(y, aux_var%pres, denw)
-  aux_var%den_kg(1) =denw
-  aux_var%den(1)=aux_var%den_kg(1)/auc_var%avgmw(1)
-  visw = 10D0**(1.6743d0*y-0.0758) * 1.0D-3
+  aux_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
+  yh2o = aux_var%xmol(1)*FMWH2O/aux_var%avgmw(1)
+  call Water_glycal_density(yh2o, aux_var%pres, denw)
+  aux_var%den(1)=denw/aux_var%avgmw(1)
+  visw = 10D0**(1.6743d0*yh2o-0.0758) * 1.0D-3
   aux_var%kvr(1) = 1.d0/visw
-  auc_var%fdiff(1) = ((((-4.021*y+9.1181)*y-5.9703)*y+0.4043D-3)*y + 0.5687)*1D-5
-  auc_var%fdiff(2) =  auc_var%fdiff(1)
+  aux_var%h(1)= denw * 4.18D-3*global_aux_var%temp(1)
+!  auc_var%fdiff(1) = ((((-4.021*y+9.1181)*y-5.9703)*y+0.4043D-3)*y + 0.5687)*1D-5
+  aux_var%diff(1:option%nflowspec) =  fluid_properties%diffusion_coefficient
+  
 
 end subroutine MiscibleAuxVarCompute_NINC
 
 
 
-subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_function, &
+subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
                                     fluid_properties,option)
 
   use Option_module
   use Global_Aux_module
   use water_eos_module
-  use Saturation_Function_module
   use Fluid_module
   
   implicit none
 
   type(option_type) :: option
   type(fluid_property_type) :: fluid_properties
-  type(saturation_function_type) :: saturation_function
+!  type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
   type(Miscible_auxvar_elem_type) :: aux_var(1:option%nflowdof)
   type(global_auxvar_type) :: global_auxvar
@@ -328,7 +324,7 @@ subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_
      xx=x;  xx(n)=x(n)+ delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
     call  MiscibleAuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &
-      saturation_function,fluid_properties, option)
+      fluid_properties, option)
   enddo
 
 end subroutine MiscibleAuxVarCompute_WINC

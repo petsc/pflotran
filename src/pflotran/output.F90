@@ -275,6 +275,7 @@ subroutine OutputTecplotBlock(realization)
   use THC_module
   use Richards_module
   use Flash2_module
+  use Miscible_module
   use General_module
   
   use Reactive_Transport_module
@@ -345,6 +346,8 @@ subroutine OutputTecplotBlock(realization)
     ! write flow variables
     header2 = ''
     select case(option%iflowmode)
+      case (MIS_MODE)
+        header2 = MiscibleGetTecplotHeader(realization,icolumn)
       case (IMS_MODE)
         header2 = ImmisGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
@@ -453,11 +456,11 @@ subroutine OutputTecplotBlock(realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -465,7 +468,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -523,7 +526,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,MIS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -539,7 +542,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! liquid viscosity
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -555,7 +558,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -570,7 +573,7 @@ subroutine OutputTecplotBlock(realization)
       end select
     
       select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,THC_MODE,G_MODE)
+        case(MPH_MODE,FLASH2_MODE,THC_MODE,MIS_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
@@ -841,6 +844,7 @@ subroutine OutputTecplotFEBrick(realization)
   use THC_module
   use Richards_module
   use Flash2_module
+  use Miscible_module
   use General_module
   
   use Reactive_Transport_module
@@ -917,6 +921,8 @@ subroutine OutputTecplotFEBrick(realization)
     select case(option%iflowmode)
       case (IMS_MODE)
         header2 = ImmisGetTecplotHeader(realization,icolumn)
+      case (MIS_MODE)
+        header2 = MiscibleGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
         header2 = MphaseGetTecplotHeader(realization,icolumn)
       case (FLASH2_MODE)
@@ -1017,11 +1023,11 @@ subroutine OutputTecplotFEBrick(realization)
   call VecDestroy(global_vertex_vec, ierr)
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1029,7 +1035,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1045,7 +1051,7 @@ subroutine OutputTecplotFEBrick(realization)
       
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1071,7 +1077,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! liquid density
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1087,7 +1093,7 @@ subroutine OutputTecplotFEBrick(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1103,7 +1109,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! liquid viscosity
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1119,7 +1125,7 @@ subroutine OutputTecplotFEBrick(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1134,7 +1140,7 @@ subroutine OutputTecplotFEBrick(realization)
       end select
     
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
@@ -1889,6 +1895,7 @@ subroutine OutputTecplotPoint(realization)
   use THC_module
   use Richards_module
   use Flash2_module
+  use Miscible_module
   use General_module
   
   use Reactive_Transport_module
@@ -1971,7 +1978,9 @@ subroutine OutputTecplotPoint(realization)
     select case(option%iflowmode)
       case (Flash2_MODE)
         header2 = Flash2GetTecplotHeader(realization,icolumn)
-       case (IMS_MODE)
+      case (MIS_MODE)
+        header2 = MiscibleGetTecplotHeader(realization,icolumn)
+      case (IMS_MODE)
         header2 = ImmisGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
         header2 = MphaseGetTecplotHeader(realization,icolumn)
@@ -2032,11 +2041,11 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') grid%z(ghosted_id)
 
     select case(option%iflowmode)
-      case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
+      case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
 
         ! temperature
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,TEMPERATURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2044,7 +2053,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! pressure
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,PRESSURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2060,7 +2069,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2086,7 +2095,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid density
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2102,7 +2111,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid energy
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2118,7 +2127,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid viscosity
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2134,7 +2143,7 @@ subroutine OutputTecplotPoint(realization)
       
         ! liquid mobility
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2149,7 +2158,7 @@ subroutine OutputTecplotPoint(realization)
         end select
       
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,MIS_MODE,G_MODE)
             ! liquid mole fractions
             do i=1,option%nflowspec
               value = RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION, &
@@ -3518,6 +3527,7 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
     case(MPH_MODE)
     case(IMS_MODE)
     case(THC_MODE)
+    case(MIS_MODE)
     case(RICHARDS_MODE)
       string = ',"Darcy flux ' // trim(coupler_name) // &
                ' [m^3/' // trim(realization%output_option%tunit) // ']"'
@@ -3585,14 +3595,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
   end select
@@ -3606,7 +3616,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
@@ -3629,7 +3639,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid density
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3643,7 +3653,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3657,7 +3667,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid viscosity
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3671,7 +3681,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid mobility
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3685,7 +3695,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid mole fractions
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION,i,ghosted_id)
@@ -3956,7 +3966,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE,MIS_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3967,7 +3977,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3989,7 +3999,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4026,7 +4036,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid density
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4048,7 +4058,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4070,7 +4080,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid viscosity
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_VISCOSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4092,7 +4102,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid mobility
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4114,7 +4124,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid mole fraction
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
@@ -4414,6 +4424,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
     offset = connection_set%offset
     select case(option%iflowmode)
       case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      case(MIS_MODE)
       case(RICHARDS_MODE)
         sum_volumetric_flux = 0.d0
         if (associated(connection_set)) then
@@ -4788,6 +4799,7 @@ subroutine OutputVTK(realization)
   use Flash2_module
   use Mphase_module
   use Immis_module
+  use Miscible_module
   use THC_module
   use Richards_module
   
@@ -4881,11 +4893,11 @@ subroutine OutputVTK(realization)
   write(IUNIT3,'(''CELL_DATA'',i8)') grid%nmax
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           word = 'Temperature'
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4894,7 +4906,7 @@ subroutine OutputVTK(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           word = 'Pressure'
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4912,7 +4924,7 @@ subroutine OutputVTK(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           word = 'Liquid_Saturation'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4941,7 +4953,7 @@ subroutine OutputVTK(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           word = 'Liquid_Energy'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4958,7 +4970,7 @@ subroutine OutputVTK(realization)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(word,'(i2)') i
@@ -6048,6 +6060,8 @@ end subroutine SAMRWritePlotData
            nviz_flow = 2+4*option%nphase
         case(THC_MODE)
            nviz_flow = 4+option%nflowspec
+        case(MIS_MODE)
+           nviz_flow = 4+option%nflowspec
         case(G_MODE)
            nviz_flow = 7+2*option%nflowspec
         case default
@@ -6177,12 +6191,12 @@ end subroutine SAMRWritePlotData
 
   select case(option%iflowmode)
   
-    case(FLASH2_MODE, MPH_MODE,THC_MODE, IMS_MODE,&
+    case(FLASH2_MODE, MPH_MODE,THC_MODE, MIS_MODE,IMS_MODE,&
          RICHARDS_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           if (.not.(option%use_samr)) then
@@ -6198,7 +6212,7 @@ end subroutine SAMRWritePlotData
 
       ! pressure
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
           if (.not.(option%use_samr)) then
@@ -6214,7 +6228,7 @@ end subroutine SAMRWritePlotData
 
       ! liquid saturation
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
           if (.not.(option%use_samr)) then
@@ -6264,7 +6278,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid density
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           string = "Liquid Density"
           if (.not.(option%use_samr)) then
@@ -6296,7 +6310,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid viscosity
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           string = "Liquid Viscosity"
           if (.not.(option%use_samr)) then
@@ -6328,7 +6342,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid mobility
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           string = "Liquid Mobility"
           if (.not.(option%use_samr)) then
@@ -6360,7 +6374,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid energy
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           if (.not.(option%use_samr)) then
@@ -6392,7 +6406,7 @@ end subroutine SAMRWritePlotData
     
       ! liquid mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction-'',i1)') i
@@ -7988,6 +8002,7 @@ subroutine OutputMassBalanceNew(realization)
   use Richards_module
   use Mphase_module
   use Immis_module
+  use Miscible_module
   use THC_module
   use Reactive_Transport_module
   use General_module
@@ -8103,6 +8118,11 @@ subroutine OutputMassBalanceNew(realization)
                                     '[kmol]','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
                                     '[kmol]','',icol)
+        case(MIS_MODE)
+          call OutputAppendToHeader(header,'Global Water Mass in liquid Phase', &
+                                    '[kmol]','',icol)
+          call OutputAppendToHeader(header,'Global glc Mass in liquid Phase', &
+                                    '[kmol]','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
 
@@ -8147,6 +8167,12 @@ subroutine OutputMassBalanceNew(realization)
             call OutputAppendToHeader(header,string,'[kg]','',icol)
             units = '[kg/' // trim(output_option%tunit) // ']'
             string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,units,'',icol)
+          case(MIS_MODE)
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            units = '[kg/' // trim(output_option%tunit) // ']'
+            string = trim(coupler%name) // ' gluc Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(G_MODE)
             string = trim(coupler%name) // ' Water Mass'
@@ -8246,6 +8272,8 @@ subroutine OutputMassBalanceNew(realization)
         call RichardsComputeMassBalance(realization,sum_kg(1,:))
       case(THC_MODE)
         call THCComputeMassBalance(realization,sum_kg(1,:))
+      case(MIS_MODE)
+        call MiscibleComputeMassBalance(realization,sum_kg(1,:))
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(IMS_MODE)
@@ -8262,7 +8290,7 @@ subroutine OutputMassBalanceNew(realization)
                         
     if (option%myrank == option%io_rank) then
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,MIS_MODE,G_MODE,THC_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
@@ -8409,6 +8437,41 @@ subroutine OutputMassBalanceNew(realization)
           endif
 
        case(THC_MODE)
+          ! print out cumulative H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+          enddo
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global
+          endif
+
+          ! print out H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, coupler%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+          enddo
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+          sum_kg = sum_kg*FMWH2O
+
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
+          endif
+
+       case(MIS_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections

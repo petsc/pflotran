@@ -17,6 +17,7 @@ PetscReal, parameter :: FMWNACL = 58.44277d0
 PetscReal, parameter :: FMWH2O = 18.01534d0  ! kg/kmol h2o
 PetscReal, parameter :: FMWCO2 = 44.0098d0
 PetscReal, parameter :: FMWAIR = 28.96d0
+PetscReal, parameter :: FMWGLYC = 92D0
 
 ! conversion factors
 PetscReal, parameter :: LOG_TO_LN = 2.30258509299d0
@@ -89,6 +90,7 @@ PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
 PetscInt, parameter :: FLASH2_MODE = 6
 PetscInt, parameter :: G_MODE = 7
+PetscInt, parameter :: MIS_MODE = 8
 
 ! grid types
 PetscInt, parameter :: NULL_GRID = 0
