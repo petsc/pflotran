@@ -185,7 +185,8 @@ subroutine VISW_FLO (t,dw,vw)
       -15.9618719d0, 1.80122502d0/
     pc=22.064
 
-    if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+    if (T .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -221,7 +222,8 @@ subroutine VISW_FLO (t,dw,vw)
       -15.9618719d0, 1.80122502d0/
     pc=22.064D6
 
-    if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+    if (T .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -266,7 +268,8 @@ subroutine PSAT_orig (T, P, ierr)
       -7.691234564d0,-2.608023696d1,-1.681706546d2,6.423285504d1, &
       -1.189646225d2,4.167117320d0,2.097506760E1,1.d9,6.d0/
    
-    if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+    if (T .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -300,7 +303,8 @@ subroutine PSATgeh (T, psat, dpsat_dt, ierr)
       -7.691234564d0,-2.608023696d1,-1.681706546d2,6.423285504d1, &
       -1.189646225d2,4.167117320d0,2.097506760E1,1.d9,6.d0/
    
-    if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+    if (T .GT. 500.d0) then
       ierr = 1
       return
     end if
