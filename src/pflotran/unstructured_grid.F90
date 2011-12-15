@@ -963,6 +963,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   MatPartitioning :: Part
   Vec :: elements_natural
   Vec :: elements_petsc
+  Vec :: elements_local
   Vec :: elements_old
   Vec :: vertices_old
   Vec :: vertices_new
@@ -1470,6 +1471,21 @@ subroutine UGridDecompose(unstructured_grid,option)
           -ghost_cell_count
         ! temporarily store the index of the int_array_pointer
         ! flag negative
+      else
+        found = PETSC_FALSE
+        do local_id2 = 1, num_cells_local_new
+          if (dual_id == unstructured_grid%cell_ids_petsc(local_id2)) then
+            vec_ptr(idual + dual_offset + (local_id-1)*stride) = local_id2
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo
+        ! if not found, add it to the list of ghost cells
+        if (.not.found) then
+          write(option%io_buffer,*) 'Cell ', dual_id, ' (petsc-numbering) ' // &
+            'not found among local cells'
+          call printErrMsgByRank(option)
+        endif
       endif
 #endif
     enddo
@@ -1506,6 +1522,7 @@ subroutine UGridDecompose(unstructured_grid,option)
 
     ! determine how many duplicates
     allocate(int_array3(ghost_cell_count))
+    allocate(int_array4(ghost_cell_count))
     int_array3 = 0
     temp_int = 1
     int_array3(temp_int) = int_array_pointer(int_array2(1))
@@ -1517,7 +1534,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         temp_int = temp_int + 1
         int_array3(temp_int) = int_array_pointer(int_array2(ghosted_id))
       endif
-      int_array2(ghosted_id) = temp_int
+      int_array4(ghosted_id) = temp_int
     enddo
 
     ghost_cell_count = temp_int
@@ -1538,7 +1555,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         ! dual_id < 0: assigned to ghost cell
         if (dual_id < 0) then
           vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
-            int_array2(-dual_id) + num_cells_local_new
+            int_array4(int_array2(-dual_id)) + num_cells_local_new
         endif
       enddo
     enddo
@@ -1548,6 +1565,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     nullify(int_array_pointer)
     deallocate(int_array2)
     deallocate(int_array3)
+    deallocate(int_array4)
   endif
 
   unstructured_grid%num_ghost_cells = ghost_cell_count
@@ -1584,10 +1602,10 @@ subroutine UGridDecompose(unstructured_grid,option)
   allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
   ! fill with the sorted ids
   do ghosted_id = 1, ghost_cell_count
-!    unstructured_grid%ghost_cell_ids_petsc(int_array2(ghosted_id)) = &
-!      int_array(ghosted_id)
-    unstructured_grid%ghost_cell_ids_petsc(ghosted_id) = &
-      int_array(int_array2(ghosted_id))
+    !TODO(geh): need to move int_array2 to rhs, and fixe remainder of 
+    !           affected code
+    unstructured_grid%ghost_cell_ids_petsc(int_array2(ghosted_id)) = &
+      int_array(ghosted_id)
   enddo
     
   ! now, rearrange the ghost cell ids of the dual accordingly
@@ -1617,6 +1635,14 @@ subroutine UGridDecompose(unstructured_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+  ! need to create a local ghosted vector in which we can collect element info
+  ! including ghost cells
+!  call VecCreate(option%mycomm,elements_local,ierr)
+!  call VecSetSizes(elements_petsc_ghosed, &
+!                   stride*num_cells_local_new, &
+!                   PETSC_DECIDE,ierr)
+!  call VecSetFromOptions(elements_natural,ierr)
+   
   ! load cell neighbors into array
   ! start first index at zero to store # duals for a cell
   allocate(unstructured_grid%cell_neighbors_local_ghosted(0:max_dual, &
