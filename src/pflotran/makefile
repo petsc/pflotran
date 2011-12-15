@@ -161,6 +161,7 @@ common_obj = ${common_src}option.o \
 	${common_src}richards_aux.o\
 	${common_src}general_aux.o\
 	${common_src}mphase_aux.o\
+	${common_src}miscible_aux.o\
 	${common_src}immis_aux.o\
         ${common_src}mfd_aux.o\
 	${common_src}flash2_aux.o\
@@ -202,6 +203,7 @@ common_obj = ${common_src}option.o \
 	${common_src}global.o \
 	${common_src}mphase.o\
 	${common_src}immis.o\
+	${common_src}miscible.o\
 	${common_src}flash2.o\
 	${common_src}transport.o\
 	${common_src}reaction_chunk.o\
@@ -322,6 +324,7 @@ general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
 	global_aux.o
 mphase.o : mphase_aux.o realization.o fluid.o global_aux.o
 immis.o : immis_aux.o realization.o  global_aux.o
+miscible.o : miscible_aux.o realization.o  global_aux.o
 flash2.o : flash2_aux.o realization.o fluid.o global_aux.o
 mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 	co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
@@ -329,6 +332,7 @@ mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 	co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
 	saturation_function.o
+miscible_aux.o : option.o material.o
 flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 	co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
 	saturation_function.o

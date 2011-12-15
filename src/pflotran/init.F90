@@ -52,6 +52,7 @@ subroutine Init(simulation)
   use Flash2_module
   use MPHASE_module
   use Immis_module
+  use Miscible_module
   use Richards_module
   use THC_module
   use General_module
@@ -162,7 +163,7 @@ end interface
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
-  
+    
   ! initialize transport mode
   if (option%ntrandof > 0) then
     tran_solver => tran_stepper%solver
@@ -262,6 +263,8 @@ end interface
           write(*,'(" mode = MPH: p, T, s/X")')
         case(IMS_MODE)
           write(*,'(" mode = IMS: p, T, s")')
+        case(MIS_MODE)
+          write(*,'(" mode = MIS: p, Xs")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
@@ -329,6 +332,9 @@ end interface
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
                              realization,ierr)
+      case(MIS_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,MiscibleResidual, &
+                             realization,ierr)
       case(FLASH2_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
                              realization,ierr)
@@ -362,6 +368,9 @@ end interface
       case(IMS_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              ImmisJacobian,realization,ierr)
+      case(MIS_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             MiscibleJacobian,realization,ierr)
       case(FLASH2_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              FLASH2Jacobian,realization,ierr)
@@ -605,6 +614,8 @@ end interface
         call MphaseSetup(realization)
       case(IMS_MODE)
         call ImmisSetup(realization)
+      case(MIS_MODE)
+        call MiscibleSetup(realization)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
       case(G_MODE)
@@ -636,6 +647,8 @@ end interface
         call MphaseUpdateAuxVars(realization)
       case(IMS_MODE)
         call ImmisUpdateAuxVars(realization)
+      case(MIS_MODE)
+        call MiscibleUpdateAuxVars(realization)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
       case(G_MODE)
@@ -2019,7 +2032,15 @@ subroutine setFlowMode(option)
       option%iflowmode = THC_MODE
       option%nphase = 1
       option%liquid_phase = 1      
+      option%gas_phase = 2      
       option%nflowdof = 3
+      option%nflowspec = 2
+    case('MIS','MISCIBLE')
+      option%iflowmode = MIS_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 2
       option%nflowspec = 2
     case('RICHARDS')
       option%iflowmode = RICHARDS_MODE

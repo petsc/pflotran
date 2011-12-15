@@ -2161,7 +2161,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   global_auxvar => constraint_coupler%global_auxvar
 
   select case(option%iflowmode)
-    case(FLASH2_MODE,MPH_MODE,IMS_MODE)
+    case(FLASH2_MODE,MPH_MODE,IMS_MODE,MIS_MODE)
     case(NULL_MODE)
       global_auxvar%den_kg(iphase) = option%reference_water_density
       global_auxvar%temp(1) = option%reference_temperature

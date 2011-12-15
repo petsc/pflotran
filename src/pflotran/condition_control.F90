@@ -817,6 +817,7 @@ subroutine CondControlScaleSourceSink(realization)
             case(THC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
+            case(MIS_MODE)
             case(FLASH2_MODE)
           end select 
 
@@ -837,6 +838,7 @@ subroutine CondControlScaleSourceSink(realization)
             case(THC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
+            case(MIS_MODE)
             case(FLASH2_MODE)
           end select 
 
