@@ -1473,8 +1473,13 @@ subroutine UGridDecompose(unstructured_grid,option)
         ! temporarily store the index of the int_array_pointer
         ! flag negative
       else
+        ! if dual_id is in petsc numbering, then the local ids is:
+        vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
+          dual_id - global_offset_new
+#if 0
         found = PETSC_FALSE
         do local_id2 = 1, num_cells_local_new
+          
           if (dual_id == unstructured_grid%cell_ids_petsc(local_id2)) then
             vec_ptr(idual + dual_offset + (local_id-1)*stride) = local_id2
             found = PETSC_TRUE
@@ -1487,6 +1492,7 @@ subroutine UGridDecompose(unstructured_grid,option)
             'not found among local cells'
           call printErrMsgByRank(option)
         endif
+#endif
       endif
 #endif
     enddo
