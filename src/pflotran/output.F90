@@ -7476,6 +7476,7 @@ subroutine GetCellConnections(grid, vec)
   type(unstructured_grid_type),pointer :: ugrid
   Vec :: vec
   PetscInt :: local_id
+  PetscInt :: ghosted_id
   PetscInt :: offset
   PetscInt :: ivertex
   PetscReal, pointer :: vec_ptr(:)
@@ -7487,8 +7488,9 @@ subroutine GetCellConnections(grid, vec)
   ! initialize
   vec_ptr = -999.d0
   do local_id=1, ugrid%nlmax
+    ghosted_id = local_id
     offset = (local_id-1)*8
-    select case(ugrid%cell_type_ghosted(local_id))
+    select case(ugrid%cell_type(ghosted_id))
       case(HEX_TYPE)
         do ivertex = 1, 8
           vec_ptr(offset + ivertex) = &
