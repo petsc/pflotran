@@ -185,8 +185,8 @@ subroutine VISW_FLO (t,dw,vw)
       -15.9618719d0, 1.80122502d0/
     pc=22.064
 
-!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
-    if (T .GT. 500.d0) then
+!   if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+    if (TC .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -222,8 +222,8 @@ subroutine VISW_FLO (t,dw,vw)
       -15.9618719d0, 1.80122502d0/
     pc=22.064D6
 
-!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
-    if (T .GT. 500.d0) then
+!   if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+    if (TC .GT. 500.d0) then
       ierr = 1
       return
     end if
