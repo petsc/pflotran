@@ -44,7 +44,6 @@ module Unstructured_Grid_module
     PetscInt, pointer :: vertex_ids_natural(:)
     PetscInt, pointer :: cell_ids_natural(:) ! natural 1d right-hand i,j,k ordering
     PetscInt, pointer :: cell_ids_petsc(:) ! petsc ordering of cell ids
-    PetscInt, pointer :: ghost_cell_ids_natural(:) ! natural ordering of ghost cell ids
     PetscInt, pointer :: ghost_cell_ids_petsc(:) ! petsc ordering of ghost cells ids
     PetscInt, pointer :: cell_neighbors_local_ghosted(:,:) ! local neighbors
     type(point_type), pointer :: vertices(:)
@@ -184,7 +183,6 @@ function UGridCreate()
   nullify(unstructured_grid%hash)
   nullify(unstructured_grid%cell_ids_natural)
   nullify(unstructured_grid%cell_ids_petsc)
-  nullify(unstructured_grid%ghost_cell_ids_natural)
   nullify(unstructured_grid%ghost_cell_ids_petsc)
   nullify(unstructured_grid%cell_neighbors_local_ghosted)
   unstructured_grid%num_hash = 100
@@ -1367,7 +1365,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! exactly the opposite operation of when we loaded the temporary int_array
   ! vector
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
-  call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
+!geh: do not believe that we need elements_natural here
+!  call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
   allocate(unstructured_grid%cell_ids_petsc(num_cells_local_new))
   count = 0
   do local_id=1, num_cells_local_new
@@ -1377,7 +1376,8 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! store it in the elements_petsc vector too
     vec_ptr((local_id-1)*stride+1) = int_array(count)
     do idual = 1, max_dual
-      dual_id = vec_ptr2(idual + dual_offset + (local_id-1)*stride)
+!geh      dual_id = vec_ptr2(idual + dual_offset + (local_id-1)*stride)
+      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 1) exit
       count = count + 1
       ! store the petsc numbered duals in the vector also
@@ -1385,9 +1385,8 @@ subroutine UGridDecompose(unstructured_grid,option)
     enddo
   enddo                
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
-  call VecRestoreArrayF90(elements_natural,vec_ptr2,ierr)
+!geh  call VecRestoreArrayF90(elements_natural,vec_ptr2,ierr)
   deallocate(int_array)
-  call VecDestroy(elements_natural,ierr)
 
 #if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc.out',viewer,ierr)
@@ -1396,6 +1395,9 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
 
   ! make a list of ghosted ids in petsc numbering
+#if UGRID_DEBUG
+  call printMsg(option,'Renumbering ghost ids to petsc numbering')
+#endif
   
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   ghost_cell_count = 0
@@ -1404,7 +1406,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   !      of local and 100 is used to ensure that if this is not true, the array
   !       is still large enough
   max_ghost_cell_count = max(num_cells_local_new,100)
-#ifndef GLENN1
+#ifndef GLENN
   allocate(unstructured_grid%ghost_cell_ids_petsc(max_ghost_cell_count))
 #else
   allocate(int_array_pointer(max_ghost_cell_count))
@@ -1417,7 +1419,7 @@ subroutine UGridDecompose(unstructured_grid,option)
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       found = PETSC_FALSE
       if (dual_id < 1) exit
-#ifndef GLENN1
+#ifndef GLENN
       !TODO(geh): add back in check based on global offset to determine whether
       !           a cell is ghosted or not, must faster (see changeset 
       !           b97f7c29bc38)
@@ -1498,7 +1500,11 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
  
 
-#ifdef GLENN1
+#if UGRID_DEBUG
+  call printMsg(option,'  Sorting local ghost ids')
+#endif
+
+#ifdef GLENN
   if (ghost_cell_count > 0) then
     ! sort ghost cell ids
     allocate(int_array2(ghost_cell_count))
@@ -1541,6 +1547,10 @@ subroutine UGridDecompose(unstructured_grid,option)
 
     unstructured_grid%ghost_cell_ids_petsc(1:ghost_cell_count) = &
       int_array3(1:ghost_cell_count)
+
+#if UGRID_DEBUG
+  call printMsg(option,'  Remappping ghost ids')
+#endif
 
     ! remap of duals of ghost cells
     call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
@@ -1608,6 +1618,10 @@ subroutine UGridDecompose(unstructured_grid,option)
       int_array(ghosted_id)
   enddo
     
+#if UGRID_DEBUG
+  call printMsg(option,'  Remappping ghost ids')
+#endif
+
   ! now, rearrange the ghost cell ids of the dual accordingly
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   ! add num_cells_local to get in local numbering
@@ -1635,12 +1649,50 @@ subroutine UGridDecompose(unstructured_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+#if UGRID_DEBUG
+  call printMsg(option,'Resizing natural cell id array')
+#endif
+
+  ! Resize cell_ids_natural to include ghosted cells
+  allocate(int_array(unstructured_grid%nlmax))
+  int_array(:) = unstructured_grid%cell_ids_natural(:)
+  deallocate(unstructured_grid%cell_ids_natural)
+  allocate(unstructured_grid%cell_ids_natural(unstructured_grid%ngmax))
+  unstructured_grid%cell_ids_natural(:) = -999
+  unstructured_grid%cell_ids_natural(1:unstructured_grid%nlmax) = int_array(:)
+  deallocate(int_array)
+  call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
+  call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
+  do local_id=1, unstructured_grid%nlmax
+    do idual = 1, max_dual
+      dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
+      if (dual_id < 1) exit
+      if (dual_id > unstructured_grid%nlmax) then
+        unstructured_grid%cell_ids_natural(dual_id) = &
+          vec_ptr2(idual + dual_offset + (local_id-1)*stride)
+      endif       
+    enddo
+  enddo
+  if (minval(unstructured_grid%cell_ids_natural) < 1) then
+    write(string,*) minval( unstructured_grid%cell_ids_natural)
+    option%io_buffer = 'Negative natural id: ' // trim(adjustl(string))
+    call printErrMsgByRank(option)
+  endif
+  call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_natural,vec_ptr2,ierr)
+  call VecDestroy(elements_natural,ierr)
+
+  ! NOW START ON GHOSTING CELLS
+
+#if UGRID_DEBUG
+  call printMsg(option,'Ghosting local element vectors')
+#endif
+
   ! load cell neighbors into array
   ! start first index at zero to store # duals for a cell
   allocate(unstructured_grid%cell_neighbors_local_ghosted(0:max_dual, &
                                                       unstructured_grid%nlmax))
   unstructured_grid%cell_neighbors_local_ghosted = 0
-
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   do local_id=1, unstructured_grid%nlmax
     count = 0
@@ -1699,6 +1751,10 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecScatterDestroy(vec_scatter,ierr)
   call VecDestroy(elements_petsc,ierr)
     
+#if UGRID_DEBUG
+  call printMsg(option,'Scatter/gathering local ghosted vertices')
+#endif
+
   ! make a list of local vertices
   max_int_count = 2*unstructured_grid%ngmax
   allocate(int_array_pointer(max_int_count))
@@ -1912,6 +1968,10 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
 
   call VecDestroy(vertices_new,ierr)
+
+#if UGRID_DEBUG
+  call printMsg(option,'Setting cell types')
+#endif
 
   allocate(unstructured_grid%cell_type(unstructured_grid%ngmax))
   do ghosted_id = 1, unstructured_grid%ngmax
@@ -2585,8 +2645,24 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       
       ! Check that one shared face was found between the Cell and Neighboring-Cell
       if (.not.face_found) then
-        write(string,*),'rank=',option%myrank, 'local_id',cell_id,'local_id2',cell_id2
-        option%io_buffer='No shared face found: ' // string // '\n'
+        write(string,*) option%myrank
+        string = '(' // trim(adjustl(string)) // ')'
+        write(*,'(a,'' local_id = '',i3,'' natural_id = '',i3,/ &
+                  &''  vertices: '',8i3)') &
+                   trim(string), &
+                   cell_id,unstructured_grid%cell_ids_natural(cell_id), &
+                   (unstructured_grid%vertex_ids_natural( &
+                     unstructured_grid%cell_vertices_0(ivertex,cell_id)+1), &
+                     ivertex=1,unstructured_grid%cell_vertices_0(0,cell_id))
+        write(*,'(a,'' local_id2 = '',i3,'' natural_id2 = '',i3,/ &
+                       &''  vertices2: '',8i3 &
+                       &)') &
+                   trim(string), &
+                   cell_id2,unstructured_grid%cell_ids_natural(cell_id2), &
+                   (unstructured_grid%vertex_ids_natural( &
+                     unstructured_grid%cell_vertices_0(ivertex2,cell_id2)+1), &
+                     ivertex2=1,unstructured_grid%cell_vertices_0(0,cell_id2))
+        option%io_buffer='No shared face found.'
         call printErrMsgByRank(option)
       endif
     enddo ! idual-loop
@@ -3654,9 +3730,6 @@ subroutine UGridDestroy(unstructured_grid)
   if (associated(unstructured_grid%cell_ids_natural)) &
     deallocate(unstructured_grid%cell_ids_natural)
   nullify(unstructured_grid%cell_ids_natural)
-  if (associated(unstructured_grid%ghost_cell_ids_natural)) &
-    deallocate(unstructured_grid%ghost_cell_ids_natural)
-  nullify(unstructured_grid%ghost_cell_ids_natural)
   if (associated(unstructured_grid%cell_neighbors_local_ghosted)) &
     deallocate(unstructured_grid%cell_neighbors_local_ghosted)
   nullify(unstructured_grid%cell_neighbors_local_ghosted)
