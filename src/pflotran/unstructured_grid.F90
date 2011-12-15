@@ -985,6 +985,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt, allocatable :: int_array2(:)
   PetscInt, allocatable :: int_array3(:)
   PetscInt, allocatable :: int_array4(:)
+  PetscInt, allocatable :: int_array5(:)
   PetscInt, allocatable :: needed_vertices_petsc(:)
   PetscInt, pointer :: int_array_pointer(:)
   
@@ -1406,7 +1407,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   !      of local and 100 is used to ensure that if this is not true, the array
   !       is still large enough
   max_ghost_cell_count = max(num_cells_local_new,100)
-#ifndef GLENN
+#if 0
   allocate(unstructured_grid%ghost_cell_ids_petsc(max_ghost_cell_count))
 #else
   allocate(int_array_pointer(max_ghost_cell_count))
@@ -1419,7 +1420,7 @@ subroutine UGridDecompose(unstructured_grid,option)
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       found = PETSC_FALSE
       if (dual_id < 1) exit
-#ifndef GLENN
+#if 0
       !TODO(geh): add back in check based on global offset to determine whether
       !           a cell is ghosted or not, must faster (see changeset 
       !           b97f7c29bc38)
@@ -1504,7 +1505,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call printMsg(option,'  Sorting local ghost ids')
 #endif
 
-#ifdef GLENN
+#if 1
   if (ghost_cell_count > 0) then
     ! sort ghost cell ids
     allocate(int_array2(ghost_cell_count))
@@ -1527,6 +1528,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! determine how many duplicates
     allocate(int_array3(ghost_cell_count))
     allocate(int_array4(ghost_cell_count))
+    allocate(int_array5(ghost_cell_count))
     int_array3 = 0
     temp_int = 1
     int_array3(temp_int) = int_array_pointer(int_array2(1))
@@ -1538,6 +1540,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         temp_int = temp_int + 1
         int_array3(temp_int) = int_array_pointer(int_array2(ghosted_id))
       endif
+      int_array5(int_array2(ghosted_id)) = ghosted_id
       int_array4(ghosted_id) = temp_int
     enddo
 
@@ -1563,7 +1566,7 @@ subroutine UGridDecompose(unstructured_grid,option)
         ! dual_id < 0: assigned to ghost cell
         if (dual_id < 0) then
           vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
-            int_array4(int_array2(-dual_id)) + num_cells_local_new
+            int_array4(int_array5(-dual_id)) + num_cells_local_new
         endif
       enddo
     enddo
@@ -1574,6 +1577,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     deallocate(int_array2)
     deallocate(int_array3)
     deallocate(int_array4)
+    deallocate(int_array5)
   endif
 
   unstructured_grid%nlmax = num_cells_local_new

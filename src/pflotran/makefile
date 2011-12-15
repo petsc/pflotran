@@ -20,6 +20,7 @@ endif
 
 ifdef glenn
 GLENN_FLAGS = -DGLENN -DUGRID_DEBUG
+#GLENN_FLAGS = -DUGRID_DEBUG
 endif
 
 ifdef dbl
