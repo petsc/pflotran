@@ -1121,8 +1121,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   call printErrMsg(option)
 #endif
   call MatDestroy(Adj_mat,ierr)
-  if (allocated(local_vertices) deallocate(local_vertices)
-  if (allocated(local_vertex_offset) deallocate(local_vertex_offset)
+  if (allocated(local_vertices)) deallocate(local_vertices)
+  if (allocated(local_vertex_offset)) deallocate(local_vertex_offset)
   
 #if UGRID_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Dual.out',viewer,ierr)
