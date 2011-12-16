@@ -26,6 +26,8 @@ module Unstructured_Grid_module
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash
+    PetscInt :: max_ndual_per_cell
+    PetscInt :: max_nvert_per_cell
     PetscInt, pointer :: cell_type(:)
     PetscInt, pointer :: cell_vertices_0(:,:) ! vertices for each grid cell (zero-based)
     PetscInt, pointer :: face_to_cell_ghosted(:,:) !
@@ -82,8 +84,6 @@ module Unstructured_Grid_module
   !  PetscInt, parameter :: PYR_TYPE          = 4
   !  PetscInt, parameter :: TRI_FACE_TYPE     = 1
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
-  !  PetscInt, parameter :: MAX_VERT_PER_CELL = 8
-  !  PetscInt, parameter :: MAX_DUALS         = 6
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
   !  PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 
@@ -172,6 +172,8 @@ function UGridCreate()
   unstructured_grid%nmax = 0
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
+  unstructured_grid%max_ndual_per_cell = 0
+  unstructured_grid%max_nvert_per_cell = 0
   nullify(unstructured_grid%cell_type)
   nullify(unstructured_grid%cell_vertices_0)
   nullify(unstructured_grid%face_to_cell_ghosted)
@@ -355,6 +357,9 @@ subroutine UGridRead(unstructured_grid,filename,option)
   fileid = 86
   input => InputCreate(fileid,filename)
 
+  ! initial guess is 8 vertices per cell
+  unstructured_grid%max_nvert_per_cell = 8
+
 ! Format of unstructured grid file
 ! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
 ! vertn(H) = 8
@@ -396,13 +401,15 @@ subroutine UGridRead(unstructured_grid,filename,option)
                                  num_cells_local + 1
 
   ! allocate array to store vertices for each cell
-  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL,num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(unstructured_grid%max_nvert_per_cell, &
+                                             num_cells_local))
   unstructured_grid%cell_vertices_0 = -999
 
   ! for now, read all cells from ASCII file through io_rank and communicate
   ! to other ranks
   if (option%myrank == option%io_rank) then
-    allocate(temp_int_array(MAX_VERT_PER_CELL,num_cells_local_save+1))
+    allocate(temp_int_array(unstructured_grid%max_nvert_per_cell, &
+                            num_cells_local_save+1))
     ! read for other processors
     do irank = 0, option%mycommsize-1
       temp_int_array = -999
@@ -412,7 +419,6 @@ subroutine UGridRead(unstructured_grid,filename,option)
         ! read in the vertices defining the grid cell
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
-        num_vertices = MAX_VERT_PER_CELL
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'element type',card)
         call StringToUpper(word)
@@ -450,7 +456,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
                  trim(adjustl(word))
         print *, trim(string)
 #endif
-        int_mpi = num_to_read*MAX_VERT_PER_CELL
+        int_mpi = num_to_read*unstructured_grid%max_nvert_per_cell
         call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
@@ -465,7 +471,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
                  trim(adjustl(word))
         print *, trim(string)
 #endif
-    int_mpi = num_cells_local*MAX_VERT_PER_CELL
+    int_mpi = num_cells_local*unstructured_grid%max_nvert_per_cell
     call MPI_Recv(unstructured_grid%cell_vertices_0,int_mpi, &
                   MPIU_INTEGER,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
@@ -579,6 +585,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   PetscInt          :: remainder
   PetscInt,pointer  :: int_buffer(:,:)
   PetscReal,pointer :: double_buffer(:,:)
+  PetscInt, parameter :: max_nvert_per_cell = 8  
   PetscErrorCode    :: ierr
 
 #if defined(PETSC_HAVE_HDF5)
@@ -688,8 +695,8 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
                  dims_h5, hdf5_err, memory_space_id, data_space_id)
   
   ! allocate array to store vertices for each cell
-  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
-                                            num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(max_nvert_per_cell, &
+                                             num_cells_local))
   unstructured_grid%cell_vertices_0 = -1
   
   do ii = 1, num_cells_local
@@ -799,6 +806,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   deallocate(dims_h5)
   deallocate(max_dims_h5)
   
+  unstructured_grid%max_nvert_per_cell = max_nvert_per_cell
   unstructured_grid%nlmax = num_cells_local
   unstructured_grid%num_vertices_local = num_vertices_local
   
@@ -847,6 +855,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   PetscReal,pointer :: double_buffer(:,:)
   PetscInt          :: ii, jj
   PetscInt          :: dims(2), dataset_dims(2)
+  PetscInt, parameter :: max_nvert_per_cell = 8  
 
   character(len=MAXSTRINGLENGTH) :: cell_dataset_name = &
                                                        '/Domain/Cells'//CHAR(0)
@@ -865,8 +874,8 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   ! Allocate array to store vertices for each cell
   num_cells_local  = dims(2)
   unstructured_grid%nmax = dataset_dims(2)
-  allocate(unstructured_grid%cell_vertices_0(MAX_VERT_PER_CELL, &
-                                            num_cells_local))
+  allocate(unstructured_grid%cell_vertices_0(max_nvert_per_cell, &
+                                             num_cells_local))
   unstructured_grid%cell_vertices_0 = -1
 
   ! Fill the cell data structure
@@ -896,6 +905,8 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
     unstructured_grid%vertices(ii)%y = double_buffer(2, ii)
     unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
   enddo
+
+  unstructured_grid%max_nvert_per_cell = max_nvert_per_cell
 
 end subroutine UGridReadHDF5PIOLib
 
@@ -937,8 +948,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: vertex_id
   PetscInt :: count, vertex_count
   PetscInt :: vertex_offset, global_vertex_offset
-  PetscInt :: max_vertex_count
-  PetscInt :: max_dual
   PetscInt :: stride
   PetscInt, allocatable :: local_vertices(:)
   PetscInt, allocatable :: local_vertex_offset(:)
@@ -992,8 +1001,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: idual, dual_id
   PetscInt :: iflag
   PetscBool :: found
-
-
   
 !  cell distribution across processors (size = num_cores + 1)
 !  core i owns cells cell_distribution(i):cell_distribution(i+1), note
@@ -1004,47 +1011,32 @@ subroutine UGridDecompose(unstructured_grid,option)
 !  cell_distribution(2:) = unstructured_grid%num_cells
 !  num_local_cells = cell_distribution(option%myrank+1)- &
 !                    cell_distribution(option%myrank+2)
-  
-  ! provide ids of vertices for local cells
 
-  ! in order to redistributed vertex/cell data among ranks, I package it
-  ! in a crude way within a strided petsc vec and pass it.  The stride 
-  ! determines the size of each cells "packaged" data 
-  vertex_ids_offset = 1 + 1 ! +1 for -777
-  max_vertex_count = MAX_VERT_PER_CELL
-  dual_offset = vertex_ids_offset + max_vertex_count + 1 ! +1 for -888
-  max_dual = MAX_DUALS
-  stride = dual_offset+ max_dual + 1 ! +1 for -999999
+  num_cells_local_old = unstructured_grid%nlmax
 
-  ! Information for each cell is packed in a strided petsc vec
-  ! The information is ordered within each stride as follows:
-  ! -cell_N   ! global cell id (negative indicates 1-based)
-  ! -777      ! separator between cell id and vertex ids for cell_N
-  ! vertex1   ! in cell_N
-  ! vertex2
-  ! ...
-  ! vertexN   
-  ! -888      ! separator between vertex and dual ids
-  ! dual1     ! dual ids between cell_N and others
-  ! dual2
-  ! ...
-  ! dualN     
-  ! -999999   ! separator indicating end of information for cell_N
-  
-  ! the purpose of -777, -888, and -999999 is to allow one to use cells of 
-  ! various geometry.  Currently, the max # vertices = 8 and max # duals = 6.
-  ! But this will be generalized in the future.
-  
+  ! recalculate maximum number of vertices for any given cell
+  temp_int = 0
+  do local_id = 1, num_cells_local_old
+    vertex_count = 0
+    do ivertex = 1, unstructured_grid%max_nvert_per_cell
+      if (unstructured_grid%cell_vertices_0(ivertex,local_id) < 0) exit
+      vertex_count = vertex_count+1
+    enddo
+    if (vertex_count > temp_int) temp_int = vertex_count
+  enddo
+  call MPI_Allreduce(temp_int,unstructured_grid%max_nvert_per_cell, &
+                     ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
+
   num_cells_local_old = unstructured_grid%nlmax 
-  allocate(local_vertices(max_vertex_count*num_cells_local_old))
+  allocate(local_vertices(unstructured_grid%max_nvert_per_cell* &
+                          num_cells_local_old))
   allocate(local_vertex_offset(num_cells_local_old+1))
   local_vertices = -999
   local_vertex_offset = -999
   count = 0
   local_vertex_offset(1) = 0
   do local_id = 1, num_cells_local_old
-    do ivertex = 1, max_vertex_count
-      !geh: removed the #ifdef
+    do ivertex = 1, unstructured_grid%max_nvert_per_cell
       if (unstructured_grid%cell_vertices_0(ivertex,local_id) < 0) exit
       count = count + 1
       local_vertices(count) = &
@@ -1137,7 +1129,60 @@ subroutine UGridDecompose(unstructured_grid,option)
     option%io_buffer = 'A processor core has been assigned zero cells.'
     call printErrMsg(option)
   endif
+
+  ! 0 = 0-based indexing
+  ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
+  call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
+                      ja_ptr,success,ierr)
+
+  if (.not.success .or. num_rows /= num_cells_local_old) then
+    print *, option%myrank, num_rows, success, num_cells_local_old
+    option%io_buffer = 'Error getting IJ row indices from dual matrix'
+    call printErrMsg(option)
+  endif
+
+  ! calculate maximum number of connections for any given cell
+  unstructured_grid%max_ndual_per_cell = 0
+  do local_id = 1, num_cells_local_old
+    istart = ia_ptr(local_id)
+    iend = ia_ptr(local_id+1)-1
+    num_cols = iend-istart+1
+    if (num_cols > unstructured_grid%max_ndual_per_cell) &
+      unstructured_grid%max_ndual_per_cell = num_cols
+  enddo
+  temp_int = unstructured_grid%max_ndual_per_cell
+  call MPI_Allreduce(temp_int,unstructured_grid%max_ndual_per_cell, &
+                     ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
   
+  call MatRestoreRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
+                          ja_ptr,success,ierr)
+  
+  ! in order to redistributed vertex/cell data among ranks, I package it
+  ! in a crude way within a strided petsc vec and pass it.  The stride 
+  ! determines the size of each cells "packaged" data 
+  vertex_ids_offset = 1 + 1 ! +1 for -777
+  dual_offset = vertex_ids_offset + unstructured_grid%max_nvert_per_cell + 1 ! +1 for -888
+  stride = dual_offset+ unstructured_grid%max_ndual_per_cell + 1 ! +1 for -999999
+
+  ! Information for each cell is packed in a strided petsc vec
+  ! The information is ordered within each stride as follows:
+  ! -cell_N   ! global cell id (negative indicates 1-based)
+  ! -777      ! separator between cell id and vertex ids for cell_N
+  ! vertex1   ! in cell_N
+  ! vertex2
+  ! ...
+  ! vertexN   
+  ! -888      ! separator between vertex and dual ids
+  ! dual1     ! dual ids between cell_N and others
+  ! dual2
+  ! ...
+  ! dualN     
+  ! -999999   ! separator indicating end of information for cell_N
+  
+  ! the purpose of -777, -888, and -999999 is to allow one to use cells of 
+  ! various geometry.  Currently, the max # vertices = 8 and max # duals = 6.
+  ! But this will be generalized in the future.
+    
   ! create a petsc vec to store all the information for each element
   ! based on the stride calculated above.  
   call VecCreate(option%mycomm,elements_natural,ierr)
@@ -1181,12 +1226,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
                       ja_ptr,success,ierr)
 
-  if (.not.success .or. num_rows /= num_cells_local_old) then
-    print *, option%myrank, num_rows, success, num_cells_local_old
-    option%io_buffer = 'Error getting IJ row indices from dual matrix'
-    call printErrMsg(option)
-  endif
-
   call VecGetArrayF90(elements_old,vec_ptr,ierr)
   count = 0
   vertex_count = 0
@@ -1199,7 +1238,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! add the separator
     vec_ptr(count) = -777  ! help differentiate
     ! add the vertex ids
-    do ivertex = 1, max_vertex_count
+    do ivertex = 1, unstructured_grid%max_nvert_per_cell
       count = count + 1
       vertex_count = vertex_count + 1
       ! increment for 1-based ordering
@@ -1216,7 +1255,12 @@ subroutine UGridDecompose(unstructured_grid,option)
     istart = ia_ptr(local_id)
     iend = ia_ptr(local_id+1)-1
     num_cols = iend-istart+1
-    do icol = 1, max_dual
+    if (num_cols > unstructured_grid%max_ndual_per_cell) then
+      option%io_buffer = &
+        'Number of columns in Dual matrix is larger then max_ndual_per_cell.'
+      call printErrMsgByRank(option)
+    endif
+    do icol = 1, unstructured_grid%max_ndual_per_cell
       count = count + 1
       if (icol <= num_cols) then
         ! increment for 1-based ordering
@@ -1326,7 +1370,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   count = 0
   do local_id=1, num_cells_local_new
     count = count + 1
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 1) exit ! here we hit the -999 at the end of the stride 
       count = count + 1
@@ -1339,7 +1383,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   do local_id=1, num_cells_local_new
     count = count + 1
     int_array(count) = unstructured_grid%cell_ids_natural(local_id)
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 1) exit ! again we hit the -999
       count = count + 1
@@ -1376,7 +1420,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     unstructured_grid%cell_ids_petsc(local_id) = int_array(count)
     ! store it in the elements_petsc vector too
     vec_ptr((local_id-1)*stride+1) = int_array(count)
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
 !geh      dual_id = vec_ptr2(idual + dual_offset + (local_id-1)*stride)
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 1) exit
@@ -1416,7 +1460,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! loop over all duals and find the off-processor cells on the other
   ! end of a dual
   do local_id=1, num_cells_local_new
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       found = PETSC_FALSE
       if (dual_id < 1) exit
@@ -1564,7 +1608,7 @@ subroutine UGridDecompose(unstructured_grid,option)
     ! remap of duals of ghost cells
     call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
     do local_id=1, num_cells_local_new
-      do idual = 1, max_dual
+      do idual = 1, unstructured_grid%max_ndual_per_cell
         ! dual_id is now the negative of the local unsorted ghost cell id
         dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
         ! dual_id = 0: not assigned
@@ -1638,7 +1682,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! basically, the first num_cells_local are the non-ghosted.  After that
   ! the cells ids are ghosted (at the end of the local vector)
   do local_id=1, unstructured_grid%nlmax
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 0) then
         vec_ptr(idual + dual_offset + (local_id-1)*stride) = &
@@ -1674,7 +1718,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
   do local_id=1, unstructured_grid%nlmax
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 1) exit
       if (dual_id > unstructured_grid%nlmax) then
@@ -1700,13 +1744,13 @@ subroutine UGridDecompose(unstructured_grid,option)
 
   ! load cell neighbors into array
   ! start first index at zero to store # duals for a cell
-  allocate(unstructured_grid%cell_neighbors_local_ghosted(0:max_dual, &
-                                                      unstructured_grid%nlmax))
+  allocate(unstructured_grid%cell_neighbors_local_ghosted( &
+           0:unstructured_grid%max_ndual_per_cell,unstructured_grid%nlmax))
   unstructured_grid%cell_neighbors_local_ghosted = 0
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   do local_id=1, unstructured_grid%nlmax
     count = 0
-    do idual = 1, max_dual
+    do idual = 1, unstructured_grid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
       if (dual_id < 1) exit
       count = count + 1
@@ -1729,8 +1773,10 @@ subroutine UGridDecompose(unstructured_grid,option)
   allocate(int_array(unstructured_grid%ngmax))
   int_array(1:unstructured_grid%nlmax) = &
     unstructured_grid%cell_ids_petsc(:)
-  int_array(unstructured_grid%nlmax+1:unstructured_grid%ngmax) = &
-    unstructured_grid%ghost_cell_ids_petsc(:)
+  if (unstructured_grid%num_ghost_cells > 0) then
+    int_array(unstructured_grid%nlmax+1:unstructured_grid%ngmax) = &
+      unstructured_grid%ghost_cell_ids_petsc(:)
+  endif
   int_array = int_array-1
   call ISCreateBlock(option%mycomm,stride,unstructured_grid%ngmax, &
                      int_array,PETSC_COPY_VALUES,is_scatter,ierr)
@@ -1774,7 +1820,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! note that the vertices are still in natural numbering
   call VecGetArrayF90(elements_local,vec_ptr,ierr)
   do local_id=1, unstructured_grid%ngmax
-    do ivertex = 1, max_vertex_count
+    do ivertex = 1, unstructured_grid%max_nvert_per_cell
       vertex_id = vec_ptr(ivertex + vertex_ids_offset + (local_id-1)*stride)
       if (vertex_id < 1) exit
       vertex_count = vertex_count + 1
@@ -1828,10 +1874,10 @@ subroutine UGridDecompose(unstructured_grid,option)
   needed_vertices_petsc(1:vertex_count) = int_array3(1:vertex_count)
 
   ! allocate the array that will store the vertex ids for each cell.
-  ! remember that max_vertex_count is the max # of vertices in a cell
+  ! remember that max_nvert_per_cell is the max # of vertices in a cell
   ! currently hardwired to 8.
   deallocate(unstructured_grid%cell_vertices_0)
-  allocate(unstructured_grid%cell_vertices_0(0:max_vertex_count, &
+  allocate(unstructured_grid%cell_vertices_0(0:unstructured_grid%max_nvert_per_cell, &
                                              unstructured_grid%ngmax))
   ! initialize to -999 (for error checking later)
   unstructured_grid%cell_vertices_0 = -999
@@ -1842,7 +1888,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! permute the local ids calculated earlier in the int_array4
   call VecGetArrayF90(elements_local,vec_ptr,ierr)
   do ghosted_id=1, unstructured_grid%ngmax
-    do ivertex = 1, max_vertex_count
+    do ivertex = 1, unstructured_grid%max_nvert_per_cell
       ! extract the original vertex id
       vertex_id = vec_ptr(ivertex + vertex_ids_offset + (ghosted_id-1)*stride)
       if (vertex_id < 1) exit
@@ -2387,6 +2433,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscReal :: vcross(3), magnitude
   PetscReal :: area1, area2
   PetscReal :: dist_up, dist_dn
+  PetscInt :: ivert
   
   type(plane_type) :: plane1, plane2
   type(point_type) :: point1, point2, point3, point4
@@ -2394,115 +2441,30 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(point_type) :: intercept1, intercept2, intercept
 
   character(len=MAXSTRINGLENGTH) :: string  
-
-  !sp 
-  PetscReal, pointer :: vec_p(:) !sp 
-  Vec :: local_vec1 !sp 
-  Vec :: local_vec2 !sp 
-  PetscInt :: ivert 
-  PetscInt :: vert_id  
-  PetscErrorCode :: ierr 
-  PetscInt, pointer :: cell_vertices_0(:,:) 
-  PetscInt :: max_vertex_count
-  PetscInt, allocatable :: vertex_ltog(:)  
-  !sp end 
   
-  !sp extend cell_vertices_0 to include ghosted cells 
- 
-#if 0
-  allocate(vertex_ltog(unstructured_grid%num_vertices_local))
-  do ivert=1, unstructured_grid%num_vertices_local 
-    vertex_ltog(ivert) = unstructured_grid%vertices(ivert)%id 
-  end do 
-
-  call VecCreateSeq(PETSC_COMM_SELF, unstructured_grid%nlmax ,   &
-         local_vec1, ierr)
-  call VecCreateSeq(PETSC_COMM_SELF, unstructured_grid%ngmax, &
-         local_vec2, ierr)
-
-  !TODO(geh): Extend max_vertex_count to user input
-  max_vertex_count = 8 
-  allocate(cell_vertices_0(0:max_vertex_count, &
-                           unstructured_grid%ngmax)) 
-  cell_vertices_0 = -999 
-
-  ! first the number of vertices per cell (ivertex=0)
-  ivertex = 0 
-  call VecGetArrayF90(local_vec1,vec_p,ierr)
-  do local_id = 1, unstructured_grid%nlmax
-    vec_p(local_id) = unstructured_grid%cell_vertices_0(ivertex,local_id)  
-  enddo
-  call VecRestoreArrayF90(local_vec1,vec_p,ierr)
-
-  call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-  call VecGetArrayF90(local_vec2,vec_p,ierr)
-
-  do ghosted_id = 1, unstructured_grid%ngmax
-    cell_vertices_0(ivertex,ghosted_id)= vec_p(ghosted_id)
-  enddo
-  call VecRestoreArrayF90(local_vec2,vec_p,ierr)
-
-  ! now the cell ids 
-  do ivertex=1, max_vertex_count  
-    call VecZeroEntries(local_vec1,ierr)
-    call VecGetArrayF90(local_vec1,vec_p,ierr)
-    do local_id = 1, unstructured_grid%nlmax
-     vert_id = unstructured_grid%cell_vertices_0(ivertex,local_id)  + 1 
-     if (vert_id > 0) vec_p(local_id) = vertex_ltog(vert_id)
-    enddo
-    call VecRestoreArrayF90(local_vec1,vec_p,ierr)
-
-    call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-    call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr)
-
-    call VecGetArrayF90(local_vec2,vec_p,ierr)
-
-    do ghosted_id = 1, unstructured_grid%ngmax 
-      do ivert=1, unstructured_grid%num_vertices_local 
-        vert_id = vertex_ltog(ivert) 
-        if (vert_id == vec_p(ghosted_id))  exit 
-      end do  
-      if (vert_id == vec_p(ghosted_id)) cell_vertices_0(ivertex,ghosted_id) = ivert  - 1  
-    enddo
-    call VecRestoreArrayF90(local_vec2,vec_p,ierr) 
-  end do 
-  deallocate(vertex_ltog)
-
-  deallocate( unstructured_grid%cell_vertices_0) 
-  allocate(unstructured_grid%cell_vertices_0(0:max_vertex_count,unstructured_grid%ngmax) ) 
-  do ghosted_id = 1, unstructured_grid%ngmax 
-    do ivertex=0, max_vertex_count  
-      unstructured_grid%cell_vertices_0(ivertex,ghosted_id)= cell_vertices_0(ivertex,ghosted_id) 
-    end do 
-  end do
-
-  call VecDestroy(local_vec1,ierr) 
-  call VecDestroy(local_vec2,ierr) 
-#endif
-
   ! create mappings of [cells,faces,vertices] to [cells,faces,vertices]
-  allocate(face_to_vertex(MAX_VERT_PER_FACE,MAX_DUALS*unstructured_grid%ngmax))
+  allocate(face_to_vertex(MAX_VERT_PER_FACE, &
+           MAX_FACE_PER_CELL* &
+           unstructured_grid%ngmax))
   face_to_vertex = -999
-  allocate(cell_to_face(MAX_DUALS,unstructured_grid%ngmax))
+  allocate(cell_to_face(MAX_FACE_PER_CELL, &
+                        unstructured_grid%ngmax))
   cell_to_face = -999
-  allocate(face_to_cell(2,MAX_DUALS*unstructured_grid%ngmax))
+  allocate(face_to_cell(2,MAX_FACE_PER_CELL* &
+                        unstructured_grid%ngmax))
   face_to_cell = -999
-  allocate(vertex_to_cell(0:MAX_CELLS_SHARING_A_VERTEX,unstructured_grid%num_vertices_local))
+  allocate(vertex_to_cell(0:MAX_CELLS_SHARING_A_VERTEX, &
+                          unstructured_grid%num_vertices_local))
   vertex_to_cell = 0
 
   allocate(unstructured_grid%face_to_vertex_natural(MAX_VERT_PER_FACE, &
-           MAX_DUALS*unstructured_grid%ngmax))
+           MAX_FACE_PER_CELL*unstructured_grid%ngmax))
   unstructured_grid%face_to_vertex_natural = -999
-  allocate(unstructured_grid%face_to_cell_ghosted(1,MAX_DUALS*unstructured_grid%ngmax))
+  allocate(unstructured_grid%face_to_cell_ghosted(1,MAX_FACE_PER_CELL* &
+                                                  unstructured_grid%ngmax))
   unstructured_grid%face_to_cell_ghosted = -999
-  allocate(unstructured_grid%cell_to_face_ghosted(MAX_DUALS,&
-       unstructured_grid%ngmax))
+  allocate(unstructured_grid%cell_to_face_ghosted(MAX_FACE_PER_CELL,&
+                                                  unstructured_grid%ngmax))
   unstructured_grid%cell_to_face_ghosted = -999
 
   face_count = 0
@@ -2926,7 +2888,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   enddo
   
   do local_id = 1, unstructured_grid%nlmax
-    do iface = 1,MAX_DUALS
+    do iface = 1,MAX_FACE_PER_CELL
       face_id = cell_to_face(iface, local_id)
       if (face_id == -999) cycle
       if ( unstructured_grid%face_centroid(face_id)%id == -999) then

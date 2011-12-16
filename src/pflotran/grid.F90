@@ -2251,7 +2251,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     !  i+1-th cell j-th face vertex-3
     !
     call VecCreateMPI(option%mycomm, PETSC_DECIDE, &
-                      ugrid%nmax*MAX_DUALS*MAX_VERT_PER_FACE, &
+                      ugrid%nmax*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE, &
                       vec_cell2facevert, ierr)
 
     ! Initialize vector
@@ -2262,7 +2262,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     allocate(tmp_int_array(ugrid%nlmax))
     tmp_int_array = 0
       
-    do ii = 1, MAX_DUALS*ugrid%ngmax
+    do ii = 1, ugrid%max_ndual_per_cell*ugrid%ngmax
       ghosted_id = ugrid%face_to_cell_ghosted(1, ii)
       if (ghosted_id < 0 ) exit
       local_id   = grid%nG2L(ghosted_id)
@@ -2273,7 +2273,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
 !gb     vertex_id_natural = ugrid%vertex_ids_natural(ugrid%face_to_vertex(jj,ii))
         if (ugrid%face_to_vertex_natural(jj,ii) > 0) then
           call VecSetValues(vec_cell2facevert,1, &
-                        (natural_id - 1)*MAX_DUALS*MAX_VERT_PER_FACE + &
+                        (natural_id - 1)*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE + &
                         tmp_int_array(local_id)*MAX_VERT_PER_FACE + jj - 1, &
                         ugrid%face_to_vertex_natural(jj, ii) - 1.d0, &
                         INSERT_VALUES, ierr)
@@ -2362,31 +2362,31 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     enddo
     call VecRestoreArrayF90(vec_vert2cell_reg_subset, v_loc_p, ierr)
       
-    allocate(tmp_int_array(count*MAX_DUALS*MAX_VERT_PER_FACE))
+    allocate(tmp_int_array(count*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE))
     kk = 0
     do ii = 1,count
-      do jj = 1,MAX_DUALS*MAX_VERT_PER_FACE
+      do jj = 1,ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE
         kk = kk + 1
-        tmp_int_array(kk) = cell_ids(ii) * MAX_DUALS*MAX_VERT_PER_FACE + jj
+        tmp_int_array(kk) = cell_ids(ii) * ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE + jj
       enddo
     enddo
       
     tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, count*MAX_DUALS*MAX_VERT_PER_FACE,&
+    call ISCreateBlock(option%mycomm, 1, count*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE,&
       tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
     deallocate(tmp_int_array)
       
-    call VecCreateMPI(option%mycomm, count*MAX_DUALS*MAX_VERT_PER_FACE, &
+    call VecCreateMPI(option%mycomm, count*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE, &
                       PETSC_DECIDE, vec_cell2facevert_reg_subset, ierr)
     call VecGetOwnershipRange(vec_cell2facevert_reg_subset, istart, &
                               iend, ierr)
-    allocate(tmp_int_array(count*MAX_DUALS*MAX_VERT_PER_FACE))
-    do ii = 1, count*MAX_DUALS*MAX_VERT_PER_FACE
+    allocate(tmp_int_array(count*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE))
+    do ii = 1, count*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE
       tmp_int_array(ii) = ii + istart
     enddo
 
     tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, count*MAX_DUALS*MAX_VERT_PER_FACE, &
+    call ISCreateBlock(option%mycomm, 1, count*ugrid%max_ndual_per_cell*MAX_VERT_PER_FACE, &
                         tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
     deallocate(tmp_int_array)
       
@@ -2421,9 +2421,9 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     allocate(cell_ids_for_face(region%num_verts))
     allocate(face_ids_for_face(region%num_verts))
     do jj = 1,region%num_verts
-      iend   = istart + cell_count(jj) * MAX_DUALS * MAX_VERT_PER_FACE
+      iend   = istart + cell_count(jj) * ugrid%max_ndual_per_cell * MAX_VERT_PER_FACE
       istart = istart +  1
-      counter1 = (istart-1)/MAX_VERT_PER_FACE/MAX_DUALS
+      counter1 = (istart-1)/MAX_VERT_PER_FACE/ugrid%max_ndual_per_cell
       counter2 = 0
       found  = PETSC_FALSE
       do ii = istart,iend,MAX_VERT_PER_FACE
@@ -2478,7 +2478,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
           endif
         endif
           
-        if (counter2 == MAX_DUALS) then
+        if (counter2 == ugrid%max_ndual_per_cell) then
           counter2 = 0
           counter1 = counter1 + 1
         endif
@@ -2492,7 +2492,9 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         
       cell_ids_for_face(jj) = cell_ids(counter1+1)
       face_ids_for_face(jj) = (ii-istart)/MAX_VERT_PER_FACE & 
-                              - INT( (ii-istart)/MAX_VERT_PER_FACE/MAX_DUALS)*MAX_DUALS + 1
+                              - INT((ii-istart)/MAX_VERT_PER_FACE/ &
+                                    ugrid%max_ndual_per_cell)* &
+                                    ugrid%max_ndual_per_cell + 1
       istart = iend
     enddo
     call VecRestoreArrayF90(vec_cell2facevert_reg_subset, v_loc_p, ierr)
