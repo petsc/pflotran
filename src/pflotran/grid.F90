@@ -2105,8 +2105,8 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       local_id = grid%nG2L(ghosted_id)
       if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id)
-      do ii = 1, ugrid%cell_vertices_0(0, local_id)
-        vertex_id = ugrid%cell_vertices_0(ii, local_id)
+      do ii = 1, ugrid%cell_vertices(0, local_id)
+        vertex_id = ugrid%cell_vertices(ii, local_id)-1 ! make zero-indexed
 !geh: I believe that this is incorrect since MatSetValues uses petsc ordering
         call MatSetValues(mat_vert2cell, &
                           1, &

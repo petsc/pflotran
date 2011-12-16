@@ -7508,49 +7508,48 @@ subroutine GetCellConnections(grid, vec)
       case(HEX_TYPE)
         do ivertex = 1, 8
           vec_ptr(offset + ivertex) = &
-            ugrid%vertex_ids_natural(ugrid%cell_vertices_0(ivertex,local_id)+1)
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
         enddo
       case(WEDGE_TYPE)
         vec_ptr(offset + 1) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(1,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(1,local_id))
         vec_ptr(offset + 2) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(1,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(1,local_id))
         vec_ptr(offset + 3) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(4,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(4,local_id))
         vec_ptr(offset + 4) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(4,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(4,local_id))
         vec_ptr(offset + 5) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(3,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(3,local_id))
         vec_ptr(offset + 6) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(2,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(2,local_id))
         vec_ptr(offset + 7) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(5,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(5,local_id))
         vec_ptr(offset + 8) = &
-          ugrid%vertex_ids_natural(ugrid%cell_vertices_0(6,local_id)+1)
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(6,local_id))
       case (PYR_TYPE)
         ! from Tecplot 360 Data Format Guide
         ! n1=vert1,n2=vert2,n3=vert3,n4=vert4,n5=n6=n7=n8=vert5
         do ivertex = 1, 4
           vec_ptr(offset + ivertex) = &
-            ugrid%vertex_ids_natural(ugrid%cell_vertices_0(ivertex,local_id)+1)
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
         enddo
         do ivertex = 5, 8
           vec_ptr(offset + ivertex) = &
-            ugrid%vertex_ids_natural(ugrid%cell_vertices_0(5,local_id)+1)
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(5,local_id))
         enddo
       case (TET_TYPE)
         ! from Tecplot 360 Data Format Guide
         ! n1=vert1,n2=vert2,n3=n4=vert3,n5=vert5=n6=n7=n8=vert4
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
-            ugrid%vertex_ids_natural(ugrid%cell_vertices_0(ivertex,local_id)+1)
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
         enddo
-!        vec_ptr(offset + 4) = ugrid%cell_vertices_0(3,local_id) + 1
         vec_ptr(offset + 4) = &
-            ugrid%vertex_ids_natural(ugrid%cell_vertices_0(3,local_id)+1)
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(3,local_id))
         do ivertex = 5, 8
           vec_ptr(offset + ivertex) = &
-            ugrid%vertex_ids_natural(ugrid%cell_vertices_0(4,local_id)+1)
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(4,local_id))
         enddo
     end select
   enddo
