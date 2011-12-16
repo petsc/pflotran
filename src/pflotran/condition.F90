@@ -2037,34 +2037,6 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
     else
       option%io_buffer = 'The ability to read realization dependent datasets outside the DATASET block is no longer supported'
       call printErrMsg(option)
-!TODO(geh): remove after 12/31/11
-#if 0
-      do
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,'FLOW_CONDITION')
-        if (InputCheckExit(input,option)) exit
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'keyword','OUTPUT') 
-        call StringToUpper(word)
-        select case(trim(word))
-          case('FILENAME')
-            call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_TRUE)
-            call InputErrorMsg(input,option,'filename','CONDITION')
-          case('REALIZATION_DEPENDENT')
-            ! we only want realization dependent if a realization id exists
-            if (option%id > 0) then
-              write(word,*) option%id
-              realization_word = adjustl(word)
-            else
-              realization_word = ''
-            endif
-          case('HDF5_PATH')
-            ! we assume that the remainder of the string is the path
-            hdf5_path = adjustl(input%buf)
-          case('UNITS')
-        end select          
-      enddo
-#endif
     endif
     
     if (len_trim(filename) < 2) then

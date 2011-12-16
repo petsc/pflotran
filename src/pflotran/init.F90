@@ -1754,7 +1754,7 @@ subroutine InitReadInput(simulation)
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
-                    if (StringCompareIgnoreCase(word,'between',SEVEN_INTEGER)) then
+                    if (StringCompareIgnoreCase(word,'between')) then
 
                       call InputReadDouble(input,option,temp_real)
                       call InputErrorMsg(input,option,'start time', &
@@ -1765,7 +1765,7 @@ subroutine InitReadInput(simulation)
                       units_conversion = UnitsConvertToInternal(word,option) 
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
-                      if (.not.StringCompareIgnoreCase(word,'and',THREE_INTEGER)) then
+                      if (.not.StringCompareIgnoreCase(word,'and')) then
                         input%ierr = 1
                       endif
                       call InputErrorMsg(input,option,'and', &
