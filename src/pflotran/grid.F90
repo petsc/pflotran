@@ -1325,7 +1325,6 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
       grid%z = 0.d0
       call UGridComputeCoord(grid%unstructured_grid,option, &
                              ugdm%scatter_ltol, & !sp 
-                             grid%nL2G, &
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
@@ -1395,7 +1394,7 @@ subroutine GridComputeVolumes(grid,volume,option)
       call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
-      call UGridComputeVolumes(grid%unstructured_grid,option,grid%nL2G,volume)
+      call UGridComputeVolumes(grid%unstructured_grid,option,volume)
   end select
 
 end subroutine GridComputeVolumes
