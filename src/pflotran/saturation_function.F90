@@ -46,17 +46,18 @@ module Saturation_Function_module
             SaturationFunctionRead, &
             SatFuncGetRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
-            SaturationFunctionGetID
+            SaturationFunctionGetID, &
+            SaturationFunctionComputeIce
 
-! Permeability function defination ************************ 
+! Permeability function definition ************************ 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
   PetscInt, parameter :: THOMEER_COREY = 3
-  PetscInt, parameter :: NMT_EXP= 4
-  PetscInt, parameter :: PRUESS_1= 5
+  PetscInt, parameter :: NMT_EXP = 4
+  PetscInt, parameter :: PRUESS_1 = 5
 
 
-! Saturation function function defination ************************ 
+! Saturation function function definition ************************ 
   PetscInt, parameter :: DEFAULT = 0
   PetscInt, parameter :: BURDINE = 1
   PetscInt, parameter :: MUALEM = 2
@@ -612,10 +613,163 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       option%io_buffer = 'Unknown saturation function'
       call printErrMsg(option)
   end select
+
   dsat_pres = -dsat_pc 
   dkr_pres = -dkr_pc
 
 end subroutine SaturationFunctionCompute
+
+! ************************************************************************** !
+!
+! SaturationFunctionComputeIce:Computes the saturation of ice, water vapor 
+!                              and liquid water given the saturation function
+!                              temperature, water vapor pressure and liquid
+!                              water pressure 
+! author: Satish Karra
+! date: 11/14/11
+!
+! ************************************************************************** !
+subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
+                                        ice_saturation, &
+                                        liquid_saturation, gas_saturation, &
+                                        liquid_relative_perm, dsl_pl, & 
+                                        dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
+                                        dsi_temp, dkr_pl, &
+                                        saturation_function, option)
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: liquid_pressure, temperature
+  PetscReal :: ice_saturation, liquid_saturation, gas_saturation
+  PetscReal :: liquid_relative_perm
+  PetscReal :: dsl_pl, dsl_temp
+  PetscReal :: dsg_pl, dsg_temp
+  PetscReal :: dsi_pl, dsi_temp
+  PetscReal :: dkr_pl
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  PetscReal :: alpha, lambda, m, n
+  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dkr_pc
+  PetscReal :: dkr_Se, power
+  PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
+  PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: function_A, function_B
+  PetscReal :: pc_il, gamma, pc_il_alpha, pc_il_alpha_n, Se_temp
+  PetscReal :: one_plus_pc_il_alpha_n
+  PetscReal :: dfunc_A_temp
+  PetscReal :: dfunc_B_pl
+  PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
+  PetscReal, parameter :: heat_of_fusion = 3.34d5 !in J/kg at 273.15K
+  PetscReal, parameter :: interfacial_tensions_ratio = 2.33
+  PetscReal, parameter :: T_0 = 273.15d0 !in K
+  
+  dsl_pl = 0.d0
+  dsl_temp = 0.d0
+  dsg_pl = 0.d0
+  dsg_temp = 0.d0
+  dsi_pl = 0.d0
+  dsi_temp = 0.d0
+  dkr_pl = 0.d0
+  
+  ! compute saturation
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      if (liquid_pressure >= option%reference_pressure) then
+        function_B = 1.d0
+        liquid_relative_perm = 1.d0
+        dfunc_B_pl = 0.d0
+        dkr_pc = 0.d0
+      else
+        alpha = saturation_function%alpha
+        pc = option%reference_pressure - liquid_pressure
+        m = saturation_function%m
+        n = 1.d0/(1.d0 - m)
+        pc_alpha = pc*alpha
+        pc_alpha_n = pc_alpha**n
+        one_plus_pc_alpha_n = 1.d0 + pc_alpha_n
+        Se = one_plus_pc_alpha_n**(-m)
+        dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
+        function_B = 1.d0/Se
+        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc
+        select case(saturation_function%permeability_function_itype)
+          case(MUALEM)
+            one_over_m = 1.d0/m
+            Se_one_over_m = Se**one_over_m
+            liquid_relative_perm = sqrt(Se)*(1.d0 - (1.d0 - Se_one_over_m)**m)** &
+                                   2.d0
+            dkr_Se = 0.5d0*liquid_relative_perm/Se + &
+                     2.d0*Se**(one_over_m - 0.5d0)* &
+                     (1.d0 - Se_one_over_m)**(m - 1.d0)* &
+                     (1.d0 - (1.d0 - Se_one_over_m)**m)
+            dkr_pc = dkr_Se*dSe_pc
+          case default
+            option%io_buffer = 'Ice module only supports Mualem' 
+            call printErrMsg(option)
+        end select
+      endif
+      if (temperature >= 0.d0) then
+        function_A = 1.d0
+        dfunc_A_temp = 0.d0
+      else
+        gamma = den_ice*heat_of_fusion*interfacial_tensions_ratio
+        pc_il = gamma*(-(temperature))/T_0
+        alpha = saturation_function%alpha
+        m = saturation_function%m
+        n = 1.d0/(1.d0 - m)
+        pc_il_alpha = pc_il*alpha
+        pc_il_alpha_n = pc_il_alpha**n
+        one_plus_pc_il_alpha_n = 1.d0 + pc_il_alpha_n
+        Se_temp = one_plus_pc_il_alpha_n**(-m)
+        function_A = 1.d0/Se_temp
+        dfunc_A_temp = (gamma/T_0)*1.d0/(Se_temp**(2.d0))*(-m)* &
+                       ((one_plus_pc_il_alpha_n)**(-m - 1.d0))*n* &
+                       (pc_il**(n - 1.d0))*(alpha**n)
+      endif           
+    case default
+      option%io_buffer = 'Ice module only supports Van Genuchten'
+      call printErrMsg(option)
+  end select
+  
+  liquid_saturation = 1.d0/(function_A + function_B - 1.d0)
+  gas_saturation = liquid_saturation*(function_B - 1.d0)
+  ice_saturation = liquid_saturation*(function_A - 1.d0)
+  
+! print *,'ice: ',liquid_saturation,gas_saturation,ice_saturation
+  
+  dsl_pl = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_B_pl)
+  dsl_temp = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_A_temp)
+  
+  dsg_pl = dsl_pl*(function_B - 1.d0) + liquid_saturation*dfunc_B_pl
+  dsg_temp = dsl_temp*(function_B - 1.d0)
+  
+  dsi_pl = dsl_pl*(function_A - 1.d0)
+  dsi_temp = dsl_temp*(function_A - 1.d0) + liquid_saturation*dfunc_A_temp
+  
+  if (liquid_saturation > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', liquid_saturation
+  else if (liquid_saturation < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', liquid_saturation
+  endif
+
+  if (gas_saturation > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', gas_saturation
+  else if (liquid_saturation < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', gas_saturation
+  endif
+ 
+  if (ice_saturation > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', ice_saturation
+  else if (liquid_saturation < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', ice_saturation
+  endif
+
+  dkr_pl = - dkr_pc
+
+
+end subroutine SaturationFunctionComputeIce
 
 ! ************************************************************************** !
 !

@@ -232,6 +232,10 @@ module Option_module
     character(len=MAXWORDLENGTH) :: plot_name
 
     character(len=MAXWORDLENGTH), pointer :: plot_variables(:)
+#ifdef GLENN_NEW_IO
+    PetscInt, pointer :: plot_variable_ids(:,:)
+    PetscInt :: num_plot_variables
+#endif
 
   end type output_option_type
 
@@ -240,6 +244,11 @@ module Option_module
     module procedure printMsg2
   end interface
 
+  interface printErrMsgByRank
+    module procedure printErrMsgByRank1
+    module procedure printErrMsgByRank2
+  end interface
+  
   interface printErrMsg
     module procedure printErrMsg1
     module procedure printErrMsg2
@@ -254,16 +263,22 @@ module Option_module
             OutputOptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
+            printErrMsgByRank, &
             printWrnMsg, &
             printMsg, &
-            OptionDestroy, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
             OutputOptionDestroy, &
             OptionInitRealization, &
             OptionMeanVariance, &
-            OptionMaxMinMeanVariance
+            OptionMaxMinMeanVariance, &
+#ifdef GLENN_NEW_IO
+            OutputOptionPlotVariablesInit, &
+            OutputOptionPlotVarFinalize, &
+            OutputOptionAddPlotVariable, &
+#endif
+            OptionDestroy
 
 contains
 
@@ -535,6 +550,7 @@ subroutine OptionInitRealization(option)
  
   option%variables_swapped = PETSC_FALSE
   option%test_res = 0
+  
 end subroutine OptionInitRealization
 
 ! ************************************************************************** !
@@ -582,7 +598,11 @@ function OutputOptionCreate()
   output_option%tunit = 's'
   
   nullify(output_option%plot_variables)
-
+#ifdef GLENN_NEW_IO
+  nullify(output_option%plot_variable_ids)
+  output_option%num_plot_variables = 0
+#endif
+  
   OutputOptionCreate => output_option
   
 end function OutputOptionCreate
@@ -700,6 +720,49 @@ subroutine printErrMsg2(option,string)
   stop
   
 end subroutine printErrMsg2
+ 
+! ************************************************************************** !
+!
+! printErrMsgByRank1: Prints the error message from processor with error along
+!               with rank
+! author: Glenn Hammond
+! date: 11/04/11
+!
+! ************************************************************************** !
+subroutine printErrMsgByRank1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  call printErrMsgByRank2(option,option%io_buffer)
+  
+end subroutine printErrMsgByRank1
+
+! ************************************************************************** !
+!
+! printErrMsgByRank2: Prints the error message from processor with error along
+!               with rank
+! author: Glenn Hammond
+! date: 11/04/11
+!
+! ************************************************************************** !
+subroutine printErrMsgByRank2(option,string)
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=*) :: string
+  
+  character(len=MAXWORDLENGTH) :: word
+  
+  write(word,*) option%myrank
+  print *
+  print *, 'ERROR(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  print *, 'Stopping!'
+  stop
+  
+end subroutine printErrMsgByRank2
  
 ! ************************************************************************** !
 !
@@ -923,6 +986,98 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
   
 end subroutine OptionMeanVariance
 
+#ifdef GLENN_NEW_IO
+! ************************************************************************** !
+!
+! OutputOptionPlotVariablesInit: initializes plot variables array
+! author: Glenn Hammond
+! date: 12/03/11
+!
+! ************************************************************************** !
+subroutine OutputOptionPlotVariablesInit(output_option)
+
+  implicit none
+  
+  type(output_option_type) :: output_option
+  
+  if (associated(output_option%plot_variable_ids)) then
+    deallocate(output_option%plot_variable_ids)
+  endif
+  output_option%num_plot_variables = 0
+  allocate(output_option%plot_variable_ids(3,100))
+  output_option%plot_variable_ids = 0
+  
+end subroutine OutputOptionPlotVariablesInit
+
+! ************************************************************************** !
+!
+! OutputOptionAddPlotVariable: Appends ids for output variables to array
+! author: Glenn Hammond
+! date: 12/03/11
+!
+! ************************************************************************** !
+subroutine OutputOptionAddPlotVariable(output_option,ivar,isubvar,isubsubvar)
+
+  implicit none
+  
+  type(output_option_type) :: output_option
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: isubsubvar
+  
+  PetscInt :: num_variables
+
+  ! output_option%num_plot_variables: # of variables (if negative, addition 
+  !                                   of plot variables is not complete
+  
+  ! this is a flag indicating that variable addition has not completed
+  if (output_option%num_plot_variables <= 0) then
+    output_option%num_plot_variables = output_option%num_plot_variables - 1
+    num_variables = abs(output_option%num_plot_variables)
+    if (num_variables > 100) then
+      print *, 'Number of plot variables exceeds 100'
+      stop
+    endif
+    output_option%plot_variable_ids(1,num_variables) = ivar
+    if (isubvar > 0) then
+      output_option%plot_variable_ids(2,num_variables) = isubvar
+      if (isubsubvar > 0) then
+        output_option%plot_variable_ids(3,num_variables) = isubsubvar
+      endif
+    endif
+  endif
+  
+end subroutine OutputOptionAddPlotVariable
+
+! ************************************************************************** !
+!
+! OutputOptionPlotVarFinalize: finalizes plot variables array
+! author: Glenn Hammond
+! date: 12/03/11
+!
+! ************************************************************************** !
+subroutine OutputOptionPlotVarFinalize(output_option)
+
+  implicit none
+  
+  type(output_option_type) :: output_option
+  
+  PetscInt, allocatable :: temp_array(:,:)
+
+  if (output_option%num_plot_variables < 0) then
+    output_option%num_plot_variables = abs(output_option%num_plot_variables)
+    allocate(temp_array(3,output_option%num_plot_variables))
+    temp_array = &
+      output_option%plot_variable_ids(:,1:output_option%num_plot_variables)
+    deallocate(output_option%plot_variable_ids)
+    allocate(output_option%plot_variable_ids(3,output_option%num_plot_variables))
+    output_option%plot_variable_ids = temp_array
+    deallocate(temp_array)
+  endif
+  
+end subroutine OutputOptionPlotVarFinalize
+#endif
+
 ! ************************************************************************** !
 !
 ! OutputOptionDestroy: Deallocates an output option
@@ -939,6 +1094,11 @@ subroutine OutputOptionDestroy(output_option)
   if (associated(output_option%plot_variables)) &
     deallocate(output_option%plot_variables)
   nullify(output_option%plot_variables)
+#ifdef GLENN_NEW_IO  
+  if (associated(output_option%plot_variable_ids)) &
+    deallocate(output_option%plot_variable_ids)
+  nullify(output_option%plot_variable_ids)
+#endif
 
   deallocate(output_option)
   nullify(output_option)

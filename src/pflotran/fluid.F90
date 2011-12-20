@@ -16,6 +16,7 @@ module Fluid_module
     character(len=MAXWORDLENGTH) :: phase_name
     PetscInt :: phase_id
     PetscReal :: diffusion_coefficient
+    PetscReal :: gas_diffusion_coefficient
     PetscReal :: diffusion_activation_energy
     PetscReal :: nacl_concentration
     type(fluid_property_type), pointer :: next
@@ -43,14 +44,15 @@ function FluidPropertyCreate()
   
   allocate(fluid_property)
   fluid_property%tort_bin_diff = 0.d0
-  fluid_property%vap_air_diff_coef = 0.d0
+  fluid_property%vap_air_diff_coef = 2.13d-5
   fluid_property%exp_binary_diff = 0.d0
   fluid_property%enh_binary_diff_coef = 0.d0
   fluid_property%diff_base = 0.d0
   fluid_property%diff_exp = 0.d0
   fluid_property%phase_name = ''
   fluid_property%phase_id = 0
-  fluid_property%diffusion_coefficient = 0.d0
+  fluid_property%diffusion_coefficient = 1.d-9
+  fluid_property%gas_diffusion_coefficient = 2.13D-5
   fluid_property%diffusion_activation_energy = 0.d0
   fluid_property%nacl_concentration = 0.d0
   nullify(fluid_property%next)
@@ -95,18 +97,21 @@ subroutine FluidPropertyRead(fluid_property,input,option)
       case('PHASE') 
         call InputReadWord(input,option,fluid_property%phase_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'phase','FLUID_PROPERTY')
-      case('DIFFUSION_COEFFICIENT') 
+      case('DIFFUSION_COEFFICIENT','LIQUID_DIFFUSION_COEFFICIENT') 
         call InputReadDouble(input,option,fluid_property%diffusion_coefficient)
         call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
       case('DIFFUSION_ACTIVATION_ENERGY') 
         call InputReadDouble(input,option,fluid_property%diffusion_activation_energy)
         call InputErrorMsg(input,option,'diffusion activation energy','FLUID_PROPERTY')
+      case('GAS_DIFFUSION_COEFFICIENT') 
+        call InputReadDouble(input,option,fluid_property%gas_diffusion_coefficient)
+        call InputErrorMsg(input,option,'gas diffusion coefficient','FLUID_PROPERTY')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in fluid property'    
         call printErrMsg(option)
-    end select 
-  
+    end select
+    
   enddo  
 
 end subroutine FluidPropertyRead

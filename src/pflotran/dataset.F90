@@ -41,6 +41,10 @@ subroutine DatasetLoad(dataset,option)
     ! if we have reached the last time, no updates needed
     if (dataset%buffer%cur_time_index == -1) return
     if (.not.Equal(option%time,dataset%buffer%cur_time)) then
+      !TODO(geh): modify so that interpolate_dataset is only set to
+      !           true if linear interpolation (currently hardwired to step)
+      !           or the current time index changes
+      ! currently, I am updated every time.  Expensive!
       interpolate_dataset = PETSC_TRUE
       ! increment time index until within buffer
       itime = dataset%buffer%cur_time_index
@@ -49,7 +53,7 @@ subroutine DatasetLoad(dataset,option)
           dataset%buffer%cur_time_index = dataset%buffer%num_times_total
           exit
         endif
-        if (option%time > dataset%buffer%time_array(itime+1)) then
+        if (option%time >= dataset%buffer%time_array(itime+1)) then
           itime = itime + 1
         else
           dataset%buffer%cur_time_index = itime
@@ -67,13 +71,14 @@ subroutine DatasetLoad(dataset,option)
     endif
   else if (dataset%data_dim == DIM_NULL) then ! has not been read
     read_dataset = PETSC_TRUE
-    interpolate_dataset = PETSC_TRUE
   endif
   
   if (read_dataset) then
     call HDF5ReadDataset(dataset,option)
     call DatasetReorder(dataset,option)
-    interpolate_dataset = PETSC_TRUE ! just to be sure
+    if (associated(dataset%buffer)) then
+      interpolate_dataset = PETSC_TRUE ! just to be sure
+    endif
   endif
   if (interpolate_dataset) then
     call DatasetInterpolateBetweenTimes(dataset,option)

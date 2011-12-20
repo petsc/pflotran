@@ -43,7 +43,7 @@ subroutine Init(simulation)
   use Convergence_module
   use Waypoint_module
   use Patch_module
-  use Mass_Balance_module
+! use Mass_Balance_module
   use Logging_module  
   use Database_module
   use Input_module
@@ -52,6 +52,7 @@ subroutine Init(simulation)
   use Flash2_module
   use MPHASE_module
   use Immis_module
+  use Miscible_module
   use Richards_module
   use THC_module
   use General_module
@@ -120,8 +121,6 @@ end interface
 
   nullify(flow_solver)
   nullify(tran_solver)
-
-
   
   realization%input => InputCreate(IUNIT1,option%input_filename)
 
@@ -164,7 +163,7 @@ end interface
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
-  
+    
   ! initialize transport mode
   if (option%ntrandof > 0) then
     tran_solver => tran_stepper%solver
@@ -214,7 +213,7 @@ end interface
 
   ! Initialize flow databases (e.g. span wagner, etc.)
   select case(option%iflowmode)
-    case(MPH_MODE, FLASH2_MODE)
+    case(MPH_MODE, FLASH2_MODE, IMS_MODE)
       call init_span_wanger(realization)
   end select
   
@@ -264,6 +263,8 @@ end interface
           write(*,'(" mode = MPH: p, T, s/X")')
         case(IMS_MODE)
           write(*,'(" mode = IMS: p, T, s")')
+        case(MIS_MODE)
+          write(*,'(" mode = MIS: p, Xs")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
@@ -331,6 +332,9 @@ end interface
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
                              realization,ierr)
+      case(MIS_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,MiscibleResidual, &
+                             realization,ierr)
       case(FLASH2_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
                              realization,ierr)
@@ -364,6 +368,9 @@ end interface
       case(IMS_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              ImmisJacobian,realization,ierr)
+      case(MIS_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             MiscibleJacobian,realization,ierr)
       case(FLASH2_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              FLASH2Jacobian,realization,ierr)
@@ -607,6 +614,8 @@ end interface
         call MphaseSetup(realization)
       case(IMS_MODE)
         call ImmisSetup(realization)
+      case(MIS_MODE)
+        call MiscibleSetup(realization)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
       case(G_MODE)
@@ -638,6 +647,8 @@ end interface
         call MphaseUpdateAuxVars(realization)
       case(IMS_MODE)
         call ImmisUpdateAuxVars(realization)
+      case(MIS_MODE)
+        call MiscibleUpdateAuxVars(realization)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
       case(G_MODE)
@@ -1743,7 +1754,7 @@ subroutine InitReadInput(simulation)
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
-                    if (StringCompareIgnoreCase(word,'between',SEVEN_INTEGER)) then
+                    if (StringCompareIgnoreCase(word,'between')) then
 
                       call InputReadDouble(input,option,temp_real)
                       call InputErrorMsg(input,option,'start time', &
@@ -1754,7 +1765,7 @@ subroutine InitReadInput(simulation)
                       units_conversion = UnitsConvertToInternal(word,option) 
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
-                      if (.not.StringCompareIgnoreCase(word,'and',THREE_INTEGER)) then
+                      if (.not.StringCompareIgnoreCase(word,'and')) then
                         input%ierr = 1
                       endif
                       call InputErrorMsg(input,option,'and', &
@@ -1974,6 +1985,12 @@ subroutine InitReadInput(simulation)
           end select
         enddo
 
+        if (associated(flow_stepper)) then
+          flow_stepper%dt_min = default_stepper%dt_min
+        endif
+        if (associated(tran_stepper)) then
+          tran_stepper%dt_min = default_stepper%dt_min
+        endif
         option%flow_dt = default_stepper%dt_min
         option%tran_dt = default_stepper%dt_min
       
@@ -2015,7 +2032,15 @@ subroutine setFlowMode(option)
       option%iflowmode = THC_MODE
       option%nphase = 1
       option%liquid_phase = 1      
+      option%gas_phase = 2      
       option%nflowdof = 3
+      option%nflowspec = 2
+    case('MIS','MISCIBLE')
+      option%iflowmode = MIS_MODE
+      option%nphase = 1
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 2
       option%nflowspec = 2
     case('RICHARDS')
       option%iflowmode = RICHARDS_MODE
@@ -2173,8 +2198,8 @@ subroutine assignMaterialPropToRegions(realization)
         if (.not.associated(strata)) exit
         ! Read in cell by cell material ids if they exist
         if (.not.associated(strata%region) .and. strata%active) then
-          call readMaterialsFromFile(realization, &
-                                       strata%material_property_filename)
+          call readMaterialsFromFile(realization,strata%realization_dependent, &
+                                     strata%material_property_filename)
         ! Otherwise, set based on region
         else if (strata%active) then
           update_ghosted_material_ids = PETSC_TRUE
@@ -2704,7 +2729,7 @@ end subroutine readRegionFiles
 ! date: 1/03/08
 !
 ! ************************************************************************** !
-subroutine readMaterialsFromFile(realization,filename)
+subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 
   use Realization_module
   use Field_module
@@ -2720,6 +2745,7 @@ subroutine readMaterialsFromFile(realization,filename)
   implicit none
   
   type(realization_type) :: realization
+  PetscBool :: realization_dependent
   character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
@@ -2747,27 +2773,13 @@ subroutine readMaterialsFromFile(realization,filename)
   if (index(filename,'.h5') > 0) then
     group_name = 'Materials'
     dataset_name = 'Material Ids'
-#if 0    
-! For now, skip realization dependent material ids, or at least this should 
-! not be based on the realization id as it prevents the use of a single set 
-! of material ids - geh
- 
-    if (option%id > 0) then
-      append_realization_id = PETSC_TRUE
-    else
-      append_realization_id = PETSC_FALSE
-    endif
-#else
-    append_realization_id = PETSC_FALSE
-#endif    
-
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                     option)
     call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
                                     option)
     call HDF5ReadCellIndexedIntegerArray(realization,global_vec, &
                                          filename,group_name, &
-                                         dataset_name,append_realization_id)
+                                         dataset_name,realization_dependent)
     call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
 
     call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)

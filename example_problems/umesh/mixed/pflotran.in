@@ -1,4 +1,4 @@
-:Description: 1D Calcite dissolution problem
+:Description: 3D toy problem for richards equation
 
 :=========================== flow mode ========================================
 MODE RICHARDS
@@ -6,61 +6,23 @@ MODE RICHARDS
 :=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
-    H+
-    HCO3-
-    Ca++
-  /
-  SECONDARY_SPECIES
-    OH-
-    CO3--
-    CO2(aq)
-    CaCO3(aq)
-    CaHCO3+
-    CaOH+
-  /
-  GAS_SPECIES
-    CO2(g)
-  /
-  MINERALS
-    Calcite
-  /
-  MINERAL_KINETICS
-    Calcite
-      RATE_CONSTANT 1.d-12
-    /
-  /
-  DATABASE ../../../database/hanford.dat
-  LOG_FORMULATION
-:  OPERATOR_SPLITTING
-  ACTIVITY_COEFFICIENTS TIMESTEP
-  OUTPUT
-    PH
-    all
+    Tracer
+    Tracer2
+    Tracer3
   /
 END
 
 :=========================== solver options ===================================
-LINEAR_SOLVER FLOW
-  SOLVER DIRECT
-END
-
-LINEAR_SOLVER TRANSPORT
-  SOLVER DIRECT
+TIMESTEPPER
 END
 
 :=========================== discretization ===================================
 GRID
-  TYPE structured
-  NXYZ 100 1 1
-  BOUNDS
-    0.d0 100.d0
-    0.d0 1.d0
-    0.d0 1.d0
-  /
+  TYPE unstructured ./mixed.mesh
 END
 
 :=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -68,102 +30,123 @@ END
 MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.25d0
-  TORTUOSITY 1.d0
-  PERMEABILITY
-    PERM_ISO 1.d-12
-  /
+  TORTUOSITY 0.5d0
   SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
 END
 
 :=========================== saturation functions =============================
 SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE BROOKS_COREY
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.3d0
+  ALPHA 1.d-4
 END
 
 :=========================== output options ===================================
 OUTPUT
-  TIMES y 5. 10. 15. 20.
-  FORMAT TECPLOT POINT
-  VELOCITIES
+  FORMAT TECPLOT BLOCK
+  MASS_BALANCE
 END
 
 :=========================== times ============================================
 TIME
-  FINAL_TIME 25.d0 y
-  INITIAL_TIMESTEP_SIZE 1.d0 h
-  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+  FINAL_TIME 40.d0 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
 END
+
+REFERENCE_PRESSURE 101325.
 
 :=========================== regions ==========================================
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
-    100.d0 1.d0 1.d0
+    5.d0 5.d0 5.d0
   /
-END
-
-REGION west
-  FACE west
-  COORDINATES
-    0.d0 0.d0 0.d0
-    0.d0 1.d0 1.d0
-  /
-END
+END 
 
 REGION east
-  FACE east
   COORDINATES
-    100.d0 0.d0 0.d0
-    100.d0 1.d0 1.d0
+    5.d0 0.d0 3.5d0
+    5.d0 5.d0 5.d0
   /
-END
+END 
+
+REGION west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.5d0 1.5d0
+  /
+END 
+
+REGION middle
+  COORDINATE 5.d0 5.d0 5.d0
+END 
+
+:=========================== observation points ===============================
+OBSERVATION
+  REGION middle
+/
 
 :=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE dirichlet
+    PRESSURE hydrostatic
   /
-  PRESSURE 201325.d0
+  DATUM 0.d0 0.d0 1.d0
+  PRESSURE 101325.d0
 END
 
-FLOW_CONDITION inlet
+FLOW_CONDITION west
   TYPE
-    FLUX neumann
+    PRESSURE hydrostatic
   /
-  FLUX 3.170979d-8  ! 1 m/y
+  DATUM list
+    TIME_UNITS d
+    0.d0 0.d0 0.d0 1.d0
+    10.d0 0.d0 0.d0 4.d0
+    20.d0 0.d0 0.d0 -2.d0
+    40.d0 0.d0 0.d0 7.d0
+  /
+  PRESSURE 101325.d0
+  INTERPOLATION LINEAR
 END
 
 :=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
-  TYPE zero_gradient
-  CONSTRAINT_LIST
-    0.d0 initial
-  /
-END
-
-TRANSPORT_CONDITION inlet
   TYPE dirichlet_zero_gradient
-  CONSTRAINT_LIST
-    0.d0 inlet
+  CONSTRAINT initial
+    CONCENTRATIONS
+      Tracer  1.d-3  T
+      Tracer2 1.d-10 T
+      Tracer3 1.d-10 T
+    /
   /
 END
 
-:=========================== constraints ======================================
-CONSTRAINT initial
-  CONCENTRATIONS
-    H+     1.d-8      F
-    HCO3-  1.d-3      G  CO2(g)
-    Ca++   5.d-4      M  Calcite
-  /
-  MINERALS
-    Calcite 1.d-5 1.d0
+TRANSPORT_CONDITION west
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT west
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+      Tracer2 1.d-3  T
+      Tracer3 1.d-10 T
+    /
   /
 END
 
-CONSTRAINT inlet
-  CONCENTRATIONS
-    H+     5.         P
-    HCO3-  1.d-3      T 
-    Ca++   1.d-6      Z 
+TRANSPORT_CONDITION east
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT east
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+      Tracer2 1.d-10 T
+      Tracer3 1.d-3  T
+    /
   /
 END
 
@@ -175,22 +158,20 @@ INITIAL_CONDITION
   REGION all
 END
 
-BOUNDARY_CONDITION outlet
+BOUNDARY_CONDITION
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
+  TRANSPORT_CONDITION east
   REGION east
 END
 
-BOUNDARY_CONDITION inlet
-  FLOW_CONDITION inlet
-  TRANSPORT_CONDITION inlet
+BOUNDARY_CONDITION
+  FLOW_CONDITION west
+  TRANSPORT_CONDITION west
   REGION west
 END
 
 :=========================== stratigraphy couplers ============================
 STRATA
-  REGION all
+  REGION all 
   MATERIAL soil1
 END
-
-

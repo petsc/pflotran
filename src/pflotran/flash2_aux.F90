@@ -270,9 +270,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
   PetscReal :: Qkco2, mco2,xco2eq
   PetscReal :: tmp 
-  PetscInt :: iflag
-!  PetscReal :: Qkco2, mco2,xco2eq   
-  
+  PetscInt :: iflag  
   
   aux_var%sat = 0.d0
   aux_var%h = 0.d0
@@ -291,16 +289,12 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
   p = aux_var%pres
   t = aux_var%temp
 
-!  if(x(3)<0.D0)x(3)=0.D0
-!  if(x(3)>1.D0)x(3)=1.D0
-  
-
 ! ********************* Gas phase properties ***********************
     call PSAT(t, sat_pressure, ierr)
     err=1.D0
     p2 = p
 
-    if(p2>=5d4)then
+    if(p2 >= 5.d4)then
       if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
         select case(option%itable)  
@@ -311,7 +305,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             else
               iflag = 1
-              call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
+              call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag, &
                      option%itable)
             endif
@@ -345,7 +339,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
       xphi = 1.D0
     endif
  
-!*********** Get Salniity properties ***********************
+!*********** Get Salinity properties ***********************
     m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
     if (option%ntrandof>0) then
       m_na = global_aux_var%m_nacl(1)
@@ -366,52 +360,44 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl) 
    
     tmp= Henry/p
-!  print *,xla
-
-!   if ( p < sat_pressure) then
-   ! T > water boiling point
-!     iphase =2
-!     aux_var%xmol(4)=x(3)
-!     aux_var%xmol(3)=1.D0-xmol(4) 
-!	 aux_var%xmol(2)=xmol(4)/tmp
-!	 aux_var%xmol(1)=1.D0- xmol(2)
-!	 aux_var%satu(1)=1.D-8
-!	 aux_var%satu(2)=1.D0
-!   else  
-    if(x(3)< xco2eq)then
+    if (x(3) < xco2eq) then
       ! water only
       aux_var%xmol(2)=x(3)
-      aux_var%xmol(1)=1.D0- aux_var%xmol(2)
+      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
       aux_var%xmol(4)=aux_var%xmol(2)*tmp
-      aux_var%xmol(3)=1.D0- aux_var%xmol(4)  
+      aux_var%xmol(3)=1.D0 - aux_var%xmol(4)  
       aux_var%sat(1)=1.D0
       aux_var%sat(2)=0.D0
       iphase = 1
-    elseif(x(3)>(1D0-sat_pressure/p))then
+    elseif (x(3) > (1.D0-sat_pressure/p)) then
 	    !gas only
       iphase =2
       aux_var%xmol(4)=x(3)
-      aux_var%xmol(3)=1.D0-aux_var%xmol(4) 
+      aux_var%xmol(3)=1.D0 - aux_var%xmol(4) 
       aux_var%xmol(2)=aux_var%xmol(4)/tmp
-      aux_var%xmol(1)=1.D0- aux_var%xmol(2)
-      aux_var%sat(1)=0D0 !1.D-8
+      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
+      aux_var%sat(1)=0.D0 !1.D-8
       aux_var%sat(2)=1.D0
     else 
       iphase = 3
       aux_var%xmol(1)=1.D0 - xco2eq
       aux_var%xmol(2)= xco2eq
       aux_var%xmol(3)= sat_pressure/p*aux_var%xmol(1) 
-      aux_var%xmol(4)= 1D0 - aux_var%xmol(3)
+      aux_var%xmol(4)= 1.D0 - aux_var%xmol(3)
     endif 
 
-! **************  Gas pahse properties ********************
-    aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
+! **************  Gas phase properties ********************
+    aux_var%avgmw(2) = aux_var%xmol(3)*FMWH2O + aux_var%xmol(4)*FMWCO2
     pw = p
     call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
     aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
     aux_var%h(2) = hg  
     aux_var%u(2) = hg - p/dg * option%scale
-    aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+    
+!   aux_var%diff(option%nflowspec+1:option%nflowspec*2) = 2.13D-5
+    aux_var%diff(option%nflowspec+1:option%nflowspec*2) = &
+      fluid_properties%gas_diffusion_coefficient
+      
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
 !  z factor    
@@ -422,9 +408,9 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 !    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
     aux_var%h(1) = hw
     aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
-    aux_var%diff(1:option%nflowspec) = 1D-9
-  ! fluid_properties%diff_base(1) need more work here.
-
+    
+    aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
+  ! fluid_properties%diff_base(1) need more work here. Add temp. dependence.
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
@@ -439,17 +425,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
 !duan mixing **************************
 #ifdef DUANDEN
-  tk = t + 273.15D0; xco2= aux_var%xmol(2)
-  call nacl_den(t, p*1D-6, 0.D0, pw_kg)
-  pw_kg=pw_kg*1D3  
-  x1=1.D0-xco2;
-  vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
-  vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
-  vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
-  vphi =  x1* ((1D0-y_nacl)*fmwh2o + y_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
-  aux_var%den(1) =(x1* ((1D0 - y_nacl) * fmwh2o + y_nacl * fmwnacl)+ xco2*fmwco2)*1D-3 / vphi;
-!  if(iphase==3) print *, 'Duan den=', aux_var%den(1)
-  aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
+  call duan_mix_den (t,p,aux_var%xmol(2),y_nacl,aux_var%avgmw(1),dw_kg,aux_var%den(1))
 #endif 
 
 ! Garcia mixing **************************
@@ -482,8 +458,8 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
     aux_var%sat(2) = aux_var%den(1)* ( x(3) - aux_var%xmol(2))/&
       (aux_var%den(2) * (aux_var%xmol(4)-x(3)) - aux_var%den(1)*(aux_var%xmol(2)-x(3)))
     if(aux_var%sat(2) >1D0 .or. aux_var%sat(2) <0D0) print *,'z->s error: ',aux_var%sat(2)
-    if(aux_var%sat(2) >1D0) aux_var%sat(2) = 1D0
-    if(aux_var%sat(2) <0D0) aux_var%sat(2) = 0D0  
+    if(aux_var%sat(2) > 1D0) aux_var%sat(2) = 1D0
+    if(aux_var%sat(2) < 0D0) aux_var%sat(2) = 0D0  
     aux_var%sat(1) = 1D0 - aux_var%sat(2)
   end select
  

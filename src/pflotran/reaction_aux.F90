@@ -169,6 +169,8 @@ module Reaction_Aux_module
   end type general_rxn_type
 
   type, public :: aq_species_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
     PetscReal, pointer :: basis_molarity(:)
@@ -179,14 +181,20 @@ module Reaction_Aux_module
   end type aq_species_constraint_type
 
   type, public :: mineral_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_vol_frac(:)
     PetscReal, pointer :: constraint_area(:)
     PetscReal, pointer :: basis_vol_frac(:)
     PetscReal, pointer :: basis_area(:)
+    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
+    PetscBool, pointer :: external_dataset(:)
   end type mineral_constraint_type
 
   type, public :: srfcplx_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
     PetscReal, pointer :: basis_conc(:)
@@ -195,6 +203,8 @@ module Reaction_Aux_module
   end type srfcplx_constraint_type
 
   type, public :: colloid_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc_mob(:)
     PetscReal, pointer :: constraint_conc_imb(:)
@@ -742,7 +752,7 @@ function ReactionCreate()
   nullify(reaction%eqkdfreundlichn)
       
   reaction%max_dlnC = 5.d0
-  reaction%max_relative_change_tolerance = 1.d-12
+  reaction%max_relative_change_tolerance = 1.d-6
   reaction%max_residual_tolerance = 1.d-12
 
   ReactionCreate => reaction
@@ -1261,6 +1271,10 @@ function MineralConstraintCreate(reaction,option)
   constraint%basis_vol_frac = 0.d0
   allocate(constraint%basis_area(reaction%nkinmnrl))
   constraint%basis_area = 0.d0
+  allocate(constraint%constraint_aux_string(reaction%nkinmnrl))
+  constraint%constraint_aux_string = ''
+  allocate(constraint%external_dataset(reaction%nkinmnrl))
+  constraint%external_dataset = PETSC_FALSE
 
   MineralConstraintCreate => constraint
 
@@ -2162,6 +2176,12 @@ subroutine MineralConstraintDestroy(constraint)
   if (associated(constraint%basis_area)) &
     deallocate(constraint%basis_area)
   nullify(constraint%basis_area)
+  if (associated(constraint%constraint_aux_string)) &
+    deallocate(constraint%constraint_aux_string)
+  nullify(constraint%constraint_aux_string)
+  if (associated(constraint%constraint_aux_string)) &
+    deallocate(constraint%constraint_aux_string)
+  nullify(constraint%constraint_aux_string)
 
   deallocate(constraint)
   nullify(constraint)

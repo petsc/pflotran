@@ -1,6 +1,6 @@
 #include "finclude/petscsys.h"
 
-PetscInt, parameter :: MAXHEADERLENGTH = 2048
+PetscInt, parameter :: MAXHEADERLENGTH = 4096
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
 PetscInt, parameter :: MAXWORDLENGTH = 32
 PetscInt, parameter :: IUNIT1 = 15
@@ -17,6 +17,7 @@ PetscReal, parameter :: FMWNACL = 58.44277d0
 PetscReal, parameter :: FMWH2O = 18.01534d0  ! kg/kmol h2o
 PetscReal, parameter :: FMWCO2 = 44.0098d0
 PetscReal, parameter :: FMWAIR = 28.96d0
+PetscReal, parameter :: FMWGLYC = 92D0
 
 ! conversion factors
 PetscReal, parameter :: LOG_TO_LN = 2.30258509299d0
@@ -24,6 +25,7 @@ PetscReal, parameter :: LN_TO_LOG = 0.434294481904d0
 
 ! constants
 PetscReal, parameter :: IDEAL_GAS_CONST = 8.314472d0   
+PetscReal, parameter :: HEAT_OF_FUSION = 3.34d5  ! J/kg
 
 PetscInt, parameter :: ZERO_INTEGER = 0
 PetscInt, parameter :: ONE_INTEGER = 1
@@ -88,8 +90,10 @@ PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
 PetscInt, parameter :: FLASH2_MODE = 6
 PetscInt, parameter :: G_MODE = 7
+PetscInt, parameter :: MIS_MODE = 8
 
 ! grid types
+PetscInt, parameter :: NULL_GRID = 0
 PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
 PetscInt, parameter :: AMR_GRID = 3
@@ -235,6 +239,7 @@ PetscInt, parameter :: COLLOID_IMMOBILE =        45
 PetscInt, parameter :: AGE =                     46
 PetscInt, parameter :: STATE =                   47
 PetscInt, parameter :: PROCESSOR_ID =            48
+PetscInt, parameter :: ICE_SATURATION =          49
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
@@ -294,16 +299,16 @@ PetscInt, parameter :: BOX_STENCIL = 2
 
 ! grid cell type
 PetscInt, parameter :: HEX_TYPE          = 1
-PetscInt, parameter :: WEDGE_TYPE        = 2
-PetscInt, parameter :: TET_TYPE          = 3
+PetscInt, parameter :: TET_TYPE          = 2
+PetscInt, parameter :: WEDGE_TYPE        = 3
+PetscInt, parameter :: PYR_TYPE          = 4
 
 ! grid cell properties
 PetscInt, parameter :: TRI_FACE_TYPE     = 1
 PetscInt, parameter :: QUAD_FACE_TYPE    = 2
-PetscInt, parameter :: MAX_VERT_PER_CELL = 8
-PetscInt, parameter :: MAX_DUALS         = 6
 PetscInt, parameter :: MAX_VERT_PER_FACE = 4
-PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
+PetscInt, parameter :: MAX_FACE_PER_CELL = 6
+PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 24
 
 ! ids of non-petsc arrays
 PetscInt, parameter :: MATERIAL_ID_ARRAY = 1

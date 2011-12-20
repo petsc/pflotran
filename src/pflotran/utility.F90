@@ -12,6 +12,11 @@ module Utility_module
     module procedure CrossProduct1
   end interface
   
+  interface UtilityReadArray
+    module procedure UtilityReadIntArray
+    module procedure UtilityReadRealArray
+  end interface
+  
 contains
 
 function rnd()
@@ -755,13 +760,163 @@ end function InverseErf
 
 ! ************************************************************************** !
 !
-! UtilityReadArray: Reads an array of double precision numbers from the  
-!                   input file
+! UtilityReadIntArray: Reads an array of integers from an input file
+! author: Glenn Hammond
+! date: 11/30/11
+!
+! ************************************************************************** !
+subroutine UtilityReadIntArray(array,array_size,comment,input,option)
+
+  use Input_module
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(input_type), target :: input
+  character(len=MAXSTRINGLENGTH) :: comment
+  PetscInt :: array_size
+  PetscInt, pointer :: array(:)
+  
+  PetscInt :: i, num_values, count
+  type(input_type), pointer :: input2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word, word2, word3
+  character(len=1) :: backslash
+  PetscBool :: continuation_flag
+  PetscInt :: value
+  PetscInt, pointer :: temp_array(:)
+  PetscInt :: max_size
+  PetscErrorCode :: ierr
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+  
+  max_size = 1000
+  if (array_size > 0) then
+    max_size = array_size
+  endif
+  allocate(temp_array(max_size))
+  temp_array = 0.d0
+  
+  input%ierr = 0
+  string2 = trim(input%buf)
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'file or value','CONDITION')
+  call StringToLower(word)
+  if (StringCompare(word,'file',FOUR_INTEGER)) then
+    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+    input%err_buf = 'filename'
+    input%err_buf2 = comment
+    call InputErrorMsg(input,option)
+    input2 => InputCreate(input%fid + 1,string2)
+  else
+    input2 => input
+    input%buf = string2
+  endif
+  
+  if (len_trim(input2%buf) > 1) then
+    continuation_flag = PETSC_FALSE
+  else
+    continuation_flag = PETSC_TRUE
+  endif
+  
+  count = 0
+  do
+    
+    if (count >= array_size .and. array_size > 0) exit
+    
+    if (.not.continuation_flag .and. count /= 1 .and. array_size > 0) then
+      write(string,*) count
+      write(string2,*) array_size
+      if (len_trim(comment) < 1) then
+        option%io_buffer = 'Within call to UtilityReadIntArray(), ' // &
+                           'insufficient values read: ' // trim(string) // &
+                           ' of ' // trim(string2) // '.'
+      else
+        option%io_buffer = 'Within call to UtilityReadIntArray() in ' // &
+                           trim(comment) // &
+                           'insufficient values read: ' // trim(string) // &
+                           ' of ' // trim(string2) // '.'
+      endif
+      call printErrMsg(option)
+    else if (count == 1) then
+      temp_array = temp_array(count)
+      exit
+    else if (.not.continuation_flag .and. array_size <= 0 .and. count /= 0) then
+      exit
+    endif
+    
+    if (continuation_flag) then
+      call InputReadFlotranString(input2,option)
+      call InputReadStringErrorMsg(input2,option,comment)
+    endif
+
+    continuation_flag = PETSC_FALSE
+    if (index(input2%buf,backslash) > 0) &
+      continuation_flag = PETSC_TRUE
+
+    do 
+      call InputReadWord(input2,option,word,PETSC_TRUE)
+      if (InputError(input2) .or. StringCompare(word,backslash,ONE_INTEGER)) exit
+      i = index(word,'*')
+      if (i == 0) i = index(word,'@')
+      if (i /= 0) then
+        word2 = word(1:i-1)
+        word3 = word(i+1:len_trim(word))
+        string2 = word2
+        call InputReadInt(string2,option,num_values,input2%ierr)
+        call InputErrorMsg(input2,option,'# values','UtilityReadIntArray')
+        string2 = word3
+        call InputReadInt(string2,option,value,input2%ierr)
+        call InputErrorMsg(input2,option,'value','UtilityReadIntArray')
+        do while (count+num_values > max_size)
+          ! careful.  reallocateRealArray double max_size every time.
+          call reallocateIntArray(temp_array,max_size) 
+        enddo
+        do i=1, num_values
+          count = count + 1
+          temp_array(count) = value
+        enddo
+      else
+        string2 = word
+        call InputReadInt(string2,option,value,input2%ierr)
+        call InputErrorMsg(input2,option,'value','UtilityReadIntArray')
+        count = count + 1
+        if (count > max_size) then
+          ! careful.  reallocateRealArray double max_size every time.
+          call reallocateIntArray(temp_array,max_size) 
+        endif
+        temp_array(count) = value
+      endif
+    enddo
+  enddo
+  
+  if (array_size > 0 .and. count > array_size) then
+    count = array_size
+  endif
+  
+  if (.not.associated(input2,input)) call InputDestroy(input2)
+  nullify(input2)
+  
+  if (associated(array)) deallocate(array)
+  allocate(array(count))
+  array(1:count) = temp_array(1:count)
+  deallocate(temp_array)
+  nullify(temp_array)
+
+end subroutine UtilityReadIntArray
+
+! ************************************************************************** !
+!
+! UtilityReadRealArray: Reads an array of double precision numbers from the  
+!                       input file
 ! author: Glenn Hammond
 ! date: 05/21/09
 !
 ! ************************************************************************** !
-subroutine UtilityReadArray(array,array_size,comment,input,option)
+subroutine UtilityReadRealArray(array,array_size,comment,input,option)
 
   use Input_module
   use String_module
@@ -827,11 +982,11 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
       write(string,*) count
       write(string2,*) array_size
       if (len_trim(comment) < 1) then
-        option%io_buffer = 'Within call to UtilityReadArray(), ' // &
+        option%io_buffer = 'Within call to UtilityReadRealArray(), ' // &
                            'insufficient values read: ' // trim(string) // &
                            ' of ' // trim(string2) // '.'
       else
-        option%io_buffer = 'Within call to UtilityReadArray() in ' // &
+        option%io_buffer = 'Within call to UtilityReadRealArray() in ' // &
                            trim(comment) // &
                            'insufficient values read: ' // trim(string) // &
                            ' of ' // trim(string2) // '.'
@@ -846,7 +1001,7 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
     
     if (continuation_flag) then
       call InputReadFlotranString(input2,option)
-      call InputReadStringErrorMsg(input2,option,'DXYZ')
+      call InputReadStringErrorMsg(input2,option,comment)
     endif
 
     continuation_flag = PETSC_FALSE
@@ -863,10 +1018,10 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
         word3 = word(i+1:len_trim(word))
         string2 = word2
         call InputReadInt(string2,option,num_values,input2%ierr)
-        call InputErrorMsg(input2,option,'# values','UtilityReadArray')
+        call InputErrorMsg(input2,option,'# values','UtilityReadRealArray')
         string2 = word3
         call InputReadDouble(string2,option,value,input2%ierr)
-        call InputErrorMsg(input2,option,'value','UtilityReadArray')
+        call InputErrorMsg(input2,option,'value','UtilityReadRealArray')
         do while (count+num_values > max_size)
           ! careful.  reallocateRealArray double max_size every time.
           call reallocateRealArray(temp_array,max_size) 
@@ -902,7 +1057,7 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
   deallocate(temp_array)
   nullify(temp_array)
 
-end subroutine UtilityReadArray
+end subroutine UtilityReadRealArray
 
 ! ************************************************************************** !
 !
@@ -1002,5 +1157,48 @@ function Equal(value1, value2)
   if (dabs(value1 - value2) <= 1.d-14 * dabs(value1))  Equal = PETSC_TRUE
   
 end function Equal
+
+! ************************************************************************** !
+!
+! BestFloat: Returns the best format for a floating point number
+! author: Glenn Hammond
+! date: 11/21/11
+!
+! ************************************************************************** !
+function BestFloat(float,upper_bound,lower_bound)
+
+  implicit none
+  
+  PetscReal :: float
+  PetscReal :: upper_bound
+  PetscReal :: lower_bound
+
+  character(len=MAXWORDLENGTH) :: BestFloat
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: i
+  
+100 format(f12.3)
+101 format(es12.2)
+102 format(es12.4)
+
+  if (dabs(float) <= upper_bound .and. dabs(float) >= lower_bound) then
+    write(word,100) float
+    word = adjustl(word)
+    do i = len_trim(word), 1, -1
+      if (word(i:i) == '0') then
+        word(i:i) = ' '
+      else
+        exit
+      endif
+    enddo
+  else if (dabs(float) < lower_bound) then
+    write(word,101) float
+  else
+    write(word,102) float
+  endif
+  
+  BestFloat = adjustl(word)
+  
+end function BestFloat
 
 end module Utility_module

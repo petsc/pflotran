@@ -931,6 +931,9 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
             case('RATE_CONSTANT')
 !             read rate constant
               call InputReadDouble(input,option,tstrxn%rate)
+              if (tstrxn%rate < 0.d0) then
+                tstrxn%rate = 10.d0**tstrxn%rate
+              endif
               call InputErrorMsg(input,option,'rate',error_string)
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
@@ -965,6 +968,9 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
     !             read rate constant
                   call InputReadDouble(input,option,prefactor%rate)
                   call InputErrorMsg(input,option,'rate',error_string)
+                  if (prefactor%rate < 0.d0) then
+                    prefactor%rate = 10.d0**prefactor%rate
+                  endif
                   case('ACTIVATION_ENERGY')
       !             read activation energy for Arrhenius law
                     call InputReadDouble(input,option,prefactor%activation_energy)
@@ -1219,10 +1225,14 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   PetscInt :: constraint_id(reaction%naqcomp)
   PetscBool :: external_dataset(reaction%naqcomp)
   
+  character(len=MAXWORDLENGTH) :: mnrl_constraint_aux_string(reaction%nkinmnrl)
+  PetscBool :: mnrl_external_dataset(reaction%nkinmnrl)
+  
   constraint_id = 0
   constraint_aux_string = ''
   constraint_type = 0
   constraint_conc = 0.d0
+  external_dataset = PETSC_FALSE
   
   ! aqueous species
   do icomp = 1, reaction%naqcomp
@@ -1304,6 +1314,8 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   ! minerals
   if (reaction%use_full_geochemistry .and. associated(mineral_constraint)) then
     constraint_mnrl_name = ''
+    mnrl_constraint_aux_string = ''
+    mnrl_external_dataset = PETSC_FALSE
     do imnrl = 1, reaction%nkinmnrl
       found = PETSC_FALSE
       do jmnrl = 1, reaction%nkinmnrl
@@ -1326,11 +1338,15 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
         mineral_constraint%basis_area(jmnrl) = &
           mineral_constraint%constraint_area(imnrl)
         constraint_mnrl_name(jmnrl) = mineral_constraint%names(imnrl)
+        mnrl_constraint_aux_string(jmnrl) = mineral_constraint%constraint_aux_string(imnrl)
+        mnrl_external_dataset(jmnrl) = mineral_constraint%external_dataset(imnrl)
       endif  
     enddo
     mineral_constraint%names = constraint_mnrl_name
     mineral_constraint%constraint_vol_frac = mineral_constraint%basis_vol_frac
     mineral_constraint%constraint_area = mineral_constraint%basis_area
+    mineral_constraint%constraint_aux_string = mnrl_constraint_aux_string
+    mineral_constraint%external_dataset = mnrl_external_dataset
   endif
 
   ! surface complexes
@@ -1412,6 +1428,7 @@ end subroutine ReactionProcessConstraint
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
+                                         mineral_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
                                          porosity1, &
@@ -1433,6 +1450,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscInt :: num_iterations
@@ -1456,13 +1474,14 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
 
   PetscReal :: Res(reaction%naqcomp)
+  PetscReal :: update(reaction%naqcomp)
   PetscReal :: total_conc(reaction%naqcomp)
   PetscReal :: free_conc(reaction%naqcomp)
-  PetscReal :: guess(reaction%naqcomp)
   PetscReal :: Jac(reaction%naqcomp,reaction%naqcomp)
   PetscInt :: indices(reaction%naqcomp)
   PetscReal :: norm
-  PetscReal :: max_abs_res
+  PetscReal :: maximum_residual, maximum_relative_change
+  PetscReal :: ratio, min_ratio
   PetscReal :: prev_molal(reaction%naqcomp)
   PetscBool :: compute_activity_coefs
 
@@ -1475,7 +1494,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: convert_molar_to_molal
   
   PetscBool :: charge_balance_warning_flag = PETSC_FALSE
-
+  PetscBool :: use_log_formulation
+  
   PetscReal :: Jac_num(reaction%naqcomp)
   PetscReal :: Res_pert, pert, prev_value
 
@@ -1511,7 +1531,19 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molal_to_molar = 1.d0
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
-  
+
+  if (associated(mineral_constraint)) then
+    do imnrl = 1, reaction%nkinmnrl
+      ! if read from a dataset, the mineral volume frac has already been set.
+      if (.not.mineral_constraint%external_dataset(imnrl)) then
+        rt_auxvar%mnrl_volfrac0(imnrl) = mineral_constraint%constraint_vol_frac(imnrl)
+        rt_auxvar%mnrl_volfrac(imnrl) = mineral_constraint%constraint_vol_frac(imnrl)
+      endif
+      rt_auxvar%mnrl_area0(imnrl) = mineral_constraint%constraint_area(imnrl)
+      rt_auxvar%mnrl_area(imnrl) = mineral_constraint%constraint_area(imnrl)
+    enddo
+  endif
+
   if (associated(colloid_constraint)) then      
     colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
     colloid_constraint%basis_conc_imb = colloid_constraint%constraint_conc_imb        
@@ -1529,14 +1561,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     return
   endif
   
-  ! set initial guess
-  
-  if (use_prev_soln_as_guess) then
-    guess = rt_auxvar%pri_molal
-  else
-    guess = 1.d-9
-  endif
-
   ! if using multirate reaction, we need to turn it off to equilibrate the system
   ! then turn it back on
   kinmr_nrate_store = 0
@@ -1571,18 +1595,25 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   endif
 #endif  
   
+  if (use_prev_soln_as_guess) then
+    free_conc = rt_auxvar%pri_molal
+  else
+    free_conc = 1.d-9
+  endif
   total_conc = 0.d0
   do icomp = 1, reaction%naqcomp
     select case(constraint_type(icomp))
       case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
         total_conc(icomp) = conc(icomp)*convert_molal_to_molar
-        free_conc(icomp) = guess(icomp)
+        ! free_conc guess set above
       case(CONSTRAINT_FREE)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal
       case(CONSTRAINT_LOG)
         free_conc(icomp) = (10.d0**conc(icomp))*convert_molar_to_molal
       case(CONSTRAINT_CHARGE_BAL)
-        free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
+        if (.not.use_prev_soln_as_guess) then
+          free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
+        endif
       case(CONSTRAINT_PH)
         ! check if H+ id set
         if (associated(reaction%species_idx)) then
@@ -1610,19 +1641,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           endif
         endif        
       case(CONSTRAINT_MINERAL)
-        free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
+        if (.not.use_prev_soln_as_guess) then
+          free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
+        endif
       case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
         if (conc(icomp) <= 0.d0) then ! log form
           conc(icomp) = 10.d0**conc(icomp) ! conc log10 partial pressure gas
         endif
-        free_conc(icomp) = guess(icomp)
+        ! free_conc guess set above
     end select
   enddo
   
   rt_auxvar%pri_molal = free_conc
 
   num_iterations = 0
-  compute_activity_coefs = PETSC_FALSE
+
+  ! if previous solution is provided as a guess, it should be close enough
+  ! to use activity coefficients right away. - geh
+  ! essentially the same as:
+  !   compute_activity_coefficients = (use_prev_soln_as_guess == PETSC_TRUE)
+  compute_activity_coefs = use_prev_soln_as_guess
   
   do
 
@@ -1921,30 +1959,50 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       end select
     enddo
     
-    max_abs_res = maxval(abs(Res))
+    maximum_residual = maxval(abs(Res))
     
-    ! scale Jacobian
-    do icomp = 1, reaction%naqcomp
-      norm = max(1.d0,maxval(abs(Jac(icomp,:))))
-      norm = 1.d0/norm
-      Res(icomp) = Res(icomp)*norm
-      Jac(icomp,:) = Jac(icomp,:)*norm
-    enddo
-
-    ! for derivatives with respect to ln conc
-    do icomp = 1, reaction%naqcomp
-      Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
-    enddo
+    if (reaction%use_log_formulation) then
+      ! force at least 4 log updates, then cycle the next 5 updates between
+      ! log/linear.  This improves convergence of linear problems or 
+      ! primary components with no complexes, reactions, etc. (e.g. tracers)
+      if (num_iterations > 3 .and. num_iterations < 9) then
+        use_log_formulation = (mod(num_iterations,2) == 0)
+      else
+        use_log_formulation = PETSC_TRUE
+      endif
+    else
+      use_log_formulation = PETSC_FALSE
+    endif
+      
+    call RSolve(Res,Jac,rt_auxvar%pri_molal,update,reaction%naqcomp, &
+                use_log_formulation)
     
-    call ludcmp(Jac,reaction%naqcomp,indices,icomp)
-    call lubksb(Jac,reaction%naqcomp,indices,Res)
-
     prev_molal = rt_auxvar%pri_molal
 
-    Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
-    
-    rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-Res)
+    if (use_log_formulation) then
+      update = dsign(1.d0,update)*min(dabs(update),reaction%max_dlnC)
+      rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
+    else ! linear update
+      ! ensure non-negative concentration
+      min_ratio = 1.d20 ! large number
+      do icomp = 1, reaction%ncomp
+        if (prev_molal(icomp) <= update(icomp)) then
+          ratio = abs(prev_molal(icomp)/update(icomp))
+          if (ratio < min_ratio) min_ratio = ratio
+        endif
+      enddo
+      if (min_ratio < 1.d0) then
+        ! scale by 0.99 to make the update slightly smaller than the min_ratio
+        update = update*min_ratio*0.99d0
+      endif
+      rt_auxvar%pri_molal = prev_molal - update
+      ! could use:
+      ! rt_auxvar%pri_molal = prev_molal - update * minval(abs(prev_molal/update))
+    endif
 
+    maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
+                                         prev_molal))
+    
     num_iterations = num_iterations + 1
     
     if (mod(num_iterations,1000) == 0) then
@@ -1958,13 +2016,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       enddo
 200   format(a12,1x,1p2e12.4)
       if (num_iterations >= 10000) then
+        print *, 'cell id (natural):', option%iflag 
+        print *, 'constraint:', conc
+        print *, 'constraint type:', constraint_type
+        print *, 'free_conc:', free_conc
         option%io_buffer = 'Stopping due to excessive iteration count!'
-        call printErrMsg(option)
+        call printErrMsgByRank(option)
       endif
     endif
     
     ! check for convergence
-    if (max_abs_res < reaction%max_residual_tolerance) then
+    if (maximum_residual < reaction%max_residual_tolerance .and. &
+        maximum_relative_change < reaction%max_relative_change_tolerance) then
       ! need some sort of convergence before we kick in activities
       if (compute_activity_coefs) exit
       compute_activity_coefs = PETSC_TRUE
@@ -2006,7 +2069,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         option%io_buffer = 'Free site concentration for site ' // &
           trim(reaction%kinsrfcplx_site_names(isite)) // &
           ' is less than zero.'
-        call printErrMsg(option)
+        call printErrMsgByRank(option)
       endif
     enddo
     srfcplx_constraint%constraint_free_site_conc = rt_auxvar%kinsrfcplx_free_site_conc
@@ -2098,7 +2161,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   global_auxvar => constraint_coupler%global_auxvar
 
   select case(option%iflowmode)
-    case(FLASH2_MODE,MPH_MODE,IMS_MODE)
+    case(FLASH2_MODE,MPH_MODE,IMS_MODE,MIS_MODE)
     case(NULL_MODE)
       global_auxvar%den_kg(iphase) = option%reference_water_density
       global_auxvar%temp(1) = option%reference_temperature
@@ -3201,7 +3264,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     
     if (maxval(abs(residual)) < reaction%max_residual_tolerance) exit
 
-
     call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp, &
                 reaction%use_log_formulation)
     
@@ -3225,7 +3287,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
       endif
       rt_auxvar%pri_molal = prev_molal - update
     endif
-    
 
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
@@ -3580,7 +3641,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       if (II < 0.d0) then
         write(option%io_buffer,*) 'ionic strength negative! it =',it, &
           ' I= ',I,II,den,didi,dcdi,sum
-        call printErrMsg(option)        
+        call printErrMsgByRank(option)        
       endif
     
   ! compute activity coefficients
@@ -4067,9 +4128,8 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
-!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
-!                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+                  rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 1
       case(COLLOID_SURFACE)
         mobile_fraction = reaction%colloid_mobile_fraction(reaction%eqsrfcplx_rxn_to_surf(irxn))
@@ -4481,9 +4541,8 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     !WARNING! the below assumes site density multiplicative factor
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
-!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
-!                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(COLLOID_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
 !        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &

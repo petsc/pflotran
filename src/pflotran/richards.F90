@@ -1324,7 +1324,7 @@ subroutine RichardsUpdateSolution(realization)
      call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)  
   end if
 
-     call VecCopy(field%flow_xx,field%flow_yy,ierr)   
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
   cur_level => realization%level_list%first
   do
@@ -3126,7 +3126,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
   call RichardsUpdateAuxVarsPatch(realization)
   patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
-  patch%aux%Richards%aux_vars_cell_pressures_up_to_date  = PETSC_FALSE ! override flags since they will soon be out of date
+  patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
     call RichardsZeroMassBalDeltaPatch(realization)
   endif
@@ -3279,13 +3279,13 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       if (.not.option%use_samr) then
          
-         if (local_id_up>0) then
-            r_p(local_id_up) = r_p(local_id_up) + Res(1)
-         endif
+        if (local_id_up>0) then
+          r_p(local_id_up) = r_p(local_id_up) + Res(1)
+        endif
          
-         if (local_id_dn>0) then
-            r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
-         endif
+        if (local_id_dn>0) then
+          r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
+        endif
       endif
     enddo
 
@@ -3327,8 +3327,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                 perm_zz_loc_p(ghosted_id)*dabs(cur_connection_set%dist(3,iconn))
       icap_dn = patch%sat_func_id(ghosted_id)
 
-
-!      if (sum_connection == 3) v_darcy = -10.0
 
       call RichardsBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -3415,7 +3413,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
          r_p(local_id)= r_p(local_id) - Res(1)
       endif
 
-   enddo
+    enddo
     boundary_condition => boundary_condition%next
   enddo
 #endif  
@@ -6307,6 +6305,10 @@ function RichardsGetTecplotHeader(realization,icolumn)
     write(string2,'('',"P [Pa]"'')') 
   endif
   string = trim(string) // trim(string2)
+#ifdef GLENN_NEW_IO
+  call OutputOptionAddPlotVariable(realization%output_option,PRESSURE, &
+                             ZERO_INTEGER,ZERO_INTEGER)
+#endif
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -6315,6 +6317,10 @@ function RichardsGetTecplotHeader(realization,icolumn)
     write(string2,'('',"sl"'')') 
   endif
   string = trim(string) // trim(string2)
+#ifdef GLENN_NEW_IO
+  call OutputOptionAddPlotVariable(realization%output_option, &
+                                   LIQUID_SATURATION,ZERO_INTEGER,ZERO_INTEGER)
+#endif
  
   RichardsGetTecplotHeader = string
 

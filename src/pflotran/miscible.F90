@@ -1,6 +1,6 @@
-module Flash2_module
+module Miscible_module
   
-  use Flash2_Aux_module
+  use Miscible_Aux_module
   use Global_Aux_module
 
   implicit none
@@ -39,27 +39,27 @@ module Flash2_module
   PetscReal, parameter :: zerocut =0.D0  !1D-8
   
 
-  PetscInt, parameter :: jh2o=1, jco2=2
+  PetscInt, parameter :: jh2o=1, jglyc=2
 
 ! PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
   
-  public Flash2Residual,Flash2Jacobian, Flash2ResidualFluxContribPatch,&
-         Flash2UpdateFixedAccumulation,Flash2TimeCut,&
-         Flash2Setup,Flash2UpdateReason,&
-         Flash2MaxChange, Flash2UpdateSolution, &
-         Flash2GetTecplotHeader, Flash2InitializeTimestep, &
-         Flash2UpdateAuxVars
+  public MiscibleResidual,MiscibleJacobian, MiscibleResidualFluxContribPatch,&
+         MiscibleUpdateFixedAccumulation,MiscibleTimeCut,&
+         MiscibleSetup,MiscibleUpdateReason,&
+         MiscibleMaxChange, MiscibleUpdateSolution, &
+         MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
+         MiscibleUpdateAuxVars,MiscibleComputeMassBalance
 
 contains
 
 ! ************************************************************************** !
 !
-! Flash2TimeCut: Resets arrays for time step cut
+! MiscibleTimeCut: Resets arrays for time step cut
 ! author: Chuan Lu
 ! date: 9/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2TimeCut(realization)
+subroutine MiscibleTimeCut(realization)
  
   use Realization_module
   use Option_module
@@ -80,16 +80,16 @@ subroutine Flash2TimeCut(realization)
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
 
-end subroutine Flash2TimeCut
+end subroutine MiscibleTimeCut
 
 ! ************************************************************************** !
 !
-! Flash2Setup: 
+! MiscibleSetup: 
 ! author: Chuan Lu
 ! date: 9/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2Setup(realization)
+subroutine MiscibleSetup(realization)
 
   use Realization_module
   use Level_module
@@ -102,23 +102,6 @@ subroutine Flash2Setup(realization)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  
-#if 0
-  if (realization%option%co2eos == EOS_SPAN_WAGNER)then
-    select case(realization%option%itable)
-       case(0,1,2)
-         call initialize_span_wagner(realization%option%itable,realization%option%myrank)
-       case(4,5)
-         call initialize_span_wagner(ZERO_INTEGER,realization%option%myrank)
-         call initialize_sw_interp(realization%option%itable, realization%option%myrank)
-       case(3)
-         call sw_spline_read
-       case default
-         print *, 'Wrong table option : STOP'
-      stop
-    end select
-  endif
-#endif
  
   cur_level => realization%level_list%first
   do
@@ -127,22 +110,22 @@ subroutine Flash2Setup(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2SetupPatch(realization)
+      call MiscibleSetupPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
  
-end subroutine Flash2Setup
+end subroutine MiscibleSetup
 
 ! ************************************************************************** !
 !
-! Flash2SetupPatch: Creates arrays for auxilliary variables
+! MiscibleSetupPatch: Creates arrays for auxilliary variables
 ! author: Chuan Lu
 ! date: 10/1/08
 !
 ! ************************************************************************** !
-subroutine Flash2SetupPatch(realization)
+subroutine MiscibleSetupPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -161,59 +144,59 @@ subroutine Flash2SetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection, ipara
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-  print *,' Flash2 setup get patch'
-  patch%aux%Flash2 => Flash2AuxCreate()
+  print *,' Miscible setup get patch'
+  patch%aux%Miscible => MiscibleAuxCreate()
   
-!  option%io_buffer = 'Before Flash2 can be run, the thc_parameter object ' // &
+!  option%io_buffer = 'Before Miscible can be run, the Miscible_parameter object ' // &
 !                     'must be initialized with the proper variables ' // &
-!                     'Flash2AuxCreate() is called anyhwere.'
+!                     'MiscibleAuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
-  print *,' Flash2 setup get Aux', option%nphase, size(realization%saturation_function_array)     
-! Flash2_parameters create *********************************************
+  print *,' Miscible setup get Aux', option%nphase, size(realization%saturation_function_array)     
+! Miscible_parameters create *********************************************
 ! Sir
-  allocate(patch%aux%Flash2%Flash2_parameter%sir(option%nphase, &
+  allocate(patch%aux%Miscible%Miscible_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
-   print *,' Flash2 setup get patch: sir, allocated'                                
+   print *,' Miscible setup get patch: sir, allocated'                                
   do ipara = 1, size(realization%saturation_function_array)
-    patch%aux%Flash2%Flash2_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
+    patch%aux%Miscible%Miscible_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
       realization%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
-  print *,' Flash2 setup get patch: sir'
+  print *,' Miscible setup get patch: sir'
 ! dencpr  
-  allocate(patch%aux%Flash2%Flash2_parameter%dencpr(size(realization%material_property_array)))
+  allocate(patch%aux%Miscible%Miscible_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
+    patch%aux%Miscible%Miscible_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
       realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
       realization%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
-  allocate(patch%aux%Flash2%Flash2_parameter%ckwet(size(realization%material_property_array)))
+  allocate(patch%aux%Miscible%Miscible_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
+    patch%aux%Miscible%Miscible_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
       realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
-! Flash2_parameters create_end *****************************************
+! Miscible_parameters create_end *****************************************
 
 ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
-  print *,' Flash2 setup get Aux alloc', grid%ngmax
+  print *,' Miscible setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
-    call Flash2AuxVarInit(aux_vars(ghosted_id),option)
+    call MiscibleAuxVarInit(aux_vars(ghosted_id),option)
   enddo
-  patch%aux%Flash2%aux_vars => aux_vars
-  patch%aux%Flash2%num_aux = grid%ngmax
-  print *,' Flash2 setup get Aux init'
+  patch%aux%Miscible%aux_vars => aux_vars
+  patch%aux%Miscible%num_aux = grid%ngmax
+  print *,' Miscible setup get Aux init'
 
 !  allocate(delx(option%nflowdof, grid%ngmax))
 !  allocate(Resold_AR(grid%nlmax,option%nflowdof))
 !  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
 !           internal_connection_set_list),option%nflowdof))
-  print *,' Flash2 setup allocate app array'
+  print *,' Miscible setup allocate app array'
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -225,42 +208,237 @@ subroutine Flash2SetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
   allocate(aux_vars_bc(sum_connection))
-  print *,' Flash2 setup get AuxBc alloc', sum_connection
+  print *,' Miscible setup get AuxBc alloc', sum_connection
   do iconn = 1, sum_connection
-    call Flash2AuxVarInit(aux_vars_bc(iconn),option)
+    call MiscibleAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-  patch%aux%Flash2%aux_vars_bc => aux_vars_bc
-  patch%aux%Flash2%num_aux_bc = sum_connection
+  patch%aux%Miscible%aux_vars_bc => aux_vars_bc
+  patch%aux%Miscible%num_aux_bc = sum_connection
   option%numerical_derivatives = PETSC_TRUE
   
-  allocate(patch%aux%Flash2%delx(option%nflowdof, grid%ngmax))
-  allocate(patch%aux%Flash2%Resold_AR(grid%nlmax,option%nflowdof))
-  allocate(patch%aux%Flash2%Resold_BC(grid%nlmax,option%nflowdof))
+  allocate(patch%aux%Miscible%delx(option%nflowdof, grid%ngmax))
+  allocate(patch%aux%Miscible%Resold_AR(grid%nlmax,option%nflowdof))
+  allocate(patch%aux%Miscible%Resold_BC(grid%nlmax,option%nflowdof))
   ! should be allocated by the number of BC connections, just for debug now
-  allocate(patch%aux%Flash2%Resold_FL(ConnectionGetNumberInList(patch%grid%&
+  allocate(patch%aux%Miscible%Resold_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
   
-  print *,' Flash2 setup get AuxBc point'
+  print *,' Miscible setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call Flash2CreateZeroArray(patch,option)
+  call MiscibleCreateZeroArray(patch,option)
 
-end subroutine Flash2SetupPatch
+end subroutine MiscibleSetupPatch
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
+!
+! MiscibleomputeMassBalance: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalance: need to be checked
+! ************************************************************************** !
+subroutine MiscibleComputeMassBalance(realization, mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+   
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  mass_balance = 0.d0
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call MiscibleComputeMassBalancePatch(realization, mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine MiscibleComputeMassBalance    
+
+! ************************************************************************** !
+!
+! MiscibleomputeMassBalancePatch: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalancePatch: need to be checked
+! ************************************************************************** !
+subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  global_aux_vars => patch%aux%Global%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume*saturation*density
+    mass_balance = mass_balance + &
+      global_aux_vars(ghosted_id)%den_kg* &
+      global_aux_vars(ghosted_id)%sat* &
+      porosity_loc_p(ghosted_id)*volume_p(local_id)
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine MiscibleComputeMassBalancePatch
+
+! ************************************************************************** !
+!
+! MiscibleZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Satish Karra
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine MiscibleZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Miscible%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Miscible%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+ 
+end subroutine MiscibleZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+!
+! MiscibleUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/13/11
+!
+! ************************************************************************** !
+subroutine MiscibleUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Miscible%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance = &
+      patch%aux%Global%aux_vars(iconn)%mass_balance + &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O* &
+      option%flow_dt
+  enddo
+#endif
+
+  if (patch%aux%Miscible%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
+
+
+end subroutine MiscibleUpdateMassBalancePatch
+
+! ************************************************************************** !
+! Miscibleinitguesscheckpatch: 
 ! author: Chuan Lu
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-  function  Flash2InitGuessCheck(realization)
+  function  MiscibleInitGuessCheck(realization)
  
   use Realization_module
   use Level_module
   use Patch_module
   use Option_module
   
-  PetscInt ::  Flash2InitGuessCheck
+  PetscInt ::  MiscibleInitGuessCheck
   type(realization_type) :: realization
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
@@ -277,7 +455,7 @@ end subroutine Flash2SetupPatch
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      ipass= Flash2InitGuessCheckPatch(realization)
+      ipass= MiscibleInitGuessCheckPatch(realization)
       if(ipass<=0)then
         nullify(cur_level)
         exit 
@@ -293,16 +471,16 @@ end subroutine Flash2SetupPatch
                          option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
-   Flash2InitGuessCheck =ipass
- end function Flash2InitGuessCheck
+   MiscibleInitGuessCheck =ipass
+ end function MiscibleInitGuessCheck
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
+! Miscibleinitguesscheckpatch: 
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateReasonPatch(reason,realization)
+subroutine MiscibleUpdateReasonPatch(reason,realization)
    use Realization_module
    use Patch_module
    use Field_module
@@ -328,7 +506,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   grid => patch%grid
 
   re=1
- 
+#if 0
   if(re>0)then
      call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
      call GridVecGetArrayF90(grid,field%flow_yy, yy_p, ierr)
@@ -366,19 +544,20 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
 
    endif
+#endif   
   ! reason = re!; print *,'reason:',reason
-end subroutine Flash2UpdateReasonPatch
+end subroutine MiscibleUpdateReasonPatch
 
 
 ! ************************************************************************** !
 !
-! Flash2UpdateAuxVars: Updates the auxilliary variables associated with 
+! MiscibleUpdateAuxVars: Updates the auxilliary variables associated with 
 !                        the Richards problem
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateReason(reason, realization)
+subroutine MiscibleUpdateReason(reason, realization)
 
   use Realization_module
   use Level_module
@@ -395,6 +574,8 @@ subroutine Flash2UpdateReason(reason, realization)
   PetscErrorCode :: ierr
 
   re = 1
+
+#if 0  
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -402,7 +583,7 @@ subroutine Flash2UpdateReason(reason, realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2UpdateReasonPatch(re, realization)
+      call MiscibleUpdateReasonPatch(re, realization)
         if(re<=0)then
            nullify(cur_level)
            exit 
@@ -419,18 +600,20 @@ subroutine Flash2UpdateReason(reason, realization)
                         realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
+  
+#endif  
   reason=re
   
   if(reason<=0 .and. realization%option%myrank ==0) print *,'Sat or Con out of Region', re
-end subroutine Flash2UpdateReason
+end subroutine MiscibleUpdateReason
 
 ! ************************************************************************** !
-! Flash2initguesscheckpatch: 
+! Miscibleinitguesscheckpatch: 
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-  function  Flash2InitGuessCheckPatch(realization)
+  function  MiscibleInitGuessCheckPatch(realization)
    
      use span_wagner_module
      
@@ -441,7 +624,7 @@ end subroutine Flash2UpdateReason
     use Option_module
     implicit none
     
-    PetscInt :: Flash2InitGuessCheckPatch 
+    PetscInt :: MiscibleInitGuessCheckPatch 
     type(realization_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
@@ -461,6 +644,7 @@ end subroutine Flash2UpdateReason
     call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
     
     ipass=1
+#if 0
     do local_id = 1, grid%nlmax
        ghosted_id = grid%nL2G(local_id)
        !geh - Ignore inactive cells with inactive materials
@@ -484,18 +668,19 @@ end subroutine Flash2UpdateReason
     enddo
 
     call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-    Flash2InitGuessCheckPatch = ipass
-  end function Flash2InitGuessCheckPatch
+#endif
+    MiscibleInitGuessCheckPatch = ipass
+  end function MiscibleInitGuessCheckPatch
 
 ! ***************************************************************************
 !
-! Flash2UpdateAuxVars: Updates the auxilliary variables associated with 
-!                        the Flash2 problem
+! MiscibleUpdateAuxVars: Updates the auxilliary variables associated with 
+!                        the Miscible problem
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateAuxVars(realization)
+subroutine MiscibleUpdateAuxVars(realization)
 
   use Realization_module
   use Level_module
@@ -513,23 +698,23 @@ subroutine Flash2UpdateAuxVars(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2UpdateAuxVarsPatch(realization)
+      call MiscibleUpdateAuxVarsPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine Flash2UpdateAuxVars
+end subroutine MiscibleUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! Flash2UpdateAuxVarsPatch: Updates the auxilliary variables associated with 
-!                        the Flash2 problem
+! MiscibleUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+!                        the Miscible problem
 ! author: Chuan Lu
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateAuxVarsPatch(realization)
+subroutine MiscibleUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -550,7 +735,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
@@ -565,8 +750,8 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
   
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -586,42 +771,40 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
     
-    call Flash2AuxVarCompute_NINC(xx_loc_p(istart:iend), &
+    call MiscibleAuxVarCompute_NINC(xx_loc_p(istart:iend), &
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        global_aux_vars(ghosted_id), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
                       
  ! update global variables
     if( associated(global_aux_vars))then
     
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres 
+!      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:)= 1D0
 !     global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-      mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
-      if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
-      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
-                              *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
-                              /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
-                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
-                              +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
-
+!      mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
+!      if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
+!      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
+!      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
+!                              *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
+!                              /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
+!                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
+!                              +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
+!      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+!                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+!                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
+!      global_aux_vars(ghosted_id)%xmass(:) = 0.0
     else
-      print *,'Not associated global for FLASH2'
+      print *,'Not associated global for Miscible'
     endif
 
 
   enddo
-! print *,'Flash2UpdateAuxVarsPatch: end internal'
+! print *,'MiscibleUpdateAuxVarsPatch: end internal'
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -647,35 +830,18 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
       end select
       enddo
  
-     call Flash2AuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+     call MiscibleAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          global_aux_vars_bc(sum_connection), &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         realization%fluid_properties, option, xphi)
+                         realization%fluid_properties, option)
 
      if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
-        !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
+        global_aux_vars_bc(sum_connection)%sat(:)=1.D0
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-        mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
-        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
-        ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-        global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
-                              *aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O&
-                              /((1.d0-ynacl)*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O &
-                              +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(2) * FMWCO2 &
-                              +ynacl*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1)*FMWNACL)
-      global_aux_vars_bc(sum_connection)%xmass(2)=aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              /(aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
-                              +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(4) * FMWCO2) 
- 
-
-  !    global_aux_vars(ghosted_id)%den_kg_store
+!       global_aux_vars_bc(sum_connection)%xmass(:)= 0.0
+!       global_aux_vars(ghosted_id)%den_kg_store
       endif
 
     enddo
@@ -685,18 +851,18 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   
-  patch%aux%Flash2%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%Miscible%aux_vars_up_to_date = PETSC_TRUE
 
-end subroutine Flash2UpdateAuxVarsPatch
+end subroutine MiscibleUpdateAuxVarsPatch
 
 ! ************************************************************************** !
 !
-! Flash2InitializeTimestep: Update data in module prior to time step
+! MiscibleInitializeTimestep: Update data in module prior to time step
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2InitializeTimestep(realization)
+subroutine MiscibleInitializeTimestep(realization)
 
   use Realization_module
   
@@ -704,18 +870,18 @@ subroutine Flash2InitializeTimestep(realization)
   
   type(realization_type) :: realization
 
-  call Flash2UpdateFixedAccumulation(realization)
+  call MiscibleUpdateFixedAccumulation(realization)
 
-end subroutine Flash2InitializeTimestep
+end subroutine MiscibleInitializeTimestep
 
 ! ************************************************************************** !
 !
-! Flash2UpdateSolution: Updates data in module after a successful time step
+! MiscibleUpdateSolution: Updates data in module after a successful time step
 ! author: Chuan Lu
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateSolution(realization)
+subroutine MiscibleUpdateSolution(realization)
 
   use Realization_module
   
@@ -729,18 +895,18 @@ subroutine Flash2UpdateSolution(realization)
 
 ! make room for hysteric s-Pc-kr
 
-end subroutine Flash2UpdateSolution
+end subroutine MiscibleUpdateSolution
 
 
 ! ************************************************************************** !
 !
-! Flash2UpdateFixedAccumulation: Updates the fixed portion of the 
+! MiscibleUpdateFixedAccumulation: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateFixedAccumulation(realization)
+subroutine MiscibleUpdateFixedAccumulation(realization)
 
   use Realization_module
   use Level_module
@@ -758,23 +924,23 @@ subroutine Flash2UpdateFixedAccumulation(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2UpdateFixedAccumPatch(realization)
+      call MiscibleUpdateFixedAccumPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine Flash2UpdateFixedAccumulation
+end subroutine MiscibleUpdateFixedAccumulation
 
 ! ************************************************************************** !
 !
-! Flash2UpdateFixedAccumPatch: Updates the fixed portion of the 
+! MiscibleUpdateFixedAccumPatch: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2UpdateFixedAccumPatch(realization)
+subroutine MiscibleUpdateFixedAccumPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -790,8 +956,8 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
@@ -801,15 +967,15 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
                           
   PetscErrorCode :: ierr
   
-  call Flash2UpdateAuxVarsPatch(realization) 
+  call MiscibleUpdateAuxVarsPatch(realization) 
   option => realization%option
   field => realization%field
   patch => realization%patch
   grid => patch%grid
 
   global_aux_vars => patch%aux%Global%aux_vars
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -829,11 +995,11 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
 
-    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
+    call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
@@ -846,28 +1012,24 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
 
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
 
-#if 0
-!  call Flash2NumericalJacobianTest(field%flow_xx,realization)
-#endif
-
-end subroutine Flash2UpdateFixedAccumPatch
+end subroutine MiscibleUpdateFixedAccumPatch
 
 
 ! ************************************************************************** !
 !
-! Flash2Accumulation: Computes the non-fixed portion of the accumulation
+! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !  
-subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
+subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
 
   use Option_module
   
   implicit none
 
-  type(Flash2_auxvar_elem_type) :: aux_var
+  type(Miscible_auxvar_elem_type) :: aux_var
   type(option_type) :: option
   type(global_auxvar_type) :: global_aux_var
   PetscReal Res(1:option%nflowdof) 
@@ -887,11 +1049,11 @@ subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
         aux_var%xmol(ispec + (np-1)*option%nflowspec)
     enddo
 ! if(option%use_isothermal == PETSC_FALSE) &
-    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
+!    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
-  eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
+ ! eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
 ! Note if iireac >0, then it is the node global index
@@ -905,19 +1067,19 @@ subroutine Flash2Accumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
    !   Res(1:option%nflowdof)=mol(:)
    !else
       Res(1:option%nflowspec)=mol(:)
-      Res(option%nflowdof)=eng
+  !    Res(option%nflowdof)=eng
   ! endif
-end subroutine Flash2Accumulation
+end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
 !
-! Flash2Accumulation: Computes the non-fixed portion of the accumulation
+! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !  
-subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res,&
+subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res,&
                             qsrc_phase,energy_flag, option)
 
   use Option_module
@@ -931,7 +1093,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   
   implicit none
 
-  type(Flash2_auxvar_elem_type) :: aux_var
+  type(Miscible_auxvar_elem_type) :: aux_var
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal, pointer :: mmsrc(:)
@@ -964,59 +1126,16 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   select case(isrctype)
     case(MASS_RATE_SS)
       msrc(1) =  msrc(1) / FMWH2O
-      msrc(2) =  msrc(2) / FMWCO2
-      if (msrc(1) /= 0.d0) then ! H2O injection
-        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+      msrc(2) =  msrc(2) / FMWGLYC
+      if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
+!        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
-        Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
-        if (energy_flag) &
-          Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
-        qsrc_phase(1) = msrc(1)/dw_mol
-        
+        Res(jh2o) = Res(jh2o) + msrc(1)*option%flow_dt
+        Res(jglyc) = Res(jglyc) + msrc(2)*option%flow_dt
       endif  
-    
-      if (msrc(2) > 0.d0) then ! CO2 injection
-!        call printErrMsg(option,"concentration source not yet implemented in Flash2")
-        if(option%co2eos == EOS_SPAN_WAGNER) then
-         !  span-wagner
-          rho = aux_var%den(jco2)*FMWCO2  
-          select case(option%itable)  
-            case(0,1,2,4,5)
-              if( option%itable >=4) then
-                call co2_sw_interp(aux_var%pres*1.D-6,&
-                  tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
-              else
-                iflag = 1
-              call co2_span_wagner(aux_var%pres*1.D-6,&
-                  tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
-              endif 
-            case(3) 
-              call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
-                     enth_src_co2, eng, fg)
-          end select     
-
-         !  units: rho [kg/m^3]; csrc1 [kmol/s]
-          enth_src_co2 = enth_src_co2 * FMWCO2
-          qsrc_phase(2) = msrc(2)*rho/FMWCO2
-            
-        else if(option%co2eos == EOS_MRK)then
-! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
-            call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
-            qsrc_phase(2) = msrc(2)*rho/FMWCO2
-        else
-          call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
-        endif
-  
-        Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-        if (energy_flag) &
-         Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
-      endif
-!  End of mass rate inplementation
+#if 0   
+ !  End of mass rate inplementation
     case(WELL_SS) ! production well
      !if node pessure is lower than the given extraction pressure, shut it down
     ! Flow term
@@ -1105,23 +1224,24 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
             endif
           enddo
         endif
-      endif    
+      endif
+#endif          
     case default
     print *,'Unrecognized Source/Sink condition: ', isrctype 
   end select      
 !  deallocate(msrc)
   
-end subroutine Flash2SourceSink
+end subroutine MiscibleSourceSink
 
 
 ! ************************************************************************** !
 !
-! Flash2Flux: Computes the internal flux terms for the residual
+! MiscibleFlux: Computes the internal flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** ! 
-subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+subroutine MiscibleFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
@@ -1129,7 +1249,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
   implicit none
   
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: por_up, por_dn
@@ -1182,12 +1302,12 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            ukvr = aux_var_up%kvr(np)
            uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
+!           uh = aux_var_up%h(np)
         else
            ukvr = aux_var_dn%kvr(np)
            uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
+!           uh = aux_var_dn%h(np)
         endif
    
 
@@ -1199,7 +1319,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
              fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo  
           ! if(option%use_isothermal == PETSC_FALSE) &
-            fluxe = fluxe + q*density_ave*uh 
+!            fluxe = fluxe + q*density_ave*uh 
         endif
      endif
 
@@ -1219,33 +1339,20 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 #endif
   enddo
 
-! conduction term
-  !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
- ! end if
-
-  !if(option%use_isothermal)then
-  !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
- ! else
-     Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
-   ! if(option%use_isothermal == PETSC_FALSE)&
-     Res(option%nflowdof) = fluxe * option%flow_dt
- ! end if
+  Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-end subroutine Flash2Flux
+end subroutine MiscibleFlux
 
 ! ************************************************************************** !
 !
-! Flash2Flux: Computes the internal flux terms for the residual
+! MiscibleFlux: Computes the internal flux terms for the residual
 ! author: Chuan Lu
 ! date: 05/04/10
 !
 ! ************************************************************************** ! 
-subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+subroutine MiscibleFluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
@@ -1253,7 +1360,7 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
   implicit none
   
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: por_up, por_dn
@@ -1306,12 +1413,12 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            ukvr = aux_var_up%kvr(np)
            uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
+!           uh = aux_var_up%h(np)
         else
            ukvr = aux_var_dn%kvr(np)
            uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
            ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
+!           uh = aux_var_dn%h(np)
         endif
    
 
@@ -1323,28 +1430,23 @@ subroutine Flash2FluxAdv(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
              fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo  
         ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q*density_ave*uh 
+!            fluxe = fluxe + q*density_ave*uh 
         endif
      endif
    end do
      
    Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
-!  if(option%use_isothermal == PETSC_FALSE)&
-   Res(option%nflowdof) = fluxe * option%flow_dt
- ! end if
- ! note: Res is the flux contribution, for node 1 R = R + Res_FL
- !                                              2 R = R - Res_FL  
 
-end subroutine Flash2FluxAdv
+end subroutine MiscibleFluxAdv
 
 ! ************************************************************************** !
 !
-! Flash2Flux: Computes the internal flux terms for the residual
+! MiscibleFlux: Computes the internal flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** ! 
-subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+subroutine MiscibleFluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
@@ -1352,7 +1454,7 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
   
   implicit none
   
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up(:), sir_dn(:)
   PetscReal :: por_up, por_dn
@@ -1393,33 +1495,18 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
      endif
   enddo
 
-! conduction term
-  !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
- ! end if
+  Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
 
-  !if(option%use_isothermal)then
-  !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
- ! else
-     Res(1:option%nflowspec) = fluxm(:) * option%flow_dt
- ! if(option%use_isothermal)    
-     Res(option%nflowdof) = fluxe * option%flow_dt
- ! end if
- ! note: Res is the flux contribution, for node 1 R = R + Res_FL
- !                                              2 R = R - Res_FL  
-
-end subroutine Flash2FluxDiffusion
+end subroutine MiscibleFluxDiffusion
 
 ! ************************************************************************** !
 !
-! Flash2BCFlux: Computes the  boundary flux terms for the residual
+! MiscibleBCFlux: Computes the  boundary flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
   use Option_module
@@ -1427,7 +1514,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn(:)
   PetscReal :: aux_vars(:) ! from aux_real_var array
@@ -1517,7 +1604,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
      end do 
       !if(option%use_isothermal == PETSC_FALSE) &
-      fluxe = fluxe + q*density_ave*uh
+!      fluxe = fluxe + q*density_ave*uh
 !     print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol, density_ave
    enddo
 
@@ -1543,32 +1630,19 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      
   end select
 #endif
-  ! Conduction term
-! if(option%use_isothermal == PETSC_FALSE) then
-  select case(ibndtype(2))
-    case(DIRICHLET_BC)
-       Dk =  Dk_dn / dd_up
-       cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
-       fluxe = fluxe + cond
-    case(NEUMANN_BC)
-       fluxe = fluxe + aux_vars(2)*area*option%scale
-    case(ZERO_GRADIENT_BC)
-      ! No change in fluxe
-  end select
-! end if
 
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
-  Res(option%nflowdof)=fluxe * option%flow_dt
+! Res(option%nflowdof)=fluxe * option%flow_dt
 
-end subroutine Flash2BCFlux
+end subroutine MiscibleBCFlux
 ! ************************************************************************** !
 !
-! Flash2BCFluxAdv: Computes the  boundary flux terms for the residual
+! MiscibleBCFluxAdv: Computes the  boundary flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine MiscibleBCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
   use Option_module
@@ -1576,7 +1650,7 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn(:)
   PetscReal :: aux_vars(:) ! from aux_real_var array
@@ -1655,11 +1729,11 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      
      if (v_darcy >= 0.D0) then
         !if(option%use_isothermal == PETSC_FALSE)&
-         uh = aux_var_up%h(np)
+ !        uh = aux_var_up%h(np)
          uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      else
          !if(option%use_isothermal == PETSC_FALSE)&
-        uh = aux_var_dn%h(np)
+ !       uh = aux_var_dn%h(np)
         uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
      do ispec=1, option%nflowspec
@@ -1667,23 +1741,23 @@ subroutine Flash2BCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      end do 
 
       !if(option%use_isothermal == PETSC_FALSE) &
-      fluxe = fluxe + q*density_ave*uh
+!      fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
    enddo
 
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
-  Res(option%nflowdof)=fluxe * option%flow_dt
+! Res(option%nflowdof)=fluxe * option%flow_dt
 
-end subroutine Flash2BCFluxAdv
+end subroutine MiscibleBCFluxAdv
 
 ! ************************************************************************** !
 !
-! Flash2BCFluxDiffusion: Computes the  boundary flux terms for the residual
+! MiscibleBCFluxDiffusion: Computes the  boundary flux terms for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine MiscibleBCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
      area,dist_gravity,option,vv_darcy,Res)
   use Option_module
@@ -1691,7 +1765,7 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(Flash2_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn(:)
   PetscReal :: aux_vars(:) ! from aux_real_var array
@@ -1733,28 +1807,30 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   end select
 ! Conduction term
 ! if(option%use_isothermal == PETSC_FALSE) then
+#if 0
     select case(ibndtype(2))
-    case(DIRICHLET_BC, 4)
+     case(DIRICHLET_BC, 4)
        Dk =  Dk_dn / dd_up
        cond = Dk*area*(aux_var_up%temp - aux_var_dn%temp) 
        fluxe=fluxe + cond
     end select
+#endif
 ! end if
 
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
 
-end subroutine Flash2BCFluxDiffusion
+end subroutine MiscibleBCFluxDiffusion
 
 
 ! ************************************************************************** !
 !
-! Flash2Residual: Computes the residual equation 
+! MiscibleResidual: Computes the residual equation 
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2Residual(snes,xx,r,realization,ierr)
+subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Level_module
@@ -1812,7 +1888,7 @@ end interface
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
 
  ! check initial guess -----------------------------------------------
-  ierr = Flash2InitGuessCheck(realization)
+  ierr = MiscibleInitGuessCheck(realization)
   if(ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
@@ -1822,7 +1898,7 @@ end interface
   ! end check ---------------------------------------------------------
 
   ! Communication -----------------------------------------
-  ! These 3 must be called before Flash2UpdateAuxVars()
+  ! These 3 must be called before MiscibleUpdateAuxVars()
 !  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
@@ -1839,7 +1915,7 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+      call MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1853,7 +1929,7 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+      call MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1871,7 +1947,7 @@ end interface
         do
            if (.not.associated(cur_patch)) exit
            realization%patch => cur_patch
-           call Flash2ResidualFluxContribPatch(r,realization,ierr)
+           call MiscibleResidualFluxContribPatch(r,realization,ierr)
            cur_patch => cur_patch%next
         enddo
         cur_level => cur_level%next
@@ -1886,7 +1962,7 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
+      call MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1911,17 +1987,17 @@ end interface
   
   call PetscLogEventEnd(logging%event_r_residual,ierr)
 
-end subroutine Flash2Residual
+end subroutine MiscibleResidual
 
 ! ************************************************************************** !
 !
-! Flash2ResidualPatch: Computes the residual equation at patch level
+! MiscibleResidualPatch: Computes the residual equation at patch level
 !                      original version (not used)
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
+subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
 
   use Connection_module
   use Realization_module
@@ -1970,14 +2046,13 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscInt :: nsrcpara
   PetscReal, pointer :: msrc(:)
-
-
+  
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1995,15 +2070,15 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
- ! call Flash2UpdateAuxVarsPatchNinc(realization)
+ ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -2033,53 +2108,51 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      ghosted_id = ng   
      istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option, xphi)
+          realization%fluid_properties,option)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
      if( associated(global_aux_vars))then
        global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+!      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+       global_aux_vars(ghosted_id)%sat(:)=1D0
 !      global_aux_vars(ghosted_id)%sat_store =
-       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
        global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
      else
-       print *,'Not associated global for Flash2'
+       print *,'Not associated global for Miscible'
      endif
 #endif
 
      if (option%numerical_derivatives) then
         delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         else
-            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         endif
-         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+        do idof = 2, option%nflowdof
+          if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
+             delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+           else
+              delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+           endif
+           if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
+           if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
 
-           
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-         endif
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-         endif
+             
+           if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
+              delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
+           endif
+           if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
+              delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
+           endif
+         end do
 
-         patch%aux%Flash2%delx(:,ng)=delx(:)
-         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+         patch%aux%Miscible%delx(:,ng)=delx(:)
+         call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
 !         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
@@ -2090,9 +2163,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
    Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
-   patch%aux%Flash2%Resold_AR=0.D0
-   patch%aux%Flash2%Resold_BC=0.D0
-   patch%aux%Flash2%ResOld_FL=0.D0
+   patch%aux%Miscible%Resold_AR=0.D0
+   patch%aux%Miscible%Resold_BC=0.D0
+   patch%aux%Miscible%ResOld_FL=0.D0
    
 #if 1
   ! Accumulation terms ------------------------------------
@@ -2106,15 +2179,15 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
+    call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
                             global_aux_vars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
-                            Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                            Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    patch%aux%Flash2%Resold_AR(local_id, :)= Res(1:option%nflowdof)
+    patch%aux%Miscible%Resold_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
 #if 1
@@ -2147,7 +2220,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       case(MASS_RATE_SS)
         msrc => source_sink%flow_condition%rate%flow_dataset%time_series%cur_value
         nsrcpara= 2
-      case(WELL_SS)
+      case(WELL_SS) ! Well not implemented yet
         msrc => source_sink%flow_condition%well%flow_dataset%time_series%cur_value
         nsrcpara = 7 + option%nflowspec 
       case default
@@ -2163,20 +2236,22 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
-      r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
-      patch%aux%Flash2%Resold_AR(local_id,jco2)= patch%aux%Flash2%Resold_AR(local_id,jco2) - Res(jco2)    
+      r_p((local_id-1)*option%nflowdof + jglyc) = r_p((local_id-1)*option%nflowdof + jglyc)-Res(jglyc)
+      patch%aux%Miscible%Resold_AR(local_id,jh2o)= patch%aux%Miscible%Resold_AR(local_id,jh2o) - Res(jh2o)    
+      patch%aux%Miscible%Resold_AR(local_id,jglyc)= patch%aux%Miscible%Resold_AR(local_id,jglyc) - Res(jglyc)    
+#if 0
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        patch%aux%Flash2%Resold_AR(local_id,option%nflowdof)=&
-          patch%aux%Flash2%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+        patch%aux%Miscible%Resold_AR(local_id,option%nflowdof)=&
+          patch%aux%Miscible%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
+#endif
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
     enddo
@@ -2208,7 +2283,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -2240,18 +2315,15 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     enddo
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+    call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
            realization%fluid_properties, option)
 #if 1
     if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
+!      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)= 1.0
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
       global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
@@ -2259,13 +2331,13 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     endif
 #endif
 
-    call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+    call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
-         Flash2_parameter%sir(:,icap_dn), &
+         Miscible_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
@@ -2274,8 +2346,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
-      patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    patch%aux%Miscible%Resold_AR(local_id,1:option%nflowdof) = &
+      patch%aux%Miscible%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -2330,20 +2402,20 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      D_up = Flash2_parameter%ckwet(ithrm_up)
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_up = Miscible_parameter%ckwet(ithrm_up)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
-      call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+      call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
-      patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+      patch%aux%Miscible%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
      if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -2382,21 +2454,11 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isothermal) then
-     do local_id = 1, grid%nlmax  ! For each local node do...
-        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-        if (associated(patch%imat)) then
-           if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        istart = 3 + (local_id-1)*option%nflowdof
-        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-     enddo
-  endif
 
 
-  if (patch%aux%Flash2%inactive_cells_exist) then
-    do i=1,patch%aux%Flash2%n_zero_rows
-      r_p(patch%aux%Flash2%zero_rows_local(i)) = 0.d0
+  if (patch%aux%Miscible%inactive_cells_exist) then
+    do i=1,patch%aux%Miscible%n_zero_rows
+      r_p(patch%aux%Miscible%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -2425,7 +2487,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-end subroutine Flash2ResidualPatch
+end subroutine MiscibleResidualPatch
 
 ! ************************************************************************** !
 !
@@ -2434,7 +2496,7 @@ end subroutine Flash2ResidualPatch
 ! date: 02/17/09
 ! not working for flash yet!!!!
 ! ************************************************************************** !
-subroutine Flash2ResidualFluxContribPatch(r,realization,ierr)
+subroutine MiscibleResidualFluxContribPatch(r,realization,ierr)
   use Realization_module
   use Patch_module
   use Grid_module
@@ -2508,16 +2570,16 @@ subroutine Flash2ResidualFluxContribPatch(r,realization,ierr)
 !!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
 !!$  enddo
 
-end subroutine Flash2ResidualFluxContribPatch
+end subroutine MiscibleResidualFluxContribPatch
 
 ! ************************************************************************** !
 !
-! Flash2Jacobian: Computes the Residual by Flux
+! MiscibleJacobian: Computes the Residual by Flux
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 
   use Connection_module
   use Realization_module
@@ -2584,8 +2646,8 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
@@ -2605,15 +2667,15 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
- ! call Flash2UpdateAuxVarsPatchNinc(realization)
+ ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -2686,7 +2748,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -2718,38 +2780,37 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
     enddo
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+    call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
-           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-           realization%fluid_properties, option,xphi)
+           realization%fluid_properties, option)
 
     if( associated(global_aux_vars_bc))then
       global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+!      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)=1D0
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+      global_aux_vars_bc(sum_connection)%fugacoeff(1)=1D0
       global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
     endif
 
-    call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+    call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
-         Flash2_parameter%sir(:,icap_dn), &
+         Miscible_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    patch%aux%Flash2%Resold_BC(local_id,1:option%nflowdof) = &
-    patch%aux%Flash2%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    patch%aux%Miscible%Resold_BC(local_id,1:option%nflowdof) = &
+    patch%aux%Miscible%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
 
 
       if (option%use_samr) then
@@ -2868,20 +2929,20 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      D_up = Flash2_parameter%ckwet(ithrm_up)
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_up = Miscible_parameter%ckwet(ithrm_up)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
-      call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+      call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
-      patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+      patch%aux%Miscible%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
 
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
@@ -2940,17 +3001,17 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-end subroutine Flash2ResidualPatch1
+end subroutine MiscibleResidualPatch1
 
 ! ************************************************************************** !
 !
-! Flash2Jacobian: Computes the Residual Aux vars for numerical Jacobin
+! MiscibleJacobian: Computes the Residual Aux vars for numerical Jacobin
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
 
-subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
   use Connection_module
   use Realization_module
@@ -2993,8 +3054,8 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
@@ -3007,15 +3068,15 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
- ! call Flash2UpdateAuxVarsPatchNinc(realization)
+ ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -3023,9 +3084,9 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
   allocate(delx(option%nflowdof))
 
-  patch%aux%Flash2%Resold_AR=0.D0
-  patch%aux%Flash2%Resold_BC=0.D0
-  patch%aux%Flash2%ResOld_FL=0.D0
+  patch%aux%Miscible%Resold_AR=0.D0
+  patch%aux%Miscible%Resold_BC=0.D0
+  patch%aux%Miscible%ResOld_FL=0.D0
 
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
 #if 1
@@ -3038,53 +3099,51 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
     ghosted_id = ng   
     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-    call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+    call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option, xphi)
+          realization%fluid_properties,option)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
     if(associated(global_aux_vars)) then
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres
+!      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:)=1D0
 !      global_aux_vars(ghosted_id)%sat_store =
-      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+      global_aux_vars(ghosted_id)%fugacoeff(1)=1D0
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
     else
-      print *,'Not associated global for Flash2'
+      print *,'Not associated global for Miscible'
     endif
 #endif
 
     if (option%numerical_derivatives) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-      delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
- 
-      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9) then
-        delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-      else
-        delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-      endif
-      if(delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-      if(delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+         
+     do idof = 2, option%nflowdof
+      if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
+         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+       else
+          delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+       endif
+       if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
+       if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
 
-           
-      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
-            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-      endif
-      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
-            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-      endif
+         
+       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
+          delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
+       endif
+       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
+          delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
+       endif
+     end do
 
-      patch%aux%Flash2%delx(:,ng)=delx(:)
-      call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+      patch%aux%Miscible%delx(:,ng)=delx(:)
+      call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
-            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
 !         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
@@ -3097,17 +3156,17 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-end subroutine Flash2ResidualPatch0
+end subroutine MiscibleResidualPatch0
 
 ! ************************************************************************** !
 !
-! Flash2ResidualPatch2: Computes other terms in Residual
+! MiscibleResidualPatch2: Computes other terms in Residual
 !                       (accumulation, source/sink, reaction)
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
+subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 
   use Connection_module
   use Realization_module
@@ -3150,8 +3209,8 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
@@ -3170,16 +3229,16 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
   
- ! call Flash2UpdateAuxVarsPatchNinc(realization)
+ ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+ ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,r, r_p, ierr)
@@ -3201,16 +3260,16 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       endif
      iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
+    call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
                             global_aux_vars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
-                            Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                            Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    patch%aux%Flash2%Resold_AR(local_id, :)= &
-      patch%aux%Flash2%Resold_AR(local_id, :)+ Res(1:option%nflowdof)
+    patch%aux%Miscible%Resold_AR(local_id, :)= &
+      patch%aux%Miscible%Resold_AR(local_id, :)+ Res(1:option%nflowdof)
   enddo
 #endif
   endif
@@ -3262,7 +3321,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      call Flash2SourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call MiscibleSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
@@ -3272,13 +3331,13 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
          Res(:)/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
-      r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
-      patch%aux%Flash2%Resold_AR(local_id,jco2)= patch%aux%Flash2%Resold_AR(local_id,jco2) - Res(jco2)    
+      r_p((local_id-1)*option%nflowdof + jglyc) = r_p((local_id-1)*option%nflowdof + jglyc)-Res(jglyc)
+      patch%aux%Miscible%Resold_AR(local_id,jh2o)= patch%aux%Miscible%Resold_AR(local_id,jh2o) - Res(jh2o)    
+      patch%aux%Miscible%Resold_AR(local_id,jglyc)= patch%aux%Miscible%Resold_AR(local_id,jglyc) - Res(jglyc)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        patch%aux%Flash2%Resold_AR(local_id,option%nflowdof)=&
-          patch%aux%Flash2%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+        patch%aux%Miscible%Resold_AR(local_id,option%nflowdof)=&
+          patch%aux%Miscible%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -3319,9 +3378,9 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
      enddo
   endif
  
-  if (patch%aux%Flash2%inactive_cells_exist) then
-    do i=1,patch%aux%Flash2%n_zero_rows
-      r_p(patch%aux%Flash2%zero_rows_local(i)) = 0.d0
+  if (patch%aux%Miscible%inactive_cells_exist) then
+    do i=1,patch%aux%Miscible%n_zero_rows
+      r_p(patch%aux%Miscible%zero_rows_local(i)) = 0.d0
     enddo
   endif
  
@@ -3331,17 +3390,17 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
  
-end subroutine Flash2ResidualPatch2
+end subroutine MiscibleResidualPatch2
 
 
 ! ************************************************************************** !
 !
-! Flash2Jacobian: Computes the Jacobian
+! MiscibleJacobian: Computes the Jacobian
 ! author: Chuan Lu
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Patch_module
@@ -3403,7 +3462,7 @@ end interface
         (.not.(grid%structured_grid%p_samr_patch == 0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
-      call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+      call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -3424,7 +3483,7 @@ end interface
         (.not.(grid%structured_grid%p_samr_patch == 0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
-      call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+      call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -3460,16 +3519,16 @@ end interface
 
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
 
-end subroutine Flash2Jacobian
+end subroutine MiscibleJacobian
 
 ! ************************************************************************** !
 !
-! Flash2JacobianPatch: Computes the Jacobian
+! MiscibleJacobianPatch: Computes the Jacobian
 ! author: Chuan Lu
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   use Connection_module
   use Option_module
@@ -3534,8 +3593,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
@@ -3563,9 +3622,9 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -3575,7 +3634,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !  flag = SAME_NONZERO_PATTERN
 
 #if 0
-!  call Flash2NumericalJacobianTest(xx,realization)
+!  call MiscibleNumericalJacobianTest(xx,realization)
 #endif
 
  ! print *,'*********** In Jacobian ********************** '
@@ -3607,11 +3666,11 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      icap = int(icap_loc_p(ghosted_id))
      
      do nvar =1, option%nflowdof
-        call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
+        call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
              global_aux_vars(ghosted_id),& 
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
-             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
@@ -3627,17 +3686,17 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
-      enthalpy_flag = PETSC_TRUE
+      enthalpy_flag = PETSC_FALSE
    ! else
    !   enthalpy_flag = PETSC_FALSE
    ! endif
     if (associated(source_sink%flow_condition%pressure)) then
       psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
     endif
-    tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+!   tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
- !   hsrc1=0.D0
-    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
+!   hsrc1=0.D0
+!   if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
 
    ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
    ! csrc1 = csrc1 / FMWCO2
@@ -3667,17 +3726,19 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
      do nvar =1, option%nflowdof
-       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
+       call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,&
                             ss_flow, &
                             enthalpy_flag, option)
       
        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+       ResInc(local_id,jglyc,nvar)=  ResInc(local_id,jglyc,nvar) - Res(jglyc)
+#if 0
        if (enthalpy_flag) & 
            ResInc(local_id,option%nflowdof,nvar)=&
            ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
-
+#endif
+     
      enddo 
     enddo
     source_sink => source_sink%next
@@ -3709,7 +3770,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -3734,36 +3795,34 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           if(idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-             delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
+             delxbc(idof)=patch%aux%Miscible%delx(idof,ghosted_id)
           endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
-          delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
+          delxbc(idof)=patch%aux%Miscible%delx(idof,ghosted_id)
        end select
     enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+    call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
-    call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
+    call MiscibleAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
-       call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+       call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
          aux_vars(ghosted_id)%aux_var_elem(nvar), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
-         Flash2_parameter%sir(:,icap_dn), &
+         Miscible_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
@@ -3786,8 +3845,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
-              /patch%aux%Flash2%delx(nvar,ghosted_id)
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_AR(local_id,neq))&
+              /patch%aux%Miscible%delx(nvar,ghosted_id)
            if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
@@ -3863,33 +3922,33 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
-      D_up = Flash2_parameter%ckwet(ithrm_up)
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_up = Miscible_parameter%ckwet(ithrm_up)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
     
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+         call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
-              /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+            ra(:,nvar)= (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:))&
+              /patch%aux%Miscible%delx(nvar,ghosted_id_up)
+         call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
-           /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
+         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:))&
+           /patch%aux%Miscible%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)
@@ -3964,35 +4023,11 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
  ! call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-#if 0
-! zero out isothermal and inactive cells
-#ifdef ISOTHERMAL
-  zero = 0.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
-  do i=1, n_zero_rows
-    ii = mod(zero_rows_local(i),option%nflowdof)
-    ip1 = zero_rows_local_ghosted(i)
-    if (ii == 0) then
-      ip2 = ip1-1
-    elseif (ii == option%nflowdof-1) then
-      ip2 = ip1+1
-    else
-      ip2 = ip1
-    endif
-    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
-  enddo
 
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-#else
-#endif
-#endif
-
-  if (patch%aux%Flash2%inactive_cells_exist) then
+  if (patch%aux%Miscible%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%aux%Flash2%n_zero_rows, &
-                          patch%aux%Flash2%zero_rows_local_ghosted,f_up, &
+    call MatZeroRowsLocal(A,patch%aux%Miscible%n_zero_rows, &
+                          patch%aux%Miscible%zero_rows_local_ghosted,f_up, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
@@ -4016,16 +4051,16 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !    call VecMax(debug_vec,i,norm,ierr)
 !    call VecDestroy(debug_vec,ierr)
   endif
-end subroutine Flash2JacobianPatch
+end subroutine MiscibleJacobianPatch
 
 ! ************************************************************************** !
 !
-! Flash2JacobianPatch: Computes the Jacobian: Flux term
+! MiscibleJacobianPatch: Computes the Jacobian: Flux term
 ! author: Chuan Lu
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   use Connection_module
   use Option_module
@@ -4090,8 +4125,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
@@ -4118,9 +4153,9 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -4130,11 +4165,11 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 !  flag = SAME_NONZERO_PATTERN
 
 #if 0
-!  call Flash2NumericalJacobianTest(xx,realization)
+!  call MiscibleNumericalJacobianTest(xx,realization)
 #endif
 
  ! print *,'*********** In Jacobian ********************** '
- ! MatzeroEntries has been called in Flash2Jacobin ! clu removed on 11/04/2010 
+ ! MatzeroEntries has been called in MiscibleJacobin ! clu removed on 11/04/2010 
  !  call MatZeroEntries(A,ierr)
 
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -4177,7 +4212,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -4202,36 +4237,34 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           if(idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-             delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
+             delxbc(idof)=patch%aux%Miscible%delx(idof,ghosted_id)
           endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
-          delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
+          delxbc(idof)=patch%aux%Miscible%delx(idof,ghosted_id)
        end select
     enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
 
  
-    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+    call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
-    call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
+    call MiscibleAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
          global_aux_vars_bc(sum_connection),&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
-       call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+       call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
          aux_vars(ghosted_id)%aux_var_elem(nvar), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
-         Flash2_parameter%sir(:,icap_dn), &
+         Miscible_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
@@ -4251,12 +4284,10 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
      endif
 
      ra=0.D0
-     max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_BC(local_id,neq))&
-              /patch%aux%Flash2%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_BC(local_id,neq))&
+              /patch%aux%Miscible%delx(nvar,ghosted_id)
         enddo
      enddo
    
@@ -4264,7 +4295,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
@@ -4335,33 +4366,33 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
-      D_up = Flash2_parameter%ckwet(ithrm_up)
-      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+      D_up = Miscible_parameter%ckwet(ithrm_up)
+      D_dn = Miscible_parameter%ckwet(ithrm_dn)
     
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+         call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
-              /patch%aux%Flash2%delx(nvar,ghosted_id_up)
-         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+            ra(:,nvar)= (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:))&
+              /patch%aux%Miscible%delx(nvar,ghosted_id_up)
+         call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
-           /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
+         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:))&
+           /patch%aux%Miscible%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)
@@ -4423,16 +4454,16 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-end subroutine Flash2JacobianPatch1
+end subroutine MiscibleJacobianPatch1
 
 ! ************************************************************************** !
 !
-! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
+! MiscibleJacobianPatch: Computes the Jacobian: Accum, source, reaction
 ! author: Chuan Lu
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   use Connection_module
   use Option_module
@@ -4517,8 +4548,8 @@ end interface
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(Flash2_parameter_type), pointer :: Flash2_parameter
-  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(Miscible_parameter_type), pointer :: Miscible_parameter
+  type(Miscible_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
@@ -4545,9 +4576,9 @@ end interface
   option => realization%option
   field => realization%field
 
-  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
-  aux_vars => patch%aux%Flash2%aux_vars
-  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  Miscible_parameter => patch%aux%Miscible%Miscible_parameter
+  aux_vars => patch%aux%Miscible%aux_vars
+  aux_vars_bc => patch%aux%Miscible%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -4557,7 +4588,7 @@ end interface
 !  flag = SAME_NONZERO_PATTERN
 
 #if 0
-!  call Flash2NumericalJacobianTest(xx,realization)
+!  call MiscibleNumericalJacobianTest(xx,realization)
 #endif
 
  ! print *,'*********** In Jacobian ********************** '
@@ -4583,11 +4614,11 @@ end interface
      icap = int(icap_loc_p(ghosted_id))
      
      do nvar =1, option%nflowdof
-        call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
+        call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
              global_aux_vars(ghosted_id),& 
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
-             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
@@ -4642,13 +4673,13 @@ end interface
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
      do nvar =1, option%nflowdof
-       call Flash2SourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
+       call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, aux_vars(ghosted_id)%aux_var_elem(nvar),&
                             source_sink%flow_condition%itype(1), Res,&
                             ss_flow, &
                             enthalpy_flag, option)
 
        ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
-       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+       ResInc(local_id,jglyc,nvar)=  ResInc(local_id,jglyc,nvar) - Res(jglyc)
        if (enthalpy_flag) & 
            ResInc(local_id,option%nflowdof,nvar)=&
            ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
@@ -4671,9 +4702,8 @@ end interface
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
-              /patch%aux%Flash2%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_AR(local_id,neq))&
+              /patch%aux%Miscible%delx(nvar,ghosted_id)
         enddo
      enddo
    
@@ -4733,10 +4763,10 @@ end interface
 #endif
 #endif
 
-  if (patch%aux%Flash2%inactive_cells_exist) then
+  if (patch%aux%Miscible%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%aux%Flash2%n_zero_rows, &
-                          patch%aux%Flash2%zero_rows_local_ghosted,f_up, &
+    call MatZeroRowsLocal(A,patch%aux%Miscible%n_zero_rows, &
+                          patch%aux%Miscible%zero_rows_local_ghosted,f_up, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
@@ -4767,17 +4797,17 @@ end interface
           realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
   endif
 
-end subroutine Flash2JacobianPatch2
+end subroutine MiscibleJacobianPatch2
 
 
 ! ************************************************************************** !
 !
-! Flash2CreateZeroArray: Computes the zeroed rows for inactive grid cells
+! MiscibleCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Chuan Lu
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-subroutine Flash2CreateZeroArray(patch,option)
+subroutine MiscibleCreateZeroArray(patch,option)
 
   use Patch_module
   use Grid_module
@@ -4835,50 +4865,35 @@ subroutine Flash2CreateZeroArray(patch,option)
           zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
           zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
-      else
-#ifdef ISOTHERMAL
-        ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%nflowdof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-#endif
       endif
     enddo
-  else
-#ifdef ISOTHERMAL
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%nflowdof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-    enddo
-#endif
   endif
 !print *,'zero rows point 1'
-  patch%aux%Flash2%n_zero_rows = n_zero_rows
+  patch%aux%Miscible%n_zero_rows = n_zero_rows
 !print *,'zero rows point 2'
-  patch%aux%Flash2%zero_rows_local => zero_rows_local
+  patch%aux%Miscible%zero_rows_local => zero_rows_local
 !print *,'zero rows point 3'  
-  patch%aux%Flash2%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%aux%Miscible%zero_rows_local_ghosted => zero_rows_local_ghosted
 !print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
-  if (flag > 0) patch%aux%Flash2%inactive_cells_exist = PETSC_TRUE
+  if (flag > 0) patch%aux%Miscible%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
 ! print *,'zero rows', flag
-end subroutine Flash2CreateZeroArray
+end subroutine MiscibleCreateZeroArray
 
 ! ************************************************************************** !
 !
-! Flash2MaxChange: Computes the maximum change in the solution vector
+! MiscibleMaxChange: Computes the maximum change in the solution vector
 ! author: Chuan Lu
 ! date: 01/15/08
 !
 ! ************************************************************************** !
-subroutine Flash2MaxChange(realization)
+subroutine MiscibleMaxChange(realization)
 
   use Realization_module
   use Level_module
@@ -4895,7 +4910,8 @@ subroutine Flash2MaxChange(realization)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscReal :: dsmax, max_S  
+  PetscReal :: dsmax
+  PetscInt :: idof
   PetscErrorCode :: ierr 
 
   option => realization%option
@@ -4910,9 +4926,13 @@ subroutine Flash2MaxChange(realization)
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
-  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax,ierr)
 
+  do idof = 1,option%nflowdof-1 
+    dsmax=0D0
+    call VecStrideNorm(field%flow_dxx,idof,NORM_INFINITY,dsmax,ierr)
+    if(dsmax>option%dcmax) option%dcmax=dsmax
+  enddo
+  
 #if 0
   do
     if (.not.associated(cur_level)) exit
@@ -4920,7 +4940,7 @@ subroutine Flash2MaxChange(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2MaxChangePatch(realization, max_s)
+      call MiscibleMaxChangePatch(realization, max_s)
       if(dsmax <max_s)  dsmax =max_s
       cur_patch => cur_patch%next
     enddo
@@ -4935,17 +4955,17 @@ subroutine Flash2MaxChange(realization)
   option%dsmax=dsmax
 #endif
   !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
-end subroutine Flash2MaxChange
+end subroutine MiscibleMaxChange
 
 ! ************************************************************************** !
 !
-! Flash2GetTecplotHeader: Returns Richards contribution to 
+! MiscibleGetTecplotHeader: Returns Richards contribution to 
 !                               Tecplot file header
 ! author: Chuan Lu
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-function Flash2GetTecplotHeader(realization, icolumn)
+function MiscibleGetTecplotHeader(realization, icolumn)
 
   use Realization_module
   use Option_module
@@ -4953,7 +4973,7 @@ function Flash2GetTecplotHeader(realization, icolumn)
 
   implicit none
   
-  character(len=MAXSTRINGLENGTH) :: Flash2GetTecplotHeader
+  character(len=MAXSTRINGLENGTH) :: MiscibleGetTecplotHeader
   type(realization_type) :: realization
   PetscInt :: icolumn
   
@@ -4983,13 +5003,6 @@ function Flash2GetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
   
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
-  else
-    write(string2,'('',"PHASE"'')')
-  endif
-  string = trim(string) // trim(string2)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4999,13 +5012,6 @@ function Flash2GetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-S(g)"'')') icolumn
-  else
-    write(string2,'('',"S(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -5015,13 +5021,6 @@ function Flash2GetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-d(g)"'')') icolumn
-  else
-    write(string2,'('',"d(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -5031,13 +5030,6 @@ function Flash2GetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-vis(g)"'')') icolumn
-  else
-    write(string2,'('',"vis(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -5047,13 +5039,6 @@ function Flash2GetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-kvr(g)"'')') icolumn
-  else
-    write(string2,'('',"kvr(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -5063,13 +5048,6 @@ function Flash2GetTecplotHeader(realization, icolumn)
   endif
   string = trim(string) // trim(string2)
 
-  if (icolumn > -1) then
-    icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
-  else
-    write(string2,'('',"u(g)"'')')
-  endif
-  string = trim(string) // trim(string2)
   do i=1,option%nflowspec
     if (icolumn > -1) then
       icolumn = icolumn + 1
@@ -5080,28 +5058,19 @@ function Flash2GetTecplotHeader(realization, icolumn)
     string = trim(string) // trim(string2)
   enddo
 
-  do i=1,option%nflowspec
-    if (icolumn > -1) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-Xg('',i2,'')"'')') icolumn, i
-    else
-      write(string2,'('',"Xg('',i2,'')"'')') i
-    endif
-    string = trim(string) // trim(string2)
-  enddo
 
-  Flash2GetTecplotHeader = string
+  MiscibleGetTecplotHeader = string
 
-end function Flash2GetTecplotHeader
+end function MiscibleGetTecplotHeader
 
 ! ************************************************************************** !
 !
-! Flash2Destroy: Deallocates variables associated with Flash2
+! MiscibleDestroy: Deallocates variables associated with Miscible
 ! author: Chuan Lu 
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine Flash2Destroy(patch)
+subroutine MiscibleDestroy(patch)
 
   use Patch_module
 
@@ -5110,20 +5079,20 @@ subroutine Flash2Destroy(patch)
   type(patch_type) :: patch
   
   ! need to free array in aux vars
-  !call Flash2AuxDestroy(patch%aux%Flash2)
+  !call MiscibleAuxDestroy(patch%aux%Miscible)
 
-end subroutine Flash2Destroy
+end subroutine MiscibleDestroy
 
 
 #if 0
 ! ************************************************************************** !
 !
-! Flash2CheckpointWrite: Writes vecs to checkpoint file
+! MiscibleCheckpointWrite: Writes vecs to checkpoint file
 ! author: Chuan Lu
 ! date: 
 !
 ! ************************************************************************** !
-subroutine Flash2CheckpointWrite(discretization, viewer)
+subroutine MiscibleCheckpointWrite(discretization, viewer)
 
   use Discretization_module
 
@@ -5139,17 +5108,17 @@ subroutine Flash2CheckpointWrite(discretization, viewer)
   call VecDestroy(global_var,ierr)
   
   
-end subroutine Flash2CheckpointWrite
+end subroutine MiscibleCheckpointWrite
 
 
 ! ************************************************************************** !
 !
-! Flash2CheckpointRead: Reads vecs from checkpoint file
+! MiscibleCheckpointRead: Reads vecs from checkpoint file
 ! author: Chuan Lu 
 ! date: 
 !
 ! ************************************************************************** !
-subroutine Flash2CheckpointRead(discretization,viewer)
+subroutine MiscibleCheckpointRead(discretization,viewer)
 
   use Discretization_module
 
@@ -5164,8 +5133,8 @@ subroutine Flash2CheckpointRead(discretization,viewer)
   call VecLoad(global_var, viewer, ierr)
   call VecDestroy(global_var,ierr)
   
-end subroutine Flash2CheckpointRead
+end subroutine MiscibleCheckpointRead
 
 #endif
 
-end module Flash2_module
+end module Miscible_module

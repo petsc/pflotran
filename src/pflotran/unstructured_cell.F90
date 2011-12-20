@@ -25,12 +25,16 @@ module Unstructured_Cell_module
             UCellComputeVolume, &
             UCellComputePlane, &
             UCellGetPlaneIntercept, &
+            UCellProjectPointOntoPlane, &
             UCellComputeDistanceFromPlane, &
             UCellGetNVertices, &
             UCellGetNFaces, &
             UCellGetNFaceVertices, &
             UCellGetFaceType, &
-            UCellGetFaceVertices
+            UCellGetFaceVertices, &
+            UCellGetNFaceVertsandVerts, &
+            UCellTypeToWord, &
+            UCellFaceTypeToWord
             
 contains
 
@@ -69,6 +73,14 @@ function UCellComputeCentroid(cell_type,vertices)
         UCellComputeCentroid(3) = UCellComputeCentroid(3) + vertices(ivertex)%z
       enddo
       UCellComputeCentroid = UCellComputeCentroid / 6.d0
+    case(PYR_TYPE)
+      ! need something more sophisticated, but for now, just use average
+      do ivertex = 1, 5
+        UCellComputeCentroid(1) = UCellComputeCentroid(1) + vertices(ivertex)%x
+        UCellComputeCentroid(2) = UCellComputeCentroid(2) + vertices(ivertex)%y
+        UCellComputeCentroid(3) = UCellComputeCentroid(3) + vertices(ivertex)%z
+      enddo
+      UCellComputeCentroid = UCellComputeCentroid / 5.d0
     case(TET_TYPE)
       do ivertex = 1, 4
         UCellComputeCentroid(1) = UCellComputeCentroid(1) + vertices(ivertex)%x
@@ -106,8 +118,28 @@ function UCellComputeVolume(cell_type,vertices)
   UCellComputeVolume = 0.d0
   select case(cell_type)
     case(HEX_TYPE)
-     ! need something more sophisticated, but for now, just use volume of 
-     ! box
+      ! split into 5 tetrahedron
+      UCellComputeVolume = &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2), &
+                                        vertices(3),vertices(6))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(6), &
+                                        vertices(8),vertices(5))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(6), &
+                                        vertices(3),vertices(8))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(8),vertices(6), &
+                                        vertices(3),vertices(7))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(2),vertices(3), &
+                                        vertices(4),vertices(8))
+#if 0
+     ! assume orthogonal grid
       v(1) = vertices(2)%x-vertices(1)%x
       v(2) = vertices(2)%y-vertices(1)%y
       v(3) = vertices(2)%z-vertices(1)%z
@@ -121,6 +153,7 @@ function UCellComputeVolume(cell_type,vertices)
       v(3) = vertices(5)%z-vertices(1)%z
       l3 = sqrt(DotProduct(v,v))
       UCellComputeVolume = l1*l2*l3
+#endif
     case(WEDGE_TYPE)
       v1(1) = vertices(3)%x-vertices(2)%x
       v1(2) = vertices(3)%y-vertices(2)%y
@@ -133,19 +166,63 @@ function UCellComputeVolume(cell_type,vertices)
       dz = (vertices(1)%z+vertices(2)%z+vertices(3)%z)/3.d0 - &
            (vertices(4)%z+vertices(5)%z+vertices(6)%z)/3.d0
       UCellComputeVolume = dabs(dz)*area1
+    case(PYR_TYPE)
+      ! split pyramid into two tets and compute
+      UCellComputeVolume = &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2), &
+                                        vertices(3),vertices(5))
+      UCellComputeVolume = &
+        UCellComputeVolume + &
+        UCellComputeVolumeOfTetrahedron(vertices(3),vertices(4), &
+                                        vertices(1),vertices(5))
     case(TET_TYPE)
-      do i = 1, 4
-        vv(1,i) = vertices(i)%x
-        vv(2,i) = vertices(i)%y
-        vv(3,i) = vertices(i)%z
-      enddo
-      ! V = |(a-d).((b-d)x(c-d))| / 6
-      UCellComputeVolume = dabs(DotProduct(vv(:,1)-vv(:,4), &
-                                      CrossProduct(vv(:,2)-vv(:,4), &
-                                                   vv(:,3)-vv(:,4)))) / 6.d0
+      UCellComputeVolume = &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2),vertices(3), &
+                                        vertices(4))
   end select
 
 end function UCellComputeVolume
+
+! ************************************************************************** !
+!
+! UCellComputeVolumeOfTetrahedron: Computes the voluem of a tetrahedron
+!                                  given four points
+! author: Glenn Hammond
+! date: 12/06/11
+!
+! ************************************************************************** !
+function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
+
+  use Utility_module, only : DotProduct, CrossProduct
+
+  implicit none
+  
+  type(point_type) :: point1, point2, point3, point4
+  
+  PetscReal :: vv(3,4)
+  PetscReal :: UCellComputeVolumeOfTetrahedron
+  PetscInt :: i
+
+  vv(1,1) = point1%x
+  vv(2,1) = point1%y
+  vv(3,1) = point1%z
+  vv(1,2) = point2%x
+  vv(2,2) = point2%y
+  vv(3,2) = point2%z
+  vv(1,3) = point3%x
+  vv(2,3) = point3%y
+  vv(3,3) = point3%z
+  vv(1,4) = point4%x
+  vv(2,4) = point4%y
+  vv(3,4) = point4%z
+
+  ! V = |(a-d).((b-d)x(c-d))| / 6
+  UCellComputeVolumeOfTetrahedron = dabs(DotProduct(vv(:,1)-vv(:,4), &
+                                         CrossProduct(vv(:,2)-vv(:,4), &
+                                                      vv(:,3)-vv(:,4)))) / &
+                                    6.d0
+
+end function UCellComputeVolumeOfTetrahedron
 
 ! ************************************************************************** !
 !
@@ -181,6 +258,35 @@ subroutine UCellComputePlane(plane,point1,point2,point3)
   plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
 
 end subroutine UCellComputePlane
+
+! ************************************************************************** !
+!
+! UCellProjectPointOntoPlane: Computes the intercept of a point with a plane
+! author: Glenn Hammond
+! date: 11/22/11
+!
+! ************************************************************************** !
+subroutine UCellProjectPointOntoPlane(plane,point,intercept)
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point_type) :: point
+  type(point_type) :: intercept
+
+  PetscReal :: scalar
+  
+  ! plane equation:
+  !   A*x + B*y + C*z + D = 0
+
+  scalar = (plane%A*point%x + plane%B*point%y + plane%C*point%z + plane%D) / &
+           (plane%A*plane%A + plane%B*plane%B + plane%C*plane%C)
+  
+  intercept%x = point%x - plane%A * scalar
+  intercept%y = point%y - plane%B * scalar
+  intercept%z = point%z - plane%C * scalar
+
+end subroutine UCellProjectPointOntoPlane
 
 ! ************************************************************************** !
 !
@@ -258,6 +364,8 @@ function UCellGetNVertices(cell_type)
       UCellGetNVertices = 8
     case(WEDGE_TYPE)
       UCellGetNVertices = 6
+    case(PYR_TYPE)
+      UCellGetNVertices = 5
     case(TET_TYPE)
       UCellGetNVertices = 4
   end select  
@@ -281,7 +389,7 @@ function UCellGetNFaces(cell_type)
   select case(cell_type)
     case(HEX_TYPE)
       UCellGetNFaces = 6
-    case(WEDGE_TYPE)
+    case(WEDGE_TYPE,PYR_TYPE)
       UCellGetNFaces = 5
     case(TET_TYPE)
       UCellGetNFaces = 4
@@ -313,6 +421,12 @@ function UCellGetNFaceVertices(cell_type,iface)
       else 
         UCellGetNFaceVertices = 4
       endif
+    case(PYR_TYPE)
+      if (iface > 4) then
+        UCellGetNFaceVertices = 4
+      else 
+        UCellGetNFaceVertices = 3
+      endif
     case(TET_TYPE)
       UCellGetNFaceVertices = 3
   end select
@@ -336,18 +450,101 @@ function UCellGetFaceType(cell_type,iface)
   
   select case(cell_type)
     case(HEX_TYPE)
-      UCellGetFaceType = TRI_FACE_TYPE
+      UCellGetFaceType = QUAD_FACE_TYPE
     case(WEDGE_TYPE)
       if (iface > 3) then
         UCellGetFaceType = TRI_FACE_TYPE
       else 
         UCellGetFaceType = QUAD_FACE_TYPE
       endif
+    case(PYR_TYPE)
+      if (iface > 4) then
+        UCellGetFaceType = QUAD_FACE_TYPE
+      else 
+        UCellGetFaceType = TRI_FACE_TYPE
+      endif
     case(TET_TYPE)
       UCellGetFaceType = TRI_FACE_TYPE
   end select
   
 end function UCellGetFaceType
+
+! ************************************************************************** !
+!
+! UCellTypeToWord: Returns type of cell as a string
+! author: Glenn Hammond
+! date: 12/09/11
+!
+! ************************************************************************** !
+function UCellTypeToWord(cell_type)
+
+  implicit none
+  
+  PetscInt :: cell_type
+
+  character(len=MAXWORDLENGTH) :: UCellTypeToWord
+  
+  select case(cell_type)
+    case(HEX_TYPE)
+      UCellTypeToWord = 'hexahedron'
+    case(WEDGE_TYPE)
+      UCellTypeToWord = 'wedge'
+    case(PYR_TYPE)
+      UCellTypeToWord = 'pyramid'
+    case(TET_TYPE)
+      UCellTypeToWord = 'tetrahedron'
+  end select
+  
+end function UCellTypeToWord
+
+! ************************************************************************** !
+!
+! UCellFaceTypeToWord: Returns type of cell face as a string
+! author: Glenn Hammond
+! date: 12/09/11
+!
+! ************************************************************************** !
+function UCellFaceTypeToWord(face_type)
+
+  implicit none
+  
+  PetscInt :: face_type
+
+  character(len=MAXWORDLENGTH) :: UCellFaceTypeToWord
+  
+  select case(face_type)
+    case(TRI_FACE_TYPE)
+      UCellFaceTypeToWord = 'triangle'
+    case(QUAD_FACE_TYPE)
+      UCellFaceTypeToWord = 'quadrilateral'
+  end select
+  
+end function UCellFaceTypeToWord
+
+! ************************************************************************** !
+!
+! UCellGetNFaceVertsandVerts: returns the numbber of vertices for a face and
+!                             the vertices
+! author: Glenn Hammond
+! date: 12/06/11
+!
+! ************************************************************************** !
+subroutine UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
+                                      vertex_ids)
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  PetscInt :: cell_type
+  PetscInt :: iface
+  PetscInt :: nvertices
+  PetscInt :: vertex_ids(*)
+  
+  nvertices = UCellGetNFaceVertices(cell_type,iface)
+  call UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
+
+end subroutine UCellGetNFaceVertsandVerts
 
 ! ************************************************************************** !
 !
@@ -420,14 +617,41 @@ subroutine UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
           vertex_ids(4) = 6
        case(4)
           vertex_ids(1) = 1
-          vertex_ids(2) = 2
-          vertex_ids(3) = 3
+          vertex_ids(2) = 3
+          vertex_ids(3) = 2
        case(5)
           vertex_ids(1) = 4
           vertex_ids(2) = 5
           vertex_ids(3) = 6
        case default
           option%io_buffer='Cell WEDGE_TYPE has only 5 faces'
+          call printErrMsg(option)
+       end select
+    case(PYR_TYPE)
+      select case(iface)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+          vertex_ids(3) = 5
+       case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+          vertex_ids(3) = 5
+       case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+          vertex_ids(3) = 5
+       case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 1
+          vertex_ids(3) = 5
+       case(5)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 4
+          vertex_ids(3) = 3
+          vertex_ids(4) = 2
+       case default
+          option%io_buffer='Cell PYR_TYPE has only 5 faces'
           call printErrMsg(option)
        end select
     case(TET_TYPE)

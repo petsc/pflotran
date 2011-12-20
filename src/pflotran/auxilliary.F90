@@ -6,6 +6,7 @@ module Auxilliary_module
   use Reactive_Transport_Aux_module
   use Mphase_Aux_module
   use Immis_Aux_module
+  use Miscible_Aux_module
   use Flash2_Aux_Module
   use General_Aux_module
   use Material_Aux_module
@@ -26,6 +27,7 @@ module Auxilliary_module
     type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
+    type(miscible_type), pointer :: Miscible
     type(flash2_type), pointer :: Flash2
     type(general_type), pointer :: General
     type(material_type), pointer :: Material

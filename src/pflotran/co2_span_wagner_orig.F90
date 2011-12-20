@@ -181,8 +181,8 @@ subroutine initialize_span_wagner(itable,myrank)
       d(37) = 2
       d(38) = 3
       d(39) = 3
-      ti(1) =  0.d0
-      ti(2) =  0.75d0
+      ti(1) = 0.d0
+      ti(2) = 0.75d0
       ti(3) = 1.0d0
       ti(4) = 2.0d0
       ti(5) = 0.75d0

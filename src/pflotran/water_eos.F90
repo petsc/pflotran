@@ -17,8 +17,8 @@ module water_eos_module
   end interface
 
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
-            wateos, wateos_noderiv, density, nacl_den, nacl_vis, cowat, steameos, &
-            Tsat
+            wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
+            Tsat, DensityIce, InternalEnergyIce
 
 contains
 
@@ -185,7 +185,8 @@ subroutine VISW_FLO (t,dw,vw)
       -15.9618719d0, 1.80122502d0/
     pc=22.064
 
-    if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+!   if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+    if (TC .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -221,7 +222,8 @@ subroutine VISW_FLO (t,dw,vw)
       -15.9618719d0, 1.80122502d0/
     pc=22.064D6
 
-    if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+!   if (TC .LT. 1.d0 .OR. TC .GT. 500.d0) then
+    if (TC .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -266,7 +268,8 @@ subroutine PSAT_orig (T, P, ierr)
       -7.691234564d0,-2.608023696d1,-1.681706546d2,6.423285504d1, &
       -1.189646225d2,4.167117320d0,2.097506760E1,1.d9,6.d0/
    
-    if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+    if (T .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -300,7 +303,8 @@ subroutine PSATgeh (T, psat, dpsat_dt, ierr)
       -7.691234564d0,-2.608023696d1,-1.681706546d2,6.423285504d1, &
       -1.189646225d2,4.167117320d0,2.097506760E1,1.d9,6.d0/
    
-    if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+!   if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+    if (T .GT. 500.d0) then
       ierr = 1
       return
     end if
@@ -807,7 +811,8 @@ subroutine steameos (t,p,pa,dg,dgmol,dgp,dgt,hg,hgp,hgt,scale,ierr)
     PetscReal, intent(out) :: hg,hgp,hgt
     PetscErrorCode, intent(out) :: ierr
   
-    PetscInt, save :: n(8),ll(8),x(8,2),z(8,3),xi1,xl0,xl1,xl2
+    PetscInt, save :: n(8),ll(8),x(8,2),z(8,3)
+    PetscReal, save :: xi1,xl0,xl1,xl2
     PetscReal, save :: b(8,2),bb(0:9,0:6)
     PetscReal :: sumbx(8),sumbxt(8)
   
@@ -1220,7 +1225,34 @@ subroutine density (tc,p,d)
     return
   end subroutine density
   
-  
+
+subroutine duan_mix_den (t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
+
+!Duan et al. (2008) Energy and Fuels, v 22, 1666-1674.
+
+implicit none
+
+PetscReal :: t,tk,p,xco2,xmol,x1,y_nacl,vphi_a1,vphi_a2,vphi,denmix,pw_kg,dw_kg,avgmw
+
+PetscReal :: fmwh2o = 18.01534d0
+PetscReal :: fmwco2 = 44.0098d0
+PetscReal :: fmwnacl = 58.44277d0
+
+!duan mixing **************************
+  tk = t + 273.15D0; xco2 = xmol;
+  call nacl_den(t, p*1.D-6, 0.D0, pw_kg)
+  pw_kg = pw_kg*1.D3;
+  x1 = 1.D0-xco2;
+  vphi_a1 = (0.3838402D-3*tk - 0.5595385D0)*tk + 0.30429268D3 + &
+            (-0.72044305D5 + 0.63003388D7/tk)/tk;  
+  vphi_a2 = (-0.57709332D-5*tk + 0.82764653D-2)*tk - 0.43813556D1 + &
+            (0.10144907D4 - 0.86777045D5/tk)/tk;  
+  vphi = (1.D0 + vphi_a1 + vphi_a2*p*1.D-6)*(fmwh2o*1.D-3/pw_kg); 
+  vphi = x1*((1.D0 - y_nacl)*fmwh2o + y_nacl*fmwnacl)*1.D-3/dw_kg + xco2*vphi;
+  denmix = (x1*((1.D0 - y_nacl)*fmwh2o + y_nacl*fmwnacl) + xco2*fmwco2)*1.D-3/vphi;
+  denmix = denmix/avgmw
+end subroutine duan_mix_den
+
 
 subroutine nacl_den (t,p,xnacl,dnacl)
 
@@ -1236,10 +1268,10 @@ PetscErrorCode  :: ierr
 !rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
 !      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
 !      - 0.333d0*p**2 - 0.002d0*t*p**2)
-call wateos_noderiv(t, p*1D6, rw0, rw_mol,hw,1.D-6, ierr)
+call wateos_noderiv(t,p*1D6,rw0,rw_mol,hw,1.D-6,ierr)
 rw0=rw0*1.d-3
-dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl  &
-        + 1.d-6*(300d0*p - 2400d0*p*xnacl + t*(80d0 &
+dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl &
+        + 1.d-6*(300.d0*p - 2400.d0*p*xnacl + t*(80.d0 &
         + 3.d0*t - 3300.d0*xnacl - 13.d0*p + 47.d0*p*xnacl)))
 
 return
@@ -1409,5 +1441,67 @@ c-------tsp = delT/dps, delT = 1.
 #endif
 
 end subroutine Tsat
+
+!===============================================================================
+! DensityIce: Subroutine to calculate the density of ice at given temperature
+!             and pressure
+!
+! Written by Satish Karra
+! Date: 11/16/11
+! T is in deg C, P is in Pa, density is in kmol/m3
+!===============================================================================
+
+subroutine DensityIce(T, P, den_ice, dden_ice_dT, dden_ice_dP)
+
+  implicit none
+  
+  PetscReal :: T
+  PetscReal :: P
+  PetscReal :: den_ice
+  PetscReal :: dden_ice_dT, dden_ice_dP 
+  PetscInt :: ierr
+  PetscReal, parameter :: P_ref = 1.d5
+  PetscReal, parameter :: alpha = 3.3d-10
+  PetscReal, parameter :: beta = 1.53d-4
+
+  den_ice = 5.09424d1*(1.d0 + alpha*(P - P_ref) - beta*(T)) !in Kmol/m3
+  dden_ice_dT = 5.09424d1*(-beta)
+  dden_ice_dP = 5.09424d1*alpha
+  
+end subroutine DensityIce
+
+
+!===============================================================================
+! InternalEnergyIce: Subroutine to calculate the internal energy of ice at given
+!                    temperature and pressure
+!
+! Written by Satish Karra
+! Date: 11/16/11
+! T is in deg C, internal energy is in J/mol
+!===============================================================================
+
+subroutine InternalEnergyIce(T, u_ice, du_ice_dT)
+
+  implicit none
+
+  PetscReal :: T
+  PetscReal :: u_ice
+  PetscReal :: du_ice_dT
+  PetscInt :: ierr
+  PetscReal, parameter :: a = -10.6644d0
+  PetscReal, parameter :: b = 0.1698d0
+  PetscReal, parameter :: c = 198148.d0
+  PetscReal, parameter :: T_ref = 273.15d0
+
+  ! from Maier-Kelly type fit (integrated tref to t)
+  ! in J/mol
+
+  u_ice = a*(T) + b/2.d0*((T + T_ref)**(2.d0) - T_ref**(2.d0)) + &
+          c*(1.d0/T_ref - 1.d0/(T + T_ref))
+  u_ice = u_ice - HEAT_OF_FUSION*FMWH2O*1.d-3   ! kJ/kmol
+  du_ice_dT = a + b*(T + T_ref) + c/((T + T_ref)**(2.d0)) !kJ/kmol/K
+  
+end subroutine InternalEnergyIce
+
 
 end module water_eos_module

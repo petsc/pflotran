@@ -611,7 +611,15 @@ The governing mass conservation equations for the geochemical transport mode for
 \nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
 &\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
 \EA
-where the sums over $\a$ are over all fluid phases in the system, and where $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
+and
+\EQ
+\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\EN
+for minerals with molar volume $\overline V_m$, mineral reaction rate $I_m$ and mineral volume fraction $\varphi_m$ referenced to an REV and satisfying
+\EQ
+\varphi + \sum_m \varphi_m \eq 1. 
+\EN
+Sums over $\a$ in Eqn.\eqref{rteqn} are over all fluid phases in the system. The quantity $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
 \EQ
 \Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a.
 \EN
@@ -661,12 +669,25 @@ k_{ml} (T) \eq k_{ml}^0 \exp\left[\frac{E_{ml}}{R}\Big(\frac{1}{T_0}-\frac{1}{T}
 \EN
 where $k_{ml}^0$ refers to the rate constant at the reference temperature $T_0$ taken as 25\degc, with $T$ in units of Kelvin, $E_{ml}$ denotes the activation energy (kJ/mol),
 and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction with the form
-\EQ
+\EQ\label{prefactor}
 \P_{ml} \eq \prod_i\dfrac{\big(\gamma_i m_i\big)^{\a_{il}^m}}{1+K_{ml}\big(\gamma_i m_i\big)^{\b_{il}^m} },
 \EN
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
- 
+
+Porosity, permeability and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
+\EQ
+\varphi \eq 1-\sum_m\varphi_m,
+\EN
+\EQ
+k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
+\EN
+and
+\EQ
+a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n,
+\EN
+where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals that do not completely dissolve.
+
 \subsubsection{Sorption}
 
 Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surface complexation reactions for both equilibrium and multirate formulations.
@@ -2139,16 +2160,30 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item[MINERAL\_KINETICS] ~
 
-\begin{deflist}{000000000000000000000}
-\item [{\tt Mineral Name}]
-\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s]
+%\begin{deflist}{000000000000000000000}
+\begin{deflist}{0000}
+\item [Mineral Name]
+\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s] \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
 \item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] \ \ \ Referenced to rate constant at 25\degc.
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
+\item [PREFACTOR] ~
+\begin{deflist}{0000}
+\item [RATE\_CONSTANT] \ {\tt Value} \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] 
+\item [PREFACTOR\_SPECIES] \ {\tt Name}
+\begin{deflist}{0000}
+\item [ALPHA] \ {\tt Value}
+\item [BETA] \ {\tt Value}
+\item [ATTENUATION\_COEF] \ {\tt Value}
+\end{deflist}
+\item [\keyend]
+\end{deflist}
 \item [\keyend]
 \end{deflist}
 
+\item [\keyend]
 \item [\keyend]
 
 \item[SORPTION] ~
@@ -2351,8 +2386,40 @@ END
 
 \noindent
 {\bf Examples:}
+
+\noindent
+{\bf PREFACTOR (see Eqn.\eqref{prefactor}):}
 \begin{verbatim}
-...
+MINERAL_KINETICS
+Quartz 
+  RATE_CONSTANT -17.99d0
+  ACTIVATION_ENERGY 87.7d0
+/
+Albite 
+  PREFACTOR
+    RATE_CONSTANT -16.56d0
+    ACTIVATION_ENERGY 69.8d0
+  /
+  PREFACTOR
+    RATE_CONSTANT -14.16d0
+    ACTIVATION_ENERGY 65.0d0
+    PREFACTOR_SPECIES H+
+      ALPHA           0.457d0
+    : BETA
+    : ATTENUATION_COEF
+    /
+  /
+  PREFACTOR
+    RATE_CONSTANT -19.6d0
+    ACTIVATION_ENERGY 71.0d0
+    PREFACTOR_SPECIES H+
+      ALPHA           -0.572d0
+    : BETA
+    : ATTENUATION_COEF
+    /
+  /
+/
+END
 \end{verbatim}
 
 %========================================================================
@@ -2542,6 +2609,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[FLUX] {\tt [dirichlet, neumann, mass\_rate, hydrostatic, conductance,  \linebreak zero\_gradient, production\_well, seepage, volumetric, \linebreak volumetric\_rate, equilibrium]}
 \item[TEMPERATURE] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \item[CONCENTRATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
+\item[SATURATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \item[ENTHALPY (H)] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \end{deflist}
 \item[(., /, END)]
@@ -2573,6 +2641,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[RATE] \ {\tt Value}
 \item[FLUX, VELOCITY, VEL] \ {\tt <float>}
 \item[CONC, CONCENTRATION] \ {\tt <float>}
+\item[SATURATION] \ {\tt <float>}
 \item[CONDUCTANCE] \ {\tt <float>}
 %\item[CONSTRAINT\_LIST]
 \end{deflist}
@@ -2599,6 +2668,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \bf PRESSURE & Specifies the type of pressure condition.\\
  \bf TEMPERATURE & Specifies the type of temperature condition.\\
     \bf CONCENTRATION & Specifies the type of concentration condition.\\
+    \bf SATURATION & Specifies the type of concentration condition.\\
     \bf ENTHALPY & Specifies the type of enthalpy condition.\\
     \bf END & Terminates type entry.\\
 \midrule\midrule
@@ -2614,6 +2684,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \bf FLUX & Darcy velocity of fluid defining flux across a boundary.\\
 \bf TEMPERATURE & Temperature in $^\circ$C at the datum.\\
 \bf CONCENTRATION & Solute concentration at the datum.\\
+\bf SATURATION & Solute concentration at the datum.\\
 \bf ENTHALPY & Enthalpy at the datum.\\
 \bf CONSTRAINT\_LIST & Specifies a list of concentration constraints for solute transport.\\
 \bf END & Terminates the condition entry.\\
@@ -2916,11 +2987,11 @@ END
 \item[ID] \ {\tt float}
 \item[SATURATION\_FUNCTION] \ {\tt Name}
 \item[ROCK\_DENSITY] \ {\tt float} \ [kg/m$^3$]
-\item[SPECIFIC\_HEAT] \ {\tt float} \ [kJ/(kg K)]
+\item[SPECIFIC\_HEAT] \ {\tt float} \ [J/kg/K]
 \item[LONGITUDINAL\_DISPERSIVITY] \ {\tt float} \ [m]
 \item[TRANSVERSE\_DISPERSIVITY] \ (not implemented) \ [m]
-\item[THERMAL\_CONDUCTIVITY\_DRY] \ {\tt float} \ [W/(m K)]
-\item[THERMAL\_CONDUCTIVITY\_WET] \ {\tt float} \ [W/(m K)]
+\item[THERMAL\_CONDUCTIVITY\_DRY] \ {\tt float} \ [W/m/K]
+\item[THERMAL\_CONDUCTIVITY\_WET] \ {\tt float} \ [W/m/K]
 \item[PORE\_COMPRESSIBILITY] \ {\tt float} \ (not implemented) \ [bar$^{-1}$]
 \item[THERMAL\_EXPANSITIVITY] \ {\tt float} \ (not implemented) \ [C$^{-1}$]
 \item[POROSITY] \ {\tt float} \ [---], {\tt porosity\_filename}
@@ -2947,7 +3018,7 @@ END
 \item[VOLUME\_FRACTION] \ {\tt float} \ Volume fraction power in mineral surface area
 \item[POROSITY] \ {\tt float} \ Porosity power in mineral surface area
 \end{deflist}
-\item[(., /, END)]
+%\item[(., /, END)]
 \item[RANDOM\_DATASET] \ {\tt permeability\_filename}
 \end{deflist}
 \item[(., /, END)]
@@ -3171,11 +3242,11 @@ END
 \item[FORMAT] \ <file format>: \ specify the snapshot in time file type. Options available are: 
 \begin{deflist}{0000000000000000000000}
 \item[TECPLOT BLOCK] -TecPlot block format
-\item[TECPLOT POINT] -requires a single processor run
+\item[TECPLOT POINT] -TecPlot point format (requires a single processor)
 \item[HDF5] -produces single HDF5 file {\tt pflotran.h5}
 \item[HDF5 MULTIPLE\_FILES] -produces a separate HDF5 file at each output time
-\item[MAD]
-\item[VTK] -VTK format (not currently supported)
+\item[MAD] - (not supported)
+\item[VTK] -VTK format
 \end{deflist}
 %\item[FORMAT \ TECPLOT \ BLOCK]
 %\item[FORMAT \ HDF5]
@@ -3411,10 +3482,8 @@ RESTART pflotran.chk3000
 \item[SATURATION\_FUNCTION] \ {\tt Name}
 
 \begin{deflist}{000}
-\item[SATURATION\_FUNCTION\_TYPE] \ {\bf VAN\_GENUCHTEN}
-\item[SATURATION\_FUNCTION\_TYPE] \ {\bf MUALEM}
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ {\bf VAN\_GENUCHTEN}
-\item[PERMEABILITY\_FUNCTION\_TYPE] \ {\bf MUALEM}
+\item[SATURATION\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf BROOKS\_COREY}, {\bf THOMEER\_COREY}, {\bf NMT\_EXP}, {\bf PRUESS\_1}]
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ [{\bf VAN\_GENUCHTEN}, {\bf MUALEM}, {\bf BURDINE}]
 \item[RESIDUAL\_SATURATION] \ {\tt Value}
 \item[LAMBDA] \ {\tt Value} [---]
 \item[ALPHA] \ {\tt Value} [Pa$^{-1}$]

@@ -406,13 +406,11 @@ subroutine RealizationCreateDiscretization(realization)
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
-                                   discretization%dm_1dof%ugdm)  !sp 
-#ifdef GLENN
+                                   discretization%dm_1dof%ugdm) 
       call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
-                                    grid%y,grid%z,option)
-#endif
+                                    grid%y,grid%z,grid%nL2A,option)
       ! set up internal connectivity, distance, etc.
-      call GridComputeInternalConnect(grid,option, discretization%dm_1dof%ugdm) !sp 
+      call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &

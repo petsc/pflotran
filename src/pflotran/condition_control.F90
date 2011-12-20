@@ -429,8 +429,8 @@ subroutine CondControlAssignTranInitCond(realization)
   
   PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscInt :: irxn, isite
-  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:)
+  PetscInt :: irxn, isite, imnrl
+  PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -451,7 +451,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscBool :: re_equilibrate_at_each_cell
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(dataset_type), pointer :: dataset
-  PetscInt :: dataset_to_idof(20)
+  PetscInt :: dataset_to_idof(realization%reaction%naqcomp)
   PetscInt :: idataset, num_datasets
   PetscBool :: use_dataset
   PetscReal :: ave_num_iterations
@@ -464,8 +464,6 @@ subroutine CondControlAssignTranInitCond(realization)
   reaction => realization%reaction
   
   iphase = 1
-  re_equilibrate_at_each_cell = PETSC_FALSE
-  use_dataset = PETSC_FALSE
   
   cur_level => realization%level_list%first
   do 
@@ -491,6 +489,8 @@ subroutine CondControlAssignTranInitCond(realization)
         
         constraint_coupler => initial_condition%tran_condition%cur_constraint_coupler
 
+        re_equilibrate_at_each_cell = PETSC_FALSE
+        use_dataset = PETSC_FALSE
         num_datasets = 0
         dataset_to_idof = 0
         do idof = 1, reaction%naqcomp ! primary aqueous concentrations
@@ -514,6 +514,35 @@ subroutine CondControlAssignTranInitCond(realization)
                                   INSERT_VALUES,ierr)
           endif
         enddo
+
+        ! read in heterogeneous mineral volume fractions
+        if (associated(constraint_coupler%minerals)) then
+          do imnrl = 1, reaction%nkinmnrl
+            if (constraint_coupler%minerals%external_dataset(imnrl)) then
+              re_equilibrate_at_each_cell = PETSC_TRUE
+              string = 'constraint ' // trim(constraint_coupler%constraint_name)
+              dataset => DatasetGetPointer(realization%datasets, &
+                           constraint_coupler%minerals%constraint_aux_string(imnrl), &
+                           string,option)
+              string = '' ! group name
+              string2 = dataset%h5_dataset_name ! dataset name
+              call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                                dataset%filename, &
+                                                string,string2, &
+                                                dataset%realization_dependent)
+              call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc,ONEDOF)
+              call GridVecGetArrayF90(grid,field%work_loc,vec_p,ierr)
+              do icell=1,initial_condition%region%num_cells
+                local_id = initial_condition%region%cell_ids(icell)
+                ghosted_id = grid%nL2G(local_id)
+                rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = vec_p(ghosted_id)
+                rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = vec_p(ghosted_id)
+              enddo
+              call GridVecRestoreArrayF90(grid,field%work_loc,vec_p,ierr)
+            endif
+          enddo
+        endif
+          
         if (.not.option%use_isothermal) then
           re_equilibrate_at_each_cell = PETSC_TRUE
         endif
@@ -535,17 +564,20 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           if (re_equilibrate_at_each_cell) then
             if (use_dataset) then
+              offset = (ghosted_id-1)*option%ntrandof
               do idataset = 1, num_datasets
                 ! remember that xx_loc_p holds the data set values that were read in
                 constraint_coupler%aqueous_species%constraint_conc(dataset_to_idof(idataset)) = &
-                  xx_loc_p(ibegin+dataset_to_idof(idataset)-1)
+                  xx_loc_p(offset+dataset_to_idof(idataset))
               enddo
             endif
+            option%iflag = grid%nL2A(local_id)
             if (icell == 1) then
               call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                 global_aux_vars(ghosted_id),reaction, &
                 constraint_coupler%constraint_name, &
                 constraint_coupler%aqueous_species, &
+                constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
                 porosity_loc(ghosted_id), &
@@ -561,12 +593,14 @@ subroutine CondControlAssignTranInitCond(realization)
                 global_aux_vars(ghosted_id),reaction, &
                 constraint_coupler%constraint_name, &
                 constraint_coupler%aqueous_species, &
+                constraint_coupler%minerals, &
                 constraint_coupler%surface_complexes, &
                 constraint_coupler%colloids, &
                 porosity_loc(ghosted_id), &
                 constraint_coupler%num_iterations, &
                 PETSC_TRUE,option)
             endif
+            option%iflag = 0
             ave_num_iterations = ave_num_iterations + &
               constraint_coupler%num_iterations
           endif
@@ -589,15 +623,19 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           ! mineral volume fractions
           if (associated(constraint_coupler%minerals)) then
-            do idof = 1, reaction%nkinmnrl
-              rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
-                constraint_coupler%minerals%basis_vol_frac(idof)
-              rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                constraint_coupler%minerals%basis_vol_frac(idof)
-              rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
-                constraint_coupler%minerals%basis_area(idof)
-              rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
-                constraint_coupler%minerals%basis_area(idof)
+            do imnrl = 1, reaction%nkinmnrl
+              ! if read from a dataset, the vol frac was set above.  Don't want to
+              ! overwrite
+              if (.not.constraint_coupler%minerals%external_dataset(imnrl)) then
+                rt_aux_vars(ghosted_id)%mnrl_volfrac0(imnrl) = &
+                  constraint_coupler%minerals%basis_vol_frac(imnrl)
+                rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
+                  constraint_coupler%minerals%basis_vol_frac(imnrl)
+              endif
+              rt_aux_vars(ghosted_id)%mnrl_area0(imnrl) = &
+                constraint_coupler%minerals%basis_area(imnrl)
+              rt_aux_vars(ghosted_id)%mnrl_area(imnrl) = &
+                constraint_coupler%minerals%basis_area(imnrl)
             enddo
           endif
           ! kinetic surface complexes
@@ -779,6 +817,7 @@ subroutine CondControlScaleSourceSink(realization)
             case(THC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
+            case(MIS_MODE)
             case(FLASH2_MODE)
           end select 
 
@@ -799,6 +838,7 @@ subroutine CondControlScaleSourceSink(realization)
             case(THC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
+            case(MIS_MODE)
             case(FLASH2_MODE)
           end select 
 

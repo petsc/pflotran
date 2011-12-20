@@ -19,9 +19,7 @@ module Discretization_module
 #include "finclude/petscmat.h90"
 #include "finclude/petscdm.h"
 #include "finclude/petscdm.h90"
-#ifndef DMDA_OLD
 #include "finclude/petscdmda.h"
-#endif
 
   type, public :: dm_ptr_type
     DM :: sgdm  ! structured grid dm (PETSc DM)
@@ -422,8 +420,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   enddo  
 
   if (first_time) then ! first time read
-
     select case(discretization%itype)
+      case(NULL_GRID)
+        option%io_buffer = 'Discretization type not defined under ' // &
+                           'keyword GRID.' 
+        call printErrMsg(option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
         grid => GridCreate()
         select case(discretization%itype)
@@ -447,7 +448,6 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call UGridRead(un_str_grid,filename,option)
             endif
             grid%unstructured_grid => un_str_grid
-            grid%nmax = un_str_grid%num_cells_global
           case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
             if (nx*ny*nz <= 0) &
               call printErrMsg(option,'NXYZ not set correctly for structured grid.')
@@ -768,7 +768,11 @@ end interface
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)
+#ifdef DM_CREATE
+      call DMCreateMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+#else
       call DMGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+#endif
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(UNSTRUCTURED_GRID)
@@ -785,7 +789,11 @@ end interface
           call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
           call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
         case(NTRANDOF)
+#ifdef DM_CREATE
+          call DMCreateMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+#else
           call DMGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+#endif
           call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
           call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
       end select
@@ -904,8 +912,13 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
                                    ierr)
         call DMDASetInterpolationType(dm_fine_ptr%sgdm, DMDA_Q0, ierr)
         call DMCoarsen(dm_fine_ptr%sgdm, option%mycomm, dmc_ptr(i)%sgdm, ierr)
-        call DMGetInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, interpolation(i), &
-                                PETSC_NULL_OBJECT, ierr)
+#ifdef DM_CREATE
+        call DMCreateInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, &
+                                   interpolation(i), PETSC_NULL_OBJECT, ierr)
+#else
+        call DMGetInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, &
+                                interpolation(i), PETSC_NULL_OBJECT, ierr)
+#endif
         dm_fine_ptr => dmc_ptr(i)
       enddo
     case(UNSTRUCTURED_GRID)
@@ -941,7 +954,12 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
+#ifdef DM_CREATE
+      call DMCreateColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATBAIJ,coloring,&
+                            ierr)
+#else
       call DMGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATBAIJ,coloring,ierr)
+#endif
       ! I have set the above to use matrix type MATBAIJ, as that is what we 
       ! usually want (note: for DAs with 1 degree of freedom per grid cell, 
       ! the MATAIJ and MATBAIJ colorings should be equivalent).  What we should 

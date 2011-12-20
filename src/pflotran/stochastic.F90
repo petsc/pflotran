@@ -37,15 +37,41 @@ subroutine StochasticInit(stochastic,option)
   PetscInt :: realization_id
   character(len=MAXSTRINGLENGTH) :: string
   PetscBool :: option_found
+  PetscInt, pointer :: realization_ids_from_file(:)
+  character(len=MAXSTRINGLENGTH) :: filename
+  type(input_type), pointer :: input
   PetscErrorCode :: ierr
 
   ! query user for number of communicator groups and realizations
   string = '-num_groups'
-  call InputGetCommandLineInt(string,stochastic%num_groups,option_found,option)
+  call InputGetCommandLineInt(string,stochastic%num_groups, &
+                              option_found,option)
 
   string = '-num_realizations'
-  call InputGetCommandLineInt(string,stochastic%num_realizations,option_found,option)
+  call InputGetCommandLineInt(string,stochastic%num_realizations, &
+                              option_found,option)
 
+  ! read realization ids from a file - contributed by Xingyuan
+  string = '-realization_ids_file'
+  call InputGetCommandLineString(string,filename,option_found,option)
+  if (option_found) then
+    input => InputCreate(IUNIT_TEMP,filename)
+    allocate(realization_ids_from_file(stochastic%num_realizations))
+    realization_ids_from_file = 0
+    string = &
+      '# of realization ids read from file may be too few in StochasticInit()'
+    do i = 1, stochastic%num_realizations
+      call InputReadFlotranString(input,option)
+      call InputReadStringErrorMsg(input,option,string)
+      call InputReadInt(input,option,realization_ids_from_file(i))
+      call InputErrorMsg(input,option,'realization id', &
+                         'StochasticInit')
+    enddo
+    call InputDestroy(input)
+  else
+    nullify(realization_ids_from_file)
+  endif
+    
   ! Realization offset contributed by Xingyuan.  This allows one to specify the
   ! smallest/lowest realization id (other than zero) in a stochastic simulation
   string = '-realization_offset'
@@ -90,6 +116,14 @@ subroutine StochasticInit(stochastic,option)
   do i = 1, stochastic%num_local_realizations
     stochastic%realization_ids(i) = offset + i
   enddo
+  
+  ! map ids from file - contributed by Xingyuan
+  if (associated(realization_ids_from_file)) then
+    do i = 1, stochastic%num_local_realizations
+      stochastic%realization_ids(i) = &
+        realization_ids_from_file(stochastic%realization_ids(i))
+    enddo
+  endif
 
 end subroutine StochasticInit
 

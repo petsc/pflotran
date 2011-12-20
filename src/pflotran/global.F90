@@ -227,13 +227,11 @@ subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
     case(LIQUID_DENSITY)
       do i=1, patch%aux%Global%num_aux
         patch%aux%Global%aux_vars(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%aux_vars(i)%den(option%liquid_phase) = value/ &
-                                                                FMWH2O
+        patch%aux%Global%aux_vars(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
       do i=1, realization%patch%aux%Global%num_aux_bc
         patch%aux%Global%aux_vars_bc(i)%den_kg(option%liquid_phase) = value
-        patch%aux%Global%aux_vars_bc(i)%den(option%liquid_phase) = value/ &
-                                                                   FMWH2O
+        patch%aux%Global%aux_vars_bc(i)%den(option%liquid_phase) = value/FMWH2O
       enddo
     case(LIQUID_SATURATION)
       do i=1, patch%aux%Global%num_aux
@@ -328,24 +326,24 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
   
   select case(ivar)
     case(PRESSURE)
-        select case(isubvar)
-          case(TIME_T)
-            do ghosted_id=1, grid%ngmax
-              patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_T) = &
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_T) = &
                 vec_loc_p(ghosted_id)
-            enddo
-          case(TIME_TpDT)
-            do ghosted_id=1, grid%ngmax
-              patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_TpDT) = &
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_TpDT) = &
                 vec_loc_p(ghosted_id)
-            enddo
-          case default
-            do ghosted_id=1, grid%ngmax
-              patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
-            enddo
-        end select
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
+          enddo
+      end select
     case(TEMPERATURE)
-       select case(isubvar)
+      select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%temp_store(1,TIME_T) = &
@@ -360,7 +358,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
           enddo
-        end select
+      end select
     case(LIQUID_DENSITY)
       select case(isubvar)
         case(TIME_T)
@@ -379,7 +377,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%aux_vars(ghosted_id)%den(option%liquid_phase) = &
               vec_loc_p(ghosted_id)/FMWH2O
           enddo
-        end select
+      end select
     case(GAS_SATURATION)
       select case(isubvar)
         case(TIME_T)
@@ -397,7 +395,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%aux_vars(ghosted_id)%sat(option%gas_phase) = &
               vec_loc_p(ghosted_id)
           enddo
-        end select
+      end select
     case(GAS_DENSITY)
       select case(isubvar)
         case(TIME_T)
@@ -414,7 +412,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
-        end select
+      end select
     case(GAS_DENSITY_MOL)
       select case(isubvar)
         case(TIME_T)
@@ -431,7 +429,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%den(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
-        end select
+      end select
     case(LIQUID_SATURATION)
       select case(isubvar)
         case(TIME_T)
@@ -449,24 +447,24 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%aux_vars(ghosted_id)%sat(option%liquid_phase) = &
               vec_loc_p(ghosted_id)
           enddo
-        end select
-     case(SC_FUGA_COEFF)
-       select case(isubvar)
-         case(TIME_T)
-           do ghosted_id=1, grid%ngmax
-             patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_T) = &
-               vec_loc_p(ghosted_id)
-           enddo
-         case(TIME_TpDT)
-           do ghosted_id=1, grid%ngmax
-             patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_TpDT) = &
-               vec_loc_p(ghosted_id)
-           enddo
-         case default
-           do ghosted_id=1, grid%ngmax
-             patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1) = vec_loc_p(ghosted_id)
-           enddo
-       end select
+      end select
+    case(SC_FUGA_COEFF)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1) = vec_loc_p(ghosted_id)
+          enddo
+      end select
   end select
 
   call GridVecRestoreArrayF90(grid,vec_loc,vec_loc_p,ierr)
@@ -626,7 +624,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
   select case(option%iflowmode)
-    case(MPH_MODE, IMS_MODE, FLASH2_MODE)
+    case(MPH_MODE, IMS_MODE, FLASH2_MODE, THC_MODE,MIS_MODE)
       ! Gas density
       call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
                              ZERO_INTEGER)

@@ -1,5 +1,12 @@
+:MODE MPHASE
+:MODE FLASH2
 MODE IMS
-:
+
+:DEBUG
+:PRINT_RESIDUAL
+:PRINT_JACOBIAN
+:/
+
 :=========================== discretization ===================================
 GRID
 TYPE structured
@@ -31,15 +38,19 @@ END
 :=========================== times ============================================
 TIME
 FINAL_TIME 5.d3 y
-INITIAL_TIMESTEP_SIZE 1.d-2 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 50.d0 y
 /
 
 :=========================== output options ===================================
 OUTPUT
-:MASS_BALANCE
-TIMES y 1.0  5.  10. 50.  100.  500.  1000.  5000.
+MASS_BALANCE
+PERIODIC_OBSERVATION TIMESTEP 1
+PRINT_COLUMN_IDS
+TIMES y 1.0  5.  10. 50. 100.  500.  1000.  5000.
+:FORMAT TECPLOT POINT
 FORMAT TECPLOT BLOCK
+FORMAT HDF5
 :VELOCITIES
 /
 
@@ -54,7 +65,7 @@ ID 1
 POROSITY 0.15d0
 TORTUOSITY 1d-1
 ROCK_DENSITY 2.65E3
-SPECIFIC_HEAT 1E3
+SPECIFIC_HEAT 1.E3
 THERMAL_CONDUCTIVITY_DRY 0.5
 THERMAL_CONDUCTIVITY_WET 0.5 
 SATURATION_FUNCTION sf2
@@ -81,14 +92,14 @@ POWER 7.d0
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
-321.D0 1.D0  51.D0
+321.d0 1.D0  51.D0
 /
 END
 
 REGION top
 FACE TOP
 COORDINATES
-0.d0 0.d0  51.d0
+0.d0 0.d0 51.d0
 321.d0 1.d0 51.d0
 /
 END
@@ -105,8 +116,9 @@ FLOW_CONDITION initial
 UNITS Pa,C,M,yr
 TYPE
 PRESSURE hydrostatic
-TEMPERATURE zero_gradient
-CONCENTRATION zero_gradient
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+ENTHALPY dirichlet
 /
 IPHASE 1
 PRESSURE 2D7 2D7
@@ -121,6 +133,7 @@ TYPE
 PRESSURE dirichlet
 TEMPERATURE zero_gradient
 CONCENTRATION zero_gradient
+ENTHALPY dirichlet
 /
 IPHASE 1
 PRESSURE 2D7 2D7
@@ -131,12 +144,23 @@ ENTHALPY 0.d0 0.d0
 
 FLOW_CONDITION source
 UNITS Pa,C,M,yr
+SYNC_TIMESTEP_WITH_UPDATE
 TYPE
-PRESSURE mass_rate
+RATE mass_rate
+PRESSURE hydrostatic
 TEMPERATURE dirichlet
 CONCENTRATION dirichlet
+ENTHALPY dirichlet
 /
-PRESSURE file c2i.txt  ! kg/s
+:RATE file c2i.txt  ! kg/s
+RATE LIST
+  TIME_UNITS y
+  DATA_UNITS kg/s
+0.  0. 1.d-4
+10. 0. 0.
+/
+IPHASE 2
+PRESSURE 2D7 2D7
 TEMPERATURE 50.d0
 CONCENTRATION 0.D0
 ENTHALPY 0.d0 0.d0
@@ -159,7 +183,7 @@ SOURCE_SINK
 FLOW_CONDITION source
 REGION well
 END
-:
+
 :=========================== stratigraphy couplers ============================
 STRATA
 REGION all

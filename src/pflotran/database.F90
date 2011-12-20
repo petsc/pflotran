@@ -1848,7 +1848,7 @@ subroutine BasisInit(reaction,option)
               ! find the prefactor species
               do ispec = 1, reaction%naqcomp
                 if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                            cur_prefactor_species%name,MAXWORDLENGTH)) then
+                                            cur_prefactor_species%name)) then
                   cur_prefactor_species%id = ispec
                   exit
                 endif
@@ -1857,7 +1857,7 @@ subroutine BasisInit(reaction,option)
                 ! negative prefactor_species_id denotes a secondary species
                 do ispec = 1, reaction%neqcplx
                   if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
-                                              cur_prefactor_species%name,MAXWORDLENGTH)) then
+                                              cur_prefactor_species%name)) then
                     cur_prefactor_species%id = -ispec
                     exit
                   endif
@@ -2601,7 +2601,7 @@ subroutine BasisInit(reaction,option)
               enddo
               ! check water
               word2 = 'H2O'
-              if (StringCompareIgnoreCase(word,word2,MAXWORDLENGTH)) then
+              if (StringCompareIgnoreCase(word,word2)) then
                 ! don't increment icount
                 exit
               endif              
@@ -2808,49 +2808,49 @@ subroutine BasisInit(reaction,option)
     if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%h_ion_id = ispec
       endif
     endif
     if (reaction%species_idx%na_ion_id == 0) then
       word = 'Na+'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%na_ion_id = ispec
       endif
     endif
     if (reaction%species_idx%cl_ion_id == 0) then
       word = 'Cl-'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%cl_ion_id = ispec
       endif
     endif
     if (reaction%species_idx%co2_aq_id == 0) then
       word = 'CO2(aq)'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%co2_aq_id = ispec
       endif
     endif
     if (reaction%species_idx%tracer_aq_id == 0) then
       word = 'Tracer'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%tracer_aq_id = ispec
       endif
     endif
     if (reaction%species_idx%h2o_aq_id == 0) then
       word = 'H2O'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%h2o_aq_id = ispec
       endif
     endif
     if (reaction%species_idx%tracer_age_id == 0) then
       word = 'Tracer_Age'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%tracer_age_id = ispec
         reaction%calculate_tracer_age = PETSC_TRUE
       endif
@@ -2858,7 +2858,7 @@ subroutine BasisInit(reaction,option)
     if (reaction%species_idx%water_age_id == 0) then
       word = 'Water_Age'
       if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%water_age_id = ispec
         reaction%calculate_water_age = PETSC_TRUE
       endif
@@ -2869,28 +2869,28 @@ subroutine BasisInit(reaction,option)
     if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
       if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%h_ion_id = -ispec
       endif
     endif
     if (reaction%species_idx%na_ion_id == 0) then
       word = 'Na+'
       if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%na_ion_id = -ispec
       endif
     endif
     if (reaction%species_idx%cl_ion_id == 0) then
       word = 'Cl-'
       if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%cl_ion_id = -ispec
       endif
     endif
     if (reaction%species_idx%co2_aq_id == 0) then
       word = 'CO2(aq)'
       if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%co2_aq_id = -ispec
       endif
     endif
@@ -2900,19 +2900,19 @@ subroutine BasisInit(reaction,option)
     if (reaction%species_idx%o2_gas_id == 0) then
       word = 'O2(g)'
       if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%o2_gas_id = ispec
       endif
     endif
     if (reaction%species_idx%co2_gas_id == 0) then
       word = 'CO2(g)'
       if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%co2_gas_id = ispec
       endif
       word = 'CO2(g)*'
       if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
-                                  word,MAXWORDLENGTH)) then
+                                  word)) then
         reaction%species_idx%co2_gas_id = ispec
       endif
 
@@ -3385,6 +3385,10 @@ subroutine BasisPrint(reaction,title,option)
   type(surface_complex_type), pointer :: cur_srfcplx
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
+  
+  character(len=MAXSTRINGLENGTH) :: reactant_string, product_string
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: fid
 
   PetscInt :: ispec, itemp
 
@@ -3394,6 +3398,7 @@ subroutine BasisPrint(reaction,title,option)
 130 format(a,100f11.4)
 140 format(a,f6.2)
 150 format(a,es11.4,a)
+160 format(i2,a)
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,*)
@@ -3438,6 +3443,11 @@ subroutine BasisPrint(reaction,title,option)
       write(option%fid_out,*)
       write(option%fid_out,*) 'Secondary Species: None'
     endif
+!#define WRITE_LATEX
+#ifdef WRITE_LATEX
+    fid = 86
+    open(fid,file="rxns.txt",action="write")
+#endif
     do
       if (.not.associated(cur_aq_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
@@ -3447,16 +3457,46 @@ subroutine BasisPrint(reaction,title,option)
       if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
+#ifdef WRITE_LATEX
+        reactant_string = cur_aq_spec%name
+        product_string = ''
+#endif
         do ispec = 1, cur_aq_spec%dbaserxn%nspec
           write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
                           cur_aq_spec%dbaserxn%spec_name(ispec)
+#ifdef WRITE_LATEX
+          if (dabs(cur_aq_spec%dbaserxn%stoich(ispec)) > 1.d0) then
+            write(word,160) int(dabs(cur_aq_spec%dbaserxn%stoich(ispec))+1.e-10), &
+                          ' ' // trim(cur_aq_spec%dbaserxn%spec_name(ispec))
+            word = adjustl(word)
+          else
+            word = cur_aq_spec%dbaserxn%spec_name(ispec)
+          endif
+          if (cur_aq_spec%dbaserxn%stoich(ispec) < 0.d0) then
+            reactant_string = trim(reactant_string) // ' + ' // trim(word)
+          else
+            if (len_trim(product_string) > 0) then
+              product_string = trim(product_string) // ' + ' // trim(word)
+            else
+              product_string = word
+            endif
+          endif
+#endif          
         enddo
         write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
+#ifdef WRITE_LATEX
+      write(word,130) '', cur_aq_spec%dbaserxn%logK(2)
+      write(fid,*) trim(reactant_string) // ' $~\rightleftharpoons~$ ' // &
+        trim(product_string) // ' & ' // trim(adjustl(word)) // ' \\'
+#endif
       write(option%fid_out,*)
       cur_aq_spec => cur_aq_spec%next
     enddo
+#ifdef WRITE_LATEX
+    close(fid)
+#endif
     
     cur_gas_spec => reaction%gas_species_list
     if (associated(cur_gas_spec)) then

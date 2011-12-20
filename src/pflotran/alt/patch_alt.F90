@@ -497,7 +497,7 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
           ! allocate arrays that match the number of connections
           select case(option%iflowmode)
 
-            case(THC_MODE,RICHARDS_MODE)
+            case(THC_MODE,RICHARDS_MODE,MIS_MODE)
            
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
@@ -603,7 +603,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       update = PETSC_FALSE
       select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE)
+        case(THC_MODE,MPH_MODE, MIS_MODE)
           if (force_update_flag .or. &
               flow_condition%pressure%dataset%is_transient .or. &
               flow_condition%pressure%gradient%is_transient .or. &
@@ -739,7 +739,7 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
         enddo
       enddo
 #endif      
-    case(THC_MODE,MPH_MODE)
+    case(THC_MODE,MPH_MODE,MIS_MODE)
       if (option%myrank == 0) then
         print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
         stop
@@ -910,9 +910,17 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = 0.d0
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+#ifdef ICE
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_gas
+#else
+              vec_ptr(local_id) = 0.d0
+#endif 
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
@@ -1082,8 +1090,14 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%THC%aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
             value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             value = 0.d0
+          case(GAS_SATURATION)
+#ifdef ICE
+            value = patch%aux%THC%aux_vars(ghosted_id)%sat_gas
+#else
+            value = 0.d0
+#endif 
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
@@ -1215,7 +1229,11 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
             do local_id=1,grid%nlmax
               patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
             enddo
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat_gas = vec_ptr(local_id)
+            enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
               patch%aux%THC%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
