@@ -1044,7 +1044,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
                     thc_aux_var%xmol(2)*porXvol
   J(3,1) = J(3,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
                     sat_i*ddeni_dp*u_i)*porXvol
-  J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
+  J(3,2) = J(3,2) + (thc_aux_var%dsat_dt*global_aux_var%den(1)*thc_aux_var%u + &
+                    dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
 #endif
