@@ -374,7 +374,7 @@ end subroutine THCAuxVarCompute
 subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                saturation_function, por, perm, option)
 
-!sk: Not sure if we need iphase, por, perm
+!sk: Not sure if we need por, perm
 
   use Option_module
   use Global_Aux_module
@@ -392,7 +392,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   PetscInt :: iphase
 
   PetscErrorCode :: ierr
-  PetscReal :: pw, dw_kg, dw_mol, hw,sat_pressure, visl
+  PetscReal :: pw, dw_kg, dw_mol, hw, sat_pressure, visl
   PetscReal :: kr, ds_dp, dkr_dp
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
