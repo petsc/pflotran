@@ -1754,7 +1754,7 @@ subroutine InitReadInput(simulation)
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
-                    if (StringCompareIgnoreCase(word,'between',SEVEN_INTEGER)) then
+                    if (StringCompareIgnoreCase(word,'between')) then
 
                       call InputReadDouble(input,option,temp_real)
                       call InputErrorMsg(input,option,'start time', &
@@ -1765,7 +1765,7 @@ subroutine InitReadInput(simulation)
                       units_conversion = UnitsConvertToInternal(word,option) 
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
-                      if (.not.StringCompareIgnoreCase(word,'and',THREE_INTEGER)) then
+                      if (.not.StringCompareIgnoreCase(word,'and')) then
                         input%ierr = 1
                       endif
                       call InputErrorMsg(input,option,'and', &
@@ -2702,16 +2702,20 @@ subroutine readRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-      if (region%grid_type == STRUCTURED_GRID) then
-        call HDF5ReadRegionFromFile(realization,region,region%filename)
-    else
+        if (region%grid_type == STRUCTURED_GRID) then
+          call HDF5ReadRegionFromFile(realization,region,region%filename)
+        else
 #ifndef SAMR_HAVE_HDF5
-      call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
+          call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
 #else
      !geh: No.  AMR is entirely structured.
       ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
 #endif      
-    endif
+        endif
+      else if (index(region%filename,'.ss') > 0) then
+        region%sideset => RegionCreateSideset()
+        call RegionReadFromFile(region%sideset,region%filename, &
+                                realization%option)
       else
         call RegionReadFromFile(region,realization%option, &
                                 region%filename)

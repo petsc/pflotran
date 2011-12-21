@@ -1437,6 +1437,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     if (.not.associated(region)) exit
     
     if (.not.(associated(region%cell_ids) .or. &
+              associated(region%sideset) .or. &
               associated(region%vertex_ids))) then
       ! i, j, k block
       if (region%i1 > 0 .and. region%i2 > 0 .and. &
@@ -1794,12 +1795,15 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           call printErrMsg(option)
         endif  
       endif 
-    else
-      !sp start
+    else if (associated(region%sideset)) then
+      call UGridMapSideSet(grid%unstructured_grid, &
+                            region%sideset%face_vertices, &
+                            region%sideset%nfaces,region%name, &
+                            option,region%cell_ids,region%faces)
+      region%num_cells = size(region%cell_ids)
+    else if (associated(region%cell_ids)) then
       select case(grid%itype) 
         case(UNSTRUCTURED_GRID)
-!#ifdef GLENN
-#if 1
           allocate(temp_int_array(region%num_cells))
           temp_int_array = 0
           local_count=0
@@ -1817,9 +1821,6 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           endif
           region%cell_ids(1:local_count) = temp_int_array(1:local_count)
           deallocate(temp_int_array)
-#else
-          call GridLocalizeRegionsForUGrid(grid, region, option)
-#endif
         case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
 !sp following was commented out 
 !sp remove? 
@@ -1851,7 +1852,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           call printErrMsg(option)
       end select
       !sp end 
-
+    else if (associated(region%vertex_ids)) then
+      call GridLocalizeRegionsForUGrid(grid, region, option)
     endif
     
     if (region%num_cells == 0 .and. associated(region%cell_ids)) then
@@ -2105,11 +2107,11 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       if (local_id < 1) cycle
       natural_id = grid%nG2A(ghosted_id)
       do ii = 1, ugrid%cell_vertices(0, local_id)
-        vertex_id = ugrid%cell_vertices(ii, local_id)-1 ! make zero-indexed
+        vertex_id = ugrid%cell_vertices(ii, local_id)
 !geh: I believe that this is incorrect since MatSetValues uses petsc ordering
         call MatSetValues(mat_vert2cell, &
                           1, &
-                          ugrid%vertex_ids_natural(vertex_id), &
+                          ugrid%vertex_ids_natural(vertex_id)-1, &
                           1, &
                           natural_id-1, &
                           natural_id-1.0d0, &

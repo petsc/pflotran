@@ -4208,7 +4208,8 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     enddo
 !!!!!!!!!!!!#endif ! #ifndef REVISED_TRANSPORT
 #endif
-  else
+! End of currently inactivated (#if 0) code block for SAMRAI case
+  else  ! For the non-SAMR case:
   ! Interior Flux Terms -----------------------------------
     connection_set_list => grid%internal_connection_set_list
     cur_connection_set => connection_set_list%first

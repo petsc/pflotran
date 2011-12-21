@@ -1000,7 +1000,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   dmolg_dt = dpsat_dt/p_g
   dsatg_dp = - thc_aux_var%dsat_dp
   dsatg_dt = 0.d0 
-  dug_dt = C_g
+  dug_dt = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
+                 (global_aux_var%temp(1) + 273.15d0)
   J(1,1) = J(1,1) + dsatg_dp*den_g*mol_g*porXvol
   J(1,2) = J(1,2) + (sat_g*ddeng_dt*mol_g + sat_g*den_g*dmolg_dt + &
                     dsatg_dt*den_g*mol_g)*porXvol
@@ -1025,7 +1026,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   dmolg_dt = dpsat_dt/p_g
   dsatg_dp = thc_aux_var%dsat_gas_dp
   dsatg_dt = thc_aux_var%dsat_gas_dt
-  dug_dt = C_g
+  dug_dt = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
+                 (global_aux_var%temp(1) + 273.15d0)
   dsati_dt = thc_aux_var%dsat_ice_dt
   dsati_dp = thc_aux_var%dsat_ice_dp
   ddeni_dt = thc_aux_var%dden_ice_dt
@@ -1034,15 +1036,20 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
  
   J(1,1) = J(1,1) + (dsatg_dp*den_g*mol_g + dsati_dp*den_i + &
                     sat_i*ddeni_dp)*porXvol
-  J(1,2) = J(1,2) + (dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
+  J(1,2) = J(1,2) + (thc_aux_var%dsat_dt*global_aux_var%den(1) + &
+                    dsatg_dt*den_g*mol_g + sat_g*ddeng_dt*mol_g + &
                     sat_g*den_g*dmolg_dt + dsati_dt*den_i + sat_i*ddeni_dt)* &
                     porXvol
+  J(2,2) = J(2,2) + thc_aux_var%dsat_dt*global_aux_var%den(1)* &
+                    thc_aux_var%xmol(2)*porXvol
   J(3,1) = J(3,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
                     sat_i*ddeni_dp*u_i)*porXvol
-  J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
+  J(3,2) = J(3,2) + (thc_aux_var%dsat_dt*global_aux_var%den(1)*thc_aux_var%u + &
+                    dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
 #endif
+
 
   if (option%numerical_derivatives) then
     allocate(thc_aux_var_pert%xmol(option%nflowspec),thc_aux_var_pert%diff(option%nflowspec))
@@ -1053,11 +1060,42 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
     x(1) = global_aux_var%pres(1)
     x(2) = global_aux_var%temp(1)
     x(3) = thc_aux_var%xmol(2)
-    call THCAccumulation(thc_aux_var,global_aux_var,por,vol,rock_dencpr,option,res)
+    
+
+    call THCAccumulation(thc_aux_var,global_aux_var, &
+                          por,vol,rock_dencpr,option,res)
     do ideriv = 1,3
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
+      
+#ifdef ICE
+      
+      if (ideriv == 1) then
+        if (x_pert(ideriv) < option%reference_pressure) then
+          pert = - pert
+        endif
+          x_pert(ideriv) = x_pert(ideriv) + pert
+
+      endif
+      
+      if (ideriv == 2) then
+        if(x_pert(ideriv) < 0.d0) then
+          pert = - 1.d-5
+        else
+          pert =  1.d-5
+        endif
+          x_pert(ideriv) = x_pert(ideriv) + pert
+      endif
+      
+      if (ideriv == 3) then
+        x_pert(ideriv) = x_pert(ideriv) + pert
+      endif
+      
+#else
       x_pert(ideriv) = x_pert(ideriv) + pert
+      
+#endif
+
 
 #ifdef ICE
       call THCAuxVarComputeIce(x_pert,thc_aux_var_pert,global_aux_var_pert,iphase,sat_func, &
@@ -1091,6 +1129,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
                           por,vol,rock_dencpr,option,res_pert)
       J_pert(:,ideriv) = (res_pert(:)-res(:))/pert
     enddo
+
     deallocate(thc_aux_var_pert%xmol,thc_aux_var_pert%diff)
     J = J_pert
     call GlobalAuxVarDestroy(global_aux_var_pert)  
@@ -1650,6 +1689,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     x_dn(1) = global_aux_var_dn%pres(1)
     x_dn(2) = global_aux_var_dn%temp(1)
     x_dn(3) = aux_var_dn%xmol(2)
+    
+
     call THCFlux( &
       aux_var_up,global_aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
       aux_var_dn,global_aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
@@ -1660,8 +1701,48 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       pert_dn = x_dn(ideriv)*perturbation_tolerance
       x_pert_up = x_up
       x_pert_dn = x_dn
+
+#ifdef ICE
+      
+      if (ideriv == 1) then
+        if (x_pert_up(ideriv) < option%reference_pressure) then
+          pert_up = - pert_up
+        endif
+          x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+      
+        if (x_pert_dn(ideriv) < option%reference_pressure) then
+          pert_dn = - pert_dn
+        endif
+          x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      endif
+      
+      if (ideriv == 2) then
+        if (x_pert_up(ideriv) < 0.d0) then
+          pert_up = - 1.d-5
+        else
+          pert_up = 1.d-5
+        endif
+          x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+        
+        if (x_pert_dn(ideriv) < 0.d0) then
+          pert_dn = - 1.d-5
+        else
+          pert_dn = 1.d-5
+        endif
+          x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      endif
+      
+      if (ideriv == 3) then
+        x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      endif
+      
+#else
+      
       x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+
+#endif
 
 #ifdef ICE
       call THCAuxVarComputeIce(x_pert_up,aux_var_pert_up, &
@@ -2309,6 +2390,22 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
         x_up(ideriv) = x_dn(ideriv)
       endif
     enddo
+#ifdef ICE
+      call THCAuxVarComputeIce(x_dn,aux_var_dn, &
+                            global_aux_var_dn,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+      call THCAuxVarComputeIce(x_up,aux_var_up, &
+                            global_aux_var_up,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+#else
+      call THCAuxVarCompute(x_dn,aux_var_dn, &
+                            global_aux_var_dn,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+      call THCAuxVarCompute(x_up,aux_var_up, &
+                            global_aux_var_up,iphase,sat_func_dn, &
+                            0.d0,0.d0,option)
+#endif
+    
     call THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                   aux_var_dn,global_aux_var_dn, &
                   por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
@@ -2321,7 +2418,35 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     do ideriv = 1,3
       pert_dn = x_dn(ideriv)*perturbation_tolerance    
       x_pert_dn = x_dn
+     
+#ifdef ICE
+      
+      if (ideriv == 1) then
+        if (x_pert_dn(ideriv) < option%reference_pressure) then
+          pert_dn = - pert_dn
+        endif
+        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      endif
+      
+      if (ideriv == 2) then
+        if (x_pert_dn(ideriv) < 0.d0) then
+           pert_dn = - 1.d-5
+        else
+           pert_dn = 1.d-5
+        endif
+        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      endif
+      
+      if (ideriv == 3) then
+        x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      endif
+      
+#else
+      
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+
+#endif    
+        
       x_pert_up = x_up
       if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
         x_pert_up(ideriv) = x_pert_dn(ideriv)
@@ -2870,7 +2995,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                         thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                         option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
-  enddo
+  enddo 
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
@@ -3114,8 +3239,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerASCIIOpen(option%mycomm,'THCxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-  endif
-
+  endif 
 
 end subroutine THCResidualPatch
 

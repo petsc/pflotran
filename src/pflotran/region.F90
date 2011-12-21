@@ -21,9 +21,12 @@ module Region_module
     PetscInt :: num_cells
     PetscInt, pointer :: cell_ids(:)
     PetscInt, pointer :: faces(:)
+    !TODO(geh): Tear anything to do with structured/unstructured grids other
+    !           than cell id ane face id out of region.
     PetscInt, pointer :: vertex_ids(:,:) ! For Unstructured mesh
     PetscInt :: num_verts              ! For Unstructured mesh
     PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
+    type(region_sideset_type), pointer :: sideset
     type(region_type), pointer :: next
   end type region_type
   
@@ -43,6 +46,11 @@ module Region_module
     PetscReal :: y
     PetscReal :: z
   end type point3d_type
+
+  type region_sideset_type
+    PetscInt :: nfaces
+    PetscInt, pointer :: face_vertices(:,:)
+  end type region_sideset_type
   
   interface RegionCreate
     module procedure RegionCreateWithBlock
@@ -54,10 +62,12 @@ module Region_module
   interface RegionReadFromFile
     module procedure RegionReadFromFileId
     module procedure RegionReadFromFilename
+    module procedure RegionReadSideset
   end interface RegionReadFromFile
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
-            RegionInitList, RegionDestroyList, RegionGetPtrFromList, RegionRead
+            RegionInitList, RegionDestroyList, RegionGetPtrFromList, & 
+            RegionRead, RegionReadSideset, RegionCreateSideset
   
 contains
 
@@ -96,11 +106,35 @@ function RegionCreateWithNothing()
   nullify(region%cell_ids)
   nullify(region%faces)
   nullify(region%vertex_ids)
+  nullify(region%sideset)
   nullify(region%next)
   
   RegionCreateWithNothing => region
 
 end function RegionCreateWithNothing
+
+! ************************************************************************** !
+!
+! RegionCreateSideset: Creates a sideset
+! author: Glenn Hammond
+! date: 12/19/11
+!
+! ************************************************************************** !
+function RegionCreateSideset()
+
+  implicit none
+  
+  type(region_sideset_type), pointer :: RegionCreateSideset
+  
+  type(region_sideset_type), pointer :: sideset
+  
+  allocate(sideset)
+  sideset%nfaces = 0
+  nullify(sideset%face_vertices)
+  
+  RegionCreateSideset => sideset
+
+end function RegionCreateSideset
 
 ! ************************************************************************** !
 !
@@ -211,6 +245,14 @@ function RegionCreateWithRegion(region)
     allocate(new_region%vertex_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts))
     new_region%vertex_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts) = &
     region%vertex_ids(0:MAX_VERT_PER_FACE,1:new_region%num_verts)
+  endif
+  if (associated(region%sideset)) then
+    new_region%sideset => RegionCreateSideSet()
+    new_region%sideset%nfaces = region%sideset%nfaces
+    allocate(new_region%sideset%face_vertices( &
+               size(region%sideset%face_vertices,1), &
+               size(region%sideset%face_vertices,2)))
+    new_region%sideset%face_vertices = region%sideset%face_vertices
   endif
   
   RegionCreateWithRegion => new_region
@@ -737,6 +779,165 @@ end subroutine RegionReadFromFileId
 
 ! ************************************************************************** !
 !
+! RegionReadSideSet: Reads an unstructured grid sideset
+! author: Glenn Hammond
+! date: 12/19/11
+!
+! ************************************************************************** !
+subroutine RegionReadSideSet(sideset,filename,option)
+
+  use Input_module
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  type(region_sideset_type) :: sideset
+  character(len=MAXSTRINGLENGTH) :: filename
+  type(option_type) :: option
+  
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: card, word
+  PetscInt :: num_faces_local_save
+  PetscInt :: num_faces_local
+  PetscInt :: num_to_read
+  PetscInt, parameter :: max_nvert_per_face = 4
+  PetscInt, allocatable :: temp_int_array(:,:)
+
+  PetscInt :: iface, ivertex, irank, num_vertices
+  PetscInt :: remainder
+  PetscErrorCode :: ierr
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
+  PetscMPIInt :: int_mpi
+  PetscInt :: fileid
+  
+  fileid = 86
+  input => InputCreate(fileid,filename)
+
+! Format of sideset file
+! type: T=triangle, Q=quadrilateral
+! vertn(Q) = 4
+! vertn(T) = 3
+! -----------------------------------------------------------------
+! num_faces  (integer)
+! type vert1 vert2 ... vertn  ! for face 1 (integers)
+! type vert1 vert2 ... vertn  ! for face 2
+! ...
+! ...
+! type vert1 vert2 ... vertn  ! for face num_faces
+! -----------------------------------------------------------------
+
+  card = 'Unstructured Sideset'
+
+  call InputReadFlotranString(input,option)
+  string = 'unstructured sideset'
+  call InputReadStringErrorMsg(input,option,card)  
+
+  ! read num_faces
+  call InputReadInt(input,option,sideset%nfaces)
+  call InputErrorMsg(input,option,'number of faces',card)
+
+#ifndef PARALLEL_SIDESET
+  num_to_read = sideset%nfaces
+  allocate(sideset%face_vertices(max_nvert_per_face,num_to_read))
+  sideset%face_vertices = -999
+#else
+  ! divide faces across ranks
+  num_faces_local = sideset%nfaces/option%mycommsize 
+  num_faces_local_save = num_faces_local
+  remainder = sideset%nfaces - num_faces_local*option%mycommsize
+  if (option%myrank < remainder) num_faces_local = &
+                                 num_faces_local + 1
+
+  ! allocate array to store vertices for each faces
+  allocate(sideset%face_vertices(max_nvert_per_face, &
+                                 num_faces_local))
+  sideset%face_vertices = -999
+
+  ! for now, read all faces from ASCII file through io_rank and communicate
+  ! to other ranks
+  if (option%myrank == option%io_rank) then
+    allocate(temp_int_array(max_nvert_per_face, &
+                            num_faces_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      temp_int_array = -999
+      num_to_read = num_faces_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+#endif      
+      do iface = 1, num_to_read
+        ! read in the vertices defining the cell face
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'face type',card)
+        call StringToUpper(word)
+        select case(word)
+          case('Q')
+            num_vertices = 4
+          case('T')
+            num_vertices = 3
+        end select
+        do ivertex = 1, num_vertices
+#ifdef PARALLEL_SIDESET
+          call InputReadInt(input,option,temp_int_array(ivertex,iface))
+#else
+          call InputReadInt(input,option,sideset%face_vertices(ivertex,iface))
+#endif
+          call InputErrorMsg(input,option,'vertex id',card)
+        enddo
+      enddo
+#ifdef PARALLEL_SIDESET      
+      ! if the faces reside on io_rank
+      if (irank == option%io_rank) then
+#if UGRID_DEBUG
+        write(string,*) num_faces_local
+        string = trim(adjustl(string)) // ' faces stored on p0'
+        print *, trim(string)
+#endif
+        sideset%face_vertices(:,1:num_faces_local) = &
+          temp_int_array(:,1:num_faces_local)
+      else
+        ! otherwise communicate to other ranks
+#if UGRID_DEBUG
+        write(string,*) num_to_read
+        write(word,*) irank
+        string = trim(adjustl(string)) // ' faces sent from p0 to p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+        int_mpi = num_to_read*max_nvert_per_face
+        call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
+    enddo
+    deallocate(temp_int_array)
+  else
+    ! other ranks post the recv
+#if UGRID_DEBUG
+        write(string,*) num_faces_local
+        write(word,*) option%myrank
+        string = trim(adjustl(string)) // ' faces received from p0 at p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+    int_mpi = num_faces_local*max_nvert_per_face
+    call MPI_Recv(sideset%face_vertices,int_mpi, &
+                  MPIU_INTEGER,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+  endif
+
+!  unstructured_grid%nlmax = num_faces_local
+!  unstructured_grid%num_vertices_local = num_vertices_local
+#endif
+
+  call InputDestroy(input)
+
+end subroutine RegionReadSideSet
+
+! ************************************************************************** !
+!
 ! RegionGetPtrFromList: Returns a pointer to the region matching region_name
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -770,6 +971,29 @@ function RegionGetPtrFromList(region_name,region_list)
   enddo
   
 end function RegionGetPtrFromList
+
+! ************************************************************************** !
+!
+! RegionDestroySideset: Deallocates a unstructured grid
+! author: Glenn Hammond
+! date: 11/01/09
+!
+! ************************************************************************** !
+subroutine RegionDestroySideset(sideset)
+
+  implicit none
+  
+  type(region_sideset_type), pointer :: sideset
+  
+  if (.not.associated(sideset)) return
+  
+  if (associated(sideset%face_vertices)) deallocate(sideset%face_vertices)
+  nullify(sideset%face_vertices)
+  
+  deallocate(sideset)
+  nullify(sideset)
+  
+end subroutine RegionDestroySideset
 
 ! ************************************************************************** !
 !
@@ -826,10 +1050,16 @@ subroutine RegionDestroy(region)
   nullify(region%cell_ids)
   if (associated(region%faces)) deallocate(region%faces)
   nullify(region%faces)
-  nullify(region%next)
+  if (associated(region%sideset)) then
+    call RegionDestroySideset(region%sideset)
+  endif
+  nullify(region%sideset)
+  
   if (associated(region%vertex_ids)) deallocate(region%vertex_ids)
   nullify(region%vertex_ids)
   
+  nullify(region%next)
+
   deallocate(region)
   nullify(region)
 

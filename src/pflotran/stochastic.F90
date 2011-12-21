@@ -25,7 +25,6 @@ subroutine StochasticInit(stochastic,option)
   use Simulation_module
   use Option_module
   use Input_module
-  use Utility_module, only : UtilityReadArray
   
   implicit none
 
@@ -45,10 +44,12 @@ subroutine StochasticInit(stochastic,option)
 
   ! query user for number of communicator groups and realizations
   string = '-num_groups'
-  call InputGetCommandLineInt(string,stochastic%num_groups,option_found,option)
+  call InputGetCommandLineInt(string,stochastic%num_groups, &
+                              option_found,option)
 
   string = '-num_realizations'
-  call InputGetCommandLineInt(string,stochastic%num_realizations,option_found,option)
+  call InputGetCommandLineInt(string,stochastic%num_realizations, &
+                              option_found,option)
 
   ! read realization ids from a file - contributed by Xingyuan
   string = '-realization_ids_file'
@@ -57,9 +58,15 @@ subroutine StochasticInit(stochastic,option)
     input => InputCreate(IUNIT_TEMP,filename)
     allocate(realization_ids_from_file(stochastic%num_realizations))
     realization_ids_from_file = 0
-    string = 'realization_ids_from_file'
-    call UtilityReadArray(realization_ids_from_file,stochastic%num_realizations, &
-                          string,input,option)
+    string = &
+      '# of realization ids read from file may be too few in StochasticInit()'
+    do i = 1, stochastic%num_realizations
+      call InputReadFlotranString(input,option)
+      call InputReadStringErrorMsg(input,option,string)
+      call InputReadInt(input,option,realization_ids_from_file(i))
+      call InputErrorMsg(input,option,'realization id', &
+                         'StochasticInit')
+    enddo
     call InputDestroy(input)
   else
     nullify(realization_ids_from_file)

@@ -785,8 +785,8 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
   PetscBool :: continuation_flag
-  PetscReal :: value
-  PetscReal, pointer :: temp_array(:)
+  PetscInt :: value
+  PetscInt, pointer :: temp_array(:)
   PetscInt :: max_size
   PetscErrorCode :: ierr
 
@@ -869,11 +869,11 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
         call InputReadInt(string2,option,num_values,input2%ierr)
         call InputErrorMsg(input2,option,'# values','UtilityReadIntArray')
         string2 = word3
-        call InputReadDouble(string2,option,value,input2%ierr)
+        call InputReadInt(string2,option,value,input2%ierr)
         call InputErrorMsg(input2,option,'value','UtilityReadIntArray')
         do while (count+num_values > max_size)
           ! careful.  reallocateRealArray double max_size every time.
-          call reallocateRealArray(temp_array,max_size) 
+          call reallocateIntArray(temp_array,max_size) 
         enddo
         do i=1, num_values
           count = count + 1
@@ -881,12 +881,12 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
         enddo
       else
         string2 = word
-        call InputReadDouble(string2,option,value,input2%ierr)
+        call InputReadInt(string2,option,value,input2%ierr)
         call InputErrorMsg(input2,option,'value','UtilityReadIntArray')
         count = count + 1
         if (count > max_size) then
           ! careful.  reallocateRealArray double max_size every time.
-          call reallocateRealArray(temp_array,max_size) 
+          call reallocateIntArray(temp_array,max_size) 
         endif
         temp_array(count) = value
       endif
