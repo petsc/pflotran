@@ -1660,9 +1660,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #endif 
 
 
-
-
-
 ! conduction term
         
   Dk = (Dk_up * Dk_dn)/(dd_dn*Dk_up + dd_up*Dk_dn)

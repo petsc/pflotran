@@ -47,7 +47,7 @@ module Region_module
     PetscReal :: z
   end type point3d_type
 
-  type region_sideset_type
+  type, public :: region_sideset_type
     PetscInt :: nfaces
     PetscInt, pointer :: face_vertices(:,:)
   end type region_sideset_type
