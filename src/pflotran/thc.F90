@@ -1044,7 +1044,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
                     thc_aux_var%xmol(2)*porXvol
   J(3,1) = J(3,1) + (dsatg_dp*den_g*u_g + dsati_dp*den_i*u_i + &
                     sat_i*ddeni_dp*u_i)*porXvol
-  J(3,2) = J(3,2) + (dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
+  J(3,2) = J(3,2) + (thc_aux_var%dsat_dt*global_aux_var%den(1)*thc_aux_var%u + &
+                    dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
 #endif
@@ -1240,7 +1241,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              aux_var_dn,global_aux_var_dn,por_dn,tor_dn, &
                              sir_dn,dd_dn,perm_dn,Dk_dn, &
                              area,dist_gravity,upweight, &
-                             option,sat_func_up,sat_func_dn,Jup,Jdn)
+                             option,sat_func_up,sat_func_dn, &
+                             Diff_up,Diff_dn,Jup,Jdn)
   use Option_module 
   use Saturation_Function_module             
   use water_eos_module       
@@ -1657,10 +1659,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #endif
   endif
 #endif 
-
-
-
-
 
 ! conduction term
         
@@ -3381,7 +3379,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
-  PetscReal :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: D_up, D_dn  
+  PetscReal :: Diff_up, Diff_dn ! "Diffusion" constants upstream and downstream of a face.
   PetscReal :: zero, norm
   PetscReal :: upweight
   PetscReal :: max_dev  
@@ -3585,6 +3584,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       D_up = thc_parameter%ckwet(ithrm_up)
       D_dn = thc_parameter%ckwet(ithrm_dn)
     
+      Diff_up = thc_parameter%diffusion_coefficient(1)
+      Diff_dn = thc_parameter%diffusion_coefficient(1)
+
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
@@ -3600,7 +3602,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              upweight,option, &
                              realization%saturation_function_array(icap_up)%ptr, &
                              realization%saturation_function_array(icap_dn)%ptr, &
-                             Jup,Jdn)
+                             Diff_up,Diff_dn,Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)

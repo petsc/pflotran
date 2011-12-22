@@ -384,7 +384,8 @@ subroutine CouplerComputeConnections(grid,option,coupler)
     
     connection_set%id_dn(iconn) = cell_id_local
 
-    call GridPopulateConnection(grid,connection_set,iface,iconn,cell_id_local)
+    call GridPopulateConnection(grid,connection_set,iface,iconn, &
+                                cell_id_local,option)
   enddo
 
   coupler%connection_set => connection_set

@@ -1,4 +1,5 @@
-:Description: 3D toy problem for richards equation
+:Description: 3D test problem for unstructured richards equation with mixed 
+:             elements
 
 :=========================== flow mode ========================================
 MODE RICHARDS
@@ -49,6 +50,7 @@ END
 
 :=========================== output options ===================================
 OUTPUT
+  PERIODIC TIME 5 d
   FORMAT TECPLOT BLOCK
   MASS_BALANCE
 END
@@ -69,22 +71,42 @@ REGION all
   /
 END 
 
-REGION east
+REGION top
   COORDINATES
-    5.d0 0.d0 3.5d0
-    5.d0 5.d0 5.d0
+    0.d0 0.0 5.d0
+    5.d0 5.0 5.d0
   /
+  FACE TOP
 END 
 
-REGION west
+REGION south
+  file mixed_south.ss
+skip
   COORDINATES
     0.d0 0.d0 0.d0
-    0.d0 1.5d0 1.5d0
+    5.d0 0.d0 5.d0
   /
+  FACE south
+noskip
+END 
+
+REGION east
+  file mixed_east.ss
+skip
+  COORDINATES
+    5.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
+  /
+  FACE east
+noskip
+END 
+
+REGION center_of_13
+  COORDINATE 1.25d0 2.91667 1.25d0
 END 
 
 REGION middle
-  COORDINATE 5.d0 5.d0 5.d0
+  COORDINATE 2.50001d0 2.50001d0 2.50001d0
 END 
 
 :=========================== observation points ===============================
@@ -97,29 +119,54 @@ FLOW_CONDITION initial
   TYPE
     PRESSURE hydrostatic
   /
-  DATUM 0.d0 0.d0 1.d0
+  DATUM 0.d0 0.d0 2.5d0
   PRESSURE 101325.d0
 END
 
-FLOW_CONDITION west
+FLOW_CONDITION east
   TYPE
     PRESSURE hydrostatic
   /
   DATUM list
     TIME_UNITS d
-    0.d0 0.d0 0.d0 1.d0
+    0.d0 0.d0 0.d0 2.5d0
     10.d0 0.d0 0.d0 4.d0
     20.d0 0.d0 0.d0 -2.d0
-    40.d0 0.d0 0.d0 7.d0
+    40.d0 0.d0 0.d0 3.d0
   /
   PRESSURE 101325.d0
   INTERPOLATION LINEAR
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    PRESSURE neumann
+  /
+  FLUX 15 cm/y
+END
+
+FLOW_CONDITION well
+  TYPE
+    RATE volumetric_rate
+  /
+  RATE 1 l/min
 END
 
 :=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
   TYPE dirichlet_zero_gradient
   CONSTRAINT initial
+    CONCENTRATIONS
+      Tracer  1.d-10  T
+      Tracer2 1.d-10 T
+      Tracer3 1.d-10 T
+    /
+  /
+END
+
+TRANSPORT_CONDITION tracer1
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT tracer1
     CONCENTRATIONS
       Tracer  1.d-3  T
       Tracer2 1.d-10 T
@@ -128,9 +175,9 @@ TRANSPORT_CONDITION initial
   /
 END
 
-TRANSPORT_CONDITION west
+TRANSPORT_CONDITION tracer2
   TYPE dirichlet_zero_gradient
-  CONSTRAINT west
+  CONSTRAINT tracer2
     CONCENTRATIONS
       Tracer  1.d-10 T
       Tracer2 1.d-3  T
@@ -139,9 +186,9 @@ TRANSPORT_CONDITION west
   /
 END
 
-TRANSPORT_CONDITION east
+TRANSPORT_CONDITION tracer3
   TYPE dirichlet_zero_gradient
-  CONSTRAINT east
+  CONSTRAINT tracer3
     CONCENTRATIONS
       Tracer  1.d-10 T
       Tracer2 1.d-10 T
@@ -158,16 +205,28 @@ INITIAL_CONDITION
   REGION all
 END
 
-BOUNDARY_CONDITION
+BOUNDARY_CONDITION south
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION east
+  TRANSPORT_CONDITION initial
+  REGION south
+END
+
+BOUNDARY_CONDITION east
+  FLOW_CONDITION east
+  TRANSPORT_CONDITION tracer1
   REGION east
 END
 
 BOUNDARY_CONDITION
-  FLOW_CONDITION west
-  TRANSPORT_CONDITION west
-  REGION west
+  FLOW_CONDITION recharge
+  TRANSPORT_CONDITION tracer2
+  REGION top
+END
+
+SOURCE_SINK
+  FLOW_CONDITION well
+  TRANSPORT_CONDITION tracer3
+  REGION center_of_13
 END
 
 :=========================== stratigraphy couplers ============================

@@ -31,6 +31,7 @@ module Unstructured_Grid_module
     PetscInt, pointer :: cell_type(:)
     PetscInt, pointer :: cell_vertices(:,:) ! vertices for each grid cell (NO LONGER zero-based)
     PetscInt, pointer :: face_to_cell_ghosted(:,:) !
+    PetscInt, pointer :: connection_to_face(:)
 !geh: Should not need face_to_vertex_nindex() as one could use face_to_vertex() 
 !     and vertex_ids_nindex() to get the same result.
 !gb: face_to_vertex_natural is required in GridLocalizeRegionsForUGrid() and needs
@@ -106,6 +107,7 @@ module Unstructured_Grid_module
             UGridGetCellFromPoint, &
             UGridGetCellsInRectangle, &
             UGridEnsureRightHandRule, &
+            UGridMapSideSet, &
             UGridDestroy, &
             UGridCreateUGDM, &
             UGridDMDestroy
@@ -187,6 +189,7 @@ function UGridCreate()
   nullify(unstructured_grid%cell_ids_petsc)
   nullify(unstructured_grid%ghost_cell_ids_petsc)
   nullify(unstructured_grid%cell_neighbors_local_ghosted)
+  nullify(unstructured_grid%connection_to_face)
   unstructured_grid%num_hash = 100
   unstructured_grid%ao_natural_to_petsc = 0
 
@@ -2321,9 +2324,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt, allocatable :: cell_to_face(:,:)
   PetscInt, allocatable :: face_to_cell(:,:)
   PetscInt, allocatable :: vertex_to_cell(:,:)
-  PetscInt, allocatable :: dual_to_face(:)
   PetscInt, allocatable :: temp_int(:)
   PetscInt, allocatable :: temp_int_2d(:,:)
+  PetscBool, allocatable :: local_boundary_face(:)
   PetscInt :: num_match
   PetscInt :: found_count
   PetscBool :: found
@@ -2374,12 +2377,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(unstructured_grid%face_to_vertex_natural(MAX_VERT_PER_FACE, &
            MAX_FACE_PER_CELL*unstructured_grid%ngmax))
   unstructured_grid%face_to_vertex_natural = 0
-  allocate(unstructured_grid%face_to_cell_ghosted(1,MAX_FACE_PER_CELL* &
-                                                  unstructured_grid%ngmax))
-  unstructured_grid%face_to_cell_ghosted = 0
-  allocate(unstructured_grid%cell_to_face_ghosted(MAX_FACE_PER_CELL,&
-                                                  unstructured_grid%ngmax))
-  unstructured_grid%cell_to_face_ghosted = 0
 
   face_count = 0
   do ghosted_id = 1, unstructured_grid%ngmax
@@ -2389,7 +2386,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       face_count = face_count + 1
       cell_to_face(iface,ghosted_id) = face_count
       face_to_cell(1,face_count) = ghosted_id
-      unstructured_grid%face_to_cell_ghosted(1,face_count) = ghosted_id
       call UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
                                       vertex_ids4)
       do ivertex = 1, nvertices
@@ -2423,6 +2419,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   ! NOTE: For a cell_type = WEDGE_TYPE, faces 1-3 have 4 vertices; while
   !       faces 4-5 have 3 vertices
   !
+  
   do local_id = 1, unstructured_grid%nlmax
     ! Selet a cell and find number of vertices
     cell_id = local_id
@@ -2500,6 +2497,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
               enddo
               if (num_match == nvertices) then
                 ! remove duplicate face
+                !geh: I believe that face_id2 will always be removed
                 if (face_id2 > face_id) then
 #ifdef UGRID_DEBUG                
                   write(string,*) option%myrank, face_id2, ' -> ', face_id
@@ -2507,8 +2505,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                   call printMsg(option)
 #endif
                   cell_to_face(iface2,cell_id2) = face_id
-                  !! flag as removed
+                  ! flag face_id2 as removed
                   face_to_cell(1,face_id2) = -face_to_cell(1,face_id2)
+                  ! add cell_id2 to face_ids list
                   face_to_cell(2,face_id) = cell_id2
                 else
 #ifdef UGRID_DEBUG                
@@ -2517,8 +2516,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
                   call printMsg(option)
 #endif
                   cell_to_face(iface,cell_id) = face_id2
-                  !! flag as removed
+                  ! flag face_id as removed  
                   face_to_cell(1,face_id) = -face_to_cell(1,face_id)
+                  ! add cell_id to face_ids2 list
                   face_to_cell(2,face_id2) = cell_id
                 endif
                 exit
@@ -2561,11 +2561,11 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       face_count = face_count + 1
   enddo
   allocate(unstructured_grid%face_to_vertex(MAX_VERT_PER_FACE,face_count))
-  count = 0
+  face_count = 0
   do iface = 1, size(face_to_cell,2)
     if (face_to_cell(1,iface) > 0) then
-      count = count + 1
-      unstructured_grid%face_to_vertex(:,count) = face_to_vertex(:,iface)
+      face_count = face_count + 1
+      unstructured_grid%face_to_vertex(:,face_count) = face_to_vertex(:,iface)
     endif
   enddo
   deallocate(face_to_vertex)
@@ -2573,12 +2573,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(temp_int_2d(2,face_count))
   allocate(temp_int(size(face_to_cell,2)))
   temp_int = 0
-  count = 0
+  face_count = 0
   do iface = 1, size(face_to_cell,2)
     if (face_to_cell(1,iface) > 0) then
-      count = count + 1
-      temp_int_2d(:,count) = face_to_cell(:,iface)
-      temp_int(iface) = count
+      face_count = face_count + 1
+      temp_int_2d(:,face_count) = face_to_cell(:,iface)
+      temp_int(iface) = face_count
     endif
   enddo
   deallocate(face_to_cell)
@@ -2595,9 +2595,11 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       ! check for exterior face
       if (cell_id < 1) cycle
       found = PETSC_FALSE
-      do iface2 = 1, 6
+      cell_type = unstructured_grid%cell_type(cell_id)
+      nfaces = UCellGetNFaces(cell_type)
+      do iface2 = 1, nfaces
         face_id2 = cell_to_face(iface2,cell_id)
-        if (face_id<0) cycle
+        if (face_id < 0) cycle
         if (face_id == temp_int(face_id2)) then
           found = PETSC_TRUE
           cell_to_face(iface2,cell_id) = face_id
@@ -2611,7 +2613,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     enddo
   enddo
   deallocate(temp_int)
-  
   
   do ghosted_id = 1, unstructured_grid%ngmax
     do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
@@ -2648,8 +2649,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   connections => ConnectionCreate(nconn,option%nphase,INTERNAL_CONNECTION_TYPE)
   
   allocate(unstructured_grid%face_area(face_count))
-  allocate(dual_to_face(nconn))
-  dual_to_face = 0
+  allocate(unstructured_grid%connection_to_face(nconn))
+  unstructured_grid%connection_to_face = 0
 
   ! loop over connection again
   iconn = 0
@@ -2675,7 +2676,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           if (found) exit
         enddo
         if (found) then
-          dual_to_face(iconn) = face_id
+          unstructured_grid%connection_to_face(iconn) = face_id
         else
           write(string,*) option%myrank,local_id,dual_local_id 
           option%io_buffer = 'face not found in connection loop' // string 
@@ -2795,7 +2796,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   enddo
   
   ! Save area and centroid of faces
-  unstructured_grid%cell_to_face_ghosted = cell_to_face
   allocate(unstructured_grid%face_centroid(face_count))
   do iface = 1,face_count
     unstructured_grid%face_centroid(iface)%id = 0
@@ -2846,11 +2846,14 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           vertex_id = unstructured_grid%face_to_vertex(ivert,face_id)
           if (vertex_id.ne.0) then
             unstructured_grid%face_centroid(face_id)%x = &
-              unstructured_grid%face_centroid(face_id)%x + unstructured_grid%vertices(vertex_id)%x
+              unstructured_grid%face_centroid(face_id)%x + &
+              unstructured_grid%vertices(vertex_id)%x
             unstructured_grid%face_centroid(face_id)%y = &
-              unstructured_grid%face_centroid(face_id)%y + unstructured_grid%vertices(vertex_id)%y
+              unstructured_grid%face_centroid(face_id)%y + &
+              unstructured_grid%vertices(vertex_id)%y
             unstructured_grid%face_centroid(face_id)%z = &
-              unstructured_grid%face_centroid(face_id)%z + unstructured_grid%vertices(vertex_id)%z
+              unstructured_grid%face_centroid(face_id)%z + &
+              unstructured_grid%vertices(vertex_id)%z
             count = count +1
           endif
         enddo
@@ -2864,11 +2867,17 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       endif
     enddo
   enddo
-  
+
+  allocate(unstructured_grid%face_to_cell_ghosted(size(face_to_cell,1), &
+                                                  size(face_to_cell,2)))
+  unstructured_grid%face_to_cell_ghosted = face_to_cell
+  allocate(unstructured_grid%cell_to_face_ghosted(size(cell_to_face,1), &
+                                                  size(cell_to_face,2)))
+  unstructured_grid%cell_to_face_ghosted(:,:) = cell_to_face(:,:)
+
   deallocate(cell_to_face)
   deallocate(face_to_cell)
   deallocate(vertex_to_cell)
-  deallocate(dual_to_face)
 
   UGridComputeInternConnect => connections
 
@@ -2882,10 +2891,11 @@ end function UGridComputeInternConnect
 !
 ! ************************************************************************** !
 subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
-                                   iconn, ghosted_id)
+                                   iconn, ghosted_id, option)
 
   use Connection_module
   use Utility_module, only : DotProduct
+  use Option_module
   
   implicit none
   
@@ -2894,6 +2904,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   PetscInt :: iface_cell
   PetscInt :: iconn
   PetscInt :: ghosted_id
+  type(option_type) :: option
   
   PetscErrorCode :: ierr
   
@@ -2903,10 +2914,18 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   type(point_type) :: vertex_8(8)
   type(plane_type) :: plane
   type(point_type) :: point, vertex1, vertex2, vertex3, intercept
+  character(len=MAXWORDLENGTH) :: word
   
   
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
+      if (iface_cell == 0) then
+        write(word,*) ghosted_id
+        option%io_buffer = 'Face id undefined for cell ' // &
+          trim(adjustl(word)) // &
+          ' in boundary condition.  Should this be a source/sink?'
+        call printErrMsgByRank(option)
+      endif
       ! Compute cell centeroid
       v2 = 0.d0
       do ivert = 1, unstructured_grid%cell_vertices(0, ghosted_id)
@@ -3505,6 +3524,344 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
   
 end subroutine UGridGetCellsInRectangle
 
+#if 0
+! ************************************************************************** !
+!
+! UGridReadSideSet: Reads an unstructured grid sideset
+! author: Glenn Hammond
+! date: 12/16/11
+!
+! ************************************************************************** !
+subroutine UGridReadSideSet(unstructured_grid1,sideset,filename,option)
+
+  use Input_module
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  type(unstructured_grid_type) :: unstructured_grid1
+  type(unstructured_sideset_type) :: sideset
+  character(len=MAXSTRINGLENGTH) :: filename
+  type(option_type) :: option
+  
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: card, word
+  PetscInt :: num_faces_local_save
+  PetscInt :: num_faces_local
+  PetscInt :: num_to_read
+  PetscInt, parameter :: max_nvert_per_face = 4
+  PetscInt, allocatable :: temp_int_array(:,:)
+
+  PetscInt :: iface, ivertex, irank, num_vertices
+  PetscInt :: remainder
+  PetscErrorCode :: ierr
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
+  PetscMPIInt :: int_mpi
+  PetscInt :: fileid
+  
+  fileid = 86
+  input => InputCreate(fileid,filename)
+
+! Format of sideset file
+! type: T=triangle, Q=quadrilateral
+! vertn(Q) = 4
+! vertn(T) = 3
+! -----------------------------------------------------------------
+! num_faces  (integer)
+! type vert1 vert2 ... vertn  ! for face 1 (integers)
+! type vert1 vert2 ... vertn  ! for face 2
+! ...
+! ...
+! type vert1 vert2 ... vertn  ! for face num_faces
+! -----------------------------------------------------------------
+
+  card = 'Unstructured Sideset'
+
+  call InputReadFlotranString(input,option)
+  string = 'unstructured sideset'
+  call InputReadStringErrorMsg(input,option,card)  
+
+  ! read num_faces
+  call InputReadInt(input,option,sideset%nmax)
+  call InputErrorMsg(input,option,'number of faces',card)
+
+  ! divide faces across ranks
+  num_faces_local = sideset%nmax/option%mycommsize 
+  num_faces_local_save = num_faces_local
+  remainder = sideset%nmax - num_faces_local*option%mycommsize
+  if (option%myrank < remainder) num_faces_local = &
+                                 num_faces_local + 1
+
+  ! allocate array to store vertices for each faces
+  allocate(sideset%face_vertices(max_nvert_per_face, &
+                                 num_faces_local))
+  sideset%face_vertices = -999
+
+  ! for now, read all faces from ASCII file through io_rank and communicate
+  ! to other ranks
+  if (option%myrank == option%io_rank) then
+    allocate(temp_int_array(max_nvert_per_face, &
+                            num_faces_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      temp_int_array = -999
+      num_to_read = num_faces_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+      do iface = 1, num_to_read
+        ! read in the vertices defining the cell face
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'face type',card)
+        call StringToUpper(word)
+        select case(word)
+          case('Q')
+            num_vertices = 4
+          case('T')
+            num_vertices = 3
+        end select
+        do ivertex = 1, num_vertices
+          call InputReadInt(input,option,temp_int_array(ivertex,iface))
+          call InputErrorMsg(input,option,'vertex id',card)
+        enddo
+      enddo
+      
+      ! if the faces reside on io_rank
+      if (irank == option%io_rank) then
+#if UGRID_DEBUG
+        write(string,*) num_faces_local
+        string = trim(adjustl(string)) // ' faces stored on p0'
+        print *, trim(string)
+#endif
+        sideset%face_vertices(:,1:num_faces_local) = &
+          temp_int_array(:,1:num_faces_local)
+      else
+        ! otherwise communicate to other ranks
+#if UGRID_DEBUG
+        write(string,*) num_to_read
+        write(word,*) irank
+        string = trim(adjustl(string)) // ' faces sent from p0 to p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+        int_mpi = num_to_read*max_nvert_per_face
+        call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
+    enddo
+    deallocate(temp_int_array)
+  else
+    ! other ranks post the recv
+#if UGRID_DEBUG
+        write(string,*) num_faces_local
+        write(word,*) option%myrank
+        string = trim(adjustl(string)) // ' faces received from p0 at p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+    int_mpi = num_faces_local*max_nvert_per_face
+    call MPI_Recv(sideset%face_vertices,int_mpi, &
+                  MPIU_INTEGER,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+  endif
+
+!  unstructured_grid%nlmax = num_faces_local
+!  unstructured_grid%num_vertices_local = num_vertices_local
+
+  call InputDestroy(input)
+
+end subroutine UGridReadSideSet
+#endif
+! ************************************************************************** !
+!
+! UGridMapSideSet: Maps a global boundary side set to the faces of local 
+!                  ghosted cells
+! author: Glenn Hammond
+! date: 12/16/11
+!
+! ************************************************************************** !
+subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
+                           region_name,option,cell_ids,face_ids)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  PetscInt :: face_vertices(:,:)
+  PetscInt :: n_ss_faces
+  character(len=MAXWORDLENGTH) :: region_name
+  type(option_type) :: option
+  PetscInt, pointer :: cell_ids(:)
+  PetscInt, pointer :: face_ids(:)
+  
+  Mat :: Mat_vert_to_face 
+  Vec :: Vertex_vec, Face_vec
+  PetscViewer :: viewer
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: int_array4(4)
+  PetscInt :: int_array4_0(4,1)
+  PetscReal :: real_array4(4)
+  PetscInt, allocatable :: boundary_faces(:)
+  PetscInt, allocatable :: temp_int(:,:)
+  PetscInt :: boundary_face_count
+  PetscInt :: mapped_face_count
+  PetscInt :: nfaces, nvertices
+  PetscInt :: iface, iface2
+  PetscInt :: face_id, face_id2
+  PetscInt :: local_id
+  PetscInt :: cell_type
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: ivertex, cell_id
+  PetscErrorCode :: ierr
+    
+  ! fill matrix with boundary faces of local cells
+  ! count up the number of boundary faces
+  boundary_face_count = 0
+  do local_id = 1, unstructured_grid%nlmax
+    nfaces = UCellGetNFaces(unstructured_grid%cell_type(local_id))
+    do iface = 1, nfaces
+      face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+      if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
+        ! boundary face, since not connected to 2 cells
+        boundary_face_count = boundary_face_count + 1
+      endif
+    enddo
+  enddo
+  allocate(boundary_faces(boundary_face_count))
+  boundary_faces = 0
+  ! assume 4 vertices per face for simplicity
+  call MatCreateSeqAIJ(PETSC_COMM_SELF,boundary_face_count, &
+                       unstructured_grid%num_vertices_local,4, &
+                       PETSC_NULL_INTEGER,Mat_vert_to_face,ierr)
+  call MatZeroEntries(Mat_vert_to_face,ierr)
+  real_array4 = 1.d0
+  boundary_face_count = 0
+  do local_id = 1, unstructured_grid%nlmax
+    cell_type = unstructured_grid%cell_type(local_id)
+    nfaces = UCellGetNFaces(cell_type)
+    do iface = 1, nfaces
+      face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+      if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
+        ! boundary face, since not connected to 2 cells
+        boundary_face_count = boundary_face_count + 1
+        boundary_faces(boundary_face_count) = face_id
+        call UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
+                                        int_array4)
+        do ivertex = 1, nvertices
+          int_array4_0(ivertex,1) = &
+            unstructured_grid%cell_vertices(int_array4(ivertex),local_id)-1
+        enddo
+        call MatSetValues(Mat_vert_to_face,1,boundary_face_count-1, &
+                          nvertices,int_array4_0,real_array4, &
+                          INSERT_VALUES,ierr)
+      endif
+    enddo
+  enddo
+  call MatAssemblyBegin(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'Mat_vert_to_face_' // trim(region_name) // '_' // &
+           trim(string) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call MatView(Mat_vert_to_face,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+  
+  call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_vertices_local, &
+                    Vertex_vec,ierr)
+  call VecZeroEntries(Vertex_vec,ierr)
+  
+  call VecGetArrayF90(Vertex_vec,vec_ptr,ierr)
+  do iface = 1, n_ss_faces
+    do ivertex = 1, size(face_vertices,1)
+      if (face_vertices(ivertex,iface) > 0) then
+        vec_ptr(face_vertices(ivertex,iface)) = 1.d0
+      endif
+    enddo
+  enddo
+  call VecRestoreArrayF90(Vertex_vec,vec_ptr,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'Vertex_vec_' // trim(region_name) // '_' // &
+           trim(string) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call VecView(Vertex_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+  
+  call VecCreateSeq(PETSC_COMM_SELF,boundary_face_count,Face_vec,ierr)
+  call MatMult(Mat_vert_to_face,Vertex_vec,Face_vec,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'Face_vec_' // trim(region_name) // '_' // &
+           trim(string) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call VecView(Face_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+    
+  allocate(temp_int(MAX_FACE_PER_CELL,boundary_face_count))
+  temp_int = 0
+  
+  mapped_face_count = 0
+  call VecGetArrayF90(Face_vec,vec_ptr,ierr)
+  do iface = 1, boundary_face_count
+    face_id = boundary_faces(iface)
+    if (vec_ptr(iface) > 2.d0) then ! 3 or more vertices in sideset
+      ! need to ensure that the right number of vertices are included
+      cell_id = unstructured_grid%face_to_cell_ghosted(1,face_id)
+      cell_type = unstructured_grid%cell_type(cell_id)
+      nfaces = UCellGetNFaces(cell_type)
+      nvertices = 0
+      do iface2 = 1, nfaces
+        face_id2 = unstructured_grid%cell_to_face_ghosted(iface2,cell_id)
+        if (face_id == face_id2) then
+          nvertices = UCellGetNFaceVertices(cell_type,iface2)
+          exit
+        endif
+      enddo
+      if (nvertices == 0) then ! the case if not found 
+        option%io_buffer = 'Face not found in UGridMapSideSet'
+        call printErrMsgByRank(option)
+      endif
+      if (abs(nvertices - vec_ptr(iface)) < 0.5d0) then
+        mapped_face_count = mapped_face_count + 1
+        temp_int(1,mapped_face_count) = cell_id
+        temp_int(2,mapped_face_count) = iface2
+      endif
+    endif
+  enddo
+  call VecRestoreArrayF90(Face_vec,vec_ptr,ierr)
+  deallocate(boundary_faces)
+  
+  allocate(cell_ids(mapped_face_count))
+  allocate(face_ids(mapped_face_count))
+  
+  cell_ids(:) = temp_int(1,1:mapped_face_count)
+  face_ids(:) = temp_int(2,1:mapped_face_count)
+  deallocate(temp_int)
+  
+  call MatDestroy(Mat_vert_to_face,ierr)
+  call VecDestroy(Vertex_vec,ierr)
+  call VecDestroy(Face_vec,ierr)
+  
+end subroutine UGridMapSideSet
+
 ! ************************************************************************** !
 !
 ! UGridDestroy: Deallocates a unstructured grid
@@ -3555,6 +3912,9 @@ subroutine UGridDestroy(unstructured_grid)
   if (associated(unstructured_grid%face_to_vertex))&
     deallocate(unstructured_grid%face_to_vertex)
   nullify(unstructured_grid%face_to_vertex)
+  if (associated(unstructured_grid%connection_to_face)) &
+    deallocate(unstructured_grid%connection_to_face)
+  nullify(unstructured_grid%connection_to_face)
 
   if (unstructured_grid%ao_natural_to_petsc /= 0) &
     call AODestroy(unstructured_grid%ao_natural_to_petsc,ierr)
