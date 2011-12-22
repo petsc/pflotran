@@ -294,10 +294,12 @@ end subroutine GridComputeInternalConnect
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
+subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
+                                  option)
 
   use Connection_module
   use Structured_Grid_module
+  use Option_module
   
   implicit none
  
@@ -306,6 +308,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   PetscInt :: iface
   PetscInt :: iconn
   PetscInt :: cell_id_local
+  type(option_type) :: option
   
   PetscInt :: cell_id_ghosted
   
@@ -320,7 +323,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
                                         iface,iconn,cell_id_ghosted)
     case(UNSTRUCTURED_GRID)
       call UGridPopulateConnection(grid%unstructured_grid,connection,iface,&
-                                   iconn,cell_id_ghosted)
+                                   iconn,cell_id_ghosted,option)
   end select
 
 end subroutine GridPopulateConnection

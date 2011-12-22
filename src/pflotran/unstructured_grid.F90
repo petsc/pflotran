@@ -2891,10 +2891,11 @@ end function UGridComputeInternConnect
 !
 ! ************************************************************************** !
 subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
-                                   iconn, ghosted_id)
+                                   iconn, ghosted_id, option)
 
   use Connection_module
   use Utility_module, only : DotProduct
+  use Option_module
   
   implicit none
   
@@ -2903,6 +2904,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   PetscInt :: iface_cell
   PetscInt :: iconn
   PetscInt :: ghosted_id
+  type(option_type) :: option
   
   PetscErrorCode :: ierr
   
@@ -2912,10 +2914,18 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   type(point_type) :: vertex_8(8)
   type(plane_type) :: plane
   type(point_type) :: point, vertex1, vertex2, vertex3, intercept
+  character(len=MAXWORDLENGTH) :: word
   
   
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
+      if (iface_cell == 0) then
+        write(word,*) ghosted_id
+        option%io_buffer = 'Face id undefined for cell ' // &
+          trim(adjustl(word)) // &
+          ' in boundary condition.  Should this be a source/sink?'
+        call printErrMsgByRank(option)
+      endif
       ! Compute cell centeroid
       v2 = 0.d0
       do ivert = 1, unstructured_grid%cell_vertices(0, ghosted_id)
