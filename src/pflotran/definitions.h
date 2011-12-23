@@ -178,7 +178,7 @@ PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
 PetscInt, parameter :: RICHARDS_CONDUCTANCE_DOF = 2
 
 PetscInt, parameter :: MIS_PRESSURE_DOF = 1
-PetscInt, parameter :: MIS_CONDUCTANCE_DOF = 2
+PetscInt, parameter :: MIS_CONCENTRATION_DOF = 2
 
 PetscInt, parameter :: GENERAL_LIQUID_PRESSURE_DOF = 1
 PetscInt, parameter :: GENERAL_GAS_PRESSURE_DOF = 1

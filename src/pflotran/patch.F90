@@ -1044,7 +1044,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%concentration)) then
               select case(flow_condition%concentration%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  coupler%flow_aux_real_var(MIS_CONDUCTANCE_DOF, &
+                  coupler%flow_aux_real_var(MIS_CONCENTRATION_DOF, &
                                             1:num_connections) = &
                     flow_condition%concentration%flow_dataset%time_series%cur_value(1)
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
