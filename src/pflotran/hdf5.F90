@@ -3351,6 +3351,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
 
   type(realization_type)         :: realization
   type(region_type)              :: region
+  type(region_sideset_type),pointer:: sideset
   character(len=MAXSTRINGLENGTH) :: filename
 
   ! local
@@ -3464,8 +3465,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   
     do ii = 1,region%num_cells
       region%cell_ids(ii) = int_buffer(ii,1)
-    !if (option%myrank == 0) write(*,*), ii, region%cell_ids(ii)
-  enddo
+    enddo
     
   case(2)
     !
@@ -3473,15 +3473,21 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
     !                       OR
     !                  (ii) Cell IDs with face IDs
     !
-    region%num_verts = dims_h5(2)/option%mycommsize
+
+    !gb: Cells IDs with face IDs - may not work now 12/22/11
+    !region%num_verts = dims_h5(2)/option%mycommsize
+    !  remainder = dims_h5(2) - region%num_verts*option%mycommsize
+    region%sideset => RegionCreateSideset()
+    sideset => region%sideset
+    sideset%nfaces = dims_h5(2)/option%mycommsize
       remainder = dims_h5(2) - region%num_verts*option%mycommsize
 
      ! Find istart and iend
      istart = 0
      iend   = 0
-     call MPI_Exscan(region%num_verts,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+     call MPI_Exscan(sideset%nfaces,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
                     MPI_SUM,option%mycomm,ierr)
-     call MPI_Scan(region%num_verts,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+     call MPI_Scan(sideset%nfaces,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
                    MPI_SUM,option%mycomm,ierr)
   
      ! Determine the length and offset of data to be read by each processor
@@ -3532,13 +3538,16 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
        ! Input data is list of Vertices
        !
        ! allocate array to store vertices for each cell
-       allocate(region%vertex_ids(0:MAX_VERT_PER_FACE,region%num_verts))
-       region%vertex_ids = -1
+       !allocate(region%vertex_ids(0:MAX_VERT_PER_FACE,region%num_verts))
+       !region%vertex_ids = -1
+       allocate(sideset%face_vertices(MAX_VERT_PER_FACE,sideset%nfaces))
+       sideset%face_vertices = -999
   
        do ii = 1,region%num_verts
          region%vertex_ids(0,ii) = int_buffer(1,ii)
            do jj = 2,int_buffer(1,ii)+1
-           region%vertex_ids(jj-1,ii) = int_buffer(jj,ii)
+           !region%vertex_ids(jj-1,ii) = int_buffer(jj,ii)
+           sideset%face_vertices(jj-1,ii) = int_buffer(jj,ii)
          enddo
        enddo
      endif
