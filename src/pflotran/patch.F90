@@ -993,7 +993,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
             endif
             
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE, MIS_MODE) ! updated 10/17/11 
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE) ! updated 10/17/11 
             coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                         flow_condition%iphase
             select case(flow_condition%pressure%itype)
@@ -1022,6 +1022,36 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                           flow_condition%concentration%flow_dataset%time_series%cur_value(1)
                 endif
             end select
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
+              end select
+            endif
+  
+          case(MIS_MODE) ! Miscible mode, added by Chuan Lu, 12/23/11
+            if (associated(flow_condition%pressure)) then
+              select case(flow_condition%pressure%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(MIS_PRESSURE_DOF, &
+                                            1:num_connections) = &
+                    flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+             !  case(SATURATION_BC)
+              end select
+            endif
+            if (associated(flow_condition%concentration)) then
+              select case(flow_condition%concentration%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(MIS_CONDUCTANCE_DOF, &
+                                            1:num_connections) = &
+                    flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+             !  case(SATURATION_BC)
+              end select
+            endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)

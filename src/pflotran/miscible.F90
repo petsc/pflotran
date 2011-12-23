@@ -1576,7 +1576,7 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      case(NEUMANN_BC) !may not work
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
+           v_darcy = aux_vars(MIS_PRESSURE_DOF)
            if (v_darcy > 0.d0) then 
               density_ave = aux_var_up%den(np)
            else 
@@ -1712,7 +1712,7 @@ subroutine MiscibleBCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      case(NEUMANN_BC)
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
+           v_darcy = aux_vars(MIS_PRESSURE_DOF)
            if (v_darcy > 0.d0) then 
               density_ave = aux_var_up%den(np)
            else 
@@ -2790,7 +2790,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 !      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
       global_aux_vars_bc(sum_connection)%sat(:)=1D0
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=1D0
+!      global_aux_vars_bc(sum_connection)%fugacoeff(1)=1D0
       global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
@@ -3102,14 +3102,14 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%fluid_properties,option)
-!    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
+    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
     if(associated(global_aux_vars)) then
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres
 !      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:)=1D0
 !      global_aux_vars(ghosted_id)%sat_store =
-      global_aux_vars(ghosted_id)%fugacoeff(1)=1D0
+!      global_aux_vars(ghosted_id)%fugacoeff(1)=1D0
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
