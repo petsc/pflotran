@@ -246,7 +246,7 @@ end interface
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
+        case(MPH_MODE,THC_MODE, IMS_MODE, FLASH2_MODE, G_MODE, MIS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)

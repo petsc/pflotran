@@ -1069,6 +1069,7 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
       Res(1:option%nflowspec)=mol(:)
   !    Res(option%nflowdof)=eng
   ! endif
+ ! print *, 'acc:', mol, aux_var%sat, aux_var%den,aux_var%xmol
 end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
@@ -2156,7 +2157,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
             realization%fluid_properties,option)
 !         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
-!            print *, 'Flash winc', delx(3,ng)
+         
 !         endif   
       endif
    enddo
@@ -2186,7 +2187,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
                             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
-    !print *,'REs, acm: ', res
+    print *,'REs, acm: ', res
     patch%aux%Miscible%Resold_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
@@ -2811,8 +2812,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
     patch%aux%Miscible%Resold_BC(local_id,1:option%nflowdof) = &
     patch%aux%Miscible%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
-
-
+   
       if (option%use_samr) then
          direction =  (boundary_condition%region%faces(iconn)-1)/2
 
@@ -3102,7 +3102,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%fluid_properties,option)
-    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
+!    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
     if(associated(global_aux_vars)) then
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres
@@ -3147,7 +3147,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
             realization%fluid_properties,option)
 !         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
-!            print *, 'Flash winc', delx(3,ng)
+!            print *, 'Flash winc', delx(:)
 !         endif   
     endif
   enddo
