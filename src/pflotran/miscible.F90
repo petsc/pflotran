@@ -3113,6 +3113,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+!    print *,'mis: Respatch0 ', xx_loc_p(istart:iend), global_aux_vars(ghosted_id)%den_kg(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
     else

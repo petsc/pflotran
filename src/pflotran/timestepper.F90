@@ -822,7 +822,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           else
             up = option%dpmxe/(option%dpmax+0.1)
             uc = option%dcmxe/(option%dcmax+1.d-6)
-            ut = min(up,utmp,uus)
+            ut = min(up,uc)
           endif
           dtt = fac * dt * (1.d0 + ut)
         case(MPH_MODE)   
