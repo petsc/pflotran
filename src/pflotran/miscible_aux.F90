@@ -227,6 +227,7 @@ subroutine Water_glycal_density( y,p, dkg)
 
   dkg = ((0.0806*y-0.203)*y + 0.0873)*y + 1.0341D0
   dkg = (4.49758D-10* y +(1D0-y)*5D-10)*(p-1.01325D5) + dkg
+  dkg = dkg * 1D3  ! convert g/cm^3 to kg/m^3
  
 end subroutine Water_glycal_density       
 ! ************************************************************************** !
