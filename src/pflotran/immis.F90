@@ -788,31 +788,31 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-    do idof=1,option%nflowdof
-      select case(boundary_condition%flow_condition%itype(idof))
-      case(DIRICHLET_BC)
-         xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
-      case(HYDROSTATIC_BC)
-         xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+      do idof=1,option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+        case(DIRICHLET_BC)
+          xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
+        case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           xxbc(2:option%nflowdof) = &
-               xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
-      case(NEUMANN_BC,ZERO_GRADIENT_BC)
-         xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+            xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
+          xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
       end select
-      enddo
+    enddo
  
-     call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+    call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
 
-     if( associated(global_aux_vars_bc))then
-        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+    if(associated(global_aux_vars_bc)) then
+      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+      global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 

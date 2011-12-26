@@ -460,7 +460,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -468,7 +468,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -510,7 +510,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! liquid density
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -526,7 +526,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,MIS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -558,7 +558,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1027,7 +1027,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1051,7 +1051,7 @@ subroutine OutputTecplotFEBrick(realization)
       
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1093,7 +1093,7 @@ subroutine OutputTecplotFEBrick(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1125,7 +1125,7 @@ subroutine OutputTecplotFEBrick(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -2045,7 +2045,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! temperature
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,TEMPERATURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2069,7 +2069,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2111,7 +2111,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid energy
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2143,7 +2143,7 @@ subroutine OutputTecplotPoint(realization)
       
         ! liquid mobility
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -3595,7 +3595,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
   end select
@@ -3616,7 +3616,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
@@ -3653,7 +3653,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3681,7 +3681,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid mobility
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3966,7 +3966,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE,MIS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3999,7 +3999,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4058,7 +4058,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4102,7 +4102,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid mobility
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4897,7 +4897,7 @@ subroutine OutputVTK(realization)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           word = 'Temperature'
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4924,7 +4924,7 @@ subroutine OutputVTK(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           word = 'Liquid_Saturation'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4953,7 +4953,7 @@ subroutine OutputVTK(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           word = 'Liquid_Energy'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -6061,7 +6061,7 @@ end subroutine SAMRWritePlotData
         case(THC_MODE)
            nviz_flow = 4+option%nflowspec
         case(MIS_MODE)
-           nviz_flow = 4+option%nflowspec
+           nviz_flow = 6+option%nflowspec
         case(G_MODE)
            nviz_flow = 7+2*option%nflowspec
         case default
@@ -6191,12 +6191,12 @@ end subroutine SAMRWritePlotData
 
   select case(option%iflowmode)
   
-    case(FLASH2_MODE, MPH_MODE,THC_MODE, MIS_MODE,IMS_MODE,&
+    case(FLASH2_MODE,MPH_MODE,THC_MODE,MIS_MODE,IMS_MODE, &
          RICHARDS_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           if (.not.(option%use_samr)) then
@@ -6228,7 +6228,7 @@ end subroutine SAMRWritePlotData
 
       ! liquid saturation
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
           if (.not.(option%use_samr)) then
@@ -6265,13 +6265,13 @@ end subroutine SAMRWritePlotData
           call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
           string = "Ice Saturation"
           if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
           endif
       end select
 #endif
@@ -6342,7 +6342,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid mobility
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           string = "Liquid Mobility"
           if (.not.(option%use_samr)) then
@@ -6362,29 +6362,29 @@ end subroutine SAMRWritePlotData
           call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
           string = "Gas Mobility"
           if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
           endif
       end select
       
       ! liquid energy
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
           endif
       end select
       
@@ -6394,13 +6394,13 @@ end subroutine SAMRWritePlotData
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           string = "Gas Energy"
           if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
           endif
       end select
     
@@ -6411,13 +6411,13 @@ end subroutine SAMRWritePlotData
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction-'',i1)') i
             if (.not.(option%use_samr)) then
-               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
-               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if (first) then
                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-               current_component=current_component+1
+              endif
+              current_component=current_component+1
             endif
           enddo
       end select
@@ -6426,16 +6426,16 @@ end subroutine SAMRWritePlotData
       select case(option%iflowmode)
         case (MPH_MODE,FLASH2_MODE,G_MODE)      
           do i=1,option%nflowspec
-             call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-             write(string,'(''Gas Mole Fraction-'',i1)') i
-             if (.not.(option%use_samr)) then
-                call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
+            write(string,'(''Gas Mole Fraction-'',i1)') i
+            if (.not.(option%use_samr)) then
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
-               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if (first) then
                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-               current_component=current_component+1
+              endif
+              current_component=current_component+1
             endif
           enddo
       end select
@@ -6457,7 +6457,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6494,7 +6494,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6510,7 +6510,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6544,7 +6544,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6575,7 +6575,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6590,7 +6590,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6605,7 +6605,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6620,7 +6620,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6635,7 +6635,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6653,7 +6653,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6668,7 +6668,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -6687,7 +6687,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6704,7 +6704,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6721,7 +6721,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6738,7 +6738,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6753,7 +6753,7 @@ end subroutine SAMRWritePlotData
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -6777,7 +6777,7 @@ end subroutine SAMRWritePlotData
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if (first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif

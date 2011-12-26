@@ -220,7 +220,7 @@ subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
 end subroutine MiscibleAuxVarCopy
 
 
-subroutine Water_glycal_density( y,p, dkg)
+subroutine Water_glycol_density( y,p, dkg)
   implicit none
   PetscReal y, p ! water mass fraction
   PetscReal dkg
@@ -229,10 +229,10 @@ subroutine Water_glycal_density( y,p, dkg)
   dkg = (4.49758D-10* y +(1D0-y)*5D-10)*(p-1.01325D5) + dkg
   dkg = dkg * 1D3  ! convert g/cm^3 to kg/m^3
  
-end subroutine Water_glycal_density       
+end subroutine Water_glycol_density       
 ! ************************************************************************** !
 !
-! MiscibleAuxVarCompute_NI: Computes auxilliary variables for each grid cell
+! MiscibleAuxVarCompute_NINC: Computes auxilliary variables for each grid cell
 !                        No increments 
 ! author: Chuan Lu
 ! date: 10/12/08
@@ -283,20 +283,22 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
  
   aux_var%pres = x(1)  
   aux_var%xmol(2:option%nflowspec) = x(2:option%nflowspec)
-  tmp=sum(aux_var%xmol)
+  tmp = sum(aux_var%xmol)
   aux_var%xmol(1) = 1D0 - tmp
 
   aux_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
   yh2o = aux_var%xmol(1)*FMWH2O/aux_var%avgmw(1)
-  call Water_glycal_density(yh2o, aux_var%pres, denw)
-  aux_var%den(1)=denw/aux_var%avgmw(1)
-  visw = 10D0**(1.6743d0*yh2o-0.0758) * 1.0D-3
-  aux_var%sat(1)=1D0
-  aux_var%kvr(1) = 1.d0/visw
-  aux_var%h(1)= denw * 4.18D-3*global_aux_var%temp(1)
-!  auc_var%fdiff(1) = ((((-4.021*y+9.1181)*y-5.9703)*y+0.4043D-3)*y + 0.5687)*1D-5
-  aux_var%diff(1:option%nflowspec) =  fluid_properties%diffusion_coefficient
   
+  call Water_glycol_density(yh2o, aux_var%pres, denw)
+  
+  aux_var%den(1) = denw/aux_var%avgmw(1)
+  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3
+  aux_var%sat(1) = 1.d0
+  aux_var%kvr(1) = 1.d0/visw
+  aux_var%h(1) = denw*4.18d-3*global_aux_var%temp(1)
+!  auc_var%fdiff(1) = ((((-4.021d0*y + 9.1181d0)*y - 5.9703d0)*y + 0.4043d-3)*y + 0.5687d0)*1d-5
+  aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
+  aux_var%vis(1) = visw
 
 end subroutine MiscibleAuxVarCompute_NINC
 

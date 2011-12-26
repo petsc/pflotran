@@ -779,29 +779,29 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
  ! update global variables
     if( associated(global_aux_vars))then
     
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres 
-!      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat(:)= 1D0
-!     global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%pres = aux_vars(ghosted_id)%aux_var_elem(0)%pres
+!      global_aux_vars(ghosted_id)%temp = aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:) = 1D0
+!     global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
+      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+                                          *aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+        
 !      mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
 !      if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
-!      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
-!      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
-!                              *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
-!                              /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
-!                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
-!                              +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
-!      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
-!                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
-!                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
+!      ynacl = mnacl/(1.d3/FMWH2O + mnacl)
+!      global_aux_vars(ghosted_id)%xmass(1) = (1.d0-ynacl) &
+!        *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWH2O &
+!        /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWH2O &
+!        +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2)*FMWCO2 &
+!        +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
+!      global_aux_vars(ghosted_id)%xmass(2) = aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3)*FMWH2O &
+!        /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3)*FMWH2O &
+!        +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4)*FMWCO2) 
 !      global_aux_vars(ghosted_id)%xmass(:) = 0.0
     else
       print *,'Not associated global for Miscible'
     endif
-
 
   enddo
 ! print *,'MiscibleUpdateAuxVarsPatch: end internal'
@@ -1032,13 +1032,11 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
   type(Miscible_auxvar_elem_type) :: aux_var
   type(option_type) :: option
   type(global_auxvar_type) :: global_aux_var
-  PetscReal Res(1:option%nflowdof) 
-  PetscReal vol,por,rock_dencpr
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: vol,por,rock_dencpr
      
   PetscInt :: ispec, np, iireac
   PetscReal :: porXvol, mol(option%nflowspec), eng
-  
- ! if (present(ireac)) iireac=ireac
 
   porXvol = por*vol
   mol=0.d0; eng=0.D0
@@ -1048,33 +1046,35 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
         aux_var%den(np) * &
         aux_var%xmol(ispec + (np-1)*option%nflowspec)
     enddo
-! if(option%use_isothermal == PETSC_FALSE) &
-!    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
+    
+!   if (option%use_isothermal == PETSC_FALSE) &
+!     eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
- ! if(option%use_isothermal == PETSC_FALSE) &
- ! eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
+  
+! if(option%use_isothermal == PETSC_FALSE) &
+! eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
 ! Note if iireac >0, then it is the node global index
- ! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
+! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
 !H2O
- !    mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
- !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
- ! endif
+!   mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
+!   mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
+! endif
   
-   !if(option%use_isothermal)then
-   !   Res(1:option%nflowdof)=mol(:)
-   !else
-      Res(1:option%nflowspec)=mol(:)
-  !    Res(option%nflowdof)=eng
-  ! endif
- ! print *, 'acc:', mol, aux_var%sat, aux_var%den,aux_var%xmol
+! if(option%use_isothermal)then
+!   Res(1:option%nflowdof)=mol(:)
+! else
+    Res(1:option%nflowspec)=mol(:)
+!   Res(option%nflowdof)=eng
+! endif
+! print *, 'acc:', mol, aux_var%sat, aux_var%den,aux_var%xmol
 end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
 !
-! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
+! MiscibleSourceSink: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Chuan Lu
 ! date: 10/12/08
@@ -4988,6 +4988,7 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   
   string = ''
 
+#if 0
   if (icolumn > -1) then
     icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-T [C]"'')') icolumn
@@ -4995,7 +4996,8 @@ function MiscibleGetTecplotHeader(realization, icolumn)
     write(string2,'('',"T [C]"'')')
   endif
   string = trim(string) // trim(string2)
-  
+#endif
+
   if (icolumn > -1) then
     icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
@@ -5005,6 +5007,7 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   string = trim(string) // trim(string2)
   
   
+#if 0
   if (icolumn > -1) then
     icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-S(l)"'')') icolumn
@@ -5012,7 +5015,7 @@ function MiscibleGetTecplotHeader(realization, icolumn)
     write(string2,'('',"S(l)"'')')
   endif
   string = trim(string) // trim(string2)
-
+#endif
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -5032,6 +5035,7 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   string = trim(string) // trim(string2)
 
     
+#if 0
   if (icolumn > -1) then
     icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-kvr(l)"'')') icolumn
@@ -5048,6 +5052,7 @@ function MiscibleGetTecplotHeader(realization, icolumn)
     write(string2,'('',"u(l)"'')')
   endif
   string = trim(string) // trim(string2)
+#endif
 
   do i=1,option%nflowspec
     if (icolumn > -1) then

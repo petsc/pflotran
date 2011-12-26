@@ -1491,6 +1491,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
   use Field_module
   
   use Immis_Aux_module
+  use Miscible_Aux_module
   use Mphase_Aux_module
   use THC_Aux_module
   use Richards_Aux_module
@@ -1775,7 +1776,35 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
               vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
             enddo
         end select
+        
+      else if (associated(patch%aux%Miscible)) then
+        
+        select case(ivar)
+        
+!         case(TEMPERATURE)
+!           do local_id=1,grid%nlmax
+!             vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
+!           enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
+            enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Miscible%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%vis(1)
+            enddo
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Miscible%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar)
+            enddo
+        end select
+        
       else if (associated(patch%aux%immis)) then
+      
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
@@ -2116,6 +2145,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Mphase_Aux_module
   use THC_Aux_module
   use Richards_Aux_module
+  use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
   use Reaction_module
 
@@ -2315,6 +2345,25 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%vis(2)
           case(GAS_MOBILITY)
             value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%kvr(2)
+        end select
+      else if (associated(patch%aux%Miscible)) then
+        select case(ivar)
+!         case(TEMPERATURE)
+!           value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
+          case(PRESSURE)
+            value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
+!         case(LIQUID_SATURATION)
+!           value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
+          case(LIQUID_DENSITY)
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
+!         case(LIQUID_ENERGY)
+!           value = patch%aux%Miscible%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
+          case(LIQUID_VISCOSITY)
+            value = patch%aux%Miscible%aux_vars(ghosted_id)%aux_var_elem(0)%vis(1)
+!         case(LIQUID_MOBILITY)
+!           value = patch%aux%Miscible%aux_vars(ghosted_id)%aux_var_elem(0)%kvr(1)
+          case(LIQUID_MOLE_FRACTION)
+            value = patch%aux%Miscible%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
         end select
       else if (associated(patch%aux%General)) then
         select case(ivar)
