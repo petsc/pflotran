@@ -3466,6 +3466,15 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
           call OutputAppendToHeader(header,string,'',cell_string,icolumn)
         enddo
       endif
+    case(MIS_MODE)
+      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'dl [kg/m^3]','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'visl [Pa s]','',cell_string,icolumn)
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xl(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+      enddo
     case default
       header = ''
   end select
