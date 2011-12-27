@@ -8129,9 +8129,9 @@ subroutine OutputMassBalanceNew(realization)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
                                     '[kmol]','',icol)
         case(MIS_MODE)
-          call OutputAppendToHeader(header,'Global Water Mass in liquid Phase', &
+          call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     '[kmol]','',icol)
-          call OutputAppendToHeader(header,'Global glc Mass in liquid Phase', &
+          call OutputAppendToHeader(header,'Global Glycol Mass in Liquid Phase', &
                                     '[kmol]','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
@@ -8182,7 +8182,7 @@ subroutine OutputMassBalanceNew(realization)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'[kg]','',icol)
             units = '[kg/' // trim(output_option%tunit) // ']'
-            string = trim(coupler%name) // ' gluc Mass'
+            string = trim(coupler%name) // ' Glycol Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(G_MODE)
             string = trim(coupler%name) // ' Water Mass'

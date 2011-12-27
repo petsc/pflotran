@@ -167,6 +167,7 @@ subroutine MiscibleSetupPatch(realization)
       realization%saturation_function_array(ipara)%ptr%Sr(:)
   enddo
   print *,' Miscible setup get patch: sir'
+  
 ! dencpr  
   allocate(patch%aux%Miscible%Miscible_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
@@ -174,6 +175,7 @@ subroutine MiscibleSetupPatch(realization)
       realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
       realization%material_property_array(ipara)%ptr%specific_heat
   enddo
+  
 ! ckwet
   allocate(patch%aux%Miscible%Miscible_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
@@ -197,6 +199,7 @@ subroutine MiscibleSetupPatch(realization)
 !  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
 !           internal_connection_set_list),option%nflowdof))
   print *,' Miscible setup allocate app array'
+  
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -208,7 +211,7 @@ subroutine MiscibleSetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
   allocate(aux_vars_bc(sum_connection))
-  print *,' Miscible setup get AuxBc alloc', sum_connection
+  print *,' Miscible setup get AuxBc alloc', sum_connection,grid%nlmax,option%nflowdof
   do iconn = 1, sum_connection
     call MiscibleAuxVarInit(aux_vars_bc(iconn),option)
   enddo
@@ -232,7 +235,7 @@ end subroutine MiscibleSetupPatch
 
 ! ************************************************************************** !
 !
-! MiscibleomputeMassBalance: 
+! MiscibleComputeMassBalance: 
 !                        
 ! author: Jitendra Kumar 
 ! date: 07/21/2010
@@ -269,7 +272,7 @@ end subroutine MiscibleComputeMassBalance
 
 ! ************************************************************************** !
 !
-! MiscibleomputeMassBalancePatch: 
+! MiscibleComputeMassBalancePatch: 
 !                        
 ! author: Jitendra Kumar 
 ! date: 07/21/2010
@@ -1541,12 +1544,12 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
     select case(ibndtype(1))
-        ! figure out the direction of flow
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
         Dq = perm_dn / dd_up
         ! Flow term
         ukvr=0.D0
-        v_darcy=0.D0 
+        v_darcy=0.D0
+        
         if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
           upweight=1.D0
           if (aux_var_up%sat(np) < eps) then 
@@ -1554,6 +1557,7 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           else if (aux_var_dn%sat(np) < eps) then 
             upweight=1.d0
           endif
+          
           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
 !         print *,'flbc den:', upweight, aux_var_up%den(np), aux_var_dn%den(np)
           gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
@@ -1564,6 +1568,7 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                 - aux_var_up%pc(np) + aux_var_dn%pc(np) &
                 + gravity
    
+        ! figure out the direction of flow
           if (dphi >= 0.D0) then
             ukvr = aux_var_up%kvr(np)
           else
@@ -1589,23 +1594,20 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      
     q = v_darcy * area
     vv_darcy(np) = v_darcy
-    uh=0.D0
-    uxmol=0.D0
+    uh = 0.D0
+    uxmol = 0.D0
      
     if (v_darcy >= 0.D0) then
-!     if (option%use_isothermal == PETSC_FALSE) &
-!       uh = aux_var_up%h(np)
+!     if (option%use_isothermal == PETSC_FALSE) uh = aux_var_up%h(np)
       uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     else
-!     if (option%use_isothermal == PETSC_FALSE) &
-!       uh = aux_var_dn%h(np)
+!     if (option%use_isothermal == PETSC_FALSE) uh = aux_var_dn%h(np)
       uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     endif
     do ispec=1, option%nflowspec
       fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
     end do 
-!   if (option%use_isothermal == PETSC_FALSE) &
-!     fluxe = fluxe + q*density_ave*uh
+!   if (option%use_isothermal == PETSC_FALSE) fluxe = fluxe + q*density_ave*uh
       print *,'FLBC: ', ibndtype(1),np, ukvr, v_darcy, uxmol, density_ave
       print *,'miscible-flx: ',aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec), &
       aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
