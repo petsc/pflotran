@@ -1047,40 +1047,45 @@ subroutine FlowConditionRead(condition,input,option)
     case(G_MODE)
       option%io_buffer = 'General mode not supported in original FlowConditionRead.'
       call printMsg(option)
-    case(THC_MODE, MPH_MODE, IMS_MODE, FLASH2_MODE,MIS_MODE)
+    case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)&
            .and. .not.associated(well)) then
         option%io_buffer = 'pressure and rate condition null in ' // &
                            'condition: ' // trim(condition%name)
         call printErrMsg(option)
-      endif                         
+      endif
+      
       if (associated(pressure)) then
         condition%pressure => pressure
-      endif                         
+      endif
       if (associated(rate)) then
         condition%rate => rate
       endif
       if (associated(well)) then
         condition%well => well
-      endif                                        
+      endif
+      
       if (.not.associated(temperature)) then
         option%io_buffer = 'temperature condition null in condition: ' // &
                             trim(condition%name)      
         call printErrMsg(option)
       endif                         
       condition%temperature => temperature
+      
       if (.not.associated(concentration)) then
         option%io_buffer = 'concentration condition null in condition: ' // &
                             trim(condition%name)      
         call printErrMsg(option)
       endif                         
       condition%concentration => concentration
+      
       if (.not.associated(enthalpy)) then
         option%io_buffer = 'enthalpy condition null in condition: ' // &
                             trim(condition%name)      
         call printErrMsg(option)
       endif                         
       condition%enthalpy => enthalpy
+      
       condition%num_sub_conditions = 4
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
       do idof = 1, 4
@@ -1103,6 +1108,47 @@ subroutine FlowConditionRead(condition,input,option)
       condition%itype(TWO_INTEGER) = temperature%itype
       condition%itype(THREE_INTEGER) = concentration%itype
       if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
+      
+    case(MIS_MODE)
+      if (.not.associated(pressure) .and. .not.associated(rate)&
+           .and. .not.associated(well)) then
+        option%io_buffer = 'pressure and rate condition null in ' // &
+                           'condition: ' // trim(condition%name)
+        call printErrMsg(option)
+      endif
+      
+      if (associated(pressure)) then
+        condition%pressure => pressure
+      endif
+      if (associated(rate)) then
+        condition%rate => rate
+      endif
+      if (associated(well)) then
+        condition%well => well
+      endif
+      
+      if (.not.associated(concentration)) then
+        option%io_buffer = 'concentration condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%concentration => concentration
+      
+      condition%num_sub_conditions = 2
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      do idof = 1, 2
+        nullify(condition%sub_condition_ptr(idof)%ptr)
+      enddo
+
+      ! must be in this order, which matches the dofs i problem
+      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      if (associated(well)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => concentration
+      
+      ! these are not used with immicible
+      if (associated(temperature)) call FlowSubConditionDestroy(temperature)
+      if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
     
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate) .and. &
@@ -1110,16 +1156,18 @@ subroutine FlowConditionRead(condition,input,option)
         option%io_buffer = 'pressure, rate and saturation condition null in ' // &
                            'condition: ' // trim(condition%name)
         call printErrMsg(option)      
-      endif                         
+      endif
+      
       if (associated(concentration)) then
         condition%concentration => concentration
-      endif                         
+      endif
       if (associated(pressure)) then
         condition%pressure => pressure
-      endif                         
+      endif
       if (associated(rate)) then
         condition%rate => rate
-      endif                         
+      endif
+      
       condition%num_sub_conditions = 1
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
       if (associated(pressure)) then
@@ -2126,7 +2174,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
     flow_dataset%dataset => DatasetCreate()
     flow_dataset%dataset%name = word
   else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then  !sp 
-    if (flow_dataset%time_series%rank<=3) then
+    if (flow_dataset%time_series%rank <= 3) then
       call FlowConditionReadValuesFromFile(input,flow_dataset,option)
     else
       call FlowConditionReadValuesFromFile2(input,flow_dataset,option)

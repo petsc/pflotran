@@ -776,7 +776,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
                        global_aux_vars(ghosted_id), &
                        realization%fluid_properties,option)
                       
- ! update global variables
+!   update global variables
     if( associated(global_aux_vars))then
     
       global_aux_vars(ghosted_id)%pres = aux_vars(ghosted_id)%aux_var_elem(0)%pres
@@ -817,24 +817,25 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-    do idof=1,option%nflowdof
-      select case(boundary_condition%flow_condition%itype(idof))
-      case(DIRICHLET_BC)
-         xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
-      case(HYDROSTATIC_BC)
-         xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          xxbc(2:option%nflowdof) = &
-               xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
-      case(NEUMANN_BC,ZERO_GRADIENT_BC)
-         xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
-      end select
+      do idof=1,option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+            print *,'miscible-xxbc: ',iconn,idof,option%nflowdof,xxbc(idof)
+          case(HYDROSTATIC_BC)
+            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+            xxbc(2:option%nflowdof) = &
+              xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+        end select
       enddo
  
-     call MiscibleAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+      call MiscibleAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          global_aux_vars_bc(sum_connection), &
                          realization%fluid_properties, option)
 
-     if( associated(global_aux_vars_bc))then
+      if (associated(global_aux_vars_bc)) then
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
         global_aux_vars_bc(sum_connection)%sat(:)=1.D0
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
@@ -1276,67 +1277,67 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-        upweight= dd_dn/(dd_up+dd_dn)
-        if (aux_var_up%sat(np) <eps) then 
-           upweight=0.d0
-        else if (aux_var_dn%sat(np) <eps) then 
+    if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+      upweight= dd_dn/(dd_up+dd_dn)
+      if (aux_var_up%sat(np) <eps) then 
+        upweight=0.d0
+      else if (aux_var_dn%sat(np) <eps) then 
            upweight=1.d0
-        endif
-        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+      endif
+      density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
         
-        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+      gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
              (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = aux_var_up%pres - aux_var_dn%pres &
+      dphi = aux_var_up%pres - aux_var_dn%pres &
              - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
-        v_darcy = 0.D0
-        ukvr=0.D0
-        uh=0.D0
-        uxmol=0.D0
+      v_darcy = 0.D0
+      ukvr=0.D0
+      uh=0.D0
+      uxmol=0.D0
 
-        ! note uxmol only contains one phase xmol
-        if (dphi >= 0.D0) then
-           ukvr = aux_var_up%kvr(np)
-           uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-!           uh = aux_var_up%h(np)
-        else
-           ukvr = aux_var_dn%kvr(np)
-           uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-!           uh = aux_var_dn%h(np)
-        endif
+      ! note uxmol only contains one phase xmol
+      if (dphi >= 0.D0) then
+        ukvr = aux_var_up%kvr(np)
+        uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+!       if (option%use_isothermal == PETSC_FALSE) &
+!         uh = aux_var_up%h(np)
+      else
+        ukvr = aux_var_dn%kvr(np)
+        uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+!       if (option%use_isothermal == PETSC_FALSE) &
+!         uh = aux_var_dn%h(np)
+      endif
    
 
-        if (ukvr>floweps) then
-           v_darcy= Dq * ukvr * dphi
-           vv_darcy(np) = v_darcy
-           q = v_darcy * area
-           do ispec = 1, option%nflowspec
-             fluxm(ispec) = fluxm(ispec) + q * density_ave * uxmol(ispec)
-           enddo  
-          ! if(option%use_isothermal == PETSC_FALSE) &
-!            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif
+      if (ukvr > floweps) then
+        v_darcy= Dq * ukvr * dphi
+        vv_darcy(np) = v_darcy
+        q = v_darcy * area
+        do ispec = 1, option%nflowspec
+          fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+        enddo  
+!       if (option%use_isothermal == PETSC_FALSE) &
+!         fluxe = fluxe + q*density_ave*uh 
+      endif
+    endif
 
 #if 1 
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+    if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
+      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
-        do ispec=1, option%nflowspec
-           ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+      do ispec=1, option%nflowspec
+        ind = ispec + (np-1)*option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
                 (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
                 (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
-        enddo
-     endif
+      enddo
+    endif
 #endif
   enddo
 
@@ -1539,101 +1540,101 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
-     select case(ibndtype(1))
+    select case(ibndtype(1))
         ! figure out the direction of flow
-     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
         Dq = perm_dn / dd_up
         ! Flow term
         ukvr=0.D0
         v_darcy=0.D0 
         if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-           upweight=1.D0
-           if (aux_var_up%sat(np) < eps) then 
-              upweight=0.d0
-           else if (aux_var_dn%sat(np) < eps) then 
-              upweight=1.d0
-           endif
-           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
-!           print *,'flbc den:', upweight, aux_var_up%den(np), aux_var_dn%den(np)
-           gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+          upweight=1.D0
+          if (aux_var_up%sat(np) < eps) then 
+            upweight=0.d0
+          else if (aux_var_dn%sat(np) < eps) then 
+            upweight=1.d0
+          endif
+          density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
+!         print *,'flbc den:', upweight, aux_var_up%den(np), aux_var_dn%den(np)
+          gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
                 (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
                 * dist_gravity
        
-           dphi = aux_var_up%pres - aux_var_dn%pres &
+          dphi = aux_var_up%pres - aux_var_dn%pres &
                 - aux_var_up%pc(np) + aux_var_dn%pc(np) &
                 + gravity
    
-           if (dphi>=0.D0) then
-              ukvr = aux_var_up%kvr(np)
-           else
-              ukvr = aux_var_dn%kvr(np)
-           endif
+          if (dphi >= 0.D0) then
+            ukvr = aux_var_up%kvr(np)
+          else
+            ukvr = aux_var_dn%kvr(np)
+          endif
      
-           if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-           endif
+          if (ukvr*Dq > floweps) then
+            v_darcy = Dq * ukvr * dphi
+          endif
         endif
 
      case(NEUMANN_BC) !may not work
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MIS_PRESSURE_DOF)
-           if (v_darcy > 0.d0) then 
-              density_ave = aux_var_up%den(np)
-           else 
-              density_ave = aux_var_dn%den(np)
-           endif
+          v_darcy = aux_vars(MIS_PRESSURE_DOF)
+          if (v_darcy > 0.d0) then 
+            density_ave = aux_var_up%den(np)
+          else 
+            density_ave = aux_var_dn%den(np)
+          endif
         endif
-
-     end select
+    end select
      
-     q = v_darcy * area
-     vv_darcy(np) = v_darcy
-     uh=0.D0
-     uxmol=0.D0
+    q = v_darcy * area
+    vv_darcy(np) = v_darcy
+    uh=0.D0
+    uxmol=0.D0
      
-     if (v_darcy >= 0.D0) then
-        !if(option%use_isothermal == PETSC_FALSE)&
-         uh = aux_var_up%h(np)
-         uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     else
-         !if(option%use_isothermal == PETSC_FALSE)&
-        uh = aux_var_dn%h(np)
-        uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-     endif
-     do ispec=1, option%nflowspec
-       fluxm(ispec) = fluxm(ispec) + q*density_ave * uxmol(ispec)
-     end do 
-      !if(option%use_isothermal == PETSC_FALSE) &
-!      fluxe = fluxe + q*density_ave*uh
-!     print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol, density_ave
-   enddo
+    if (v_darcy >= 0.D0) then
+!     if (option%use_isothermal == PETSC_FALSE) &
+!       uh = aux_var_up%h(np)
+      uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+    else
+!     if (option%use_isothermal == PETSC_FALSE) &
+!       uh = aux_var_dn%h(np)
+      uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+    endif
+    do ispec=1, option%nflowspec
+      fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+    end do 
+!   if (option%use_isothermal == PETSC_FALSE) &
+!     fluxe = fluxe + q*density_ave*uh
+      print *,'FLBC: ', ibndtype(1),np, ukvr, v_darcy, uxmol, density_ave
+      print *,'miscible-flx: ',aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec), &
+      aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+  enddo
 
 #if 1 
     ! Diffusion term   
   select case(ibndtype(3))
-  case(DIRICHLET_BC) 
+    case(DIRICHLET_BC) 
      !if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !  diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
      !  (aux_var_up%den+aux_var_dn%den)
-        do np = 1, option%nphase
-          if(aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps) then
-            diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
+      do np = 1, option%nphase
+        if (aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps) then
+          diff = diffdp * 0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
               (aux_var_up%den(np)+aux_var_up%den(np))
-            do ispec = 1, option%nflowspec
-              fluxm(ispec) = fluxm(ispec) + diff * &
+          do ispec = 1, option%nflowspec
+            fluxm(ispec) = fluxm(ispec) + diff * &
                    aux_var_dn%diff((np-1)* option%nflowspec+ispec)* &
                    (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
                    -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
-            enddo
-          endif         
-        enddo
-     
+          enddo
+        endif         
+      enddo
   end select
 #endif
 
-  Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
-! Res(option%nflowdof)=fluxe * option%flow_dt
+  Res(1:option%nflowspec)=fluxm(:)*option%flow_dt
+! Res(option%nflowdof)=fluxe*option%flow_dt
 
 end subroutine MiscibleBCFlux
 ! ************************************************************************** !
@@ -2102,71 +2103,70 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-     if(grid%nG2L(ng)<0)cycle
-     if (associated(patch%imat)) then
-        if (patch%imat(ng) <= 0) cycle
-     endif
-     ghosted_id = ng   
-     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    if(grid%nG2L(ng)<0)cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ng) <= 0) cycle
+    endif
+    ghosted_id = ng   
+    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+    call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%fluid_properties,option)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
-     if( associated(global_aux_vars))then
-       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+    if (associated(global_aux_vars)) then
+      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-!      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=1D0
-!      global_aux_vars(ghosted_id)%sat_store =
-       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+!     global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:) = 1D0
+!     global_aux_vars(ghosted_id)%sat_store =
+      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-!       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
-!      global_aux_vars(ghosted_id)%pres(:)
-     else
-       print *,'Not associated global for Miscible'
-     endif
+!     global_aux_vars(ghosted_id)%reaction_rate(:) = 0D0
+!     global_aux_vars(ghosted_id)%pres(:)
+    else
+      print *,'Not associated global for Miscible'
+    endif
 #endif
 
-     if (option%numerical_derivatives) then
-        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+    if (option%numerical_derivatives) then
+      delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac*1.D-3
  
-        do idof = 2, option%nflowdof
-          if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
-             delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-           else
-              delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-           endif
-           if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
-           if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
+      do idof = 2, option%nflowdof
+        if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
+            delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+        else
+          delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+        endif
+        if (delx(idof) < 1D-8 .and. delx(idof)>=0.D0) delx(idof) = 1D-8
+        if (delx(idof) >-1D-8 .and. delx(idof)<0.D0) delx(idof) =-1D-8
 
-             
-           if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
-              delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
-           endif
-           if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
-              delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
-           endif
-         end do
+        if ((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
+          delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
+        endif
+        if ((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
+          delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
+        endif
+      end do
 
-         patch%aux%Miscible%delx(:,ng)=delx(:)
-         call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+      patch%aux%Miscible%delx(:,ng)=delx(:)
+      call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%fluid_properties,option)
-!         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
-!            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
+!      if (aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!           aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
          
-!         endif   
-      endif
-   enddo
+!      endif   
+    endif
+  enddo
 #endif
 
-   Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
-   patch%aux%Miscible%Resold_AR=0.D0
-   patch%aux%Miscible%Resold_BC=0.D0
-   patch%aux%Miscible%ResOld_FL=0.D0
+  Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
+  patch%aux%Miscible%Resold_AR=0.D0
+  patch%aux%Miscible%Resold_BC=0.D0
+  patch%aux%Miscible%ResOld_FL=0.D0
    
 #if 1
   ! Accumulation terms ------------------------------------
@@ -2204,10 +2204,10 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
    ! else
    !   enthalpy_flag = PETSC_FALSE
    ! endif
-   if (associated(source_sink%flow_condition%pressure)) then   
-    psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
-   endif 
-!    qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+    if (associated(source_sink%flow_condition%pressure)) then   
+      psrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
+    endif 
+!   qsrc1 = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%flow_dataset%time_series%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%flow_dataset%time_series%cur_value(1)
@@ -2229,7 +2229,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
         stop  
     end select
 
-     cur_connection_set => source_sink%connection_set
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -2297,42 +2297,43 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
 
-      icap_dn = int(icap_loc_p(ghosted_id))  
-! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
-          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+      icap_dn = int(icap_loc_p(ghosted_id))
+      
+!     Then need fill up increments for BCs
+      do idof = 1, option%nflowdof   
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          case(HYDROSTATIC_BC)
+            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+            if (idof >= 2) then
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            endif 
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
-          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-!          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+!           iphase = int(iphase_loc_p(ghosted_id))
+        end select
+      enddo
 
  
-    call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+      call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
            realization%fluid_properties, option)
 #if 1
-    if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
-!      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)= 1.0
+      if (associated(global_aux_vars_bc)) then
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres
+!       global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:)= 1.0
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !   global_aux_vars(ghosted_id)%den_kg_store
-    endif
+  !     global_aux_vars(ghosted_id)%den_kg_store
+      endif
 #endif
 
-    call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
+      call MiscibleBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
@@ -2343,15 +2344,15 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
-    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    patch%aux%Miscible%Resold_AR(local_id,1:option%nflowdof) = &
-      patch%aux%Miscible%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      patch%aux%Miscible%Resold_AR(local_id,1:option%nflowdof) = &
+        patch%aux%Miscible%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    enddo
+    boundary_condition => boundary_condition%next
   enddo
-  boundary_condition => boundary_condition%next
- enddo
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
