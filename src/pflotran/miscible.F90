@@ -822,13 +822,13 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
       endif
       do idof=1,option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
             print *,'miscible-xxbc: ',iconn,idof,option%nflowdof,xxbc(idof)
-          case(HYDROSTATIC_BC)
-            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-            xxbc(2:option%nflowdof) = &
-              xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+!         case(HYDROSTATIC_BC)
+!           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+!           xxbc(2:option%nflowdof) = &
+!             xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
         end select

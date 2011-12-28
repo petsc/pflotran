@@ -1128,6 +1128,14 @@ subroutine FlowConditionRead(condition,input,option)
         condition%well => well
       endif
       
+      if (.not.associated(concentration)) then
+        option%io_buffer = 'concentration condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%concentration => concentration
+
+#if 0
       if (.not.associated(temperature)) then
         option%io_buffer = 'temperature condition null in condition: ' // &
                             trim(condition%name)      
@@ -1135,23 +1143,17 @@ subroutine FlowConditionRead(condition,input,option)
       endif                         
       condition%temperature => temperature
       
-      if (.not.associated(concentration)) then
-        option%io_buffer = 'concentration condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%concentration => concentration
-      
       if (.not.associated(enthalpy)) then
         option%io_buffer = 'enthalpy condition null in condition: ' // &
                             trim(condition%name)      
         call printErrMsg(option)
       endif                         
       condition%enthalpy => enthalpy
-      
-      condition%num_sub_conditions = 4
+#endif
+
+      condition%num_sub_conditions = 2
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      do idof = 1, 4
+      do idof = 1, 2
         nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
 
@@ -1159,10 +1161,11 @@ subroutine FlowConditionRead(condition,input,option)
       if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
       if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
       if (associated(well)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
-      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-        
+!     condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => concentration
+!     if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+
+#if 0
       allocate(condition%itype(FIVE_INTEGER))
       condition%itype = 0
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
@@ -1171,6 +1174,7 @@ subroutine FlowConditionRead(condition,input,option)
       condition%itype(TWO_INTEGER) = temperature%itype
       condition%itype(THREE_INTEGER) = concentration%itype
       if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
+#endif
 !#endif
     
     case(RICHARDS_MODE)
