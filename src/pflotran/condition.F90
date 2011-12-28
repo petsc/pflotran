@@ -1165,16 +1165,12 @@ subroutine FlowConditionRead(condition,input,option)
       condition%sub_condition_ptr(TWO_INTEGER)%ptr => concentration
 !     if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
 
-#if 0
-      allocate(condition%itype(FIVE_INTEGER))
+      allocate(condition%itype(TWO_INTEGER))
       condition%itype = 0
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
       if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
       if (associated(well)) condition%itype(ONE_INTEGER) = well%itype
-      condition%itype(TWO_INTEGER) = temperature%itype
-      condition%itype(THREE_INTEGER) = concentration%itype
-      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
-#endif
+      condition%itype(TWO_INTEGER) = concentration%itype
 !#endif
     
     case(RICHARDS_MODE)

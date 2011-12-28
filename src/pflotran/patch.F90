@@ -1787,7 +1787,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
 !           enddo
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2)
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
