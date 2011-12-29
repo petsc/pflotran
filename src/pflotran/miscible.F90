@@ -1615,7 +1615,7 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
 #if 1 
     ! Diffusion term   
-  select case(ibndtype(3))
+  select case(ibndtype(2))
     case(DIRICHLET_BC) 
      !if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !  diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
@@ -1792,7 +1792,7 @@ subroutine MiscibleBCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
 ! Diffusion term   
   diffdp = por_dn*tor_dn/dd_up*area
-  select case(ibndtype(3))
+  select case(ibndtype(2))
   case(DIRICHLET_BC) 
      !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
      !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
