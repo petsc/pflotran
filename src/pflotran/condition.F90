@@ -1165,7 +1165,8 @@ subroutine FlowConditionRead(condition,input,option)
       condition%sub_condition_ptr(TWO_INTEGER)%ptr => concentration
 !     if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
 
-      allocate(condition%itype(TWO_INTEGER))
+!     allocate(condition%itype(TWO_INTEGER))
+      allocate(condition%itype(THREE_INTEGER))
       condition%itype = 0
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
       if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype

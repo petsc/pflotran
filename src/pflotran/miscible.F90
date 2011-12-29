@@ -824,7 +824,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-            print *,'miscible-xxbc: ',iconn,idof,option%nflowdof,xxbc(idof)
+!           print *,'miscible-xxbc: ',iconn,idof,option%nflowdof,xxbc(idof)
 !         case(HYDROSTATIC_BC)
 !           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
 !           xxbc(2:option%nflowdof) = &
@@ -1608,9 +1608,9 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
     end do 
 !   if (option%use_isothermal == PETSC_FALSE) fluxe = fluxe + q*density_ave*uh
-      print *,'FLBC: ', ibndtype(1),np, ukvr, v_darcy, uxmol, density_ave
-      print *,'miscible-flx: ',aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec), &
-      aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+!     print *,'FLBC: ', ibndtype(1),np, ukvr, v_darcy, uxmol, density_ave
+!     print *,'miscible-flx: ',aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec), &
+!     aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
   enddo
 
 #if 1 
