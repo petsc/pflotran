@@ -220,14 +220,14 @@ subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
 end subroutine MiscibleAuxVarCopy
 
 
-subroutine Water_glycol_density( y,p, dkg)
+subroutine Water_glycol_density(y,p,dkg)
   implicit none
   PetscReal y, p ! water mass fraction
   PetscReal dkg
 
-  dkg = ((0.0806*y-0.203)*y + 0.0873)*y + 1.0341D0
-  dkg = (4.49758D-10* y +(1D0-y)*5D-10)*(p-1.01325D5) + dkg
-  dkg = dkg * 1D3  ! convert g/cm^3 to kg/m^3
+  dkg = ((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0
+  dkg = (4.49758d-10* y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
+  dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
  
 end subroutine Water_glycol_density       
 ! ************************************************************************** !
@@ -284,7 +284,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   aux_var%pres = x(1)  
   aux_var%xmol(2:option%nflowspec) = x(2:option%nflowspec)
   tmp = sum(aux_var%xmol)
-  aux_var%xmol(1) = 1D0 - tmp
+  aux_var%xmol(1) = 1.D0 - tmp
 
   aux_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
   yh2o = aux_var%xmol(1)*FMWH2O/aux_var%avgmw(1)
@@ -296,7 +296,8 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   aux_var%sat(1) = 1.d0
   aux_var%kvr(1) = 1.d0/visw
   aux_var%h(1) = denw*4.18d-3*global_aux_var%temp(1)
-!  auc_var%fdiff(1) = ((((-4.021d0*y + 9.1181d0)*y - 5.9703d0)*y + 0.4043d-3)*y + 0.5687d0)*1d-5
+!  auc_var%fdiff(1) = ((((-4.021d0*y + 9.1181d0)*y - 5.9703d0)*y &
+!    + 0.4043d0)*y + 0.5687d0)*1.d-5
   aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   aux_var%vis(1) = visw
 

@@ -17,7 +17,7 @@ PetscReal, parameter :: FMWNACL = 58.44277d0
 PetscReal, parameter :: FMWH2O = 18.01534d0  ! kg/kmol h2o
 PetscReal, parameter :: FMWCO2 = 44.0098d0
 PetscReal, parameter :: FMWAIR = 28.96d0
-PetscReal, parameter :: FMWGLYC = 62.07 !92D0
+PetscReal, parameter :: FMWGLYC = 62.07d0 !92D0
 
 ! conversion factors
 PetscReal, parameter :: LOG_TO_LN = 2.30258509299d0

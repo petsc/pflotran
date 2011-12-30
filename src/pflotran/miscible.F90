@@ -322,16 +322,21 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     ! mass = saturation * density * mole fraction * volume
-#if 0
+!#if 0
     do ispec = 1,option%nflowspec
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
         miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec)* &
-        global_aux_vars(ghosted_id)%den_kg* &
+        global_aux_vars(ghosted_id)%den_kg(1)* &
 !       global_aux_vars(ghosted_id)%sat* &
         porosity_loc_p(ghosted_id)*volume_p(local_id)
+!       print *,'mass_bal: ',ispec,local_id,miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec), &
+!         global_aux_vars(ghosted_id)%den_kg(1),global_aux_vars(ghosted_id)%den(1), &
+!         porosity_loc_p(ghosted_id),volume_p(local_id)
     enddo
-#endif
+!#endif
   enddo
+  
+! print *,'mass-spec: ',mass_balance(:,1)
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -420,7 +425,7 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
   do iconn = 1, patch%aux%Miscible%num_aux
     patch%aux%Global%aux_vars(iconn)%mass_balance = &
       patch%aux%Global%aux_vars(iconn)%mass_balance + &
-      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O* &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta* &
       option%flow_dt
   enddo
 #endif
@@ -1057,7 +1062,7 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,ZERO_INTEGER, accum_p(istart:iend)) 
+                              option,accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -1080,7 +1085,7 @@ end subroutine MiscibleUpdateFixedAccumPatch
 ! date: 10/12/08
 !
 ! ************************************************************************** !  
-subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
+subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
 
   use Option_module
   
@@ -1092,7 +1097,7 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: vol,por,rock_dencpr
      
-  PetscInt :: ispec, np, iireac
+  PetscInt :: ispec, np
   PetscReal :: porXvol, mol(option%nflowspec), eng
 
   porXvol = por*vol
@@ -2244,7 +2249,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                            option,ONE_INTEGER,Res) 
+                            option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     print *,'REs, acm: ', res
     patch%aux%Miscible%Resold_AR(local_id, :)= Res(1:option%nflowdof)
@@ -2413,6 +2418,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif
+
 #if 1
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -3333,7 +3339,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                            option,ONE_INTEGER,Res) 
+                            option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
     patch%aux%Miscible%Resold_AR(local_id, :)= &
@@ -3739,7 +3745,7 @@ subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-             option,ONE_INTEGER, res) 
+             option,res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      
@@ -4687,7 +4693,7 @@ end interface
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-             option,ONE_INTEGER, res) 
+             option,res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      
