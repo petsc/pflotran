@@ -241,14 +241,14 @@ end subroutine MiscibleSetupPatch
 ! date: 07/21/2010
 ! Adapted from RichardsComputeMassBalance: need to be checked
 ! ************************************************************************** !
-subroutine MiscibleComputeMassBalance(realization, mass_balance)
+subroutine MiscibleComputeMassBalance(realization,mass_balance)
 
   use Realization_module
   use Level_module
   use Patch_module
 
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec,1)
    
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -262,7 +262,7 @@ subroutine MiscibleComputeMassBalance(realization, mass_balance)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call MiscibleComputeMassBalancePatch(realization, mass_balance)
+      call MiscibleComputeMassBalancePatch(realization,mass_balance)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -289,18 +289,20 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   implicit none
   
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec,1)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
+  type(miscible_auxvar_type), pointer :: miscible_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscInt :: ispec
 
   option => realization%option
   patch => realization%patch
@@ -308,6 +310,7 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   field => realization%field
 
   global_aux_vars => patch%aux%Global%aux_vars
+  miscible_aux_vars => patch%aux%Miscible%aux_vars
 
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -318,11 +321,16 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    ! mass = volume*saturation*density
-    mass_balance = mass_balance + &
-      global_aux_vars(ghosted_id)%den_kg* &
-      global_aux_vars(ghosted_id)%sat* &
-      porosity_loc_p(ghosted_id)*volume_p(local_id)
+    ! mass = saturation * density * mole fraction * volume
+#if 0
+    do ispec = 1,option%nflowspec
+      mass_balance(ispec,1) = mass_balance(ispec,1) + &
+        miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec)* &
+        global_aux_vars(ghosted_id)%den_kg* &
+!       global_aux_vars(ghosted_id)%sat* &
+        porosity_loc_p(ghosted_id)*volume_p(local_id)
+    enddo
+#endif
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
@@ -421,7 +429,7 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
     do iconn = 1, patch%aux%Miscible%num_aux_bc
       global_aux_vars_bc(iconn)%mass_balance = &
         global_aux_vars_bc(iconn)%mass_balance + &
-        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
     enddo
   endif
 
@@ -429,12 +437,12 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
 end subroutine MiscibleUpdateMassBalancePatch
 
 ! ************************************************************************** !
-! Miscibleinitguesscheckpatch: 
+! MiscibleInitGuessCheckPatch: 
 ! author: Chuan Lu
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-  function  MiscibleInitGuessCheck(realization)
+  function MiscibleInitGuessCheck(realization)
  
   use Realization_module
   use Level_module
@@ -478,7 +486,7 @@ end subroutine MiscibleUpdateMassBalancePatch
  end function MiscibleInitGuessCheck
 
 ! ************************************************************************** !
-! Miscibleinitguesscheckpatch: 
+! MiscibleUpdateReasonPatch: 
 ! author: Chuan Lu
 ! date: 10/10/08
 !
@@ -554,7 +562,7 @@ end subroutine MiscibleUpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! MiscibleUpdateAuxVars: Updates the auxilliary variables associated with 
+! MiscibleUpdateReason: Updates the auxilliary variables associated with 
 !                        the Richards problem
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -611,7 +619,7 @@ subroutine MiscibleUpdateReason(reason, realization)
 end subroutine MiscibleUpdateReason
 
 ! ************************************************************************** !
-! Miscibleinitguesscheckpatch: 
+! MiscibleInitGuessCheckPatch: 
 ! author: Chuan Lu
 ! date: 10/10/08
 !
@@ -888,19 +896,64 @@ end subroutine MiscibleInitializeTimestep
 subroutine MiscibleUpdateSolution(realization)
 
   use Realization_module
+  use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
+  
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
 
   PetscErrorCode :: ierr
   
+  field => realization%field
+  
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do 
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call MiscibleUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
 
 ! make room for hysteric s-Pc-kr
 
 end subroutine MiscibleUpdateSolution
 
+
+! ************************************************************************** !
+!
+! MiscibleUpdateSolutionPatch: Updates data in module after a successful time 
+!                             step 
+! author: Satish Karra
+! written based on RichardsUpdateSolutionPatch
+! date: 08/23/11
+!
+! ************************************************************************** !
+subroutine MiscibleUpdateSolutionPatch(realization)
+
+  use Realization_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+
+  if (realization%option%compute_mass_balance_new) then
+    call MiscibleUpdateMassBalancePatch(realization)
+  endif
+
+end subroutine MiscibleUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
@@ -2083,6 +2136,10 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
  ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
+ 
+  if (option%compute_mass_balance_new) then
+    call MiscibleZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -2101,7 +2158,7 @@ subroutine MiscibleResidualPatch(snes,xx,r,realization,ierr)
 !  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
   allocate(Resold_AR(option%nflowdof), Resold_FL(option%nflowdof), delx(option%nflowdof))
  
-! Multiphase flash calculation is more expansive, so calculate once per iterration
+! Multiphase flash calculation is more expensive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -2659,7 +2716,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
-   PetscInt :: direction, max_x_conn, max_y_conn
+  PetscInt :: direction, max_x_conn, max_y_conn
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
@@ -2767,21 +2824,21 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
-          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+      do idof =1, option%nflowdof   
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          case(HYDROSTATIC_BC)
+            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+            if (idof >= 2) then
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            endif 
+          case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
-          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-!          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+!           iphase = int(iphase_loc_p(ghosted_id))
+        end select
+      enddo
 
  
     call MiscibleAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
@@ -2815,6 +2872,13 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
     patch%aux%Miscible%Resold_BC(local_id,1:option%nflowdof) = &
     patch%aux%Miscible%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) &
+            - Res(:)/option%flow_dt 
+      endif
    
       if (option%use_samr) then
          direction =  (boundary_condition%region%faces(iconn)-1)/2
@@ -2936,13 +3000,13 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
       call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight,option,v_darcy,Res)
+        tortuosity_loc_p(ghosted_id_up),Miscible_parameter%sir(:,icap_up), &
+        dd_up,perm_up,D_up, &
+        aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+        tortuosity_loc_p(ghosted_id_dn),Miscible_parameter%sir(:,icap_dn), &
+        dd_dn,perm_dn,D_dn, &
+        cur_connection_set%area(iconn),distance_gravity, &
+        upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Miscible%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
@@ -3091,7 +3155,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
   patch%aux%Miscible%Resold_BC=0.D0
   patch%aux%Miscible%ResOld_FL=0.D0
 
-! Multiphase flash calculation is more expansive, so calculate once per iterration
+! Multiphase flash calculation is more expensive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -3329,10 +3393,10 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
-     if (option%compute_mass_balance_new) then
-         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
-         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-         Res(:)/option%flow_dt
+      if (option%compute_mass_balance_new) then
+        global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+          Res(:)/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jglyc) = r_p((local_id-1)*option%nflowdof + jglyc)-Res(jglyc)

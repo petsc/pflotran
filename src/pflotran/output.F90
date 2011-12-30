@@ -8102,6 +8102,7 @@ subroutine OutputMassBalanceNew(realization)
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass','[kg]','',icol)
+          
         case(THC_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     '[kg]','',icol)
@@ -8283,7 +8284,7 @@ subroutine OutputMassBalanceNew(realization)
       case(THC_MODE)
         call THCComputeMassBalance(realization,sum_kg(1,:))
       case(MIS_MODE)
-        call MiscibleComputeMassBalance(realization,sum_kg(1,:))
+        call MiscibleComputeMassBalance(realization,sum_kg(:,1))
       case(MPH_MODE)
         call MphaseComputeMassBalance(realization,sum_kg(:,:))
       case(IMS_MODE)
@@ -8305,11 +8306,6 @@ subroutine OutputMassBalanceNew(realization)
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
             enddo
-          enddo
-        case(IMS_MODE)
-          do iphase = 1, option%nphase
-            ispec = iphase
-            write(fid,110,advance="no") sum_kg_global(ispec,1)
           enddo
       end select
     endif

@@ -348,13 +348,11 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
     endif
     ! mass = volume * saturation * density
     do iphase = 1, option%nphase
-!     do ispec = 1, option%nflowspec
       ispec = iphase
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
           immis_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
           immis_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
           porosity_loc_p(ghosted_id)*volume_p(local_id)
-!     enddo
     enddo
   enddo
 
@@ -1816,7 +1814,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
  ! patch%ImmisAux%aux_vars_up_to_date = PETSC_FALSE 
  
   if (option%compute_mass_balance_new) then
-   call ImmisZeroMassBalDeltaPatch(realization)
+    call ImmisZeroMassBalDeltaPatch(realization)
   endif
 
 ! now assign access pointer to local variables

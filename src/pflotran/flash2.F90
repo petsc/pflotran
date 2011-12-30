@@ -2022,7 +2022,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 !  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
   allocate(Resold_AR(option%nflowdof), Resold_FL(option%nflowdof), delx(option%nflowdof))
  
-! Multiphase flash calculation is more expansive, so calculate once per iterration
+! Multiphase flash calculation is more expensive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -3027,7 +3027,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   patch%aux%Flash2%Resold_BC=0.D0
   patch%aux%Flash2%ResOld_FL=0.D0
 
-! Multiphase flash calculation is more expansive, so calculate once per iterration
+! Multiphase flash calculation is more expensive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -3266,10 +3266,10 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag, option)
-     if (option%compute_mass_balance_new) then
-         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
-         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
-         Res(:)/option%flow_dt
+      if (option%compute_mass_balance_new) then
+        global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
+          global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
+          Res(:)/option%flow_dt
       endif
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
