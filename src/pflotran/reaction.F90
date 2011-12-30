@@ -5781,8 +5781,8 @@ end subroutine ReactionInterpolateLogK
 ! ************************************************************************** !
 !
 ! ReactionInitializeLogK: Least squares fit to log K over database temperature range
-! author: P.C. Lichtner
-! date: 02/13/09
+! author: Chuan Lu
+! date: 12/29/11
 !
 ! ************************************************************************** !
 subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
@@ -5792,7 +5792,7 @@ subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
   implicit none
   
   type(reaction_type) :: reaction
-  PetscReal :: logKcoef(FIVE_INTEGER)
+  PetscReal :: logKcoef(17)
   PetscReal :: logKs(reaction%num_dbase_temperatures)
   PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
   type(option_type) :: option
@@ -5806,24 +5806,11 @@ subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
   temperature = option%reference_temperature
   pressure = option%reference_pressure 
   
-  itemperature = 0
-  if (option%use_isothermal) then ! find database temperature if relevant
-    do i = 1, reaction%num_dbase_temperatures
-      if (dabs(option%reference_temperature - &
-               reaction%dbase_temperatures(i)) < 1.d-10) then
-        itemperature = i
-        exit
-      endif
-    enddo
-  endif
   
-  if (itemperature > 0) then ! use database temperature
-    logK = logKs(itemperature)
-  else                       ! interpolate
-    coefs(:,ONE_INTEGER) = logKcoef(:)
-    call ReactionInterpolateLogK_hpt(coefs,logK_1D_Array,temperature,pressure,ONE_INTEGER)
-    logK = logK_1D_Array(ONE_INTEGER)
-  endif
+  coefs(:,ONE_INTEGER) = logKcoef(:)
+  call ReactionInterpolateLogK_hpt(coefs,logK_1D_Array,temperature,pressure,ONE_INTEGER)
+  logK = logK_1D_Array(ONE_INTEGER)
+
 
 end subroutine ReactionInitializeLogK_hpt
 
@@ -5841,16 +5828,31 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
   PetscReal :: coefs(17,n), logKs(n), temp, pres
 
   PetscInt :: i
-  PetscReal :: temp_kelvin
+  PetscReal :: temp_kelvin, tr,pr
   
   temp_kelvin = temp + 273.15d0
+  tr=(temp_kelvin)/ 273.15d0
+  pr= pres/1D7
+  logtr=log(tr)/log(10D0) 
   
   do i = 1, n
-    logKs(i) = coefs(1,i)*log(temp_kelvin) &
-             + coefs(2,i)           &
-             + coefs(3,i)*temp_kelvin      &
-             + coefs(4,i)/temp_kelvin      &
-             + coefs(5,i)/(temp_kelvin*temp_kelvin)
+    logKs(i) = coefs(1,i)               &
+             + coefs(2,i) * tr          &
+             + coefs(3,i) / tr          &
+             + coefs(4,i) * logtr       &
+             + coefs(5,i) * tr *tr      &
+             + coefs(6,i) / tr /tr      &
+             + coefs(7,i) * sqrt(tr)    &
+             + coefs(8,i) * pr          &
+             + coefs(9,i) * pr *tr      &
+             + coefs(10,i) * pr /tr     &
+             + coefs(11,i) * pr *logtr  &
+             + coefs(12,i) / pr         &
+             + coefs(13,i) / pr * tr    &
+             + coefs(14,i) / pr / tr    &
+             + coefs(15,i) * pr * pr    &
+             + coefs(16,i) * pr * pr*tr &
+             + coefs(17,i) * pr * pr/tr 
   enddo
   
 end subroutine ReactionInterpolateLogK
