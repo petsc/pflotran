@@ -3897,7 +3897,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   endif
 #endif  
 
-#ifdef TEMP_DEPENDENT_LOGK
+#ifdef CHUAN_HPT
   if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
     call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                  global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
