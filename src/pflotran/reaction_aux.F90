@@ -52,6 +52,9 @@ module Reaction_Aux_module
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: logK(:)
+#ifdef chuan_hpt
+    PetscReal, pointer :: logKCoeff_hpt(:)
+#endif    
   end type database_rxn_type
 
   type, public :: mineral_type
@@ -236,8 +239,10 @@ module Reaction_Aux_module
     PetscInt :: print_tot_conc_type
     PetscInt :: print_secondary_conc_type
     PetscInt :: num_dbase_temperatures
+#ifdef chuan_hpt
+    PetscInt :: num_dbase_parameters
+#endif
     PetscReal, pointer :: dbase_temperatures(:)
-    
     type(species_idx_type), pointer :: species_idx
 
     type(aq_species_type), pointer :: primary_species_list

@@ -39,6 +39,10 @@ ifdef temp
 TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
 
+ifdef chuan_hpt
+HPT_FLAG = -DCHUAN_HPT
+endif
+
 ifdef ice
 ICE_FLAG = -DICE
 endif

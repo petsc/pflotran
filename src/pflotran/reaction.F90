@@ -1594,6 +1594,36 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
   endif
 #endif  
+
+#ifdef CHUAN_HPT
+  if (.not.option%use_isothermal) then
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                   global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                   reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                   global_auxvar%temp(iphase),reaction%ngas)
+    endif
+    if (associated(reaction%eqsrfcplx_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
+                                   reaction%neqsrfcplx)
+    endif
+    if (associated(reaction%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
+                                   reaction%nkinmnrl)
+    endif
+    if (associated(reaction%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
+                                   reaction%nmnrl)
+    endif
+  endif
+#endif  
+
   
   if (use_prev_soln_as_guess) then
     free_conc = rt_auxvar%pri_molal
@@ -2236,7 +2266,37 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                    global_auxvar%temp(iphase),reaction%nmnrl)
     endif
   endif
+#endif
+
+#ifdef CHUAN_HPT
+  if (.not.option%use_isothermal) then
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                   global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                   reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                   global_auxvar%temp(iphase),reaction%ngas)
+    endif
+    if (associated(reaction%eqsrfcplx_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
+                                   reaction%neqsrfcplx)
+    endif
+    if (associated(reaction%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
+                                   reaction%nkinmnrl)
+    endif
+    if (associated(reaction%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
+                                   reaction%nmnrl)
+    endif
+  endif
 #endif  
+  
 
     200 format('')
     201 format(a20,i5)
@@ -2819,6 +2879,8 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
     call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef, &
       reaction%eqsrfcplx_logK, &
       global_auxvar%temp(iphase),reaction%neqsrfcplx)
+! surface reaction in hpt option not functional yet .Chuan 12/29/11          
+
   endif
 #endif  
 
@@ -3575,6 +3637,13 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
                                global_auxvar%temp(1),reaction%neqcplx)
     endif
 #endif  
+
+#ifdef CHUAN_HPT
+    if (.not.option%use_isothermal) then
+      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                               global_auxvar%temp(1),global_auxvar%pres(1),reaction%neqcplx)
+    endif
+#endif  
   
   ! compute primary species contribution to ionic strength
     fpri = 0.d0
@@ -3827,7 +3896,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
                                  global_auxvar%temp(iphase),reaction%neqcplx)
   endif
 #endif  
-  
+
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
+    call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                 global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
+                                 reaction%neqcplx)
+  endif
+#endif    
   do icplx = 1, reaction%neqcplx ! for each secondary species
     ! compute secondary species concentration
     lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
@@ -3881,6 +3957,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   if (.not.option%use_isothermal .and. reaction%ngas > 0) then
     call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                  global_auxvar%temp(1),reaction%ngas)
+  endif
+#endif  
+
+#ifdef CHUAN_HPT
+  if (.not.option%use_isothermal .and. reaction%ngas > 0) then
+    call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                 global_auxvar%temp(1),global_auxvar%pres(1),&
+                                 reaction%ngas)
   endif
 #endif  
 
@@ -4117,6 +4201,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
                                global_auxvar%temp(iphase),reaction%neqsrfcplx)
   endif
+! surface reaction in hpt option not functional yet .Chuan 12/29/11 
 #endif  
 
   ! Surface Complexation
@@ -4529,6 +4614,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
                                global_auxvar%temp(iphase),reaction%neqsrfcplx)
+! surface reaction in hpt option not functional yet .Chuan 12/29/11 
   endif
 #endif  
 
@@ -4953,6 +5039,13 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif  
 
+#ifdef CHUAN_HPT
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                 global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
+                                 reaction%nkinmnrl)
+  endif
+#endif  
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute ion activity product
     lnQK = -reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
@@ -5258,6 +5351,14 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
                                  global_auxvar%temp(iphase),reaction%nmnrl)
+  endif
+#endif  
+
+#ifdef CHUAN_HPT
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                 global_auxvar%temp(iphase),,global_auxvar%pres(iphase),&
+                                 reaction%nmnrl)
   endif
 #endif  
 
@@ -5676,6 +5777,84 @@ subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
   
 end subroutine ReactionInterpolateLogK
 
+#ifdef chuan_hpt
+! ************************************************************************** !
+!
+! ReactionInitializeLogK: Least squares fit to log K over database temperature range
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
+
+  use Option_module
+
+  implicit none
+  
+  type(reaction_type) :: reaction
+  PetscReal :: logKcoef(FIVE_INTEGER)
+  PetscReal :: logKs(reaction%num_dbase_temperatures)
+  PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
+  type(option_type) :: option
+  
+  PetscReal :: coefs(FIVE_INTEGER,ONE_INTEGER)
+  PetscReal :: temperature, pressure
+  PetscInt :: itemperature
+  PetscInt :: i
+  
+  ! we always initialize on reference temperature
+  temperature = option%reference_temperature
+  pressure = option%reference_pressure 
+  
+  itemperature = 0
+  if (option%use_isothermal) then ! find database temperature if relevant
+    do i = 1, reaction%num_dbase_temperatures
+      if (dabs(option%reference_temperature - &
+               reaction%dbase_temperatures(i)) < 1.d-10) then
+        itemperature = i
+        exit
+      endif
+    enddo
+  endif
+  
+  if (itemperature > 0) then ! use database temperature
+    logK = logKs(itemperature)
+  else                       ! interpolate
+    coefs(:,ONE_INTEGER) = logKcoef(:)
+    call ReactionInterpolateLogK_hpt(coefs,logK_1D_Array,temperature,pressure,ONE_INTEGER)
+    logK = logK_1D_Array(ONE_INTEGER)
+  endif
+
+end subroutine ReactionInitializeLogK_hpt
+
+! ************************************************************************** !
+!
+! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
+!                             b - fit coefficients determined from fit(...)
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
+
+  PetscInt :: n
+  PetscReal :: coefs(17,n), logKs(n), temp, pres
+
+  PetscInt :: i
+  PetscReal :: temp_kelvin
+  
+  temp_kelvin = temp + 273.15d0
+  
+  do i = 1, n
+    logKs(i) = coefs(1,i)*log(temp_kelvin) &
+             + coefs(2,i)           &
+             + coefs(3,i)*temp_kelvin      &
+             + coefs(4,i)/temp_kelvin      &
+             + coefs(5,i)/(temp_kelvin*temp_kelvin)
+  enddo
+  
+end subroutine ReactionInterpolateLogK
+#endif
 ! ************************************************************************** !
 !
 ! RComputeKd: Computes the Kd for a given chemical component

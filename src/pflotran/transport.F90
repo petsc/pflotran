@@ -63,7 +63,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
   PetscReal :: stp_up, stp_dn
   PetscReal :: q
 
-#ifdef TEMP_DEPENDENT_LOGK
+#ifdef TEMP_DEPENDENT_LOGK/CHUAN_HPT
   PetscReal :: temp_up, temp_dn         
   PetscReal :: Ddiff_up, Ddiff_dn 
   PetscReal :: Ddiff_avg
@@ -91,7 +91,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
                         
 ! Add the effect of temperature on diffusivity, Satish Karra, 10/29/2011
 
-#ifdef TEMP_DEPENDENT_LOGK
+#ifdef TEMP_DEPENDENT_LOGK/CHUAN_HPT
     T_ref_inv = 1.d0/(25.d0 + 273.15d0)
     temp_up = global_aux_var_up%temp(1)  ! getting data from global to local variables
     temp_dn = global_aux_var_dn%temp(1)
@@ -132,7 +132,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 
 ! Add the effect of temperature on diffusivity, Satish Karra, 11/1/2011
-#ifdef TEMP_DEPENDENT_LOGK
+#ifdef TEMP_DEPENDENT_LOGK/CHUAN_HPT
           T_ref_inv = 1.d0/(25.d0 + 273.15d0)
           temp_up = global_aux_var_up%temp(1)      
           temp_dn = global_aux_var_dn%temp(1)
@@ -184,7 +184,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   PetscReal :: q
   PetscReal :: sat_up, sat_dn
 
-#ifdef TEMP_DEPENDENT_LOGK
+#ifdef TEMP_DEPENDENT_LOGK/CHUAN_HPT
   PetscReal :: temp_up                 ! variable to store temperature at the boundary
   PetscReal, parameter :: R_gas_constant = 8.3144621d-3 ! Gas constant in kJ/mol/K
   PetscReal :: T_ref_inv
@@ -206,7 +206,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                             weight*rt_parameter%diffusion_coefficient(iphase)
-#ifdef TEMP_DEPENDENT_LOGK   
+#ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT  
         T_ref_inv = 1.d0/(25.d0 + 273.15d0)
         temp_up = global_aux_var_up%temp(1)      
         diffusion(iphase) = diffusion(iphase) + &
@@ -226,7 +226,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
           diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
-#ifdef TEMP_DEPENDENT_LOGK   
+#ifdef TEMP_DEPENDENT_LOGK /CHUAN_HPT  
         T_ref_inv = 1.d0/(25.d0 + 273.15d0)
         temp_up = global_aux_var_up%temp(1)      
         diffusion(iphase) = diffusion(iphase) + &
@@ -263,7 +263,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
             if ( iphase == 2) then
               diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
                 weight*rt_parameter%diffusion_coefficient(iphase)
-#ifdef TEMP_DEPENDENT_LOGK   
+#ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT   
               T_ref_inv = 1.d0/(25.d0 + 273.15d0)
               temp_up = global_aux_var_up%temp(1)      
               diffusion(iphase) = diffusion(iphase) + &
@@ -285,7 +285,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
               if (iphase == 2) then
                 diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn +&
                   weight*rt_parameter%diffusion_coefficient(iphase)
-#ifdef TEMP_DEPENDENT_LOGK   
+#ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT  
                 T_ref_inv = 1.d0/(25.d0 + 273.15d0)
                 temp_up = global_aux_var_up%temp(1)      
                 diffusion(iphase) = diffusion(iphase) + &
