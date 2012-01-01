@@ -20,30 +20,11 @@ type, public :: Miscible_auxvar_elem_type
     PetscReal , pointer :: diff(:)
     PetscReal , pointer :: hysdat(:)
     PetscReal :: zco2
-!    PetscReal :: dvis_dp
-!    PetscReal :: kr
-!    PetscReal :: dkr_dp
  end type Miscible_auxvar_elem_type
 
   type, public :: Miscible_auxvar_type
     
     type(Miscible_auxvar_elem_type), pointer :: aux_var_elem(:) 
-#if 0
-    PetscReal , pointer :: davgmw_dx(:)
-    PetscReal , pointer :: dden_dp(:)
-    PetscReal , pointer :: dden_dt(:)
-    PetscReal , pointer :: dden_dx(:)
-    PetscReal , pointer :: dkvr_dp(:)
-    PetscReal , pointer :: dkvr_dt(:)
-    PetscReal , pointer :: dkvr_ds(:)
-    PetscReal , pointer :: dkvr_dx(:)
-    PetscReal , pointer :: dh_dp(:)
-    PetscReal , pointer :: dh_dt(:)
-    PetscReal , pointer :: dh_dx(:)
-    PetscReal , pointer :: du_dp(:)
-    PetscReal , pointer :: du_dt(:)
-    PetscReal , pointer :: du_dx(:)
-#endif
   end type Miscible_auxvar_type
   
   type, public :: Miscible_parameter_type
@@ -69,15 +50,11 @@ type, public :: Miscible_auxvar_elem_type
      PetscReal , pointer :: delx(:,:)
   end type Miscible_type
 
-  
-
   public :: MiscibleAuxCreate, MiscibleAuxDestroy, &
             MiscibleAuxVarCompute_NINC, MiscibleAuxVarCompute_WINC,&
             MiscibleAuxVarInit, MiscibleAuxVarCopy
 
 contains
- 
-
 
 ! ************************************************************************** !
 !
@@ -165,11 +142,6 @@ subroutine MiscibleAuxVarInit(aux_var,option)
      aux_var%aux_var_elem(nvar)%kvr = 0.d0
      aux_var%aux_var_elem(nvar)%xmol = 0.d0
      aux_var%aux_var_elem(nvar)%diff = 0.d0
-#if 0
-     aux_var%aux_var_elem(nvar)%dsat_dp = 0.d0
-     aux_var%aux_var_elem(nvar)%dden_dp = 0.d0
-     aux_var%aux_var_elem(nvar)%dkvr_dp = 0.d0
-#endif
   enddo
 
 end subroutine MiscibleAuxVarInit
@@ -198,22 +170,7 @@ subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%h = aux_var%h
   aux_var2%u = aux_var%u
   aux_var2%pc = aux_var%pc
-!  aux_var2%kr = aux_var%kr
-!  aux_var2%dkr_dp = aux_var%dkr_dp
-!  aux_var2%vis = aux_var%vis
-!  aux_var2%dvis_dp = aux_var%dvis_dp
   aux_var2%kvr = aux_var%kvr
-#if 0
-  aux_var2%dsat_dp = aux_var%dsat_dp
-  aux_var2%dden_dp = aux_var%dden_dp
-  aux_var2%dden_dt = aux_var%dden_dt
-  aux_var2%dkvr_dp = aux_var%dkvr_dp
-  aux_var2%dkvr_dt = aux_var%dkvr_dt
-  aux_var2%dh_dp = aux_var%dh_dp
-  aux_var2%dh_dt = aux_var%dh_dt
-  aux_var2%du_dp = aux_var%du_dp
-  aux_var2%du_dt = aux_var%du_dt  
-#endif
 !  aux_var2%xmol = aux_var%xmol
 !  aux_var2%diff = aux_var%diff
 
@@ -229,7 +186,8 @@ subroutine Water_glycol_density(y,p,dkg)
   dkg = (4.49758d-10* y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
   dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
  
-end subroutine Water_glycol_density       
+end subroutine Water_glycol_density
+
 ! ************************************************************************** !
 !
 ! MiscibleAuxVarCompute_NINC: Computes auxilliary variables for each grid cell
@@ -249,7 +207,6 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   type(option_type) :: option
   type(fluid_property_type) :: fluid_properties
-!  type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(Miscible_auxvar_elem_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
@@ -296,8 +253,11 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   aux_var%sat(1) = 1.d0
   aux_var%kvr(1) = 1.d0/visw
   aux_var%h(1) = denw*4.18d-3*global_aux_var%temp(1)
+  
+! Glycol-Water mixture diffusivity
 !  auc_var%fdiff(1) = ((((-4.021d0*y + 9.1181d0)*y - 5.9703d0)*y &
 !    + 0.4043d0)*y + 0.5687d0)*1.d-5
+
   aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   aux_var%vis(1) = visw
 
@@ -317,11 +277,9 @@ subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
 
   type(option_type) :: option
   type(fluid_property_type) :: fluid_properties
-!  type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
   type(Miscible_auxvar_elem_type) :: aux_var(1:option%nflowdof)
   type(global_auxvar_type) :: global_auxvar
- ! PetscInt :: iphase
 
   PetscInt :: n 
   
@@ -418,8 +376,4 @@ use option_module
     
 end subroutine MiscibleAuxDestroy
 
-
-
 end module Miscible_Aux_module
-
-

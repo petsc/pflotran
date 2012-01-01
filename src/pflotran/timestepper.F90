@@ -274,7 +274,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
                             OutputPermeability, OutputPrintCouplers
   use Logging_module  
-! use Mass_Balance_module
   use Discretization_module
   use Condition_Control_module
 
@@ -1142,7 +1141,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
                            ImmisTimeCut, ImmisUpdateReason
   use Miscible_module, only : MiscibleMaxChange, MiscibleInitializeTimestep, &
-                           MiscibleTimeCut, MiscibleUpdateReason
+                           MiscibleTimeCut
   use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
                              RichardsTimeCut, RichardsResidual
   use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
@@ -1338,7 +1337,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
           case(THC_MODE)
             update_reason=1
           case (MIS_MODE)
-            call MiscibleUpdateReason(update_reason,realization) 
+            update_reason=1
           case(RICHARDS_MODE,G_MODE)
             update_reason=1
         end select   
