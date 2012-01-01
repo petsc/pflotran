@@ -1035,3 +1035,163 @@ subroutine MiscibleJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !    call VecDestroy(debug_vec,ierr)
   endif
 end subroutine MiscibleJacobianPatch
+
+! ************************************************************************** !
+!
+! MiscibleBCFluxAdv: Computes the  boundary flux terms for the residual (not used)
+! author: Chuan Lu
+! date: 10/12/08
+!
+! ************************************************************************** !
+subroutine MiscibleBCFluxAdv(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+     por_dn,tor_dn,dd_up,perm_dn,Dk_dn, &
+     area,dist_gravity,option,vv_darcy,Res)
+  use Option_module
+  
+  implicit none
+  
+  PetscInt :: ibndtype(:)
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(option_type) :: option
+  PetscReal :: dd_up
+  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: vv_darcy(:), area
+  PetscReal :: Res(1:option%nflowdof) 
+  
+  PetscReal :: dist_gravity  ! distance along gravity vector
+          
+  PetscInt :: ispec, np
+  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
+  PetscReal :: upweight,cond,gravity,dphi
+  
+  fluxm = 0.d0
+  v_darcy = 0.d0
+  density_ave = 0.d0
+  q = 0.d0
+
+! Flow   
+! diffdp = por_dn*tor_dn/dd_up*area
+  do np = 1, option%nphase  
+    select case(ibndtype(1))
+        ! figure out the direction of flow
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+        Dq = perm_dn / dd_up
+        ! Flow term
+        ukvr=0.D0
+        v_darcy=0.D0 
+          upweight=1.D0
+          if (aux_var_up%sat(np) < eps) then 
+            upweight=0.d0
+          else if (aux_var_dn%sat(np) < eps) then 
+              upweight=1.d0
+          endif
+          density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
+           
+          gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+                (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+                * dist_gravity
+       
+          dphi = aux_var_up%pres - aux_var_dn%pres &
+                - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+                + gravity
+   
+          if (dphi>=0.D0) then
+            ukvr = aux_var_up%kvr(np)
+          else
+            ukvr = aux_var_dn%kvr(np)
+          endif
+     
+          if (ukvr*Dq>floweps) then
+            v_darcy = Dq * ukvr * dphi
+          endif
+
+      case(NEUMANN_BC)
+        v_darcy = 0.D0
+        if (dabs(aux_vars(1)) > floweps) then
+          v_darcy = aux_vars(MIS_PRESSURE_DOF)
+          if (v_darcy > 0.d0) then 
+            density_ave = aux_var_up%den(np)
+          else 
+            density_ave = aux_var_dn%den(np)
+          endif
+        endif
+
+    end select
+     
+    q = v_darcy*area
+    vv_darcy(np) = v_darcy
+    uxmol = 0.D0
+     
+    if (v_darcy >= 0.D0) then
+      uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+    else
+      uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+    endif
+    do ispec=1, option%nflowspec
+      fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+    enddo 
+  enddo
+
+  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
+
+end subroutine MiscibleBCFluxAdv
+
+! ************************************************************************** !
+!
+! MiscibleBCFluxDiffusion: Computes the  boundary flux terms for the residual (not used)
+! author: Chuan Lu
+! date: 10/12/08
+!
+! ************************************************************************** !
+subroutine MiscibleBCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+     por_dn,tor_dn,dd_up,perm_dn,Dk_dn, &
+     area,dist_gravity,option,vv_darcy,Res)
+  use Option_module
+  
+  implicit none
+  
+  PetscInt :: ibndtype(:)
+  type(Miscible_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(option_type) :: option
+  PetscReal :: dd_up
+  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: vv_darcy(:), area
+  PetscReal :: Res(1:option%nflowdof) 
+  
+  PetscReal :: dist_gravity  ! distance along gravity vector
+          
+  PetscInt :: ispec, np
+  PetscReal :: fluxm(option%nflowspec),q,density_ave,v_darcy
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
+  PetscReal :: upweight,cond,gravity,dphi
+  
+  fluxm = 0.d0
+  v_darcy = 0.d0
+  density_ave = 0.d0
+  q = 0.d0
+
+! Diffusion term   
+  diffdp = por_dn*tor_dn/dd_up*area
+  select case(ibndtype(2))
+    case(DIRICHLET_BC) 
+!       diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+      do np = 1, option%nphase
+!       if (aux_var_up%sat(np)>eps .and. aux_var_dn%sat(np)>eps) then
+          diff = diffdp*0.25D0*(aux_var_up%sat(np)+aux_var_dn%sat(np))* &
+                    (aux_var_up%den(np)+aux_var_up%den(np))
+          do ispec = 1, option%nflowspec
+            fluxm(ispec) = fluxm(ispec) + diff*aux_var_dn%diff((np-1)*option%nflowspec+ispec)* &
+            (aux_var_up%xmol((np-1)* option%nflowspec+ispec) &
+            -aux_var_dn%xmol((np-1)* option%nflowspec+ispec))
+          enddo
+      enddo
+     
+  end select
+
+  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
+
+end subroutine MiscibleBCFluxDiffusion
+
