@@ -1056,13 +1056,12 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   do 
     if (.not.associated(boundary_condition)) exit
  
-
-        if (option%mimetic) then 
-            num_connections = boundary_condition%numfaces_set
-       else
-            cur_connection_set => boundary_condition%connection_set
-            num_connections = cur_connection_set%num_connections
-       end if
+    if (option%mimetic) then 
+      num_connections = boundary_condition%numfaces_set
+    else
+      cur_connection_set => boundary_condition%connection_set
+      num_connections = cur_connection_set%num_connections
+    end if
     do iconn = 1, num_connections
       sum_connection = sum_connection + 1
   
@@ -3921,6 +3920,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
   if (option%use_samr) then
     ! this section should be broken due to changes in the transport data structures
+    
 !!!!!!!!!!!!!!!!#ifndef REVISED_TRANSPORT
 #if 0
     do axis=0,2  
@@ -4208,7 +4208,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     enddo
 !!!!!!!!!!!!#endif ! #ifndef REVISED_TRANSPORT
 #endif
+
 ! End of currently inactivated (#if 0) code block for SAMRAI case
+
   else  ! For the non-SAMR case:
   ! Interior Flux Terms -----------------------------------
     connection_set_list => grid%internal_connection_set_list
@@ -4291,11 +4293,10 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         endif
 #endif
 
-
-      
       enddo
       cur_connection_set => cur_connection_set%next
-    enddo    
+    enddo
+    
   ! Boundary Flux Terms -----------------------------------
     boundary_condition => patch%boundary_conditions%first
     sum_connection = 0    
