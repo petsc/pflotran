@@ -1109,55 +1109,50 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up,Dk_up, &
   do np = 1, option%nphase
       
 !   Flow term
-!     if (aux_var_up%sat(np) < eps) then 
-!       upweight = 0.d0
-!     else if (aux_var_dn%sat(np) < eps) then 
-!          upweight = 1.d0
-!     endif
       
-      density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+    density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
         
-      gravity = (upweight*aux_var_up%den(np)*aux_var_up%avgmw(np) + &
+    gravity = (upweight*aux_var_up%den(np)*aux_var_up%avgmw(np) + &
              (1.D0-upweight)*aux_var_dn%den(np)*aux_var_dn%avgmw(np)) &
              *dist_gravity
 
-      dphi = aux_var_up%pres - aux_var_dn%pres &
+    dphi = aux_var_up%pres - aux_var_dn%pres &
              - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
-      v_darcy = 0.D0
-      ukvr = 0.D0
-      uxmol = 0.D0
+    v_darcy = 0.D0
+    ukvr = 0.D0
+    uxmol = 0.D0
 
-      ! note uxmol only contains one phase xmol
-      if (dphi >= 0.D0) then
-        ukvr = aux_var_up%kvr(np)
-        uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
-      else
-        ukvr = aux_var_dn%kvr(np)
-        uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
-      endif
+!   note uxmol only contains one phase xmol
+    if (dphi >= 0.D0) then
+      ukvr = aux_var_up%kvr(np)
+      uxmol(:) = aux_var_up%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+    else
+      ukvr = aux_var_dn%kvr(np)
+      uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
+    endif
 
-      if (ukvr > floweps) then
-        v_darcy = Dq * ukvr * dphi
-        vv_darcy(np) = v_darcy
-        q = v_darcy * area
-        do ispec = 1, option%nflowspec
-          fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
-        enddo  
-      endif
+    if (ukvr > floweps) then
+      v_darcy = Dq * ukvr * dphi
+      vv_darcy(np) = v_darcy
+      q = v_darcy * area
+      do ispec = 1, option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+      enddo  
+    endif
 
-!     Diffusion term   
-!     Note : average rule may not be correct  
-      difff = diffdp*density_ave
-      ! 0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
-      do ispec=1, option%nflowspec
-        ind = ispec + (np-1)*option%nflowspec
-        fluxm(ispec) = fluxm(ispec) + difff* &
-          (upweight*aux_var_up%diff(ind) + (1.d0-upweight)*aux_var_dn%diff(ind))* &
-!         0.5D0 * (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
-          (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
-      enddo
+!   Diffusion term   
+!   Note : average rule may not be correct  
+    difff = diffdp*density_ave
+!   0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
+    do ispec=1, option%nflowspec
+      ind = ispec + (np-1)*option%nflowspec
+      fluxm(ispec) = fluxm(ispec) + difff* &
+        (upweight*aux_var_up%diff(ind) + (1.d0-upweight)*aux_var_dn%diff(ind))* &
+!       0.5D0 * (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
+        (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
+    enddo
   enddo
 
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL

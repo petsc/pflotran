@@ -126,7 +126,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
         weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if (iphase == 2) then
+        if (iphase == 2) then
           diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/ &
                               (dist_up + dist_dn) + &
                               weight*rt_parameter%diffusion_coefficient(iphase)

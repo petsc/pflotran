@@ -243,20 +243,26 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   tmp = sum(aux_var%xmol)
   aux_var%xmol(1) = 1.D0 - tmp
 
+! Glycol-Water mixture formula weight (kg/kmol)
   aux_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
+  
+! Mass fraction water
   yh2o = aux_var%xmol(1)*FMWH2O/aux_var%avgmw(1)
   
   call Water_glycol_density(yh2o, aux_var%pres, denw)
   
   aux_var%den(1) = denw/aux_var%avgmw(1)
+  
+! Glycol-Water mixture viscosity (y mass fraction water)
   visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3
+  
   aux_var%sat(1) = 1.d0
   aux_var%kvr(1) = 1.d0/visw
   aux_var%h(1) = denw*4.18d-3*global_aux_var%temp(1)
   
-! Glycol-Water mixture diffusivity
-!  auc_var%fdiff(1) = ((((-4.021d0*y + 9.1181d0)*y - 5.9703d0)*y &
-!    + 0.4043d0)*y + 0.5687d0)*1.d-5
+! Glycol-Water mixture diffusivity (yh2o mass fraction water)
+!  auc_var%fdiff(1) = ((((-4.021d0*yh2o + 9.1181d0)*yh2o - 5.9703d0)*yh2o &
+!    + 0.4043d0)*yh2o + 0.5687d0)*1.d-5
 
   aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient
   aux_var%vis(1) = visw
