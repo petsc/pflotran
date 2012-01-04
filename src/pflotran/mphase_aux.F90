@@ -49,13 +49,13 @@ type, public :: mphase_auxvar_elem_type
 #endif
   end type mphase_auxvar_type
   
-  type, public :: Mphase_parameter_type
+  type, public :: mphase_parameter_type
     PetscReal, pointer :: dencpr(:)
     PetscReal, pointer :: ckwet(:)
     PetscReal, pointer :: sir(:,:)
-  end type Mphase_parameter_type
+  end type mphase_parameter_type
   
-  type, public :: Mphase_type
+  type, public :: mphase_type
      PetscInt :: n_zero_rows
      PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
@@ -67,11 +67,11 @@ type, public :: mphase_auxvar_elem_type
      PetscReal, pointer :: res_old_FL(:,:)
      PetscReal, pointer :: delx(:,:)
   
-     type(Mphase_parameter_type), pointer :: mphase_parameter
-     type(Mphase_auxvar_type), pointer :: aux_vars(:)
-     type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
-     type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)
-  end type Mphase_type
+     type(mphase_parameter_type), pointer :: mphase_parameter
+     type(mphase_auxvar_type), pointer :: aux_vars(:)
+     type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
+     type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
+  end type mphase_type
 
   
 
@@ -87,7 +87,7 @@ contains
 !
 ! MphaseAuxVarCreate: Allocate and initialize auxilliary object
 ! author: Chuan Lu
-! date: 02/27/08
+! date: 
 !
 ! ************************************************************************** !
 function MphaseAuxCreate()
@@ -96,9 +96,9 @@ function MphaseAuxCreate()
 
   implicit none
   
-  type(Mphase_type), pointer :: MphaseAuxCreate
+  type(mphase_type), pointer :: MphaseAuxCreate
   
-  type(Mphase_type), pointer :: aux
+  type(mphase_type), pointer :: aux
 
   allocate(aux) 
   aux%aux_vars_up_to_date = PETSC_FALSE
@@ -130,7 +130,7 @@ end function MphaseAuxCreate
 !
 ! MphaseAuxVarInit: Initialize auxilliary object
 ! author: Chuan Lu
-! date: 02/14/08
+! date: 
 !
 ! ************************************************************************** !
 subroutine MphaseAuxVarInit(aux_var,option)
@@ -139,7 +139,7 @@ subroutine MphaseAuxVarInit(aux_var,option)
 
   implicit none
   
-  type(Mphase_auxvar_type) :: aux_var
+  type(mphase_auxvar_type) :: aux_var
   type(option_type) :: option
 
   PetscInt :: var_elem_size, var_node_size
@@ -186,8 +186,8 @@ end subroutine MphaseAuxVarInit
 ! ************************************************************************** !
 !
 ! THCAuxVarCopy: Copies an auxilliary variable
-! author: Glenn Hammond
-! date: 12/13/07
+! author: 
+! date: 
 !
 ! ************************************************************************** !  
 subroutine MphaseAuxVarCopy(aux_var,aux_var2,option)
@@ -234,7 +234,7 @@ end subroutine MphaseAuxVarCopy
 ! MphaseAuxVarCompute_NI: Computes auxilliary variables for each grid cell
 !                        No increments 
 ! author: Chuan Lu
-! date: 02/22/08
+! date: 
 !
 ! ************************************************************************** !
 subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_function, &
@@ -559,86 +559,105 @@ end subroutine MphaseAuxVarCompute_WINC
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a mphase auxilliary object
-! author: Glenn Hammond
-! date: 02/14/08
+! MphaseAuxVarElemDestroy: Deallocates a mphase auxilliary elment object
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MphaseAuxVarElemDestroy(aux_var_elem)
+
+  implicit none
+
+  type(mphase_auxvar_elem_type) :: aux_var_elem
+
+  if (associated(aux_var_elem%xmol)) deallocate(aux_var_elem%xmol)
+  nullify(aux_var_elem%xmol)
+  if (associated(aux_var_elem%diff))deallocate(aux_var_elem%diff)
+  nullify(aux_var_elem%diff)
+  if (associated(aux_var_elem%pc))deallocate(aux_var_elem%pc)
+  nullify(aux_var_elem%pc)
+  if (associated(aux_var_elem%sat))deallocate(aux_var_elem%sat)
+  nullify(aux_var_elem%sat)
+  if (associated(aux_var_elem%u))deallocate(aux_var_elem%u)
+  nullify(aux_var_elem%u)
+  if (associated(aux_var_elem%h))deallocate(aux_var_elem%h)
+  nullify(aux_var_elem%h)
+  if (associated(aux_var_elem%den))deallocate(aux_var_elem%den)
+  nullify(aux_var_elem%den)
+  if (associated(aux_var_elem%den))deallocate(aux_var_elem%vis)
+  nullify(aux_var_elem%vis)
+  if (associated(aux_var_elem%avgmw))deallocate(aux_var_elem%avgmw)
+  nullify(aux_var_elem%avgmw)
+
+end subroutine MphaseAuxVarElemDestroy
+
+! ************************************************************************** !
+!
+! MphaseAuxVarDestroy: Deallocates a mphase auxilliary object
+! author: 
+! date: 
 !
 ! ************************************************************************** !
 subroutine MphaseAuxVarDestroy(aux_var)
 
   implicit none
 
-  type(mphase_auxvar_elem_type) :: aux_var
-  
-  if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
-  nullify(aux_var%xmol)
-  if (associated(aux_var%diff))deallocate(aux_var%diff)
-  nullify(aux_var%diff)
-  if (associated(aux_var%pc))deallocate(aux_var%pc)
-  nullify(aux_var%pc)
-  if (associated(aux_var%sat))deallocate(aux_var%sat)
-  nullify(aux_var%sat)
-  if (associated(aux_var%u))deallocate(aux_var%u)
-  nullify(aux_var%u)
-  if (associated(aux_var%h))deallocate(aux_var%h)
-  nullify(aux_var%h)
-  if (associated(aux_var%den))deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%den))deallocate(aux_var%vis)
-  nullify(aux_var%vis)
-  if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%avgmw)
+  type(mphase_auxvar_type) :: aux_var
+
+  PetscInt :: ielem
+
+  ! subtract 1 since indexing from 0
+  if (associated(aux_var%aux_var_elem)) then
+    do ielem = 0, size(aux_var%aux_var_elem) - 1 
+      call MphaseAuxVarElemDestroy(aux_var%aux_var_elem(ielem))
+    enddo
+    deallocate(aux_var%aux_var_elem)
+    nullify(aux_var%aux_var_elem)
+  endif
+
 end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! THCAuxDestroy: Deallocates a thc auxilliary object
-! author: Glenn Hammond
-! date: 02/14/08
+! MphaseAuxDestroy: Deallocates a mphase auxilliary object
+! author: 
+! date: 
 !
 ! ************************************************************************** !
-subroutine MphaseAuxDestroy(aux, option)
+subroutine MphaseAuxDestroy(aux)
 
-  use option_module
-  
   implicit none
 
   type(mphase_type), pointer :: aux
-  type(option_type) :: option
-  PetscInt :: iaux, ielem
+
+  PetscInt :: iaux
   
   if (.not.associated(aux)) return
-  
-  do iaux = 1, aux%num_aux
-    do ielem = 0, option%nflowdof 
-      call MphaseAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
+
+  if (associated(aux%aux_vars)) then
+    do iaux = 1, aux%num_aux
+      call MphaseAuxVarDestroy(aux%aux_vars(iaux))
     enddo
     deallocate(aux%aux_vars)
-  enddo
-  nullify(aux%aux_vars)
+    nullify(aux%aux_vars)
+  endif
   
-  do iaux = 1, aux%num_aux_bc
-    do ielem = 0, option%nflowdof 
-      call MphaseAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
+  if (associated(aux%aux_vars_bc)) then
+    do iaux = 1, aux%num_aux
+      call MphaseAuxVarDestroy(aux%aux_vars_bc(iaux))
     enddo
     deallocate(aux%aux_vars_bc)
-  enddo
-  nullify(aux%aux_vars_bc)
+    nullify(aux%aux_vars_bc)
+  endif
   
-  do iaux = 1, aux%num_aux_ss
-    do ielem = 0, option%nflowdof 
-      call MphaseAuxVarDestroy(aux%aux_vars_ss(iaux)%aux_var_elem(ielem))
+  if (associated(aux%aux_vars_ss)) then
+    do iaux = 1, aux%num_aux
+      call MphaseAuxVarDestroy(aux%aux_vars_ss(iaux))
     enddo
     deallocate(aux%aux_vars_ss)
-  enddo
-  nullify(aux%aux_vars_ss)
+    nullify(aux%aux_vars_ss)
+  endif
   
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
-  nullify(aux%aux_vars_bc)
-  if (associated(aux%aux_vars_ss)) deallocate(aux%aux_vars_ss)
-  nullify(aux%aux_vars_ss)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
@@ -658,8 +677,6 @@ subroutine MphaseAuxDestroy(aux, option)
   if (associated(aux%delx)) deallocate(aux%delx)
 
 end subroutine MphaseAuxDestroy
-
-
 
 end module Mphase_Aux_module
 

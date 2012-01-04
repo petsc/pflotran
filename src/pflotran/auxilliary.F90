@@ -86,7 +86,7 @@ subroutine AuxDestroy(aux)
 #endif
   call THCAuxDestroy(aux%THC)
   call RichardsAuxDestroy(aux%Richards)
-  !call MphaseAuxDestroy(aux%Mphase)
+  call MphaseAuxDestroy(aux%Mphase)
   call GeneralAuxDestroy(aux%General)
   call MaterialAuxDestroy(aux%Material)
   nullify(aux%Global)
