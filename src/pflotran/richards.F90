@@ -1969,12 +1969,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 #endif
     endif      
 
-    if (v_darcy == -10.0) then
-        write(*,*) "Dq", Dq, "ukvr ", ukvr, "density",density_ave 
-        write(*,*) dphi, gravity, global_aux_var_up%pres(1), global_aux_var_dn%pres(1)
-    end if
-   
-
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
 
@@ -2318,10 +2312,6 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
                   * FMWH2O * dist_gravity
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
-
-        if ( v_darcy== -10.0) write(*,*) "gr", gravity, "up", global_aux_var_up%pres(1), &
-                          "dn", global_aux_var_dn%pres(1), "dphi", dphi
-        
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC) then
