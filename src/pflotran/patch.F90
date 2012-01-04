@@ -61,11 +61,12 @@ module Patch_module
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
 
-    ! pointer to field object in mother realization object
+    ! Pointer to field object in mother realization object
     type(field_type), pointer :: field 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
 
+    ! Pointer to reaction object in mother realization object
     type(reaction_type), pointer :: reaction
     type(auxilliary_type) :: aux
     

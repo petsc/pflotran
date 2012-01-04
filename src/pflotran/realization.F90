@@ -33,6 +33,8 @@ private
     type(discretization_type), pointer :: discretization
     type(level_list_type), pointer :: level_list
     type(patch_type), pointer :: patch
+      ! This is simply used to point to the patch associated with the current 
+      ! level.  In other words: Never trust this!
 
     type(option_type), pointer :: option
 
