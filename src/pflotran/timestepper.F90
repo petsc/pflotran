@@ -1070,7 +1070,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     if (target_time + tolerance*dt >= cur_waypoint%time .and. &
         (cur_waypoint%update_conditions .or. &
          cur_waypoint%print_output .or. &
-         cur_waypoint%print_tr_output)) then
+         cur_waypoint%print_tr_output .or. &
+         cur_waypoint%final)) then
       ! decrement by time step size
       target_time = target_time - dt
       ! set new time step size based on waypoint time
