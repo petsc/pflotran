@@ -2111,7 +2111,8 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       natural_id = grid%nG2A(ghosted_id)
       do ii = 1, ugrid%cell_vertices(0, local_id)
         vertex_id = ugrid%cell_vertices(ii, local_id)
-!geh: I believe that this is incorrect since MatSetValues uses petsc ordering
+!geh: I believe that this is incorrect since MatSetValues uses petsc ordering,
+!     unless teh matrix is a local MATSEQXXX matrix
         call MatSetValues(mat_vert2cell, &
                           1, &
                           ugrid%vertex_ids_natural(vertex_id)-1, &

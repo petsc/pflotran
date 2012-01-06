@@ -3525,6 +3525,7 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
 end subroutine UGridGetCellsInRectangle
 
 #if 0
+! geh: this routine has been moved to region.F90: RegionReadSideSet
 ! ************************************************************************** !
 !
 ! UGridReadSideSet: Reads an unstructured grid sideset
@@ -3719,7 +3720,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   PetscInt :: local_id
   PetscInt :: cell_type
   PetscReal, pointer :: vec_ptr(:)
-  PetscInt :: ivertex, cell_id
+  PetscInt :: ivertex, cell_id, vertex_id_local
   PetscErrorCode :: ierr
     
   ! fill matrix with boundary faces of local cells
@@ -3755,9 +3756,14 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
         boundary_faces(boundary_face_count) = face_id
         call UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
                                         int_array4)
+        ! For this matrix:
+        !   irow = local face id
+        !   icol = natural (global) vertex id
         do ivertex = 1, nvertices
+          vertex_id_local = &
+            unstructured_grid%cell_vertices(int_array4(ivertex),local_id)
           int_array4_0(ivertex,1) = &
-            unstructured_grid%cell_vertices(int_array4(ivertex),local_id)-1
+            unstructured_grid%vertex_ids_natural(vertex_id_local)-1
         enddo
         call MatSetValues(Mat_vert_to_face,1,boundary_face_count-1, &
                           nvertices,int_array4_0,real_array4, &
@@ -3782,6 +3788,8 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
                     Vertex_vec,ierr)
   call VecZeroEntries(Vertex_vec,ierr)
   
+  ! For this vector:
+  !   irow = natural (global) vertex id
   call VecGetArrayF90(Vertex_vec,vec_ptr,ierr)
   do iface = 1, n_ss_faces
     do ivertex = 1, size(face_vertices,1)
@@ -3804,7 +3812,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
   call VecCreateSeq(PETSC_COMM_SELF,boundary_face_count,Face_vec,ierr)
   call MatMult(Mat_vert_to_face,Vertex_vec,Face_vec,ierr)
-
+  
 #if UGRID_DEBUG
   write(string,*) option%myrank
   string = adjustl(string)
@@ -3820,6 +3828,8 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
   mapped_face_count = 0
   call VecGetArrayF90(Face_vec,vec_ptr,ierr)
+  ! resulting vec contains the number of natural vertices in the sideset that
+  ! intersect a local face
   do iface = 1, boundary_face_count
     face_id = boundary_faces(iface)
     if (vec_ptr(iface) > 2.d0) then ! 3 or more vertices in sideset
