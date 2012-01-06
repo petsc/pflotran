@@ -299,88 +299,128 @@ subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
 
 end subroutine MiscibleAuxVarCompute_WINC
 
+
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a Miscible auxilliary object
-! author: Glenn Hammond
-! date: 02/14/08
+! MiscibleAuxVarElemDestroy: Deallocates a mphase auxiliary elment object
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MiscibleAuxVarElemDestroy(aux_var_elem)
+
+  implicit none
+
+  type(miscible_auxvar_elem_type) :: aux_var_elem
+
+  if (associated(aux_var_elem%xmol)) deallocate(aux_var_elem%xmol)
+  nullify(aux_var_elem%xmol)
+  if (associated(aux_var_elem%diff)) deallocate(aux_var_elem%diff)
+  nullify(aux_var_elem%diff)
+  if (associated(aux_var_elem%pc)) deallocate(aux_var_elem%pc)
+  nullify(aux_var_elem%pc)
+  if (associated(aux_var_elem%sat)) deallocate(aux_var_elem%sat)
+  nullify(aux_var_elem%sat)
+  if (associated(aux_var_elem%u)) deallocate(aux_var_elem%u)
+  nullify(aux_var_elem%u)
+  if (associated(aux_var_elem%h)) deallocate(aux_var_elem%h)
+  nullify(aux_var_elem%h)
+  if (associated(aux_var_elem%den)) deallocate(aux_var_elem%den)
+  nullify(aux_var_elem%den)
+  if (associated(aux_var_elem%den)) deallocate(aux_var_elem%vis)
+  nullify(aux_var_elem%vis)
+  if (associated(aux_var_elem%avgmw)) deallocate(aux_var_elem%avgmw)
+  nullify(aux_var_elem%avgmw)
+
+end subroutine MiscibleAuxVarElemDestroy
+
+! ************************************************************************** !
+!
+! MiscibleAuxVarDestroy: Deallocates a miscible auxilliary object
+! author: 
+! date: 
 !
 ! ************************************************************************** !
 subroutine MiscibleAuxVarDestroy(aux_var)
 
   implicit none
 
-  type(Miscible_auxvar_elem_type) :: aux_var
-  
-!  if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
-!  nullify(aux_var%xmol)
-!  if (associated(aux_var%diff))deallocate(aux_var%diff)
-!  nullify(aux_var%diff)
-  if (associated(aux_var%pc))deallocate(aux_var%pc)
-  nullify(aux_var%pc)
-  if (associated(aux_var%sat))deallocate(aux_var%sat)
-  nullify(aux_var%sat)
-  if (associated(aux_var%u))deallocate(aux_var%u)
-  nullify(aux_var%u)
-  if (associated(aux_var%h))deallocate(aux_var%h)
-  nullify(aux_var%h)
-  if (associated(aux_var%den))deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%den))deallocate(aux_var%vis)
-  nullify(aux_var%vis)
-  if (associated(aux_var%avgmw))deallocate(aux_var%avgmw)
-  nullify(aux_var%avgmw)
+  type(miscible_auxvar_type) :: aux_var
+
+  PetscInt :: ielem
+
+  ! subtract 1 since indexing from 0
+  if (associated(aux_var%aux_var_elem)) then
+    do ielem = 0, size(aux_var%aux_var_elem) - 1 
+      call MiscibleAuxVarElemDestroy(aux_var%aux_var_elem(ielem))
+    enddo
+    deallocate(aux_var%aux_var_elem)
+    nullify(aux_var%aux_var_elem)
+  endif
+
 end subroutine MiscibleAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsAuxDestroy: Deallocates a Miscible auxilliary object
-! author: Glenn Hammond
-! date: 02/14/08
+! MiscibleAuxDestroy: Deallocates a miscible auxilliary object
+! author: 
+! date: 
 !
 ! ************************************************************************** !
-subroutine MiscibleAuxDestroy(aux, option)
-use option_module
+subroutine MiscibleAuxDestroy(aux)
+
   implicit none
 
-  type(Miscible_type), pointer :: aux
-  type(option_type) :: option
-  PetscInt :: iaux, ielem
+  type(miscible_type), pointer :: aux
+
+  PetscInt :: iaux
   
   if (.not.associated(aux)) return
-  
-  do iaux = 1, aux%num_aux
-    do ielem= 0, option%nflowdof 
-      call MiscibleAuxVarDestroy(aux%aux_vars(iaux)%aux_var_elem(ielem))
+
+  if (associated(aux%aux_vars)) then
+    do iaux = 1, aux%num_aux
+      call MiscibleAuxVarDestroy(aux%aux_vars(iaux))
     enddo
-  enddo  
-  do iaux = 1, aux%num_aux_bc
-    do ielem= 0, option%nflowdof 
-      call MiscibleAuxVarDestroy(aux%aux_vars_bc(iaux)%aux_var_elem(ielem))
-    enddo
-  enddo  
+    deallocate(aux%aux_vars)
+    nullify(aux%aux_vars)
+  endif
   
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
-  nullify(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_bc)) then
+    do iaux = 1, aux%num_aux_bc
+      call MiscibleAuxVarDestroy(aux%aux_vars_bc(iaux))
+    enddo
+    deallocate(aux%aux_vars_bc)
+    nullify(aux%aux_vars_bc)
+  endif
+
+#if 0
+  if (associated(aux%aux_vars_ss)) then
+    do iaux = 1, aux%num_aux_ss
+      call MiscibleAuxVarDestroy(aux%aux_vars_ss(iaux))
+    enddo
+    deallocate(aux%aux_vars_ss)
+    nullify(aux%aux_vars_ss)
+  endif
+#endif
+
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
-  if (associated(aux%Miscible_parameter)) then
-    if (associated(aux%Miscible_parameter%dencpr)) deallocate(aux%Miscible_parameter%dencpr)
-    nullify(aux%Miscible_parameter%dencpr)
-    if (associated(aux%Miscible_parameter%ckwet)) deallocate(aux%Miscible_parameter%ckwet)
-    nullify(aux%Miscible_parameter%ckwet)
-    if (associated(aux%Miscible_parameter%ckdry)) deallocate(aux%Miscible_parameter%ckdry)
-    nullify(aux%Miscible_parameter%ckdry)
-    if (associated(aux%Miscible_parameter%sir)) deallocate(aux%Miscible_parameter%sir)
-    nullify(aux%Miscible_parameter%sir)
-    deallocate(aux%Miscible_parameter)
+  if (associated(aux%miscible_parameter)) then
+    if (associated(aux%miscible_parameter%dencpr)) deallocate(aux%miscible_parameter%dencpr)
+    nullify(aux%miscible_parameter%dencpr)
+    if (associated(aux%miscible_parameter%ckwet)) deallocate(aux%miscible_parameter%ckwet)
+    nullify(aux%miscible_parameter%ckwet)
+    if (associated(aux%miscible_parameter%sir)) deallocate(aux%miscible_parameter%sir)
+    nullify(aux%miscible_parameter%sir)
+    deallocate(aux%miscible_parameter)
   endif
-  nullify(aux%Miscible_parameter%dencpr)
-    
+  nullify(aux%miscible_parameter)
+! if (associated(aux%res_old_AR)) deallocate(aux%res_old_AR)
+! if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
+  if (associated(aux%delx)) deallocate(aux%delx)
+
 end subroutine MiscibleAuxDestroy
 
 end module Miscible_Aux_module
