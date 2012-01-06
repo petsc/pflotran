@@ -3382,24 +3382,5 @@ function MiscibleGetTecplotHeader(realization, icolumn)
 
 end function MiscibleGetTecplotHeader
 
-! ************************************************************************** !
-!
-! MiscibleDestroy: Deallocates variables associated with Miscible
-! author: Chuan Lu 
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine MiscibleDestroy(patch)
-
-  use Patch_module
-
-  implicit none
-  
-  type(patch_type) :: patch
-  
-  ! need to free array in aux vars
-  !call MiscibleAuxDestroy(patch%aux%Miscible)
-
-end subroutine MiscibleDestroy
 
 end module Miscible_module
