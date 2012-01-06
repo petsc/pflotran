@@ -1074,8 +1074,8 @@ end subroutine MiscibleSourceSink
 ! date: 10/12/08
 !
 ! ************************************************************************** ! 
-subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up,Dk_up, &
-                        aux_var_dn,por_dn,tor_dn,dd_dn,perm_dn,Dk_dn, &
+subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
+                        aux_var_dn,por_dn,tor_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,vv_darcy,Res)
   use Option_module                              
@@ -1088,20 +1088,21 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up,Dk_up, &
   PetscReal :: tor_up, tor_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: Dk_up, Dk_dn
   PetscReal :: vv_darcy(:),area
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
   PetscInt :: ispec, np, ind
   PetscReal :: fluxm(option%nflowspec),q,v_darcy
-  PetscReal :: uxmol(1:option%nflowspec),ukvr,difff,diffdp,DK,Dq
-  PetscReal :: upweight,density_ave,cond,gravity,dphi
+  PetscReal :: uxmol(1:option%nflowspec),ukvr,Dq
+  PetscReal :: upweight,density_ave,gravity,dphi
+  PetscReal :: portor_up,portor_dn,dendif_up,dendif_dn,dif_harmonic
      
-  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+  Dq = (perm_up*perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   
 ! harmonic average porosity and tortuosity
-  diffdp = (por_up*tor_up*por_dn*tor_dn)/(dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
+  portor_up = por_up*tor_up
+  portor_dn = por_dn*tor_dn
   
   fluxm = 0.D0
   vv_darcy = 0.D0 
@@ -1143,14 +1144,14 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up,Dk_up, &
     endif
 
 !   Diffusion term   
-!   Note : average rule may not be correct  
-    difff = diffdp*density_ave
-!   0.5D0*(aux_var_up%den(np) + aux_var_dn%den(np))
+!   Note : use harmonic average rule for diffusion
     do ispec=1, option%nflowspec
       ind = ispec + (np-1)*option%nflowspec
-      fluxm(ispec) = fluxm(ispec) + difff* &
-        (upweight*aux_var_up%diff(ind) + (1.d0-upweight)*aux_var_dn%diff(ind))* &
-!       0.5D0 * (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
+      dendif_up = aux_var_up%den(1)*aux_var_up%diff(ispec)
+      dendif_dn = aux_var_dn%den(1)*aux_var_dn%diff(ispec)
+      dif_harmonic = (portor_up*portor_dn*dendif_up*dendif_dn) &
+        /(dd_dn*portor_up*dendif_up + dd_up*portor_dn*dendif_dn)*area
+      fluxm(ispec) = fluxm(ispec) + dif_harmonic* &
         (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
     enddo
   enddo
@@ -1169,7 +1170,7 @@ end subroutine MiscibleFlux
 !
 ! ************************************************************************** !
 subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
-     por_dn,tor_dn,dd_up,perm_dn,Dk_dn, &
+     por_dn,tor_dn,dd_up,perm_dn, &
      area,dist_gravity,option,vv_darcy,Res)
   use Option_module
   
@@ -1180,7 +1181,7 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   type(option_type) :: option
   PetscReal :: dd_up
   PetscReal :: aux_vars(:) ! from aux_real_var array
-  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: por_dn,perm_dn,tor_dn
   PetscReal :: vv_darcy(:), area
   PetscReal :: Res(1:option%nflowdof) 
   
@@ -1188,7 +1189,7 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           
   PetscInt :: ispec, np
   PetscReal :: fluxm(option%nflowspec),q,density_ave, v_darcy
-  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
+  PetscReal :: uxmol(1:option%nflowspec),ukvr,diff,portor,Dq
   PetscReal :: gravity,dphi
   
   fluxm = 0.d0
@@ -1196,8 +1197,9 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   density_ave = 0.d0
   q = 0.d0
 
+  portor = por_dn*tor_dn/dd_up*area
+
   ! Flow   
-  diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase   ! note: nphase = 1
     select case(ibndtype(1))
       case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
@@ -1255,9 +1257,8 @@ subroutine MiscibleBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     ! Diffusion term   
   select case(ibndtype(2))
     case(DIRICHLET_BC) 
-!     diff = diffdp*0.5D0*(aux_var_up%den+aux_var_dn%den)
       do np = 1, option%nphase ! note: nphase = 1
-        diff = diffdp*0.5D0*(aux_var_up%den(np)+aux_var_up%den(np))
+        diff = portor*aux_var_up%den(np)
         do ispec = 1, option%nflowspec
           fluxm(ispec) = fluxm(ispec) + diff* &
                    aux_var_dn%diff((np-1)*option%nflowspec+ispec)* &
@@ -1748,7 +1749,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
          aux_vars(ghosted_id)%aux_var_elem(0), &
          porosity_loc_p(ghosted_id), &
          tortuosity_loc_p(ghosted_id), &
-         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+         cur_connection_set%dist(0,iconn),perm_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
@@ -1872,20 +1873,13 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
 
-      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
-      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
-      icap_up = int(icap_loc_p(ghosted_id_up))
-      icap_dn = int(icap_loc_p(ghosted_id_dn))
-   
-      D_up = Miscible_parameter%ckwet(ithrm_up)
-      D_dn = Miscible_parameter%ckwet(ithrm_dn)
 
       call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
         tortuosity_loc_p(ghosted_id_up), &
-        dd_up,perm_up,D_up, &
+        dd_up,perm_up, &
         aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
         tortuosity_loc_p(ghosted_id_dn), &
-        dd_dn,perm_dn,D_dn, &
+        dd_dn,perm_dn, &
         cur_connection_set%area(iconn),distance_gravity, &
         upweight,option,v_darcy,Res)
 
@@ -2660,7 +2654,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
           aux_vars(ghosted_id)%aux_var_elem(nvar), &
           porosity_loc_p(ghosted_id), &
           tortuosity_loc_p(ghosted_id), &
-          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+          cur_connection_set%dist(0,iconn),perm_dn, &
           cur_connection_set%area(iconn), &
           distance_gravity,option, &
           vv_darcy,Res)
@@ -2763,20 +2757,20 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       do nvar = 1, option%nflowdof 
         call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
             tortuosity_loc_p(ghosted_id_up), &
-            dd_up,perm_up,D_up, &
+            dd_up,perm_up, &
             aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
             tortuosity_loc_p(ghosted_id_dn), &
-            dd_dn,perm_dn,D_dn, &
+            dd_dn,perm_dn, &
             cur_connection_set%area(iconn),distance_gravity, &
             upweight, option, vv_darcy, Res)
         ra(:,nvar) = (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:)) &
               /patch%aux%Miscible%delx(nvar,ghosted_id_up)
         call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
             tortuosity_loc_p(ghosted_id_up), &
-            dd_up,perm_up,D_up, &
+            dd_up,perm_up, &
             aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
             tortuosity_loc_p(ghosted_id_dn), &
-            dd_dn,perm_dn,D_dn, &
+            dd_dn,perm_dn, &
             cur_connection_set%area(iconn),distance_gravity, &
             upweight, option, vv_darcy, Res)
          ra(:,nvar+option%nflowdof) = (Res(:)-patch%aux%Miscible%ResOld_FL(iconn,:))&
