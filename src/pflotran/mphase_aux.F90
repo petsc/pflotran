@@ -643,7 +643,7 @@ subroutine MphaseAuxDestroy(aux)
   endif
   
   if (associated(aux%aux_vars_bc)) then
-    do iaux = 1, aux%num_aux
+    do iaux = 1, aux%num_aux_bc
       call MphaseAuxVarDestroy(aux%aux_vars_bc(iaux))
     enddo
     deallocate(aux%aux_vars_bc)
@@ -651,7 +651,7 @@ subroutine MphaseAuxDestroy(aux)
   endif
   
   if (associated(aux%aux_vars_ss)) then
-    do iaux = 1, aux%num_aux
+    do iaux = 1, aux%num_aux_ss
       call MphaseAuxVarDestroy(aux%aux_vars_ss(iaux))
     enddo
     deallocate(aux%aux_vars_ss)
