@@ -1333,6 +1333,7 @@ end interface
   option => realization%option
   discretization => realization%discretization
   
+  call PetscLogEventBegin(logging%event_r_residual,ierr)
  
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
 
@@ -2357,6 +2358,8 @@ end interface
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+
+  call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
