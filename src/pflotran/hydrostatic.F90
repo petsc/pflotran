@@ -51,7 +51,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: max_z, min_z, temp_real
   PetscInt  :: num_faces, face_id_ghosted, conn_id, num_regions
   type(connection_set_type), pointer :: conn_set_ptr
-  PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
+  PetscReal, pointer :: pressure_array(:)
+  PetscReal, allocatable :: density_array(:), z(:)
   PetscReal :: pressure_gradient(3), piezometric_head_gradient(3), datum(3)
   PetscReal :: temperature_gradient(3), concentration_gradient(3)
   PetscReal :: gravity_magnitude
@@ -459,6 +460,10 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 !   read(*,*)
   if (associated(pressure_array)) deallocate(pressure_array)
   nullify(pressure_array)
+  if (allocated(z)) deallocate(z)
+  if (allocated(density_array)) deallocate(density_array)
+  !geh: Do not deallocate datum_dataset as it is soleley a pointer to an
+  !     external dataset.
   nullify(datum_dataset)
 
 end subroutine HydrostaticUpdateCoupler

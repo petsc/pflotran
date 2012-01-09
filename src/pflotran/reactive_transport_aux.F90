@@ -759,7 +759,10 @@ subroutine RTAuxDestroy(aux)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)
-    
-end subroutine RTAuxDestroy
+
+  deallocate(aux)
+  nullify(aux)  
+
+  end subroutine RTAuxDestroy
 
 end module Reactive_Transport_Aux_module

@@ -563,7 +563,10 @@ subroutine ImmisAuxDestroy(aux, option)
     deallocate(aux%immis_parameter)
   endif
   nullify(aux%immis_parameter%dencpr)
-    
+  
+  deallocate(aux)
+  nullify(aux)
+  
 end subroutine ImmisAuxDestroy
 
 

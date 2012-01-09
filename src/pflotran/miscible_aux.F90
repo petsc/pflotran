@@ -420,7 +420,10 @@ subroutine MiscibleAuxDestroy(aux)
 ! if (associated(aux%res_old_AR)) deallocate(aux%res_old_AR)
 ! if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
   if (associated(aux%delx)) deallocate(aux%delx)
-
+  
+  deallocate(aux)
+  nullify(aux)
+  
 end subroutine MiscibleAuxDestroy
 
 end module Miscible_Aux_module

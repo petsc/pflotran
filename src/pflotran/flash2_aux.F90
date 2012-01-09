@@ -603,7 +603,10 @@ use option_module
     deallocate(aux%Flash2_parameter)
   endif
   nullify(aux%Flash2_parameter%dencpr)
-    
+  
+  deallocate(aux)
+  nullify(aux)
+  
 end subroutine Flash2AuxDestroy
 
 

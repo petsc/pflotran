@@ -571,7 +571,10 @@ subroutine THCAuxDestroy(aux)
     nullify(aux%thc_parameter%sir)
   endif
   nullify(aux%thc_parameter)
-    
-end subroutine THCAuxDestroy
+
+  deallocate(aux)
+  nullify(aux)  
+
+  end subroutine THCAuxDestroy
 
 end module THC_Aux_module

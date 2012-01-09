@@ -142,6 +142,9 @@ subroutine MaterialAuxDestroy(aux)
   endif
   nullify(aux%material_parameter)
     
+  deallocate(aux)
+  nullify(aux)
+
 end subroutine MaterialAuxDestroy
 
 end module Material_Aux_module

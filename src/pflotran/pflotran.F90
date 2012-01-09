@@ -193,8 +193,9 @@
       endif
     endif
 
-    if (option%myrank == option%io_rank .and. option%print_to_file) &
+    if (option%myrank == option%io_rank .and. option%print_to_file) then
       close(option%fid_out)
+    endif
 
     call LoggingDestroy()
     

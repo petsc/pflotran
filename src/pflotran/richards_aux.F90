@@ -405,6 +405,9 @@ subroutine RichardsAuxDestroy(aux)
   endif
   nullify(aux%matrix_buffer)
 #endif
+  
+  deallocate(aux)
+  nullify(aux)
     
 end subroutine RichardsAuxDestroy
 

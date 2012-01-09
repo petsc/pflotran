@@ -1050,6 +1050,8 @@ subroutine RegionDestroy(region)
   nullify(region%cell_ids)
   if (associated(region%faces)) deallocate(region%faces)
   nullify(region%faces)
+  if (associated(region%coordinates)) deallocate(region%coordinates)
+  nullify(region%coordinates)
   if (associated(region%sideset)) then
     call RegionDestroySideset(region%sideset)
   endif

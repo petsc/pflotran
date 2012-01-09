@@ -1219,6 +1219,7 @@ subroutine FlowConditionRead(condition,input,option)
   call FlowConditionDatasetDestroy(default_flow_dataset)
   call FlowConditionDatasetDestroy(default_datum)
   call FlowConditionDatasetDestroy(default_gradient)
+  call FlowConditionDatasetDestroy(default_well)
     
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 

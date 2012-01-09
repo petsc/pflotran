@@ -425,6 +425,9 @@ subroutine GeneralAuxDestroy(aux)
   endif
   nullify(aux%general_parameter)
   
+  deallocate(aux)
+  nullify(aux)
+  
 end subroutine GeneralAuxDestroy
 
 end module General_Aux_module

@@ -127,7 +127,7 @@ end interface
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
 
-  if (option%print_to_file) then
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
 
@@ -942,7 +942,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
       endif
       level => LevelCreate()
       call LevelAddToList(level,realization%level_list)
-      level%patch_list => PatchCreateList()
       call PatchAddToList(patch,level%patch_list)
       realization%patch => patch
     case(AMR_GRID)

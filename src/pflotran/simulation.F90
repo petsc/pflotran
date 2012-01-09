@@ -207,6 +207,9 @@ subroutine SimulationDestroy(simulation)
   call RealizationDestroy(simulation%realization)
   call TimestepperDestroy(simulation%flow_stepper)
   call TimestepperDestroy(simulation%tran_stepper)
+
+  deallocate(simulation)
+  nullify(simulation)
   
 end subroutine SimulationDestroy
   

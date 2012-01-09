@@ -314,7 +314,10 @@ subroutine GlobalAuxDestroy(aux)
     deallocate(aux%aux_vars_bc)
   endif
   nullify(aux%aux_vars_bc)
-    
+  
+  deallocate(aux)
+  nullify(aux)
+  
 end subroutine GlobalAuxDestroy
 
 end module Global_Aux_module
