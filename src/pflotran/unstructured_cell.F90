@@ -45,12 +45,15 @@ contains
 ! date: 10/30/09
 !
 ! ************************************************************************** !
-function UCellComputeCentroid(cell_type,vertices)
+function UCellComputeCentroid(cell_type,vertices,option)
+
+  use Option_module
 
   implicit none
   
   PetscInt :: cell_type
   type(point_type) :: vertices(*)
+  type(option_type) :: option
   
   PetscReal :: UCellComputeCentroid(3)
   PetscInt :: ivertex
@@ -88,6 +91,9 @@ function UCellComputeCentroid(cell_type,vertices)
         UCellComputeCentroid(3) = UCellComputeCentroid(3) + vertices(ivertex)%z
       enddo
       UCellComputeCentroid = UCellComputeCentroid / 4.d0
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select
 
 end function UCellComputeCentroid
@@ -99,14 +105,16 @@ end function UCellComputeCentroid
 ! date: 11/06/09
 !
 ! ************************************************************************** !
-function UCellComputeVolume(cell_type,vertices)
+function UCellComputeVolume(cell_type,vertices,option)
 
   use Utility_module, only : DotProduct, CrossProduct
+  use Option_module
 
   implicit none
   
   PetscInt :: cell_type
   type(point_type) :: vertices(*)
+  type(option_type) :: option
   
   PetscReal :: UCellComputeVolume
   PetscReal :: v(3)
@@ -179,6 +187,9 @@ function UCellComputeVolume(cell_type,vertices)
       UCellComputeVolume = &
         UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2),vertices(3), &
                                         vertices(4))
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select
 
 end function UCellComputeVolume
@@ -352,12 +363,14 @@ end function UCellComputeDistanceFromPlane
 ! date: 10/24/11
 !
 ! ************************************************************************** !
-function UCellGetNVertices(cell_type)
+function UCellGetNVertices(cell_type,option)
 
+  use Option_module
   implicit none
   
   PetscInt :: cell_type
   PetscInt :: UCellGetNVertices
+  type(option_type) :: option
   
   select case(cell_type)
     case(HEX_TYPE)
@@ -368,6 +381,9 @@ function UCellGetNVertices(cell_type)
       UCellGetNVertices = 5
     case(TET_TYPE)
       UCellGetNVertices = 4
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select  
   
 end function UCellGetNVertices
@@ -379,12 +395,14 @@ end function UCellGetNVertices
 ! date: 10/24/11
 !
 ! ************************************************************************** !
-function UCellGetNFaces(cell_type)
+function UCellGetNFaces(cell_type,option)
 
+  use Option_module
   implicit none
   
   PetscInt :: cell_type
   PetscInt :: UCellGetNFaces
+  type(option_type) :: option
   
   select case(cell_type)
     case(HEX_TYPE)
@@ -393,6 +411,9 @@ function UCellGetNFaces(cell_type)
       UCellGetNFaces = 5
     case(TET_TYPE)
       UCellGetNFaces = 4
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select  
   
 end function UCellGetNFaces
@@ -404,13 +425,15 @@ end function UCellGetNFaces
 ! date: 10/24/11
 !
 ! ************************************************************************** !
-function UCellGetNFaceVertices(cell_type,iface)
+function UCellGetNFaceVertices(cell_type,iface,option)
 
+  use Option_module
   implicit none
   
   PetscInt :: cell_type
   PetscInt :: iface
   PetscInt :: UCellGetNFaceVertices
+  type(option_type) :: option
   
   select case(cell_type)
     case(HEX_TYPE)
@@ -429,6 +452,9 @@ function UCellGetNFaceVertices(cell_type,iface)
       endif
     case(TET_TYPE)
       UCellGetNFaceVertices = 3
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select
       
 end function UCellGetNFaceVertices
@@ -440,13 +466,15 @@ end function UCellGetNFaceVertices
 ! date: 10/24/11
 !
 ! ************************************************************************** !
-function UCellGetFaceType(cell_type,iface)
+function UCellGetFaceType(cell_type,iface,option)
 
+  use Option_module
   implicit none
   
   PetscInt :: cell_type
   PetscInt :: iface
   PetscInt :: UCellGetFaceType
+  type(option_type) :: option
   
   select case(cell_type)
     case(HEX_TYPE)
@@ -465,6 +493,9 @@ function UCellGetFaceType(cell_type,iface)
       endif
     case(TET_TYPE)
       UCellGetFaceType = TRI_FACE_TYPE
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select
   
 end function UCellGetFaceType
@@ -476,11 +507,13 @@ end function UCellGetFaceType
 ! date: 12/09/11
 !
 ! ************************************************************************** !
-function UCellTypeToWord(cell_type)
+function UCellTypeToWord(cell_type,option)
 
+  use Option_module
   implicit none
   
   PetscInt :: cell_type
+  type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: UCellTypeToWord
   
@@ -493,6 +526,9 @@ function UCellTypeToWord(cell_type)
       UCellTypeToWord = 'pyramid'
     case(TET_TYPE)
       UCellTypeToWord = 'tetrahedron'
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
   end select
   
 end function UCellTypeToWord
@@ -504,11 +540,13 @@ end function UCellTypeToWord
 ! date: 12/09/11
 !
 ! ************************************************************************** !
-function UCellFaceTypeToWord(face_type)
+function UCellFaceTypeToWord(face_type,option)
 
+  use Option_module
   implicit none
   
   PetscInt :: face_type
+  type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: UCellFaceTypeToWord
   
@@ -517,6 +555,9 @@ function UCellFaceTypeToWord(face_type)
       UCellFaceTypeToWord = 'triangle'
     case(QUAD_FACE_TYPE)
       UCellFaceTypeToWord = 'quadrilateral'
+    case default
+      option%io_buffer = 'Face type not recognized'
+      call printErrMsg(option)
   end select
   
 end function UCellFaceTypeToWord
@@ -541,7 +582,7 @@ subroutine UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
   PetscInt :: nvertices
   PetscInt :: vertex_ids(*)
   
-  nvertices = UCellGetNFaceVertices(cell_type,iface)
+  nvertices = UCellGetNFaceVertices(cell_type,iface,option)
   call UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
 
 end subroutine UCellGetNFaceVertsandVerts

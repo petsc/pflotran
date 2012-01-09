@@ -2381,7 +2381,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   face_count = 0
   do ghosted_id = 1, unstructured_grid%ngmax
     cell_type = unstructured_grid%cell_type(ghosted_id)
-    nfaces = UCellGetNFaces(cell_type)
+    nfaces = UCellGetNFaces(cell_type,option)
     do iface = 1, nfaces
       face_count = face_count + 1
       cell_to_face(iface,ghosted_id) = face_count
@@ -2425,7 +2425,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     cell_id = local_id
     ! cell_type is ghosted, but local cells are in the first nlmax entries
     cell_type = unstructured_grid%cell_type(local_id)
-    nfaces = UCellGetNFaces(cell_type)
+    nfaces = UCellGetNFaces(cell_type,option)
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
       ! Select a neighboring cell
       ! ghosted neighbors have a negative id
@@ -2435,13 +2435,13 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       ! If cell-id is neighbor is lower, skip it
       if (cell_id2 <= cell_id) cycle
       ! Find the number of vertices for neighboring cell
-      nfaces2 = UCellGetNFaces(cell_type2)
+      nfaces2 = UCellGetNFaces(cell_type2,option)
       ! Initialize
       face_found = PETSC_FALSE
       do iface = 1, nfaces
         ! Select a face and find number of vertices forming the face
         face_id = cell_to_face(iface,cell_id)
-        nvertices = UCellGetNFaceVertices(cell_type,iface)
+        nvertices = UCellGetNFaceVertices(cell_type,iface,option)
         do ivertex = 1, nvertices
           ! Select a vertex and initialize vertex_found
           vertex_id = face_to_vertex(ivertex,face_id) ! face_to_vertex is 1-based indexing
@@ -2471,7 +2471,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
             !geh nvertices2 = 4
             !gehcomment: I believe that cell_type and iface on next line shoudl be the "2" versions
             !geh if ((cell_type == WEDGE_TYPE).and.(iface.gt.3)) nvertices2 = 3
-            nvertices2 = UCellGetNFaceVertices(cell_type2,iface2)
+            nvertices2 = UCellGetNFaceVertices(cell_type2,iface2,option)
             ! Both iface and iface2 need to have same number of vertices
             if (nvertices == nvertices2) then
               ! Count the number of vertices of iface which match vertices
@@ -2596,7 +2596,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       if (cell_id < 1) cycle
       found = PETSC_FALSE
       cell_type = unstructured_grid%cell_type(cell_id)
-      nfaces = UCellGetNFaces(cell_type)
+      nfaces = UCellGetNFaces(cell_type,option)
       do iface2 = 1, nfaces
         face_id2 = cell_to_face(iface2,cell_id)
         if (face_id < 0) cycle
@@ -2683,7 +2683,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           call printErrMsg(option)
         endif
         face_type = &
-          UCellGetFaceType(unstructured_grid%cell_type(local_id),iface)
+          UCellGetFaceType(unstructured_grid%cell_type(local_id),iface,option)
         found = PETSC_FALSE
         do iface2 = 1, unstructured_grid%cell_vertices(0,cell_id2)
           if (cell_to_face(iface,local_id) == &
@@ -2695,7 +2695,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         if (found) then
           face_type2 = &
             UCellGetFaceType(unstructured_grid%cell_type(cell_id2), &
-                                                                 iface2)
+                                                                 iface2,option)
           if (face_type /= face_type2) then
             write(string,*) option%myrank, local_id, cell_id2 
             option%io_buffer = 'face types do not match' // string 
@@ -2935,7 +2935,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
         vertex_8(ivert)%z = unstructured_grid%vertices(vert_id)%z
       enddo
       v2 = UCellComputeCentroid(unstructured_grid%cell_type(ghosted_id), &
-                                vertex_8)
+                                vertex_8,option)
 ! Instead of connecting centroid with face center, calculate the shortest
 ! distance between the centroid and face and use that distance - geh
 #if 0
@@ -3017,7 +3017,7 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
         unstructured_grid%vertices(vertex_id)%z
     enddo
     centroid = UCellComputeCentroid(unstructured_grid%cell_type(ghosted_id), &
-                                    vertex_8)
+                                    vertex_8,option)
     grid_x(ghosted_id) = centroid(1)
     grid_y(ghosted_id) = centroid(2)
     grid_z(ghosted_id) = centroid(3)
@@ -3081,7 +3081,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
         unstructured_grid%vertices(vertex_id)%z
     enddo
     volume_p(local_id) = UCellComputeVolume(unstructured_grid%cell_type( &
-                           ghosted_id),vertex_8)
+                           ghosted_id),vertex_8,option)
   enddo
       
   call VecRestoreArrayF90(volume,volume_p,ierr)
@@ -3120,7 +3120,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
   do local_id = 1, unstructured_grid%nlmax
     ghosted_id = local_id
     cell_type = unstructured_grid%cell_type(local_id)
-    num_vertices = UCellGetNVertices(cell_type)
+    num_vertices = UCellGetNVertices(cell_type,option)
     cell_vertex_ids_before(1:num_vertices) = &
       unstructured_grid%cell_vertices(1:num_vertices,ghosted_id)
     cell_vertex_ids_after = cell_vertex_ids_before
@@ -3128,9 +3128,9 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
     point%x = x(ghosted_id)
     point%y = y(ghosted_id)
     point%z = z(ghosted_id)
-    num_faces = UCellGetNFaces(cell_type)
+    num_faces = UCellGetNFaces(cell_type,option)
     do iface = 1, num_faces
-      face_type = UCellGetFaceType(cell_type,iface)
+      face_type = UCellGetFaceType(cell_type,iface,option)
       call UCellGetFaceVertices(option,cell_type,iface,face_vertex_ids)
       ! Only need to use the first three vertices to produce a plane.  Will
       ! assume that the plane represents the entire face
@@ -3150,10 +3150,10 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
               & ''" for face vertices '', &
               & '' based on face vertices '',3i3)') &
               nL2A(local_id), &
-              trim(UCellTypeToWord(cell_type)), &
+              trim(UCellTypeToWord(cell_type,option)), &
           (unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i)), &
              i = 1,8), &
-              trim(UCellFaceTypeToWord(face_type)), &
+              trim(UCellFaceTypeToWord(face_type,option)), &
           (face_vertex_ids(i),i = 1,3) 
         call printErrMsgByRank(option)
       endif
@@ -3385,7 +3385,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
   do local_id = 1, unstructured_grid%nlmax
     ghosted_id = local_id ! ghosted ids are same for first nlocal cells
     cell_type = unstructured_grid%cell_type(ghosted_id)
-    num_faces = UCellGetNFaces(cell_type)
+    num_faces = UCellGetNFaces(cell_type,option)
  
     ! vertices should be ordered counter-clockwise so that a cross product
     ! of the two vectors v1-v2 and v1-v3 points outward.
@@ -3394,7 +3394,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
     ! encompassed by the faces.
     inside = PETSC_TRUE
     do iface = 1, num_faces
-      face_type = UCellGetFaceType(cell_type,iface)
+      face_type = UCellGetFaceType(cell_type,iface,option)
       call UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
       point1 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(1),ghosted_id))
       point2 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(2),ghosted_id))
@@ -3480,10 +3480,10 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
   do local_id = 1, unstructured_grid%nlmax
     ghosted_id = local_id ! ghosted ids are same for first nlocal cells
     cell_type = unstructured_grid%cell_type(ghosted_id)
-    num_faces = UCellGetNFaces(cell_type)
+    num_faces = UCellGetNFaces(cell_type,option)
     do iface = 1, num_faces
-      face_type = UCellGetFaceType(cell_type,iface)
-      num_vertices = UCellGetNFaceVertices(cell_type,iface)
+      face_type = UCellGetFaceType(cell_type,iface,option)
+      num_vertices = UCellGetNFaceVertices(cell_type,iface,option)
       call UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
       in_rectangle = PETSC_TRUE
       do ivertex = 1, num_vertices
@@ -3727,7 +3727,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   ! count up the number of boundary faces
   boundary_face_count = 0
   do local_id = 1, unstructured_grid%nlmax
-    nfaces = UCellGetNFaces(unstructured_grid%cell_type(local_id))
+    nfaces = UCellGetNFaces(unstructured_grid%cell_type(local_id),option)
     do iface = 1, nfaces
       face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
       if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
@@ -3747,7 +3747,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   boundary_face_count = 0
   do local_id = 1, unstructured_grid%nlmax
     cell_type = unstructured_grid%cell_type(local_id)
-    nfaces = UCellGetNFaces(cell_type)
+    nfaces = UCellGetNFaces(cell_type,option)
     do iface = 1, nfaces
       face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
       if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
@@ -3836,12 +3836,12 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
       ! need to ensure that the right number of vertices are included
       cell_id = unstructured_grid%face_to_cell_ghosted(1,face_id)
       cell_type = unstructured_grid%cell_type(cell_id)
-      nfaces = UCellGetNFaces(cell_type)
+      nfaces = UCellGetNFaces(cell_type,option)
       nvertices = 0
       do iface2 = 1, nfaces
         face_id2 = unstructured_grid%cell_to_face_ghosted(iface2,cell_id)
         if (face_id == face_id2) then
-          nvertices = UCellGetNFaceVertices(cell_type,iface2)
+          nvertices = UCellGetNFaceVertices(cell_type,iface2,option)
           exit
         endif
       enddo
