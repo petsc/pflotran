@@ -119,14 +119,6 @@ else
  include ${PETSC_DIR}/conf/rules
 endif
 
-ifdef dm_create
-  GLENN_FLAGS += -DDM_CREATE
-endif
-
-ifdef dmda_old
-  GLENN_FLAGS += -DDMDA_OLD
-endif
-
 ifdef have_hdf5
 LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif

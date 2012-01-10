@@ -768,7 +768,7 @@ end interface
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-#ifdef DM_CREATE
+#ifndef DMGET
       call DMCreateMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
 #else
       call DMGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
@@ -789,7 +789,7 @@ end interface
           call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
           call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
         case(NTRANDOF)
-#ifdef DM_CREATE
+#ifndef DMGET
           call DMCreateMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
 #else
           call DMGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
@@ -912,7 +912,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
                                    ierr)
         call DMDASetInterpolationType(dm_fine_ptr%sgdm, DMDA_Q0, ierr)
         call DMCoarsen(dm_fine_ptr%sgdm, option%mycomm, dmc_ptr(i)%sgdm, ierr)
-#ifdef DM_CREATE
+#ifndef DMGET
         call DMCreateInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, &
                                    interpolation(i), PETSC_NULL_OBJECT, ierr)
 #else
@@ -954,7 +954,7 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-#ifdef DM_CREATE
+#ifndef DMGET
       call DMCreateColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATBAIJ,coloring,&
                             ierr)
 #else

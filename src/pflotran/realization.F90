@@ -245,9 +245,11 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%work)
-  ! temporary for samr testing
-  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+  if (option%use_samr) then
+    ! temporary for samr testing
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%work_samr)
+  endif
   
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
@@ -258,9 +260,11 @@ subroutine RealizationCreateDiscretization(realization)
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
   
-  ! temporary for samr testing
-  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                     field%work_samr_loc)
+  if (option%use_samr) then
+    ! temporary for samr testing
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%work_samr_loc)
+  endif
   
   if (option%nflowdof > 0) then
 
@@ -271,12 +275,14 @@ subroutine RealizationCreateDiscretization(realization)
                                        field%perm0_yy)
     call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                        field%perm0_zz)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                       field%perm0_xz)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                       field%perm0_xy)
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                       field%perm0_yz)
+    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                         field%perm0_xz)
+      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                         field%perm0_xy)
+      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                         field%perm0_yz)
+    endif
     call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                        field%perm_pow)
 
@@ -295,12 +301,14 @@ subroutine RealizationCreateDiscretization(realization)
                                        field%perm_yy_loc)
     call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                        field%perm_zz_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_xz_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_xy_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%perm_yz_loc)
+    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                         field%perm_xz_loc)
+      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                         field%perm_xy_loc)
+      call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                         field%perm_yz_loc)
+    endif
 
     ! ndof degrees of freedom, global
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx, &
@@ -422,7 +430,7 @@ subroutine RealizationCreateDiscretization(realization)
  
   ! Vectors with face degrees of freedom
 #ifdef DASVYAT
-   if (discretization%itype==STRUCTURED_GRID_MIMETIC) then
+   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
 
      if (option%nflowdof > 0) then
 
