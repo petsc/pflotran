@@ -201,7 +201,9 @@
     
   endif
   
-  call PetscOptionsSetValue('-options_left','no',ierr);
+  call PetscOptionsSetValue('-options_left','no',ierr)
+  ! list any PETSc objects that have not been freed - for debugging
+  call PetscOptionsSetValue('-objects_left','yes',ierr)
 
   call OptionDestroy(option)
   call PetscFinalize(ierr)

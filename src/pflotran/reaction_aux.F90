@@ -372,8 +372,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinsrfcplx_free_site_stoich(:)
     PetscReal, pointer :: kinsrfcplx_forward_rate(:)
     PetscReal, pointer :: kinsrfcplx_backward_rate(:)  
-!    PetscReal, pointer :: kinsrfcplx_logK(:)
-!    PetscReal, pointer :: kinsrfcplx_logKcoef(:,:)
     PetscReal, pointer :: kinsrfcplx_Z(:)  ! valence
 
     ! multirate kinetic surface complexation
@@ -508,7 +506,8 @@ module Reaction_Aux_module
             ColloidConstraintCreate, &
             ColloidConstraintDestroy, &
             IonExchangeRxnCreate, &
-            IonExchangeCationCreate
+            IonExchangeCationCreate, &
+            ReactionDestroy
              
 contains
 
@@ -681,6 +680,7 @@ function ReactionCreate()
   nullify(reaction%kinsrfcplx_rxn_to_site)
   nullify(reaction%kinsrfcplx_rxn_site_density)
   nullify(reaction%kinsrfcplx_rxn_stoich_flag) 
+  nullify(reaction%kinsrfcplx_rxn_surf_type)
   nullify(reaction%kinsrfcplx_site_names)
   nullify(reaction%kinsrfcplx_names)
   nullify(reaction%kinsrfcplxspecid)
@@ -689,8 +689,8 @@ function ReactionCreate()
   nullify(reaction%kinsrfcplxh2ostoich)
   nullify(reaction%kinsrfcplx_free_site_id)
   nullify(reaction%kinsrfcplx_free_site_stoich)
-!  nullify(reaction%kinsrfcplx_logK)
-!  nullify(reaction%kinsrfcplx_logKcoef)
+  nullify(reaction%kinsrfcplx_forward_rate)
+  nullify(reaction%kinsrfcplx_backward_rate)
   nullify(reaction%kinsrfcplx_Z)
 
   reaction%kinmr_nrate = 0
@@ -2145,6 +2145,9 @@ subroutine AqueousSpeciesConstraintDestroy(constraint)
   if (associated(constraint%constraint_aux_string)) &
     deallocate(constraint%constraint_aux_string)
   nullify(constraint%constraint_aux_string)
+  if (associated(constraint%external_dataset)) &
+    deallocate(constraint%external_dataset)
+  nullify(constraint%external_dataset)
 
   deallocate(constraint)
   nullify(constraint)
@@ -2187,6 +2190,9 @@ subroutine MineralConstraintDestroy(constraint)
   if (associated(constraint%constraint_aux_string)) &
     deallocate(constraint%constraint_aux_string)
   nullify(constraint%constraint_aux_string)
+  if (associated(constraint%external_dataset)) &
+    deallocate(constraint%external_dataset)
+  nullify(constraint%external_dataset)
 
   deallocate(constraint)
   nullify(constraint)
@@ -2373,6 +2379,10 @@ subroutine ReactionDestroy(reaction)
   enddo    
   nullify(reaction%kd_rxn_list)
 
+  if (associated(reaction%dbase_temperatures)) &
+    deallocate(reaction%dbase_temperatures)
+  nullify(reaction%dbase_temperatures)  
+  
   ! redox species
   if (associated(reaction%redox_species_list)) &
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
@@ -2384,9 +2394,15 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%secondary_species_names)) &
     deallocate(reaction%secondary_species_names)
   nullify(reaction%secondary_species_names)
+  if (associated(reaction%secondary_species_names)) &
+    deallocate(reaction%secondary_species_names)
+  nullify(reaction%secondary_species_names)
   if (associated(reaction%gas_species_names)) &
     deallocate(reaction%gas_species_names)
   nullify(reaction%gas_species_names)
+  if (associated(reaction%eqcplx_basis_names)) &
+    deallocate(reaction%eqcplx_basis_names)
+  nullify(reaction%eqcplx_basis_names)
   if (associated(reaction%eqsrfcplx_site_names)) &
     deallocate(reaction%eqsrfcplx_site_names)
   nullify(reaction%eqsrfcplx_site_names)
@@ -2635,12 +2651,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinsrfcplx_backward_rate)) &
     deallocate(reaction%kinsrfcplx_backward_rate)
   nullify(reaction%kinsrfcplx_backward_rate)
-!  if (associated(reaction%kinsrfcplx_logK)) &
-!    deallocate(reaction%kinsrfcplx_logK)
-!  nullify(reaction%kinsrfcplx_logK)
-!  if (associated(reaction%kinsrfcplx_logKcoef)) &
-!    deallocate(reaction%kinsrfcplx_logKcoef)
-!  nullify(reaction%kinsrfcplx_logKcoef)
   if (associated(reaction%kinsrfcplx_Z)) &
     deallocate(reaction%kinsrfcplx_Z)
   nullify(reaction%kinsrfcplx_Z)

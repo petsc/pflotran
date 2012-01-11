@@ -172,10 +172,15 @@ module Reactive_Transport_Aux_module
     type(react_tran_auxvar_chunk_type), pointer :: aux_var_chunk
 #endif
   end type reactive_transport_type
+
+  interface RTAuxVarDestroy
+    module procedure RTAuxVarSingleDestroy
+    module procedure RTAuxVarArrayDestroy
+  end interface RTAuxVarDestroy
   
   public :: RTAuxCreate, RTAuxDestroy, &
             RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy, &
-            RTAuxVarChunkDestroy
+            RTAuxVarChunkDestroy, RTAuxVarStrip
             
 contains
 
@@ -600,12 +605,58 @@ end subroutine RTAuxVarChunkDestroy
 
 ! ************************************************************************** !
 !
-! RTAuxVarDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine RTAuxVarSingleDestroy(aux_var)
+
+  implicit none
+
+  type(reactive_transport_auxvar_type), pointer :: aux_var
+  
+  if (associated(aux_var)) then
+    call RTAuxVarStrip(aux_var)
+    deallocate(aux_var)
+  endif
+  nullify(aux_var)  
+
+end subroutine RTAuxVarSingleDestroy
+  
+! ************************************************************************** !
+!
+! RTAuxVarArrayDestroy: Deallocates a mode auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine RTAuxVarArrayDestroy(aux_vars)
+
+  implicit none
+
+  type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
+  
+  PetscInt :: iaux
+  
+  if (associated(aux_vars)) then
+    do iaux = 1, size(aux_vars)
+      call RTAuxVarStrip(aux_vars(iaux))
+    enddo  
+    deallocate(aux_vars)
+  endif
+  nullify(aux_vars)  
+
+end subroutine RTAuxVarArrayDestroy
+  
+! ************************************************************************** !
+!
+! RTAuxVarStrip: Deallocates all members of single auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RTAuxVarDestroy(aux_var)
+subroutine RTAuxVarStrip(aux_var)
 
   implicit none
 
@@ -695,7 +746,7 @@ subroutine RTAuxVarDestroy(aux_var)
     call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dSic)
   endif
   
-end subroutine RTAuxVarDestroy
+end subroutine RTAuxVarStrip
 
 ! ************************************************************************** !
 !
@@ -713,27 +764,9 @@ subroutine RTAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  if (associated(aux%aux_vars)) then
-    do iaux = 1, aux%num_aux
-      call RTAuxVarDestroy(aux%aux_vars(iaux))
-    enddo  
-    deallocate(aux%aux_vars)
-  endif
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) then
-    do iaux = 1, aux%num_aux_bc
-      call RTAuxVarDestroy(aux%aux_vars_bc(iaux))
-    enddo  
-    deallocate(aux%aux_vars_bc)
-  endif
-  nullify(aux%aux_vars_bc)
-  if (associated(aux%aux_vars_ss)) then
-    do iaux = 1, aux%num_aux_ss
-      call RTAuxVarDestroy(aux%aux_vars_ss(iaux))
-    enddo  
-    deallocate(aux%aux_vars_ss)
-  endif
-  nullify(aux%aux_vars_ss)
+  call RTAuxVarDestroy(aux%aux_vars)
+  call RTAuxVarDestroy(aux%aux_vars_bc)
+  call RTAuxVarDestroy(aux%aux_vars_ss)
 #ifdef CHUNK
   if (associated(aux%aux_var_chunk)) then
     call RTAuxVarChunkDestroy(aux%aux_var_chunk)

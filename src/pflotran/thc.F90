@@ -38,7 +38,7 @@ contains
 ! ************************************************************************** !
 !
 ! THCTimeCut: Resets arrays for time step cut
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -68,7 +68,7 @@ end subroutine THCTimeCut
 ! ************************************************************************** !
 !
 ! THCSetup: 
-! author: Glenn Hammond
+! author: ???
 ! date: 02/22/08
 !
 ! ************************************************************************** !
@@ -101,7 +101,7 @@ end subroutine THCSetup
 ! ************************************************************************** !
 !
 ! THCSetupPatch: Creates arrays for auxilliary variables
-! author: Glenn Hammond
+! author: ???
 ! date: 02/22/08
 !
 ! ************************************************************************** !
@@ -368,7 +368,7 @@ end subroutine THCZeroMassBalDeltaPatch
 ! ************************************************************************** !
 !
 ! THCUpdateMassBalancePatch: Updates mass balance
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/11
 !
 ! ************************************************************************** !
@@ -420,7 +420,7 @@ end subroutine THCUpdateMassBalancePatch
 !
 ! THCUpdateAuxVars: Updates the auxilliary variables associated with 
 !                        the THC problem
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -454,7 +454,7 @@ end subroutine THCUpdateAuxVars
 !
 ! THCUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
 !                        the THC problem
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -600,7 +600,7 @@ end subroutine THCUpdateAuxVarsPatch
 ! ************************************************************************** !
 !
 ! THCInitializeTimestep: Update data in module prior to time step
-! author: Glenn Hammond
+! author: ???
 ! date: 02/20/08
 !
 ! ************************************************************************** !
@@ -619,7 +619,7 @@ end subroutine THCInitializeTimestep
 ! ************************************************************************** !
 !
 ! THCUpdateSolution: Updates data in module after a successful time step
-! author: Glenn Hammond
+! author: ???
 ! date: 02/13/08
 !
 ! ************************************************************************** !
@@ -685,7 +685,7 @@ end subroutine THCUpdateSolutionPatch
 !
 ! THCUpdateFixedAccumulation: Updates the fixed portion of the 
 !                                  accumulation term
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -719,7 +719,7 @@ end subroutine THCUpdateFixedAccumulation
 !
 ! THCUpdateFixedAccumPatch: Updates the fixed portion of the 
 !                                  accumulation term
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -825,7 +825,7 @@ end subroutine THCUpdateFixedAccumPatch
 ! ************************************************************************** !
 !
 ! THCNumericalJacobianTest: Computes the a test numerical jacobian
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -917,7 +917,7 @@ end subroutine THCNumericalJacobianTest
 !
 ! THCAccumDerivative: Computes derivatives of the accumulation 
 !                                 term for the Jacobian
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -1132,7 +1132,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 
     deallocate(thc_aux_var_pert%xmol,thc_aux_var_pert%diff)
     J = J_pert
-    call GlobalAuxVarDestroy(global_aux_var_pert)  
+    call GlobalAuxVarStrip(global_aux_var_pert)  
   endif
    
 end subroutine THCAccumDerivative
@@ -1141,7 +1141,7 @@ end subroutine THCAccumDerivative
 !
 ! THCAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
@@ -1232,7 +1232,7 @@ end subroutine THCAccumulation
 !
 ! THCFluxDerivative: Computes the derivatives of the internal flux terms
 !                         for the Jacobian
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
@@ -1778,8 +1778,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
     Jup = J_pert_up
     Jdn = J_pert_dn
-    call GlobalAuxVarDestroy(global_aux_var_pert_up)
-    call GlobalAuxVarDestroy(global_aux_var_pert_dn)    
+    call GlobalAuxVarStrip(global_aux_var_pert_up)
+    call GlobalAuxVarStrip(global_aux_var_pert_dn)    
   endif
 
 end subroutine THCFluxDerivative
@@ -1787,7 +1787,7 @@ end subroutine THCFluxDerivative
 ! ************************************************************************** !
 !
 ! THCFlux: Computes the internal flux terms for the residual
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
@@ -1997,7 +1997,7 @@ end subroutine THCFlux
 !
 ! THCBCFluxDerivative: Computes the derivatives of the boundary flux 
 !                           terms for the Jacobian
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -2473,8 +2473,8 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     enddo
     deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
     Jdn = J_pert_dn
-    call GlobalAuxVarDestroy(global_aux_var_pert_up)
-    call GlobalAuxVarDestroy(global_aux_var_pert_dn)      
+    call GlobalAuxVarStrip(global_aux_var_pert_up)
+    call GlobalAuxVarStrip(global_aux_var_pert_dn)      
   endif
 
 end subroutine THCBCFluxDerivative
@@ -2482,7 +2482,7 @@ end subroutine THCBCFluxDerivative
 ! ************************************************************************** !
 !
 ! THCBCFlux: Computes the  boundary flux terms for the residual
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -2720,7 +2720,7 @@ end subroutine THCBCFlux
 ! ************************************************************************** !
 !
 ! THCResidual: Computes the residual equation 
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -2868,7 +2868,7 @@ end subroutine THCResidualFluxContribPatch
 ! ************************************************************************** !
 !
 ! THCResidualPatch: Computes the residual equation at patch level
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -3243,7 +3243,7 @@ end subroutine THCResidualPatch
 ! ************************************************************************** !
 !
 ! THCJacobian: Computes the Jacobian
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -3340,7 +3340,7 @@ end subroutine THCJacobian
 ! ************************************************************************** !
 !
 ! THCJacobianPatch: Computes the Jacobian
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -3747,7 +3747,7 @@ end subroutine THCJacobianPatch
 ! ************************************************************************** !
 !
 ! THCCreateZeroArray: Computes the zeroed rows for inactive grid cells
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !
@@ -3847,7 +3847,7 @@ end subroutine THCCreateZeroArray
 ! ************************************************************************** !
 !
 ! THCMaxChange: Computes the maximum change in the solution vector
-! author: Glenn Hammond
+! author: ???
 ! date: 01/15/08
 !
 ! ************************************************************************** !
@@ -3882,7 +3882,7 @@ end subroutine THCMaxChange
 ! ************************************************************************** !
 !
 ! THCResidualToMass: Computes mass balance from residual equation
-! author: Glenn Hammond
+! author: ???
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -3954,7 +3954,7 @@ end subroutine THCResidualToMass
 !
 ! THCLiteGetTecplotHeader: Returns THC contribution to 
 !                               Tecplot file header
-! author: Glenn Hammond
+! author: ???
 ! date: 02/13/08
 !
 ! ************************************************************************** !
@@ -4071,7 +4071,7 @@ end function THCGetTecplotHeader
 ! ************************************************************************** !
 !
 ! THCDestroy: Deallocates variables associated with Richard
-! author: Glenn Hammond
+! author: ???
 ! date: 02/14/08
 !
 ! ************************************************************************** !

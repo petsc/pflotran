@@ -35,10 +35,15 @@ module Global_Aux_module
     type(global_auxvar_type), pointer :: aux_vars_bc(:)
     type(global_auxvar_type), pointer :: aux_vars_ss(:)
   end type global_type
-
+  
+  interface GlobalAuxVarDestroy
+    module procedure GlobalAuxVarSingleDestroy
+    module procedure GlobalAuxVarArrayDestroy
+  end interface GlobalAuxVarDestroy
+  
   public :: GlobalAuxCreate, GlobalAuxDestroy, &
             GlobalAuxVarInit, GlobalAuxVarCopy, &
-            GlobalAuxVarDestroy
+            GlobalAuxVarDestroy, GlobalAuxVarStrip
 
 contains
 
@@ -233,15 +238,61 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   endif
 
 end subroutine GlobalAuxVarCopy
+
+! ************************************************************************** !
+!
+! GlobalAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine GlobalAuxVarSingleDestroy(aux_var)
+
+  implicit none
+
+  type(global_auxvar_type), pointer :: aux_var
+  
+  if (associated(aux_var)) then
+    call GlobalAuxVarStrip(aux_var)
+    deallocate(aux_var)
+  endif
+  nullify(aux_var)  
+
+end subroutine GlobalAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarArrayDestroy: Deallocates a mode auxilliary object
 ! author: Glenn Hammond
-! date: 02/14/08
+! date: 01/10/12
 !
 ! ************************************************************************** !
-subroutine GlobalAuxVarDestroy(aux_var)
+subroutine GlobalAuxVarArrayDestroy(aux_vars)
+
+  implicit none
+
+  type(global_auxvar_type), pointer :: aux_vars(:)
+  
+  PetscInt :: iaux
+  
+  if (associated(aux_vars)) then
+    do iaux = 1, size(aux_vars)
+      call GlobalAuxVarStrip(aux_vars(iaux))
+    enddo  
+    deallocate(aux_vars)
+  endif
+  nullify(aux_vars)  
+
+end subroutine GlobalAuxVarArrayDestroy
+  
+! ************************************************************************** !
+!
+! GlobalAuxVarStrip: Deallocates all members of single auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine GlobalAuxVarStrip(aux_var)
 
   implicit none
 
@@ -282,7 +333,7 @@ subroutine GlobalAuxVarDestroy(aux_var)
   if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
   nullify(aux_var%mass_balance_delta)
 
-end subroutine GlobalAuxVarDestroy
+end subroutine GlobalAuxVarStrip
 
 ! ************************************************************************** !
 !
@@ -300,20 +351,9 @@ subroutine GlobalAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  if (associated(aux%aux_vars)) then
-    do iaux = 1, aux%num_aux
-      call GlobalAuxVarDestroy(aux%aux_vars(iaux))
-    enddo  
-    deallocate(aux%aux_vars)
-  endif
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) then
-    do iaux = 1, aux%num_aux_bc
-      call GlobalAuxVarDestroy(aux%aux_vars_bc(iaux))
-    enddo  
-    deallocate(aux%aux_vars_bc)
-  endif
-  nullify(aux%aux_vars_bc)
+  call GlobalAuxVarDestroy(aux%aux_vars)
+  call GlobalAuxVarDestroy(aux%aux_vars_bc)
+  call GlobalAuxVarDestroy(aux%aux_vars_ss)
   
   deallocate(aux)
   nullify(aux)

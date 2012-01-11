@@ -42,9 +42,16 @@ module General_Aux_module
     type(general_auxvar_type), pointer :: aux_vars_ss(:)
   end type general_type
 
+  interface GeneralAuxVarDestroy
+    module procedure GeneralAuxVarSingleDestroy
+    module procedure GeneralAuxVarArray1Destroy
+    module procedure GeneralAuxVarArray2Destroy
+  end interface GeneralAuxVarDestroy
+  
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
             GeneralAuxVarCompute, GeneralAuxVarInit, &
-            GeneralAuxVarCopy, GeneralAuxVarDestroy
+            GeneralAuxVarCopy, GeneralAuxVarDestroy, &
+            GeneralAuxVarStrip
 
 contains
 
@@ -340,12 +347,85 @@ end subroutine GeneralAuxVarCompute
 
 ! ************************************************************************** !
 !
+! GeneralAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine GeneralAuxVarSingleDestroy(aux_var)
+
+  implicit none
+
+  type(general_auxvar_type), pointer :: aux_var
+  
+  if (associated(aux_var)) then
+    call GeneralAuxVarStrip(aux_var)
+    deallocate(aux_var)
+  endif
+  nullify(aux_var)  
+
+end subroutine GeneralAuxVarSingleDestroy
+  
+! ************************************************************************** !
+!
+! GeneralAuxVarArray1Destroy: Deallocates a mode auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine GeneralAuxVarArray1Destroy(aux_vars)
+
+  implicit none
+
+  type(general_auxvar_type), pointer :: aux_vars(:)
+  
+  PetscInt :: iaux
+  
+  if (associated(aux_vars)) then
+    do iaux = 1, size(aux_vars)
+      call GeneralAuxVarStrip(aux_vars(iaux))
+    enddo  
+    deallocate(aux_vars)
+  endif
+  nullify(aux_vars)  
+
+end subroutine GeneralAuxVarArray1Destroy
+
+! ************************************************************************** !
+!
+! GeneralAuxVarArray2Destroy: Deallocates a mode auxilliary object
+! author: Glenn Hammond
+! date: 01/10/12
+!
+! ************************************************************************** !
+subroutine GeneralAuxVarArray2Destroy(aux_vars)
+
+  implicit none
+
+  type(general_auxvar_type), pointer :: aux_vars(:,:)
+  
+  PetscInt :: iaux, idof
+  
+  if (associated(aux_vars)) then
+    do iaux = 1, size(aux_vars,2)
+      do idof = 1, size(aux_vars,1)
+        call GeneralAuxVarStrip(aux_vars(idof,iaux))
+      enddo
+    enddo  
+    deallocate(aux_vars)
+  endif
+  nullify(aux_vars)  
+
+end subroutine GeneralAuxVarArray2Destroy
+
+! ************************************************************************** !
+!
 ! GeneralAuxVarDestroy: Deallocates a general auxilliary object
 ! author: Glenn Hammond
 ! date: 03/07/11
 !
 ! ************************************************************************** !
-subroutine GeneralAuxVarDestroy(aux_var)
+subroutine GeneralAuxVarStrip(aux_var)
 
   implicit none
 
@@ -368,7 +448,7 @@ subroutine GeneralAuxVarDestroy(aux_var)
   if (associated(aux_var%kvr)) deallocate(aux_var%kvr)
   nullify(aux_var%kvr)
   
-end subroutine GeneralAuxVarDestroy
+end subroutine GeneralAuxVarStrip
 
 ! ************************************************************************** !
 !
@@ -386,29 +466,10 @@ subroutine GeneralAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  if (associated(aux%aux_vars)) then
-    do iaux = 1, aux%num_aux
-      do idof = 0, size(aux%aux_vars,ONE_INTEGER)-1  ! 0:option%nflowdof
-        call GeneralAuxVarDestroy(aux%aux_vars(idof,iaux))
-      enddo
-    enddo  
-    deallocate(aux%aux_vars)
-  endif
-  nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) then
-    do iaux = 1, aux%num_aux_bc
-      call GeneralAuxVarDestroy(aux%aux_vars_bc(iaux))
-    enddo  
-    deallocate(aux%aux_vars_bc)
-  endif
-  nullify(aux%aux_vars_bc)
-  if (associated(aux%aux_vars_ss)) then
-    do iaux = 1, aux%num_aux_ss
-      call GeneralAuxVarDestroy(aux%aux_vars_ss(iaux))
-    enddo  
-    deallocate(aux%aux_vars_ss)
-  endif
-  nullify(aux%aux_vars_ss)
+  call GeneralAuxVarDestroy(aux%aux_vars)
+  call GeneralAuxVarDestroy(aux%aux_vars_bc)
+  call GeneralAuxVarDestroy(aux%aux_vars_ss)
+
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

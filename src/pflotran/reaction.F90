@@ -1097,12 +1097,14 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
     endif
   enddo
   
+#if 0
   ! allocate kinetic mineral names
   if (reaction%nkinmnrl > 0) then
     if (associated(reaction%kinmnrl_names)) deallocate(reaction%kinmnrl_names)
     allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
     reaction%kinmnrl_names(reaction%nkinmnrl) = ''
   endif
+#endif
  
   cur_mineral => reaction%mineral_list
   imnrl = 0
@@ -1116,7 +1118,7 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
     endif
     if (associated(cur_mineral%tstrxn)) then
       imnrl = imnrl + 1
-      reaction%kinmnrl_names(imnrl) = cur_mineral%name
+!geh  reaction%kinmnrl_names(imnrl) = cur_mineral%name
     endif
     cur_mineral => cur_mineral%next
   enddo
@@ -3549,7 +3551,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
         if (dabs(Jac(icomp,jcomp)) < 1.d-40)  Jac(icomp,jcomp) = 0.d0
       enddo
     enddo
-    call RTAuxVarDestroy(rt_auxvar_pert)
+    call RTAuxVarStrip(rt_auxvar_pert)
   endif
 
 end subroutine RReactionDerivative
@@ -6324,10 +6326,6 @@ subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
   if (OptionPrintToScreen(option)) write(*,30)
   if (OptionPrintToFile(option)) write(option%fid_out,30)
 
-!  aux_var%aqueous => MatrixBlockAuxVarCreate(option)
-!  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp, &
-!                             reaction%naqcomp,option%nphase,option)
-  
   if (reaction%neqcplx > 0) then
     if (OptionPrintToScreen(option)) &
       write(*,20) 'Secondary Complex', 'molal., act. coef.'

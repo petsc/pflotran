@@ -802,11 +802,20 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
         coupler%tran_condition%constraint_coupler_list
       do
         if (.not.associated(cur_constraint_coupler)) exit
-        allocate(cur_constraint_coupler%global_auxvar)
-        allocate(cur_constraint_coupler%rt_auxvar)
-        option%iflag = 0 ! be sure not to allocate mass_balance array
-        call GlobalAuxVarInit(cur_constraint_coupler%global_auxvar,option)
-        call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
+        ! Setting option%iflag = 0 ensures that the "mass_balance" array
+        ! is not allocated.
+        option%iflag = 0
+        ! Only allocate the XXX_auxvar objects if they have not been allocated.
+        ! Since coupler%tran_condition is a pointer to a separate list of
+        ! tran conditions, the XXX_auxvar object may already be allocated.
+        if (.not.associated(cur_constraint_coupler%global_auxvar)) then
+          allocate(cur_constraint_coupler%global_auxvar)
+          call GlobalAuxVarInit(cur_constraint_coupler%global_auxvar,option)
+        endif
+        if (.not.associated(cur_constraint_coupler%rt_auxvar)) then
+          allocate(cur_constraint_coupler%rt_auxvar)
+          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
+        endif
         cur_constraint_coupler => cur_constraint_coupler%next
       enddo
     endif

@@ -1656,7 +1656,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
-    call GlobalAuxVarDestroy(global_aux_var_pert)  
+    call GlobalAuxVarStrip(global_aux_var_pert)  
   endif
    
 end subroutine RichardsAccumDerivative
@@ -1878,8 +1878,8 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jup = J_pert_up
     Jdn = J_pert_dn
-    call GlobalAuxVarDestroy(global_aux_var_pert_up)
-    call GlobalAuxVarDestroy(global_aux_var_pert_dn)    
+    call GlobalAuxVarStrip(global_aux_var_pert_up)
+    call GlobalAuxVarStrip(global_aux_var_pert_dn)    
   endif
 
 end subroutine RichardsFluxDerivative
@@ -2231,8 +2231,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                         area,dist,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
-    call GlobalAuxVarDestroy(global_aux_var_pert_up)
-    call GlobalAuxVarDestroy(global_aux_var_pert_dn)      
+    call GlobalAuxVarStrip(global_aux_var_pert_up)
+    call GlobalAuxVarStrip(global_aux_var_pert_dn)      
   endif
 
 end subroutine RichardsBCFluxDerivative
@@ -4384,7 +4384,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 #else
                   neig_ukvr(j) = test_rich_aux_vars%kvr
 #endif
-                  call GlobalAuxVarDestroy(test_global_aux_vars) 
+                  call GlobalAuxVarStrip(test_global_aux_vars) 
 
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
@@ -4657,7 +4657,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 !                  neig_dkvr_dp(j) =  rich_aux_vars(ghosted_id)%dkvr_dp
                   neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
 #endif
-                  call GlobalAuxVarDestroy(test_global_aux_vars) 
+                  call GlobalAuxVarStrip(test_global_aux_vars) 
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
 #ifdef USE_ANISOTROPIC_MOBILITY

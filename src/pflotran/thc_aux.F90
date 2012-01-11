@@ -78,7 +78,7 @@ contains
 ! ************************************************************************** !
 !
 ! THCAuxCreate: Allocate and initialize auxilliary object
-! author: Glenn Hammond
+! author: ???
 ! date: 02/14/08
 !
 ! ************************************************************************** !
@@ -118,7 +118,7 @@ end function THCAuxCreate
 ! ************************************************************************** !
 !
 ! THCAuxVarInit: Initialize auxilliary object
-! author: Glenn Hammond
+! author: ???
 ! date: 02/14/08
 !
 ! ************************************************************************** !
@@ -173,7 +173,7 @@ end subroutine THCAuxVarInit
 ! ************************************************************************** !
 !
 ! THCAuxVarCopy: Copies an auxilliary variable
-! author: Glenn Hammond
+! author: ???
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
@@ -231,7 +231,7 @@ end subroutine THCAuxVarCopy
 ! ************************************************************************** !
 !
 ! THCAuxVarCompute: Computes auxilliary variables for each grid cell
-! author: Glenn Hammond
+! author: ???
 ! date: 02/22/08
 !
 ! ************************************************************************** !
@@ -506,7 +506,7 @@ end subroutine THCAuxVarComputeIce
 ! ************************************************************************** !
 !
 ! AuxVarDestroy: Deallocates a thc auxilliary object
-! author: Glenn Hammond
+! author: ???
 ! date: 02/14/08
 !
 ! ************************************************************************** !
@@ -526,7 +526,7 @@ end subroutine AuxVarDestroy
 ! ************************************************************************** !
 !
 ! THCAuxDestroy: Deallocates a thc auxilliary object
-! author: Glenn Hammond
+! author: ???
 ! date: 02/14/08
 !
 ! ************************************************************************** !

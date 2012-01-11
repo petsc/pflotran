@@ -2644,6 +2644,8 @@ subroutine RealizationDestroy(realization)
   
   call DiscretizationDestroy(realization%discretization)
   
+  call ReactionDestroy(realization%reaction)
+  
 end subroutine RealizationDestroy
   
 end module Realization_module
