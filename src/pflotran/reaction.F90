@@ -1098,6 +1098,7 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   enddo
   
 #if 0
+  !geh: remove after 2/28/12
   ! allocate kinetic mineral names
   if (reaction%nkinmnrl > 0) then
     if (associated(reaction%kinmnrl_names)) deallocate(reaction%kinmnrl_names)

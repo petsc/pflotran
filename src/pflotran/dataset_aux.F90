@@ -796,6 +796,10 @@ recursive subroutine DatasetDestroy(dataset)
   type(dataset_type), pointer :: dataset
   
   if (.not.associated(dataset)) return
+  
+  if (associated(dataset%next)) then
+    call DatasetDestroy(dataset%next)
+  endif
 
   if (associated(dataset%iarray)) deallocate(dataset%iarray)
   nullify(dataset%iarray)
