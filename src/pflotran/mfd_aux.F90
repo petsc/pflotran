@@ -199,7 +199,7 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
      endif
   enddo
 
-  if (done.eqv.PETSC_FALSE) then
+  if (.not.done) then
      call printMsg(option, "Imposible to add face to  MFDAuxVar")
      stop
   endif

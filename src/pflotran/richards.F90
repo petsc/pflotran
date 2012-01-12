@@ -764,7 +764,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
         case(NEUMANN_BC,ZERO_GRADIENT_BC,UNIT_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
-      
+     
+ 
       call RichardsAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
                          patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
@@ -1232,7 +1233,6 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
                          patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
                          option)
-       
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1975,6 +1975,11 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
        !   write(*,*) "Gravity Input", Dq*ukvr*gravity
        !   write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
 !            write(*,*) "Dq", Dq, "ukvr ", ukvr, "density",density_ave 
+
+    if (Res(1) == -10.0) then
+      write(*,*) "v_darcy=",v_darcy
+      write(*,*) "fluxm", v_darcy * area * density_ave
+    end if
    
       q = v_darcy * area
 
@@ -2081,7 +2086,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
           upweight=1.d0
         endif
         
-        density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
+        density_ave = upweight*global_aux_var_up%den(1) + (1.D0-upweight)*global_aux_var_dn%den(1)
         dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
 
         gravity = (upweight*global_aux_var_up%den(1) + &
@@ -2134,7 +2139,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
           q = v_darcy * area
-          dq_dp_dn = Dq*(dukvr_dp_dn*dphi+ukvr*dphi_dp_dn)*area
+          dq_dp_dn = Dq*(dukvr_dp_dn*dphi + ukvr*dphi_dp_dn)*area
         endif
       endif 
 
@@ -2346,6 +2351,10 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
          ukvr = rich_aux_var_dn%kvr
 #endif
        endif
+        
+    !   if ( v_darcy== -10.0) 
+    !         write(*,*) "gr", gravity, "up", global_aux_var_up%pres(1), &
+    !                      "dn", global_aux_var_dn%pres(1), "dphi", dphi, "ukvr", ukvr
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
@@ -2358,17 +2367,17 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
       endif 
 
     case(NEUMANN_BC)
-!      write(*,*) "TEST", aux_vars(RICHARDS_PRESSURE_DOF), floweps
       if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
         v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
 
- !       write(*,*) "BC den", "up", global_aux_var_up%den(1), "dn", global_aux_var_dn%den(1), v_darcy
+       write(*,*) "BC den", "up", global_aux_var_up%den(1), "dn", global_aux_var_dn%den(1), v_darcy
 
         if (v_darcy > 0.d0) then 
           density_ave = global_aux_var_up%den(1)
         else 
           density_ave = global_aux_var_dn%den(1)
         endif 
+       write(*,*) "density_ave", density_ave
       endif
 
     case(UNIT_GRADIENT_BC)
@@ -2404,7 +2413,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   Res(1)=fluxm
 
 #ifdef DASVYAT
-!   write(*,*) "bound flux RichardsBCFlux", "v_darcy", v_darcy, "Res", Res(1), "den", density_ave
+   write(*,*) "bound flux RichardsBCFlux", "v_darcy", v_darcy, "Res", Res(1), "den", density_ave
 #endif
 
 end subroutine RichardsBCFlux
@@ -2552,17 +2561,8 @@ end interface
 call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 
-#ifdef DASVYAT_DEBUG
-   call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
-                              viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-   call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
-                              viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-
-  write(*,*) "End of RichardsResidual"
+#ifdef DASVYAT
+!  write(*,*) "End of RichardsResidual"
 !  read(*,*)
 !  stop 
 #endif
@@ -3122,6 +3122,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   endif
 
 
+!  write(*,*) "RichardsResidual"
+!  read(*,*)
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,r, r_p, ierr)
@@ -3213,7 +3215,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
 
-!       if (ghosted_id_up == 15.or.ghosted_id_dn == 15)  write(*,*) "dddddddddddddddddddddddddddd"
+       if (ghosted_id_up == 77.or.ghosted_id_dn == 77)  then 
+            write(*,*) "dddddddddddddddddddddddddddd"
+            Res = -10.0
+       end if
 
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
@@ -3232,7 +3237,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_velocities(1,sum_connection) = v_darcy
 
 #if 1
-!      if (ghosted_id_up == 555.or.ghosted_id_dn == 555)  write(*,*) "int flux ************", sum_connection, v_darcy, Res(1)
+      if (ghosted_id_up == 77.or.ghosted_id_dn == 77)  write(*,*) "int flux ************", sum_connection, v_darcy, Res(1)
 #endif
 
       
@@ -3276,6 +3281,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         if (local_id_dn>0) then
           r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
         endif
+
+!          if (local_id_dn==77) write(*,*) "r_p(local_id) ", r_p(local_id_dn)
+!          if (local_id_up==77) write(*,*) "r_p(local_id) ", r_p(local_id_up)
+
       endif
     enddo
 
@@ -3335,9 +3344,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
 
 #if 1
-!        if (ghosted_id==555) then
-!           write(*,*) "bound flux ************************************", sum_connection, "fl",v_darcy, "Res", Res
-!        end if 
+        if (ghosted_id==77) then
+           write(*,*) "bound flux ************************************", sum_connection, "fl",v_darcy, "Res", Res
+        end if 
 !            "lm", boundary_condition%flow_aux_real_var(1, iconn), &
 !            "p", global_aux_vars(ghosted_id)%pres(1)
 !            cur_connection_set%cntr(1, iconn), &      
@@ -3408,7 +3417,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   enddo
 #endif  
 
-!   write(*,*) "FV_Residual 15", r_p(15)
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -3507,7 +3515,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res) 
-!       if (local_id==15) write(*,*) "Res 15", Res(1), "diff", Res(1)-accum_p(15)
+!        if (ghosted_id==77) then
+!            write(*,*) "accum ",accum_p(local_id), "Res ", Res(1),  "diff ", Res(1) - accum_p(local_id)
+!            write(*,*) "Sat", global_aux_vars(ghosted_id)%sat(1), "Pres", global_aux_vars(ghosted_id)%pres(1)
+!        end if
       r_p(local_id) = r_p(local_id) + Res(1)
     enddo
 #endif
@@ -3943,8 +3954,8 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(richards_parameter_type), pointer :: richards_parameter
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(coupler_type), pointer :: source_sink, boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection, bc_type, stride
@@ -3969,9 +3980,11 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   richards_parameter => patch%aux%Richards%richards_parameter
-  rich_aux_vars => patch%aux%Richards%aux_vars
-  global_aux_vars => patch%aux%Global%aux_vars
 
+  rich_aux_vars => patch%aux%Richards%aux_vars
+  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
@@ -4048,13 +4061,17 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
           if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
 
-               neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+!               neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+               neig_den(j) = global_aux_vars_bc(jface)%den(1) 
+
 #ifdef USE_ANISOTROPIC_MOBILITY
                neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr_x
                neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
 #else
-               neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr
-               neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
+!               neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr
+               neig_kvr(j) = rich_aux_vars_bc(jface)%kvr
+!               neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
+               neig_dkvr_dp(j) = 0.
 #endif
 
           else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
@@ -4111,13 +4128,13 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
          
 
-        call MFDAuxGenerateRhs(patch, grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
-                                 rich_aux_vars(ghosted_id),&
-                                 global_aux_vars(ghosted_id),&
-                                 Accum, &
-                                 porosity_loc_p(ghosted_id), volume_p(local_id),&
-                                 flow_xx_p(local_id:local_id), face_pres, bnd,&                                 
-                                 sq_faces, neig_den, neig_kvr, neig_dkvr_dp, option, rhs) 
+!        call MFDAuxGenerateRhs(patch, grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
+!                                 rich_aux_vars(ghosted_id),&
+!                                 global_aux_vars(ghosted_id),&
+!                                 Accum, &
+!                                 porosity_loc_p(ghosted_id), volume_p(local_id),&
+!                                 flow_xx_p(local_id:local_id), face_pres, bnd,&                                 
+!                                 sq_faces, neig_den, neig_kvr, neig_dkvr_dp, option, rhs) 
 
         call PetscLogEventEnd(logging%event_flow_rhs_mfd, ierr)
  
@@ -4272,7 +4289,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
   PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:)
-  PetscScalar, pointer :: neig_den(:), neig_ukvr(:), neig_pres(:), bnd(:)
+  PetscScalar, pointer :: neig_den(:), neig_ukvr(:), neig_pres(:), bnd(:), bc_h(:)
   PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3), den, ukvr
   PetscInt :: icell, iface, jface, i,j, numfaces, ghost_face_id, ghost_face_jd
   PetscInt :: ghost_neig_id
@@ -4299,7 +4316,8 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
     call RichardsZeroMassBalDeltaPatch(realization)
   endif
 
-
+!  write(*,*) "RichardsResidualPatchMFDLP1"
+!  read(*,*) 
 
 
 ! now assign access pointer to local variables
@@ -4323,6 +4341,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   allocate(neig_ukvr(numfaces))
   allocate(neig_pres(numfaces))
   allocate(bnd(numfaces))
+  allocate(bc_h(numfaces))
 
 
 
@@ -4354,7 +4373,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
            bnd(j) = 1
        else if ( e2n_local(j + (icell-1)*numfaces) == -1.0*NEUMANN_BC ) then
  !          write(*,*) "Neumann", bc_faces_p(ghost_face_id)
-            bnd(j) = 0
+            bnd(j) = 2
        else if (e2n_local(j + (icell-1)*numfaces)< 0) then 
            call printMsg(option,'Type of BC is not supported by MFD mode')
            stop
@@ -4367,33 +4386,41 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
           if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
                   neig_pres(j) = xx_loc_faces_p(ghost_face_id)
 
-               if (bnd(j)==1) then
-
+               if (bnd(j) > 0) then
                   call RichardsAuxVarInit(test_rich_aux_vars, option)  
                   call GlobalAuxVarInit(test_global_aux_vars, option)
-
+!
                   call RichardsAuxVarCompute(neig_pres(j:j), test_rich_aux_vars, &
                        test_global_aux_vars, &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
                        option)
+               end if
+               if (bnd(j)==1) then
+
 
                   neig_den(j) = test_global_aux_vars%den(1)
-#ifdef USE_ANISOTROPIC_MOBILITY                 
-                  neig_ukvr(j) = test_rich_aux_vars%kvr_x
-#else
-                  neig_ukvr(j) = test_rich_aux_vars%kvr
-#endif
-                  call GlobalAuxVarStrip(test_global_aux_vars) 
+!                  write(*,*) "jface ", jface, neig_pres(j)
 
+!                  neig_den(j) = global_aux_vars_bc(jface)%den(1)
+
+
+!                  neig_kvr(j) = rich_aux_vars_bc(jface)%kvr
+                  neig_ukvr(j) = test_rich_aux_vars%kvr
+!                  neig_dkvr_dp(j) =  rich_aux_vars(ghosted_id)%dkvr_dp
+!                  neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
+               else if (bnd(j)==2) then
+!                  if (bc_faces_p(ghost_face_id) > 0) then
+!                     neig_den(j) = test_global_aux_vars%den(1)
+!                  else
+                     neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+                     
+ !                 end if
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
-#ifdef USE_ANISOTROPIC_MOBILITY
-                  neig_ukvr(j) = rich_aux_vars(ghosted_id)%kvr_x
-#else
                   neig_ukvr(j) = rich_aux_vars(ghosted_id)%kvr
-#endif
                 end if
+                  if (bnd(j) > 0) call GlobalAuxVarStrip(test_global_aux_vars) 
  
 
           else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
@@ -4547,8 +4574,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(richards_parameter_type), pointer :: richards_parameter
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(richards_auxvar_type) :: test_rich_aux_vars
   type(global_auxvar_type) :: test_global_aux_vars
   type(coupler_type), pointer :: source_sink, boundary_condition
@@ -4575,8 +4602,11 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   richards_parameter => patch%aux%Richards%richards_parameter
+
   rich_aux_vars => patch%aux%Richards%aux_vars
+  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
 
 
@@ -4628,46 +4658,53 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
           else if ( e2n_local(j + (local_id-1)*stride) == -NEUMANN_BC ) then
  !           write(*,*) "Neumann", bc_faces_p(ghost_face_id)
             bc_h(j) = bc_faces_p(ghost_face_id)
-            bnd(j) = 0
+            bnd(j) = 2
           else if (e2n_local(j + (local_id-1)*stride) < 0) then 
             call printMsg(option,'Type of BC is not supported by MFD mode')
             stop
           end if
 
           if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
-                  neig_pres(j) = xx_loc_faces_p(ghost_face_id)
 
-               if (bnd(j)==1) then
+               neig_pres(j) = xx_loc_faces_p(ghost_face_id)
 
+               if (bnd(j) > 0) then
                   call RichardsAuxVarInit(test_rich_aux_vars, option)  
                   call GlobalAuxVarInit(test_global_aux_vars, option)
-
+!
                   call RichardsAuxVarCompute(neig_pres(j:j), test_rich_aux_vars, &
                        test_global_aux_vars, &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
                        option)
+               end if
+               if (bnd(j)==1) then
+
 
                   neig_den(j) = test_global_aux_vars%den(1)
-#ifdef USE_ANISOTROPIC_MOBILITY
-                  neig_kvr(j) = test_rich_aux_vars%kvr_x
-                  neig_dkvr_dp(j) = test_rich_aux_vars%dkvr_x_dp
-#else
+!                  write(*,*) "jface ", jface, neig_pres(j)
+
+!                  neig_den(j) = global_aux_vars_bc(jface)%den(1)
+
+
+!                  neig_kvr(j) = rich_aux_vars_bc(jface)%kvr
                   neig_kvr(j) = test_rich_aux_vars%kvr
 !                  neig_dkvr_dp(j) =  rich_aux_vars(ghosted_id)%dkvr_dp
-                  neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
-#endif
-                  call GlobalAuxVarStrip(test_global_aux_vars) 
+!                  neig_dkvr_dp(j) =  test_rich_aux_vars%dkvr_dp
+                  neig_dkvr_dp(j) =  0.
+               else if (bnd(j)==2) then
+!                  if (bc_h(j) > 0) then
+!                     neig_den(j) = test_global_aux_vars%den(1)
+!                  else
+                     neig_den(j) = global_aux_vars(ghosted_id)%den(1)
+                     
+!                  end if
                 else
                   neig_den(j) = global_aux_vars(ghosted_id)%den(1)
-#ifdef USE_ANISOTROPIC_MOBILITY
-                  neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_x_dp
-                  neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr_x
-#else
                   neig_dkvr_dp(j) = rich_aux_vars(ghosted_id)%dkvr_dp
                   neig_kvr(j) = rich_aux_vars(ghosted_id)%kvr
-#endif
                 end if
+                  if (bnd(j) > 0) call GlobalAuxVarStrip(test_global_aux_vars) 
 
           else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
                 if (ghosted_id == conn%id_up(jface)) then
@@ -4677,13 +4714,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
                 end if
  
                 neig_den(j) = global_aux_vars(ghost_neig_id)%den(1)
-#ifdef USE_ANISOTROPIC_MOBILITY
-                neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr_x 
-                neig_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_x_dp
-#else
                 neig_kvr(j) = rich_aux_vars(ghost_neig_id)%kvr 
                 neig_dkvr_dp(j) = rich_aux_vars(ghost_neig_id)%dkvr_dp
-#endif
                 neig_pres(j) = xx_loc_faces_p(grid%ngmax_faces + ghost_neig_id)
           end if
  
@@ -4704,8 +4736,10 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
         Accum(1) = Res(1) - accum_p(local_id)
 !        write(*,*) "Accum ", Accum(1)
 !		Accum(1) = 0
-!        write(*,*) "accum ",accum_p(local_id), "Res ", Res(1),  "diff ", Accum(1)
-!       write(*,*) "Sat", global_aux_vars(ghosted_id)%sat(1), "Pres", global_aux_vars(ghosted_id)%pres(1)
+!        if (ghosted_id==43) then
+!            write(*,*) "accum ",accum_p(local_id), "Res ", Res(1),  "diff ", Accum(1)
+!            write(*,*) "Sat", global_aux_vars(ghosted_id)%sat(1), "Pres", global_aux_vars(ghosted_id)%pres(1)
+!        end if
  
         source_f = 0.
         PermTensor = 0.
@@ -4963,6 +4997,10 @@ end interface
 #endif
 
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
+
+  write(*,*) "End RichardsJacobian"
+  read(*,*)
+!  stop
   
 end subroutine RichardsJacobian
 ! ************************************************************************** !
@@ -5155,7 +5193,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
 
   if (realization%debug%matview_Jacobian) then
-#if 0  
+#if 1  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
                               viewer,ierr)
 #else
@@ -5180,7 +5218,23 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
 
-!  write(*,*) "Exit RichardsJacobianMFDLP"
+#if 0
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out', &
+                              viewer,ierr)   
+    call VecView(realization%field%flow_dxx_faces,viewer,ierr) 
+
+    call PetscViewerDestroy(viewer,ierr)
+ 
+
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy_faces.out', &
+                              viewer,ierr)   
+    call VecView(realization%field%flow_yy_faces,viewer,ierr) 
+    call PetscViewerDestroy(viewer,ierr)
+#endif
+
+
+  write(*,*) "Exit RichardsJacobianMFDLP"
+  read(*,*)
 !  stop
 
 end subroutine RichardsJacobianMFDLP
@@ -6043,11 +6097,12 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
    call MFDAuxJacobianLocal_LP( grid, aux_var, &
                                        rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
                                        sq_faces, option, J)
-
+!    if (ghosted_id == 55) then
 !    do iface=1,7 
 !      write(*,*) (J(iface + (jface - 1)*7), jface = 1, 7)
 !    end do
 !    write(*,*)
+!    end if
 
 !    write(*,*) (bound_id(iface),iface=1,6)
 
@@ -6067,10 +6122,11 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
 !    end do
 !  end do
 !
-!
-!  do iface = 1, numfaces 
-!     Jbl(nrow + (numfaces + iface)*nrow) = aux_var%dRp_dneig(iface)
-!  end do
+!   if (ghosted_id == 43)  then
+!     do iface = 1, numfaces 
+!      J(nrow + (iface-1)*nrow) = 0.
+!     end do
+!   end if
 
 
      call MatSetValuesLocal(A, numfaces + 1, ghosted_LP_id, numfaces + 1 , ghosted_LP_id, &
@@ -6124,6 +6180,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
 #if 0
   write(*,*) "EXIT MFDLP JACOBIAN"
   write(*,*) "richard 5932"
+  read(*,*)
 !   stop
 #endif
 

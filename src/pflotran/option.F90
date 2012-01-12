@@ -187,7 +187,6 @@ module Option_module
 
     PetscInt :: chunk_size
     PetscInt :: num_threads
-    PetscInt :: test_res
 
   end type option_type
   
@@ -387,7 +386,6 @@ subroutine OptionInitAll(option)
 
   option%chunk_size = 8
   option%num_threads = 1
-  option%test_res = 0 
  
   call OptionInitRealization(option)
 
@@ -549,7 +547,6 @@ subroutine OptionInitRealization(option)
   option%mimetic = PETSC_FALSE
  
   option%variables_swapped = PETSC_FALSE
-  option%test_res = 0
   
 end subroutine OptionInitRealization
 
