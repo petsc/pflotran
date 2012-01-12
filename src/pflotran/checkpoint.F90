@@ -12,6 +12,21 @@
 module Checkpoint_Header_module
   implicit none
   private
+  ! We manually specify the number of bytes required for the 
+  ! checkpoint header, since sizeof() is not supported by some Fortran 
+  ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
+  ! Currently:
+  !  PetscReal: 8
+  !  PetscInt:  19
+  !  Total: 27 * 8 = 216
+#ifdef PetscSizeT
+  PetscSizeT, parameter :: bagsize = 216
+#else
+  ! PETSC_SIZEOF_SIZE_T isn't defined, so we just have to assume that it 
+  ! is 8 bytes.  This is dangerous, but what can we do?
+  integer*8, parameter :: bagsize = 216
+#endif
+  public :: bagsize
   type, public :: checkpoint_header_type
     integer*8 :: revision_number  ! increment this every time there is a change
     integer*8 :: plot_number      ! in the checkpoint file format
@@ -133,16 +148,8 @@ subroutine Checkpoint(realization, &
   PetscReal :: tran_prev_dt
   PetscInt, intent(in) :: id  ! id should not be altered within this subroutine
   
-#ifdef PetscSizeT
-  PetscSizeT :: bagsize
-#else
-  ! PETSC_SIZEOF_SIZE_T isn't defined, so we just have to assume that it 
-  ! is 8 bytes.  This is dangerous, but what can we do?
-  integer*8 :: bagsize
-#endif
-
-  PetscInt :: checkpoint_activity_coefs
-  PetscInt :: match_waypoint_flag
+!  PetscInt :: checkpoint_activity_coefs
+!  PetscInt :: match_waypoint_flag
 
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: id_string
@@ -189,13 +196,10 @@ subroutine Checkpoint(realization, &
   ! time step size, etc.
   !--------------------------------------------------------------------
 
-  ! We manually specify the number of bytes required for the 
-  ! checkpoint header, since sizeof() is not supported by some Fortran 
-  ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 216
-  call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
+  call PetscBagCreate(option%mycomm,bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
+#if 0  
   i = REVISION_NUMBER
   call PetscBagRegisterInt(bag,header%revision_number,i, &
                            "revision_number","revision_number",ierr)
@@ -312,7 +316,62 @@ subroutine Checkpoint(realization, &
                            checkpoint_activity_coefs, &
                            "checkpoint_activity_coefs", &
                             "Flag indicating whether activity coefficients were checkpointed",ierr)                            
+#else
+  call CheckpointRegisterBagHeader(bag,header)
+  ! Revision # register in PetscBagRegister since it is default.  All other 
+  ! header entities default to 0 or 0.d0
+  header%plot_number = output_option%plot_number
+  header%match_waypoint_flag = ZERO_INTEGER
+  if (option%match_waypoint) then
+    header%match_waypoint_flag = ONE_INTEGER
+  endif
+  header%grid_discretization_type = grid%itype
 
+  ! FLOW
+  header%nflowdof = option%nflowdof
+  header%flow_num_newton_iterations = flow_num_newton_iterations
+  header%flow_num_constant_time_steps = flow_num_constant_time_steps
+
+  ! TRANSPORT
+  header%tran_num_newton_iterations = tran_num_newton_iterations
+  header%tran_num_constant_time_steps = tran_num_constant_time_steps
+  
+  ! Register relevant components of the stepper.
+  ! FLOW
+  header%flow_time = option%flow_time
+  header%flow_dt = option%flow_dt
+  header%flow_prev_dt = flow_prev_dt
+                            
+  header%flow_time_steps = flow_time_steps
+  header%flow_cumulative_newton_iterations = flow_cumulative_newton_iterations
+  header%flow_cumulative_time_step_cuts = flow_cumulative_time_step_cuts
+  header%flow_cumulative_linear_iterations = flow_cumulative_linear_iterations
+  header%flow_cumulative_solver_time = flow_cumulative_solver_time
+                                                        
+  ! TRANSPORT
+  header%ntrandof = option%ntrandof
+  header%tran_time = option%tran_time
+  header%tran_dt = option%tran_dt
+  header%tran_prev_dt = tran_prev_dt
+                            
+  header%tran_time_steps = tran_time_steps
+  header%tran_cumulative_newton_iterations = tran_cumulative_newton_iterations
+  header%tran_cumulative_time_step_cuts = tran_cumulative_time_step_cuts
+  header%tran_cumulative_linear_iterations = tran_cumulative_linear_iterations
+  header%tran_cumulative_solver_time = tran_cumulative_solver_time
+
+  if (associated(realization%reaction)) then
+    if (realization%reaction%checkpoint_activity_coefs .and. &
+        realization%reaction%act_coef_update_frequency /= &
+        ACT_COEF_FREQUENCY_OFF) then
+      header%checkpoint_activity_coefs = ONE_INTEGER
+    else
+      header%checkpoint_activity_coefs = ZERO_INTEGER
+    endif
+  else
+    header%checkpoint_activity_coefs = ZERO_INTEGER
+  endif
+#endif
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
   call PetscBagDestroy(bag, ierr)
@@ -530,8 +589,10 @@ subroutine Restart(realization, &
   activity_coefs_read = PETSC_FALSE
   
   ! Get the header data.
-  call PetscBagLoad(viewer, bag, ierr)
+  call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr)
+  call CheckpointRegisterBagHeader(bag,header)
+  call PetscBagLoad(viewer, bag, ierr)
   
   if (header%revision_number /= REVISION_NUMBER) then
     write(string,*) header%revision_number
@@ -737,5 +798,142 @@ subroutine Restart(realization, &
 
   
 end subroutine Restart
+
+! ************************************************************************** !
+!
+! CheckpointRegisterBagHeader: Registers entities within the PETSc bag to
+!                              header
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine CheckpointRegisterBagHeader(bag,header)
+
+  implicit none
+  
+  PetscBag :: bag
+  type(checkpoint_header_type), pointer :: header
+
+  PetscInt :: i
+  PetscErrorCode :: ierr
+  
+  i = REVISION_NUMBER
+  call PetscBagRegisterInt(bag,header%revision_number,i, &
+                           "revision_number", &
+                           "revision_number", &
+                           ierr)
+  ! Register variables that are passed into timestepper().
+  call PetscBagRegisterInt(bag,header%plot_number,0, &
+                           "plot_number", &
+                           "plot_number", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%match_waypoint_flag,0, &
+                           "match_waypoint_flag","match_waypoint_flag",ierr)
+  call PetscBagRegisterInt(bag,header%grid_discretization_type, 0, &
+                           "grid_discretization_type", &
+                           "grid_discretization_type", &
+                           ierr) 
+  ! FLOW
+  call PetscBagRegisterInt(bag,header%nflowdof,0, &
+                           "nflowdof","Number of flow degrees of freedom",ierr)
+  call PetscBagRegisterInt(bag,header%flow_num_newton_iterations,0, &
+                           "flow_num_newton_iterations", &
+                           "Number of flow Newton iterations in last SNES solve", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%flow_num_constant_time_steps,0, &
+                           "flow_num_constant_time_steps", &
+                           "flow_num_constant_time_steps", &
+                           ierr)
+
+  ! TRANSPORT
+  call PetscBagRegisterInt(bag,header%tran_num_newton_iterations,0, &
+                           "tran_num_newton_iterations", &
+                           "Number of transport Newton iterations in last SNES solve", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%tran_num_constant_time_steps,0, &
+                           "tran_num_constant_time_steps", &
+                           "tran_num_constant_time_steps", &
+                           ierr)
+  
+  ! Register relevant components of the stepper.
+  ! FLOW
+  call PetscBagRegisterReal(bag,header%flow_time,0.d0, &
+                            "flow_time", &
+                            "Flow Simulation time (seconds)", &
+                            ierr)
+  call PetscBagRegisterReal(bag,header%flow_dt,0.d0, &
+                            "flow_dt", &
+                            "Current size of flow timestep (seconds)", &
+                            ierr)
+  call PetscBagRegisterReal(bag,header%flow_prev_dt,0.d0, &
+                            "flow_prev_dt", &
+                            "Previous size of flow timestep (seconds)", &
+                            ierr)
+  call PetscBagRegisterInt(bag,header%flow_time_steps,0, &
+                           "flow_steps", &
+                           "Total number of flow steps taken", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%flow_cumulative_newton_iterations,0, &
+                           "flow_cumulative_newton_iterations", &
+                            "Total number of flow Newton steps taken", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%flow_cumulative_time_step_cuts,0, &
+                           "flow_cumulative_time_step_cuts", &
+                            "Total number of flow time step cuts", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%flow_cumulative_linear_iterations,0, &
+                           "flow_cumulative_linear_iterations", &
+                            "Total number of flow linear iterations", &
+                           ierr)
+  call PetscBagRegisterReal(bag,header%flow_cumulative_solver_time,0.d0, &
+                            "flow_cumulative_solver_time", &
+                            "flow_cumulative_solver_time", &
+                            ierr)
+                                                        
+  ! TRANSPORT
+  call PetscBagRegisterInt(bag,header%ntrandof,0, &
+                           "ntrandof", &
+                           "Number of transport degrees of freedom", &
+                           ierr)
+  call PetscBagRegisterReal(bag,header%tran_time,0.d0, &
+                            "tran_time", &
+                            "Transport Simulation time (seconds)", &
+                            ierr)
+  call PetscBagRegisterReal(bag,header%tran_dt,0.d0, &
+                            "tran_dt", &
+                            "Current size of transport timestep (seconds)", &
+                            ierr)
+  call PetscBagRegisterReal(bag,header%tran_prev_dt,0.d0, &
+                            "tran_prev_dt", &
+                            "Previous size of transport timestep (seconds)", &
+                            ierr)
+                            
+  call PetscBagRegisterInt(bag,header%tran_time_steps,0, &
+                           "tran_steps", &
+                           "Total number of transport steps taken", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%tran_cumulative_newton_iterations,0, &
+                           "tran_cumulative_newton_iterations", &
+                           "Total number of transport Newton steps taken", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%tran_cumulative_time_step_cuts,0, &
+                           "tran_cumulative_time_step_cuts", &
+                           "Total number of transport time step cuts", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%tran_cumulative_linear_iterations,0, &
+                           "tran_cumulative_linear_iterations", &
+                           "Total number of transport linear iterations", &
+                           ierr)
+  call PetscBagRegisterReal(bag,header%tran_cumulative_solver_time,0.d0, &
+                            "tran_cumulative_solver_time", &
+                            "tran_cumulative_solver_time", &
+                            ierr)
+
+  call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs,0, &
+                           "checkpoint_activity_coefs", &
+                           "Flag indicating whether activity coefficients were checkpointed", &
+                           ierr)                            
+
+end subroutine CheckpointRegisterBagHeader
 
 end module Checkpoint_module

@@ -487,7 +487,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   if (associated(tran_stepper)) then
     if (.not.associated(tran_stepper%cur_waypoint)) then
       option%io_buffer = &
-        'Null transport waypoint list; final time likely equal to start time.'
+        'Null transport waypoint list; final time likely equal to start ' // &
+        'time or simulation time needs to be extended on a restart.'
       call printMsg(option)
       return
     else
