@@ -1833,8 +1833,9 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: v_darcy,area
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
-  PetscReal :: Ke_up,Ke_dn
-  PetscReal :: alpha    
+  PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
+  PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
+  PetscReal :: alpha,alpha_fr    
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
@@ -2002,9 +2003,24 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
 
 ! conduction term
   alpha = 4.5d-1     ! Need to read it from input file
+  alpha_fr = 9.5d-1
+  
   Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha)   !unfrozen soil Kersten number
+  Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha)
+     
+  Ke_fr_up = (aux_var_up%sat_ice + epsilon)**(alpha_fr)
+  Ke_fr_dn = (aux_var_dn%sat_ice + epsilon)**(alpha_fr)
+  
+#ifdef ICE
+  Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
+              (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
+  Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
+              (1.d0 - Ke_dn - Ke_fr_dn)*Dk_dry_dn
+#else
   Dk_eff_up = Dk_dry_up + (Dk_up - Dk_dry_up)*Ke_up
   Dk_eff_dn = Dk_dry_dn + (Dk_dn - Dk_dry_dn)*Ke_dn      
+#endif
+ 
   Dk = (Dk_eff_up * Dk_eff_dn) / (dd_dn*Dk_eff_up + dd_up*Dk_eff_dn)
   cond = Dk*area*(global_aux_var_up%temp(1) - global_aux_var_dn%temp(1)) 
   fluxe = fluxe + cond
