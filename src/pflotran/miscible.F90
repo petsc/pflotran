@@ -143,7 +143,6 @@ subroutine MiscibleSetupPatch(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-  print *,' Miscible setup get patch'
   patch%aux%Miscible => MiscibleAuxCreate()
   
 !  option%io_buffer = 'Before Miscible can be run, the Miscible_parameter object ' // &
