@@ -2008,10 +2008,10 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha)   !unfrozen soil Kersten number
   Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha)
      
+#ifdef ICE
   Ke_fr_up = (aux_var_up%sat_ice + epsilon)**(alpha_fr)
   Ke_fr_dn = (aux_var_dn%sat_ice + epsilon)**(alpha_fr)
   
-#ifdef ICE
   Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
               (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
   Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
