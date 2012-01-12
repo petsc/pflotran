@@ -618,11 +618,15 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   tab = achar(9)
   backslash = achar(92)
 
-  ! Initialize character string to blank.
-  lenword = len_trim(word)
-  do i=1,lenword
-    word(i:i) = ' '
-  enddo
+  ! Initialize character string to blank.  len_trim(word) is not
+  ! defined if word is allocated but not initialized.  This works on
+  ! most compilers, but may not work on some?  Holler if it
+  ! errors... - etc
+  word = ''
+  ! lenword = len_trim(word)
+  ! do i=1,lenword
+  !   word(i:i) = ' '
+  ! enddo
 
   input%ierr = len_trim(input%buf)
   
@@ -692,9 +696,14 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
   backslash = achar(92)
   
   ! Initialize character string to blank.
-  do i=1,len_trim(word)
-    word(i:i) = ' '
-  enddo
+  ! Initialize character string to blank.  len_trim(word) is not
+  ! defined if word is allocated but not initialized.  This works on
+  ! most compilers, but may not work on some?  Holler if it
+  ! errors... - etc
+  word = ''
+  ! do i=1,len_trim(word)
+  !   word(i:i) = ' '
+  ! enddo
 
   ierr = len_trim(string)
   
