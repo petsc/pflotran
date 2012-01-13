@@ -211,6 +211,10 @@ function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
   type(point_type) :: point1, point2, point3, point4
   
   PetscReal :: vv(3,4)
+  PetscReal :: vv1_minus_vv4(3)
+  PetscReal :: vv2_minus_vv4(3)
+  PetscReal :: vv3_minus_vv4(3)
+  PetscReal :: cross_2_minus_4_X_3_minus_4(3)
   PetscReal :: UCellComputeVolumeOfTetrahedron
   PetscInt :: i
 
@@ -228,9 +232,22 @@ function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
   vv(3,4) = point4%z
 
   ! V = |(a-d).((b-d)x(c-d))| / 6
-  UCellComputeVolumeOfTetrahedron = dabs(DotProduct(vv(:,1)-vv(:,4), &
-                                         CrossProduct(vv(:,2)-vv(:,4), &
-                                                      vv(:,3)-vv(:,4)))) / &
+
+  !geh: Intel Visual Fortran creates temporary arrays and reports warnings
+  !     to the screen.  Therefore, I will use temporary variables below
+
+  !UCellComputeVolumeOfTetrahedron = dabs(DotProduct(vv(:,1)-vv(:,4), &
+  !                                       CrossProduct(vv(:,2)-vv(:,4), &
+  !                                                    vv(:,3)-vv(:,4)))) / &
+  !                                  6.d0
+
+  vv1_minus_vv4 = vv(:,1)-vv(:,4)
+  vv2_minus_vv4 = vv(:,2)-vv(:,4)
+  vv3_minus_vv4 = vv(:,3)-vv(:,4)
+  cross_2_minus_4_X_3_minus_4 = CrossProduct(vv2_minus_vv4, &
+                                             vv3_minus_vv4)
+  UCellComputeVolumeOfTetrahedron = dabs(DotProduct(vv1_minus_vv4, &
+                                         cross_2_minus_4_X_3_minus_4)) / &
                                     6.d0
 
 end function UCellComputeVolumeOfTetrahedron

@@ -1,5 +1,7 @@
 module Region_module
  
+  use Geometry_module
+  
   implicit none
 
   private
@@ -27,7 +29,7 @@ module Region_module
     PetscInt :: num_verts              ! For Unstructured mesh
     PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
     type(region_sideset_type), pointer :: sideset
-    type(region_polygonal_volume_type), pointer :: polygonal_volume
+    type(polygonal_volume_type), pointer :: polygonal_volume
     type(region_type), pointer :: next
   end type region_type
   
@@ -41,29 +43,12 @@ module Region_module
     type(region_type), pointer :: last
     type(region_type), pointer :: array(:)
   end type region_list_type
-  
-  type, public :: point3d_type
-    PetscReal :: x
-    PetscReal :: y
-    PetscReal :: z
-  end type point3d_type
 
   type, public :: region_sideset_type
     PetscInt :: nfaces
     PetscInt, pointer :: face_vertices(:,:)
   end type region_sideset_type
   
-  type, public :: region_polygonal_volume_type
-    type(point3d_type), pointer :: xy_coordinates(:)
-    type(point3d_type), pointer :: xz_coordinates(:)
-    type(point3d_type), pointer :: yz_coordinates(:)
-  end type region_polygonal_volume_type
-
-  interface RegionPointInPolygon
-    module procedure RegionPointInPolygon1
-    module procedure RegionPointInPolygon2
-  end interface RegionPointInPolygon
-    
   interface RegionCreate
     module procedure RegionCreateWithBlock
     module procedure RegionCreateWithList
@@ -148,32 +133,6 @@ function RegionCreateSideset()
   RegionCreateSideset => sideset
 
 end function RegionCreateSideset
-
-! ************************************************************************** !
-!
-! RegionCreatePolygonalVolume: Creates a polygonal volume.  I.e. a volume
-!                              defined by 3 polygons, on each plane of the
-!                              principle coordinate system x,y,z
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
-function RegionCreatePolygonalVolume()
-
-  implicit none
-  
-  type(region_polygonal_volume_type), pointer :: RegionCreatePolygonalVolume
-  
-  type(region_polygonal_volume_type), pointer :: polygonal_volume
-  
-  allocate(polygonal_volume)
-  nullify(polygonal_volume%xy_coordinates)
-  nullify(polygonal_volume%xz_coordinates)
-  nullify(polygonal_volume%yz_coordinates)
-  
-  RegionCreatePolygonalVolume => polygonal_volume
-
-end function RegionCreatePolygonalVolume
 
 ! ************************************************************************** !
 !
@@ -265,8 +224,8 @@ function RegionCreateWithRegion(region)
   new_region%num_verts = region%num_verts
   new_region%grid_type = region%grid_type
   if (associated(region%coordinates)) then
-    call RegionCopyCoordinates(region%coordinates, &
-                                new_region%coordinates)
+    call GeometryCopyCoordinates(region%coordinates, &
+                                 new_region%coordinates)
   endif
   if (associated(region%cell_ids)) then
     allocate(new_region%cell_ids(new_region%num_cells))
@@ -292,18 +251,18 @@ function RegionCreateWithRegion(region)
     new_region%sideset%face_vertices = region%sideset%face_vertices
   endif
   if (associated(region%polygonal_volume)) then
-    new_region%polygonal_volume => RegionCreatePolygonalVolume()
+    new_region%polygonal_volume => GeometryCreatePolygonalVolume()
     if (associated(region%polygonal_volume%xy_coordinates)) then
-      call RegionCopyCoordinates(region%polygonal_volume%xy_coordinates, &
-                                 new_region%polygonal_volume%xy_coordinates)
+      call GeometryCopyCoordinates(region%polygonal_volume%xy_coordinates, &
+                                   new_region%polygonal_volume%xy_coordinates)
     endif
     if (associated(region%polygonal_volume%xz_coordinates)) then
-      call RegionCopyCoordinates(region%polygonal_volume%xz_coordinates, &
-                                 new_region%polygonal_volume%xz_coordinates)
+      call GeometryCopyCoordinates(region%polygonal_volume%xz_coordinates, &
+                                   new_region%polygonal_volume%xz_coordinates)
     endif
     if (associated(region%polygonal_volume%yz_coordinates)) then
-      call RegionCopyCoordinates(region%polygonal_volume%yz_coordinates, &
-                                 new_region%polygonal_volume%yz_coordinates)
+      call GeometryCopyCoordinates(region%polygonal_volume%yz_coordinates, &
+                                   new_region%polygonal_volume%yz_coordinates)
     endif
   endif
   
@@ -421,23 +380,24 @@ subroutine RegionRead(region,input,option)
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%z)
         call InputErrorMsg(input,option,'z-coordinate','REGION')
       case('COORDINATES')
-        call RegionReadCoordinates(input,option,region%name,region%coordinates)
+        call GeometryReadCoordinates(input,option,region%name, &
+                                     region%coordinates)
       case('POLYGON')
         if (.not.associated(region%polygonal_volume)) then
-          region%polygonal_volume => RegionCreatePolygonalVolume()
+          region%polygonal_volume => GeometryCreatePolygonalVolume()
         endif
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'plane','REGION')
         call StringToUpper(word)
         select case(word)
           case('XY')
-            call RegionReadCoordinates(input,option,region%name, &
+            call GeometryReadCoordinates(input,option,region%name, &
                                        region%polygonal_volume%xy_coordinates)
           case('XZ')
-            call RegionReadCoordinates(input,option,region%name, &
+            call GeometryReadCoordinates(input,option,region%name, &
                                        region%polygonal_volume%xz_coordinates)
           case('YZ')
-            call RegionReadCoordinates(input,option,region%name, &
+            call GeometryReadCoordinates(input,option,region%name, &
                                        region%polygonal_volume%yz_coordinates)
           case default
             option%io_buffer = 'PLANE not recognized for REGION POLYGON.  ' // &
@@ -488,60 +448,6 @@ subroutine RegionRead(region,input,option)
   enddo
  
 end subroutine RegionRead
-
-! ************************************************************************** !
-!
-! RegionReadCoordinates: Reads a list of coordinates
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
-subroutine RegionReadCoordinates(input,option,region_name,coordinates)
-
-  use Input_module
-  use Option_module
-
-  implicit none
-  
-  type(input_type) :: input
-  type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: region_name
-  type(point3d_type), pointer :: coordinates(:)
-  
-  PetscInt :: icount
-  PetscInt, parameter :: max_num_coordinates = 100
-  type(point3d_type) :: temp_coordinates(max_num_coordinates)
-
-  icount = 0
-  do
-    call InputReadFlotranString(input,option)
-    call InputReadStringErrorMsg(input,option,'REGION')
-    if (InputCheckExit(input,option)) exit              
-    icount = icount + 1
-    if (icount > max_num_coordinates) then
-      write(option%io_buffer, &
-            '(''Number of coordinates in region '',a, &
-          &'' exceeds limit of '',i3)') region_name, max_num_coordinates
-      option%io_buffer = trim(option%io_buffer) // &
-        ' Increase size of PetscInt, parameter :: max_num_coordinates ' // &
-        ' in RegionReadCoordinates()'
-      call printErrMsg(option)
-    endif
-    call InputReadDouble(input,option,temp_coordinates(icount)%x) 
-    call InputErrorMsg(input,option,'x-coordinate','REGION')
-    call InputReadDouble(input,option,temp_coordinates(icount)%y)
-    call InputErrorMsg(input,option,'y-coordinate','REGION')
-    call InputReadDouble(input,option,temp_coordinates(icount)%z)
-    call InputErrorMsg(input,option,'z-coordinate','REGION')
-  enddo
-  allocate(coordinates(icount))
-  do icount = 1, size(coordinates)
-    coordinates(icount)%x = temp_coordinates(icount)%x
-    coordinates(icount)%y = temp_coordinates(icount)%y
-    coordinates(icount)%z = temp_coordinates(icount)%z
-  enddo
-
-end subroutine RegionReadCoordinates
 
 ! ************************************************************************** !
 !
@@ -1098,215 +1004,6 @@ end subroutine RegionDestroySideset
 
 ! ************************************************************************** !
 !
-! RegionPointInPolygonalVolume: Determines whether a point in xyz space is 
-!                               within a polygonal volume defined by polygons
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
-function RegionPointInPolygonalVolume(x,y,z,region,option)
- 
-  use Option_module
-
-  implicit none
-  
-  PetscReal :: x, y, z
-  type(region_type) :: region
-  type(option_type) :: option
-  
-  PetscBool :: xy, xz, yz
-  PetscBool :: RegionPointInPolygonalVolume
-    
-  if (.not.associated(region%polygonal_volume)) then
-    option%io_buffer = 'No polygonal volume defined in REGION: ' // &
-      trim(region%name)
-  endif
-  
-  RegionPointInPolygonalVolume = PETSC_FALSE
-  
-  ! if a polygon is not defined in a particular direction, it is assumed that
-  ! the point is within the "infinite" polygon
-  
-  ! XY plane
-  if (associated(region%polygonal_volume%xy_coordinates)) then
-    if (.not.RegionPointInPolygon(x,y,z,Z_DIRECTION, &
-                                  region%polygonal_volume%xy_coordinates)) then
-      return
-    endif
-  endif
-
-  ! XZ plane
-  if (associated(region%polygonal_volume%xz_coordinates)) then
-    if (.not.RegionPointInPolygon(x,y,z,Y_DIRECTION, &
-                                  region%polygonal_volume%xz_coordinates)) then
-      return
-    endif
-  endif
-
-  ! YZ plane
-  if (associated(region%polygonal_volume%yz_coordinates)) then
-    if (.not.RegionPointInPolygon(x,y,z,X_DIRECTION, &
-                                  region%polygonal_volume%yz_coordinates)) then
-      return
-    endif
-  endif
-  
-  ! if point is not within any of polygons above, the function will return
-  ! prior to this point.
-  RegionPointInPolygonalVolume = PETSC_TRUE
-  
-end function RegionPointInPolygonalVolume
-
-! ************************************************************************** !
-!
-! RegionPointInPolygon1: Determines whether a point in xyz space is within
-!                        a polygon based on coordinate object
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
-function RegionPointInPolygon1(x,y,z,axis,coordinates)
-
-  implicit none
-  
-  PetscReal :: x, y, z
-  PetscInt :: axis
-  type(point3d_type) :: coordinates(:)
-  
-  PetscInt, parameter :: max_num_coordinates = 100
-  PetscReal :: xx, yy
-  PetscInt :: i, num_coordinates
-  PetscReal :: xx_array(max_num_coordinates), yy_array(max_num_coordinates)
-  
-  PetscBool :: RegionPointInPolygon1
-  
-  RegionPointInPolygon1 = PETSC_FALSE
-  
-  num_coordinates = size(coordinates)
-  select case(axis)
-    case(Z_DIRECTION)
-      xx = x
-      yy = y
-      do i = 1, num_coordinates
-        xx_array(i) = coordinates(i)%x
-        yy_array(i) = coordinates(i)%y
-      enddo
-    case(Y_DIRECTION)
-      xx = x
-      yy = z
-      do i = 1, num_coordinates
-        xx_array(i) = coordinates(i)%x
-        yy_array(i) = coordinates(i)%z
-      enddo
-    case(X_DIRECTION)
-      xx = y
-      yy = z
-      do i = 1, num_coordinates
-        xx_array(i) = coordinates(i)%y
-        yy_array(i) = coordinates(i)%z
-      enddo
-  end select
-  RegionPointInPolygon1 = RegionPointInPolygon2(xx,yy,xx_array,yy_array)
-  
-end function RegionPointInPolygon1
-
-! ************************************************************************** !
-!
-! RegionPointInPolygon2: Determines whether a point in xyz space is within
-!                       a polygon
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
-function RegionPointInPolygon2(x,y,x_array,y_array)
-
-  implicit none
-  
-  PetscReal :: x, y
-  PetscReal :: x_array(:), y_array(:)
-  
-  PetscBool :: RegionPointInPolygon2
-  PetscInt :: num_coordinates
-  PetscInt :: i, j
-  
-  RegionPointInPolygon2 = PETSC_FALSE
-
-  num_coordinates = size(x_array)
-  j = 1
-  do i = 1, num_coordinates
-    j = i + 1
-    if (j == num_coordinates) j = 1
-    if ((y_array(i) < y .and. y_array(j) >= y) .or. &
-        (y_array(j) < y .and. y_array(i) >= y)) then
-      if ((x_array(i) + &
-           (y-y_array(i))/(y_array(j)-y_array(i))*(x_array(j)-x_array(i))) &
-          < x) then
-        RegionPointInPolygon2 = .not.RegionPointInPolygon2
-      endif
-    endif    
-  enddo
-
-end function RegionPointInPolygon2
-
-! ************************************************************************** !
-!
-! RegionCopyCoordinates: Deallocates a polygonal volume object
-! author: Glenn Hammond
-! date: 01/12/12
-!
-! ************************************************************************** !
-subroutine RegionCopyCoordinates(coordinates_in,coordinates_out)
-
-  implicit none
-  
-  type(point3d_type) :: coordinates_in(:)
-  type(point3d_type), pointer :: coordinates_out(:)
-  
-  PetscInt :: num_coordinates
-  PetscInt :: i
-  
-  num_coordinates = size(coordinates_in)
-  allocate(coordinates_out(num_coordinates))
-  do i = 1, num_coordinates
-   coordinates_out(i)%x = coordinates_in(i)%x 
-   coordinates_out(i)%y = coordinates_in(i)%y
-   coordinates_out(i)%z = coordinates_in(i)%z 
-  enddo
- 
-end subroutine RegionCopyCoordinates
-
-! ************************************************************************** !
-!
-! RegionDestroyPolygonalVolume: Deallocates a polygonal volume object
-! author: Glenn Hammond
-! date: 11/01/09
-!
-! ************************************************************************** !
-subroutine RegionDestroyPolygonalVolume(polygonal_volume)
-
-  implicit none
-  
-  type(region_polygonal_volume_type), pointer :: polygonal_volume
-  
-  if (.not.associated(polygonal_volume)) return
-  
-  if (associated(polygonal_volume%xy_coordinates)) &
-    deallocate(polygonal_volume%xy_coordinates)
-  nullify(polygonal_volume%xy_coordinates)
-  if (associated(polygonal_volume%xz_coordinates)) &
-    deallocate(polygonal_volume%xz_coordinates)
-  nullify(polygonal_volume%xz_coordinates)
-  if (associated(polygonal_volume%yz_coordinates)) &
-    deallocate(polygonal_volume%yz_coordinates)
-  nullify(polygonal_volume%yz_coordinates)
-  
-  deallocate(polygonal_volume)
-  nullify(polygonal_volume)
-  
-end subroutine RegionDestroyPolygonalVolume
-
-! ************************************************************************** !
-!
 ! RegionDestroyList: Deallocates a list of regions
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1363,7 +1060,7 @@ subroutine RegionDestroy(region)
   if (associated(region%coordinates)) deallocate(region%coordinates)
   nullify(region%coordinates)
   call RegionDestroySideset(region%sideset)
-  call RegionDestroyPolygonalVolume(region%polygonal_volume)
+  call GeometryDestroyPolygonalVolume(region%polygonal_volume)
   
   if (associated(region%vertex_ids)) deallocate(region%vertex_ids)
   nullify(region%vertex_ids)

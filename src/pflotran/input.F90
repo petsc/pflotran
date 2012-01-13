@@ -118,6 +118,7 @@ function InputCreate(fid,filename)
 
   open(unit=input%fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
+    if (len_trim(filename) == 0) filename = '<blank>'
     print *, 'file: ', trim(filename), ' not found'
     stop
   endif

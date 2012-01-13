@@ -311,7 +311,7 @@ PetscInt, parameter :: TRI_FACE_TYPE     = 1
 PetscInt, parameter :: QUAD_FACE_TYPE    = 2
 PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 PetscInt, parameter :: MAX_FACE_PER_CELL = 6
-PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 24
+PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 36
 
 ! ids of non-petsc arrays
 PetscInt, parameter :: MATERIAL_ID_ARRAY = 1

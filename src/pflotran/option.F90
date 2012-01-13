@@ -244,6 +244,11 @@ module Option_module
     module procedure printMsg2
   end interface
 
+  interface printMsgAnyRank
+    module procedure printMsgAnyRank1
+    module procedure printMsgAnyRank2
+  end interface
+
   interface printErrMsgByRank
     module procedure printErrMsgByRank1
     module procedure printErrMsgByRank2
@@ -266,6 +271,7 @@ module Option_module
             printErrMsgByRank, &
             printWrnMsg, &
             printMsg, &
+            printMsgAnyRank, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
@@ -677,18 +683,7 @@ subroutine printErrMsg1(option)
   
   type(option_type) :: option
   
-  PetscBool :: petsc_initialized
-  PetscErrorCode :: ierr
-  
-  if (OptionPrintToScreen(option)) then
-    print *
-    print *, 'ERROR: ' // trim(option%io_buffer)
-    print *, 'Stopping!'
-  endif    
-  call MPI_Barrier(option%mycomm,ierr)
-  call PetscInitialized(petsc_initialized, ierr)
-  if (petsc_initialized) call PetscFinalize(ierr)
-  stop
+  if (OptionPrintToScreen(option)) call printErrMsg2(option,option%io_buffer)
   
 end subroutine printErrMsg1
 
@@ -777,7 +772,7 @@ subroutine printWrnMsg1(option)
   
   type(option_type) :: option
   
-  if (OptionPrintToScreen(option)) print *, 'WARNING: ' // trim(option%io_buffer)
+  if (OptionPrintToScreen(option)) call printWrnMsg2(option,option%io_buffer)
   
 end subroutine printWrnMsg1
 
@@ -812,7 +807,7 @@ subroutine printMsg1(option)
   
   type(option_type) :: option
   
-  if (OptionPrintToScreen(option)) print *, trim(option%io_buffer)
+  if (OptionPrintToScreen(option)) call printMsg2(option,option%io_buffer)
   
 end subroutine printMsg1
 
@@ -833,6 +828,40 @@ subroutine printMsg2(option,string)
   if (OptionPrintToScreen(option)) print *, trim(string)
   
 end subroutine printMsg2
+
+! ************************************************************************** !
+!
+! printMsgAnyRank1: Prints the message from any processor core
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine printMsgAnyRank1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  call printMsgAnyRank2(option%io_buffer)
+  
+end subroutine printMsgAnyRank1
+
+! ************************************************************************** !
+!
+! printMsgAnyRank2: Prints the message from any processor core
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine printMsgAnyRank2(string)
+
+  implicit none
+  
+  character(len=*) :: string
+  
+  print *, trim(string)
+  
+end subroutine printMsgAnyRank2
 
 ! ************************************************************************** !
 !

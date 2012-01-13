@@ -560,15 +560,13 @@ end subroutine StructuredGridReadArrayNew
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L,option)
+subroutine StructuredGridComputeSpacing(structured_grid,option)
 
   use Option_module
   
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  PetscInt :: nG2A(:)
-  PetscInt :: nG2L(:)
   type(option_type) :: option
   
   PetscInt :: i, j, k, ghosted_id
@@ -2001,22 +1999,22 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
         do j=1,structured_grid%nly
            do i=1,structured_grid%nlx
               local_id = local_id + 1
-              natural_id = i-1+structured_grid%nxs+(j-1+structured_grid%nys)*structured_grid%nx+ &
-                   (k-1+structured_grid%nzs)*structured_grid%nxy
-              if (natural_id>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
+              natural_id = i - 1 + structured_grid%nxs + &
+                           (j-1+structured_grid%nys)*structured_grid%nx+ &
+                           (k-1+structured_grid%nzs)*structured_grid%nxy
               nL2A(local_id) = natural_id
            enddo
         enddo
      enddo
-     ! Local(ghosted)->Natural(natural order starts from 0)
+     ! local ghosted -> natural (1-based)
      local_id=0
      do k=1,structured_grid%ngz
         do j=1,structured_grid%ngy
            do i=1,structured_grid%ngx
               local_id = local_id + 1
-              natural_id = i-1+structured_grid%ngxs+(j-1+structured_grid%ngys)*structured_grid%nx+ &
-                   (k-1+structured_grid%ngzs)*structured_grid%nxy
-              if (natural_id>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
+              natural_id = i + structured_grid%ngxs + & ! 1-based
+                           (j-1+structured_grid%ngys)*structured_grid%nx+ &
+                           (k-1+structured_grid%ngzs)*structured_grid%nxy
               nG2A(local_id) = natural_id
            enddo
         enddo

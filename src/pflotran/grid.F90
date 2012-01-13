@@ -50,23 +50,20 @@ module Grid_module
     !
     ! Entries of a vector created with DMCreateLocalVector() should be 
     ! indexed using 'ghosted local' indices.  The array returned from a call 
-    ! to VecGetArrayF90() on such a vector contains the truly local entries 
+    ! to VecGetArrayF90() on such a vector contains the truly3 local entries 
     ! as well as ghost points.
     !
     ! The index mapping arrays are the following:
     ! nL2G :  not collective, local processor: local  =>  ghosted local  
     ! nG2L :  not collective, local processor:  ghosted local => local  
-    ! nG2A :  collective,  ghosted local => global index , used for   
-    !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
+    ! nG2A :  not collective, ghosted local => natural
+
+    !geh: do we even need nL2A???
+    
     ! nL2A :   collective, local => natural index, used for initialization   
     !                               and source/sink setup  (zero-based)
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:), nG2P(:), nG2LP(:)
-
-    ! nL2G :  not collective, local processor: local  =>  ghosted local  
-    ! nG2L :  not collective, local processor:  ghosted local => local  
-    ! nG2A :  collective,  ghosted local => global index , used for   
-    !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
 
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
     PetscInt, pointer :: fL2B(:)
@@ -1278,8 +1275,7 @@ subroutine GridComputeSpacing(grid,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructuredGridComputeSpacing(grid%structured_grid,grid%nG2A, &
-                                        grid%nG2L,option)
+      call StructuredGridComputeSpacing(grid%structured_grid,option)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -1441,6 +1437,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     
     if (.not.(associated(region%cell_ids) .or. &
               associated(region%sideset) .or. &
+              associated(region%polygonal_volume) .or. &
               associated(region%vertex_ids))) then
       ! i, j, k block
       if (region%i1 > 0 .and. region%i2 > 0 .and. &
@@ -1799,10 +1796,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         endif  
       endif 
     else if (associated(region%sideset)) then
-      call UGridMapSideSet(grid%unstructured_grid, &
-                            region%sideset%face_vertices, &
-                            region%sideset%nfaces,region%name, &
-                            option,region%cell_ids,region%faces)
+      call UGridMapSideSet(grid%unstructured_grid, & 
+                           region%sideset%face_vertices, & 
+                           region%sideset%nfaces,region%name, & 
+                           option,region%cell_ids,region%faces) 
+      region%num_cells = size(region%cell_ids)
+    else if (associated(region%polygonal_volume)) then
+      call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
+                                      region%polygonal_volume, &
+                                      region%name,option, &
+                                      region%cell_ids,region%faces)
       region%num_cells = size(region%cell_ids)
     else if (associated(region%cell_ids)) then
       select case(grid%itype) 
@@ -2813,9 +2816,9 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
   hash(:,:,:) = 0
 
-  ! recall that natural ids are zero-based
+  
   do local_ghosted_id = 1, grid%ngmax
-    natural_id = grid%nG2A(local_ghosted_id)+1
+    natural_id = grid%nG2A(local_ghosted_id) !nG2A is 1-based
     hash_id = mod(natural_id,grid%num_hash_bins)+1 
     num_in_hash = hash(1,0,hash_id)
     num_in_hash = num_in_hash+1
@@ -2903,7 +2906,8 @@ PetscInt function GridGetLocalGhostedIdFromNatId(grid,natural_id)
   PetscInt :: local_ghosted_id
   
   do local_ghosted_id = 1, grid%ngmax
-    if (natural_id == grid%nG2A(local_ghosted_id)+1) then
+    !geh: nG2A is 1-based
+    if (natural_id == grid%nG2A(local_ghosted_id)) then
       GridGetLocalGhostedIdFromNatId = local_ghosted_id
       return 
     endif
@@ -3237,7 +3241,7 @@ function GridIndexToCellID(vec,index,grid,vec_type)
     if (vec_type == GLOBAL) then
       cell_id = grid%nL2A(cell_id)+1
     else if (vec_type == LOCAL) then
-      cell_id = grid%nG2A(cell_id)+1
+      cell_id = grid%nG2A(cell_id) !nG2A is 1-based
     endif
   endif
   

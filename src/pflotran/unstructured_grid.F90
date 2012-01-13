@@ -108,6 +108,7 @@ module Unstructured_Grid_module
             UGridGetCellsInRectangle, &
             UGridEnsureRightHandRule, &
             UGridMapSideSet, &
+            UGridMapBoundFacesInPolVol, &
             UGridDestroy, &
             UGridCreateUGDM, &
             UGridDMDestroy
@@ -196,128 +197,6 @@ function UGridCreate()
   UGridCreate => unstructured_grid
   
 end function UGridCreate
-
-  
-
-! ************************************************************************** !
-!
-! CreateNaturalToLocalHash: Creates a hash table for looking up the local 
-!                           ghosted id of a natural id, if it exists
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-subroutine UnstGridCreateNatToGhostedHash(unstructured_grid,nG2A)
-
-  implicit none
-
-  type(unstructured_grid_type) :: unstructured_grid
-  PetscInt :: nG2A(:)
-
-  PetscInt :: local_ghosted_id, natural_id 
-  PetscInt :: num_in_hash, num_ids_per_hash, hash_id, id
-  PetscInt, pointer :: temp_hash(:,:,:)
-
-  ! initial guess of 10% of ids per hash
-  num_ids_per_hash = max(unstructured_grid%nlmax/ &
-                           (unstructured_grid%num_hash/10), &
-                         unstructured_grid%nlmax)
-
-  allocate(unstructured_grid%hash(2,0:num_ids_per_hash, &
-                                  unstructured_grid%num_hash))
-  unstructured_grid%hash(:,:,:) = 0
-
-  ! recall that natural ids are zero-based
-  do local_ghosted_id = 1, unstructured_grid%ngmax
-    natural_id = nG2A(local_ghosted_id)+1
-    hash_id = mod(natural_id,unstructured_grid%num_hash)+1 
-    num_in_hash = unstructured_grid%hash(1,0,hash_id)
-    num_in_hash = num_in_hash+1
-    ! if a hash runs out of space reallocate
-    if (num_in_hash > num_ids_per_hash) then 
-      allocate(temp_hash(2,0:num_ids_per_hash,0:unstructured_grid%num_hash))
-      ! copy old hash
-      temp_hash(1:2,0:num_ids_per_hash,unstructured_grid%num_hash) = &
-                   unstructured_grid%hash(1:2,0:num_ids_per_hash, &
-                                          unstructured_grid%num_hash)
-      deallocate(unstructured_grid%hash)
-      ! recompute hash 20% larger
-      num_ids_per_hash = int(dble(num_ids_per_hash)*1.2)
-      allocate(unstructured_grid%hash(1:2,0:num_ids_per_hash, &
-                                      unstructured_grid%num_hash))
-      ! copy old to new
-      do hash_id = 1, unstructured_grid%num_hash
-        do id = 1, temp_hash(1,0,hash_id)
-          unstructured_grid%hash(1:2,id,hash_id) = temp_hash(1:2,id,hash_id)
-        enddo
-        unstructured_grid%hash(1,0,hash_id) = temp_hash(1,0,hash_id)
-      enddo
-      deallocate(temp_hash)
-    endif
-    unstructured_grid%hash(1,0,hash_id) = num_in_hash
-    unstructured_grid%hash(1,num_in_hash,hash_id) = natural_id
-    unstructured_grid%hash(2,num_in_hash,hash_id) = local_ghosted_id
-  enddo
-
-!  if (grid%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
-
-end subroutine UnstGridCreateNatToGhostedHash
-
-! ************************************************************************** !
-!
-! getLocalIdFromHash: Returns the local ghosted id of a natural id, if it 
-!                     exists.  Otherwise 0 is returned
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-PetscInt function UnstructGridGetGhostIdFromHash(unstructured_grid,natural_id)
-
-  implicit none
-  
-  type(unstructured_grid_type) :: unstructured_grid
-
-  PetscInt :: natural_id
-  PetscInt :: hash_id, id
-
-  UnstructGridGetGhostIdFromHash = 0
-  hash_id = mod(natural_id,unstructured_grid%num_hash)+1 
-  do id = 1, unstructured_grid%hash(1,0,hash_id)
-    if (unstructured_grid%hash(1,id,hash_id) == natural_id) then
-      UnstructGridGetGhostIdFromHash = unstructured_grid%hash(2,id,hash_id)
-      return
-    endif
-  enddo
-
-end function UnstructGridGetGhostIdFromHash
-
-! ************************************************************************** !
-!
-! UnstructGridPrintHashTable: Prints the hashtable for viewing
-! author: Glenn Hammond
-! date: 03/09/07
-!
-! ************************************************************************** !
-subroutine UnstructGridPrintHashTable(unstructured_grid)
-
-  implicit none
-
-  type(unstructured_grid_type) :: unstructured_grid
-
-  PetscInt :: ihash, id, fid
-
-  fid = 87 
-  open(fid,file='hashtable.dat',action='write')
-  do ihash=1,unstructured_grid%num_hash
-    write(fid,'(a4,i3,a,i5,a2,x,200(i6,x))') 'Hash',ihash,'(', &
-                         unstructured_grid%hash(1,0,ihash), &
-                         '):', &
-                         (unstructured_grid%hash(1,id,ihash),id=1, &
-                          unstructured_grid%hash(1,0,ihash))
-  enddo
-  close(fid)
-
-end subroutine UnstructGridPrintHashTable
 
 ! ************************************************************************** !
 !
@@ -3115,8 +2994,13 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
   PetscReal :: distance
   PetscInt :: cell_vertex_ids_before(8), cell_vertex_ids_after(8)
   PetscInt :: face_vertex_ids(4)
+  type(point_type) :: vertex_8(8)
+  PetscInt :: ivertex, vertex_id
   PetscInt :: num_vertices, iface, cell_type, num_faces, face_type, i
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: error_found
 
+  error_found = PETSC_FALSE
   do local_id = 1, unstructured_grid%nlmax
     ghosted_id = local_id
     cell_type = unstructured_grid%cell_type(local_id)
@@ -3144,21 +3028,49 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
       distance = UCellComputeDistanceFromPlane(plane1,point) 
       if (distance > 0.d0) then
         ! need to swap so that distance is negative (point lies below plane)
-        write(option%io_buffer,'(''Cell '',i3,'' of type "'',a, &
-              & ''" with vertices: '',8i6, &
-              & '' violates right hand rule at face "'',a, &
-              & ''" for face vertices '', &
-              & '' based on face vertices '',3i3)') &
-              nL2A(local_id), &
-              trim(UCellTypeToWord(cell_type,option)), &
-          (unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i)), &
-             i = 1,8), &
-              trim(UCellFaceTypeToWord(face_type,option)), &
-          (face_vertex_ids(i),i = 1,3) 
-        call printErrMsgByRank(option)
+        option%io_buffer = 'Cell '
+        write(string,'(i13)') nL2A(local_id)
+        option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
+          'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
+          '" with vertices:'
+        do i = 1, num_vertices
+          write(string,'(i13)') &
+            unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
+          option%io_buffer = trim(option%io_buffer) // ' ' // &
+            trim(adjustl(string))
+        enddo
+        option%io_buffer = trim(option%io_buffer) // &
+          ' violates right hand rule at face "' // &
+          trim(UCellFaceTypeToWord(face_type,option)) // &
+          '" based on face vertices:'
+        do i = 1, num_vertices
+          write(string,'(i13)') face_vertex_ids(i)
+          option%io_buffer = trim(option%io_buffer) // ' ' // &
+            trim(adjustl(string))
+        enddo
+        do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
+          vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
+          vertex_8(ivertex)%x = &
+            unstructured_grid%vertices(vertex_id)%x
+          vertex_8(ivertex)%y = &
+            unstructured_grid%vertices(vertex_id)%y
+          vertex_8(ivertex)%z = &
+            unstructured_grid%vertices(vertex_id)%z
+        enddo        
+        write(string,'(f8.2)') &
+          UCellComputeVolume(cell_type,vertex_8,option)
+        option%io_buffer = trim(option%io_buffer) // ' and volume: ' // &
+          trim(adjustl(string)) // '.'
+        call printMsgAnyRank(option)
+        error_found = PETSC_TRUE
       endif
     enddo
   enddo
+  
+  if (error_found) then
+    option%io_buffer = 'Cells founds that violate right hand rule.'
+    call printErrMsgByRank(option)
+  endif
 
 end subroutine UGridEnsureRightHandRule
 
@@ -3720,6 +3632,180 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   call VecDestroy(Face_vec,ierr)
   
 end subroutine UGridMapSideSet
+
+! ************************************************************************** !
+!
+! UGridMapBoundFacesInPolVol: Maps all global boundary cell faces within a 
+          !                   polygonal volume to a region
+! author: Glenn Hammond
+! date: 12/16/11
+!
+! ************************************************************************** !
+subroutine UGridMapBoundFacesInPolVol(unstructured_grid,polygonal_volume, &
+                                      region_name,option, &
+                                      cell_ids,face_ids)
+  use Option_module
+  use Geometry_module
+
+  implicit none
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(polygonal_volume_type) :: polygonal_volume
+  character(len=MAXWORDLENGTH) :: region_name
+  type(option_type) :: option
+  PetscInt, pointer :: cell_ids(:)
+  PetscInt, pointer :: face_ids(:)
+
+  PetscInt :: ivertex
+  PetscInt :: iface, face_id
+  PetscInt :: iface2, face_id2
+  PetscInt :: nfaces
+  PetscInt :: cell_id, cell_type
+  PetscInt :: vertex_id
+  type(point_type) :: vertex
+  PetscInt :: mapped_face_count
+  PetscBool :: found
+  PetscInt :: boundary_face_count
+  PetscInt, pointer :: boundary_faces(:)
+  
+  nullify(boundary_faces)
+  
+  call UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
+  
+  if (associated(boundary_faces)) then
+  
+    boundary_face_count = size(boundary_faces)
+    
+    mapped_face_count = 0
+    do iface = 1, boundary_face_count
+      face_id = boundary_faces(iface)
+      found = PETSC_TRUE
+#if 0      
+      do ivertex = 1, MAX_VERT_PER_FACE
+        vertex_id = unstructured_grid%face_to_vertex(ivertex,face_id)
+        if (vertex_id == 0) exit
+        vertex = unstructured_grid%vertices(vertex_id)
+        if (.not.GeometryPointInPolygonalVolume(vertex%x,vertex%y,vertex%z, &
+                                                polygonal_volume,option)) then
+          GeometryPointInPolygon1 = &
+          found = PETSC_FALSE
+          exit
+        endif
+      enddo
+#else
+      found = GeometryPointInPolygonalVolume( &
+                unstructured_grid%face_centroid(face_id)%x, &
+                unstructured_grid%face_centroid(face_id)%y, &
+                unstructured_grid%face_centroid(face_id)%z, &
+                polygonal_volume,option)
+#endif
+      if (found) then
+        mapped_face_count = mapped_face_count + 1
+        ! if inside, shift the face earlier in the array to same array space
+        boundary_faces(mapped_face_count) = boundary_faces(iface)
+      endif
+    enddo
+
+    if (mapped_face_count > 0) then
+      allocate(cell_ids(mapped_face_count))
+      cell_ids = 0
+      allocate(face_ids(mapped_face_count))
+      face_ids = 0
+      do iface = 1, mapped_face_count
+        face_id = boundary_faces(iface)
+        cell_id = &
+          unstructured_grid%face_to_cell_ghosted(1,face_id)
+        cell_type = unstructured_grid%cell_type(cell_id)
+        nfaces = UCellGetNFaces(cell_type,option)
+        found = PETSC_FALSE
+        do iface2 = 1, nfaces
+          face_id2 = unstructured_grid%cell_to_face_ghosted(iface2,cell_id)
+          if (face_id == face_id2) then
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo
+        if (.not.found) then
+          option%io_buffer = &
+            'Boundary face mismatch in UGridMapBoundFacesInPolVol()'
+          call printErrMsg(option)
+        else
+          cell_ids(iface) = cell_id
+          face_ids(iface) = iface2
+        endif
+      enddo
+    endif
+  
+    deallocate(boundary_faces)
+    nullify(boundary_faces)
+  
+  endif  
+  
+end subroutine UGridMapBoundFacesInPolVol
+
+! ************************************************************************** !
+!
+! UGridGetBoundaryFaces: Returns an array of ids for cell faces on boundary
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  PetscInt, pointer :: boundary_faces(:)
+  type(option_type) :: option
+  
+  PetscInt :: boundary_face_count
+  PetscInt :: nfaces
+  PetscInt :: iface
+  PetscInt :: face_id
+  PetscInt :: local_id
+  PetscInt :: cell_type
+  PetscErrorCode :: ierr
+    
+  ! fill matrix with boundary faces of local cells
+  ! count up the number of boundary faces
+  boundary_face_count = 0
+  do local_id = 1, unstructured_grid%nlmax
+    nfaces = UCellGetNFaces(unstructured_grid%cell_type(local_id),option)
+    do iface = 1, nfaces
+      face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+      if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
+        ! boundary face, since not connected to 2 cells
+        boundary_face_count = boundary_face_count + 1
+      endif
+    enddo
+  enddo
+
+  if (boundary_face_count > 0) then
+    allocate(boundary_faces(boundary_face_count))
+    boundary_faces = 0
+    boundary_face_count = 0
+    do local_id = 1, unstructured_grid%nlmax
+      cell_type = unstructured_grid%cell_type(local_id)
+      nfaces = UCellGetNFaces(cell_type,option)
+      do iface = 1, nfaces
+        face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+        if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
+          ! boundary face, since not connected to 2 cells
+          boundary_face_count = boundary_face_count + 1
+          boundary_faces(boundary_face_count) = face_id
+        endif
+      enddo
+    enddo
+  endif
+  
+end subroutine UGridGetBoundaryFaces
 
 ! ************************************************************************** !
 !

@@ -2806,6 +2806,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
       if (InputError(input)) exit
       call InputReadInt(input,option,natural_id)
       call InputErrorMsg(input,option,'natural id','STRATA')
+      ! natural ids in hash are zero-based
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
         call InputReadInt(input,option,material_id)

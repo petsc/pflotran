@@ -480,6 +480,7 @@ function OutputTecplotZoneHeader(realization,variable_count)
   string = 'ZONE T="' // &
            trim(OutputFormatDouble(option%time/output_option%tconv)) // &
            '"'
+  string2 = ''
   select case(output_option%tecplot_format)
     case (TECPLOT_POINT_FORMAT)
       if ((realization%discretization%itype == STRUCTURED_GRID).or. &
@@ -495,7 +496,7 @@ function OutputTecplotZoneHeader(realization,variable_count)
       endif  
       string2 = trim(string2) // &
               ', DATAPACKING=POINT'
-    case (TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
+    case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
       if ((realization%discretization%itype == STRUCTURED_GRID).or. &
           (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
         string2 = ', I=' // &
