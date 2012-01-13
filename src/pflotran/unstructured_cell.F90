@@ -84,13 +84,20 @@ function UCellComputeCentroid(cell_type,vertices,option)
         UCellComputeCentroid(3) = UCellComputeCentroid(3) + vertices(ivertex)%z
       enddo
       UCellComputeCentroid = UCellComputeCentroid / 5.d0
-    case(TET_TYPE)
+    case(TET_TYPE, QUAD_TYPE)
       do ivertex = 1, 4
         UCellComputeCentroid(1) = UCellComputeCentroid(1) + vertices(ivertex)%x
         UCellComputeCentroid(2) = UCellComputeCentroid(2) + vertices(ivertex)%y
         UCellComputeCentroid(3) = UCellComputeCentroid(3) + vertices(ivertex)%z
       enddo
       UCellComputeCentroid = UCellComputeCentroid / 4.d0
+    case(TRI_TYPE)
+      do ivertex = 1, 3
+        UCellComputeCentroid(1) = UCellComputeCentroid(1) + vertices(ivertex)%x
+        UCellComputeCentroid(2) = UCellComputeCentroid(2) + vertices(ivertex)%y
+        UCellComputeCentroid(3) = UCellComputeCentroid(3) + vertices(ivertex)%z
+      enddo
+      UCellComputeCentroid = UCellComputeCentroid / 3.d0
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -119,7 +126,8 @@ function UCellComputeVolume(cell_type,vertices,option)
   PetscReal :: UCellComputeVolume
   PetscReal :: v(3)
   PetscReal :: l1, l2, l3
-  PetscReal :: n1(3), area1, dz,v1(3),v2(3)
+  PetscReal :: n1(3), n2(3), v1(3), v2(3)
+  PetscReal :: area1, area2, dz
   PetscReal :: vv(3,8)
   PetscInt :: i, j
   
@@ -187,6 +195,38 @@ function UCellComputeVolume(cell_type,vertices,option)
       UCellComputeVolume = &
         UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2),vertices(3), &
                                         vertices(4))
+    case(QUAD_TYPE)
+      ! gb: 2D cell type, thus volume = area * unit-depth
+      v1(1) = vertices(3)%x-vertices(2)%x
+      v1(2) = vertices(3)%y-vertices(2)%y
+      v1(3) = vertices(3)%z-vertices(2)%z
+      v2(1) = vertices(1)%x-vertices(2)%x
+      v2(2) = vertices(1)%y-vertices(2)%y
+      v2(3) = vertices(1)%z-vertices(2)%z
+      n1 = CrossProduct(v1,v2)
+      area1 = 0.5d0*sqrt(DotProduct(n1,n1))
+      
+      v1(1) = vertices(3)%x-vertices(4)%x
+      v1(2) = vertices(3)%y-vertices(4)%y
+      v1(3) = vertices(3)%z-vertices(4)%z
+      v2(1) = vertices(1)%x-vertices(4)%x
+      v2(2) = vertices(1)%y-vertices(4)%y
+      v2(3) = vertices(1)%z-vertices(24)%z
+      n2 = CrossProduct(v1,v2)
+      area1 = 0.5d0*sqrt(DotProduct(n2,n2))
+      
+      UCellComputeVolume = (area1 + area2)*1.d0
+    case(TRI_TYPE)
+      ! gb: 2D cell type, thus volume = area * unit-depth
+      v1(1) = vertices(3)%x-vertices(2)%x
+      v1(2) = vertices(3)%y-vertices(2)%y
+      v1(3) = vertices(3)%z-vertices(2)%z
+      v2(1) = vertices(1)%x-vertices(2)%x
+      v2(2) = vertices(1)%y-vertices(2)%y
+      v2(3) = vertices(1)%z-vertices(2)%z
+      n1 = CrossProduct(v1,v2)
+      area1 = 0.5d0*sqrt(DotProduct(n1,n1))
+      UCellComputeVolume = area1*1.d0
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -379,7 +419,9 @@ function UCellGetNVertices(cell_type,option)
       UCellGetNVertices = 6
     case(PYR_TYPE)
       UCellGetNVertices = 5
-    case(TET_TYPE)
+    case(TET_TYPE, QUAD_TYPE)
+      UCellGetNVertices = 4
+    case(TRI_TYPE)
       UCellGetNVertices = 4
     case default
       option%io_buffer = 'Cell type not recognized'
@@ -411,6 +453,10 @@ function UCellGetNFaces(cell_type,option)
       UCellGetNFaces = 5
     case(TET_TYPE)
       UCellGetNFaces = 4
+    case(QUAD_TYPE)
+      UCellGetNFaces = 4
+    case(TRI_TYPE)
+      UCellGetNFaces = 3
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -452,6 +498,10 @@ function UCellGetNFaceVertices(cell_type,iface,option)
       endif
     case(TET_TYPE)
       UCellGetNFaceVertices = 3
+    case(QUAD_TYPE)
+      UCellGetNFaceVertices = 2
+    case(TRI_TYPE)
+      UCellGetNFaceVertices = 2
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -493,6 +543,10 @@ function UCellGetFaceType(cell_type,iface,option)
       endif
     case(TET_TYPE)
       UCellGetFaceType = TRI_FACE_TYPE
+    case(QUAD_TYPE)
+      UCellGetFaceType = LINE_FACE_TYPE
+    case(TRI_TYPE)
+      UCellGetFaceType = LINE_FACE_TYPE
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
@@ -717,6 +771,39 @@ subroutine UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
           option%io_buffer='Cell TET_TYPE has only 4 faces'
           call printErrMsg(option)
       end select       
+    case(QUAD_TYPE)
+      select case(iface)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+        case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 1
+        case default
+          option%io_buffer='Cell QUAD_TYPE has only 4 faces'
+          call printErrMsg(option)
+      end select
+    case(TRI_TYPE)
+      select case(iface)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 1
+        case default
+          option%io_buffer='Cell TRI_TYPE has only 3 faces'
+          call printErrMsg(option)
+      end select
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)

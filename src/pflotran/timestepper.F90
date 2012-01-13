@@ -276,7 +276,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
-
+#ifdef SURFACE_FLOW
+  use Surface_Flow_module
+#endif
   implicit none
   
 #include "finclude/petscdef.h"
@@ -536,6 +538,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
         call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
                                failure)
+#ifdef SURFACE_FLOW
+        call SurfaceFlowResidual(realization)
+#endif
         call PetscLogStagePop(ierr)
         if (failure) return ! if flow solve fails, exit
         option%flow_time = flow_stepper%target_time
