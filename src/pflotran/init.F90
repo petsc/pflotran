@@ -897,7 +897,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
 
   character(len=MAXSTRINGLENGTH) :: string
   
-  type(patch_type), pointer :: patch 
+  type(patch_type), pointer :: patch, patch2 
   type(level_type), pointer :: level
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
@@ -943,6 +943,11 @@ subroutine InitReadRequiredCardsFromInput(realization)
       level => LevelCreate()
       call LevelAddToList(level,realization%level_list)
       call PatchAddToList(patch,level%patch_list)
+#ifdef SURFACE_FLOW
+      patch2 => PatchCreate()
+      patch2%grid => discretization%surfgrid
+      call PatchAddToList(patch2,level%surf_patch_list)
+#endif
       realization%patch => patch
     case(AMR_GRID)
       realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)

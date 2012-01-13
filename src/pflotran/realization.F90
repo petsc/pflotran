@@ -232,7 +232,6 @@ subroutine RealizationCreateDiscretization(realization)
   call DiscretizationCreateDMs(discretization,option)
 
 
-
   option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
@@ -422,6 +421,24 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
+
+#ifdef SURFACE_FLOW
+      grid => discretization%surfgrid
+      ! set up nG2L, NL2G, etc.
+      write(*,'(/,2("=")," 2D",25("="))')
+      write(*,*),'call UGridMapIndices'
+      call UGridMapIndices(grid%unstructured_grid,discretization%surf_dm_1dof%ugdm, &
+                           grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
+      write(*,*),'call GridComputeCoordinates'
+      call GridComputeCoordinates(grid,discretization%origin,option, & 
+                                  discretization%surf_dm_1dof%ugdm) 
+      write(*,*),'call UGridEnsureRightHandRule'
+      call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
+                                    grid%y,grid%z,grid%nL2A,option)
+      ! set up internal connectivity, distance, etc.
+      call GridComputeInternalConnect(grid,option,discretization%surf_dm_1dof%ugdm) 
+      call GridComputeVolumes(grid,field%volume,option)
+#endif      
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &
                                               discretization%origin, &
@@ -502,15 +519,17 @@ subroutine RealizationLocalizeRegions(realization)
 
   use Option_module
   use String_module
+  use Grid_module
 
   implicit none
   
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: cur_patch, cur_patch2
   type (region_type), pointer :: cur_region, cur_region2
   type(option_type), pointer :: option
+  type(region_type), pointer :: patch_region
 
   option => realization%option
 
@@ -544,6 +563,24 @@ subroutine RealizationLocalizeRegions(realization)
     cur_level => cur_level%next
   enddo
  
+#ifdef SURFACE_FLOW
+  write(*,'(/,2("=")," PatchLocalizeRegions-2D",25("="))')
+  ! localize the regions on each patch
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      write(*,*),'calling PatchLocalizeRegions()'
+      call PatchLocalizeRegions(cur_patch,realization%regions, &
+                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+#endif
+
 end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
@@ -619,7 +656,30 @@ subroutine RealizationAddCoupler(realization,coupler)
     enddo
     cur_level => cur_level%next
   enddo
-  
+
+#ifdef SURFACE_FLOW  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      ! only add to flow list for now, since they will be split out later
+      new_coupler => CouplerCreate(coupler)
+      select case(coupler%itype)
+        case(BOUNDARY_COUPLER_TYPE)
+          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
+        case(INITIAL_COUPLER_TYPE)
+          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
+        case(SRC_SINK_COUPLER_TYPE)
+          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
+      end select
+      nullify(new_coupler)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+#endif
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
@@ -863,7 +923,28 @@ subroutine RealizationProcessCouplers(realization)
     enddo
     cur_level => cur_level%next
   enddo
- 
+
+#ifdef SURFACE_FLOW 
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      write(*,*),'PatchProcessCouplers ===== 2D '
+      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
+                                realization%transport_conditions, &
+                                realization%option)
+!      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
+!                                realization%transport_conditions, &
+!                                realization%material_properties, &
+!                                realization%subcontinuum_properties, &
+!                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+#endif
 end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !

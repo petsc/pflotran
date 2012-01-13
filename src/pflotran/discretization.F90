@@ -32,6 +32,10 @@ module Discretization_module
     PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
+#ifdef SURFACE_FLOW
+    type(grid_type), pointer   :: surfgrid ! surface grid
+    type(dm_ptr_type), pointer :: surf_dm_1dof
+#endif
     type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
@@ -116,7 +120,13 @@ function DiscretizationCreate()
   nullify(discretization%grid)
   nullify(discretization%amrgrid)
   nullify(discretization%MFD)
-  
+
+#ifdef SURFACE_FLOW
+  nullify(discretization%surfgrid)
+  allocate(discretization%surf_dm_1dof)
+  discretization%surf_dm_1dof%sgdm = 0
+  nullify(discretization%surf_dm_1dof%ugdm)
+#endif
   DiscretizationCreate => discretization
 
 end function DiscretizationCreate
@@ -142,12 +152,16 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   type(discretization_type),pointer :: discretization
   PetscBool :: first_time
   character(len=MAXWORDLENGTH) :: word
-  type(grid_type), pointer :: grid
+  type(grid_type), pointer :: grid, grid2
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
   type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
+#ifdef SURFACE_FLOW
+  type(unstructured_grid_type), pointer :: un_str_sfgrid
+  character(len=MAXSTRINGLENGTH) :: sfgrid_filename
+#endif
 
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -202,6 +216,10 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call InputReadNChars(input,option,filename,MAXSTRINGLENGTH, &
                                    PETSC_TRUE)
               call InputErrorMsg(input,option,'unstructured filename','GRID')
+#ifdef SURFACE_FLOW
+              call InputReadNChars(input,option,sfgrid_filename,MAXSTRINGLENGTH, &
+                                   PETSC_TRUE)
+#endif
             case('amr')
               discretization%itype = AMR_GRID
             case('structured_mimetic')
@@ -427,6 +445,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         call printErrMsg(option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
         grid => GridCreate()
+        grid2=> GridCreate()
         select case(discretization%itype)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UGridCreate()
@@ -446,6 +465,15 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
 #endif ! #ifndef SAMR_HAVE_HDF5
             else
               call UGridRead(un_str_grid,filename,option)
+#ifdef SURFACE_FLOW
+              un_str_sfgrid => UGridCreate()
+              un_str_sfgrid%grid_type = TWO_DIM_GRID
+              call UGridReadSurfGrid(un_str_sfgrid,filename,sfgrid_filename,option)
+              grid2%unstructured_grid => un_str_sfgrid
+              discretization%surfgrid => grid2
+              grid2%itype = discretization%itype
+              grid2%ctype = discretization%ctype
+#endif
             endif
             grid%unstructured_grid => un_str_grid
           case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
@@ -511,6 +539,12 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(UNSTRUCTURED_GRID)
       call UGridDecompose(discretization%grid%unstructured_grid, &
                           option)
+#ifdef SURFACE_FLOW
+      write(*,'(/,2("=")," UGridDecompose-2D grid ",25("="))')
+      call UGridDecompose(discretization%surfgrid%unstructured_grid, &
+                          option)
+      write(*,'(/,2("="),,25("="))')
+#endif
     case(AMR_GRID)
   end select
 
@@ -534,6 +568,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                 ndof,stencil_width,option)
   endif
 
+
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       ! this function must be called to set up str_grid%nxs, etc.
@@ -547,7 +582,16 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(AMR_GRID)
       call AMRGridComputeLocalBounds(discretization%amrgrid)
   end select
-  
+
+#ifdef SURFACE_FLOW
+  ndof = 1
+  write(*,'(/,2("=")," UGridCreateUGDM-2D",25("="))')
+  call UGridCreateUGDM(discretization%surfgrid%unstructured_grid, &
+                       discretization%surf_dm_1dof%ugdm,ndof,option)
+  discretization%surfgrid%nlmax = discretization%surfgrid%unstructured_grid%nlmax
+  discretization%surfgrid%ngmax = discretization%surfgrid%unstructured_grid%ngmax
+#endif
+
 end subroutine DiscretizationCreateDMs
 
 ! ************************************************************************** !

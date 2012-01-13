@@ -17,6 +17,7 @@ module Unstructured_Grid_module
 #endif
 
   type, public :: unstructured_grid_type
+    PetscInt :: grid_type         ! 3D subsurface (default) or 2D surface grid
     PetscInt :: num_ghost_cells   ! number of ghost cells (only) on processor
     PetscInt :: num_vertices_global ! number of vertices in entire problem domain
     PetscInt :: num_vertices_local  ! number of vertices in local grid cells
@@ -96,6 +97,9 @@ module Unstructured_Grid_module
 #if defined(PARALLELIO_LIB)
             UGridReadHDF5PIOLib, &
 #endif
+#ifdef SURFACE_FLOW
+            UGridReadSurfGrid, &
+#endif
             UGridDecompose, &
             UGridComputeInternConnect, &
             UGridPopulateConnection, &
@@ -168,6 +172,7 @@ function UGridCreate()
 
   allocate(unstructured_grid)
 
+  unstructured_grid%grid_type = THREE_DIM_GRID
   unstructured_grid%num_vertices_global = 0
   unstructured_grid%num_vertices_local = 0
   unstructured_grid%num_ghost_cells = 0
@@ -313,6 +318,8 @@ subroutine UGridRead(unstructured_grid,filename,option)
             num_vertices = 5
           case('T')
             num_vertices = 4
+          case('Q')
+            num_vertices = 4
         end select
         do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
@@ -422,6 +429,304 @@ subroutine UGridRead(unstructured_grid,filename,option)
   call InputDestroy(input)
 
 end subroutine UGridRead
+
+
+! ************************************************************************** !
+!
+! UGridRead: Reads an unstructured grid
+! author: Gautam Bisht
+! date: 01/09/2012
+!
+! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
+
+  use Input_module
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  type(unstructured_grid_type) :: unstructured_grid
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: surf_filename
+  type(option_type) :: option
+  
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: card, word
+  PetscInt :: num_cells_local_save
+  PetscInt :: num_cells_local
+  PetscInt :: num_vertices_local_save
+  PetscInt :: num_vertices_local
+  PetscInt :: num_to_read
+  PetscInt, allocatable :: temp_int_array(:,:)
+  PetscReal, allocatable :: temp_real_array(:,:)
+  PetscReal, allocatable :: vertex_coordinates(:,:)
+
+  PetscInt :: icell, ivertex, idir, irank, num_vertices
+  PetscInt :: remainder
+  PetscErrorCode :: ierr
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
+  PetscMPIInt :: int_mpi
+  PetscInt :: fileid
+  
+  fileid = 86
+  input => InputCreate(fileid,filename)
+
+  ! initial guess is 8 vertices per cell
+  unstructured_grid%max_nvert_per_cell = 8
+
+! Format of unstructured grid file
+! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
+! vertn(H) = 8
+! vertn(T) = 4
+! vertn(W) = 6
+! vertn(P) = 5
+! -----------------------------------------------------------------
+! num_cells num_vertices  (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 1 (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 2
+! ...
+! ...
+! type vert1 vert2 vert3 ... vertn  ! for cell num_cells
+! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
+! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
+! ...
+! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
+! -----------------------------------------------------------------
+
+  card = 'Unstructured Grid'
+
+  call InputReadFlotranString(input,option)
+  string = 'unstructured grid'
+  call InputReadStringErrorMsg(input,option,card)  
+
+  ! read num_cells
+  call InputReadInt(input,option,unstructured_grid%nmax)
+  call InputErrorMsg(input,option,'number of cells',card)
+  ! read num_vertices
+  call InputReadInt(input,option,unstructured_grid%num_vertices_global)
+  call InputErrorMsg(input,option,'number of vertices',card)
+
+  ! divide cells across ranks
+  !num_cells_local = unstructured_grid%nmax/option%mycommsize 
+  !num_cells_local_save = num_cells_local
+  !remainder = unstructured_grid%nmax - &
+  !            num_cells_local*option%mycommsize
+  !if (option%myrank < remainder) num_cells_local = &
+  !                               num_cells_local + 1
+
+  ! allocate array to store vertices for each cell
+  !allocate(unstructured_grid%cell_vertices(unstructured_grid%max_nvert_per_cell, &
+  !                                           num_cells_local))
+  !unstructured_grid%cell_vertices = -999
+
+  ! for now, read all cells from ASCII file through io_rank and communicate
+  ! to other ranks
+  if (option%myrank == option%io_rank) then
+    allocate(temp_int_array(unstructured_grid%max_nvert_per_cell, &
+                            unstructured_grid%nmax))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      temp_int_array = -999
+      num_to_read = unstructured_grid%nmax
+      do icell = 1, num_to_read
+        ! read in the vertices defining the grid cell
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'element type',card)
+        call StringToUpper(word)
+        select case(word)
+          case('H')
+            num_vertices = 8
+          case('W')
+            num_vertices = 6
+          case('P')
+            num_vertices = 5
+          case('T')
+            num_vertices = 4
+          case('Q')
+            num_vertices = 4
+        end select
+        do ivertex = 1, num_vertices
+          call InputReadInt(input,option,temp_int_array(ivertex,icell))
+          call InputErrorMsg(input,option,'vertex id',card)
+        enddo
+        write(*,'(9I5)'),icell,temp_int_array(:,icell)
+      enddo
+    enddo
+  endif
+
+
+  ! divide vertices across ranks
+  num_vertices_local = unstructured_grid%num_vertices_global/ &
+                                         option%mycommsize 
+  num_vertices_local_save = num_vertices_local
+  remainder = unstructured_grid%num_vertices_global - &
+              num_vertices_local*option%mycommsize
+  if (option%myrank < remainder) num_vertices_local = &
+                                 num_vertices_local + 1
+
+  allocate(vertex_coordinates(3,num_vertices_local))
+  vertex_coordinates = 0.d0
+
+  ! just like above, but this time for vertex coordinates
+  if (option%myrank == option%io_rank) then
+    allocate(temp_real_array(3,num_vertices_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      num_to_read = num_vertices_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+      do ivertex = 1, num_to_read
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        do idir = 1, 3
+          call InputReadDouble(input,option,temp_real_array(idir,ivertex))
+          call InputErrorMsg(input,option,'vertex coordinate',card)
+        enddo
+        write(*,'(4F5.2)'),icell,temp_real_array(:,ivertex)
+      enddo
+      
+      if (irank == option%io_rank) then
+        vertex_coordinates(:,1:num_vertices_local) = &
+          temp_real_array(:,1:num_vertices_local)
+      else
+        int_mpi = num_to_read*3
+        call MPI_Send(temp_real_array,int_mpi,MPI_DOUBLE_PRECISION,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
+    enddo
+    deallocate(temp_real_array)
+  else
+    int_mpi = num_vertices_local*3
+    call MPI_Recv(vertex_coordinates, &
+                  int_mpi, &
+                  MPI_DOUBLE_PRECISION,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+  endif
+  
+  ! fill the vertices data structure
+  allocate(unstructured_grid%vertices(num_vertices_local))
+  do ivertex = 1, num_vertices_local
+    unstructured_grid%vertices(ivertex)%id = 0
+    unstructured_grid%vertices(ivertex)%x = vertex_coordinates(1,ivertex)
+    unstructured_grid%vertices(ivertex)%y = vertex_coordinates(2,ivertex)
+    unstructured_grid%vertices(ivertex)%z = vertex_coordinates(3,ivertex)
+  enddo
+  deallocate(vertex_coordinates)
+
+  !unstructured_grid%nlmax = num_cells_local
+  unstructured_grid%num_vertices_local = num_vertices_local
+  
+  call InputDestroy(input)
+  deallocate(temp_int_array)
+
+
+
+
+
+
+
+  input => InputCreate(fileid,surf_filename)
+  call InputReadFlotranString(input,option)
+  string = 'unstructured sideset'
+  call InputReadStringErrorMsg(input,option,card)  
+
+  ! read num_cells
+  call InputReadInt(input,option,unstructured_grid%nmax)
+  call InputErrorMsg(input,option,'number of cells',card)
+
+  ! divide cells across ranks
+  num_cells_local = unstructured_grid%nmax/option%mycommsize 
+  num_cells_local_save = num_cells_local
+  remainder = unstructured_grid%nmax - &
+              num_cells_local*option%mycommsize
+  if (option%myrank < remainder) num_cells_local = &
+                                 num_cells_local + 1
+
+  ! allocate array to store vertices for each faces
+  allocate(unstructured_grid%cell_vertices(unstructured_grid%max_nvert_per_cell, &
+                                 num_cells_local))
+  unstructured_grid%cell_vertices = -999
+
+  ! for now, read all faces from ASCII file through io_rank and communicate
+  ! to other ranks
+  if (option%myrank == option%io_rank) then
+    allocate(temp_int_array(unstructured_grid%max_nvert_per_cell, &
+                            num_cells_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      temp_int_array = -999
+      num_to_read = num_cells_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+
+      do icell = 1, num_to_read
+        ! read in the vertices defining the cell face
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'element type',card)
+        call StringToUpper(word)
+        select case(word)
+          case('Q')
+            num_vertices = 4
+          case('T')
+            num_vertices = 3
+        end select
+        do ivertex = 1, num_vertices
+          call InputReadInt(input,option,temp_int_array(ivertex,icell))
+          call InputErrorMsg(input,option,'vertex id',card)
+        enddo
+        write(*,'(9I5)'),icell,temp_int_array(:,icell)
+      enddo
+
+      ! if the faces reside on io_rank
+      if (irank == option%io_rank) then
+#if UGRID_DEBUG
+        write(string,*) num_cells_local
+        string = trim(adjustl(string)) // ' cells stored on p0'
+        print *, trim(string)
+#endif
+        unstructured_grid%cell_vertices(:,1:num_cells_local) = &
+          temp_int_array(:,1:num_cells_local)
+      else
+        ! otherwise communicate to other ranks
+#if UGRID_DEBUG
+        write(string,*) num_to_read
+        write(word,*) irank
+        string = trim(adjustl(string)) // ' cells sent from p0 to p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+        int_mpi = num_to_read*unstructured_grid%max_nvert_per_cell
+        call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
+    enddo
+    deallocate(temp_int_array)
+  else
+    ! other ranks post the recv
+#if UGRID_DEBUG
+        write(string,*) num_cells_local
+        write(word,*) option%myrank
+        string = trim(adjustl(string)) // ' cells received from p0 at p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+    int_mpi = num_cells_local*unstructured_grid%max_nvert_per_cell
+    call MPI_Recv(unstructured_grid%cell_vertices,int_mpi, &
+                  MPIU_INTEGER,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+  endif
+
+  unstructured_grid%nlmax = num_cells_local
+
+  call InputDestroy(input)
+
+end subroutine UGridReadSurfGrid
+#endif !SURFACE_FLOW
 
 #ifndef SAMR_HAVE_HDF5
 
@@ -965,7 +1270,16 @@ subroutine UGridDecompose(unstructured_grid,option)
     enddo
     local_vertex_offset(local_id+1) = count 
   enddo
-  num_common_vertices = 3 ! cells must share at least this number of vertices
+    
+  select case (unstructured_grid%grid_type)
+    case(TWO_DIM_GRID)
+      num_common_vertices = 2 ! cells must share at least this number of vertices
+    case(THREE_DIM_GRID)
+      num_common_vertices = 3 ! cells must share at least this number of vertices
+    case default
+        option%io_buffer = 'Grid type not recognized '
+        call printErrMsg(option)
+    end select
 
   ! determine the global offset from 0 for cells on this rank
   global_offset_old = 0
@@ -1826,22 +2140,42 @@ subroutine UGridDecompose(unstructured_grid,option)
 #endif
 
   allocate(unstructured_grid%cell_type(unstructured_grid%ngmax))
-  do ghosted_id = 1, unstructured_grid%ngmax
-    ! Determine number of faces and cell-type of the current cell
-    select case(unstructured_grid%cell_vertices(0,ghosted_id))
-      case(8)
-        unstructured_grid%cell_type(ghosted_id) = HEX_TYPE
-      case(6)
-        unstructured_grid%cell_type(ghosted_id) = WEDGE_TYPE
-      case(5)
-        unstructured_grid%cell_type(ghosted_id) = PYR_TYPE
-      case(4)
-        unstructured_grid%cell_type(ghosted_id) = TET_TYPE
-      case default
-        option%io_buffer = 'Cell type not recognized: '
-        call printErrMsg(option)
-    end select
-  enddo
+
+  select case(unstructured_grid%grid_type)
+    case(THREE_DIM_GRID)
+      do ghosted_id = 1, unstructured_grid%ngmax
+        ! Determine number of faces and cell-type of the current cell
+        select case(unstructured_grid%cell_vertices(0,ghosted_id))
+          case(8)
+            unstructured_grid%cell_type(ghosted_id) = HEX_TYPE
+          case(6)
+            unstructured_grid%cell_type(ghosted_id) = WEDGE_TYPE
+          case(5)
+            unstructured_grid%cell_type(ghosted_id) = PYR_TYPE
+          case(4)
+            unstructured_grid%cell_type(ghosted_id) = TET_TYPE
+          case default
+            option%io_buffer = 'Cell type not recognized: '
+            call printErrMsg(option)
+        end select      
+      enddo
+    case(TWO_DIM_GRID)
+      do ghosted_id = 1, unstructured_grid%ngmax
+        select case(unstructured_grid%cell_vertices(0,ghosted_id))
+          case(4)
+            unstructured_grid%cell_type = QUAD_TYPE
+          case(3)
+            unstructured_grid%cell_type = TRI_TYPE
+          case default
+            option%io_buffer = 'Cell type not recognized: '
+            call printErrMsg(option)
+        end select
+      end do
+    case default
+      option%io_buffer = 'Grid type not recognized: '
+      call printErrMsg(option)
+  end select
+        
   
   unstructured_grid%global_offset = global_offset_new  
 
@@ -2298,7 +2632,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   ! NOTE: For a cell_type = WEDGE_TYPE, faces 1-3 have 4 vertices; while
   !       faces 4-5 have 3 vertices
   !
-  
   do local_id = 1, unstructured_grid%nlmax
     ! Selet a cell and find number of vertices
     cell_id = local_id
@@ -2412,16 +2745,13 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       if (.not.face_found) then
         write(string,*) option%myrank
         string = '(' // trim(adjustl(string)) // ')'
-        write(*,'(a,'' local_id = '',i3,'' natural_id = '',i3,/ &
-                  &''  vertices: '',8i3)') &
+        write(*,'(a,'' local_id = '',i3,'' natural_id = '',i3,''  vertices: '',8i3)') &
                    trim(string), &
                    cell_id,unstructured_grid%cell_ids_natural(cell_id), &
                    (unstructured_grid%vertex_ids_natural( &
                      unstructured_grid%cell_vertices(ivertex,cell_id)), &
                      ivertex=1,unstructured_grid%cell_vertices(0,cell_id))
-        write(*,'(a,'' local_id2 = '',i3,'' natural_id2 = '',i3,/ &
-                       &''  vertices2: '',8i3 &
-                       &)') &
+        write(*,'(a,'' local_id2 = '',i3,'' natural_id2 = '',i3,''  vertices2: '',8i3)') &
                    trim(string), &
                    cell_id2,unstructured_grid%cell_ids_natural(cell_id2), &
                    (unstructured_grid%vertex_ids_natural( &
@@ -2979,6 +3309,7 @@ end subroutine UGridComputeVolumes
 subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
 
   use Option_module
+  use Utility_module, only : DotProduct, CrossProduct
   
   implicit none
 
@@ -2991,6 +3322,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
   PetscInt :: ghosted_id
   type(point_type) :: point, point1, point2, point3
   type(plane_type) :: plane1
+  PetscReal :: v1(3),v2(3),vcross(3),magnitude
   PetscReal :: distance
   PetscInt :: cell_vertex_ids_before(8), cell_vertex_ids_after(8)
   PetscInt :: face_vertex_ids(4)
@@ -3016,18 +3348,29 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
     do iface = 1, num_faces
       face_type = UCellGetFaceType(cell_type,iface,option)
       call UCellGetFaceVertices(option,cell_type,iface,face_vertex_ids)
-      ! Only need to use the first three vertices to produce a plane.  Will
-      ! assume that the plane represents the entire face
+
+      ! Need to find distance of a point (centroid) from a line (formed by
+      ! joining vertices of a line)
       point1 = &
         unstructured_grid%vertices(cell_vertex_ids_before(face_vertex_ids(1)))
       point2 = &
         unstructured_grid%vertices(cell_vertex_ids_before(face_vertex_ids(2)))
-      point3 = &
-        unstructured_grid%vertices(cell_vertex_ids_before(face_vertex_ids(3)))
+      if (face_type == LINE_FACE_TYPE) then
+        point3%x = point2%x
+        point3%y = point2%y
+        point3%z = point2%z + 1.d0
+        call UCellComputePlane(plane1,point1,point2,point3)
+        distance = UCellComputeDistanceFromPlane(plane1,point) 
+      else
+        point3 = &
+          unstructured_grid%vertices(cell_vertex_ids_before(face_vertex_ids(3)))
+      endif
+
       call UCellComputePlane(plane1,point1,point2,point3)
       distance = UCellComputeDistanceFromPlane(plane1,point) 
       if (distance > 0.d0) then
         ! need to swap so that distance is negative (point lies below plane)
+#ifndef GB_DEBUG
         option%io_buffer = 'Cell '
         write(string,'(i13)') nL2A(local_id)
         option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
@@ -3063,6 +3406,20 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
           trim(adjustl(string)) // '.'
         call printMsgAnyRank(option)
         error_found = PETSC_TRUE
+#else
+        write(option%io_buffer,'(''Cell '',i3,'' of type "'',a, &
+            & ''" with vertices: '',8i6, &
+            & '' violates right hand rule at face "'',a, &
+            & ''" for face vertices '', &
+            & '' based on face vertices '',3i3)') &
+            nL2A(local_id), &
+            trim(UCellTypeToWord(cell_type,option)), &
+        (unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i)), &
+           i = 1,8), &
+            trim(UCellFaceTypeToWord(face_type,option)), &
+        (face_vertex_ids(i),i = 1,3) 
+        call printErrMsgByRank(option)
+#endif
       endif
     enddo
   enddo
@@ -3483,6 +3840,8 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: ivertex, cell_id, vertex_id_local
   PetscErrorCode :: ierr
+  PetscReal :: min_verts_req
+  PetscInt :: largest_vert_id, v_id_n
     
   ! fill matrix with boundary faces of local cells
   ! count up the number of boundary faces
@@ -3499,11 +3858,38 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   enddo
   allocate(boundary_faces(boundary_face_count))
   boundary_faces = 0
+
+#ifndef SURFACE_FLOW
   ! assume 4 vertices per face for simplicity
   call MatCreateSeqAIJ(PETSC_COMM_SELF,boundary_face_count, &
                        unstructured_grid%num_vertices_local,4, &
                        PETSC_NULL_INTEGER,Mat_vert_to_face,ierr)
+#else
+  largest_vert_id = 0
+  do local_id = 1, unstructured_grid%nlmax
+    cell_type = unstructured_grid%cell_type(local_id)
+    nfaces = UCellGetNFaces(cell_type,option)
+    do iface = 1, nfaces
+      face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+      call UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
+                                      int_array4)
+      do ivertex = 1, nvertices
+        vertex_id_local = &
+          unstructured_grid%cell_vertices(int_array4(ivertex),local_id)
+        v_id_n = unstructured_grid%vertex_ids_natural(vertex_id_local)
+        if(v_id_n > largest_vert_id) largest_vert_id = v_id_n
+      enddo
+    enddo
+  enddo
+  write(*,*),'largest_vert_id = ',largest_vert_id
+
+  ! assume 4 vertices per face for simplicity
+  call MatCreateSeqAIJ(PETSC_COMM_SELF,boundary_face_count, &
+                       largest_vert_id,4, &
+                       PETSC_NULL_INTEGER,Mat_vert_to_face,ierr)
+#endif
   call MatZeroEntries(Mat_vert_to_face,ierr)
+
   real_array4 = 1.d0
   boundary_face_count = 0
   do local_id = 1, unstructured_grid%nlmax
@@ -3540,13 +3926,18 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   string = adjustl(string)
   string = 'Mat_vert_to_face_' // trim(region_name) // '_' // &
            trim(string) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,string,viewer,ierr)
   call MatView(Mat_vert_to_face,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
-  
+
+#ifndef SURFACE_FLOW  
   call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_vertices_local, &
                     Vertex_vec,ierr)
+#else
+  call VecCreateSeq(PETSC_COMM_SELF,largest_vert_id, &
+                    Vertex_vec,ierr)
+#endif
   call VecZeroEntries(Vertex_vec,ierr)
   
   ! For this vector:
@@ -3566,7 +3957,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   string = adjustl(string)
   string = 'Vertex_vec_' // trim(region_name) // '_' // &
            trim(string) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,string,viewer,ierr)
   call VecView(Vertex_vec,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
@@ -3579,21 +3970,28 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   string = adjustl(string)
   string = 'Face_vec_' // trim(region_name) // '_' // &
            trim(string) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,string,viewer,ierr)
   call VecView(Face_vec,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif  
     
+
   allocate(temp_int(MAX_FACE_PER_CELL,boundary_face_count))
   temp_int = 0
   
   mapped_face_count = 0
+  if( unstructured_grid%grid_type == THREE_DIM_GRID) then
+    min_verts_req = 3.d0
+  else
+    min_verts_req = 2.d0
+  endif
+  
   call VecGetArrayF90(Face_vec,vec_ptr,ierr)
   ! resulting vec contains the number of natural vertices in the sideset that
   ! intersect a local face
   do iface = 1, boundary_face_count
     face_id = boundary_faces(iface)
-    if (vec_ptr(iface) > 2.d0) then ! 3 or more vertices in sideset
+    if (vec_ptr(iface) >= min_verts_req) then ! 3 or more vertices in sideset
       ! need to ensure that the right number of vertices are included
       cell_id = unstructured_grid%face_to_cell_ghosted(1,face_id)
       cell_type = unstructured_grid%cell_type(cell_id)

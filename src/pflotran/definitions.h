@@ -102,6 +102,8 @@ PetscInt, parameter :: CYLINDRICAL_GRID = 5
 PetscInt, parameter :: SPHERICAL_GRID = 6
 PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
 PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
+PetscInt, parameter :: TWO_DIM_GRID = 9
+PetscInt, parameter :: THREE_DIM_GRID = 10
 
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0
@@ -305,10 +307,14 @@ PetscInt, parameter :: HEX_TYPE          = 1
 PetscInt, parameter :: TET_TYPE          = 2
 PetscInt, parameter :: WEDGE_TYPE        = 3
 PetscInt, parameter :: PYR_TYPE          = 4
+! 2D cell types:
+PetscInt, parameter :: TRI_TYPE          = 5
+PetscInt, parameter :: QUAD_TYPE         = 6
 
 ! grid cell properties
-PetscInt, parameter :: TRI_FACE_TYPE     = 1
-PetscInt, parameter :: QUAD_FACE_TYPE    = 2
+PetscInt, parameter :: LINE_FACE_TYPE    = 1
+PetscInt, parameter :: TRI_FACE_TYPE     = 2
+PetscInt, parameter :: QUAD_FACE_TYPE    = 3
 PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 PetscInt, parameter :: MAX_FACE_PER_CELL = 6
 PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 36

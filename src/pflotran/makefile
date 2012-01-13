@@ -96,7 +96,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  GAUTAM_FLAGS = -DOS_STATISTICS -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -g -DREARRANGE_CONN #-DPARALLELIO_LIB #-DGEH_DEBUG -DGB_DEBUG -DREARRANGE_CONN 
+  GAUTAM_FLAGS = -DOS_STATISTICS -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -g -DREARRANGE_CONN -DDMGET #-DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLEL_SIDESET #-DPARALLELIO_LIB #-DGEH_DEBUG -DGB_DEBUG -DREARRANGE_CONN 
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
@@ -216,6 +216,7 @@ common_obj = ${common_src}option.o \
 	${common_src}simulation.o \
 	${common_src}stochastic_aux.o \
 	${common_src}stochastic.o \
+	${common_src}surface_flow.o \
 	${common_src}output.o \
 	${common_src}init.o
 
@@ -255,7 +256,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
 	richards.o thc.o discretization.o logging.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
-	velocity.o dataset.o condition_control.o
+	velocity.o dataset.o condition_control.o surface_flow.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
@@ -335,7 +336,7 @@ flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
 	realization.o grid.o option.o field.o solver.o \
 	output.o convergence.o checkpoint.o waypoint.o logging.o \
-	input.o string.o reactive_transport.o condition_control.o
+	input.o string.o reactive_transport.o condition_control.o surface_flow.o 
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
@@ -350,6 +351,7 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
+surface_flow.o : realization.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o
