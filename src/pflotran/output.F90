@@ -255,6 +255,279 @@ end subroutine OutputObservation
 
 ! ************************************************************************** !
 !
+! OutputFilenameID: Creates an ID for filename
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFilenameID(output_option,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+
+  character(len=MAXWORDLENGTH) :: OutputFilenameID
+  
+  if (output_option%plot_number < 10) then
+    write(OutputFilenameID,'("00",i1)') output_option%plot_number  
+  else if (output_option%plot_number < 100) then
+    write(OutputFilenameID,'("0",i2)') output_option%plot_number  
+  else if (output_option%plot_number < 1000) then
+    write(OutputFilenameID,'(i3)') output_option%plot_number  
+  else if (output_option%plot_number < 10000) then
+    write(OutputFilenameID,'(i4)') output_option%plot_number  
+  endif 
+  
+  OutputFilenameID = adjustl(OutputFilenameID)
+
+end function OutputFilenameID
+
+! ************************************************************************** !
+!
+! OutputFilename: Creates a filename for a Tecplot file
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFilename(output_option,option,suffix,optional_string)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+  character(len=*) :: suffix
+  character(len=*) :: optional_string
+  
+  character(len=MAXSTRINGLENGTH) :: OutputFilename
+  
+  ! open file
+  if (len_trim(output_option%plot_name) > 2) then
+    OutputFilename = trim(output_option%plot_name) // suffix
+  else  
+    OutputFilename = trim(option%global_prefix) // &
+            trim(option%group_prefix) // &
+            '-' // &
+            trim(optional_string) // &
+            trim(OutputFilenameID(output_option,option)) // &
+            suffix
+  endif
+  
+end function OutputFilename
+
+! ************************************************************************** !
+!
+! OutputTecplotHeader: Print header to Tecplot file
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+subroutine OutputTecplotHeader(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+  
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  PetscInt, parameter :: icolumn = -1
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  output_option => realization%output_option
+
+  ! write header
+  ! write title
+  write(fid,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+                option%time/output_option%tconv,output_option%tunit
+
+  ! initial portion of header
+  header = 'VARIABLES=' // &
+            '"X [m]",' // &
+            '"Y [m]",' // &
+            '"Z [m]"'
+
+  ! write flow variables
+  header2 = ''
+  select case(option%iflowmode)
+    case (MIS_MODE)
+      header2 = MiscibleGetTecplotHeader(realization,icolumn)
+    case (IMS_MODE)
+      header2 = ImmisGetTecplotHeader(realization,icolumn)
+    case (MPH_MODE)
+      header2 = MphaseGetTecplotHeader(realization,icolumn)
+    case (FLASH2_MODE)
+      header2 = FLASH2GetTecplotHeader(realization,icolumn)
+    case(THC_MODE)
+      header2 = THCGetTecplotHeader(realization,icolumn)
+    case(RICHARDS_MODE)
+      header2 = RichardsGetTecplotHeader(realization,icolumn)
+    case(G_MODE)
+      header2 = GeneralGetTecplotHeader(realization,icolumn)
+  end select
+  header = trim(header) // trim(header2)
+
+  ! write transport variables
+  if (option%ntrandof > 0) then
+    string = ''
+    header2 = RTGetTecplotHeader(realization,string,icolumn)
+    header = trim(header) // trim(header2)
+  endif
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    header = trim(header) // ',"Porosity"'
+  endif
+
+  ! write material ids
+  header = trim(header) // ',"Material_ID"'
+
+  if (associated(output_option%plot_variables)) then
+    do i = 1, size(output_option%plot_variables)
+      header = trim(header) // ',"' // &
+        trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
+                                        option)) // &
+        '"'
+    enddo
+  endif
+
+  write(fid,'(a)') trim(header)
+
+#ifdef GLENN_NEW_IO
+  call OutputOptionPlotVarFinalize(output_option)
+#endif
+
+  ! count vars in header
+  quote_count = 0
+  comma_count = 0
+  do i=1,len_trim(header)
+    ! 34 = '"'
+    if (iachar(header(i:i)) == 34) then
+      quote_count = quote_count + 1
+    ! 44 = ','
+    else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
+      comma_count = comma_count + 1
+    endif
+  enddo
+  
+  variable_count = comma_count + 1
+
+  write(fid,'(a)') &
+    trim(OutputTecplotZoneHeader(realization,variable_count))
+
+end subroutine OutputTecplotHeader
+
+! ************************************************************************** !
+!
+! OutputTecplotZoneHeader: Print zone header to Tecplot file
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputTecplotZoneHeader(realization,variable_count)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  PetscInt :: variable_count
+  
+  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
+
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  
+  grid => realization%patch%grid
+  option => realization%option
+  output_option => realization%output_option  
+
+  string = 'ZONE T="' // &
+           trim(OutputFormatDouble(option%time/output_option%tconv)) // &
+           '"'
+  select case(output_option%tecplot_format)
+    case (TECPLOT_POINT_FORMAT)
+      if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+          (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+        string2 = ', I=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nx)) // &
+                  ', J=' // &
+                  trim(OutputFormatInt(grid%structured_grid%ny)) // &
+                  ', K=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nz))
+      else
+        string2 = 'POINT format currently not supported for unstructured'
+      endif  
+      string2 = trim(string2) // &
+              ', DATAPACKING=POINT'
+    case (TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
+      if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+          (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+        string2 = ', I=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nx+1)) // &
+                  ', J=' // &
+                  trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
+                  ', K=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nz+1))
+      else
+        string2 = ', N=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                  ', ELEMENTS=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%nmax))
+        string2 = trim(string2) // ', ZONETYPE=FEBRICK'
+      endif  
+  
+      if (variable_count > 4) then
+        string3 = ', VARLOCATION=([4-' // &
+                  trim(OutputFormatInt(variable_count)) // &
+                  ']=CELLCENTERED)'
+      else
+        string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+      endif
+      string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
+  end select
+  
+  OutputTecplotZoneHeader = trim(string) // string2  
+
+end function OutputTecplotZoneHeader
+
+! ************************************************************************** !
+!
 ! OutputTecplotBlock: Print to Tecplot file in BLOCK format
 ! author: Glenn Hammond
 ! date: 10/25/07
@@ -310,126 +583,15 @@ subroutine OutputTecplotBlock(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.tec'
-  endif
+  filename = OutputFilename(output_option,option,'.tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-  
-    ! write header
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-
-    ! initial portion of header
-    header = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
-
-    ! write flow variables
-    header2 = ''
-    select case(option%iflowmode)
-      case (MIS_MODE)
-        header2 = MiscibleGetTecplotHeader(realization,icolumn)
-      case (IMS_MODE)
-        header2 = ImmisGetTecplotHeader(realization,icolumn)
-      case (MPH_MODE)
-        header2 = MphaseGetTecplotHeader(realization,icolumn)
-      case (FLASH2_MODE)
-        header2 = FLASH2GetTecplotHeader(realization,icolumn)
-      case(THC_MODE)
-        header2 = THCGetTecplotHeader(realization,icolumn)
-      case(RICHARDS_MODE)
-        header2 = RichardsGetTecplotHeader(realization,icolumn)
-      case(G_MODE)
-        header2 = GeneralGetTecplotHeader(realization,icolumn)
-    end select
-    header = trim(header) // trim(header2)
-
-    ! write transport variables
-    if (option%ntrandof > 0) then
-      string = ''
-      header2 = RTGetTecplotHeader(realization,string,icolumn)
-      header = trim(header) // trim(header2)
-    endif
-
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      header = trim(header) // ',"Porosity"'
-    endif
-
-    ! write material ids
-    header = trim(header) // ',"Material_ID"'
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        header = trim(header) // ',"' // &
-          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                          option)) // &
-          '"'
-      enddo
-    endif
-
-    write(IUNIT3,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO
-    call OutputOptionPlotVarFinalize(output_option)
-#endif
-
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
-      ! count vars in header
-      quote_count = 0
-      comma_count = 0
-      do i=1,len_trim(header)
-        ! 34 = '"'
-        if (iachar(header(i:i)) == 34) then
-          quote_count = quote_count + 1
-        ! 44 = ','
-        else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-          comma_count = comma_count + 1
-        endif
-      enddo
-      ! there are comma_count+1 variables
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4)') &
-                   option%time/output_option%tconv,grid%structured_grid%nx+1, &
-                   grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      if (comma_count > 3) then
-        write(string2,'(i5)') comma_count+1
-        string = trim(string) // ', VARLOCATION=([4-' // &
-                 trim(adjustl(string2)) // ']=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
-      endif
-    else
-     !sp changed from structured to unstructured below 9/24/2010
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
-                   option%time/output_option%tconv, &
-                   grid%ngmax
-    endif
-    string = trim(string) // ', DATAPACKING=BLOCK'
-    write(IUNIT3,'(a)') trim(string)
+    call OutputTecplotHeader(IUNIT3,realization)
   endif
-  
+    
   ! write blocks
   ! write out data sets  
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -438,21 +600,11 @@ subroutine OutputTecplotBlock(realization)
                                   option)  
 
   ! write out coordinates
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+  if (realization%discretization%itype == STRUCTURED_GRID .or. &
+      realization%discretization%itype == STRUCTURED_GRID_MIMETIC ) then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
-    call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotUGridVertices(IUNIT3,realization)
   endif
 
   select case(option%iflowmode)
@@ -783,6 +935,10 @@ subroutine OutputTecplotBlock(realization)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+
+  if (realization%discretization%itype == UNSTRUCTURED_GRID) then
+    call WriteTecplotUGridElements(IUNIT3,realization)
+  endif
   
   if (option%myrank == option%io_rank) close(IUNIT3)
   
@@ -882,146 +1038,24 @@ subroutine OutputTecplotFEBrick(realization)
   field => realization%field
   reaction => realization%reaction
   output_option => realization%output_option
-  
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.tec'
-  endif
+
+  filename = OutputFilename(output_option,option,'.tec','')
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-  
-    ! write header
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-
-    ! initial portion of header
-    header = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
-
-    ! write flow variables
-    header2 = ''
-    select case(option%iflowmode)
-      case (IMS_MODE)
-        header2 = ImmisGetTecplotHeader(realization,icolumn)
-      case (MIS_MODE)
-        header2 = MiscibleGetTecplotHeader(realization,icolumn)
-      case (MPH_MODE)
-        header2 = MphaseGetTecplotHeader(realization,icolumn)
-      case (FLASH2_MODE)
-        header2 = FLASH2GetTecplotHeader(realization,icolumn)
-      case(THC_MODE)
-        header2 = THCGetTecplotHeader(realization,icolumn)
-      case(RICHARDS_MODE)
-       header2 = RichardsGetTecplotHeader(realization,icolumn)
-      case(G_MODE)
-       header2 = GeneralGetTecplotHeader(realization,icolumn)
-    end select
-    header = trim(header) // trim(header2)
-
-    ! write transport variables
-    if (option%ntrandof > 0) then
-      string = ''
-      header2 = RTGetTecplotHeader(realization,string,icolumn)
-      header = trim(header) // trim(header2)
-    endif
-
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      header = trim(header) // ',"Porosity"'
-    endif
-
-    ! write material ids
-    header = trim(header) // ',"Material_ID"'
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        header = trim(header) // ',"' // &
-          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                          option)) // &
-          '"'
-      enddo
-    endif
-
-    write(IUNIT3,'(a)') trim(header)
-    quote_count = 0
-    comma_count = 0
-    do i=1,len_trim(header)
-      ! 34 = '"'
-      if (iachar(header(i:i)) == 34) then
-        quote_count = quote_count + 1
-      ! 44 = ','
-      else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-        comma_count = comma_count + 1
-      endif
-    enddo
-
-#ifdef GLENN_NEW_IO
-    call OutputOptionPlotVarFinalize(output_option)
-#endif
-
-    ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12,'' ELEMENTS='',i12)') &
-                   option%time/output_option%tconv, &
-                   grid%unstructured_grid%num_vertices_global, &
-                   grid%unstructured_grid%nmax 
-     string = trim(string) // ', DATAPACKING=BLOCK'
-     string = trim(string) // ', ZONETYPE=FEBRICK'
-     if (comma_count > 3) then
-       write(string2,'(i5)') comma_count+1
-       string = trim(string) // ', VARLOCATION=([4-' // &
-                trim(adjustl(string2)) // ']=CELLCENTERED)'
-     else
-       string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
-     endif
-    write(IUNIT3,'(a)') trim(string)
-    
+    call OutputTecplotHeader(IUNIT3,realization)    
   endif
 
-  ! write blocks
-  ! write out data sets
-  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
-                    grid%unstructured_grid%num_vertices_global,global_vertex_vec,ierr)
-  call DiscretizationCreateVector(discretization, ONEDOF, global_vec,GLOBAL, &
+  ! write vertices
+  call WriteTecplotUGridVertices(IUNIT3,realization)
+
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)  
-  call DiscretizationCreateVector(discretization, ONEDOF, natural_vec, NATURAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)  
-
-  call VecGetLocalSize(global_vertex_vec,i,ierr)
-  call GetVertexCoordinates(grid, global_vertex_vec, X_COORDINATE, option)
-  call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
-  call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
-
-  call GetVertexCoordinates(grid, global_vertex_vec, Y_COORDINATE, option)
-  call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
-  call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
-
-  call GetVertexCoordinates(grid, global_vertex_vec, Z_COORDINATE, option)
-  call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
-  call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
-
-  call VecDestroy(global_vertex_vec, ierr)
-
+  
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
 
@@ -1351,25 +1385,8 @@ subroutine OutputTecplotFEBrick(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
   
-  
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
-                           GLOBAL,option) 
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
-                           NATURAL,option) 
-  call GetCellConnections(grid,global_vec)
-  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
-  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
-  call WriteTecplotDataSetNumPerLine(IUNIT3,realization,vec_ptr, &
-                                     TECPLOT_INTEGER, &
-                                     grid%unstructured_grid%nlmax*8,8)
-  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
-  call VecDestroy(global_vec,ierr)
-  call VecDestroy(natural_vec,ierr)
-  call UGridDMDestroy(ugdm_element)
+  ! write vertices
+  call WriteTecplotUGridElements(IUNIT3,realization)
 
   if (option%myrank == option%io_rank) close(IUNIT3)
 
@@ -1414,23 +1431,8 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   option => realization%option
   output_option => realization%output_option
   discretization => realization%discretization
-  
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.tec'
-  endif
+
+  filename = OutputFilename(output_option,option,'tec','vel-')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
@@ -1460,25 +1462,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      string = trim(string) // ' DATAPACKING=BLOCK'
-      if (option%nphase > 1) then
-        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-      endif
+    if (option%nphase > 1) then
+      string = OutputTecplotZoneHeader(realization,TEN_INTEGER)
     else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-      string = trim(string) // ' DATAPACKING=BLOCK'
+      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER)
     endif
     write(IUNIT3,'(a)') trim(string)
 
@@ -1492,21 +1479,11 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                                   option)    
 
   ! write out coorindates
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
+  if (realization%discretization%itype == STRUCTURED_GRID .or. &
+      realization%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
-    call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotUGridVertices(IUNIT3,realization)
   endif
   
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
@@ -1542,6 +1519,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+
+  if (realization%discretization%itype == UNSTRUCTURED_GRID) then
+    call WriteTecplotUGridElements(IUNIT3,realization)
+  endif
 
   if (option%myrank == option%io_rank) close(IUNIT3)
   
@@ -1634,15 +1615,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
       filename = trim(filename) // 'z'
   end select 
   
-  if (output_option%plot_number < 10) then
-    write(string,'("00",i1)') output_option%plot_number  
-  else if (output_option%plot_number < 100) then
-    write(string,'("0",i2)') output_option%plot_number  
-  else if (output_option%plot_number < 1000) then
-    write(string,'(i3)') output_option%plot_number  
-  else if (output_option%plot_number < 10000) then
-    write(string,'(i4)') output_option%plot_number  
-  endif
+  string = trim(OutputFilenameID(output_option,option))
   
   filename = trim(filename) // '-' // trim(string) // '.tec'
   
@@ -1683,20 +1656,18 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     select case(direction)
       case(X_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
+                     &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
       case(Y_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
+                     &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
       case(Z_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
+                     &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
     end select 
-  
-  
-    string = trim(string) // ' DATAPACKING=BLOCK'
+    string = trim(string) // ', DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
   endif
@@ -1932,23 +1903,8 @@ subroutine OutputTecplotPoint(realization)
   field => realization%field
   reaction => realization%reaction
   output_option => realization%output_option
-  
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
-  else
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.tec'    
-  endif
+
+  filename = OutputFilename(output_option,option,'.tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // &
@@ -1956,78 +1912,7 @@ subroutine OutputTecplotPoint(realization)
     call printMsg(option)                       
     open(unit=IUNIT3,file=filename,action="write")
   
-    ! write header
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-
-    ! initial portion of header
-    header = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
-
-    if (output_option%print_column_ids) then
-      icolumn = 3
-    else
-      icolumn = -1
-    endif
-
-    ! write flow variables
-    header2 = ''
-    select case(option%iflowmode)
-      case (Flash2_MODE)
-        header2 = Flash2GetTecplotHeader(realization,icolumn)
-      case (MIS_MODE)
-        header2 = MiscibleGetTecplotHeader(realization,icolumn)
-      case (IMS_MODE)
-        header2 = ImmisGetTecplotHeader(realization,icolumn)
-      case (MPH_MODE)
-        header2 = MphaseGetTecplotHeader(realization,icolumn)
-      case(THC_MODE)
-        header2 = THCGetTecplotHeader(realization,icolumn)
-      case(RICHARDS_MODE)
-       header2 = RichardsGetTecplotHeader(realization,icolumn)
-      case(G_MODE)
-       header2 = GeneralGetTecplotHeader(realization,icolumn)
-    end select
-    header = trim(header) // trim(header2)
-
-    ! write transport variables
-    if (option%ntrandof > 0) then
-      string = ''
-      header2 = RTGetTecplotHeader(realization,string,icolumn)
-      header = trim(header) // trim(header2)
-    endif
-
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      call OutputAppendToHeader(header,'Porosity','','',icolumn)
-    endif
-        
-    ! write material ids
-    call OutputAppendToHeader(header,'Material_ID','','',icolumn)
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        string = trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i),option))
-        call OutputAppendToHeader(header,string,'','',icolumn)
-      enddo
-    endif
-
-    write(IUNIT3,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO    
-    call OutputOptionPlotVarFinalize(output_option)
-#endif
-
-    ! write zone header
-    write(header,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
-                   &'', K='',i5)') &
-                   option%time/output_option%tconv,grid%structured_grid%nx, &
-                   grid%structured_grid%ny,grid%structured_grid%nz 
-    header = trim(header) // ', DATAPACKING=POINT'
-    write(IUNIT3,'(a)') trim(header)
+    call OutputTecplotHeader(IUNIT3,realization)
   endif
   
 1000 format(es13.6,1x)
@@ -2430,22 +2315,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   output_option => realization%output_option
   discretization => realization%discretization
   
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.tec'
-  endif
+  filename = OutputFilename(output_option,option,'.tec','vel-')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
@@ -2477,10 +2347,10 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
-                 &'', K='',i5,'','')') &
+                 &'', K='',i5)') &
                  option%time/output_option%tconv, &
                  grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-    string = trim(string) // ' DATAPACKING=POINT'
+    string = trim(string) // ', DATAPACKING=POINT'
     write(IUNIT3,'(a)') trim(string)
 
   endif
@@ -2597,24 +2467,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     string = trim(string) // ',"Material_ID"'
     write(fid,'(a)') trim(string)
   
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
-                   &'', K='',i5,'','')') &
-                   option%time/realization%output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      string = trim(string) // ' DATAPACKING=BLOCK'
-                                                ! 4=dataset name, 5=material_id
-      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
-    else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
-                   option%time/realization%output_option%tconv, &
-                   grid%ngmax
-      string = trim(string) // ' DATAPACKING=BLOCK'
-    endif
-    write(fid,'(a)') trim(string)
-
+    write(fid,'(a)') &
+      trim(OutputTecplotZoneHeader(realization,FIVE_INTEGER))
   endif
   
   ! write blocks
@@ -2626,21 +2480,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   ! write out coorindates
 
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
+  if (realization%discretization%itype == STRUCTURED_GRID .or. &
+      realization%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
     call WriteTecplotStructuredGrid(fid,realization)
   else  
-    call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotUGridVertices(fid,realization)
   endif    
 
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
@@ -2652,6 +2496,10 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+
+  if (realization%discretization%itype == UNSTRUCTURED_GRID)  then
+    call WriteTecplotUGridElements(fid,realization)
+  endif    
 
   close(fid)
 
@@ -2685,6 +2533,120 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
+
+! ************************************************************************** !
+!
+! WriteTecplotUGridVertices: Writes unstructured grid vertices
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine WriteTecplotUGridVertices(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Unstructured_Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization 
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vertex_vec
+  PetscInt :: local_size
+  PetscErrorCode :: ierr
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_vertex_vec,ierr)
+  call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+  call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call VecDestroy(global_vertex_vec, ierr)
+
+end subroutine WriteTecplotUGridVertices
+
+! ************************************************************************** !
+!
+! WriteTecplotUGridVertices: Writes unstructured grid elements
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine WriteTecplotUGridElements(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Unstructured_Grid_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  Vec :: global_cconn_vec
+  type(ugdm_type), pointer :: ugdm_element
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  Vec :: global_vec
+  Vec :: natural_vec
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option) 
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option) 
+  call GetCellConnections(grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  call WriteTecplotDataSetNumPerLine(fid,realization,vec_ptr, &
+                                     TECPLOT_INTEGER, &
+                                     grid%unstructured_grid%nlmax*8,8)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine WriteTecplotUGridElements
 
 ! ************************************************************************** !
 !
@@ -3101,6 +3063,48 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
   call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
 end subroutine WriteTecplotDataSetNumPerLine
+
+! ************************************************************************** !
+!
+! OutputFormatInt: Writes a integer to a string
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFormatInt(int_value)
+
+  implicit none
+  
+  PetscInt :: int_value
+  
+  character(len=MAXWORDLENGTH) :: OutputFormatInt
+
+  write(OutputFormatInt,'(1i12)') int_value
+  
+  OutputFormatInt = adjustl(OutputFormatInt)
+  
+end function OutputFormatInt
+
+! ************************************************************************** !
+!
+! OutputFormatDouble: Writes a double or real to a string
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFormatDouble(real_value)
+
+  implicit none
+  
+  PetscReal :: real_value
+  
+  character(len=MAXWORDLENGTH) :: OutputFormatDouble
+
+  write(OutputFormatDouble,'(1es12.4)') real_value
+  
+  OutputFormatDouble = adjustl(OutputFormatDouble)
+  
+end function OutputFormatDouble
 
 ! ************************************************************************** !
 !
@@ -4865,15 +4869,7 @@ subroutine OutputVTK(realization)
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.vtk'
   else
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
+    string = OutputFilenameID(output_option,option)
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-' // trim(string) // '.vtk'    
   endif
@@ -5281,15 +5277,7 @@ subroutine OutputVelocitiesVTK(realization)
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '-vel.vtk'
   else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
+    string = OutputFilenameID(output_option,option)
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-vel-' // trim(string) // '.vtk'
   endif
@@ -5328,25 +5316,10 @@ subroutine OutputVelocitiesVTK(realization)
     string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      string = trim(string) // ' DATAPACKING=BLOCK'
-      if (option%nphase > 1) then
-        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-      endif
+    if (option%nphase > 1) then
+      string = OutputTecplotZoneHeader(realization,TEN_INTEGER)
     else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-      string = trim(string) // ' DATAPACKING=BLOCK'
+      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER)
     endif
     write(IUNIT3,'(a)') trim(string)
 #endif
@@ -5902,15 +5875,7 @@ end subroutine SAMRWritePlotData
     first = hdf5_first
     filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
   else
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
+    string = OutputFilenameID(output_option,option)
     first = PETSC_TRUE
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                 '-' // trim(string) // '.h5'
