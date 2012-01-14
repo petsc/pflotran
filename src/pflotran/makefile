@@ -145,6 +145,7 @@ util_obj  = ${common_src}input.o \
 	${common_src}utility.o
 
 common_obj = ${common_src}option.o \
+	${common_src}geometry.o\
 	${common_src}units.o\
 	${common_src}logging.o \
 	${common_src}hdf5_aux.o \
@@ -257,7 +258,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	richards.o thc.o discretization.o logging.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o condition_control.o surface_flow.o
-unstructured_grid.o : option.o connection.o unstructured_cell.o
+unstructured_grid.o : option.o connection.o unstructured_cell.o geometry.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -267,7 +268,7 @@ grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	input.o mfd_aux.o
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
-region.o : input.o utility.o logging.o string.o
+region.o : input.o utility.o logging.o string.o geometry.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o
 material_aux.o : option.o
 fluid.o : option.o input.o string.o
@@ -319,6 +320,7 @@ general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
 	amrgrid.o
 general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
 	global_aux.o
+geometry.o : input.o option.o
 mphase.o : mphase_aux.o realization.o fluid.o global_aux.o
 immis.o : immis_aux.o realization.o  global_aux.o
 miscible.o : miscible_aux.o realization.o  global_aux.o
