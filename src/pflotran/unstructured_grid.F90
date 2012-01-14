@@ -3862,7 +3862,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #ifndef SURFACE_FLOW
   ! assume 4 vertices per face for simplicity
   call MatCreateSeqAIJ(PETSC_COMM_SELF,boundary_face_count, &
-                       unstructured_grid%num_vertices_local,4, &
+                       unstructured_grid%num_vertices_global,4, &
                        PETSC_NULL_INTEGER,Mat_vert_to_face,ierr)
 #else
   largest_vert_id = 0
@@ -3932,7 +3932,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #endif  
 
 #ifndef SURFACE_FLOW  
-  call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_vertices_local, &
+  call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_vertices_global, &
                     Vertex_vec,ierr)
 #else
   call VecCreateSeq(PETSC_COMM_SELF,largest_vert_id, &
