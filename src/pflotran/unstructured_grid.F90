@@ -3842,7 +3842,15 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   PetscErrorCode :: ierr
   PetscReal :: min_verts_req
   PetscInt :: largest_vert_id, v_id_n
-    
+#ifdef PARALLEL_SIDESET
+  Vec :: sideset_vert_vec
+  PetscInt,pointer::int_array(:)
+  PetscInt :: offset
+  IS :: is_tmp1, is_tmp2
+  VecScatter :: scatter_gton
+#endif
+
+#ifndef PARALLEL_SIDESET    
   ! fill matrix with boundary faces of local cells
   ! count up the number of boundary faces
   boundary_face_count = 0
@@ -4028,6 +4036,246 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   call MatDestroy(Mat_vert_to_face,ierr)
   call VecDestroy(Vertex_vec,ierr)
   call VecDestroy(Face_vec,ierr)
+
+#endif ! PARALLEL_SIDESET
+
+#ifdef PARALLEL_SIDESET
+
+  ! fill matrix with boundary faces of local cells
+  ! count up the number of boundary faces
+  boundary_face_count = 0
+  do local_id = 1, unstructured_grid%nlmax
+    nfaces = UCellGetNFaces(unstructured_grid%cell_type(local_id),option)
+    do iface = 1, nfaces
+      face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+      if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
+        ! boundary face, since not connected to 2 cells
+        boundary_face_count = boundary_face_count + 1
+      endif
+    enddo
+  enddo
+  
+  call MatCreateMPIAIJ(option%mycomm, &
+                       boundary_face_count, &
+                       PETSC_DETERMINE, &
+                       PETSC_DETERMINE, &
+                       unstructured_grid%num_vertices_global, &
+                       4, &
+                       PETSC_NULL_INTEGER, &
+                       4, &
+                       PETSC_NULL_INTEGER, &
+                       Mat_vert_to_face, &
+                       ierr)
+  call MatZeroEntries(Mat_vert_to_face,ierr)
+  real_array4 = 1.d0
+
+  offset=0
+  call MPI_Exscan(boundary_face_count,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(boundary_faces(boundary_face_count))
+  boundary_faces = 0
+  boundary_face_count = 0
+  do local_id = 1, unstructured_grid%nlmax
+    cell_type = unstructured_grid%cell_type(local_id)
+    nfaces = UCellGetNFaces(cell_type,option)
+    do iface = 1, nfaces
+      face_id = unstructured_grid%cell_to_face_ghosted(iface,local_id)
+      if (unstructured_grid%face_to_cell_ghosted(2,face_id) < 1) then
+        ! boundary face, since not connected to 2 cells
+        boundary_face_count = boundary_face_count + 1
+        boundary_faces(boundary_face_count) = face_id
+        call UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
+                                        int_array4)
+        ! For this matrix:
+        !   irow = local face id
+        !   icol = natural (global) vertex id
+        do ivertex = 1, nvertices
+          vertex_id_local = &
+            unstructured_grid%cell_vertices(int_array4(ivertex),local_id)
+          int_array4_0(ivertex,1) = &
+            unstructured_grid%vertex_ids_natural(vertex_id_local)-1
+        enddo
+        call MatSetValues(Mat_vert_to_face,1,boundary_face_count-1+offset, &
+                          nvertices,int_array4_0,real_array4, &
+                          INSERT_VALUES,ierr)
+      endif
+    enddo
+  enddo
+
+  call MatAssemblyBegin(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(Mat_vert_to_face,MAT_FINAL_ASSEMBLY,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'Mat_vert_to_face_' // trim(region_name) // '_global' // &
+           '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call MatView(Mat_vert_to_face,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+
+  call VecCreateMPI(option%mycomm,PETSC_DETERMINE, &
+                    unstructured_grid%num_vertices_global, &
+                    Vertex_vec,ierr)
+  call VecZeroEntries(Vertex_vec,ierr)
+  call VecAssemblyBegin(Vertex_vec,ierr)
+  call VecAssemblyEnd(Vertex_vec,ierr)
+
+  ! For this vector:
+  !   irow = natural (global) vertex id
+  nvertices = 0
+  do iface = 1, n_ss_faces
+    do ivertex = 1, size(face_vertices,1)
+      if (face_vertices(ivertex,iface) > 0) then
+        nvertices = nvertices + 1
+      endif
+    enddo
+  enddo
+
+  offset=0
+  call MPI_Exscan(nvertices,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(int_array(nvertices))
+  do local_id = 1, nvertices 
+    int_array(local_id) = (local_id-1)+offset
+  enddo
+  call ISCreateGeneral(option%mycomm,nvertices, &
+                       int_array,PETSC_COPY_VALUES,is_tmp1,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'is_tmp1_' // trim(region_name) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call ISView(is_tmp1,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+  
+  nvertices = 0
+  do iface = 1, n_ss_faces
+    if(option%myrank == 0) write(*,*),iface,face_vertices(:,iface)
+    do ivertex = 1, size(face_vertices,1)
+      if (face_vertices(ivertex,iface) > 0) then
+        nvertices = nvertices + 1
+        int_array(nvertices) = face_vertices(ivertex,iface)-1
+      endif
+    enddo
+  enddo
+
+  call ISCreateGeneral(option%mycomm,nvertices, &
+                       int_array,PETSC_COPY_VALUES,is_tmp2,ierr)
+  deallocate(int_array)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'is_tmp2_' // trim(region_name) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call ISView(is_tmp2,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+  
+  call VecCreateMPI(option%mycomm,nvertices, PETSC_DETERMINE, &
+                    sideset_vert_vec,ierr)
+  call VecSet(sideset_vert_vec,1.d0,ierr)
+
+  call VecScatterCreate(sideset_vert_vec,is_tmp1, &
+                        Vertex_vec,is_tmp2,scatter_gton,ierr)
+  call ISDestroy(is_tmp1,ierr)
+  call ISDestroy(is_tmp2,ierr)
+  
+#if UGRID_DEBUG
+  string = 'scatter_gton_' // trim(region_name) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(scatter_gton,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+  
+  call VecScatterBegin(scatter_gton,sideset_vert_vec,Vertex_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(scatter_gton,sideset_vert_vec,Vertex_vec, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(scatter_gton,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = adjustl(string)
+  string = 'Vertex_vec_' // trim(region_name) // '_global' // &
+            '.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call VecView(Vertex_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+
+  call VecCreateMPI(option%mycomm,boundary_face_count,PETSC_DETERMINE,Face_vec,ierr)
+  call MatMult(Mat_vert_to_face,Vertex_vec,Face_vec,ierr)
+  
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'Face_vec_' // trim(region_name) // '_global.out'
+  call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
+  call VecView(Face_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif  
+
+  allocate(temp_int(MAX_FACE_PER_CELL,boundary_face_count))
+  temp_int = 0
+  
+  mapped_face_count = 0
+  if( unstructured_grid%grid_type == THREE_DIM_GRID) then
+    min_verts_req = 3.d0
+  else
+    min_verts_req = 2.d0
+  endif
+  
+  call VecGetArrayF90(Face_vec,vec_ptr,ierr)
+  ! resulting vec contains the number of natural vertices in the sideset that
+  ! intersect a local face
+  do iface = 1, boundary_face_count
+    face_id = boundary_faces(iface)
+    if (vec_ptr(iface) >= min_verts_req) then ! 3 or more vertices in sideset
+      ! need to ensure that the right number of vertices are included
+      cell_id = unstructured_grid%face_to_cell_ghosted(1,face_id)
+      cell_type = unstructured_grid%cell_type(cell_id)
+      nfaces = UCellGetNFaces(cell_type,option)
+      nvertices = 0
+      do iface2 = 1, nfaces
+        face_id2 = unstructured_grid%cell_to_face_ghosted(iface2,cell_id)
+        if (face_id == face_id2) then
+          nvertices = UCellGetNFaceVertices(cell_type,iface2,option)
+          exit
+        endif
+      enddo
+      if (nvertices == 0) then ! the case if not found 
+        option%io_buffer = 'Face not found in UGridMapSideSet'
+        call printErrMsgByRank(option)
+      endif
+      if (abs(nvertices - vec_ptr(iface)) < 0.5d0) then
+        mapped_face_count = mapped_face_count + 1
+        temp_int(1,mapped_face_count) = cell_id
+        temp_int(2,mapped_face_count) = iface2
+      endif
+    endif
+  enddo
+  call VecRestoreArrayF90(Face_vec,vec_ptr,ierr)
+  deallocate(boundary_faces)
+  
+  allocate(cell_ids(mapped_face_count))
+  allocate(face_ids(mapped_face_count))
+  
+  cell_ids(:) = temp_int(1,1:mapped_face_count)
+  face_ids(:) = temp_int(2,1:mapped_face_count)
+  deallocate(temp_int)
+
+  call MatDestroy(Mat_vert_to_face,ierr)
+  call VecDestroy(Face_vec,ierr)
+  call VecDestroy(Vertex_vec,ierr)
+  call VecDestroy(sideset_vert_vec,ierr)
+
+#endif
   
 end subroutine UGridMapSideSet
 
