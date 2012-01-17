@@ -528,34 +528,33 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     allocate(temp_int_array(unstructured_grid%max_nvert_per_cell, &
                             unstructured_grid%nmax))
     ! read for other processors
-    do irank = 0, option%mycommsize-1
-      temp_int_array = -999
-      num_to_read = unstructured_grid%nmax
-      do icell = 1, num_to_read
-        ! read in the vertices defining the grid cell
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)  
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'element type',card)
-        call StringToUpper(word)
-        select case(word)
-          case('H')
-            num_vertices = 8
-          case('W')
-            num_vertices = 6
-          case('P')
-            num_vertices = 5
-          case('T')
-            num_vertices = 4
-          case('Q')
-            num_vertices = 4
-        end select
-        do ivertex = 1, num_vertices
-          call InputReadInt(input,option,temp_int_array(ivertex,icell))
-          call InputErrorMsg(input,option,'vertex id',card)
-        enddo
-        write(*,'(9I5)'),icell,temp_int_array(:,icell)
+    temp_int_array = -999
+    num_to_read = unstructured_grid%nmax
+    write(*,*),'num_to_read: ',num_to_read
+    do icell = 1, num_to_read
+      ! read in the vertices defining the grid cell
+      call InputReadFlotranString(input,option)
+      call InputReadStringErrorMsg(input,option,card)  
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'element type',card)
+      call StringToUpper(word)
+      select case(word)
+        case('H')
+          num_vertices = 8
+        case('W')
+          num_vertices = 6
+        case('P')
+          num_vertices = 5
+        case('T')
+          num_vertices = 4
+        case('Q')
+          num_vertices = 4
+      end select
+      do ivertex = 1, num_vertices
+        call InputReadInt(input,option,temp_int_array(ivertex,icell))
+        call InputErrorMsg(input,option,'vertex id',card)
       enddo
+      write(*,'(9I5)'),icell,temp_int_array(:,icell)
     enddo
   endif
 
@@ -579,6 +578,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     do irank = 0, option%mycommsize-1
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
+      write(*,*),'vert num_to_read: ',num_to_read
       do ivertex = 1, num_to_read
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
@@ -586,7 +586,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadDouble(input,option,temp_real_array(idir,ivertex))
           call InputErrorMsg(input,option,'vertex coordinate',card)
         enddo
-        write(*,'(4F5.2)'),icell,temp_real_array(:,ivertex)
+        write(*,'(1I5,3F5.2)'),ivertex,temp_real_array(:,ivertex)
       enddo
       
       if (irank == option%io_rank) then
@@ -621,12 +621,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   unstructured_grid%num_vertices_local = num_vertices_local
   
   call InputDestroy(input)
-  deallocate(temp_int_array)
-
-
-
-
-
+  if(option%myrank == option%io_rank) deallocate(temp_int_array)
 
 
   input => InputCreate(fileid,surf_filename)
