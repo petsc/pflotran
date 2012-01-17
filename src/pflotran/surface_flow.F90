@@ -183,7 +183,7 @@ subroutine SurfaceFlowResidualPatch1(realization)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
       
-      write(*,'(5I)'),sum_connection,ghosted_id_dn,ghosted_id_up,local_id_dn,local_id_up
+      write(*,'(5I5)'),sum_connection,ghosted_id_dn,ghosted_id_up,local_id_dn,local_id_up
 
     enddo
     cur_connection_set => cur_connection_set%next
@@ -202,7 +202,7 @@ subroutine SurfaceFlowResidualPatch1(realization)
     
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      write(*,'(3I)'),sum_connection,ghosted_id,local_id
+      write(*,'(3I5)'),sum_connection,ghosted_id,local_id
   
     enddo
     boundary_condition => boundary_condition%next

@@ -543,7 +543,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
       write(*,'(/,2("=")," UGridDecompose-2D grid ",25("="))')
       call UGridDecompose(discretization%surfgrid%unstructured_grid, &
                           option)
-      write(*,'(/,2("="),,25("="))')
+      write(*,'(/,2("="),25("="))')
 #endif
     case(AMR_GRID)
   end select
