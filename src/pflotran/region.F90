@@ -903,6 +903,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
         string = trim(adjustl(string)) // ' faces stored on p0'
         print *, trim(string)
 #endif
+        sideset%nfaces = num_faces_local
         sideset%face_vertices(:,1:num_faces_local) = &
           temp_int_array(:,1:num_faces_local)
       else
@@ -929,6 +930,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
                  trim(adjustl(word))
         print *, trim(string)
 #endif
+    sideset%nfaces = num_faces_local
     int_mpi = num_faces_local*max_nvert_per_face
     call MPI_Recv(sideset%face_vertices,int_mpi, &
                   MPIU_INTEGER,option%io_rank, &
