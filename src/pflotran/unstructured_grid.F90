@@ -3301,7 +3301,7 @@ end subroutine UGridComputeVolumes
 ! date: 10/24/11
 !
 ! ************************************************************************** !
-subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
+subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
 
   use Option_module
   use Utility_module, only : DotProduct, CrossProduct
@@ -3310,7 +3310,8 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
 
   type(unstructured_grid_type) :: unstructured_grid
   PetscReal :: x(:), y(:), z(:)
-  PetscInt :: nL2A(:)
+  PetscInt :: nG2A(:)
+  PetscInt :: nL2G(:)
   type(option_type) :: option
 
   PetscInt :: local_id
@@ -3367,7 +3368,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
         ! need to swap so that distance is negative (point lies below plane)
 #ifndef GB_DEBUG
         option%io_buffer = 'Cell '
-        write(string,'(i13)') nL2A(local_id)
+        write(string,'(i13)') nG2A(nL2G(local_id))
         option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
           'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
           '" with vertices:'
@@ -3407,7 +3408,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
             & '' violates right hand rule at face "'',a, &
             & ''" for face vertices '', &
             & '' based on face vertices '',3i3)') &
-            nL2A(local_id), &
+            nG2A(nL2G(local_id)), &
             trim(UCellTypeToWord(cell_type,option)), &
         (unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i)), &
            i = 1,8), &
@@ -3563,7 +3564,7 @@ end subroutine UGridDMCreateVector
 ! date: 11/06/09
 !
 ! ************************************************************************** !
-subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
+subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A)
 
   implicit none
   
@@ -3571,7 +3572,6 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
   type(ugdm_type) :: ugdm
   PetscInt, pointer :: nG2L(:)
   PetscInt, pointer :: nL2G(:)
-  PetscInt, pointer :: nL2A(:)
   PetscInt, pointer :: nG2A(:)
   PetscErrorCode :: ierr
   PetscInt, pointer :: int_ptr(:)
@@ -3580,26 +3580,21 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
 
   allocate(nG2L(unstructured_grid%ngmax))
   allocate(nL2G(unstructured_grid%nlmax))
-  allocate(nL2A(unstructured_grid%nlmax))
   allocate(nG2A(unstructured_grid%ngmax))
   
   ! initialize ghosted to 0
+  !geh: any index beyond %nlmax will be 0 indicating that there is no local
+  !     counterpart (i.e., it is a ghost cell)
   nG2L = 0
 
-  call ISGetIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
+  !geh: Yes, it seems redundant that that we are setting both nL2G and nG2L to 
+  !     the same index, but keep in mind that nG2L extends beyond %nlmax and
+  !     we need these arrays to provide seemless integration for structured and
+  !     unstructured
   do local_id = 1, unstructured_grid%nlmax
     nL2G(local_id) = local_id
     nG2L(local_id) = local_id
-    ! actually, nL2A is zero-based
-    !nL2A(local_id) = int_ptr(local_id)+1
-    nL2A(local_id) = int_ptr(local_id)
   enddo
-  call ISRestoreIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
-!zero-based  nL2A = nL2A - 1
-  call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
-                            unstructured_grid%nlmax, &
-                            nL2A,ierr)
-!zero-based  nL2A = nL2A + 1
 
   call ISGetIndicesF90(ugdm%is_ghosted_petsc,int_ptr,ierr)
   do ghosted_id = 1, unstructured_grid%ngmax
@@ -3610,7 +3605,7 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
   call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
                             unstructured_grid%ngmax, &
                             nG2A,ierr)
-  nG2A = nG2A + 1
+  nG2A = nG2A + 1 ! 1-based
 
 end subroutine UGridMapIndices
 

@@ -413,11 +413,11 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
-                           grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
+                           grid%nG2L,grid%nL2G,grid%nG2A)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                    discretization%dm_1dof%ugdm) 
       call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
-                                    grid%y,grid%z,grid%nL2A,option)
+                                    grid%y,grid%z,grid%nG2A,grid%nL2G,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
@@ -428,13 +428,13 @@ subroutine RealizationCreateDiscretization(realization)
       write(*,'(/,2("=")," 2D",25("="))')
       write(*,*),'call UGridMapIndices'
       call UGridMapIndices(grid%unstructured_grid,discretization%surf_dm_1dof%ugdm, &
-                           grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
+                           grid%nG2L,grid%nL2G,grid%nG2A)
       write(*,*),'call GridComputeCoordinates'
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                   discretization%surf_dm_1dof%ugdm) 
       write(*,*),'call UGridEnsureRightHandRule'
       call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
-                                    grid%y,grid%z,grid%nL2A,option)
+                                    grid%y,grid%z,grid%nG2A,grid%nL2G,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%surf_dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)

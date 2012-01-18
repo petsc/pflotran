@@ -58,11 +58,7 @@ module Grid_module
     ! nG2L :  not collective, local processor:  ghosted local => local  
     ! nG2A :  not collective, ghosted local => natural
 
-    !geh: do we even need nL2A???
-    
-    ! nL2A :   collective, local => natural index, used for initialization   
-    !                               and source/sink setup  (zero-based)
-    PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
+    PetscInt, pointer :: nL2G(:), nG2L(:)
     PetscInt, pointer :: nG2A(:), nG2P(:), nG2LP(:)
 
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
@@ -174,7 +170,6 @@ function GridCreate()
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
-  nullify(grid%nL2A)
   nullify(grid%nG2A)
   nullify(grid%nG2P)
 
@@ -1246,7 +1241,7 @@ subroutine GridMapIndices(grid, sgdm)
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                    grid%nL2A,grid%nG2A)
+                                    grid%nG2A)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
@@ -2885,7 +2880,7 @@ PetscInt function GridGetLocalIdFromNaturalId(grid,natural_id)
   PetscInt :: natural_id, local_id
   
   do local_id = 1, grid%nlmax
-    if (natural_id == grid%nL2A(local_id)+1) then
+    if (natural_id == grid%nG2A(grid%nL2G(local_id))) then
       GridGetLocalIdFromNaturalId = local_id
       return
     endif
@@ -3068,8 +3063,6 @@ subroutine GridDestroy(grid)
   nullify(grid%nL2G)
   if (associated(grid%nG2L)) deallocate(grid%nG2L)
   nullify(grid%nG2L)
-  if (associated(grid%nL2A)) deallocate(grid%nL2A)
-  nullify(grid%nL2A)
   if (associated(grid%nG2A)) deallocate(grid%nG2A)
   nullify(grid%nG2A)
   if (associated(grid%nG2P)) deallocate(grid%nG2P)
@@ -3247,7 +3240,7 @@ function GridIndexToCellID(vec,index,grid,vec_type)
   if (index >= low .and. index < high) then
     cell_id = (index-low)/ndof+1
     if (vec_type == GLOBAL) then
-      cell_id = grid%nL2A(cell_id)+1
+      cell_id = grid%nG2A(grid%nL2G(cell_id))
     else if (vec_type == LOCAL) then
       cell_id = grid%nG2A(cell_id) !nG2A is 1-based
     endif

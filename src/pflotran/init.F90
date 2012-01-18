@@ -3186,7 +3186,7 @@ subroutine readFlowInitialCondition(realization,filename)
       do local_id=1, grid%nlmax
         if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
         if (dabs(vec_p(local_id)) < 1.d-40) then
-          print *,  option%myrank, grid%nL2A(local_id)+1, &
+          print *,  option%myrank, grid%nG2A(grid%nL2G(local_id)), &
                ': Potential error - zero pressure in Initial Condition read from file.'
         endif
         idx = (local_id-1)*option%nflowdof + offset
@@ -3285,7 +3285,7 @@ subroutine readTransportInitialCondition(realization,filename)
         do local_id=1, grid%nlmax
           if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
           if (vec_p(local_id) < 1.d-40) then
-            print *,  option%myrank, grid%nL2A(local_id)+1, &
+            print *,  option%myrank, grid%nG2A(grid%nL2G(local_id)), &
               ': Zero free-ion concentration in Initial Condition read from file.'
           endif
           idx = (local_id-1)*option%ntrandof + offset
