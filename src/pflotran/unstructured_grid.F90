@@ -29,6 +29,7 @@ module Unstructured_Grid_module
     PetscInt :: num_hash
     PetscInt :: max_ndual_per_cell
     PetscInt :: max_nvert_per_cell
+    PetscInt :: max_cells_sharing_a_vertex
     PetscInt, pointer :: cell_type(:)
     PetscInt, pointer :: cell_vertices(:,:) ! vertices for each grid cell (NO LONGER zero-based)
     PetscInt, pointer :: face_to_cell_ghosted(:,:) !
@@ -87,7 +88,6 @@ module Unstructured_Grid_module
   !  PetscInt, parameter :: TRI_FACE_TYPE     = 1
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
-  !  PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 
   public :: UGridCreate, &
             UGridRead, &
@@ -105,6 +105,7 @@ module Unstructured_Grid_module
             UGridPopulateConnection, &
             UGridComputeCoord, &
             UGridComputeVolumes, &
+            UGridComputeQuality, &
             UGridMapIndices, &
             UGridDMCreateJacobian, &
             UGridDMCreateVector, &
@@ -182,6 +183,7 @@ function UGridCreate()
   unstructured_grid%ngmax = 0
   unstructured_grid%max_ndual_per_cell = 0
   unstructured_grid%max_nvert_per_cell = 0
+  unstructured_grid%max_cells_sharing_a_vertex = 24
   nullify(unstructured_grid%cell_type)
   nullify(unstructured_grid%cell_vertices)
   nullify(unstructured_grid%face_to_cell_ghosted)
@@ -2578,7 +2580,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(face_to_cell(2,MAX_FACE_PER_CELL* &
                         unstructured_grid%ngmax))
   face_to_cell = 0
-  allocate(vertex_to_cell(0:MAX_CELLS_SHARING_A_VERTEX, &
+  allocate(vertex_to_cell(0:unstructured_grid%max_cells_sharing_a_vertex, &
                           unstructured_grid%num_vertices_local))
   vertex_to_cell = 0
 
@@ -2823,8 +2825,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
       if ( vertex_id <= 0) cycle 
       count = vertex_to_cell(0,vertex_id) + 1
-      if (count > MAX_CELLS_SHARING_A_VERTEX) then
-        write(string,*) 'Vertex can be shared by at most by ',MAX_CELLS_SHARING_A_VERTEX, &
+      if (count > unstructured_grid%max_cells_sharing_a_vertex) then
+        write(string,*) 'Vertex can be shared by at most by ', &
+              unstructured_grid%max_cells_sharing_a_vertex, &
               ' cells. Rank = ', option%myrank, ' vertex_id = ', vertex_id, ' exceeds it.'
         option%io_buffer = string
         call printErrMsg(option)
@@ -3291,6 +3294,84 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
   call VecRestoreArrayF90(volume,volume_p,ierr)
 
 end subroutine UGridComputeVolumes
+
+! ************************************************************************** !
+!
+! UGridComputeQuality: Computes quality of unstructured grid cells
+!
+! geh: Yes, this is very primitive as mesh quality can be based on any 
+!      number of metrics (e.g., see http://cubit.sandia.gov/help-version8/
+!      Chapter_5/Mesh_Quality_Assessment.html).  However, the current edge
+!      length-based formula gives a ballpark estimate.
+!
+! author: Glenn Hammond
+! date: 01/17/12
+!
+! ************************************************************************** !
+subroutine UGridComputeQuality(unstructured_grid,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  type(point_type) :: vertex_8(8)
+  PetscReal :: quality, mean_quality, max_quality, min_quality
+  PetscReal :: temp_real
+  PetscErrorCode :: ierr
+
+  mean_quality = 0.d0
+  max_quality = -1.d20
+  min_quality = 1.d20
+  
+  do local_id = 1, unstructured_grid%nlmax
+    ! ghosted_id = local_id on unstructured grids
+    ghosted_id = local_id
+    do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
+      vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
+      vertex_8(ivertex)%x = &
+        unstructured_grid%vertices(vertex_id)%x
+      vertex_8(ivertex)%y = &
+        unstructured_grid%vertices(vertex_id)%y
+      vertex_8(ivertex)%z = &
+        unstructured_grid%vertices(vertex_id)%z
+    enddo
+    quality = UCellQuality(unstructured_grid%cell_type( &
+                           ghosted_id),vertex_8,option)
+    if (quality < min_quality) min_quality = quality
+    if (quality > max_quality) max_quality = quality
+    mean_quality = mean_quality + quality
+  enddo
+
+  temp_real = mean_quality
+  call MPI_Allreduce(temp_real,mean_quality,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+  mean_quality = mean_quality / unstructured_grid%nmax
+
+  temp_real = max_quality
+  call MPI_Allreduce(temp_real,max_quality,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+
+  temp_real = min_quality
+  call MPI_Allreduce(temp_real,min_quality,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+
+  if (OptionPrintToScreen(option)) then
+    write(*,'(/," ---------- Mesh Quality ----------", &
+            & /,"   Mean Quality: ",es10.2, &
+            & /,"   Max Quality : ",es10.2, &
+            & /,"   Min Quality : ",es10.2, &
+            & /," ----------------------------------",/)') &
+              mean_quality, max_quality, min_quality
+  endif
+
+end subroutine UGridComputeQuality
 
 ! ************************************************************************** !
 !
