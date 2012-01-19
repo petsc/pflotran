@@ -442,7 +442,9 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         call printErrMsg(option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
         grid => GridCreate()
+#ifdef SURFACE_FLOW
         grid2=> GridCreate()
+#endif
         select case(discretization%itype)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UGridCreate()
