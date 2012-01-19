@@ -1025,30 +1025,36 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   lenz = structured_grid%ngz - 1
 
   if (.not.(structured_grid%p_samr_patch == 0)) then
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ZERO_INTEGER) ==1) then
+     if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, &
+                          ZERO_INTEGER) == 1) then
         nconn = nconn - structured_grid%nlyz
         lenx = lenx-1
         samr_ofx = 1
      endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ONE_INTEGER) ==1) then 
+     if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, &
+                          ONE_INTEGER) == 1) then 
         nconn = nconn - structured_grid%nlyz
         lenx = lenx-1
      endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ZERO_INTEGER) ==1) then
+     if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, &
+                          ZERO_INTEGER) == 1) then
         nconn = nconn - structured_grid%nlxz
         leny=leny-1
         samr_ofy = structured_grid%ngx
      endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ONE_INTEGER) ==1) then
+     if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, &
+                          ONE_INTEGER) == 1) then
         nconn = nconn - structured_grid%nlxz
         leny=leny-1
      endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ZERO_INTEGER) ==1) then
+     if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, &
+                          ZERO_INTEGER) == 1) then
         nconn = nconn - structured_grid%nlxy
         lenz=lenz-1
         samr_ofz = structured_grid%ngxy
      endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ONE_INTEGER) ==1) then
+     if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, &
+                          ONE_INTEGER) == 1) then
         nconn = nconn - structured_grid%nlxy
         lenz=lenz-1
      endif  
@@ -1077,7 +1083,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 
 
               
-              if (i==1) then
+              if (i == 1) then
                 if (structured_grid%nxs==structured_grid%ngxs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
@@ -1165,7 +1171,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               iconn = iconn+1
 
               structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              if (j==1) then
+              if (j == 1) then
                 if (structured_grid%nys==structured_grid%ngys) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
@@ -1214,7 +1220,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               iconn = iconn+1
 
               structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-              if (k==1) then
+              if (k == 1) then
                 if (structured_grid%nzs==structured_grid%ngzs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
@@ -1839,7 +1845,7 @@ end subroutine StructuredGridComputeVolumes
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
+subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nG2A)
 
   implicit none
 
@@ -1852,7 +1858,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   end interface
 
   type(structured_grid_type) :: structured_grid
-  PetscInt, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:)
+  PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:)
 
   PetscInt :: i, j, k, local_id, ghosted_id, natural_id, count1
   PetscErrorCode :: ierr
@@ -1862,7 +1868,6 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
 ! only allocate space for the next two arrays if the current grid is not
 ! not part of an AMR grid hierarchy
   if (structured_grid%p_samr_patch == 0) then
-     allocate(nL2A(structured_grid%nlmax))
      allocate(nG2A(structured_grid%ngmax))
   endif
 
@@ -1879,7 +1884,6 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
 
   if (structured_grid%p_samr_patch == 0) then
      nG2A = 0
-     nL2A = 0
   endif
 
   local_id = 0
@@ -1940,85 +1944,79 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   enddo
 
   if (.not.(structured_grid%p_samr_patch == 0)) then
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ZERO_INTEGER) ==1) then
-        do k=1,structured_grid%ngz
-           do j=1,structured_grid%ngy
-              ghosted_id = 1+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
-              nG2L(ghosted_id) = -1
-           enddo
-        enddo
-     endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ONE_INTEGER) ==1) then 
-        i=structured_grid%ngx
-        do k=1,structured_grid%ngz
-           do j=1,structured_grid%ngy
-              ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
-              nG2L(ghosted_id) = -1
-           enddo
-        enddo
-     endif
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ZERO_INTEGER) ==1) then
-        do k=1,structured_grid%ngz
-           do i=1,structured_grid%ngx
-              ghosted_id = i+(k-1)*structured_grid%ngxy
-              nG2L(ghosted_id) = -1
-           enddo
-        enddo
-     endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ONE_INTEGER) ==1) then
-        j=structured_grid%ngy
-        do k=1,structured_grid%ngz
-           do i=1,structured_grid%ngx
-              ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
-              nG2L(ghosted_id) = -1
-           enddo
-        enddo
-     endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ZERO_INTEGER) ==1) then
+    if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, &
+                         ZERO_INTEGER) == 1) then
+      do k=1,structured_grid%ngz
         do j=1,structured_grid%ngy
-           do i=1,structured_grid%ngx
-              ghosted_id = i+(j-1)*structured_grid%ngx
-              nG2L(ghosted_id) = -1
-           enddo
+          ghosted_id = 1+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+          nG2L(ghosted_id) = -1
         enddo
-     endif  
-     if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ONE_INTEGER) ==1) then
-        k=structured_grid%ngz
+      enddo
+    endif  
+    if (samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, &
+                          ONE_INTEGER) == 1) then 
+      i=structured_grid%ngx
+      do k=1,structured_grid%ngz
         do j=1,structured_grid%ngy
-           do i=1,structured_grid%ngx
-              ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
-              nG2L(ghosted_id) = -1
-           enddo
+          ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+          nG2L(ghosted_id) = -1
         enddo
-     endif  
+      enddo
+    endif
+    if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, &
+                          ZERO_INTEGER) == 1) then
+      do k=1,structured_grid%ngz
+        do i=1,structured_grid%ngx
+          ghosted_id = i+(k-1)*structured_grid%ngxy
+          nG2L(ghosted_id) = -1
+        enddo
+      enddo
+    endif  
+    if (samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, &
+                          ONE_INTEGER) == 1) then
+      j=structured_grid%ngy
+      do k=1,structured_grid%ngz
+        do i=1,structured_grid%ngx
+          ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+          nG2L(ghosted_id) = -1
+        enddo
+      enddo
+    endif  
+    if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, &
+                          ZERO_INTEGER) == 1) then
+      do j=1,structured_grid%ngy
+        do i=1,structured_grid%ngx
+          ghosted_id = i+(j-1)*structured_grid%ngx
+          nG2L(ghosted_id) = -1
+        enddo
+      enddo
+    endif  
+    if (samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, &
+                          ONE_INTEGER) == 1) then
+      k=structured_grid%ngz
+      do j=1,structured_grid%ngy
+        do i=1,structured_grid%ngx
+          ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+          nG2L(ghosted_id) = -1
+        enddo
+      enddo
+    endif  
   endif
 
   if (structured_grid%p_samr_patch == 0) then
-     local_id=0
-     do k=1,structured_grid%nlz
-        do j=1,structured_grid%nly
-           do i=1,structured_grid%nlx
-              local_id = local_id + 1
-              natural_id = i - 1 + structured_grid%nxs + &
-                           (j-1+structured_grid%nys)*structured_grid%nx+ &
-                           (k-1+structured_grid%nzs)*structured_grid%nxy
-              nL2A(local_id) = natural_id
-           enddo
-        enddo
+    ! local ghosted -> natural (1-based)
+    local_id=0
+    do k=1,structured_grid%ngz
+      do j=1,structured_grid%ngy
+        do i=1,structured_grid%ngx
+          local_id = local_id + 1
+          natural_id = i + structured_grid%ngxs + & ! 1-based
+                       (j-1+structured_grid%ngys)*structured_grid%nx+ &
+                       (k-1+structured_grid%ngzs)*structured_grid%nxy
+          nG2A(local_id) = natural_id
+       enddo
      enddo
-     ! local ghosted -> natural (1-based)
-     local_id=0
-     do k=1,structured_grid%ngz
-        do j=1,structured_grid%ngy
-           do i=1,structured_grid%ngx
-              local_id = local_id + 1
-              natural_id = i + structured_grid%ngxs + & ! 1-based
-                           (j-1+structured_grid%ngys)*structured_grid%nx+ &
-                           (k-1+structured_grid%ngzs)*structured_grid%nxy
-              nG2A(local_id) = natural_id
-           enddo
-        enddo
-     enddo
+    enddo
   endif
 
 end subroutine StructuredGridMapIndices

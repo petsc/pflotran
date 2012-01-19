@@ -48,7 +48,7 @@ module THC_Aux_module
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
 #ifdef ICE
-    PetscReal, pointer :: ckice(:) ! Thermal conductivity (frozen soil)
+    PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
 #endif
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
@@ -571,8 +571,8 @@ subroutine THCAuxDestroy(aux)
     if (associated(aux%thc_parameter%ckdry)) deallocate(aux%thc_parameter%ckdry)
     nullify(aux%thc_parameter%ckdry)
 #ifdef ICE
-    if (associated(aux%thc_parameter%ckice)) deallocate(aux%thc_parameter%ckice)
-    nullify(aux%thc_parameter%ckice)
+    if (associated(aux%thc_parameter%ckfrozen)) deallocate(aux%thc_parameter%ckfrozen)
+    nullify(aux%thc_parameter%ckfrozen)
 #endif
     if (associated(aux%thc_parameter%sir)) deallocate(aux%thc_parameter%sir)
     nullify(aux%thc_parameter%sir)

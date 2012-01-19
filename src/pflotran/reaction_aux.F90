@@ -1767,7 +1767,7 @@ subroutine SpeciesIndexDestroy(species_idx)
     
   type(species_idx_type), pointer :: species_idx
 
-  deallocate(species_idx)  
+  if (associated(species_idx)) deallocate(species_idx)  
   nullify(species_idx)
 
 end subroutine SpeciesIndexDestroy

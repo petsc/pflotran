@@ -571,7 +571,7 @@ subroutine CondControlAssignTranInitCond(realization)
                   xx_loc_p(offset+dataset_to_idof(idataset))
               enddo
             endif
-            option%iflag = grid%nL2A(local_id)
+            option%iflag = grid%nG2A(grid%nL2G(local_id))
             if (icell == 1) then
               call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                 global_aux_vars(ghosted_id),reaction, &
