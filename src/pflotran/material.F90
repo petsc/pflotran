@@ -28,7 +28,7 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
 #ifdef ICE
-    PetscReal :: thermal_conductivity_ice
+    PetscReal :: thermal_conductivity_frozen
 #endif
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
@@ -95,7 +95,7 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
 #ifdef ICE
-  material_property%thermal_conductivity_ice = 0.d0
+  material_property%thermal_conductivity_frozen = 0.d0
 #endif
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
@@ -183,10 +183,10 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'wet thermal conductivity', &
                            'MATERIAL_PROPERTY')
 #ifdef ICE
-      case('THERMAL_CONDUCTIVITY_ICE') 
+      case('THERMAL_CONDUCTIVITY_FROZEN') 
         call InputReadDouble(input,option, &
-                             material_property%thermal_conductivity_wet)
-        call InputErrorMsg(input,option,'ice thermal conductivity', &
+                             material_property%thermal_conductivity_frozen)
+        call InputErrorMsg(input,option,'frozen thermal conductivity', &
                            'MATERIAL_PROPERTY')
 #endif
       case('PORE_COMPRESSIBILITY') 

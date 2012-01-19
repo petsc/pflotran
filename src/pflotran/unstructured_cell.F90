@@ -34,7 +34,8 @@ module Unstructured_Cell_module
             UCellGetFaceVertices, &
             UCellGetNFaceVertsandVerts, &
             UCellTypeToWord, &
-            UCellFaceTypeToWord
+            UCellFaceTypeToWord, &
+            UCellQuality
             
 contains
 
@@ -449,6 +450,37 @@ end function UCellGetNVertices
 
 ! ************************************************************************** !
 !
+! UCellGetNEdges: Returns number of edges in a cell
+! author: Glenn Hammond
+! date: 01/17/12
+!
+! ************************************************************************** !
+function UCellGetNEdges(cell_type)
+
+  implicit none
+  
+  PetscInt :: cell_type
+  PetscInt :: UCellGetNEdges
+  
+  select case(cell_type)
+    case(HEX_TYPE)
+      UCellGetNEdges = 12
+    case(WEDGE_TYPE)
+      UCellGetNEdges = 9
+    case(PYR_TYPE)
+      UCellGetNEdges = 8
+    case(TET_TYPE)
+      UCellGetNEdges = 6
+    case(QUAD_TYPE)
+      UCellGetNEdges = 4
+    case(TRI_TYPE)
+      UCellGetNEdges = 3
+  end select  
+  
+end function UCellGetNEdges
+
+! ************************************************************************** !
+!
 ! UCellGetNFaces: Returns number of faces in a cell
 ! author: Glenn Hammond
 ! date: 10/24/11
@@ -827,5 +859,235 @@ subroutine UCellGetFaceVertices(option,cell_type,iface,vertex_ids)
   end select
 
 end subroutine UCellGetFaceVertices
+
+! ************************************************************************** !
+!
+! UCellGetEdgeVertices: returns vertex ids of an edge
+! author: Glenn Hammond
+! date: 01/17/12
+!
+! ************************************************************************** !
+subroutine UCellGetEdgeVertices(cell_type,iedge,vertex_ids)
+
+  implicit none
+  
+  PetscInt :: cell_type
+  PetscInt :: iedge
+  PetscInt :: vertex_ids(2)
+  
+  vertex_ids = -999
+  
+  select case(cell_type)
+    case(HEX_TYPE)
+      select case(iedge)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+        case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 1
+        case(5)
+          vertex_ids(1) = 5
+          vertex_ids(2) = 6
+        case(6)
+          vertex_ids(1) = 6
+          vertex_ids(2) = 7
+        case(7)
+          vertex_ids(1) = 7
+          vertex_ids(2) = 8
+        case(8)
+          vertex_ids(1) = 8
+          vertex_ids(2) = 5
+        case(9)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 5
+        case(10)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 6
+        case(11)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 7
+        case(12)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 8
+      end select
+    case(WEDGE_TYPE)
+      select case(iedge)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 1
+        case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 5
+        case(5)
+          vertex_ids(1) = 5
+          vertex_ids(2) = 6
+        case(6)
+          vertex_ids(1) = 6
+          vertex_ids(2) = 4
+        case(7)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 4
+        case(8)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 5
+        case(9)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 6
+       end select
+    case(PYR_TYPE)
+      select case(iedge)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+        case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 1
+        case(5)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 5
+        case(6)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 5
+        case(7)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 5
+        case(8)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 5
+       end select
+    case(TET_TYPE)
+      select case(iedge)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 1
+        case(4)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 4
+        case(5)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 4
+        case(6)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+      end select       
+    case(QUAD_TYPE)
+      select case(iedge)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+        case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 1
+      end select
+    case(TRI_TYPE)
+      select case(iedge)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 1
+      end select
+  end select
+
+end subroutine UCellGetEdgeVertices
+
+! ************************************************************************** !
+!
+! UCellGetEdgeLength: returns length of an edge
+! author: Glenn Hammond
+! date: 01/17/12
+!
+! ************************************************************************** !
+function UCellGetEdgeLength(cell_type,iedge,vertices)
+
+  implicit none
+  
+  PetscInt :: cell_type
+  PetscInt :: iedge
+  type(point_type) :: vertices(*)
+  
+  PetscReal :: UCellGetEdgeLength
+  
+  PetscReal :: len_x, len_y, len_z
+  PetscInt :: vertex_ids(2)
+  
+  call UCellGetEdgeVertices(cell_type,iedge,vertex_ids)
+  
+  len_x = vertices(vertex_ids(1))%x-vertices(vertex_ids(2))%x
+  len_y = vertices(vertex_ids(1))%y-vertices(vertex_ids(2))%y
+  len_z = vertices(vertex_ids(1))%z-vertices(vertex_ids(2))%z
+  UCellGetEdgeLength = sqrt(len_x*len_x+len_y*len_y+len_z*len_z)
+
+end function UCellGetEdgeLength
+
+! ************************************************************************** !
+!
+! UCellQuality: returns vertex ids of a face
+! author: Glenn Hammond
+! date: 01/17/12
+!
+! ************************************************************************** !
+function UCellQuality(cell_type,vertices,option)
+
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: cell_type
+  type(point_type) :: vertices(*)
+  type(option_type) :: option
+  
+  PetscReal :: UCellQuality
+  
+  PetscInt :: iedge
+  PetscReal :: max_side, min_side
+  PetscReal :: len
+
+  max_side = -1.d20
+  min_side = 1.d20
+  do iedge = 1, UCellGetNVertices(cell_type,option)
+    len = UCellGetEdgeLength(cell_type,iedge,vertices)
+    if (len > max_side) max_side = len
+    if (len < min_side) min_side = len
+  enddo
+  
+  UCellQuality = max_side / min_side
+
+end function UCellQuality
 
 end module Unstructured_Cell_module

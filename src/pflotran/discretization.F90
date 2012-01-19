@@ -256,19 +256,15 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
             ny = 1 ! cylindrical and spherical have 1 cell in Y
             if (structured_grid_itype /= CYLINDRICAL_GRID) nz = 1 ! spherical has 1 cell in Z
           endif
-        case('ORIG','ORIGIN')
+        case('ORIGIN')
           call InputReadDouble(input,option,discretization%origin(X_DIRECTION))
           call InputErrorMsg(input,option,'X direction','Origin')
           call InputReadDouble(input,option,discretization%origin(Y_DIRECTION))
           call InputErrorMsg(input,option,'Y direction','Origin')
           call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
           call InputErrorMsg(input,option,'Z direction','Origin')        
-        case('FILE')
-        case ('GRAVITY')
-        case ('INVERT_Z')
-        case('DXYZ')
-          call InputSkipToEND(input,option,word) 
-        case('BOUNDS')
+        case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX')
+        case('DXYZ','BOUNDS')
           call InputSkipToEND(input,option,word) 
         case default
           option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -277,10 +273,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
       end select 
     else ! should be the second time it is read
       select case(trim(word))
-        case('TYPE')
-        case('NXYZ')
-        case('ORIG','ORIGIN')
-        case('FILE')
+        case('TYPE','NXYZ','ORIGIN','FILE')
         case('DXYZ')
           select case(discretization%itype)
             case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -424,10 +417,14 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
             write(option%fid_out,'(/," *GRAV",/, &
               & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
               & )') option%gravity(1:3)
-        case ('INVERT_Z')
-          if (associated(grid%structured_grid)) then
-            grid%structured_grid%invert_z_axis = PETSC_TRUE
+        case ('MAX_CELLS_SHARING_A_VERTEX')
+          if (associated(discretization%grid%unstructured_grid)) then
+            call InputReadInt(input,option,discretization%grid% &
+                              unstructured_grid%max_cells_sharing_a_vertex)
+            call InputErrorMsg(input,option,'max_cells_sharing_a_vertex', &
+                               'GRID')
           endif          
+        case ('INVERT_Z')
         case default
           option%io_buffer = 'Keyword: ' // trim(word) // &
                    ' not recognized in DISCRETIZATION, second read.'
@@ -445,7 +442,9 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         call printErrMsg(option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
         grid => GridCreate()
+#ifdef SURFACE_FLOW
         grid2=> GridCreate()
+#endif
         select case(discretization%itype)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UGridCreate()

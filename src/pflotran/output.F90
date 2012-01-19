@@ -314,6 +314,7 @@ function OutputFilename(output_option,option,suffix,optional_string)
             '-' // &
             trim(optional_string) // &
             trim(OutputFilenameID(output_option,option)) // &
+            '.' // &
             suffix
   endif
   
@@ -584,7 +585,7 @@ subroutine OutputTecplotBlock(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
@@ -1040,7 +1041,7 @@ subroutine OutputTecplotFEBrick(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
@@ -1905,7 +1906,7 @@ subroutine OutputTecplotPoint(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // &
@@ -2316,7 +2317,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   output_option => realization%output_option
   discretization => realization%discretization
   
-  filename = OutputFilename(output_option,option,'.tec','vel-')
+  filename = OutputFilename(output_option,option,'tec','vel-')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
@@ -3314,7 +3315,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   grid => realization%patch%grid
   
   local_id = region%cell_ids(icell)
-  write(cell_string,*) grid%nL2A(region%cell_ids(icell))+1 ! nL2A is zero-based
+  write(cell_string,*) grid%nG2A(grid%nL2G(region%cell_ids(icell)))
   cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
 
   ! add coordinate of cell center
