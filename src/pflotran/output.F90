@@ -314,6 +314,7 @@ function OutputFilename(output_option,option,suffix,optional_string)
             '-' // &
             trim(optional_string) // &
             trim(OutputFilenameID(output_option,option)) // &
+            '.' // &
             suffix
   endif
   
@@ -584,7 +585,7 @@ subroutine OutputTecplotBlock(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
@@ -1040,7 +1041,7 @@ subroutine OutputTecplotFEBrick(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
@@ -1905,7 +1906,7 @@ subroutine OutputTecplotPoint(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // &
@@ -2316,7 +2317,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   output_option => realization%output_option
   discretization => realization%discretization
   
-  filename = OutputFilename(output_option,option,'.tec','vel-')
+  filename = OutputFilename(output_option,option,'tec','vel-')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
