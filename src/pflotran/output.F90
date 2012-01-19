@@ -8489,7 +8489,7 @@ subroutine OutputMassBalanceNew(realization)
           endif
 
         case(MPH_MODE)
-        ! print out cumulative H2O & CO2 fluxes
+        ! print out cumulative H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
@@ -8507,7 +8507,7 @@ subroutine OutputMassBalanceNew(realization)
             endif
           enddo
           
-        ! print out H2O & CO2 fluxes
+        ! print out H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections

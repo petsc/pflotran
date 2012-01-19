@@ -305,7 +305,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
     do ispec = 1,option%nflowspec
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
         miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec)* &
-        global_aux_vars(ghosted_id)%den_kg(1)* &
+!       global_aux_vars(ghosted_id)%den_kg(1)* &
+        global_aux_vars(ghosted_id)%den(1)* &
         porosity_loc_p(ghosted_id)*volume_p(local_id)
     enddo
   enddo
