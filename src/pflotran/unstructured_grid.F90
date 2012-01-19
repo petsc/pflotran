@@ -78,6 +78,10 @@ module Unstructured_Grid_module
     ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
     Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
     Vec :: local_vec ! local vec (includes local and ghosted cells), local ordering
+#ifdef SURFACE_FLOW
+    VecScatter :: scatter_bet_grids ! scatter context between surface and subsurface
+                                    ! grids
+#endif
   end type ugdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -150,7 +154,9 @@ function UGDMCreate()
   ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
   ugdm%local_vec = 0
-
+#ifdef SURFACE_FLOW
+  ugdm%scatter_bet_grids = 0
+#endif
   UGDMCreate => ugdm
 
 end function UGDMCreate
@@ -530,7 +536,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     ! read for other processors
     temp_int_array = -999
     num_to_read = unstructured_grid%nmax
-    write(*,*),'num_to_read: ',num_to_read
     do icell = 1, num_to_read
       ! read in the vertices defining the grid cell
       call InputReadFlotranString(input,option)
@@ -554,7 +559,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
         call InputReadInt(input,option,temp_int_array(ivertex,icell))
         call InputErrorMsg(input,option,'vertex id',card)
       enddo
-      write(*,'(9I5)'),icell,temp_int_array(:,icell)
     enddo
   endif
 
@@ -578,7 +582,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     do irank = 0, option%mycommsize-1
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
-      write(*,*),'vert num_to_read: ',num_to_read
       do ivertex = 1, num_to_read
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
@@ -586,7 +589,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadDouble(input,option,temp_real_array(idir,ivertex))
           call InputErrorMsg(input,option,'vertex coordinate',card)
         enddo
-        write(*,'(1I5,3F5.2)'),ivertex,temp_real_array(:,ivertex)
       enddo
       
       if (irank == option%io_rank) then
@@ -674,7 +676,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
           call InputErrorMsg(input,option,'vertex id',card)
         enddo
-        write(*,'(9I5)'),icell,temp_int_array(:,icell)
       enddo
 
       ! if the faces reside on io_rank
@@ -4263,7 +4264,6 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
   cell_ids(:) = temp_int(1,1:mapped_face_count)
   face_ids(:) = temp_int(2,1:mapped_face_count)
-  deallocate(temp_int)
 
   call MatDestroy(Mat_vert_to_face,ierr)
   call VecDestroy(Face_vec,ierr)
@@ -4543,6 +4543,9 @@ subroutine UGridDMDestroy(ugdm)
     call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb,ierr)
   call VecDestroy(ugdm%global_vec,ierr)
   call VecDestroy(ugdm%local_vec,ierr)
+#ifdef SURFACE_FLOW
+  call VecScatterDestroy(ugdm%scatter_bet_grids,ierr)
+#endif
   deallocate(ugdm)
   nullify(ugdm)
 

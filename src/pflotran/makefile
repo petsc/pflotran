@@ -96,7 +96,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  GAUTAM_FLAGS = -DOS_STATISTICS -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -g -DREARRANGE_CONN -DDMGET #-DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLEL_SIDESET #-DPARALLELIO_LIB #-DGEH_DEBUG -DGB_DEBUG -DREARRANGE_CONN 
+  GAUTAM_FLAGS = -DOS_STATISTICS -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -g -DREARRANGE_CONN -DPARALLEL_SIDESET #-DUGRID_DEBUG -DSURFACE_FLOW #-DDMGET #-DPARALLELIO_LIB #-DGEH_DEBUG -DGB_DEBUG -DREARRANGE_CONN 
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
@@ -217,6 +217,7 @@ common_obj = ${common_src}option.o \
 	${common_src}simulation.o \
 	${common_src}stochastic_aux.o \
 	${common_src}stochastic.o \
+	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}output.o \
 	${common_src}init.o
@@ -285,7 +286,7 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	strata.o waypoint.o field.o hydrostatic.o debug.o \
 	observation.o velocity.o \
 	patch.o level.o discretization.o reaction.o reaction_aux.o \
-	fluid.o saturation_function.o dataset.o
+	fluid.o saturation_function.o dataset.o surface_field.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
 	auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
 	field.o saturation.o
@@ -353,7 +354,7 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
-surface_flow.o : realization.o
+surface_flow.o : realization.o surface_field.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o

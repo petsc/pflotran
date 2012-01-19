@@ -554,6 +554,9 @@ end interface
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
+#ifdef SURFACE_FLOW
+  call RealizationMapSurfSubsurfaceGrids(realization)
+#endif
   call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
