@@ -121,6 +121,11 @@ REGION top1cell
   GRID unstructured
 END
 
+REGION top
+  FILE top412.ss
+  GRID unstructured
+END
+
 :=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
