@@ -1694,11 +1694,9 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha)   !unfrozen soil Kersten number
   Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha)
   
-  dKe_dp_up = (Dk_up - Dk_dry_up)*alpha* &
-              (global_aux_var_up%sat(1) + epsilon)**(alpha - 1.d0)* &
+  dKe_dp_up = alpha*(global_aux_var_up%sat(1) + epsilon)**(alpha - 1.d0)* &
                aux_var_up%dsat_dp
-  dKe_dp_dn = (Dk_dn - Dk_dry_dn)*alpha* &
-              (global_aux_var_dn%sat(1) + epsilon)**(alpha - 1.d0)* &
+  dKe_dp_dn = alpha*(global_aux_var_dn%sat(1) + epsilon)**(alpha - 1.d0)* &
                aux_var_dn%dsat_dp
   
 #ifdef ICE
