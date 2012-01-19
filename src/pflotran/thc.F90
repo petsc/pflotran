@@ -2137,7 +2137,9 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
  
+#ifdef ICE
  print *, Ke_up, global_aux_var_up%sat(1), Ke_fr_up, Dk_eff_up
+#endif
 
 end subroutine THCFlux
 
