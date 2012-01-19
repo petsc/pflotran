@@ -148,7 +148,7 @@ subroutine THCSetupPatch(realization)
   allocate(patch%aux%THC%thc_parameter%ckwet(size(realization%material_property_array)))
   allocate(patch%aux%THC%thc_parameter%ckdry(size(realization%material_property_array)))
 #ifdef ICE
-  allocate(patch%aux%THC%thc_parameter%ckice(size(realization%material_property_array)))
+  allocate(patch%aux%THC%thc_parameter%ckfrozen(size(realization%material_property_array)))
 #endif
 
   !Copy the values in the thc_parameter from the global realization 
@@ -162,8 +162,8 @@ subroutine THCSetupPatch(realization)
     patch%aux%THC%thc_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_dry
 #ifdef ICE
-    patch%aux%THC%thc_parameter%ckice(realization%material_property_array(i)%ptr%id) = &
-      realization%material_property_array(i)%ptr%thermal_conductivity_ice
+    patch%aux%THC%thc_parameter%ckfrozen(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%thermal_conductivity_frozen
 #endif
 
   enddo 
@@ -2136,6 +2136,8 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   Res(option%nflowdof) = fluxe * option%flow_dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
+ 
+ print *, Ke_up, global_aux_var_up%sat(1), Ke_fr_up, Dk_eff_up
 
 end subroutine THCFlux
 
@@ -3252,8 +3254,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       Dk_dry_dn = thc_parameter%ckdry(ithrm_dn)
 
 #ifdef ICE
-      Dk_ice_up = thc_parameter%ckice(ithrm_up)
-      DK_ice_dn = thc_parameter%ckice(ithrm_dn)
+      Dk_ice_up = thc_parameter%ckfrozen(ithrm_up)
+      DK_ice_dn = thc_parameter%ckfrozen(ithrm_dn)
 #else
       Dk_ice_up = Dk_dry_up
       Dk_ice_dn = Dk_dry_dn
@@ -3751,8 +3753,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       Dk_dry_dn = thc_parameter%ckdry(ithrm_dn)
 
 #ifdef ICE
-      Dk_ice_up = thc_parameter%ckice(ithrm_up)
-      DK_ice_dn = thc_parameter%ckice(ithrm_dn)
+      Dk_ice_up = thc_parameter%ckfrozen(ithrm_up)
+      DK_ice_dn = thc_parameter%ckfrozen(ithrm_dn)
 #else
       Dk_ice_up = Dk_dry_up
       Dk_ice_dn = Dk_dry_dn
