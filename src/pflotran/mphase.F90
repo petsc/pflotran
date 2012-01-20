@@ -1726,6 +1726,8 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
+  PetscReal :: Neuman_total_mass_flux, Neuman_mass_flux_spec(option%nflowspec)
+  PetscReal :: mol_total_flux(option%nphase)
   
   fluxm = 0.d0
   fluxe = 0.d0
@@ -1769,40 +1771,55 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
             v_darcy = Dq * ukvr * dphi
           endif
         endif
+        q = v_darcy * area 
+        vv_darcy(np) = v_darcy
+        uh=0.D0
+        uxmol=0.D0
+        mol_total_flux(np) = q*density_ave  
+        if (v_darcy >= 0.D0) then
+!     if(option%use_isothermal == PETSC_FALSE) &
+          uh = aux_var_up%h(np)
+          uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+        else
+!     if(option%use_isothermal == PETSC_FALSE) &
+          uh = aux_var_dn%h(np)
+          uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
+        endif
+ 
      
       case(NEUMANN_BC)
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
-          v_darcy = aux_vars(MPH_PRESSURE_DOF)
+          Neuman_total_mass_flux = aux_vars(MPH_PRESSURE_DOF)
           if (v_darcy > 0.d0) then 
             density_ave = aux_var_up%den(np)
           else 
             density_ave = aux_var_dn%den(np)
           endif
+          if(np == 1)then
+            Neuman_mass_flux_spec(np)= &
+            Neuman_total_mass_flux * (1D0-aux_vars(MPH_CONCENTRATION_DOF))
+            uxmol(1) =1D0; uxmol(2)=0D0
+            mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWH2O
+            uh = aux_var_dn%h(np)
+          else
+            Neuman_mass_flux_spec(np)= &
+            Neuman_total_mass_flux *aux_vars(MPH_CONCENTRATION_DOF)
+            uxmol(1) =0D0; uxmol(2)=1D0
+            mol_total_flux(np) = Neuman_mass_flux_spec(np)/FMWCO2
+            uh = aux_var_dn%h(np)
         endif
-
+        vv_darcy(np)=mol_total_flux(np)/density_ave
+      endif 
     end select
      
-    q = v_darcy * area 
-    vv_darcy(np) = v_darcy
-    uh=0.D0
-    uxmol=0.D0
      
-    if (v_darcy >= 0.D0) then
-!     if(option%use_isothermal == PETSC_FALSE) &
-      uh = aux_var_up%h(np)
-      uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-    else
-!     if(option%use_isothermal == PETSC_FALSE) &
-      uh = aux_var_dn%h(np)
-      uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
-    endif
     
     do ispec=1, option%nflowspec 
-      fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+      fluxm(ispec) = fluxm(ispec) + mol_total_flux(np)*uxmol(ispec)
     enddo
       !if(option%use_isothermal == PETSC_FALSE) &
-    fluxe = fluxe + q*density_ave*uh
+    fluxe = fluxe + mol_total_flux(np)*uh
 !   print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
   enddo
   
@@ -2650,10 +2667,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
             if(idof>=MPH_TEMPERATURE_DOF)then
               xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
             endif 
-          case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          case(ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
             iphase = int(iphase_loc_p(ghosted_id))
+          case(NEUMANN_BC)  
+        
         end select
       enddo
 
@@ -3237,7 +3256,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              delxbc(idof)=mphase%delx(idof,ghosted_id)
           endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+       case(ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
@@ -3250,35 +3269,36 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     select case(boundary_condition%flow_condition%itype(MPH_CONCENTRATION_DOF))
     case(DIRICHLET_BC,SEEPAGE_BC)
        iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
-    case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+    case(ZERO_GRADIENT_BC,HYDROSTATIC_BC)
        iphasebc=int(iphase_loc_p(ghosted_id))                               
     end select
- 
-    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-        global_aux_vars_bc(sum_connection), iphasebc,&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-         realization%fluid_properties, option)
-    call MphaseAuxVarCompute_Winc(xxbc,delxbc,&
-         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
-         global_aux_vars_bc(sum_connection),iphasebc,&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-         realization%fluid_properties,option)
+    if(boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF)/=NEUMANN_BC)then
+      call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+           global_aux_vars_bc(sum_connection), iphasebc,&
+           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+           realization%fluid_properties, option)
+      call MphaseAuxVarCompute_Winc(xxbc,delxbc,&
+           aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
+           global_aux_vars_bc(sum_connection),iphasebc,&
+           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+           realization%fluid_properties,option)
     
-    do nvar=1,option%nflowdof
-       call MphaseBCFlux(boundary_condition%flow_condition%itype, &
-         boundary_condition%flow_aux_real_var(:,iconn), &
-         aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
-         aux_vars(ghosted_id)%aux_var_elem(nvar), &
-         porosity_loc_p(ghosted_id), &
-         tor_loc_p(ghosted_id), &
-         mphase_parameter%sir(:,icap_dn), &
-         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
-         cur_connection_set%area(iconn), &
-         distance_gravity,option, &
-         vv_darcy,Res)
-       ResInc(local_id,1:option%nflowdof,nvar) = &
-            ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
-    enddo
+      do nvar=1,option%nflowdof
+         call MphaseBCFlux(boundary_condition%flow_condition%itype, &
+           boundary_condition%flow_aux_real_var(:,iconn), &
+           aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
+           aux_vars(ghosted_id)%aux_var_elem(nvar), &
+           porosity_loc_p(ghosted_id), &
+           tor_loc_p(ghosted_id), &
+           mphase_parameter%sir(:,icap_dn), &
+           cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+           cur_connection_set%area(iconn), &
+           distance_gravity,option, &
+           vv_darcy,Res)
+         ResInc(local_id,1:option%nflowdof,nvar) = &
+              ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+        enddo
+      endif
  enddo
     boundary_condition => boundary_condition%next
  enddo
