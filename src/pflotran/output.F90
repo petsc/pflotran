@@ -307,7 +307,7 @@ function OutputFilename(output_option,option,suffix,optional_string)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    OutputFilename = trim(output_option%plot_name) // suffix
+    OutputFilename = trim(output_option%plot_name) // '.' // suffix
   else  
     OutputFilename = trim(option%global_prefix) // &
             trim(option%group_prefix) // &
