@@ -82,8 +82,12 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
   ! Weighted harmonic mean of dispersivity divided by distance
   !   disp_up/dn = dispersivity
   !   dist_up/dn = distance
-  disp_ave_over_dist = (disp_up*disp_dn) / &
-                       (disp_up*dist_dn+disp_dn*dist_up)
+  if (disp_up > 0.d0 .or. disp_dn > 0.d0) then
+    disp_ave_over_dist = (disp_up*disp_dn) / &
+                         (disp_up*dist_dn+disp_dn*dist_up)
+  else
+    disp_ave_over_dist = 0.d0
+  endif
 
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up 
