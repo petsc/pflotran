@@ -1,0 +1,212 @@
+MODE IMMIS
+
+: =================== discretization ===================
+GRID
+  TYPE structured
+  ORIGIN 0.0d0 0.0d0 0.0d0
+  : final point: 0.2d0 0.001d0 .001d0
+  NXYZ 20 1 1
+  DXYZ ! 1 mm
+    0.01d0
+    0.001d0
+    0.001d0
+  /
+END
+
+: =================== time ===================
+TIME
+  FINAL_TIME 100.d0 s
+  MAXIMUM_TIMESTEP_SIZE 10.d0 s
+/
+
+:=========================== output options ===================================
+OUTPUT
+FORMAT HDF5
+PERIODIC TIME 10. s
+POROSITY
+VELOCITIES
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+: note these must be provided to accurately turn a viscosity into a tau
+: within the LBM
+REFERENCE_TEMPERATURE 50.d0 C
+REFERENCE_PRESSURE 2.d6 Pa
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.65d0
+TORTUOSITY 1.d-1
+ROCK_DENSITY 2.65E3
+SPECIFIC_HEAT 1E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5 
+SATURATION_FUNCTION sf2
+PERMEABILITY
+PERM_X 1.d-14
+PERM_Y 1.d-14
+PERM_Z 1.d-14
+/
+/
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf2
+PERMEABILITY_FUNCTION_TYPE NMT_EXP
+SATURATION_FUNCTION_TYPE NMT_EXP
+RESIDUAL_SATURATION LIQUID_PHASE 0.1
+RESIDUAL_SATURATION GAS_PHASE 0.0
+LAMBDA 0.762d0
+ALPHA 7.5d-4
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 2.d0
+POWER 7.d0
+/
+
+SATURATION_FUNCTION default
+/
+
+:=========================== regions ==========================================
+: =================== regions ===================
+REGION all
+  COORDINATES
+    0.0d0 0.0d0 0.0d0
+    0.2d0 0.001d0 0.001d0
+  /
+/
+
+REGION boundary_xm
+  COORDINATES
+    0.0d0 0.0d0 0.0d0
+    0.0d0 0.001d0 0.001d0
+  /
+  FACE WEST
+/
+
+REGION boundary_xm_well
+  COORDINATES
+    0.1d0 0.01d0 0.0d0
+    0.1d0 0.055d0 0.001d0
+  /
+/
+
+REGION boundary_xp
+  COORDINATES
+    0.2d0 0.0d0 0.0d0
+    0.2d0 0.001d0 0.001d0
+  /
+  FACE EAST
+/
+
+REGION boundary_ym
+  COORDINATES
+    0.0d0 0.0d0 0.0d0
+    0.2d0 0.0d0 0.001d0
+  /
+  FACE SOUTH
+/
+
+REGION boundary_yp
+  COORDINATES
+    0.0d0 0.001d0 0.0d0
+    0.2d0 0.001d0 0.001d0
+  /
+  FACE NORTH
+/
+
+REGION boundary_zm
+  COORDINATES
+    0.0d0 0.0d0 0.0d0
+    0.2d0 0.001d0 0.0d0
+  /
+  FACE BOTTOM
+/
+
+REGION boundary_zp
+  COORDINATES
+    0.0d0 0.0d0 0.001d0
+    0.2d0 0.001d0 0.001d0
+  /
+  FACE TOP
+/
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+:UNITS Pa,C,M,s
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+ENTHALPY dirichlet
+CONCENTRATION dirichlet
+/
+IPHASE 1
+PRESSURE 2d7 2d7
+TEMPERATURE 50 C
+ENTHALPY 0.d0 0.d0
+CONCENTRATION 1d-6 M
+/
+
+FLOW_CONDITION outlet
+:UNITS Pa,C,M,yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+ENTHALPY dirichlet
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50
+CONCENTRATION 1d-6
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION inlet
+:UNITS Pa,C,M,yr
+TYPE
+PRESSURE dirichlet
+:FLOW neumann
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+ENTHALPY dirichlet
+/
+IPHASE 1
+PRESSURE 2.1D7 2.1D7
+TEMPERATURE 50
+CONCENTRATION 1.d0
+ENTHALPY 0.d0 0.d0
+:FLOW 0d0 1d-4
+/
+
+
+
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: top boundary condition
+BOUNDARY_CONDITION boundary_xm
+FLOW_CONDITION inlet
+REGION boundary_xm
+END
+
+: top boundary condition
+BOUNDARY_CONDITION boundary_xp
+FLOW_CONDITION outlet
+REGION boundary_xp
+END
+
+
+:
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION all
+MATERIAL soil1
+END

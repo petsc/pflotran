@@ -3889,7 +3889,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
@@ -3958,13 +3958,13 @@ subroutine THCCreateZeroArray(patch,option)
       if (patch%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%nflowdof
       else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
         n_zero_rows = n_zero_rows + 1
 #endif
       endif
     enddo
   else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
   endif
@@ -3986,7 +3986,7 @@ subroutine THCCreateZeroArray(patch,option)
           zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
       else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
         ncount = ncount + 1
         zero_rows_local(ncount) = local_id*option%nflowdof
         zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
@@ -3994,7 +3994,7 @@ subroutine THCCreateZeroArray(patch,option)
       endif
     enddo
   else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       ncount = ncount + 1
