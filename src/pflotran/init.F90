@@ -1269,6 +1269,13 @@ subroutine InitReadInput(simulation)
         call InputErrorMsg(input,option,'vely','UNIFORM_VELOCITY')
         call InputReadDouble(input,option,velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
+        ! read units, if present
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          units_conversion = UnitsConvertToInternal(word,option) 
+          velocity_dataset%values(:,1) = velocity_dataset%values(:,1) * &
+                                         units_conversion
+        endif
         call VelocityDatasetVerify(option,velocity_dataset)
         realization%velocity_dataset => velocity_dataset
       
