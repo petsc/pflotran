@@ -1741,18 +1741,18 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #ifdef ICE
 
   dDk_dt_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up*dKe_dt_up + &
-              Dk_ice_up*dKe_fr_dt_up + (1.d0 - dKe_dt_up - dKe_fr_dt_up)* &
+              Dk_ice_up*dKe_fr_dt_up + (- dKe_dt_up - dKe_fr_dt_up)* &
               Dk_dry_up)
   dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
-              Dk_ice_dn*dKe_fr_dt_dn + (1.d0 - dKe_dt_dn - dKe_fr_dt_dn)* &
+              Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
               Dk_dry_dn)
               
   dDk_dp_up = Dk**2/Dk_eff_up**2*dd_up*(Dk_up*dKe_dp_up + &
-              Dk_ice_up*dKe_fr_dp_up + (1.d0 - dKe_dp_up - dKe_fr_dp_up)* &
+              Dk_ice_up*dKe_fr_dp_up + (- dKe_dp_up - dKe_fr_dp_up)* &
               Dk_dry_up)
               
   dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
-              Dk_ice_dn*dKe_fr_dp_dn + (1.d0 - dKe_dp_dn - dKe_fr_dp_dn)* &
+              Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
               Dk_dry_dn)  
 
 #else
@@ -1766,9 +1766,11 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #endif  
     
   !  cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
-  Jup(option%nflowdof,1) = area*(global_aux_var_up%temp(1) - &
+  Jup(option%nflowdof,1) = Jup(option%nflowdof,1) + &
+                           area*(global_aux_var_up%temp(1) - &
                            global_aux_var_dn%temp(1))*dDk_dp_up
-  Jdn(option%nflowdof,1) = area*(global_aux_var_up%temp(1) - &
+  Jdn(option%nflowdof,1) = Jdn(option%nflowdof,1) + &
+                           area*(global_aux_var_up%temp(1) - &
                            global_aux_var_dn%temp(1))*dDk_dp_dn
                            
   Jup(option%nflowdof,2) = Jup(option%nflowdof,2) + Dk*area + &
@@ -1879,12 +1881,12 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn,res_pert_up)
       call THCFlux(aux_var_up,global_aux_var_up, &
-                        por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                        aux_var_pert_dn,global_aux_var_pert_dn, &
-                        por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                        area,dist_gravity,upweight, &
-                        option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
-                        Dk_dry_dn,Dk_ice_up,Dk_ice_dn,res_pert_dn)
+                   por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                   aux_var_pert_dn,global_aux_var_pert_dn, &
+                   por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+                   area,dist_gravity,upweight, &
+                   option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
+                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn,res_pert_dn)
       J_pert_up(:,ideriv) = (res_pert_up(:)-res(:))/pert_up
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
     enddo
@@ -3887,7 +3889,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
@@ -3956,13 +3958,13 @@ subroutine THCCreateZeroArray(patch,option)
       if (patch%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%nflowdof
       else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
         n_zero_rows = n_zero_rows + 1
 #endif
       endif
     enddo
   else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
   endif
@@ -3984,7 +3986,7 @@ subroutine THCCreateZeroArray(patch,option)
           zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
       else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
         ncount = ncount + 1
         zero_rows_local(ncount) = local_id*option%nflowdof
         zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
@@ -3992,7 +3994,7 @@ subroutine THCCreateZeroArray(patch,option)
       endif
     enddo
   else
-#ifdef ISOTHERMAL
+#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       ncount = ncount + 1

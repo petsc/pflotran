@@ -7769,7 +7769,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       area = cur_connection_set%area(iconn)* &
              cur_connection_set%dist(direction,iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          patch%boundary_velocities(1,sum_connection)* &
+                          patch%boundary_velocities(iphase,sum_connection)* &
                           area
       sum_area(local_id) = sum_area(local_id) + dabs(area)
     enddo
