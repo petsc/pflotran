@@ -2285,7 +2285,9 @@ subroutine assignMaterialPropToRegions(realization)
             call printErrMsg(option)
           endif
         else if (material_id < -998) then 
-          option%io_buffer = 'Uninitialized material id in patch'
+          write(dataset_name,*) grid%nG2A(ghosted_id)
+          option%io_buffer = 'Uninitialized material id in patch at cell ' // &
+                             trim(adjustl(dataset_name))
           call printErrMsg(option)
         else if (material_id > size(realization%material_property_array)) then
           write(option%io_buffer,*) material_id

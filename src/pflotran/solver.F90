@@ -210,7 +210,7 @@ subroutine SolverSetSNESOptions(solver)
   call KSPGetType(solver%ksp,solver%ksp_type,ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr)
   
-  if (solver%pc_type == PCLU .and. &
+  if ((solver%pc_type == PCLU .or. solver%pc_type == PCILU) .and. &
       solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
     call PCFactorSetZeroPivot(solver%pc,solver%linear_lu_zero_pivot_tol,ierr)
   endif
