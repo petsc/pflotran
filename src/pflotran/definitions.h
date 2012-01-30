@@ -246,6 +246,7 @@ PetscInt, parameter :: AGE =                     46
 PetscInt, parameter :: STATE =                   47
 PetscInt, parameter :: PROCESSOR_ID =            48
 PetscInt, parameter :: ICE_SATURATION =          49
+PetscInt, parameter :: TOTAL_BULK =              50
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

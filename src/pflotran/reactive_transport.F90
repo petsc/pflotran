@@ -6054,6 +6054,20 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     enddo  
   endif
     
+  if (reaction%print_total_bulk) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        string = trim(reaction%primary_species_names(i)) // '_total_bulk'
+        call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+        call OutputOptionAddPlotVariable(realization%output_option, &
+                                         reaction%print_tot_conc_type,i, &
+                                         ZERO_INTEGER)
+#endif
+      endif
+    enddo
+  endif
+  
   if (reaction%print_act_coefs) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then

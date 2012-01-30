@@ -3092,6 +3092,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_colloid = PETSC_TRUE
       case('TOTAL_SORBED')
         reaction%print_total_sorb = PETSC_TRUE
+      case('TOTAL_BULK')
+        reaction%print_total_bulk = PETSC_TRUE
       case('TOTAL_SORBED_MOBILE')
         reaction%print_total_sorb_mobile = PETSC_TRUE
       case('FREE_ION')

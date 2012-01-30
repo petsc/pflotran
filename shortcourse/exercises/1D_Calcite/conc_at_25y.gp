@@ -1,4 +1,5 @@
 reset
+set term windows
 set font "Helvetica, 20"
 set lmargin 22
 set bmargin 5

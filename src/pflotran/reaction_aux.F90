@@ -233,6 +233,7 @@ module Reaction_Aux_module
     PetscBool :: print_act_coefs
     PetscBool :: print_total_component
     PetscBool :: print_free_ion
+    PetscBool :: print_total_bulk ! total in aq and sorbed phases
     PetscBool :: initialize_with_molality
     PetscBool :: print_age
     PetscInt :: print_free_conc_type
@@ -558,6 +559,7 @@ function ReactionCreate()
   reaction%print_age = PETSC_FALSE
   reaction%print_total_component = PETSC_TRUE
   reaction%print_free_ion = PETSC_FALSE
+  reaction%print_total_bulk = PETSC_FALSE
 
   reaction%initialize_with_molality = PETSC_FALSE
   reaction%print_free_conc_type = 0

@@ -1911,7 +1911,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
          
       select case(ivar)
         case(PH)
@@ -1981,6 +1981,32 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
           enddo
+        case(TOTAL_BULK) ! mol/m^3 bulk
+          ! add in total molarity and convert to mol/m^3 bulk
+          call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase) * &
+              vec_ptr2(ghosted_id) * &
+              patch%aux%Global%aux_vars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
+          enddo
+          call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          ! add in total sorbed.  already in mol/m^3 bulk
+          if (patch%reaction%neqsorb > 0) then
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              if (patch%reaction%kinmr_nrate > 0) then
+                do irate = 1, patch%reaction%kinmr_nrate
+                  vec_ptr(local_id) = vec_ptr(local_id) + &
+                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+                enddo            
+              else
+                vec_ptr(local_id) = vec_ptr(local_id) + &
+                  patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+              endif
+            enddo
+          endif
         case(MINERAL_VOLUME_FRACTION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar)
@@ -2413,7 +2439,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
          
       select case(ivar)
         case(PH)
@@ -2435,6 +2461,26 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
         case(TOTAL_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
+        case(TOTAL_BULK) ! mol/m^3 bulk
+          ! add in total molarity and convert to mol/m^3 bulk
+          call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          value = &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase) * &
+              vec_ptr2(ghosted_id) * &
+              patch%aux%Global%aux_vars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
+          call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          ! add in total sorbed.  already in mol/m^3 bulk
+          if (patch%reaction%neqsorb > 0) then
+            if (patch%reaction%kinmr_nrate > 0) then
+              do irate = 1, patch%reaction%kinmr_nrate
+                value = value + &
+                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+              enddo            
+            else
+              value = value + &
+                patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+            endif
+          endif          
         case(MINERAL_VOLUME_FRACTION)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
         case(MINERAL_RATE)
