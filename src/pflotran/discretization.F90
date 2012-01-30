@@ -256,19 +256,15 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
             ny = 1 ! cylindrical and spherical have 1 cell in Y
             if (structured_grid_itype /= CYLINDRICAL_GRID) nz = 1 ! spherical has 1 cell in Z
           endif
-        case('ORIG','ORIGIN')
+        case('ORIGIN')
           call InputReadDouble(input,option,discretization%origin(X_DIRECTION))
           call InputErrorMsg(input,option,'X direction','Origin')
           call InputReadDouble(input,option,discretization%origin(Y_DIRECTION))
           call InputErrorMsg(input,option,'Y direction','Origin')
           call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
           call InputErrorMsg(input,option,'Z direction','Origin')        
-        case('FILE')
-        case ('GRAVITY')
-        case ('INVERT_Z')
-        case('DXYZ')
-          call InputSkipToEND(input,option,word) 
-        case('BOUNDS')
+        case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX')
+        case('DXYZ','BOUNDS')
           call InputSkipToEND(input,option,word) 
         case default
           option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -277,10 +273,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
       end select 
     else ! should be the second time it is read
       select case(trim(word))
-        case('TYPE')
-        case('NXYZ')
-        case('ORIG','ORIGIN')
-        case('FILE')
+        case('TYPE','NXYZ','ORIGIN','FILE')
         case('DXYZ')
           select case(discretization%itype)
             case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -424,10 +417,14 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
             write(option%fid_out,'(/," *GRAV",/, &
               & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
               & )') option%gravity(1:3)
-        case ('INVERT_Z')
-          if (associated(grid%structured_grid)) then
-            grid%structured_grid%invert_z_axis = PETSC_TRUE
+        case ('MAX_CELLS_SHARING_A_VERTEX')
+          if (associated(discretization%grid%unstructured_grid)) then
+            call InputReadInt(input,option,discretization%grid% &
+                              unstructured_grid%max_cells_sharing_a_vertex)
+            call InputErrorMsg(input,option,'max_cells_sharing_a_vertex', &
+                               'GRID')
           endif          
+        case ('INVERT_Z')
         case default
           option%io_buffer = 'Keyword: ' // trim(word) // &
                    ' not recognized in DISCRETIZATION, second read.'
@@ -445,7 +442,9 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         call printErrMsg(option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
         grid => GridCreate()
+#ifdef SURFACE_FLOW
         grid2=> GridCreate()
+#endif
         select case(discretization%itype)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UGridCreate()
@@ -540,10 +539,8 @@ subroutine DiscretizationCreateDMs(discretization,option)
       call UGridDecompose(discretization%grid%unstructured_grid, &
                           option)
 #ifdef SURFACE_FLOW
-      write(*,'(/,2("=")," UGridDecompose-2D grid ",25("="))')
       call UGridDecompose(discretization%surfgrid%unstructured_grid, &
                           option)
-      write(*,'(/,2("="),25("="))')
 #endif
     case(AMR_GRID)
   end select
@@ -584,12 +581,24 @@ subroutine DiscretizationCreateDMs(discretization,option)
   end select
 
 #ifdef SURFACE_FLOW
+  !-----------------------------------------------------------------------
+  ! Generate the DM objects that will manage communication.
+  !-----------------------------------------------------------------------
   ndof = 1
-  write(*,'(/,2("=")," UGridCreateUGDM-2D",25("="))')
   call UGridCreateUGDM(discretization%surfgrid%unstructured_grid, &
                        discretization%surf_dm_1dof%ugdm,ndof,option)
-  discretization%surfgrid%nlmax = discretization%surfgrid%unstructured_grid%nlmax
-  discretization%surfgrid%ngmax = discretization%surfgrid%unstructured_grid%ngmax
+
+  select case(discretization%itype)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      option%io_buffer = 'Surface Flow implemented for Unstructured grid only'
+      call printErrMsg(option)
+    case(UNSTRUCTURED_GRID)
+      discretization%surfgrid%nlmax = discretization%surfgrid%unstructured_grid%nlmax
+      discretization%surfgrid%ngmax = discretization%surfgrid%unstructured_grid%ngmax
+    case(AMR_GRID)
+      option%io_buffer = 'Surface Flow implemented for Unstructured grid only'
+      call printErrMsg(option)
+  end select
 #endif
 
 end subroutine DiscretizationCreateDMs
@@ -661,9 +670,23 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
           call DMDACreateNaturalVector(dm_ptr%sgdm,vector,ierr)
       end select
     case(UNSTRUCTURED_GRID)
+#ifdef SURFACE_FLOW
+      if(dm_index == SURF_ONEDOF) then
+        ! If surface grid vector needs to be created, pass surface grid
+        call UGridDMCreateVector(discretization%surfgrid%unstructured_grid, &
+                                dm_ptr%ugdm,vector, &
+                                vector_type,option)
+      else
+        call UGridDMCreateVector(discretization%grid%unstructured_grid, &
+                                dm_ptr%ugdm,vector, &
+                                vector_type,option)
+      endif
+#else
       call UGridDMCreateVector(discretization%grid%unstructured_grid, &
                                dm_ptr%ugdm,vector, &
                                vector_type,option)
+#endif
+
     case(AMR_GRID)
       select case(dm_index)
         case(ONEDOF)
@@ -724,6 +747,10 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
       DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
       DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
+#ifdef SURFACE_FLOW
+    case(SURF_ONEDOF)
+      DiscretizationGetDMPtrFromIndex => discretization%surf_dm_1dof
+#endif
 
   end select  
   
@@ -1863,6 +1890,10 @@ subroutine DiscretizationDestroy(discretization)
         call UGridDMDestroy(discretization%dm_nflowdof%ugdm)
       if (associated(discretization%dm_ntrandof%ugdm)) &
         call UGridDMDestroy(discretization%dm_ntrandof%ugdm)
+#ifdef SURFACE_FLOW
+      if (associated(discretization%surf_dm_1dof%ugdm)) &
+        call UGridDMDestroy(discretization%surf_dm_1dof%ugdm)
+#endif
   end select
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)

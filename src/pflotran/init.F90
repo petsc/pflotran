@@ -554,6 +554,9 @@ end interface
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
+#ifdef SURFACE_FLOW
+  call RealizationMapSurfSubsurfaceGrids(realization)
+#endif
   call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
@@ -1266,6 +1269,13 @@ subroutine InitReadInput(simulation)
         call InputErrorMsg(input,option,'vely','UNIFORM_VELOCITY')
         call InputReadDouble(input,option,velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
+        ! read units, if present
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          units_conversion = UnitsConvertToInternal(word,option) 
+          velocity_dataset%values(:,1) = velocity_dataset%values(:,1) * &
+                                         units_conversion
+        endif
         call VelocityDatasetVerify(option,velocity_dataset)
         realization%velocity_dataset => velocity_dataset
       
@@ -2282,7 +2292,9 @@ subroutine assignMaterialPropToRegions(realization)
             call printErrMsg(option)
           endif
         else if (material_id < -998) then 
-          option%io_buffer = 'Uninitialized material id in patch'
+          write(dataset_name,*) grid%nG2A(ghosted_id)
+          option%io_buffer = 'Uninitialized material id in patch at cell ' // &
+                             trim(adjustl(dataset_name))
           call printErrMsg(option)
         else if (material_id > size(realization%material_property_array)) then
           write(option%io_buffer,*) material_id
@@ -3186,7 +3198,7 @@ subroutine readFlowInitialCondition(realization,filename)
       do local_id=1, grid%nlmax
         if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
         if (dabs(vec_p(local_id)) < 1.d-40) then
-          print *,  option%myrank, grid%nL2A(local_id)+1, &
+          print *,  option%myrank, grid%nG2A(grid%nL2G(local_id)), &
                ': Potential error - zero pressure in Initial Condition read from file.'
         endif
         idx = (local_id-1)*option%nflowdof + offset
@@ -3285,7 +3297,7 @@ subroutine readTransportInitialCondition(realization,filename)
         do local_id=1, grid%nlmax
           if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
           if (vec_p(local_id) < 1.d-40) then
-            print *,  option%myrank, grid%nL2A(local_id)+1, &
+            print *,  option%myrank, grid%nG2A(grid%nL2G(local_id)), &
               ': Zero free-ion concentration in Initial Condition read from file.'
           endif
           idx = (local_id-1)*option%ntrandof + offset

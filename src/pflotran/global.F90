@@ -608,8 +608,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
   
   option => realization%option
   field => realization%field
-
-  ! I believe that liquid saturation and density are need for all modes
+  
   ! liquid density
   call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
                              ZERO_INTEGER)
@@ -624,7 +623,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
   select case(option%iflowmode)
-    case(MPH_MODE, IMS_MODE, FLASH2_MODE, THC_MODE,MIS_MODE)
+    case(MPH_MODE,FLASH2_MODE)
       ! Gas density
       call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
                              ZERO_INTEGER)
@@ -666,6 +665,111 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF,time_level)       
+    case(THC_MODE)
+#if 0
+      ! Gas density
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY,time_level)          
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL,time_level)          
+#endif
+ 
+      ! Gas saturation
+      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+                                 ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
+   
+      ! pressure
+      call RealizationGetDataset(realization,field%work,PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+ 
+      ! temperature
+      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
+      
+    case(IMS_MODE)
+      ! Gas density
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY,time_level)          
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL,time_level)          
+ 
+ 
+      ! Gas saturation
+      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+                                 ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
+   
+      ! pressure
+      call RealizationGetDataset(realization,field%work,PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+ 
+      ! temperature
+      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
+
+    case(MIS_MODE)
+      ! Gas density
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY,time_level)          
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL,time_level)          
+ 
+ 
+      ! Gas saturation
+      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+                                 ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
+   
+      ! pressure
+      call RealizationGetDataset(realization,field%work,PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+ 
+      ! temperature
+      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
     case(G_MODE)
   end select
 

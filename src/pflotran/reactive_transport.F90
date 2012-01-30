@@ -240,11 +240,6 @@ subroutine RTSetupPatch(realization)
     cur_fluid_property => cur_fluid_property%next
   enddo
   
-  if (associated(realization%material_properties)) then
-    patch%aux%RT%rt_parameter%dispersivity = &
-      realization%material_properties%longitudinal_dispersivity
-  endif
-
 end subroutine RTSetupPatch
 
 ! ************************************************************************** !
@@ -1038,10 +1033,16 @@ subroutine RTUpdateTransportCoefsPatch(realization)
 
       call TDiffusion(global_aux_vars(ghosted_id_up), &
                       porosity_loc_p(ghosted_id_up), &
-                      tor_loc_p(ghosted_id_up),dist_up, &
+                      tor_loc_p(ghosted_id_up), &
+                      patch%material_property_array(patch%imat(ghosted_id_up))% &
+                        ptr%longitudinal_dispersivity, &
+                      dist_up, &
                       global_aux_vars(ghosted_id_dn), &
                       porosity_loc_p(ghosted_id_dn), &
-                      tor_loc_p(ghosted_id_dn),dist_dn, &
+                      tor_loc_p(ghosted_id_dn), &
+                      patch%material_property_array(patch%imat(ghosted_id_dn))% &
+                        ptr%longitudinal_dispersivity, &
+                      dist_dn, &
                       rt_parameter,option, &
                       patch%internal_velocities(:,sum_connection), &
                       patch%internal_tran_coefs(:,sum_connection))
@@ -1083,6 +1084,8 @@ subroutine RTUpdateTransportCoefsPatch(realization)
                         global_aux_vars(ghosted_id), &
                         porosity_loc_p(ghosted_id), &
                         tor_loc_p(ghosted_id), &
+                        patch%material_property_array(patch%imat(ghosted_id))% &
+                          ptr%longitudinal_dispersivity, &
                         cur_connection_set%dist(0,iconn), &
                         rt_parameter,option, &
                         patch%boundary_velocities(:,sum_connection), &

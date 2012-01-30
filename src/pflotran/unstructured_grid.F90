@@ -29,6 +29,7 @@ module Unstructured_Grid_module
     PetscInt :: num_hash
     PetscInt :: max_ndual_per_cell
     PetscInt :: max_nvert_per_cell
+    PetscInt :: max_cells_sharing_a_vertex
     PetscInt, pointer :: cell_type(:)
     PetscInt, pointer :: cell_vertices(:,:) ! vertices for each grid cell (NO LONGER zero-based)
     PetscInt, pointer :: face_to_cell_ghosted(:,:) !
@@ -78,6 +79,10 @@ module Unstructured_Grid_module
     ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
     Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
     Vec :: local_vec ! local vec (includes local and ghosted cells), local ordering
+#ifdef SURFACE_FLOW
+    VecScatter :: scatter_bet_grids ! scatter context between surface and subsurface
+                                    ! grids
+#endif
   end type ugdm_type
 
   !  PetscInt, parameter :: HEX_TYPE          = 1
@@ -87,7 +92,6 @@ module Unstructured_Grid_module
   !  PetscInt, parameter :: TRI_FACE_TYPE     = 1
   !  PetscInt, parameter :: QUAD_FACE_TYPE    = 2
   !  PetscInt, parameter :: MAX_VERT_PER_FACE = 4
-  !  PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 16
 
   public :: UGridCreate, &
             UGridRead, &
@@ -105,6 +109,7 @@ module Unstructured_Grid_module
             UGridPopulateConnection, &
             UGridComputeCoord, &
             UGridComputeVolumes, &
+            UGridComputeQuality, &
             UGridMapIndices, &
             UGridDMCreateJacobian, &
             UGridDMCreateVector, &
@@ -150,7 +155,9 @@ function UGDMCreate()
   ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
   ugdm%local_vec = 0
-
+#ifdef SURFACE_FLOW
+  ugdm%scatter_bet_grids = 0
+#endif
   UGDMCreate => ugdm
 
 end function UGDMCreate
@@ -182,6 +189,7 @@ function UGridCreate()
   unstructured_grid%ngmax = 0
   unstructured_grid%max_ndual_per_cell = 0
   unstructured_grid%max_nvert_per_cell = 0
+  unstructured_grid%max_cells_sharing_a_vertex = 24
   nullify(unstructured_grid%cell_type)
   nullify(unstructured_grid%cell_vertices)
   nullify(unstructured_grid%face_to_cell_ghosted)
@@ -530,7 +538,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     ! read for other processors
     temp_int_array = -999
     num_to_read = unstructured_grid%nmax
-    write(*,*),'num_to_read: ',num_to_read
     do icell = 1, num_to_read
       ! read in the vertices defining the grid cell
       call InputReadFlotranString(input,option)
@@ -554,7 +561,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
         call InputReadInt(input,option,temp_int_array(ivertex,icell))
         call InputErrorMsg(input,option,'vertex id',card)
       enddo
-      write(*,'(9I5)'),icell,temp_int_array(:,icell)
     enddo
   endif
 
@@ -578,7 +584,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
     do irank = 0, option%mycommsize-1
       num_to_read = num_vertices_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
-      write(*,*),'vert num_to_read: ',num_to_read
       do ivertex = 1, num_to_read
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
@@ -586,7 +591,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadDouble(input,option,temp_real_array(idir,ivertex))
           call InputErrorMsg(input,option,'vertex coordinate',card)
         enddo
-        write(*,'(1I5,3F5.2)'),ivertex,temp_real_array(:,ivertex)
       enddo
       
       if (irank == option%io_rank) then
@@ -674,7 +678,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
           call InputErrorMsg(input,option,'vertex id',card)
         enddo
-        write(*,'(9I5)'),icell,temp_int_array(:,icell)
       enddo
 
       ! if the faces reside on io_rank
@@ -2578,7 +2581,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(face_to_cell(2,MAX_FACE_PER_CELL* &
                         unstructured_grid%ngmax))
   face_to_cell = 0
-  allocate(vertex_to_cell(0:MAX_CELLS_SHARING_A_VERTEX, &
+  allocate(vertex_to_cell(0:unstructured_grid%max_cells_sharing_a_vertex, &
                           unstructured_grid%num_vertices_local))
   vertex_to_cell = 0
 
@@ -2823,8 +2826,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
       if ( vertex_id <= 0) cycle 
       count = vertex_to_cell(0,vertex_id) + 1
-      if (count > MAX_CELLS_SHARING_A_VERTEX) then
-        write(string,*) 'Vertex can be shared by at most by ',MAX_CELLS_SHARING_A_VERTEX, &
+      if (count > unstructured_grid%max_cells_sharing_a_vertex) then
+        write(string,*) 'Vertex can be shared by at most by ', &
+              unstructured_grid%max_cells_sharing_a_vertex, &
               ' cells. Rank = ', option%myrank, ' vertex_id = ', vertex_id, ' exceeds it.'
         option%io_buffer = string
         call printErrMsg(option)
@@ -3294,6 +3298,84 @@ end subroutine UGridComputeVolumes
 
 ! ************************************************************************** !
 !
+! UGridComputeQuality: Computes quality of unstructured grid cells
+!
+! geh: Yes, this is very primitive as mesh quality can be based on any 
+!      number of metrics (e.g., see http://cubit.sandia.gov/help-version8/
+!      Chapter_5/Mesh_Quality_Assessment.html).  However, the current edge
+!      length-based formula gives a ballpark estimate.
+!
+! author: Glenn Hammond
+! date: 01/17/12
+!
+! ************************************************************************** !
+subroutine UGridComputeQuality(unstructured_grid,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  type(point_type) :: vertex_8(8)
+  PetscReal :: quality, mean_quality, max_quality, min_quality
+  PetscReal :: temp_real
+  PetscErrorCode :: ierr
+
+  mean_quality = 0.d0
+  max_quality = -1.d20
+  min_quality = 1.d20
+  
+  do local_id = 1, unstructured_grid%nlmax
+    ! ghosted_id = local_id on unstructured grids
+    ghosted_id = local_id
+    do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
+      vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
+      vertex_8(ivertex)%x = &
+        unstructured_grid%vertices(vertex_id)%x
+      vertex_8(ivertex)%y = &
+        unstructured_grid%vertices(vertex_id)%y
+      vertex_8(ivertex)%z = &
+        unstructured_grid%vertices(vertex_id)%z
+    enddo
+    quality = UCellQuality(unstructured_grid%cell_type( &
+                           ghosted_id),vertex_8,option)
+    if (quality < min_quality) min_quality = quality
+    if (quality > max_quality) max_quality = quality
+    mean_quality = mean_quality + quality
+  enddo
+
+  temp_real = mean_quality
+  call MPI_Allreduce(temp_real,mean_quality,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+  mean_quality = mean_quality / unstructured_grid%nmax
+
+  temp_real = max_quality
+  call MPI_Allreduce(temp_real,max_quality,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+
+  temp_real = min_quality
+  call MPI_Allreduce(temp_real,min_quality,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+
+  if (OptionPrintToScreen(option)) then
+    write(*,'(/," ---------- Mesh Quality ----------", &
+            & /,"   Mean Quality: ",es10.2, &
+            & /,"   Max Quality : ",es10.2, &
+            & /,"   Min Quality : ",es10.2, &
+            & /," ----------------------------------",/)') &
+              mean_quality, max_quality, min_quality
+  endif
+
+end subroutine UGridComputeQuality
+
+! ************************************************************************** !
+!
 ! UGridEnsureRightHandRule: Rearranges order of vertices within each cell
 !                           so that when the right hand rule is appied to a
 !                           face, the thumb points away from teh centroid
@@ -3301,7 +3383,7 @@ end subroutine UGridComputeVolumes
 ! date: 10/24/11
 !
 ! ************************************************************************** !
-subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
+subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
 
   use Option_module
   use Utility_module, only : DotProduct, CrossProduct
@@ -3310,7 +3392,8 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
 
   type(unstructured_grid_type) :: unstructured_grid
   PetscReal :: x(:), y(:), z(:)
-  PetscInt :: nL2A(:)
+  PetscInt :: nG2A(:)
+  PetscInt :: nL2G(:)
   type(option_type) :: option
 
   PetscInt :: local_id
@@ -3367,7 +3450,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
         ! need to swap so that distance is negative (point lies below plane)
 #ifndef GB_DEBUG
         option%io_buffer = 'Cell '
-        write(string,'(i13)') nL2A(local_id)
+        write(string,'(i13)') nG2A(nL2G(local_id))
         option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
           'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
           '" with vertices:'
@@ -3407,7 +3490,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nL2A,option)
             & '' violates right hand rule at face "'',a, &
             & ''" for face vertices '', &
             & '' based on face vertices '',3i3)') &
-            nL2A(local_id), &
+            nG2A(nL2G(local_id)), &
             trim(UCellTypeToWord(cell_type,option)), &
         (unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i)), &
            i = 1,8), &
@@ -3563,7 +3646,7 @@ end subroutine UGridDMCreateVector
 ! date: 11/06/09
 !
 ! ************************************************************************** !
-subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
+subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A)
 
   implicit none
   
@@ -3571,7 +3654,6 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
   type(ugdm_type) :: ugdm
   PetscInt, pointer :: nG2L(:)
   PetscInt, pointer :: nL2G(:)
-  PetscInt, pointer :: nL2A(:)
   PetscInt, pointer :: nG2A(:)
   PetscErrorCode :: ierr
   PetscInt, pointer :: int_ptr(:)
@@ -3580,26 +3662,21 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
 
   allocate(nG2L(unstructured_grid%ngmax))
   allocate(nL2G(unstructured_grid%nlmax))
-  allocate(nL2A(unstructured_grid%nlmax))
   allocate(nG2A(unstructured_grid%ngmax))
   
   ! initialize ghosted to 0
+  !geh: any index beyond %nlmax will be 0 indicating that there is no local
+  !     counterpart (i.e., it is a ghost cell)
   nG2L = 0
 
-  call ISGetIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
+  !geh: Yes, it seems redundant that that we are setting both nL2G and nG2L to 
+  !     the same index, but keep in mind that nG2L extends beyond %nlmax and
+  !     we need these arrays to provide seemless integration for structured and
+  !     unstructured
   do local_id = 1, unstructured_grid%nlmax
     nL2G(local_id) = local_id
     nG2L(local_id) = local_id
-    ! actually, nL2A is zero-based
-    !nL2A(local_id) = int_ptr(local_id)+1
-    nL2A(local_id) = int_ptr(local_id)
   enddo
-  call ISRestoreIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
-!zero-based  nL2A = nL2A - 1
-  call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
-                            unstructured_grid%nlmax, &
-                            nL2A,ierr)
-!zero-based  nL2A = nL2A + 1
 
   call ISGetIndicesF90(ugdm%is_ghosted_petsc,int_ptr,ierr)
   do ghosted_id = 1, unstructured_grid%ngmax
@@ -3610,7 +3687,7 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
   call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
                             unstructured_grid%ngmax, &
                             nG2A,ierr)
-  nG2A = nG2A + 1
+  nG2A = nG2A + 1 ! 1-based
 
 end subroutine UGridMapIndices
 
@@ -4263,7 +4340,6 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
   cell_ids(:) = temp_int(1,1:mapped_face_count)
   face_ids(:) = temp_int(2,1:mapped_face_count)
-  deallocate(temp_int)
 
   call MatDestroy(Mat_vert_to_face,ierr)
   call VecDestroy(Face_vec,ierr)
@@ -4543,6 +4619,9 @@ subroutine UGridDMDestroy(ugdm)
     call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb,ierr)
   call VecDestroy(ugdm%global_vec,ierr)
   call VecDestroy(ugdm%local_vec,ierr)
+#ifdef SURFACE_FLOW
+  call VecScatterDestroy(ugdm%scatter_bet_grids,ierr)
+#endif
   deallocate(ugdm)
   nullify(ugdm)
 

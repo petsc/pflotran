@@ -700,10 +700,10 @@ function ReactionCreate()
 
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)
-  nullify(reaction%mnrlstoich)
   nullify(reaction%mnrlh2oid)
   nullify(reaction%mnrlstoich)
   nullify(reaction%mnrlh2ostoich)
+  nullify(reaction%mnrl_logK)
   nullify(reaction%mnrl_logKcoef)
 
   reaction%ncoll = 0

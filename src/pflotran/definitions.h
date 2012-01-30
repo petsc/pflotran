@@ -76,6 +76,7 @@ PetscInt, parameter :: NPHASEDOF = 2
 PetscInt, parameter :: THREENPDOF = 3
 PetscInt, parameter :: NFLOWDOF = 4
 PetscInt, parameter :: NTRANDOF = 5
+PetscInt, parameter :: SURF_ONEDOF = 6
 
 PetscInt, parameter :: GLOBAL = 1
 PetscInt, parameter :: LOCAL = 2
@@ -317,7 +318,6 @@ PetscInt, parameter :: TRI_FACE_TYPE     = 2
 PetscInt, parameter :: QUAD_FACE_TYPE    = 3
 PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 PetscInt, parameter :: MAX_FACE_PER_CELL = 6
-PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 36
 
 ! ids of non-petsc arrays
 PetscInt, parameter :: MATERIAL_ID_ARRAY = 1

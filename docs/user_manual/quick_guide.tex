@@ -536,7 +536,39 @@ w_i \eq \frac{M_i}{M} \eq \frac{W_i n_i}{\sum W_l n_l} \eq \frac{W_i x_i}{\sum W
 
 \subsection{Mode: {\tt IMMIS}}
 
-The {\tt IMMIS} mode applies to multiple immiscible phases.
+The {\tt IMMIS} mode applies to multiple completely immiscible phases.
+The code PIMS, parallel immiscible multiphase flow simulator, is a simplified version of the  MPHASE mode in which the dependency on thermodynamic relations have been removed, since for immiscible systems the solubility is identically zero for each component. In this case the number of components is equal to the number of phases, or degrees of freedom associated with each node for an isothermal system. The immiscible property removes the variable switching strategy used in MPHASE, which may be the most numerically difficult part of PFLOTRAN, and may cause problems for multi-level solvers. 
+%The code PMIS, parallel miscible single phase flow, applies to a completely miscible multicomponent single phase system.
+
+The governing equations solved by PIMS are given by
+\EQ\label{mass}
+\frac{\p}{\p t}\big(\varphi\rho_\a^{} s_\a^{}\big) + \bnabla\cdot \big(\rho_\a^{} \bq_\a \big) \eq Q_\a,
+\EN
+where the subscript $\a$ denotes an immiscible phase.
+\begin{comment}
+, and for PMIS
+\EQ\label{massmis}
+\frac{\p}{\p t}\big(\varphi\rho x_i^{}\big) + \bnabla\cdot \big(\rho \bq x_i \big) \eq Q_i,
+\EN
+for the $i$th component in a single phase system.
+\end{comment}
+In this equation $\varphi$ is porosity, $s_\a$, $\rho_\a$ refer to the $\a$th phase saturation and density, respectively, $\bq_\a$ is the Darcy velocity of the $\a$th phase given by
+\EQ
+\bq_\a \eq -\frac{k}{\mu_\a} \big(\bnabla p-\rho_\a g \hat\bz\big), 
+\EN
+with permeability $k$ and fluid viscosity $\mu_\a$, and $Q_\a$ is the source/sink term.  
+The selection of primary variables are pressure $p$ and $n\!-\!1$ independent phase saturation variables $s_\a, \a=1,...,n\!-\!1$ with
+\EQ
+\sum_{\a=1}^n s_\a = 1.
+\EN
+The mass conservation equations are coupled to the energy balance equation given by
+\EQ
+\frac{\p}{\p t} \Big(\varphi\sum_\a s_\a\rho_\a U_\a + (1-\varphi) \rho_r C_r T\Big) + \bnabla\cdot\Big(\sum_\a\rho_\a\bq_\a H_\a - \kappa\bnabla T\Big) \eq Q_e,
+\EN
+where $U_\a$, $H_\a$ denote the internal energy and enthalpy of the $\a$th fluid phase, $\kappa$ denotes the thermal conductivity of the bulk porous medium, $\rho_r$, $C_r$ denote the rock density and heat capacity, and $T$ refers to the temperature.
+%, if incompressibility of all phases or one of them is assumed. In this case, the reference pressure has to be specified as a boundary condition.
+%The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
+Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{n-1}$).
 
 \subsection{Mode: {\tt Air-Water}}
 
@@ -638,7 +670,10 @@ Diffusion is assumed to be species independent, but may be different for differe
 \EN
 with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$. The diffusivity/dispersivity tensor $\bD_\a$ is the sum of contributions from molecular diffusion and dispersion which for an isotropic medium has the form
 \EQ
-\bD_\a \eq \varphi s \Big(\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v}\Big),
+\bD_\a \eq %\varphi s 
+%\Big(
+\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v},
+%\Big),
 \EN
 with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. The temperature dependence of the diffusion coefficient is defined through the relation
 \EQ

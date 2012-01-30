@@ -41,8 +41,8 @@ contains
 ! date: 02/24/10
 !
 ! ************************************************************************** !
-subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
-                      global_aux_var_dn,por_dn,tor_dn,dist_dn, &
+subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
+                      global_aux_var_dn,por_dn,tor_dn,disp_dn,dist_dn, &
                       rt_parameter,option,velocity,diffusion)
 
   use Option_module
@@ -50,15 +50,15 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
   implicit none
   
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
-  PetscReal :: por_up, tor_up, dist_up
-  PetscReal :: por_dn, tor_dn, dist_dn
+  PetscReal :: por_up, tor_up, disp_up, dist_up
+  PetscReal :: por_dn, tor_dn, disp_dn, dist_dn
   PetscReal :: velocity(*)
   type(option_type) :: option
   type(reactive_transport_param_type) :: rt_parameter
   PetscReal :: diffusion(option%nphase)
   
   PetscInt :: iphase
-  PetscReal :: weight
+  PetscReal :: stp_ave_over_dist, disp_ave_over_dist
   PetscReal :: sat_up, sat_dn
   PetscReal :: stp_up, stp_dn
   PetscReal :: q
@@ -79,15 +79,26 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
   sat_up = global_aux_var_up%sat(iphase)
   sat_dn = global_aux_var_dn%sat(iphase)
 
+  ! Weighted harmonic mean of dispersivity divided by distance
+  !   disp_up/dn = dispersivity
+  !   dist_up/dn = distance
+  if (disp_up > eps .and. disp_dn > eps) then
+    disp_ave_over_dist = (disp_up*disp_dn) / &
+                         (disp_up*dist_dn+disp_dn*dist_up)
+  else
+    disp_ave_over_dist = 0.d0
+  endif
+
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up 
     stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+    stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/(dist_up+dist_dn) + &
-                        weight*rt_parameter%diffusion_coefficient(iphase)
+    diffusion(iphase) = disp_ave_over_dist*dabs(q) + &
+                        stp_ave_over_dist* &
+                        rt_parameter%diffusion_coefficient(iphase)
                         
 ! Add the effect of temperature on diffusivity, Satish Karra, 10/29/2011
 
@@ -104,7 +115,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
     weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
                  (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
     diffusion(iphase) = diffusion(iphase) + weight_new - &
-                        weight*rt_parameter%diffusion_coefficient(iphase)
+                        stp_ave_over_dist* &
+                        rt_parameter%diffusion_coefficient(iphase)
 #endif
   endif
 
@@ -123,13 +135,13 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
         stp_up = sat_up*tor_up*por_up 
         stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         if (iphase == 2) then
-          diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/ &
-                              (dist_up + dist_dn) + &
-                              weight*rt_parameter%diffusion_coefficient(iphase)
+          diffusion(iphase) = &
+              disp_ave_over_dist*dabs(q) + &
+              stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
 
 ! Add the effect of temperature on diffusivity, Satish Karra, 11/1/2011
 #ifdef TEMP_DEPENDENT_LOGK/CHUAN_HPT
@@ -145,7 +157,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
           weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
                        (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
           diffusion(iphase) = diffusion(iphase) + weight_new - &
-                              weight*rt_parameter%diffusion_coefficient(iphase)
+                              stp_ave_over_dist* &
+                              rt_parameter%diffusion_coefficient(iphase)
 #endif
         endif
       endif
@@ -163,7 +176,7 @@ end subroutine TDiffusion
 !
 ! ************************************************************************** !
 subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
-                        por_dn,tor_dn,dist_dn, &
+                        por_dn,tor_dn,disp_dn,dist_dn, &
                         rt_parameter,option,velocity,diffusion)
 
   use Option_module
@@ -172,7 +185,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   
   PetscInt :: ibndtype
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  PetscReal :: por_dn, tor_dn, dist_dn
+  PetscReal :: por_dn, tor_dn, disp_dn, dist_dn
   PetscReal :: velocity(1)
   type(reactive_transport_param_type) :: rt_parameter
   type(option_type) :: option
@@ -180,7 +193,7 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
   
   PetscInt :: icomp
   PetscInt :: iphase
-  PetscReal :: weight
+  PetscReal :: stp_ave_over_dist
   PetscReal :: q
   PetscReal :: sat_up, sat_dn
 
@@ -202,18 +215,20 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
       if (sat_up > eps .and. sat_dn > eps) then
         ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
         
-        weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+        stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+                            ((sat_up+sat_dn)*dist_dn)
         
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
-                            weight*rt_parameter%diffusion_coefficient(iphase)
+        diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
+                            stp_ave_over_dist* &
+                            rt_parameter%diffusion_coefficient(iphase)
                             
 #ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT  
         T_ref_inv = 1.d0/(25.d0 + 273.15d0)
         temp_up = global_aux_var_up%temp(1)      
         diffusion(iphase) = diffusion(iphase) + &
-          weight*rt_parameter%diffusion_coefficient(iphase)* &
+          stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
           (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
           R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
@@ -225,18 +240,20 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
         if (sat_up > eps .and. sat_dn > eps) then
           ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
           
-          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+          stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+                              ((sat_up+sat_dn)*dist_dn)
           
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
-                              weight*rt_parameter%diffusion_coefficient(iphase)
+          diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
+                              stp_ave_over_dist* &
+                              rt_parameter%diffusion_coefficient(iphase)
                               
 #ifdef TEMP_DEPENDENT_LOGK /CHUAN_HPT  
         T_ref_inv = 1.d0/(25.d0 + 273.15d0)
         temp_up = global_aux_var_up%temp(1)      
         diffusion(iphase) = diffusion(iphase) + &
-          weight*rt_parameter%diffusion_coefficient(iphase)* &
+          stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
           (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
           R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
@@ -264,19 +281,21 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           if (sat_up > eps .and. sat_dn > eps) then
          !  units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk
          
-            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+            stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+                                ((sat_up+sat_dn)*dist_dn)
             
          !  need to account for multiple phases
          !  units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
             if ( iphase == 2) then
-              diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn + &
-                weight*rt_parameter%diffusion_coefficient(iphase)
+              diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
+                                  stp_ave_over_dist * &
+                                  rt_parameter%diffusion_coefficient(iphase)
                 
 #ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT   
               T_ref_inv = 1.d0/(25.d0 + 273.15d0)
               temp_up = global_aux_var_up%temp(1)      
               diffusion(iphase) = diffusion(iphase) + &
-                weight*rt_parameter%diffusion_coefficient(iphase)* &
+                stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
                 (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
                 R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
@@ -288,17 +307,19 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
           ! same as dirichlet above
             if (sat_up > eps .and. sat_dn > eps) then
           !   units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-              weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+              stp_ave_over_dist = tor_dn*por_dn*(sat_up*sat_dn) / &
+                                  ((sat_up+sat_dn)*dist_dn)
           !   need to account for multiple phases
           !   units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
               if (iphase == 2) then
-                diffusion(iphase) = rt_parameter%dispersivity*dabs(q)/dist_dn +&
-                  weight*rt_parameter%diffusion_coefficient(iphase)
-#ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT  
+                diffusion(iphase) = disp_dn*dabs(q)/dist_dn + &
+                                    stp_ave_over_dist * &
+                                    rt_parameter%diffusion_coefficient(iphase)
+#ifdef TEMP_DEPENDENT_LOGK / CHUAN_HPT 
                 T_ref_inv = 1.d0/(25.d0 + 273.15d0)
                 temp_up = global_aux_var_up%temp(1)      
                 diffusion(iphase) = diffusion(iphase) + &
-                  weight*rt_parameter%diffusion_coefficient(iphase)* &
+                  stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
                   (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
                   R_gas_constant*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
@@ -810,7 +831,6 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,fraction_upwind, &
   PetscInt :: iphase
   PetscReal :: coef_up, coef_dn
   PetscReal :: tempreal
-  PetscReal :: weight
   PetscReal :: advection_upwind(option%nphase)
   PetscReal :: advection_downwind(option%nphase)
   PetscReal :: q

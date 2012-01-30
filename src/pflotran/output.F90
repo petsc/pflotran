@@ -307,13 +307,14 @@ function OutputFilename(output_option,option,suffix,optional_string)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    OutputFilename = trim(output_option%plot_name) // suffix
+    OutputFilename = trim(output_option%plot_name) // '.' // suffix
   else  
     OutputFilename = trim(option%global_prefix) // &
             trim(option%group_prefix) // &
             '-' // &
             trim(optional_string) // &
             trim(OutputFilenameID(output_option,option)) // &
+            '.' // &
             suffix
   endif
   
@@ -584,7 +585,7 @@ subroutine OutputTecplotBlock(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
@@ -1040,7 +1041,7 @@ subroutine OutputTecplotFEBrick(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
@@ -1905,7 +1906,7 @@ subroutine OutputTecplotPoint(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  filename = OutputFilename(output_option,option,'.tec','')
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // &
@@ -2316,7 +2317,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   output_option => realization%output_option
   discretization => realization%discretization
   
-  filename = OutputFilename(output_option,option,'.tec','vel-')
+  filename = OutputFilename(output_option,option,'tec','vel-')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
@@ -3314,7 +3315,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   grid => realization%patch%grid
   
   local_id = region%cell_ids(icell)
-  write(cell_string,*) grid%nL2A(region%cell_ids(icell))+1 ! nL2A is zero-based
+  write(cell_string,*) grid%nG2A(grid%nL2G(region%cell_ids(icell)))
   cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
 
   ! add coordinate of cell center
@@ -7768,7 +7769,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       area = cur_connection_set%area(iconn)* &
              cur_connection_set%dist(direction,iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          patch%boundary_velocities(1,sum_connection)* &
+                          patch%boundary_velocities(iphase,sum_connection)* &
                           area
       sum_area(local_id) = sum_area(local_id) + dabs(area)
     enddo
@@ -8488,7 +8489,7 @@ subroutine OutputMassBalanceNew(realization)
           endif
 
         case(MPH_MODE)
-        ! print out cumulative H2O & CO2 fluxes
+        ! print out cumulative H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
@@ -8506,7 +8507,7 @@ subroutine OutputMassBalanceNew(realization)
             endif
           enddo
           
-        ! print out H2O & CO2 fluxes
+        ! print out H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections

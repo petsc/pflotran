@@ -126,7 +126,6 @@ module Reactive_Transport_Aux_module
     PetscInt :: offset_collcomp
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
-    PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
     PetscReal, pointer :: diffusion_activation_energy(:)
 #ifdef OS_STATISTICS
@@ -224,7 +223,6 @@ function RTAuxCreate(option)
   allocate(aux%rt_parameter%diffusion_activation_energy(option%nphase))
   aux%rt_parameter%diffusion_coefficient = 1.d-9
   aux%rt_parameter%diffusion_activation_energy = 0.d0
-  aux%rt_parameter%dispersivity = 0.d0
   aux%rt_parameter%ncomp = 0
   aux%rt_parameter%naqcomp = 0
   aux%rt_parameter%nimcomp = 0
