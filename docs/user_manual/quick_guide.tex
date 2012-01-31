@@ -2644,7 +2644,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[FLUX] {\tt [dirichlet, neumann, mass\_rate, hydrostatic, conductance,  \linebreak zero\_gradient, production\_well, seepage, volumetric, \linebreak volumetric\_rate, equilibrium]}
 \item[TEMPERATURE] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \item[CONCENTRATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
-\item[SATURATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
+\item[SATURATION] {\tt [dirichlet]}
 \item[ENTHALPY (H)] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \end{deflist}
 \item[(., /, END)]
@@ -2676,7 +2676,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[RATE] \ {\tt Value}
 \item[FLUX, VELOCITY, VEL] \ {\tt <float>}
 \item[CONC, CONCENTRATION] \ {\tt <float>}
-\item[SATURATION] \ {\tt <float>}
+\item[SAT,SATURATION] \ {\tt <float>}
 \item[CONDUCTANCE] \ {\tt <float>}
 %\item[CONSTRAINT\_LIST]
 \end{deflist}
@@ -2703,7 +2703,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \bf PRESSURE & Specifies the type of pressure condition.\\
  \bf TEMPERATURE & Specifies the type of temperature condition.\\
     \bf CONCENTRATION & Specifies the type of concentration condition.\\
-    \bf SATURATION & Specifies the type of concentration condition.\\
+    \bf SATURATION & Specifies the type of saturation condition.\\
     \bf ENTHALPY & Specifies the type of enthalpy condition.\\
     \bf END & Terminates type entry.\\
 \midrule\midrule
@@ -2719,7 +2719,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \bf FLUX & Darcy velocity of fluid defining flux across a boundary.\\
 \bf TEMPERATURE & Temperature in $^\circ$C at the datum.\\
 \bf CONCENTRATION & Solute concentration at the datum.\\
-\bf SATURATION & Solute concentration at the datum.\\
+\bf SATURATION & Solute saturation at the datum.\\
 \bf ENTHALPY & Enthalpy at the datum.\\
 \bf CONSTRAINT\_LIST & Specifies a list of concentration constraints for solute transport.\\
 \bf END & Terminates the condition entry.\\
