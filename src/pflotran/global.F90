@@ -679,14 +679,16 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL,time_level)          
 #endif
- 
+
+#if 0
       ! Gas saturation
       call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
-   
+#endif
+
       ! pressure
       call RealizationGetDataset(realization,field%work,PRESSURE, &
                              ZERO_INTEGER)

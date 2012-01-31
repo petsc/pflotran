@@ -8178,9 +8178,9 @@ subroutine OutputMassBalanceNew(realization)
                                     '[kmol]','',icol)
         case(MIS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[kmol]','',icol)
+                                    '[kg]','',icol)
           call OutputAppendToHeader(header,'Global Glycol Mass in Liquid Phase', &
-                                    '[kmol]','',icol)
+                                    '[kg]','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
 
