@@ -412,9 +412,14 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
 #ifdef SURFACE_FLOW
-  surf_field => realization%surf_field 
-  call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_r, &
+  surf_field => realization%surf_field
+  write(*,*),'Creating surf_field%flow_xx: '
+  call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_xx, &
                                   GLOBAL,option)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%flow_r)
+  call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
+                                  LOCAL,option)
 #endif
 
   select case(discretization%itype)
@@ -3127,7 +3132,6 @@ subroutine RealizationMapSurfSubsurfaceGrid(realization, &       !<
     endif
   enddo
 
-  write(*,*),'nrow ',nrow,option%myrank
   offset = 0
   call MPI_Exscan(nrow,offset,ONE_INTEGER_MPI, &
                   MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
