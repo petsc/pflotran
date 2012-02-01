@@ -734,6 +734,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
 
         if (associated(coupler%flow_condition%pressure) .or. &
             associated(coupler%flow_condition%concentration) .or. &
+            associated(coupler%flow_condition%saturation) .or. &
             associated(coupler%flow_condition%general)) then
 
           ! allocate arrays that match the number of connections
@@ -1004,39 +1005,57 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             endif
             
           case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE) ! updated 10/17/11 
-            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                        flow_condition%iphase
-            select case(flow_condition%pressure%itype)
-              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
-                        flow_condition%pressure%flow_dataset%time_series%cur_value(1)
-              case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
-                call HydrostaticUpdateCoupler(coupler,option,patch%grid)
-         !  case(SATURATION_BC)
-            end select
-            select case(flow_condition%temperature%itype)
-              case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
-                    (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+            if (associated(flow_condition%pressure)) then
+              coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                          flow_condition%iphase
+              select case(flow_condition%pressure%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
+                          flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+           !  case(SATURATION_BC)
+              end select
+              select case(flow_condition%temperature%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                     (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
                      flow_condition%temperature%itype /= DIRICHLET_BC)) then
-                  coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
-                          flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-                endif
-            end select
-            select case(flow_condition%concentration%itype)
-              case(DIRICHLET_BC,ZERO_GRADIENT_BC)
-                if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
-                    (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                    coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                  endif
+              end select
+              select case(flow_condition%concentration%itype)
+                case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                  if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                     (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
                      flow_condition%concentration%itype /= DIRICHLET_BC)) then
-                  coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
-                          flow_condition%concentration%flow_dataset%time_series%cur_value(1)
-                endif
-            end select
+                    coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                            flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                  endif
+              end select
+            else
+              select case(flow_condition%temperature%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+              end select
+              select case(flow_condition%concentration%itype)
+                case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                   coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                            flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+              end select
+            endif
             if (associated(flow_condition%rate)) then
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
                   call PatchScaleSourceSink(patch,coupler,option)
               end select
+            endif
+            if (associated(flow_condition%saturation)) then
+              call SaturationUpdateCoupler(coupler,option,patch%grid, &
+                                           patch%saturation_function_array, &
+                                           patch%sat_func_id)
             endif
   
           case(MIS_MODE) ! Miscible mode, added by Chuan Lu, 12/23/11
@@ -1081,7 +1100,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
              !  case(SATURATION_BC)
               end select
             endif
-            if (associated(flow_condition%concentration)) then
+            if (associated(flow_condition%saturation)) then
               call SaturationUpdateCoupler(coupler,option,patch%grid, &
                                            patch%saturation_function_array, &
                                            patch%sat_func_id)
@@ -1911,7 +1930,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
          
       select case(ivar)
         case(PH)
@@ -1981,6 +2000,32 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
           enddo
+        case(TOTAL_BULK) ! mol/m^3 bulk
+          ! add in total molarity and convert to mol/m^3 bulk
+          call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase) * &
+              vec_ptr2(ghosted_id) * &
+              patch%aux%Global%aux_vars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
+          enddo
+          call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          ! add in total sorbed.  already in mol/m^3 bulk
+          if (patch%reaction%neqsorb > 0) then
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              if (patch%reaction%kinmr_nrate > 0) then
+                do irate = 1, patch%reaction%kinmr_nrate
+                  vec_ptr(local_id) = vec_ptr(local_id) + &
+                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+                enddo            
+              else
+                vec_ptr(local_id) = vec_ptr(local_id) + &
+                  patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+              endif
+            enddo
+          endif
         case(MINERAL_VOLUME_FRACTION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar)
@@ -2413,7 +2458,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
          
       select case(ivar)
         case(PH)
@@ -2435,6 +2480,26 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
         case(TOTAL_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
+        case(TOTAL_BULK) ! mol/m^3 bulk
+          ! add in total molarity and convert to mol/m^3 bulk
+          call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          value = &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase) * &
+              vec_ptr2(ghosted_id) * &
+              patch%aux%Global%aux_vars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
+          call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          ! add in total sorbed.  already in mol/m^3 bulk
+          if (patch%reaction%neqsorb > 0) then
+            if (patch%reaction%kinmr_nrate > 0) then
+              do irate = 1, patch%reaction%kinmr_nrate
+                value = value + &
+                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+              enddo            
+            else
+              value = value + &
+                patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+            endif
+          endif          
         case(MINERAL_VOLUME_FRACTION)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
         case(MINERAL_RATE)
@@ -3267,6 +3332,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   use Connection_module
   use Coupler_module
   use Field_module
+  use Global_Aux_module
   
   implicit none
   
@@ -3277,23 +3343,23 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
-!  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
-  PetscReal :: porosity_ave, v_darcy, v_pore
+  PetscReal :: porosity_ave, por_sat_ave, v_darcy, v_pore
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
+
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal :: dt_cfl_1
   PetscErrorCode :: ierr
 
   field => patch%field
-!  global_aux_vars => patch%aux%Global%aux_vars
-!  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
   grid => patch%grid
 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -3315,15 +3381,16 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
           patch%imat(ghosted_id_dn) <= 0) cycle
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
-      !           (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
-      !            global_aux_vars(ghosted_id_up)%sat(iphase) + &
-      !            (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
-      !            global_aux_vars(ghosted_id_dn)%sat(iphase))
-      porosity_ave = fraction_upwind*porosity_loc_p(ghosted_id_up) + &
-                     (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)
+      !porosity_ave = fraction_upwind*porosity_loc_p(ghosted_id_up) + &
+      !               (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)
       do iphase = 1, option%nphase
+        por_sat_ave = (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
+                       global_aux_vars(ghosted_id_up)%sat(iphase) + &
+                      (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
+                      global_aux_vars(ghosted_id_dn)%sat(iphase))
         v_darcy = patch%internal_velocities(iphase,sum_connection)
-        v_pore = v_darcy / porosity_ave
+!        v_pore = v_darcy / porosity_ave
+        v_pore = v_darcy / por_sat_ave
         dt_cfl_1 = distance / dabs(v_pore)
         max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
       enddo
@@ -3341,11 +3408,15 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       local_id_dn = cur_connection_set%id_dn(iconn)
       ghosted_id_dn = grid%nL2G(local_id_dn)
       if (patch%imat(ghosted_id_dn) <= 0) cycle
-      distance = cur_connection_set%dist(0,iconn)
-      porosity_ave = porosity_loc_p(ghosted_id_dn)
+      !geh: since on boundary, dist must be scaled by 2.d0
+      distance = 2.d0*cur_connection_set%dist(0,iconn)
+ !     porosity_ave = porosity_loc_p(ghosted_id_dn)
       do iphase = 1, option%nphase
+        por_sat_ave = porosity_loc_p(ghosted_id_dn)* &
+                      global_aux_vars(ghosted_id_dn)%sat(iphase)
         v_darcy = patch%boundary_velocities(iphase,sum_connection)
-        v_pore = v_darcy / porosity_ave
+!        v_pore = v_darcy / porosity_ave
+        v_pore = v_darcy / por_sat_ave
         dt_cfl_1 = distance / dabs(v_pore)
         max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
       enddo

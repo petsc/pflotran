@@ -794,6 +794,15 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -1238,6 +1247,15 @@ subroutine OutputTecplotFEBrick(realization)
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           endif
@@ -2102,7 +2120,16 @@ subroutine OutputTecplotPoint(realization)
               write(IUNIT3,1000,advance='no') value
             endif
           enddo
-        endif        
+        endif
+        if (reaction%print_total_bulk) then
+          do i=1,reaction%naqcomp
+            if (reaction%primary_species_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,TOTAL_BULK, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+        endif
         if (reaction%print_act_coefs) then
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
@@ -3759,6 +3786,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif      
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,TOTAL_BULK,i,ghosted_id)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -4211,6 +4246,18 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif      
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,TOTAL_BULK,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -4599,7 +4646,7 @@ function GetVelocityAtCell(fid,realization,local_id)
           area = cur_connection_set%area(iconn)* &
                  dabs(cur_connection_set%dist(direction,iconn))
           sum_velocity(direction) = sum_velocity(direction) + &
-                                    patch%internal_velocities(iphase,sum_connection)* &
+                                    patch%boundary_velocities(iphase,sum_connection)* &
                                     area
           sum_area(direction) = sum_area(direction) + area
         enddo
@@ -5035,6 +5082,15 @@ subroutine OutputVTK(realization)
                                       natural_vec,VTK_REAL)
         enddo
       endif    
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%primary_species_names(i)) // '_total_bulk'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word, &
+                                      natural_vec,VTK_REAL)
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -6066,7 +6122,14 @@ end subroutine SAMRWritePlotData
                    nviz_tran=nviz_tran+1
                 endif
              end do
-          endif
+           endif
+           if (reaction%print_total_bulk) then
+             do i=1,reaction%naqcomp
+                if (reaction%primary_species_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+           endif  
           if (reaction%print_act_coefs) then
             do i=1,reaction%naqcomp
                 if (reaction%primary_species_print(i)) then
@@ -6510,6 +6573,23 @@ end subroutine SAMRWritePlotData
           endif
         enddo
       endif      
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+            write(string,'(a,''_total_bulk'')') trim(reaction%primary_species_names(i))
+            if (.not.(option%use_samr)) then
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if (first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -8098,9 +8178,9 @@ subroutine OutputMassBalanceNew(realization)
                                     '[kmol]','',icol)
         case(MIS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[kmol]','',icol)
+                                    '[kg]','',icol)
           call OutputAppendToHeader(header,'Global Glycol Mass in Liquid Phase', &
-                                    '[kmol]','',icol)
+                                    '[kg]','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
 

@@ -412,9 +412,14 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
 #ifdef SURFACE_FLOW
-  surf_field => realization%surf_field 
-  call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_r, &
+  surf_field => realization%surf_field
+  write(*,*),'Creating surf_field%flow_xx: '
+  call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_xx, &
                                   GLOBAL,option)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%flow_r)
+  call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
+                                  LOCAL,option)
 #endif
 
   select case(discretization%itype)
@@ -2101,7 +2106,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif
 
   porosity_updated = PETSC_FALSE
-  if (realization%option%update_porosity) then
+  if (reaction%update_porosity) then
     porosity_updated = PETSC_TRUE
   
     call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -2117,7 +2122,8 @@ subroutine RealizationUpdatePropertiesPatch(realization)
           sum_volfrac = sum_volfrac + &
                         rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)
         enddo 
-        porosity_loc_p(ghosted_id) = 1.d0-sum_volfrac
+        porosity_loc_p(ghosted_id) = max(1.d0-sum_volfrac, &
+                                         reaction%minimum_porosity)
       enddo
     endif
 
@@ -2126,11 +2132,11 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif
   
   if ((porosity_updated .and. &
-       (option%update_tortuosity .or. &
-        option%update_permeability)) .or. &
+       (reaction%update_tortuosity .or. &
+        reaction%update_permeability)) .or. &
       ! if porosity ratio is used in mineral surface area update, we must
       ! recalculate it every time.
-      (option%update_mineral_surface_area .and. &
+      (reaction%update_mineral_surface_area .and. &
        option%update_mnrl_surf_with_porosity)) then
     call GridVecGetArrayF90(grid,field%porosity0,porosity0_p,ierr)
     call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -2144,7 +2150,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
   endif      
 
-  if (option%update_mineral_surface_area) then
+  if (reaction%update_mineral_surface_area) then
     porosity_scale = 1.d0
     if (option%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will 
@@ -2178,7 +2184,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
                                      field%tortuosity_loc,ONEDOF)
   endif
       
-  if (option%update_tortuosity) then
+  if (reaction%update_tortuosity) then
     call GridVecGetArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)  
     call GridVecGetArrayF90(grid,field%tortuosity0,tortuosity0_p,ierr)  
     call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
@@ -2196,7 +2202,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
                                      field%tortuosity_loc,ONEDOF)
   endif
       
-  if (option%update_permeability) then
+  if (reaction%update_permeability) then
     call GridVecGetArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
@@ -3126,7 +3132,6 @@ subroutine RealizationMapSurfSubsurfaceGrid(realization, &       !<
     endif
   enddo
 
-  write(*,*),'nrow ',nrow,option%myrank
   offset = 0
   call MPI_Exscan(nrow,offset,ONE_INTEGER_MPI, &
                   MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)

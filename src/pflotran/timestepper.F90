@@ -266,7 +266,11 @@ end subroutine TimestepperRead
 ! date: 10/25/07
 !
 ! ************************************************************************** !
+#ifndef SURFACE_FLOW
 subroutine StepperRun(realization,flow_stepper,tran_stepper)
+#else
+subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
+#endif
 
   use Realization_module
 
@@ -289,6 +293,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(realization_type) :: realization
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
+#ifdef SURFACE_FLOW
+  type(stepper_type), pointer :: surf_flow_stepper
+#endif
   
   type(stepper_type), pointer :: master_stepper
   type(stepper_type), pointer :: null_stepper
@@ -539,7 +546,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
                                failure)
 #ifdef SURFACE_FLOW
-        call SurfaceFlowResidual(realization)
+        call SNESSolve(surf_flow_stepper%solver%snes, PETSC_NULL_OBJECT, &
+                       realization%surf_field%flow_xx, ierr)
 #endif
         call PetscLogStagePop(ierr)
         if (failure) return ! if flow solve fails, exit
@@ -2692,10 +2700,10 @@ subroutine StepperUpdateTransportSolution(realization)
   PetscErrorCode :: ierr
   
   call RTUpdateSolution(realization)
-  if (realization%option%update_porosity .or. &
-      realization%option%update_tortuosity .or. &
-      realization%option%update_permeability .or. &
-      realization%option%update_mineral_surface_area) then
+  if (realization%reaction%update_porosity .or. &
+      realization%reaction%update_tortuosity .or. &
+      realization%reaction%update_permeability .or. &
+      realization%reaction%update_mineral_surface_area) then
     call RealizationUpdateProperties(realization)
   endif
 
