@@ -2282,23 +2282,23 @@ subroutine assignMaterialPropToRegions(realization)
             option%io_buffer = 'No material property for material id ' // &
                                trim(adjustl(dataset_name)) &
                                //  ' defined in input file.'
-            call printErrMsg(option)
+            call printErrMsgByRank(option)
           endif
         else if (material_id < -998) then 
           write(dataset_name,*) grid%nG2A(ghosted_id)
           option%io_buffer = 'Uninitialized material id in patch at cell ' // &
                              trim(adjustl(dataset_name))
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
         else if (material_id > size(realization%material_property_array)) then
           write(option%io_buffer,*) material_id
           option%io_buffer = 'Unmatched material id in patch:' // &
             adjustl(trim(option%io_buffer))
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
         else
           option%io_buffer = 'Something messed up with material ids. ' // &
             ' Possibly material ids not assigned to all grid cells. ' // &
             ' Contact Glenn!'
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
         endif
         if (option%nflowdof > 0) then
           patch%sat_func_id(ghosted_id) = material_property%saturation_function_id
