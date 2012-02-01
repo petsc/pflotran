@@ -460,7 +460,13 @@ module Reaction_Aux_module
     PetscReal :: max_dlnC
     PetscReal :: max_relative_change_tolerance
     PetscReal :: max_residual_tolerance
-
+    
+    PetscBool :: update_permeability
+    PetscBool :: update_tortuosity
+    PetscBool :: update_porosity
+    PetscReal :: minimum_porosity
+    PetscBool :: update_mineral_surface_area
+    
   end type reaction_type
 
   public :: ReactionCreate, &
@@ -761,6 +767,12 @@ function ReactionCreate()
   reaction%max_dlnC = 5.d0
   reaction%max_relative_change_tolerance = 1.d-6
   reaction%max_residual_tolerance = 1.d-12
+
+  reaction%update_permeability = PETSC_FALSE
+  reaction%update_tortuosity = PETSC_FALSE
+  reaction%update_porosity = PETSC_FALSE
+  reaction%minimum_porosity = 0.d0
+  reaction%update_mineral_surface_area = PETSC_FALSE
 
   ReactionCreate => reaction
   

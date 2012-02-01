@@ -2692,10 +2692,10 @@ subroutine StepperUpdateTransportSolution(realization)
   PetscErrorCode :: ierr
   
   call RTUpdateSolution(realization)
-  if (realization%option%update_porosity .or. &
-      realization%option%update_tortuosity .or. &
-      realization%option%update_permeability .or. &
-      realization%option%update_mineral_surface_area) then
+  if (realization%reaction%update_porosity .or. &
+      realization%reaction%update_tortuosity .or. &
+      realization%reaction%update_permeability .or. &
+      realization%reaction%update_mineral_surface_area) then
     call RealizationUpdateProperties(realization)
   endif
 

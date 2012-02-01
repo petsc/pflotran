@@ -762,13 +762,13 @@ subroutine ReactionRead(reaction,input,option)
         call InputReadInt(input,option,option%num_threads)
         call InputErrorMsg(input,option,'num_thread','CHEMISTRY')
       case('UPDATE_POROSITY')
-        option%update_porosity = PETSC_TRUE
+        reaction%update_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')
-        option%update_tortuosity = PETSC_TRUE
+        reaction%update_tortuosity = PETSC_TRUE
       case('UPDATE_PERMEABILITY')
-        option%update_permeability = PETSC_TRUE
+        reaction%update_permeability = PETSC_TRUE
       case('UPDATE_MINERAL_SURFACE_AREA')
-        option%update_mineral_surface_area = PETSC_TRUE
+        reaction%update_mineral_surface_area = PETSC_TRUE
       case('MOLAL','MOLALITY')
         reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
