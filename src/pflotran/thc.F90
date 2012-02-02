@@ -1476,49 +1476,31 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 
     endif
   endif 
-! Diffusion term   
-! Note : average rule may not be correct  
-  if ((global_aux_var_up%sat(1) > eps) .and. (global_aux_var_dn%sat(1) > eps)) then
-!    difff = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))* &
-!                            (global_aux_var_up%den(1) + global_aux_var_dn%den(1))
-!    do ispec=1, option%nflowspec
-!      fluxm(ispec) = fluxm(ispec) + difff*0.5D0* &
-!                 (aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))* &
-!                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-!    enddo 
+
     difff = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))* &
                             (global_aux_var_up%den(1) + global_aux_var_dn%den(1))
     ddifff_dp_up = diffdp*0.25D0*(aux_var_up%dsat_dp*(global_aux_var_up%den(1) + global_aux_var_dn%den(1))+ &
                   (global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_up%dden_dp)
     ddifff_dt_up = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_up%dden_dt
-! Need to add a term due to temperature dependence on diffusivity
+
     ddifff_dp_dn = diffdp*0.25D0*(aux_var_dn%dsat_dp*(global_aux_var_up%den(1) + global_aux_var_dn%den(1))+ &
                   (global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_dn%dden_dp)
     ddifff_dt_dn = diffdp*0.25D0*(global_aux_var_up%sat(1) + global_aux_var_dn%sat(1))*aux_var_dn%dden_dt
                                     
-    Jup(1,1) = Jup(1,1)+ddifff_dp_up*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
-                                           (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-    Jup(1,2) = Jup(1,2)+ddifff_dt_up*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
-                                           (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-                                           
-    Jdn(1,1) = Jdn(1,1)+ddifff_dp_dn*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
-                                           (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-    Jdn(1,2) = Jdn(1,2)+ddifff_dt_dn*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
-                                           (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-    do ispec=2, option%nflowspec
-      Jup(ispec,1) = Jup(ispec,1)+ddifff_dp_up*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
-                                                     (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-      Jup(ispec,2) = Jup(ispec,2)+ddifff_dt_up*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
-                                                     (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-      Jup(ispec,ispec+1) = Jup(ispec,ispec+1)+difff*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))
+! SK   
 
-      Jdn(ispec,1) = Jdn(ispec,1)+ddifff_dp_dn*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
-                                             (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-      Jdn(ispec,2) = Jdn(ispec,2)+ddifff_dt_dn*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
-                                             (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-      Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+difff*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*(-1.d0)
-    enddo  
-  endif 
+   Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+   Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
+   Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
+
+   Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+   Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+   Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
+
 
 #ifdef VAPOR
   ! Added by Satish Karra, updated 11/11/11
@@ -1685,6 +1667,18 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
              + Ddiffgas_avg*(-dmolg_dt_dn))/(dd_up + dd_dn)*area
 #endif
   endif
+
+
+  ddifff_dt_up = diffdp*0.25d0*(aux_var_up%dsat_dt)*&
+                 (global_aux_var_up%den(1) + global_aux_var_dn%den(1))
+  ddifff_dt_dn = diffdp*0.25d0*(aux_var_dn%dsat_dt)*&
+                 (global_aux_var_up%den(1) + global_aux_var_dn%den(1))
+
+  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+
 #endif 
 
         
@@ -2013,20 +2007,12 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
     endif
   endif 
 
-! Diffusion term   
-! Note : average rule may not be correct  
-!pcl if ((global_aux_var_up%sat(1) > eps) .and. (global_aux_var_dn%sat(1) > eps)) then
-   
-    difff = diffdp * 0.25D0*(global_aux_var_up%sat(1)+global_aux_var_dn%sat(1))* &
+  
+  difff = diffdp * 0.25D0*(global_aux_var_up%sat(1)+global_aux_var_dn%sat(1))* &
                             (global_aux_var_up%den(1)+global_aux_var_dn%den(1))
-!     fluxm(1) = fluxm(1) + difff * .5D0 * (aux_var_up%diff(1) + aux_var_dn%diff(1))* &
-!                (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-!     fluxm(2) = fluxm(2) + difff * .5D0 * (aux_var_up%diff(2) + aux_var_dn%diff(2))* &
-!                (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-      fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
+  fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
                  (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
-!pcl endif 
-    
+
 #ifdef VAPOR
   ! Added by Satish Karra, 10/24/11
   ! Now looking at above freezing only
@@ -2374,29 +2360,18 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
   ! Diffusion term   
   select case(ibndtype(THC_CONCENTRATION_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
-!      if (global_aux_var_up%sat > eps .and. global_aux_var_dn%sat > eps) then
-!        diff = diffdp * 0.25D0*(global_aux_var_up%sat(1)+global_aux_var_dn%sat(1))*(global_aux_var_up%den(1)+global_aux_var_dn%den(1))
-!        ddiff_dp_dn = diffdp * 0.25D0*(aux_var_dn%dsat_dp*(global_aux_var_up%den+global_aux_var_dn%den)+ &
-!                                      (global_aux_var_up%sat(1)+aux_var_dn%sat(1))*aux_var_dn%dden_dp)
-!        ddiff_dt_dn = diffdp * 0.25D0*(global_aux_var_up%sat(1)+global_aux_var_dn%sat(1))*aux_var_dn%dden_dt
-      if (global_aux_var_dn%sat(1) > eps) then
-        diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
-        ddiff_dp_dn = diffdp * (aux_var_dn%dsat_dp*global_aux_var_dn%den(1)+ &
+
+      diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
+      ddiff_dp_dn = diffdp * (aux_var_dn%dsat_dp*global_aux_var_dn%den(1)+ &
                                 global_aux_var_dn%sat(1)*aux_var_dn%dden_dp)
-        ddiff_dt_dn = diffdp * global_aux_var_dn%sat(1)*aux_var_dn%dden_dt
-                                    
-        Jdn(1,1) = Jdn(1,1)+ddiff_dp_dn*aux_var_dn%diff(1)*&
-                                        (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-        Jdn(1,2) = Jdn(1,2)+ddiff_dt_dn*aux_var_dn%diff(1)*&
-                                        (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-        do ispec=2, option%nflowspec
-          Jdn(ispec,1) = Jdn(ispec,1)+ddiff_dp_dn*aux_var_dn%diff(ispec)*&
-                                                (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-          Jdn(ispec,2) = Jdn(ispec,2)+ddiff_dt_dn*aux_var_dn%diff(ispec)*&
-                                                (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-          Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+diff*aux_var_dn%diff(ispec)*(-1.d0)
-        enddo  
-      endif
+      ddiff_dt_dn = diffdp * global_aux_var_dn%sat(1)*aux_var_dn%dden_dt
+! SK
+      Jdn(2,1) = Jdn(2,1) + ddiff_dp_dn*Diff_dn* &
+                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+      Jdn(2,2) = Jdn(2,2) + ddiff_dt_dn*Diff_dn* &
+                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+      Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
+
   end select
    
   ! Conduction term
@@ -2765,12 +2740,10 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
 
 !pcl  if (global_aux_var_dn%sat(1) > eps) then
         diff = diffdp * global_aux_var_dn%sat(1)*global_aux_var_dn%den(1)
-        do ispec = 1, option%nflowspec
-!         fluxm(ispec) = fluxm(ispec) + diff*aux_var_dn%diff(ispec)* &
+ !         fluxm(ispec) = fluxm(ispec) + diff*aux_var_dn%diff(ispec)* &
 !                          (aux_var_up%xmol(ispec)-aux_var_dn%xmol(ispec))
-          fluxm(ispec) = fluxm(ispec) + diff*Diff_dn* &
-                           (aux_var_up%xmol(ispec)-aux_var_dn%xmol(ispec))
-        enddo  
+        fluxm(2) = fluxm(2) + diff*Diff_dn* &
+                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
 !pcl  endif
   end select
   
