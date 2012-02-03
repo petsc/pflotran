@@ -360,6 +360,11 @@ subroutine MiscibleZeroMassBalDeltaPatch(realization)
       global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
+  if (patch%aux%Miscible%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_ss
+      global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
  
 end subroutine MiscibleZeroMassBalDeltaPatch
 
@@ -405,6 +410,14 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
 
   if (patch%aux%Miscible%num_aux_bc > 0) then
     do iconn = 1, patch%aux%Miscible%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
+
+  if (patch%aux%Miscible%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_ss
       global_aux_vars_bc(iconn)%mass_balance = &
         global_aux_vars_bc(iconn)%mass_balance + &
         global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
@@ -1735,10 +1748,10 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
            realization%fluid_properties, option)
 
     if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+      global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres - &
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%sat(:)=1D0
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+      global_aux_vars_bc(sum_connection)%sat(:) = 1.D0
+      global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store

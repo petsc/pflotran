@@ -23,7 +23,6 @@ type, public :: Miscible_auxvar_elem_type
  end type Miscible_auxvar_elem_type
 
   type, public :: Miscible_auxvar_type
-    
     type(Miscible_auxvar_elem_type), pointer :: aux_var_elem(:) 
   end type Miscible_auxvar_type
   
@@ -37,17 +36,17 @@ type, public :: Miscible_auxvar_elem_type
   type, public :: Miscible_type
      PetscInt :: n_zero_rows
      PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
-
      PetscBool :: aux_vars_up_to_date
      PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc
+     PetscInt :: num_aux, num_aux_bc, num_aux_ss
      type(Miscible_parameter_type), pointer :: Miscible_parameter
      type(Miscible_auxvar_type), pointer :: aux_vars(:)
      type(Miscible_auxvar_type), pointer :: aux_vars_bc(:)
-     PetscReal , pointer :: Resold_AR(:,:)
-     PetscReal , pointer :: Resold_BC(:,:)
-     PetscReal , pointer :: Resold_FL(:,:)
-     PetscReal , pointer :: delx(:,:)
+     type(Miscible_auxvar_type), pointer :: aux_vars_ss(:)
+     PetscReal, pointer :: Resold_AR(:,:)
+     PetscReal, pointer :: Resold_BC(:,:)
+     PetscReal, pointer :: Resold_FL(:,:)
+     PetscReal, pointer :: delx(:,:)
   end type Miscible_type
 
   public :: MiscibleAuxCreate, MiscibleAuxDestroy, &
@@ -78,8 +77,10 @@ function MiscibleAuxCreate()
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
   aux%n_zero_rows = 0
   allocate(aux%Miscible_parameter)
   nullify(aux%Miscible_parameter%sir)
