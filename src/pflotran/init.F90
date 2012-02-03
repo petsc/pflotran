@@ -65,6 +65,11 @@ subroutine Init(simulation)
   use Utility_module
   use Output_module
     
+#ifdef SURFACE_FLOW
+  use Surface_Field_module
+  use Surface_Flow_Module
+  use Unstructured_Grid_module
+#endif
   implicit none
   
   type(simulation_type) :: simulation
@@ -90,7 +95,12 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
-
+#ifdef SURFACE_FLOW
+  type(stepper_type), pointer :: surf_flow_stepper
+  type(solver_type), pointer :: surf_flow_solver
+  type(surface_field_type),pointer :: surf_field
+  type(dm_ptr_type), pointer :: dm_ptr
+#endif
       
   interface
 
@@ -116,6 +126,10 @@ end interface
   field => realization%field
   debug => realization%debug
   input => realization%input
+#ifdef SURFACE_FLOW
+  surf_flow_stepper => simulation%surf_flow_stepper
+  surf_field => realization%surf_field
+#endif
   
   option%init_stage = PETSC_TRUE
 
@@ -171,6 +185,10 @@ end interface
     call TimestepperDestroy(simulation%tran_stepper)
     nullify(tran_stepper)
   endif
+
+#ifdef SURFACE_FLOW
+  surf_flow_solver => surf_flow_stepper%solver
+#endif
 
   ! read in the remainder of the input file
   call InitReadInput(simulation)
@@ -429,6 +447,60 @@ end interface
                                 PETSC_NULL_FUNCTION,ierr) 
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
+#ifdef SURFACE_FLOW
+    call printMsg(option,"  Beginning setup of SURF FLOW SNES ")
+
+    call SolverCreateSNES(surf_flow_solver,option%mycomm)
+    call SNESSetOptionsPrefix(surf_flow_solver%snes, "surf_flow_",ierr)
+    call SolverCheckCommandLine(surf_flow_solver)
+
+    if (surf_flow_solver%Jpre_mat_type == '') then
+      if (surf_flow_solver%J_mat_type /= MATMFFD) then
+        surf_flow_solver%Jpre_mat_type = surf_flow_solver%J_mat_type
+      else
+        surf_flow_solver%Jpre_mat_type = MATBAIJ
+      endif
+    endif
+
+    dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,SURF_ONEDOF)
+    
+    write(*,*),'Surfaceflow Jacobian: '
+    call UGridDMCreateJacobian(discretization%surfgrid%unstructured_grid, &
+                               dm_ptr%ugdm,surf_flow_solver%Jpre_mat_type,surf_flow_solver%Jpre,option)
+    call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+    call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+
+    call MatSetOptionsPrefix(surf_flow_solver%Jpre,"surf_flow_",ierr)
+
+    if (surf_flow_solver%J_mat_type /= MATMFFD) then
+      surf_flow_solver%J = surf_flow_solver%Jpre
+    endif
+
+    call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
+                          SurfaceFlowResidual, &
+                          realization,ierr)
+
+    call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J,surf_flow_solver%Jpre, &
+                        SurfaceFlowJacobian,realization,ierr)
+
+    ! by default turn off line search
+    call SNESLineSearchSet(surf_flow_solver%snes,SNESLineSearchNo, &
+                           PETSC_NULL_OBJECT,ierr)
+
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-surf_flow_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
+
+    call SolverSetSNESOptions(surf_flow_solver)
+
+    option%io_buffer = 'Solver: ' // trim(surf_flow_solver%ksp_type)
+    call printMsg(option)
+    option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
+    call printMsg(option)
+
+#endif
   endif
 
   
@@ -2289,23 +2361,23 @@ subroutine assignMaterialPropToRegions(realization)
             option%io_buffer = 'No material property for material id ' // &
                                trim(adjustl(dataset_name)) &
                                //  ' defined in input file.'
-            call printErrMsg(option)
+            call printErrMsgByRank(option)
           endif
         else if (material_id < -998) then 
           write(dataset_name,*) grid%nG2A(ghosted_id)
           option%io_buffer = 'Uninitialized material id in patch at cell ' // &
                              trim(adjustl(dataset_name))
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
         else if (material_id > size(realization%material_property_array)) then
           write(option%io_buffer,*) material_id
           option%io_buffer = 'Unmatched material id in patch:' // &
             adjustl(trim(option%io_buffer))
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
         else
           option%io_buffer = 'Something messed up with material ids. ' // &
             ' Possibly material ids not assigned to all grid cells. ' // &
             ' Contact Glenn!'
-          call printErrMsg(option)
+          call printErrMsgByRank(option)
         endif
         if (option%nflowdof > 0) then
           patch%sat_func_id(ghosted_id) = material_property%saturation_function_id

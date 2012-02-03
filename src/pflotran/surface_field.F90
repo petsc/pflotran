@@ -14,8 +14,11 @@ module Surface_Field_module
 
   type, public :: surface_field_type 
 
-    ! Solution vectors (yy = previous solution, xx = current iterate)
+    ! residual vectors
     Vec :: flow_r
+
+    ! Solution vectors (yy = previous solution, xx = current iterate)
+    Vec :: flow_xx, flow_xx_loc
 
   end type surface_field_type
 
@@ -43,6 +46,8 @@ function SurfaceFieldCreate()
 
   ! nullify PetscVecs
   surface_field%flow_r = 0
+  surface_field%flow_xx = 0
+  surface_field%flow_xx_loc = 0
 
   SurfaceFieldCreate => surface_field
 
@@ -65,6 +70,8 @@ subroutine SurfaceFieldDestroy(surface_field)
 
   ! Destroy PetscVecs
   if (surface_field%flow_r /= 0) call VecDestroy(surface_field%flow_r,ierr)
+  if (surface_field%flow_xx /= 0) call VecDestroy(surface_field%flow_xx,ierr)
+  if (surface_field%flow_xx_loc /= 0) call VecDestroy(surface_field%flow_xx_loc,ierr)
 
 end subroutine SurfaceFieldDestroy
 

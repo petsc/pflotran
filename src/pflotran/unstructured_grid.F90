@@ -4228,7 +4228,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
   nvertices = 0
   do iface = 1, n_ss_faces
-    if(option%myrank == 0) write(*,*),iface,face_vertices(:,iface)
+    !if(option%myrank == 0) write(*,*),iface,face_vertices(:,iface)
     do ivertex = 1, size(face_vertices,1)
       if (face_vertices(ivertex,iface) > 0) then
         nvertices = nvertices + 1

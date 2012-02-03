@@ -157,8 +157,13 @@
 
     call Init(simulation)
 
+#ifndef SURFACE_FLOW
     call StepperRun(simulation%realization,simulation%flow_stepper, &
                     simulation%tran_stepper)
+#else
+    call StepperRun(simulation%realization,simulation%flow_stepper, &
+                    simulation%tran_stepper,simulation%surf_flow_stepper)
+#endif
 
   ! Clean things up.
     call SimulationDestroy(simulation)
