@@ -449,7 +449,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
           case(UNSTRUCTURED_GRID)
             un_str_grid => UGridCreate()
             if (index(filename,'.h5') > 0) then
-#if defined SAMR_HAVE_HDF5
+#if !defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+              option%io_buffer = 'PFLOTRAN must be built with HDF5 ' // &
+                'support to read unstructured grid .h5 files'
+              call printErrMsg(option)
+#elif defined SAMR_HAVE_HDF5
               option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not ' // &
                 'incorporated yet'
               call printErrMsg(option)

@@ -95,7 +95,7 @@ module Unstructured_Grid_module
 
   public :: UGridCreate, &
             UGridRead, &
-#ifndef SAMR_HAVE_HDF5
+#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
             UGridReadHDF5, &
 #endif
 #if defined(PARALLELIO_LIB)
@@ -726,7 +726,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 end subroutine UGridReadSurfGrid
 #endif !SURFACE_FLOW
 
-#ifndef SAMR_HAVE_HDF5
+#if !defined(SAMR_HAVE_HDF5) && defined(PETSC_HAVE_HDF5)
 
 ! ************************************************************************** !
 !
@@ -998,6 +998,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 end subroutine UGridReadHDF5
 
 #endif
+! End SAMR_HAVE_HDF5
 
 ! ************************************************************************** !
 !
