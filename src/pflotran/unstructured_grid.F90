@@ -1360,10 +1360,10 @@ subroutine UGridDecompose(unstructured_grid,option)
     call printErrMsg(option)
   endif
 
-  ! 0 = 0-based indexing
+  ! second argument of ZERO_INTEGER means to use 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
-  call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
-                      ja_ptr,success,ierr)
+  call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                      ia_ptr,ja_ptr,success,ierr)
 
   if (.not.success .or. num_rows /= num_cells_local_old) then
     print *, option%myrank, num_rows, success, num_cells_local_old
@@ -1390,8 +1390,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   call printMsg(option)
 #endif
   
-  call MatRestoreRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
-                          ja_ptr,success,ierr)
+  call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
+                          num_rows,ia_ptr,ja_ptr,success,ierr)
   
   ! in order to redistributed vertex/cell data among ranks, I package it
   ! in a crude way within a strided petsc vec and pass it.  The stride 
@@ -1459,8 +1459,8 @@ subroutine UGridDecompose(unstructured_grid,option)
 
   ! 0 = 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
-  call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
-                      ja_ptr,success,ierr)
+  call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
+                      ia_ptr,ja_ptr,success,ierr)
 
   call VecGetArrayF90(elements_old,vec_ptr,ierr)
   count = 0
@@ -1510,8 +1510,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   enddo
   call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
   
-  call MatRestoreRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
-                          ja_ptr,success,ierr)
+  call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
+                          num_rows,ia_ptr,ja_ptr,success,ierr)
   call MatDestroy(Dual_mat,ierr)
  
 #if UGRID_DEBUG
