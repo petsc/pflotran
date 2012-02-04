@@ -1449,12 +1449,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           region%k1 > 0 .and. region%k2 > 0) then
 
         ! convert indexing from global (entire domain) to local processor
-        region%i1 = region%i1 - grid%structured_grid%nxs
-        region%i2 = region%i2 - grid%structured_grid%nxs
-        region%j1 = region%j1 - grid%structured_grid%nys
-        region%j2 = region%j2 - grid%structured_grid%nys
-        region%k1 = region%k1 - grid%structured_grid%nzs
-        region%k2 = region%k2 - grid%structured_grid%nzs
+        region%i1 = region%i1 - grid%structured_grid%lxs
+        region%i2 = region%i2 - grid%structured_grid%lxs
+        region%j1 = region%j1 - grid%structured_grid%lys
+        region%j2 = region%j2 - grid%structured_grid%lys
+        region%k1 = region%k1 - grid%structured_grid%lzs
+        region%k2 = region%k2 - grid%structured_grid%lzs
           
         ! clip region to within local processor domain
         region%i1 = max(region%i1,1)
@@ -1840,12 +1840,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 #if 0
           do count=1,region%num_cells
             i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
-                  grid%structured_grid%nxs
+                  grid%structured_grid%lxs
             j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
                     grid%structured_grid%ny)+1 - &
-                  grid%structured_grid%nys
+                  grid%structured_grid%lys
             k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
-                  grid%structured_grid%nzs
+                  grid%structured_grid%lzs
             if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
                 j > 0 .and. j <= grid%structured_grid%nly .and. &
                 k > 0 .and. k <= grid%structured_grid%nlz) then

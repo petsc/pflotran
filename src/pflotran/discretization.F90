@@ -572,7 +572,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      ! this function must be called to set up str_grid%nxs, etc.
+      ! this function must be called to set up str_grid%lxs, etc.
       call StructGridComputeLocalBounds(discretization%grid%structured_grid, &
                                         discretization%dm_1dof%sgdm)    
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax

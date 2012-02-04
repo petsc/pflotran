@@ -16,11 +16,11 @@ module Structured_Grid_module
     PetscInt :: npx_final, npy_final, npz_final ! actual decomposition
     PetscInt :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
     PetscInt :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
-    PetscInt :: nxs, nys, nzs 
+    PetscInt :: lxs, lys, lzs 
       ! Global indices of non-ghosted corner (starting) of local domain.
-    PetscInt :: ngxs, ngys, ngzs
+    PetscInt :: gxs, gys, gzs
       ! Global indices of ghosted starting corner of local domain.
-    PetscInt :: nxe, nye, nze, ngxe, ngye, ngze
+    PetscInt :: lxe, lye, lze, gxe, gye, gze
       ! Global indices of non-ghosted/ghosted ending corner of local domain.
     PetscInt :: nlxy, nlxz, nlyz
     PetscInt :: ngxy, ngxz, ngyz
@@ -132,21 +132,21 @@ function StructuredGridCreate()
   structured_grid%ngyz = 0
   structured_grid%ngmax = 0
 
-  structured_grid%nxs = 0
-  structured_grid%nys = 0
-  structured_grid%nzs = 0
+  structured_grid%lxs = 0
+  structured_grid%lys = 0
+  structured_grid%lzs = 0
 
-  structured_grid%ngxs = 0
-  structured_grid%ngys = 0
-  structured_grid%ngzs = 0
+  structured_grid%gxs = 0
+  structured_grid%gys = 0
+  structured_grid%gzs = 0
 
-  structured_grid%nxe = 0
-  structured_grid%nye = 0
-  structured_grid%nze = 0
+  structured_grid%lxe = 0
+  structured_grid%lye = 0
+  structured_grid%lze = 0
 
-  structured_grid%ngxe = 0
-  structured_grid%ngye = 0
-  structured_grid%ngze = 0
+  structured_grid%gxe = 0
+  structured_grid%gye = 0
+  structured_grid%gze = 0
 
   structured_grid%istart = 0
   structured_grid%jstart = 0
@@ -273,26 +273,26 @@ subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
 
   if (structured_grid%p_samr_patch==0) then
       ! get corner information
-     call DMDAGetCorners(da, structured_grid%nxs, &
-          structured_grid%nys, structured_grid%nzs, structured_grid%nlx, &
+     call DMDAGetCorners(da, structured_grid%lxs, &
+          structured_grid%lys, structured_grid%lzs, structured_grid%nlx, &
           structured_grid%nly, structured_grid%nlz, ierr)
      
-     structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
-     structured_grid%nye = structured_grid%nys + structured_grid%nly
-     structured_grid%nze = structured_grid%nzs + structured_grid%nlz
+     structured_grid%lxe = structured_grid%lxs + structured_grid%nlx
+     structured_grid%lye = structured_grid%lys + structured_grid%nly
+     structured_grid%lze = structured_grid%lzs + structured_grid%nlz
      structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
      structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
      structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
      structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
      
      ! get ghosted corner information
-     call DMDAGetGhostCorners(da, structured_grid%ngxs, &
-          structured_grid%ngys, structured_grid%ngzs, structured_grid%ngx, &
+     call DMDAGetGhostCorners(da, structured_grid%gxs, &
+          structured_grid%gys, structured_grid%gzs, structured_grid%ngx, &
           structured_grid%ngy, structured_grid%ngz, ierr)
      
-     structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
-     structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
-     structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
+     structured_grid%gxe = structured_grid%gxs + structured_grid%ngx
+     structured_grid%gye = structured_grid%gys + structured_grid%ngy
+     structured_grid%gze = structured_grid%gzs + structured_grid%ngz
      structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
      structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
      structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
@@ -300,12 +300,12 @@ subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
   else
      ! get corner information
      call samr_patch_get_corners(structured_grid%p_samr_patch, &
-          structured_grid%nxs, structured_grid%nys, structured_grid%nzs, &
+          structured_grid%lxs, structured_grid%lys, structured_grid%lzs, &
           structured_grid%nlx, structured_grid%nly, structured_grid%nlz)
      
-     structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
-     structured_grid%nye = structured_grid%nys + structured_grid%nly
-     structured_grid%nze = structured_grid%nzs + structured_grid%nlz
+     structured_grid%lxe = structured_grid%lxs + structured_grid%nlx
+     structured_grid%lye = structured_grid%lys + structured_grid%nly
+     structured_grid%lze = structured_grid%lzs + structured_grid%nlz
      structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
      structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
      structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
@@ -313,11 +313,11 @@ subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
      
      ! get ghosted corner information
      call samr_patch_get_ghostcorners(structured_grid%p_samr_patch, &
-          structured_grid%ngxs, structured_grid%ngys, structured_grid%ngzs, &
+          structured_grid%gxs, structured_grid%gys, structured_grid%gzs, &
           structured_grid%ngx, structured_grid%ngy, structured_grid%ngz)
-     structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
-     structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
-     structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
+     structured_grid%gxe = structured_grid%gxs + structured_grid%ngx
+     structured_grid%gye = structured_grid%gys + structured_grid%ngy
+     structured_grid%gze = structured_grid%gzs + structured_grid%ngz
      structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
      structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
      structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
@@ -618,11 +618,11 @@ subroutine StructuredGridComputeSpacing(structured_grid,option)
       
     endif
     structured_grid%dxg_local(1:structured_grid%ngx) = &
-      structured_grid%dx_global(structured_grid%ngxs+1:structured_grid%ngxe)
+      structured_grid%dx_global(structured_grid%gxs+1:structured_grid%gxe)
     structured_grid%dyg_local(1:structured_grid%ngy) = &
-      structured_grid%dy_global(structured_grid%ngys+1:structured_grid%ngye)
+      structured_grid%dy_global(structured_grid%gys+1:structured_grid%gye)
     structured_grid%dzg_local(1:structured_grid%ngz) = &
-      structured_grid%dz_global(structured_grid%ngzs+1:structured_grid%ngze)
+      structured_grid%dz_global(structured_grid%gzs+1:structured_grid%gze)
   endif    
         
   allocate(structured_grid%dx(structured_grid%ngmax))
@@ -687,13 +687,13 @@ subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
     y_min = origin_global(Y_DIRECTION)
     z_min = origin_global(Z_DIRECTION)
     
-    do i=1,structured_grid%nxs
+    do i=1,structured_grid%lxs
       x_min = x_min + structured_grid%dx_global(i)
     enddo
-    do j=1,structured_grid%nys
+    do j=1,structured_grid%lys
       y_min = y_min + structured_grid%dy_global(j)
     enddo
-    do k=1,structured_grid%nzs
+    do k=1,structured_grid%lzs
       z_min = z_min + structured_grid%dz_global(k)
     enddo
   else
@@ -801,7 +801,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
         ! located on upwind boundary and ghosted
         if (structured_grid%p_samr_patch == 0) then
           if (x == x_upper_face .and. &
-              structured_grid%nxs /= structured_grid%ngxs) exit
+              structured_grid%lxs /= structured_grid%gxs) exit
 ! geh - the below should not be necessary for AMR since patches do not span processors              
 !        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) == 0) then
 !          exit
@@ -825,7 +825,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
         ! located on upwind boundary and ghosted
         if (structured_grid%p_samr_patch == 0) then
           if (y == y_upper_face .and. &
-              structured_grid%nys /= structured_grid%ngys) exit
+              structured_grid%lys /= structured_grid%gys) exit
 !        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) == 0) then
 !          exit
         endif
@@ -848,7 +848,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
         ! if located on upwind boundary and ghosted, skip
         if (structured_grid%p_samr_patch == 0) then
           if (z == z_upper_face .and. &
-            structured_grid%nzs /= structured_grid%ngzs) exit
+            structured_grid%lzs /= structured_grid%gzs) exit
 !        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) == 0) then
 !          exit
         endif
@@ -1087,7 +1087,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 #ifdef DASVYAT
               structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
               if (i == 1) then
-                if (structured_grid%nxs==structured_grid%ngxs) then
+                if (structured_grid%lxs==structured_grid%gxs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
                 end if
@@ -1195,7 +1195,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 #ifdef DASVYAT
               structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
               if (j == 1) then
-                if (structured_grid%nys==structured_grid%ngys) then
+                if (structured_grid%lys==structured_grid%gys) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
                 end if
@@ -1262,7 +1262,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 #ifdef DASVYAT
               structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
               if (k == 1) then
-                if (structured_grid%nzs==structured_grid%ngzs) then
+                if (structured_grid%lzs==structured_grid%gzs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
                 end if
@@ -1470,8 +1470,8 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   lenz = structured_grid%nlz 
 
 
-!  write(*,*) option%myrank, 'nxs=',structured_grid%nxs,' nys=',structured_grid%nys, ' nzs=',structured_grid%nzs 
-!  write(*,*) option%myrank, 'nxe=',structured_grid%nxe,' nye=',structured_grid%nye, ' nze=',structured_grid%nze
+!  write(*,*) option%myrank, 'nxs=',structured_grid%lxs,' nys=',structured_grid%lys, ' nzs=',structured_grid%lzs 
+!  write(*,*) option%myrank, 'nxe=',structured_grid%lxe,' nye=',structured_grid%lye, ' nze=',structured_grid%lze
 !  write(*,*) option%myrank, 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
 !  write(*,*) option%myrank, 'istart=',structured_grid%istart,' iend=',structured_grid%iend
 !  write(*,*) option%myrank, 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
@@ -1498,7 +1498,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   if (structured_grid%nlx + 2 - structured_grid%ngx > 0) then
     select case(structured_grid%itype)
       case(CARTESIAN_GRID)
-        if (structured_grid%nxs == structured_grid%ngxs) then
+        if (structured_grid%lxs == structured_grid%gxs) then
           i = structured_grid%istart 
           do k = structured_grid%kstart, structured_grid%kend
             do j = structured_grid%jstart, structured_grid%jend
@@ -1535,7 +1535,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
             enddo
           enddo
         endif
-        if (structured_grid%nxe == structured_grid%ngxe) then
+        if (structured_grid%lxe == structured_grid%gxe) then
           i = structured_grid%iend 
           do k = structured_grid%kstart, structured_grid%kend
             do j = structured_grid%jstart, structured_grid%jend
@@ -1586,7 +1586,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   if (structured_grid%nly + 2  -  structured_grid%ngy > 0) then
     select case(structured_grid%itype)
       case(CARTESIAN_GRID)
-        if (structured_grid%nys == structured_grid%ngys) then 
+        if (structured_grid%lys == structured_grid%gys) then 
           j = structured_grid%jstart
           do k = structured_grid%kstart, structured_grid%kend
             do i = structured_grid%istart, structured_grid%iend
@@ -1623,7 +1623,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
             enddo
           enddo
         endif
-        if (structured_grid%nye == structured_grid%ngye) then 
+        if (structured_grid%lye == structured_grid%gye) then 
           j = structured_grid%jend
           do k = structured_grid%kstart, structured_grid%kend
             do i = structured_grid%istart, structured_grid%iend
@@ -1674,7 +1674,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   if (structured_grid%nlz + 2 - structured_grid%ngz > 0) then
     select case(structured_grid%itype)
       case(CARTESIAN_GRID)
-        if (structured_grid%nzs == structured_grid%ngzs) then
+        if (structured_grid%lzs == structured_grid%gzs) then
           k = structured_grid%kstart
           do j = structured_grid%jstart, structured_grid%jend
             do i = structured_grid%istart, structured_grid%iend
@@ -1711,7 +1711,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
             enddo
           enddo
         endif    
-        if (structured_grid%nze == structured_grid%ngze ) then
+        if (structured_grid%lze == structured_grid%gze ) then
           k = structured_grid%kend
           do j = structured_grid%jstart, structured_grid%jend
             do i = structured_grid%istart, structured_grid%iend
@@ -1969,16 +1969,16 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
     write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
       & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
       option%myrank,structured_grid%nlmax,structured_grid%nlx, &
-        structured_grid%nly,structured_grid%nlz,structured_grid%nxs, &
-        structured_grid%nxe,structured_grid%nys,structured_grid%nye, &
-        structured_grid%nzs,structured_grid%nze
+        structured_grid%nly,structured_grid%nlz,structured_grid%lxs, &
+        structured_grid%lxe,structured_grid%lys,structured_grid%lye, &
+        structured_grid%lzs,structured_grid%lze
 
     write(*,'(" rank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
       & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
       option%myrank,structured_grid%ngmax,structured_grid%ngx, &
-        structured_grid%ngy,structured_grid%ngz,structured_grid%ngxs, &
-        structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye, &
-        structured_grid%ngzs,structured_grid%ngze
+        structured_grid%ngy,structured_grid%ngz,structured_grid%gxs, &
+        structured_grid%gxe,structured_grid%gys,structured_grid%gye, &
+        structured_grid%gzs,structured_grid%gze
   endif
 
 end subroutine StructuredGridComputeVolumes
@@ -2017,9 +2017,9 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nG2A)
      allocate(nG2A(structured_grid%ngmax))
   endif
 
-  structured_grid%istart = structured_grid%nxs-structured_grid%ngxs
-  structured_grid%jstart = structured_grid%nys-structured_grid%ngys
-  structured_grid%kstart = structured_grid%nzs-structured_grid%ngzs
+  structured_grid%istart = structured_grid%lxs-structured_grid%gxs
+  structured_grid%jstart = structured_grid%lys-structured_grid%gys
+  structured_grid%kstart = structured_grid%lzs-structured_grid%gzs
   structured_grid%iend = structured_grid%istart+structured_grid%nlx-1
   structured_grid%jend = structured_grid%jstart+structured_grid%nly-1
   structured_grid%kend = structured_grid%kstart+structured_grid%nlz-1
@@ -2064,22 +2064,22 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nG2A)
       do i=1,structured_grid%ngx
         count1 = 0
         if (i == 1 .and. &
-            abs(structured_grid%nxs-structured_grid%ngxs) > 0) &
+            abs(structured_grid%lxs-structured_grid%gxs) > 0) &
           count1 = count1 + 1
         if (i == structured_grid%ngx .and. &
-            abs(structured_grid%ngxe-structured_grid%nxe) > 0) &
+            abs(structured_grid%gxe-structured_grid%lxe) > 0) &
           count1 = count1 + 1
         if (j == 1 .and. &
-            abs(structured_grid%nys-structured_grid%ngys) > 0) &
+            abs(structured_grid%lys-structured_grid%gys) > 0) &
           count1 = count1 + 1
         if (j == structured_grid%ngy .and. &
-            abs(structured_grid%ngye-structured_grid%nye) > 0) &
+            abs(structured_grid%gye-structured_grid%lye) > 0) &
           count1 = count1 + 1
         if (k == 1 .and. &
-            abs(structured_grid%nzs-structured_grid%ngzs) > 0) &
+            abs(structured_grid%lzs-structured_grid%gzs) > 0) &
           count1 = count1 + 1
         if (k == structured_grid%ngz .and. &
-            abs(structured_grid%ngze-structured_grid%nze) > 0) &
+            abs(structured_grid%gze-structured_grid%lze) > 0) &
           count1 = count1 + 1
         if (count1 > 1) then
           ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
@@ -2156,9 +2156,9 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nG2A)
       do j=1,structured_grid%ngy
         do i=1,structured_grid%ngx
           local_id = local_id + 1
-          natural_id = i + structured_grid%ngxs + & ! 1-based
-                       (j-1+structured_grid%ngys)*structured_grid%nx+ &
-                       (k-1+structured_grid%ngzs)*structured_grid%nxy
+          natural_id = i + structured_grid%gxs + & ! 1-based
+                       (j-1+structured_grid%gys)*structured_grid%nx+ &
+                       (k-1+structured_grid%gzs)*structured_grid%nxy
           nG2A(local_id) = natural_id
        enddo
      enddo
@@ -2473,5 +2473,57 @@ subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
  endif
  
 end subroutine StructGridVecRestoreArrayF90
+
+! ************************************************************************** !
+!
+! StructGridCreateTVDGhosts: Calculates the TVD ghost vector and the 
+!                            associated scatter context
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+subroutine StructGridCreateTVDGhosts(structured_grid,ghost_vec,option)
+
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(structured_grid_type) :: structured_grid
+  Vec :: ghost_vec
+  type(option_type) :: option
+
+  PetscInt :: vector_size
+  
+  ! structured grid has 6 sides to it
+  vector_size = 0
+  ! west
+  if (structured_grid%lxs /= structured_grid%gxs) then
+    vector_size = vector_size + structured_grid%nly*structured_grid%nlz
+  endif
+  ! east
+  if (structured_grid%lxe /= structured_grid%gxe) then
+    vector_size = vector_size + structured_grid%nly*structured_grid%nlz
+  endif
+  ! south
+  if (structured_grid%lys /= structured_grid%gys) then
+    vector_size = vector_size + structured_grid%nlx*structured_grid%nlz
+  endif
+  ! north
+  if (structured_grid%lye /= structured_grid%gye) then
+    vector_size = vector_size + structured_grid%nlx*structured_grid%nlz
+  endif
+  ! bottom
+  if (structured_grid%lzs /= structured_grid%gzs) then
+    vector_size = vector_size + structured_grid%nlx*structured_grid%nly
+  endif
+  ! north
+  if (structured_grid%lze /= structured_grid%gze) then
+    vector_size = vector_size + structured_grid%nlx*structured_grid%nly
+  endif
+
+end subroutine StructGridCreateTVDGhosts  
 
 end module Structured_Grid_module

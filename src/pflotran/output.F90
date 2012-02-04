@@ -1708,21 +1708,21 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     case(X_DIRECTION)
       global_size = grid%nmax-grid%structured_grid%ny*grid%structured_grid%nz
       nx_global = grid%structured_grid%nx-1
-      if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
+      if (grid%structured_grid%gxe-grid%structured_grid%lxe == 0) then
         local_size = grid%nlmax-grid%structured_grid%nlyz
         nx_local = grid%structured_grid%nlx-1
       endif
     case(Y_DIRECTION)
       global_size = grid%nmax-grid%structured_grid%nx*grid%structured_grid%nz
       ny_global = grid%structured_grid%ny-1
-      if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
+      if (grid%structured_grid%gye-grid%structured_grid%lye == 0) then
         local_size = grid%nlmax-grid%structured_grid%nlxz
         ny_local = grid%structured_grid%nly-1
       endif
     case(Z_DIRECTION)
       global_size = grid%nmax-grid%structured_grid%nxy
       nz_global = grid%structured_grid%nz-1
-      if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
+      if (grid%structured_grid%gze-grid%structured_grid%lze == 0) then
         local_size = grid%nlmax-grid%structured_grid%nlxy
         nz_local = grid%structured_grid%nlz-1
       endif
@@ -1735,8 +1735,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     do j=1,ny_local
       do i=1,nx_local
         count = count + 1
-        indices(count) = i+grid%structured_grid%nxs+(j-1+grid%structured_grid%nys)*nx_global+ &
-                         (k-1+grid%structured_grid%nzs)*nx_global*ny_global
+        indices(count) = i+grid%structured_grid%lxs+(j-1+grid%structured_grid%lys)*nx_global+ &
+                         (k-1+grid%structured_grid%lzs)*nx_global*ny_global
       enddo
     enddo
   enddo
@@ -7207,19 +7207,19 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     nx_local = grid%structured_grid%nlx
     ny_local = grid%structured_grid%nly
     nz_local = grid%structured_grid%nlz
-    if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
+    if (grid%structured_grid%gxe-grid%structured_grid%lxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
     call MPI_Allreduce(nx_local,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
                        option%mycomm,ierr)
     if (i == 0) trick_flux_vel_x = PETSC_TRUE
-    if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
+    if (grid%structured_grid%gye-grid%structured_grid%lye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
     call MPI_Allreduce(ny_local,j,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
                        option%mycomm,ierr)
     if (j == 0) trick_flux_vel_y = PETSC_TRUE
-    if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
+    if (grid%structured_grid%gze-grid%structured_grid%lze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
     call MPI_Allreduce(nz_local,k,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
@@ -7237,19 +7237,19 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   select case(direction)
     case(X_DIRECTION)
       nx_global = grid%structured_grid%nx-1
-      if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
+      if (grid%structured_grid%gxe-grid%structured_grid%lxe == 0) then
         nx_local = grid%structured_grid%nlx-1
       endif
       if (trick_flux_vel_x) trick_hdf5 = PETSC_TRUE
     case(Y_DIRECTION)
       ny_global = grid%structured_grid%ny-1
-      if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
+      if (grid%structured_grid%gye-grid%structured_grid%lye == 0) then
         ny_local = grid%structured_grid%nly-1
       endif
       if (trick_flux_vel_y) trick_hdf5 = PETSC_TRUE
     case(Z_DIRECTION)
       nz_global = grid%structured_grid%nz-1
-      if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
+      if (grid%structured_grid%gze-grid%structured_grid%lze == 0) then
         nz_local = grid%structured_grid%nlz-1
       endif
       if (trick_flux_vel_z) trick_hdf5 = PETSC_TRUE
@@ -7298,7 +7298,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE,option, &
                         nx_global,ny_global,nz_global, &
                         nx_local,ny_local,nz_local, &
-                        grid%structured_grid%nxs,grid%structured_grid%nys,grid%structured_grid%nzs)
+                        grid%structured_grid%lxs,grid%structured_grid%lys,grid%structured_grid%lzs)
 !GEH - Structured Grid Dependence - End
 
   deallocate(array)

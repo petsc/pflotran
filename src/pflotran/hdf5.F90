@@ -4395,9 +4395,9 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
                                   grid%structured_grid%nlx, &
                                   grid%structured_grid%nly, &
                                   grid%structured_grid%nlz, &
-                                  grid%structured_grid%nxs, &
-                                  grid%structured_grid%nys, &
-                                  grid%structured_grid%nzs)
+                                  grid%structured_grid%lxs, &
+                                  grid%structured_grid%lys, &
+                                  grid%structured_grid%lzs)
 !GEH - Structured Grid Dependence - End
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
