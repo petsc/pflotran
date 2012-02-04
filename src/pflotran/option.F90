@@ -58,6 +58,7 @@ module Option_module
     PetscInt :: iflowmode
     character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
+    PetscInt :: tvd_flux_limiter
 
     ! vector centering, used by SAMR
     ! 0 - CELL CENTERED
@@ -427,6 +428,7 @@ subroutine OptionInitRealization(option)
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
+  option%tvd_flux_limiter = 0
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
   option%ivar_centering = CELL_CENTERED

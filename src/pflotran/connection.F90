@@ -14,6 +14,8 @@ module Connection_module
     PetscInt, pointer :: local(:)      ! 1 if connection is local, 0 if connection is ghosted
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
+    PetscInt, pointer :: id_up2(:)     ! list of ids of 2nd upwind cells
+    PetscInt, pointer :: id_dn2(:)     ! list of ids of 2nd downwind cells
     PetscReal, pointer :: dist(:,:)    ! list of distance vectors, size(-1:3,num_connections) where
                                        !   -1 = fraction upwind
                                        !   0 = magnitude of distance 
@@ -69,6 +71,8 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   nullify(connection%local)
   nullify(connection%id_up)
   nullify(connection%id_dn)
+  nullify(connection%id_up2)
+  nullify(connection%id_dn2)
   nullify(connection%dist)
   nullify(connection%area)
   nullify(connection%cntr)
@@ -229,6 +233,10 @@ subroutine ConnectionDestroy(connection)
   nullify(connection%id_up)
   if (associated(connection%id_dn)) deallocate(connection%id_dn)
   nullify(connection%id_dn)
+  if (associated(connection%id_up2)) deallocate(connection%id_up2)
+  nullify(connection%id_up2)
+  if (associated(connection%id_dn2)) deallocate(connection%id_dn2)
+  nullify(connection%id_dn2)
   if (associated(connection%dist)) deallocate(connection%dist)
   nullify(connection%dist)
   if (associated(connection%area)) deallocate(connection%area)

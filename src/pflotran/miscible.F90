@@ -484,7 +484,7 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-  function  MiscibleInitGuessCheckPatch(realization)
+  function MiscibleInitGuessCheckPatch(realization)
    
      use span_wagner_module
      
@@ -1640,6 +1640,10 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
  ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
+  
+  if (option%compute_mass_balance_new) then
+    call MiscibleZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -2064,7 +2068,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       global_aux_vars(ghosted_id)%sat(:)=1D0
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+            * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
     else
       print *,'Not associated global for Miscible'
     endif
@@ -2263,10 +2267,10 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      call MiscibleSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0), &
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
-                            enthalpy_flag, option)
+                            enthalpy_flag,option)
       if (option%compute_mass_balance_new) then
         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &

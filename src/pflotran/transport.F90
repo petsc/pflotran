@@ -30,7 +30,31 @@ module Transport_module
             TSrcSinkCoefNew, &
             TFlux_CD, &
             TFluxDerivative_CD, &
-            TFluxCoef_CD
+            TFluxCoef_CD, &
+            TFluxTVD
+  
+  ! this interface is required for the pointer to procedure employed
+  ! for flux limiters below
+  interface
+    function TFluxLimiterDummy(d)
+      PetscReal :: d
+      PetscReal :: TFluxLimiterDummy
+    end function TFluxLimiterDummy
+  end interface
+  
+  public :: TFluxLimiterDummy, &
+            TFluxLimiter, &
+            TFluxLimitUpwind, &
+            TFluxLimitMinmod, &
+            TFluxLimitMC, &
+            TFluxLimitSuperBee, &
+            TFluxLimitVanLeer
+  
+  PetscInt, parameter, public :: TVD_LIMITER_UPWIND = 1
+  PetscInt, parameter, public :: TVD_LIMITER_MC = 2
+  PetscInt, parameter, public :: TVD_LIMITER_MINMOD = 3
+  PetscInt, parameter, public :: TVD_LIMITER_SUPERBEE = 4
+  PetscInt, parameter, public :: TVD_LIMITER_VAN_LEER = 5
               
 contains
 
@@ -999,5 +1023,236 @@ subroutine TSrcSinkCoefNew(option,qsrc,tran_src_sink_type,T_in,T_out)
   ! kg/sec, one must either scale by dtotal or den/1000. (kg/L).
 
 end subroutine TSrcSinkCoefNew
+
+! ************************************************************************** !
+!
+! TFluxTVD: Computes TVD flux term
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
+                    total_up2,rt_aux_var_up, & 
+                    rt_aux_var_dn,total_dn2, & 
+#ifdef FORTRAN_2003_COMPLIANT  
+                    TFluxLimitPtr, &
+#endif
+                    option,flux)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_param_type) :: rt_parameter
+  PetscReal :: velocity(:), area
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
+  type(option_type) :: option
+  PetscReal :: flux(rt_parameter%ncomp)
+#ifdef FORTRAN_2003_COMPLIANT  
+  procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
+#endif
+  PetscReal :: dist(-1:3)    ! list of distance vectors, size(-1:3,num_connections) where
+                            !   -1 = fraction upwind
+                            !   0 = magnitude of distance 
+                            !   1-3 = components of unit vector 
+                            
+  PetscReal :: iphase
+  PetscInt :: idof, ndof
+  PetscReal :: dc, theta, correction, nu
+  
+  ndof = rt_parameter%naqcomp
+  
+  do iphase = 1, option%nphase
+    nu = velocity(iphase)*option%tran_dt/dist(0)
+    if (velocity(iphase) >= 0.d0) then
+      flux = velocity(iphase)*area*rt_aux_var_up%total(:,iphase)
+      if (associated(total_up2)) then
+        do idof = 1, ndof
+          dc = rt_aux_var_dn%total(idof,iphase) - &
+               rt_aux_var_up%total(idof,iphase)
+          if (dabs(dc) < 1.d-20) then
+            theta = 1.d0
+          else
+            theta = (rt_aux_var_up%total(idof,iphase) - &
+                    total_up2(idof,iphase)) / &
+                    dc
+          endif
+          correction = 0.5d0*velocity(iphase)*(1.d0-nu)* &
+#ifdef FORTRAN_2003_COMPLIANT          
+                       TFluxLimitPtr(theta)* &
+#else
+                       TFluxLimiter(theta)* &
+#endif
+                       dc
+          flux(idof) = flux(idof) + correction
+        enddo
+      endif
+    else
+      flux = velocity(iphase)*area*rt_aux_var_dn%total(:,iphase)
+      if (associated(total_dn2)) then
+        do idof = 1, ndof
+          dc = rt_aux_var_dn%total(idof,iphase) - &
+               rt_aux_var_up%total(idof,iphase)
+          if (dabs(dc) < 1.d-20) then
+            theta = 1.d0
+          else
+            theta = (total_dn2(idof,iphase) - &
+                     rt_aux_var_dn%total(idof,iphase)) / &
+                    dc
+          endif
+          correction = 0.5d0*velocity(iphase)*(1.d0+nu)* &
+#ifdef FORTRAN_2003_COMPLIANT          
+                       TFluxLimitPtr(theta)* &
+#else
+                       TFluxLimiter(theta)* &
+#endif
+                       dc
+          flux(idof) = flux(idof) + correction
+        enddo
+      endif
+    endif
+  enddo
+
+end subroutine TFluxTVD
+
+! ************************************************************************** !
+!
+! TFluxLimiter: Applies flux limiter
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+function TFluxLimiter(theta)
+
+  implicit none
+  
+  PetscReal :: theta
+  
+  PetscReal :: TFluxLimiter
+  
+  ! Linear
+  !---------
+  ! upwind
+  !TFluxLimiter = 0.d0
+  ! Lax-Wendroff
+  !TFluxLimiter = 1.d0
+  ! Beam-Warming
+  !TFluxLimiter = theta
+  ! Fromm
+  !TFluxLimiter = 0.5d0*(1.d0+theta)
+
+  ! Higher-order
+  !---------
+  ! minmod
+  !TFluxLimiter = max(0.d0,min(1.d0,theta))
+  ! superbee
+  !TFluxLimiter = max(0.d0,min(1.d0,2.d0*theta),min(2.d0,theta))
+  ! MC
+  TFluxLimiter = max(0.d0,min((1.d0+theta)/2.d0,2.d0,2.d0*theta))
+  ! van Leer
+  !TFluxLimiter = (theta+dabs(theta))/(1.d0+dabs(theta)
+
+end function TFluxLimiter
+
+! ************************************************************************** !
+!
+! TFluxLimitUpwind: Applies an upwind flux limiter
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+function TFluxLimitUpwind(theta)
+
+  implicit none
+  
+  PetscReal :: theta
+  
+  PetscReal :: TFluxLimitUpwind
+  
+  ! upwind
+  TFluxLimitUpwind = 0.d0
+
+end function TFluxLimitUpwind
+
+! ************************************************************************** !
+!
+! TFluxLimitMinmod: Applies a minmod flux limiter
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+function TFluxLimitMinmod(theta)
+
+  implicit none
+  
+  PetscReal :: theta
+  
+  PetscReal :: TFluxLimitMinmod
+  
+  ! minmod
+  TFluxLimitMinmod = max(0.d0,min(1.d0,theta))
+
+end function TFluxLimitMinmod
+
+! ************************************************************************** !
+!
+! TFluxLimitMC: Applies an MC flux limiter
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+function TFluxLimitMC(theta)
+
+  implicit none
+  
+  PetscReal :: theta
+  
+  PetscReal :: TFluxLimitMC
+  
+ ! MC
+  TFluxLimitMC = max(0.d0,min((1.d0+theta)/2.d0,2.d0,2.d0*theta))
+
+end function TFluxLimitMC
+
+! ************************************************************************** !
+!
+! TFluxLimitSuperBee: Applies an superbee flux limiter
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+function TFluxLimitSuperBee(theta)
+
+  implicit none
+  
+  PetscReal :: theta
+  
+  PetscReal :: TFluxLimitSuperBee
+  
+  ! superbee
+  TFluxLimitSuperBee =  max(0.d0,min(1.d0,2.d0*theta),min(2.d0,theta))
+
+end function TFluxLimitSuperBee
+
+! ************************************************************************** !
+!
+! TFluxLimitVanLeer: Applies an van Leer flux limiter
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+function TFluxLimitVanLeer(theta)
+
+  implicit none
+  
+  PetscReal :: theta
+  
+  PetscReal :: TFluxLimitVanLeer
+  
+  ! superbee
+  TFluxLimitVanLeer = (theta+dabs(theta))/(1.d0+dabs(theta))
+
+end function TFluxLimitVanLeer
 
 end module Transport_module

@@ -1938,7 +1938,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   use Reactive_Transport_module, only : RTUpdateRHSCoefs, RTUpdateAuxVars, &
         RTCalculateRHS_t0, RTUpdateTransportCoefs, RTCalculateRHS_t1, &
         RTCalculateTransportMatrix, RTTransportResidual, RTReact, &
-        RTTransportMatVec, RTMaxChange
+        RTTransportMatVec, RTMaxChange, RTExplicitAdvection
   use Output_module, only : Output
   
   use Realization_module
@@ -1998,6 +1998,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   final_tran_time = option%tran_time + option%tran_dt
    
   sum_linear_iterations = 0
+  ksp_reason = 0
   
   ! do we need this...don't think so - geh
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
@@ -2006,117 +2007,123 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   call PetscGetTime(log_start_time, ierr)
 
   if (option%nflowdof > 0) then
-    call TimestepperSetTranWeights(option,flow_t0, flow_t1)
+    call TimestepperSetTranWeights(option,flow_t0,flow_t1)
     ! set densities and saturations to t
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
   endif
 
-  ! Between the next 3 subroutine calls:
-  ! RTUpdateRHSCoefs()
-  ! RTUpdateAuxVars()
-  ! RTCalculateRHS_t0()
-  ! the t0 portion of the accumulation term is calculated for the RHS vector
+  if (option%itranmode == EXPLICIT_ADVECTION) then
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
+    call RTExplicitAdvection(realization)
+  else
   
-  ! update time derivative on RHS
-  call RTUpdateRHSCoefs(realization)
-  ! calculate total component concentrations based on t0 densities
-  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
-  call RTCalculateRHS_t0(realization)
+    ! Between the next 3 subroutine calls:
+    ! RTUpdateRHSCoefs()
+    ! RTUpdateAuxVars()
+    ! RTCalculateRHS_t0()
+    ! the t0 portion of the accumulation term is calculated for the RHS vector
+  
+    ! update time derivative on RHS
+    call RTUpdateRHSCoefs(realization)
+    ! calculate total component concentrations based on t0 densities
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
+    call RTCalculateRHS_t0(realization)
     
-  ! set densities and saturations to t+dt
-  if (option%nflowdof > 0) then
-    call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
-  endif
+    ! set densities and saturations to t+dt
+    if (option%nflowdof > 0) then
+      call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
+    endif
 
-  ! update diffusion/dispersion coefficients
-  call RTUpdateTransportCoefs(realization)
-  ! RTCalculateRHS_t1() updates aux vars to k+1 and calculates RHS fluxes and src/sinks
-  call RTCalculateRHS_t1(realization)
+    ! update diffusion/dispersion coefficients
+    call RTUpdateTransportCoefs(realization)
+    ! RTCalculateRHS_t1() updates aux vars to k+1 and calculates RHS fluxes and src/sinks
+    call RTCalculateRHS_t1(realization)
 
-  if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%mycomm,'Trhs.out', &
-                              viewer,ierr)
-    call VecView(field%tran_rhs,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
+    if (realization%debug%vecview_residual) then
+      call PetscViewerASCIIOpen(realization%option%mycomm,'Trhs.out', &
+                                viewer,ierr)
+      call VecView(field%tran_rhs,viewer,ierr)
+      call PetscViewerDestroy(viewer,ierr)
+    endif
 
-  if (option%use_samr) then
-    call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
-    call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
-    call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
-    call RTCalculateTransportMatrix(realization,solver%Jpre)
-!  the next line was used to debug why an ludcmp error was showing up
-!     call RTCalculateTransportMatrix(realization,solver%J)
+    if (option%use_samr) then
+      call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
+      call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
+      call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
+      call RTCalculateTransportMatrix(realization,solver%Jpre)
+  !  the next line was used to debug why an ludcmp error was showing up
+  !     call RTCalculateTransportMatrix(realization,solver%J)
 #ifndef PC_BUG       
-    call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
+      call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
 #endif       
-    call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                                          DIFFERENT_NONZERO_PATTERN,ierr)
-  else     
-    ! RTCalculateTransportMatrix() calculates flux coefficients and the
-    ! t^(k+1) coefficient in accumulation term
-    call RTCalculateTransportMatrix(realization,solver%J) 
-    call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                         SAME_NONZERO_PATTERN,ierr)
-  endif
+      call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                                            DIFFERENT_NONZERO_PATTERN,ierr)
+    else     
+      ! RTCalculateTransportMatrix() calculates flux coefficients and the
+      ! t^(k+1) coefficient in accumulation term
+      call RTCalculateTransportMatrix(realization,solver%J) 
+      call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                           SAME_NONZERO_PATTERN,ierr)
+    endif
     
 
-!  call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
-!  call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
+  !  call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
+  !  call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
 
-  ! loop over chemical component and transport
-  do idof = 1, option%ntrandof
+    ! loop over chemical component and transport
+    do idof = 1, option%ntrandof
 
-! for debugging
+  ! for debugging
 #if 0    
-    call RealizationGetDataset(realization,field%work,TOTAL_MOLARITY,idof)
-    call VecGetArrayF90(field%work,vec_ptr,ierr)
-    call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call RealizationGetDataset(realization,field%work,TOTAL_MOLARITY,idof)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
   
-    call RealizationGetDataset(realization,field%work,TOTAL_MOLALITY,idof)
-    call VecGetArrayF90(field%work,vec_ptr,ierr)
-    call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call RealizationGetDataset(realization,field%work,TOTAL_MOLALITY,idof)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
   
-    call RealizationGetDataset(realization,field%work,PRIMARY_MOLALITY,idof)
-    call VecGetArrayF90(field%work,vec_ptr,ierr)
-    call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call RealizationGetDataset(realization,field%work,PRIMARY_MOLALITY,idof)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 #endif
     
-    call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
-    option%rt_idof = idof
-    call KSPSolve(solver%ksp,field%work,field%work,ierr)
-    ! tran_xx will contain transported totals
-    ! tran_xx_loc will still contain free-ion from previous solution
-    call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
+      call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
+      option%rt_idof = idof
+      call KSPSolve(solver%ksp,field%work,field%work,ierr)
+      ! tran_xx will contain transported totals
+      ! tran_xx_loc will still contain free-ion from previous solution
+      call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
 
-! for debugging
+  ! for debugging
 #if 0
-    call VecGetArrayF90(field%work,vec_ptr,ierr)
-    call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 #endif      
 
 #if 0 
-    ! for testing residual calculation for Bobby
-    ! solution is stored in field%work vector, but we need it in ghosted
-    ! form for the residual calculation
-    call DiscretizationGlobalToLocal(discretization,field%work, &
-                                     field%work_loc,ONEDOF)
-    ! now we use field%work as the residual and field%work_loc as the
-    ! current solution
-    call RTTransportResidual(realization,field%work_loc,field%work,idof)
-    call VecNorm(field%work,NORM_2,euclid_norm,ierr)
-    call VecNorm(field%work,NORM_INFINITY,inf_norm,ierr)
-    print *, trim(realization%reaction%primary_species_names(idof))//': ', &
-      euclid_norm, inf_norm
+      ! for testing residual calculation for Bobby
+      ! solution is stored in field%work vector, but we need it in ghosted
+      ! form for the residual calculation
+      call DiscretizationGlobalToLocal(discretization,field%work, &
+                                       field%work_loc,ONEDOF)
+      ! now we use field%work as the residual and field%work_loc as the
+      ! current solution
+      call RTTransportResidual(realization,field%work_loc,field%work,idof)
+      call VecNorm(field%work,NORM_2,euclid_norm,ierr)
+      call VecNorm(field%work,NORM_INFINITY,inf_norm,ierr)
+      print *, trim(realization%reaction%primary_species_names(idof))//': ', &
+        euclid_norm, inf_norm
 #endif
 
-    call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
-    call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
-    sum_linear_iterations = sum_linear_iterations + num_linear_iterations
-  enddo
-  sum_linear_iterations = int(dble(sum_linear_iterations) / option%ntrandof)
-  stepper%cumulative_linear_iterations = &
-    stepper%cumulative_linear_iterations + sum_linear_iterations
+      call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
+      call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
+      sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+    enddo
+    sum_linear_iterations = int(dble(sum_linear_iterations) / option%ntrandof)
+    stepper%cumulative_linear_iterations = &
+      stepper%cumulative_linear_iterations + sum_linear_iterations
+  endif ! if (EXPLICIT_ADVECTION)
 
   if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Txx.out', &
@@ -2183,6 +2190,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   if (option%print_screen_flag) print *, ""  
 
 end subroutine StepperStepTransportDT_OS
+
 ! ************************************************************************** !
 !
 ! StepperRunSteadyState: Solves steady state solution for flow and transport
@@ -3074,7 +3082,7 @@ end subroutine StepperRestart
 ! date: 01/17/11
 !
 ! ************************************************************************** !
-subroutine TimestepperSetTranWeights(option,flow_t0, flow_t1)
+subroutine TimestepperSetTranWeights(option,flow_t0,flow_t1)
 
   use Option_module
 

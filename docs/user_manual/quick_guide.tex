@@ -570,6 +570,63 @@ where $U_\a$, $H_\a$ denote the internal energy and enthalpy of the $\a$th fluid
 %The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
 Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{n-1}$).
 
+\subsection{Mode: {\tt MISCIBLE}}
+
+The miscible mode applies to a mixture of water and proplyene glycol. In terms of molar density for the mixture $\eta$ and mole fractions $x_i$, $i$=1 (water), $i$=2 (proplyene glycol), the mass conservation equations have the form
+\EQ
+\frac{\p}{\p t} \varphi \eta x_i + \bnabla\cdot\left[\bq\eta x_i - \varphi D \eta \bnabla x_i\right] \eq Q_i,
+\EN
+with source/sink term $Q_i$. It should be noted that the mass- and mole-fraction formulations of the conservation equations are not exactly equivalent. This is due to the diffusion term which gives an extra term when transformed from the mole-fraction  to mass-fraction gradient.
+
+The molar density $\eta$ is related to the mass density by
+\EQ
+\eta \eq W^{-1} \rho,
+\EN
+and
+\EQ
+W_i\eta x_i \eq \rho y_i.
+\EN
+It follows that
+\EQ
+W_i \eta \bnabla x_i \eq \rho \bnabla y_i + \rho y_i \bnabla \ln W.
+\EN
+The second term on the right-hand side is ignored.
+
+Simple equations of state are provided for density [g/cm$^3$], viscosity [Pa s], and diffusivity [m$^2$/s] given by
+\EQ
+\rho(y_1) \eq \Big(\big((0.0806 y_1 - 0.203) y_1 + 0.0873\big) y_1 + 1.0341\Big)10^3,
+\EN
+\EQ
+\mu(y_1) \eq 10^{(1.6743 y_1 - 0.0758)} 10^{-3},
+\EN
+and
+\EQ
+D(y_1) \eq \Big(\big(((-4.021 y_1 + 9.1181) y_1 - 5.9703) y_1 
+     + 0.4043\big) y_1 + 0.5687\Big) 10^{-9},
+\EN
+with mass fraction of water $y_1$. The mass fraction is related to mole fraction according to
+\EQ
+y_1 = \frac{x_1 W_{\rm H_2O}}{W},
+\EN
+where the mean formula weight $W$ is given by
+\EQ
+W = x_1 W_{\rm H_2O} + x_2 W_{\rm GLYC},
+\EN
+with formula weights for water and proplyene glycol equal to $W_{\rm H_2O}$ = 18.01534 and $W_{\rm GLYC}$ = 76.09 [kg/kmol].
+
+Global mass conservation satisfies the relation
+\EQ
+\frac{d}{dt}M_i \eq -\int\bF_i\cdot\bdS + \int Q_i dV,
+\EN
+with
+\EQ
+M_i \eq \int \varphi \eta x_i dV.
+\EN
+In terms of mass fractions and mass density
+\EQ
+M_i^m \eq W_i M_i \eq \int \varphi \rho y_i dV.
+\EN
+
 \subsection{Mode: {\tt Air-Water}}
 
 The {\tt Air-Water} mode involves two phase liquid water-gas flow coupled to the reactive transport mode. Mass conservation equations have the form
