@@ -8486,6 +8486,7 @@ subroutine OutputMassBalanceNew(realization)
           do iconn = 1, coupler%connection_set%num_connections
             sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
+          
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
 
@@ -8542,7 +8543,13 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-
+            
+            if (icomp == 1) then
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O
+            else
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWGLYC
+            endif
+            
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
@@ -8561,8 +8568,13 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
-        !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
-        !   sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! is this referring to mixture?
+            
+        !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o/glycol
+            if (icomp == 1) then
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O
+            else
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWGLYC
+            endif
 
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
