@@ -36,6 +36,8 @@ module Input_module
   interface InputReadInt
     module procedure InputReadInt1
     module procedure InputReadInt2
+    module procedure InputReadInt3
+    module procedure InputReadInt4
   end interface
   
   interface InputReadDouble
@@ -335,6 +337,58 @@ subroutine InputReadInt2(string, option, int, ierr)
   endif
 
 end subroutine InputReadInt2
+
+! ************************************************************************** !
+!
+! InputReadInt3: reads and removes an integer value from a string
+! authors: Glenn Hammond, Richard Mills
+! date: 2/3/2012
+!
+! ************************************************************************** !
+subroutine InputReadInt3(input, option, int)
+
+  implicit none
+
+  type(input_type) :: input
+  type(option_type) :: option
+  PetscMPIInt :: int
+
+  character(len=MAXWORDLENGTH) :: word
+
+  call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  
+  if (.not.InputError(input)) then
+    read(word,*,iostat=input%ierr) int
+  endif
+
+end subroutine InputReadInt3
+
+! ************************************************************************** !
+!
+! InputReadInt4: reads and removes an integer value from a string
+! authors: Glenn Hammond, Richard Mills
+! date: 2/3/2012
+!
+! ************************************************************************** !
+subroutine InputReadInt4(string, option, int, ierr)
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscMPIInt :: int
+  PetscErrorCode :: ierr
+
+  character(len=MAXWORDLENGTH) :: word
+
+  ierr = 0
+  call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+  if (.not.InputError(ierr)) then
+    read(word,*,iostat=ierr) int
+  endif
+
+end subroutine InputReadInt4
 
 ! ************************************************************************** !
 !
