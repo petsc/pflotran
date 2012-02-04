@@ -458,11 +458,16 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, option)
 
 
-  !call wateos(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, dw_dt, &
-  !            hw, hw_dp, hw_dt, option%scale, ierr)
+!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+!              option%scale,ierr)
               
+!  print *, 'wateos:', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
+
   call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
                          dw_dt, hw, hw_dp, hw_dt, ierr)
+                         
+!  print *, 'wateos_simple', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
+
    
 
   call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
