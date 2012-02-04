@@ -82,8 +82,9 @@ PetscInt, parameter :: GLOBAL = 1
 PetscInt, parameter :: LOCAL = 2
 PetscInt, parameter :: NATURAL = 3
 
-! modes
 PetscInt, parameter :: NULL_MODE = 0
+
+! flow modes
 PetscInt, parameter :: THC_MODE = 1
 PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_MODE = 3
@@ -92,6 +93,9 @@ PetscInt, parameter :: IMS_MODE = 5
 PetscInt, parameter :: FLASH2_MODE = 6
 PetscInt, parameter :: G_MODE = 7
 PetscInt, parameter :: MIS_MODE = 8
+
+! transport modes
+PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 
 ! grid types
 PetscInt, parameter :: NULL_GRID = 0

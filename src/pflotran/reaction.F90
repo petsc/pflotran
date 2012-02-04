@@ -782,6 +782,36 @@ subroutine ReactionRead(reaction,input,option)
         call InputErrorMsg(input,option,trim(word),'CHEMISTRY')
       case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
         option%reactive_transport_coupling = OPERATOR_SPLIT    
+      case('EXPLICIT_ADVECTION')
+        option%itranmode = EXPLICIT_ADVECTION
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+#ifndef FORTRAN_2003_COMPLIANT
+          option%io_buffer = 'Specification of TVD flux limiter only ' // &
+            'supported when compiled with -DFORTRAN_2003_COMPLIANT.'
+          call printWrnMsg(option)
+#endif
+          call StringToUpper(word)
+          select case(word)
+            !TODO(geh): fix these hardwired values.
+            case('UPWIND')
+              option%tvd_flux_limiter = 1
+            case('MINMOD')
+              option%tvd_flux_limiter = 3
+            case('MC')
+              option%tvd_flux_limiter = 2
+            case('SUPERBEE')
+              option%tvd_flux_limiter = 4
+            case('VANLEER')
+              option%tvd_flux_limiter = 5
+            case default
+              option%io_buffer = 'TVD flux limiter ' // trim(word) // &
+                ' not recognized.'
+              call printErrMsg(option)
+          end select
+        else
+          call InputDefaultMsg(input,option,'TVD Flux Limiter')
+        endif
       case('MAX_RELATIVE_CHANGE_TOLERANCE','REACTION_TOLERANCE')
         call InputReadDouble(input,option,reaction%max_relative_change_tolerance)
         call InputErrorMsg(input,option,'maximum relative change tolerance','CHEMISTRY')

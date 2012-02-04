@@ -1064,6 +1064,14 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 
   connections => ConnectionCreate(nconn, &
                                   option%nphase,INTERNAL_CONNECTION_TYPE)
+  
+  ! if using higher order advection, allocate associated arrays
+  if (option%itranmode == EXPLICIT_ADVECTION) then
+    allocate(connections%id_up2(size(connections%id_up)))
+    allocate(connections%id_dn2(size(connections%id_dn)))
+    connections%id_up2 = 0
+    connections%id_dn2 = 0
+  endif
 
   iconn = 0
   ! x-connections
@@ -1074,28 +1082,35 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
           do j = structured_grid%jstart, structured_grid%jend
             do i = 1, lenx
               iconn = iconn+1
-        
               structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
-               
- 
               id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
               id_dn = id_up + 1
-
-
-              
               if (i == 1) then
                 if (structured_grid%nxs==structured_grid%ngxs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
                    connections%local(iconn) = 1
                 end if
               else 
-                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
-                   connections%local(iconn) = 1
+                structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                connections%local(iconn) = 1
               end if
-
-
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
+              
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_up2)) then
+                if (i == 1) then
+                  connections%id_up2(iconn) = id_up
+                else
+                  connections%id_up2(iconn) = id_up - 1
+                endif
+                if (i == lenx) then
+                  connections%id_dn2(iconn) = id_dn
+                else
+                  connections%id_dn2(iconn) = id_dn + 1
+                endif
+              endif
+              
               connections%dist(-1:3,iconn) = 0.d0
               dist_up = 0.5d0*structured_grid%dx(id_up)
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
@@ -1186,6 +1201,21 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               id_dn = id_up + structured_grid%ngx
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
+              
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_up2)) then
+                if (j == 1) then
+                  connections%id_up2(iconn) = id_up
+                else
+                  connections%id_up2(iconn) = id_up - structured_grid%ngx
+                endif
+                if (j == leny) then
+                  connections%id_dn2(iconn) = id_dn
+                else
+                  connections%id_dn2(iconn) = id_dn + structured_grid%ngx
+                endif
+              endif
+                            
               connections%dist(-1:3,iconn) = 0.d0
               dist_up = 0.5d0*structured_grid%dy(id_up)
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
@@ -1235,6 +1265,21 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               id_dn = id_up + structured_grid%ngxy
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
+              
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_up2)) then
+                if (k == 1) then
+                  connections%id_up2(iconn) = id_up
+                else
+                  connections%id_up2(iconn) = id_up - structured_grid%ngxy
+                endif
+                if (k == lenz) then
+                  connections%id_dn2(iconn) = id_dn
+                else
+                  connections%id_dn2(iconn) = id_dn + structured_grid%ngxy
+                endif
+              endif
+                                 
               connections%dist(-1:3,iconn) = 0.d0
               dist_up = 0.5d0*structured_grid%dz(id_up)
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
@@ -1422,6 +1467,13 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   connections => ConnectionCreate(nconn, &
                                   option%nphase,BOUNDARY_CONNECTION_TYPE)
 
+  ! if using higher order advection, allocate associated arrays
+  if (option%itranmode == EXPLICIT_ADVECTION) then
+    ! connections%id_up2 should remain null as it will not be used
+    allocate(connections%id_dn2(size(connections%id_dn)))
+    connections%id_dn2 = 0
+  endif
+  
 !  StructGridComputeBoundConnect => connections
 
   iconn = 0
@@ -1439,8 +1491,18 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
               structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
 
               id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
-
+              
               connections%id_dn(iconn) = id_dn
+
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_dn2)) then
+                if (structured_grid%ngx > 1) then
+                  connections%id_dn2(iconn) = id_dn + 1
+                else
+                  connections%id_dn2(iconn) = id_dn
+                endif
+              endif              
+
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(-1,iconn) = 0.
@@ -1464,7 +1526,18 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
               structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
 
               id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              
               connections%id_dn(iconn) = id_dn
+
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_dn2)) then
+                if (structured_grid%ngx > 1) then
+                  connections%id_dn2(iconn) = id_dn - 1
+                else
+                  connections%id_dn2(iconn) = id_dn
+                endif
+              endif              
+
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1503,7 +1576,18 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 
               id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
+              
               connections%id_dn(iconn) = id_dn
+              
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_dn2)) then
+                if (structured_grid%ngy > 1) then
+                  connections%id_dn2(iconn) = id_dn + structured_grid%ngx
+                else
+                  connections%id_dn2(iconn) = id_dn
+                endif
+              endif 
+              
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1527,7 +1611,18 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 
               id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
+              
               connections%id_dn(iconn) = id_dn
+
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_dn2)) then
+                if (structured_grid%ngy > 1) then
+                  connections%id_dn2(iconn) = id_dn - structured_grid%ngx
+                else
+                  connections%id_dn2(iconn) = id_dn
+                endif
+              endif
+              
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1565,7 +1660,18 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 
               id_dn = i + 1 + j * structured_grid%ngx + k * &
                   structured_grid%ngxy + samr_ofz
+              
               connections%id_dn(iconn) = id_dn
+
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_dn2)) then
+                if (structured_grid%ngy > 1) then
+                  connections%id_dn2(iconn) = id_dn + structured_grid%ngxy
+                else
+                  connections%id_dn2(iconn) = id_dn
+                endif
+              endif
+              
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1589,7 +1695,18 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 
               id_dn = i + 1 + j * structured_grid%ngx + k * &
                   structured_grid%ngxy + samr_ofz
+              
               connections%id_dn(iconn) = id_dn
+
+              !geh: needs to be modified for parallel
+              if (associated(connections%id_dn2)) then
+                if (structured_grid%ngy > 1) then
+                  connections%id_dn2(iconn) = id_dn - structured_grid%ngxy
+                else
+                  connections%id_dn2(iconn) = id_dn
+                endif
+              endif
+                            
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn

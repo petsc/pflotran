@@ -44,7 +44,8 @@ module Reactive_Transport_module
             RTTransportMatVec, &
             RTCheckUpdate, &
             RTJumpStartKineticSorption, &
-            RTCheckpointKineticSorption
+            RTCheckpointKineticSorption, &
+            RTExplicitAdvection
   
 contains
 
@@ -6445,6 +6446,318 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   enddo
 
 end subroutine RTCheckpointKineticSorption
+
+! ************************************************************************** !
+!
+! RTExplicitAdvection: Updates advective transport explicitly
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+subroutine RTExplicitAdvection(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      cur_patch%reaction => realization%reaction
+      call RTExplicitAdvectionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTExplicitAdvection
+
+! ************************************************************************** !
+!
+! RTExplicitAdvectionPatch: Updates advective transport explicitly
+! author: Glenn Hammond
+! date: 02/03/12
+!
+! ************************************************************************** !
+subroutine RTExplicitAdvectionPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Connection_module
+  use Coupler_module  
+  use Debug_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  PetscInt :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: sum_connection, iconn
+  PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
+  PetscInt :: iphase
+  PetscInt :: local_start, local_end
+  PetscReal :: qsrc, coef_in, coef_out
+  PetscReal :: velocity, area, psv_t  
+  PetscReal :: flux(realization%reaction%ncomp)
+  
+  PetscReal :: sum_flux(realization%reaction%ncomp,realization%patch%grid%ngmax)
+  
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: tran_xx_p(:)
+  PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
+  PetscErrorCode :: ierr
+
+#ifdef FORTRAN_2003_COMPLIANT  
+  procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
+  
+  select case(realization%option%tvd_flux_limiter)
+    case(TVD_LIMITER_UPWIND)
+      TFluxLimitPtr => TFluxLimitUpwind
+    case(TVD_LIMITER_MC)
+      TFluxLimitPtr => TFluxLimitMC
+    case(TVD_LIMITER_MINMOD)
+      TFluxLimitPtr => TFluxLimitMinmod
+    case(TVD_LIMITER_SUPERBEE)
+      TFluxLimitPtr => TFluxLimitSuperBee
+    case(TVD_LIMITER_VAN_LEER)
+      TFluxLimitPtr => TFluxLimitVanLeer
+    case default
+      TFluxLimitPtr => TFluxLimiter
+  end select
+#endif
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  reaction => realization%reaction
+  grid => patch%grid
+!  rt_parameter => patch%aux%RT%rt_parameter
+  rt_aux_vars => patch%aux%RT%aux_vars
+  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  
+  nullify(total_up2)
+  nullify(total_dn2)
+  
+  sum_flux = 0.d0
+  
+  if (reaction%ncoll > 0) then
+    option%io_buffer = &
+      'Need to add colloidal source/sinks to RTExplicitAdvectionPatch()'
+    call printErrMsg(option)
+  endif
+  if (option%nphase > 1) then
+    option%io_buffer = &
+      'Need to add multiphase source/sinks to RTExplicitAdvectionPatch()'
+    call printErrMsg(option)
+  endif
+  if (reaction%ncomp /= reaction%naqcomp) then
+    option%io_buffer = &
+      'Need to account for non-aqueous species to RTExplicitAdvectionPatch()'
+    call printErrMsg(option)
+  endif
+  if (option%compute_mass_balance_new) then  
+    option%io_buffer = &
+      'Mass balance not yet supported in RTExplicitAdvectionPatch()'
+    call printErrMsg(option)
+  endif
+  
+! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  if (associated(cur_connection_set%id_dn2) .and. &
+      .not.associated(total_dn2)) then
+    allocate(total_up2(option%nphase,patch%aux%RT%rt_parameter%naqcomp))
+    allocate(total_dn2(option%nphase,patch%aux%RT%rt_parameter%naqcomp))
+  endif
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
+        
+      if (associated(cur_connection_set%id_dn2)) then
+        total_up2 = rt_aux_vars(cur_connection_set%id_up2(iconn))%total
+        total_dn2 = rt_aux_vars(cur_connection_set%id_dn2(iconn))%total
+      endif
+      call TFluxTVD(patch%aux%RT%rt_parameter, &
+                    patch%internal_velocities(:,sum_connection), &
+                    cur_connection_set%area(iconn), &
+                    cur_connection_set%dist(:,iconn), &
+                    total_up2, &
+                    rt_aux_vars(ghosted_id_up), &
+                    rt_aux_vars(ghosted_id_dn), &
+                    total_dn2, &
+#ifdef FORTRAN_2003_COMPLIANT  
+                    TFluxLimitPtr, &
+#endif      
+                    option,flux)
+          
+      ! contribution upwind
+      sum_flux(:,ghosted_id_up) = sum_flux(:,ghosted_id_up) - flux
+        
+      ! contribution downwind
+      sum_flux(:,ghosted_id_dn) = sum_flux(:,ghosted_id_dn) + flux
+          
+    enddo ! iconn
+    cur_connection_set => cur_connection_set%next
+  enddo
+    
+! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      if (associated(cur_connection_set%id_dn2)) then
+        total_up2 = rt_aux_vars_bc(sum_connection)%total
+        total_dn2 = rt_aux_vars(cur_connection_set%id_dn2(iconn))%total
+      endif
+      call TFluxTVD(patch%aux%RT%rt_parameter, &
+                    patch%boundary_velocities(:,sum_connection), &
+                    cur_connection_set%area(iconn), &
+                    cur_connection_set%dist(:,iconn), &
+                    total_up2, &
+                    rt_aux_vars_bc(sum_connection), &
+                    rt_aux_vars(ghosted_id_dn), &
+                    total_dn2, &
+#ifdef FORTRAN_2003_COMPLIANT  
+                    TFluxLimitPtr, &
+#endif      
+                    option,flux)
+
+      ! contribution downwind
+      sum_flux(:,ghosted_id) = sum_flux(:,ghosted_id) + flux
+#if 0      
+      
+      do iphase = 1, option%nphase
+        velocity = patch%boundary_velocities(iphase,sum_connection)
+        area = cur_connection_set%area(iconn)
+        
+        if (velocity > 0.d0) then  ! inflow
+          flux = velocity*area* &
+                  rt_aux_vars_bc(sum_connection)%total(:,iphase)
+        else  ! outflow
+          flux = velocity*area* &
+                  rt_aux_vars(ghosted_id)%total(:,iphase)
+        endif
+          
+        ! contribution downwind
+        sum_flux(:,ghosted_id) = sum_flux(:,ghosted_id) + flux
+          
+      enddo ! iphase
+#endif        
+     
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
+  do 
+    if (.not.associated(source_sink)) exit
+    cur_connection_set => source_sink%connection_set
+    do iconn = 1, cur_connection_set%num_connections 
+      sum_connection = sum_connection + 1     
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      do iphase = 1, option%nphase
+        qsrc = patch%ss_fluid_fluxes(iphase,sum_connection)
+        call TSrcSinkCoefNew(option,qsrc,source_sink%tran_condition%itype, &
+                             coef_in,coef_out)
+        flux = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
+               coef_out*source_sink%tran_condition%cur_constraint_coupler% &
+                                          rt_auxvar%total(:,iphase)
+        !geh: TSrcSinkCoefNew() unit are in L/s.  Convert to m^3/s by dividing 
+        !     by 1000
+         sum_flux(:,ghosted_id) = sum_flux(:,ghosted_id) + flux * 1.d-3
+      enddo
+    enddo
+    source_sink => source_sink%next
+  enddo
+  
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  
+  ! update concentration
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    local_end = local_id*reaction%ncomp
+    local_start = local_end-reaction%ncomp+1
+    do iphase = 1, option%nphase
+      psv_t = porosity_loc_p(ghosted_id)* &
+              global_aux_vars(ghosted_id)%sat(iphase)* &
+              volume_p(local_id)/option%tran_dt
+      !geh: clearly dangerous that I reload into total, but I am going to do it!
+      tran_xx_p(local_start:local_end) = &
+        rt_aux_vars(ghosted_id)%total(:,iphase) + &
+        sum_flux(:,ghosted_id) / psv_t
+    enddo
+  enddo
+  
+  if (associated(total_up2)) then
+    deallocate(total_up2)
+    nullify(total_up2)
+    deallocate(total_dn2)
+    nullify(total_dn2)
+  endif
+  
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  
+end subroutine RTExplicitAdvectionPatch
 
 ! ************************************************************************** !
 !
