@@ -2732,7 +2732,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
     enddo
     boundary_condition => boundary_condition%next
- enddo
+  enddo
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------

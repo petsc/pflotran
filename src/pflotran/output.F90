@@ -8498,7 +8498,7 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-       case(THC_MODE)
+        case(THC_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
@@ -8533,40 +8533,46 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-       case(MIS_MODE)
-          ! print out cumulative H2O flux
+        case(MIS_MODE)
+          ! print out cumulative mixture flux
           sum_kg = 0.d0
-          do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+            enddo
+
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+          
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)
+            endif
           enddo
 
-          int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
+          ! print out mixture flux
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+            enddo
+        !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+        !   sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! is this referring to mixture?
+
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
                               
-          if (option%myrank == option%io_rank) then
+            if (option%myrank == option%io_rank) then
             ! change sign for positive in / negative out
-            write(fid,110,advance="no") -sum_kg_global
-          endif
-
-          ! print out H2O flux
-          sum_kg = 0.d0
-          do iconn = 1, coupler%connection_set%num_connections
-            sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
+            endif
           enddo
-          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
-          sum_kg = sum_kg*FMWH2O
-
-          int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
-                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                          option%io_rank,option%mycomm,ierr)
-                              
-          if (option%myrank == option%io_rank) then
-            ! change sign for positive in / negative out
-            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
-          endif
 
         case(MPH_MODE)
         ! print out cumulative H2O & CO2 fluxes in kmol and kmol/time
