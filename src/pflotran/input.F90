@@ -36,8 +36,8 @@ module Input_module
   interface InputReadInt
     module procedure InputReadInt1
     module procedure InputReadInt2
-    module procedure InputReadInt3
-    module procedure InputReadInt4
+!    module procedure InputReadInt3
+!    module procedure InputReadInt4
   end interface
   
   interface InputReadDouble
