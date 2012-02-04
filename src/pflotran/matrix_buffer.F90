@@ -119,15 +119,15 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
             endif
             matrix_buffer%icol(4,ghosted_id) = ghosted_id
             if (i < structured_grid%iend .or. &
-                structured_grid%ngxe-structured_grid%nxe > 0) then
+                structured_grid%gxe-structured_grid%lxe > 0) then
               matrix_buffer%icol(5,ghosted_id) = ghosted_id + 1
             endif
             if (j < structured_grid%jend .or. &
-                structured_grid%ngye-structured_grid%nye > 0) then
+                structured_grid%gye-structured_grid%lye > 0) then
               matrix_buffer%icol(6,ghosted_id) = ghosted_id + structured_grid%ngx
             endif
             if (k < structured_grid%kend .or. &
-                structured_grid%ngze-structured_grid%nze > 0) then
+                structured_grid%gze-structured_grid%lze > 0) then
               matrix_buffer%icol(7,ghosted_id) = ghosted_id + structured_grid%ngxy
             endif
           enddo

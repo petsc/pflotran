@@ -1470,8 +1470,8 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   lenz = structured_grid%nlz 
 
 
-!  write(*,*) option%myrank, 'nxs=',structured_grid%lxs,' nys=',structured_grid%lys, ' nzs=',structured_grid%lzs 
-!  write(*,*) option%myrank, 'nxe=',structured_grid%lxe,' nye=',structured_grid%lye, ' nze=',structured_grid%lze
+!  write(*,*) option%myrank, 'lxs=',structured_grid%lxs,' lys=',structured_grid%lys, ' lzs=',structured_grid%lzs 
+!  write(*,*) option%myrank, 'lxe=',structured_grid%lxe,' lye=',structured_grid%lye, ' lze=',structured_grid%lze
 !  write(*,*) option%myrank, 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
 !  write(*,*) option%myrank, 'istart=',structured_grid%istart,' iend=',structured_grid%iend
 !  write(*,*) option%myrank, 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
