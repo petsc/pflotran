@@ -309,8 +309,11 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
         porosity_loc_p(ghosted_id)*volume_p(local_id)
     enddo
   enddo
-  mass_balance(jh2o,1) = mass_balance(jh2o,1)*FMWH2O
-  mass_balance(jglyc,1) = mass_balance(jglyc,1)*FMWGLYC
+! mass_balance(jh2o,1) = mass_balance(jh2o,1)*FMWH2O
+! mass_balance(jglyc,1) = mass_balance(jglyc,1)*FMWGLYC
+  
+  print *,'tot_mass: ',mass_balance(jh2o,1),mass_balance(jglyc,1), &
+  FMWH2O,FMWGLYC
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
