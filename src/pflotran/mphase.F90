@@ -2718,7 +2718,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       mphase%res_old_AR(local_id,1:option%nflowdof) = &
            mphase%res_old_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
@@ -2854,8 +2854,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       r_p(mphase%zero_rows_local(i)) = 0.d0
     enddo
   endif
-  
- 
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)

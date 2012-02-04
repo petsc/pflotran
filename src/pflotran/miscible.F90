@@ -36,13 +36,12 @@ module Miscible_module
   PetscReal, parameter :: dfac = 1D-8
   PetscReal, parameter :: floweps = 1.D-24
   PetscReal, parameter :: zerocut =0.D0 
-  
 
   PetscInt, parameter :: jh2o=1, jglyc=2
   
-  public MiscibleResidual,MiscibleJacobian, MiscibleResidualFluxContribPatch,&
-         MiscibleUpdateFixedAccumulation,MiscibleTimeCut,&
-         MiscibleSetup,&
+  public MiscibleResidual,MiscibleJacobian, MiscibleResidualFluxContribPatch, &
+         MiscibleUpdateFixedAccumulation,MiscibleTimeCut, &
+         MiscibleSetup, &
          MiscibleMaxChange, MiscibleUpdateSolution, &
          MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
          MiscibleUpdateAuxVars,MiscibleComputeMassBalance
@@ -283,7 +282,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: ispec
-
+  PetscInt :: jh2o=1,jglyc=2
+  
   option => realization%option
   patch => realization%patch
   grid => patch%grid
@@ -305,11 +305,12 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
     do ispec = 1,option%nflowspec
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
         miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec)* &
-        global_aux_vars(ghosted_id)%den_kg(1)* &
-!       global_aux_vars(ghosted_id)%den(1)* &
+        global_aux_vars(ghosted_id)%den(1)* &
         porosity_loc_p(ghosted_id)*volume_p(local_id)
     enddo
   enddo
+  mass_balance(jh2o,1) = mass_balance(jh2o,1)*FMWH2O
+  mass_balance(jglyc,1) = mass_balance(jglyc,1)*FMWGLYC
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
