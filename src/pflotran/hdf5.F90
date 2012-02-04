@@ -3142,16 +3142,15 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, pointer :: integer_array(:)
   
-#if !defined(PETSC_HAVE_HDF5)
   option => realization%option
+
+#if !defined(PETSC_HAVE_HDF5)
   call printMsg(option,'')
   write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
 
-
-  option => realization%option
   patch => realization%patch
   grid => patch%grid
 
@@ -3376,7 +3375,13 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
 
   option => realization%option
 
-  ! Initialize FOTRAN predefined datatypes
+#if !defined(PETSC_HAVE_HDF5)
+  call printMsg(option,'')
+  write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
+                           &"read HDF5 formatted unstructured grids.")')
+  call printErrMsg(option)
+#else
+  ! Initialize FORTRAN predefined datatypes
   call h5open_f(hdf5_err)
 
   ! Setup file access property with parallel I/O access
@@ -3562,11 +3567,14 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
 
+#endif
+! if defined(PETSC_HAVE_HDF5)
 
 end subroutine HDF5ReadUnstructuredGridRegionFromFile
 
 
 #else
+! if !defined(SAMR_HAVE_HDF5)
 
             
 ! ************************************************************************** !
