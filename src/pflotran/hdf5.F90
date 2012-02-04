@@ -4348,7 +4348,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
 end subroutine HDF5WriteStructDataSetFromVec
 
-#else
+#elif defined(PETSC_HAVE_HDF5)
 
 
 ! ************************************************************************** !

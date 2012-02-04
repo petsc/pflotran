@@ -2801,7 +2801,7 @@ subroutine readRegionFiles(realization)
         if (region%grid_type == STRUCTURED_GRID) then
           call HDF5ReadRegionFromFile(realization,region,region%filename)
         else
-#ifndef SAMR_HAVE_HDF5
+#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
           call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
 #else
      !geh: No.  AMR is entirely structured.

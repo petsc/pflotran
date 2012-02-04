@@ -74,6 +74,11 @@ subroutine DatasetLoad(dataset,option)
   endif
   
   if (read_dataset) then
+#if !defined(PETSC_HAVE_HDF5)
+    option%io_buffer = 'DataSetLoad() requires HDF5 support'
+    call printErrMsg(option)
+  endif
+#else
     call HDF5ReadDataset(dataset,option)
     call DatasetReorder(dataset,option)
     if (associated(dataset%buffer)) then
@@ -91,6 +96,7 @@ subroutine DatasetLoad(dataset,option)
       dataset%rmin = minval(dataset%rarray)
     endif
   endif
+#endif
 
 end subroutine DatasetLoad
 
