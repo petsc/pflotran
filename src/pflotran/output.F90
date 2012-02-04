@@ -2669,7 +2669,8 @@ subroutine WriteTecplotUGridElements(fid,realization)
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
   call WriteTecplotDataSetNumPerLine(fid,realization,vec_ptr, &
                                      TECPLOT_INTEGER, &
-                                     grid%unstructured_grid%nlmax*8,8)
+                                     grid%unstructured_grid%nlmax*8, &
+                                     EIGHT_INTEGER)
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)

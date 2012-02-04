@@ -514,7 +514,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
     tran_stepper%start_time_step = tran_stepper%steps + 1
   
   if (realization%debug%print_couplers) then
-    call OutputPrintCouplers(realization,0)
+    call OutputPrintCouplers(realization,ZERO_INTEGER)
   endif  
   do
 

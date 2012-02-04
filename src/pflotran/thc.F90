@@ -2870,7 +2870,7 @@ subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: vec
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
 end subroutine SAMRCoarsenFaceFluxes
      
 end interface
