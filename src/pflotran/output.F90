@@ -327,7 +327,7 @@ end function OutputFilename
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-subroutine OutputTecplotHeader(fid,realization)
+subroutine OutputTecplotHeader(fid,realization,icolumn)
 
   use Realization_module
   use Grid_module
@@ -351,6 +351,7 @@ subroutine OutputTecplotHeader(fid,realization)
 
   PetscInt :: fid
   type(realization_type) :: realization
+  PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -361,7 +362,6 @@ subroutine OutputTecplotHeader(fid,realization)
   type(output_option_type), pointer :: output_option
   PetscInt :: comma_count, quote_count, variable_count
   PetscInt :: i
-  PetscInt, parameter :: icolumn = -1
   
   patch => realization%patch
   grid => patch%grid
@@ -591,7 +591,7 @@ subroutine OutputTecplotBlock(realization)
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-    call OutputTecplotHeader(IUNIT3,realization)
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)
   endif
     
   ! write blocks
@@ -1056,7 +1056,7 @@ subroutine OutputTecplotFEBrick(realization)
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-    call OutputTecplotHeader(IUNIT3,realization)    
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)    
   endif
 
   ! write vertices
@@ -1932,7 +1932,12 @@ subroutine OutputTecplotPoint(realization)
     call printMsg(option)                       
     open(unit=IUNIT3,file=filename,action="write")
   
-    call OutputTecplotHeader(IUNIT3,realization)
+    if (output_option%print_column_ids) then
+      icolumn = 3
+    else
+      icolumn = -1
+    endif
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)
   endif
   
 1000 format(es13.6,1x)
