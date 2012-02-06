@@ -36,8 +36,20 @@ module Input_module
   interface InputReadInt
     module procedure InputReadInt1
     module procedure InputReadInt2
-!    module procedure InputReadInt3
-!    module procedure InputReadInt4
+#if defined(PETSC_USE_64BIT_INDICES) && (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64)
+    ! If PetscInt and PetscMPIInt have different sizes (occurs for some builds
+    ! with 64 bit indices), then we need to have additional routines for the 
+    ! InputReadInt() generic subroutine.  (We use the above check instead of 
+    ! directly checking to see if PetscInt and PetscMPIInt have the same size
+    ! because the size of PetscInt is not included in the 
+    ! $PETSC_DIR/$PETSC_ARCH/include/petscconf.h file.) If the two types have
+    ! the same size, then these additional routines for type PetscMPIInt must
+    ! *not* be defined, because then the interface becomes ambiguous, since 
+    ! Fortran doesn't know the difference between PetscInt and PetscMPIInt if
+    ! they are identically sized integers.  --RTM
+    module procedure InputReadInt3
+    module procedure InputReadInt4
+#endif
   end interface
   
   interface InputReadDouble
@@ -338,6 +350,11 @@ subroutine InputReadInt2(string, option, int, ierr)
 
 end subroutine InputReadInt2
 
+#if defined(PETSC_USE_64BIT_INDICES) && (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64)
+! InputReadInt3() and InputReadInt4() must only be defined if PetscInt and
+! PetscMPIInt differ in size.  See notes above in the interface definition. 
+!   --RTM
+
 ! ************************************************************************** !
 !
 ! InputReadInt3: reads and removes an integer value from a string
@@ -389,6 +406,10 @@ subroutine InputReadInt4(string, option, int, ierr)
   endif
 
 end subroutine InputReadInt4
+
+#endif
+!End of defined(PETSC_USE_64BIT_INDICES) && 
+!  (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
 
 ! ************************************************************************** !
 !
