@@ -135,6 +135,7 @@ module Grid_module
             GridComputeCell2FaceConnectivity, &
             GridComputeGlobalCell2FaceConnectivity, &
             GridGetGhostedNeighbors
+  
 contains
 
 ! ************************************************************************** !
@@ -3254,7 +3255,6 @@ function GridIndexToCellID(vec,index,grid,vec_type)
                      MPI_MAX,PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID
-
 
 !! ********************************************************************** !
 !!

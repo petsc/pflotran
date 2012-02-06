@@ -213,6 +213,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Grid_module
   use Unstructured_Grid_module, only : UGridMapIndices, &
                                        UGridEnsureRightHandRule
+  use Structured_Grid_module, only : StructGridCreateTVDGhosts
   use AMR_Grid_module
   use MFD_module
   use Coupler_module
@@ -425,6 +426,15 @@ subroutine RealizationCreateDiscretization(realization)
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
+      if (option%itranmode == EXPLICIT_ADVECTION) then
+        call StructGridCreateTVDGhosts(grid%structured_grid, &
+                                       realization%reaction%naqcomp, &
+                                       field%tran_xx, &
+                                       discretization%dm_1dof%sgdm, &
+                                       field%tvd_ghosts, &
+                                       discretization%tvd_ghost_scatter, &
+                                       option)
+      endif
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, discretization%dm_1dof%sgdm)
       call GridComputeSpacing(grid,option)

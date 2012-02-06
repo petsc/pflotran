@@ -76,7 +76,9 @@ module Structured_Grid_module
             StructuredGridVecGetMaskArrayCellF90, &
             StructuredGridVecGetArrayF90, &
             StructGridVecRestoreArrayF90, &
-            StructGridGetGhostedNeighbors
+            StructGridGetGhostedNeighbors, &
+            StructGridCreateTVDGhosts
+  
 contains
 
 ! ************************************************************************** !
@@ -2482,7 +2484,9 @@ end subroutine StructGridVecRestoreArrayF90
 ! date: 01/28/11
 !
 ! ************************************************************************** !
-subroutine StructGridCreateTVDGhosts(structured_grid,ghost_vec,option)
+subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
+                                     dm_1dof, &
+                                     ghost_vec,scatter_ctx,option)
 
   use Option_module
 
@@ -2492,10 +2496,21 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ghost_vec,option)
 #include "finclude/petscvec.h90"
 
   type(structured_grid_type) :: structured_grid
+  PetscInt :: ndof
+  DM :: dm_1dof
+  Vec :: global_vec
   Vec :: ghost_vec
+  VecScatter :: scatter_ctx
   type(option_type) :: option
 
   PetscInt :: vector_size
+  IS :: is_petsc
+  IS :: is_ghost
+  PetscInt :: icount, index
+  PetscInt :: i, j, k
+  PetscInt, allocatable :: int_array(:)
+  PetscInt, pointer :: global_indices_ptr(:)
+  PetscErrorCode :: ierr
   
   ! structured grid has 6 sides to it
   vector_size = 0
@@ -2523,6 +2538,98 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ghost_vec,option)
   if (structured_grid%lze /= structured_grid%gze) then
     vector_size = vector_size + structured_grid%nlx*structured_grid%nly
   endif
+  
+  call VecCreateSeq(PETSC_COMM_SELF,vector_size*ndof,ghost_vec,ierr)
+  call VecSetBlockSize(ghost_vec,ndof,ierr)
+  
+  ! Create an IS composed of the petsc indexing of the ghost cells
+  allocate(int_array(vector_size))
+  
+  ! GEH: I'm going to play a trick here.  If I know the global index
+  ! of my ghost cells, I can calculate the global index of the next
+  ! layer of ghost cells in each direction since the block are 
+  ! consistent through each dimension of the grid
+  call DMDAGetGlobalIndices(dm_1dof,i,global_indices_ptr,ierr)
+  vector_size = 0
+  ! west
+  if (structured_grid%lxs /= structured_grid%gxs) then
+    i = 1
+    do k = structured_grid%kstart, structured_grid%kend
+      do j = structured_grid%jstart, structured_grid%jend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
+        int_array(icount) = global_indices_ptr(index)-1
+      enddo
+    enddo
+  endif
+  ! east
+  if (structured_grid%lxe /= structured_grid%gxe) then
+    i = structured_grid%ngx
+    do k = structured_grid%kstart, structured_grid%kend
+      do j = structured_grid%jstart, structured_grid%jend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
+        int_array(icount) = global_indices_ptr(index)+1
+      enddo
+    enddo
+  endif
+  ! south
+  if (structured_grid%lys /= structured_grid%gys) then
+    j = 1
+    do k = structured_grid%kstart, structured_grid%kend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
+        int_array(icount) = global_indices_ptr(index)-structured_grid%ngx
+      enddo
+    enddo
+  endif
+  ! north
+  if (structured_grid%lye /= structured_grid%gye) then
+    j = structured_grid%ngy
+    do k = structured_grid%kstart, structured_grid%kend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
+        int_array(icount) = global_indices_ptr(index)+structured_grid%ngx
+      enddo
+    enddo
+  endif
+  ! bottom
+  if (structured_grid%lzs /= structured_grid%gzs) then
+    k = 1
+    do j = structured_grid%jstart, structured_grid%jend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
+        int_array(icount) = global_indices_ptr(index)-structured_grid%ngxy
+      enddo
+    enddo
+  endif
+  ! north
+  if (structured_grid%lze /= structured_grid%gze) then
+    k = structured_grid%ngz
+    do j = structured_grid%jstart, structured_grid%jend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
+        int_array(icount) = global_indices_ptr(index)+structured_grid%ngxy
+      enddo
+    enddo
+  endif
+
+  call ISCreateBlock(option%mycomm,ndof,vector_size, &
+                     int_array,PETSC_COPY_VALUES,is_petsc,ierr)
+  
+  do i = 1, vector_size
+    int_array(i) = i-1
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,vector_size, &
+                     int_array,PETSC_COPY_VALUES,is_ghost,ierr)
+  deallocate(int_array)
+
+  call VecScatterCreate(global_vec,is_petsc,ghost_vec,is_ghost, &
+                        scatter_ctx,ierr)
 
 end subroutine StructGridCreateTVDGhosts  
 

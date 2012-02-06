@@ -44,6 +44,7 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_nflowdof
     type(dm_ptr_type), pointer :: dm_ntrandof
     type(mfd_type), pointer :: MFD
+    VecScatter :: tvd_ghost_scatter
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -80,7 +81,8 @@ module Discretization_module
             DiscretizNaturalToGlobalBegin, &
             DiscretizNaturalToGlobalEnd, &
             DiscretizationCreateDMs,&
-            DiscretizationGetDMPtrFromIndex
+            DiscretizationGetDMPtrFromIndex, &
+            DiscretizationUpdateTVDGhosts
   
 contains
 
@@ -127,6 +129,9 @@ function DiscretizationCreate()
   discretization%surf_dm_1dof%sgdm = 0
   nullify(discretization%surf_dm_1dof%ugdm)
 #endif
+
+  discretization%tvd_ghost_scatter = 0
+  
   DiscretizationCreate => discretization
 
 end function DiscretizationCreate
@@ -1846,6 +1851,31 @@ end subroutine DiscretizNaturalToGlobalEnd
 
 ! ************************************************************************** !
 !
+! DiscretizationUpdateTVDGhosts: Updates tvd extended ghost cell values
+! author: Glenn Hammond
+! date: 02/04/12
+!
+! ************************************************************************** !
+subroutine DiscretizationUpdateTVDGhosts(discretization,global_vec, &
+                                         tvd_ghost_vec)
+
+  implicit none
+  
+  type(discretization_type) :: discretization
+  Vec :: global_vec
+  Vec :: tvd_ghost_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  
+  call VecScatterBegin(discretization%tvd_ghost_scatter,global_vec, &
+                       tvd_ghost_vec,INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(discretization%tvd_ghost_scatter,global_vec, &
+                       tvd_ghost_vec,INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine DiscretizationUpdateTVDGhosts
+
+! ************************************************************************** !
+!
 ! DiscretizationDestroy: Deallocates a discretization
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1914,6 +1944,9 @@ subroutine DiscretizationDestroy(discretization)
         call MFDAuxDestroy(discretization%MFD) 
   nullify(discretization%MFD)
 
+  if (discretization%tvd_ghost_scatter /= 0) &
+    call VecScatterDestroy(discretization%tvd_ghost_scatter)
+  
 end subroutine DiscretizationDestroy
  
 end module Discretization_module
