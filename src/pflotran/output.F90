@@ -646,13 +646,21 @@ subroutine OutputTecplotBlock(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
 #ifdef ICE    
+      ! gas saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+      
       ! ice saturation
       select case(option%iflowmode)
         case(THC_MODE)
@@ -1104,13 +1112,21 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
 #ifdef ICE
+      ! gas saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+      
       ! ice saturation
       select case(option%iflowmode)
         case(THC_MODE)
@@ -1987,13 +2003,21 @@ subroutine OutputTecplotPoint(realization)
 
         ! gas saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE,THC_MODE)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
 
 #ifdef ICE
+        ! gas saturation
+        select case(option%iflowmode)
+          case(THC_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+        
         ! ice saturation
         select case(option%iflowmode)
           case(THC_MODE)
