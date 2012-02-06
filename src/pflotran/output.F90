@@ -327,7 +327,7 @@ end function OutputFilename
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-subroutine OutputTecplotHeader(fid,realization)
+subroutine OutputTecplotHeader(fid,realization,icolumn)
 
   use Realization_module
   use Grid_module
@@ -351,6 +351,7 @@ subroutine OutputTecplotHeader(fid,realization)
 
   PetscInt :: fid
   type(realization_type) :: realization
+  PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header, header2
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -361,7 +362,6 @@ subroutine OutputTecplotHeader(fid,realization)
   type(output_option_type), pointer :: output_option
   PetscInt :: comma_count, quote_count, variable_count
   PetscInt :: i
-  PetscInt, parameter :: icolumn = -1
   
   patch => realization%patch
   grid => patch%grid
@@ -591,7 +591,7 @@ subroutine OutputTecplotBlock(realization)
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-    call OutputTecplotHeader(IUNIT3,realization)
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)
   endif
     
   ! write blocks
@@ -646,13 +646,21 @@ subroutine OutputTecplotBlock(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
 #ifdef ICE    
+      ! gas saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+      
       ! ice saturation
       select case(option%iflowmode)
         case(THC_MODE)
@@ -1056,7 +1064,7 @@ subroutine OutputTecplotFEBrick(realization)
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-    call OutputTecplotHeader(IUNIT3,realization)    
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)    
   endif
 
   ! write vertices
@@ -1104,13 +1112,21 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
 #ifdef ICE
+      ! gas saturation
+      select case(option%iflowmode)
+        case(THC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+      
       ! ice saturation
       select case(option%iflowmode)
         case(THC_MODE)
@@ -1932,7 +1948,12 @@ subroutine OutputTecplotPoint(realization)
     call printMsg(option)                       
     open(unit=IUNIT3,file=filename,action="write")
   
-    call OutputTecplotHeader(IUNIT3,realization)
+    if (output_option%print_column_ids) then
+      icolumn = 3
+    else
+      icolumn = -1
+    endif
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)
   endif
   
 1000 format(es13.6,1x)
@@ -1982,13 +2003,21 @@ subroutine OutputTecplotPoint(realization)
 
         ! gas saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE,THC_MODE)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
 
 #ifdef ICE
+        ! gas saturation
+        select case(option%iflowmode)
+          case(THC_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+        
         ! ice saturation
         select case(option%iflowmode)
           case(THC_MODE)
@@ -8486,6 +8515,7 @@ subroutine OutputMassBalanceNew(realization)
           do iconn = 1, coupler%connection_set%num_connections
             sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
+          
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
 
@@ -8542,7 +8572,13 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-
+            
+            if (icomp == 1) then
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O
+            else
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWGLYC
+            endif
+            
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
@@ -8561,8 +8597,13 @@ subroutine OutputMassBalanceNew(realization)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
             enddo
-        !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
-        !   sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! is this referring to mixture?
+            
+        !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o/glycol
+            if (icomp == 1) then
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O
+            else
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWGLYC
+            endif
 
             int_mpi = option%nphase
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &

@@ -21,7 +21,7 @@ module THC_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  PetscReal, parameter :: perturbation_tolerance = 1.d-8
 
   public THCResidual,THCJacobian, &
          THCUpdateFixedAccumulation,THCTimeCut,&
@@ -994,6 +994,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
            (1.d0 - por)*vol*rock_dencpr 
   J(3,3) = 0.d0
 
+
 #ifdef VAPOR 
   ! Added by Satish Karra, 10/25/11
   ! Assuming above freezing for now, no s_i considered
@@ -1088,9 +1089,9 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
       
       if (ideriv == 2) then
         if(x_pert(ideriv) < 0.d0) then
-          pert = - 1.d-5
+          pert = - 1.d-8
         else
-          pert =  1.d-5
+          pert =  1.d-8
         endif
           x_pert(ideriv) = x_pert(ideriv) + pert
       endif
@@ -1116,21 +1117,29 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 #if 0      
       select case(ideriv)
         case(1)
-!         print *, 'dvis_dp:', thc_aux_var%dvis_dp, (thc_aux_var_pert%vis-thc_aux_var%vis)/pert(ideriv)
-!         print *, 'dkr_dp:', thc_aux_var%dkr_dp, (thc_aux_var_pert%kr-thc_aux_var%kr)/pert(ideriv)
           print *, 'dsat_dp:', thc_aux_var%dsat_dp, (global_aux_var_pert%sat(1)-global_aux_var%sat(1))/pert
           print *, 'dden_dp:', thc_aux_var%dden_dp, (global_aux_var_pert%den(1)-global_aux_var%den(1))/pert
           print *, 'dkvr_dp:', thc_aux_var%dkvr_dp, (thc_aux_var_pert%kvr-thc_aux_var%kvr)/pert
           print *, 'dh_dp:', thc_aux_var%dh_dp, (thc_aux_var_pert%h-thc_aux_var%h)/pert
           print *, 'du_dp:', thc_aux_var%du_dp, (thc_aux_var_pert%u-thc_aux_var%u)/pert
+#ifdef ICE
+          print *, 'dsati_dp:', thc_aux_var%dsat_ice_dp, (thc_aux_var_pert%sat_ice - thc_aux_var%sat_ice)/pert
+          print *, 'dsatg_dp:', thc_aux_var%dsat_gas_dp, (thc_aux_var_pert%sat_gas - thc_aux_var%sat_gas)/pert
+          print *, 'ddeni_dp:', thc_aux_var%dden_ice_dp, (thc_aux_var_pert%den_ice - thc_aux_var%den_ice)/pert
+#endif
+          
         case(2)
           print *, 'dden_dt:', thc_aux_var%dden_dt, (global_aux_var_pert%den(1)-global_aux_var%den(1))/pert
           print *, 'dkvr_dt:', thc_aux_var%dkvr_dt, (thc_aux_var_pert%kvr-thc_aux_var%kvr)/pert
           print *, 'dh_dt:', thc_aux_var%dh_dt, (thc_aux_var_pert%h-thc_aux_var%h)/pert
           print *, 'du_dt:', thc_aux_var%du_dt, (thc_aux_var_pert%u-thc_aux_var%u)/pert
-!          print *, 'ddeni_dt:', thc_aux_var%dden_ice_dt, (thc_aux_var_pert%den_ice - thc_aux_var%den_ice)/pert
-!          print *, 'dsati_dt:', thc_aux_var%dsat_ice_dt, (thc_aux_var_pert%sat_ice - thc_aux_var%sat_ice)/pert
-!          print *, 'dsatg_dt:', thc_aux_var%dsat_gas_dt, (thc_aux_var_pert%sat_gas - thc_aux_var%sat_gas)/pert
+#ifdef ICE
+          print *, 'ddeni_dt:', thc_aux_var%dden_ice_dt, (thc_aux_var_pert%den_ice - thc_aux_var%den_ice)/pert
+          print *, 'dsati_dt:', thc_aux_var%dsat_ice_dt, (thc_aux_var_pert%sat_ice - thc_aux_var%sat_ice)/pert
+          print *, 'dsatg_dt:', thc_aux_var%dsat_gas_dt, (thc_aux_var_pert%sat_gas - thc_aux_var%sat_gas)/pert
+          print *, 'dsat_dt:', thc_aux_var%dsat_dt, (global_aux_var_pert%sat(1) - global_aux_var%sat(1))/pert
+          print *, 'dui_dt:', thc_aux_var%du_ice_dt, (thc_aux_var_pert%u_ice - thc_aux_var%u_ice)/pert
+#endif
       end select     
 #endif     
       call THCAccumulation(thc_aux_var_pert,global_aux_var_pert, &
@@ -1189,12 +1198,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   mol(2) = global_aux_var%sat(1)*global_aux_var%den(1)*aux_var%xmol(2)*porXvol
 
-!  write(*,*) 'por ', por
-!  write(*,*) 'vol ', vol
-!  write(*,*) 'rrdencpr ', rock_dencpr
-!  write(*,*) 'temp ', global_aux_var%temp(1) 
 ! TechNotes, THC Mode: First term of Equation 9
-
   eng = global_aux_var%sat(1) * &
         global_aux_var%den(1) * &
         aux_var%u * porXvol + &
@@ -1450,29 +1454,24 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
         
       Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)
       Jup(1,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)
-!      Jup(1,3:option%nflowdof) = 0.d0
 
       Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
       Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
-!      Jdn(1,3:option%nflowdof) = 0.d0
-      do ispec=2,option%nflowspec 
-        ! based on flux = q*density_ave*uxmol
-        Jup(ispec,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(ispec)
-        Jup(ispec,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(ispec)
-        Jup(ispec,ispec+1) = q*density_ave*duxmol_dxmol_up
 
-        Jdn(ispec,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(ispec)
-        Jdn(ispec,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(ispec)
-        Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
-      enddo
+      Jup(2,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(2)
+      Jup(2,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(2)
+      Jup(2,3) = q*density_ave*duxmol_dxmol_up
+
+      Jdn(2,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(2)
+      Jdn(2,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(2)
+      Jdn(2,3) = q*density_ave*duxmol_dxmol_dn
+     
       ! based on flux = q*density_ave*uh
       Jup(option%nflowdof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
       Jup(option%nflowdof,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uh+q*density_ave*duh_dt_up
-!      Jup(option%nflowdof,3:option%nflowdof) = 0d.0
 
       Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
       Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
-!      Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
     endif
   endif 
@@ -1489,17 +1488,17 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                                     
 ! SK   
 
-   Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
+    Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-   Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+    Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
-   Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
+    Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
 
-   Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
+    Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-   Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+    Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
-   Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
+    Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
 
 
 #ifdef VAPOR
@@ -1597,8 +1596,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   deng_dn = p_g/(IDEAL_GAS_CONST*(global_aux_var_dn%temp(1) + 273.15d0))*1.d-3
     
   Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
-  p_ref = 1.01325d5 ! in Pa
-  T_ref = 25.d0 ! in deg C
+  p_ref = 1.01325d5   ! in Pa
+  T_ref = 25.d0       ! in deg C
     
   Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + 273.15d0)/ &
              (T_ref + 273.15d0))**(1.8)  
@@ -2393,8 +2392,8 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                   273.15d0))*1.d-3
         ! Assuming above freezing, sg = 1-sl, pg = den_g*R*T
         Diffg_ref = 2.13D-5 ! Reference diffusivity, need to read from input file
-        p_ref = 1.01325d5 ! in Pa
-        T_ref = 25.d0 ! in deg C 
+        p_ref = 1.01325d5   ! in Pa
+        T_ref = 25.d0       ! in deg C 
         
         Diffg_up = Diffg_ref*(p_ref/p_g)*((global_aux_var_up%temp(1) + &
                    273.15d0)/(T_ref + 273.15d0))**(1.8)  
