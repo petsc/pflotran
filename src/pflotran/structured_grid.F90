@@ -2560,12 +2560,9 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
     int_array2(i) = i-1
   enddo
   call DMGetLocalToGlobalMapping(dm_1dof,mapping_ltog,ierr)
-  call ISLocalToGlobalMappingApply(mapping_ltog,int_array2,structured_grid%ngmax, &
+  call ISLocalToGlobalMappingApply(mapping_ltog,structured_grid%ngmax,int_array2, &
                                    int_array2,ierr)
-  ! convert from base zero to base one
-  int_array2 = int_array2 + 1
-  
-  vector_size = 0
+  icount = 0
   ! west
   if (structured_grid%lxs /= structured_grid%gxs) then
     i = 1
@@ -2641,6 +2638,12 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   
   deallocate(int_array2)
 
+  if (vector_size /= icount) then
+    option%io_buffer = 'Mis-count in TVD ghosting.'
+    call printErrMsgByRank(option)
+  endif
+
+  ! since int_array2 was base-zero, int_array is base-zero.
   call ISCreateBlock(option%mycomm,ndof,vector_size, &
                      int_array,PETSC_COPY_VALUES,is_petsc,ierr)
 
