@@ -4672,6 +4672,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
     end select  
 
+    ! if site_density = 0, dividing by free_site_conc will crash below.
+    if (site_density < 1.d-40) cycle
+    
     ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
     free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
 
