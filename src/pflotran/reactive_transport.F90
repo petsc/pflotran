@@ -6131,6 +6131,18 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
 #endif
     endif
   enddo
+
+  do i=1,realization%reaction%neqsrfcplxrxn
+    if (reaction%eqsrfcplx_site_density_print(i)) then
+      string = trim(reaction%eqsrfcplx_site_names(i)) // '_den'
+      call RTAppendToHeader(header,string,cell_string,icolumn)
+#ifdef GLENN_NEW_IO
+      call OutputOptionAddPlotVariable(realization%output_option, &
+                                       SURFACE_SITE_DENSITY,i, &
+                                       ZERO_INTEGER)
+#endif
+    endif
+  enddo
   
   do i=1,realization%reaction%neqsrfcplxrxn
     if (reaction%eqsrfcplx_site_print(i)) then

@@ -1547,6 +1547,8 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscReal :: xmass
+  PetscReal :: tempreal
+  PetscInt :: tempint
   PetscInt :: irate, istate
   PetscErrorCode :: ierr
 
@@ -1927,7 +1929,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,MINERAL_SATURATION_INDEX, &
-         SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
+         SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
          KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
@@ -2046,6 +2048,25 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_conc(isubvar)
           enddo
+        case(SURFACE_SITE_DENSITY)
+          tempreal = reaction%eqsrfcplx_rxn_site_density(isubvar)
+          select case(reaction%eqsrfcplx_rxn_surf_type(isubvar))
+            case(MINERAL_SURFACE)
+              tempint = reaction%eqsrfcplx_rxn_to_surf(isubvar)
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = tempreal* &
+                                    patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+                                      mnrl_volfrac(tempint)
+              enddo
+            case(COLLOID_SURFACE)
+                option%io_buffer = 'Printing of surface site density for colloidal surfaces ' // &
+                  'not implemented.'
+                call printErrMsg(option)
+            case(NULL_SURFACE)
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = tempreal
+              enddo
+          end select          
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_free_site_conc(isubvar)
@@ -2456,7 +2477,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,MINERAL_SATURATION_INDEX, &
-         SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
+         SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
+         KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
          TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
          
@@ -2512,6 +2534,19 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_free_site_conc(isubvar)
+        case(SURFACE_SITE_DENSITY)
+          select case(reaction%eqsrfcplx_rxn_surf_type(isubvar))
+            case(MINERAL_SURFACE)
+              value = reaction%eqsrfcplx_rxn_site_density(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(isubvar))
+            case(COLLOID_SURFACE)
+                option%io_buffer = 'Printing of surface site density for colloidal surfaces ' // &
+                  'not implemented.'
+                call printErrMsg(option)
+            case(NULL_SURFACE)
+              value = reaction%eqsrfcplx_rxn_site_density(isubvar)
+          end select
         case(KIN_SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar)
         case(KIN_SURFACE_CMPLX_FREE)

@@ -849,6 +849,13 @@ subroutine OutputTecplotBlock(realization)
         endif
       enddo
       do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
         if (reaction%eqsrfcplx_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -1314,6 +1321,13 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo      
       do i=1,reaction%neqsrfcplxrxn
         if (reaction%eqsrfcplx_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
@@ -2192,6 +2206,13 @@ subroutine OutputTecplotPoint(realization)
         do i=1,reaction%nmnrl
           if (reaction%mnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%neqsrfcplxrxn
+          if (reaction%eqsrfcplx_site_density_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
@@ -3857,6 +3878,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         endif
       enddo
       do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+           write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY,i,ghosted_id)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
         if (reaction%eqsrfcplx_site_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE,i,ghosted_id)
@@ -4334,6 +4361,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         if (reaction%mnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_SATURATION_INDEX,i, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,SURFACE_SITE_DENSITY,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
@@ -5163,6 +5200,14 @@ subroutine OutputVTK(realization)
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           word = trim(reaction%kinmnrl_names(i)) // '_si'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinsrfcplx_site_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
@@ -6686,6 +6731,21 @@ end subroutine SAMRWritePlotData
         if (reaction%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          write(string,'(a)') reaction%eqsrfcplx_site_names(i) // '_den'
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else

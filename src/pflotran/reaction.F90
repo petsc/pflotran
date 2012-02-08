@@ -3139,6 +3139,20 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_tot_conc_type = TOTAL_MOLALITY
       case('AGE')
         reaction%print_age = PETSC_TRUE
+      case ('SITE_DENSITY')
+        call InputReadWord(input,option,name,PETSC_TRUE)  
+        call InputErrorMsg(input,option,'Site Name', &
+                           'CHEMISTRY,OUTPUT,SITE DENSITY')
+        cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+        do
+          if (.not.associated(cur_srfcplx_rxn)) exit
+          if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+            cur_srfcplx_rxn%site_density_print_me = PETSC_TRUE
+            found = PETSC_TRUE
+            exit
+          endif
+          cur_srfcplx_rxn => cur_srfcplx_rxn%next
+        enddo  
       case default        
         found = PETSC_FALSE
         if (.not.found) then

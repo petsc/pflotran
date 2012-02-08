@@ -143,6 +143,7 @@ module Reaction_Aux_module
     PetscInt :: free_site_id
     character(len=MAXWORDLENGTH) :: free_site_name
     PetscBool :: free_site_print_me
+    PetscBool :: site_density_print_me
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     character(len=MAXWORDLENGTH) :: colloid_name
@@ -339,6 +340,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqsrfcplx_rxn_site_density(:) ! site density in mol/m^3 bulk
     PetscBool, pointer :: eqsrfcplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_site_names(:)
+    PetscBool, pointer :: eqsrfcplx_site_density_print(:)
     PetscBool, pointer :: eqsrfcplx_site_print(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_names(:)
     PetscBool, pointer :: eqsrfcplx_print(:)
@@ -602,6 +604,7 @@ function ReactionCreate()
   nullify(reaction%secondary_species_print)
   nullify(reaction%eqcplx_basis_print)
   nullify(reaction%gas_species_print)
+  nullify(reaction%eqsrfcplx_site_density_print)
   nullify(reaction%eqsrfcplx_site_print)
   nullify(reaction%eqsrfcplx_print)
   nullify(reaction%mnrl_print)
@@ -1070,6 +1073,7 @@ function SurfaceComplexationRxnCreate()
   srfcplxrxn%itype = SRFCMPLX_RXN_NULL
   srfcplxrxn%free_site_name = ''
   srfcplxrxn%free_site_print_me = PETSC_FALSE
+  srfcplxrxn%site_density_print_me = PETSC_FALSE
 
   srfcplxrxn%mineral_id = 0
   srfcplxrxn%mineral_name = ''
@@ -2454,6 +2458,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%gas_species_print)) &
     deallocate(reaction%gas_species_print)
   nullify(reaction%gas_species_print)
+  if (associated(reaction%eqsrfcplx_site_density_print)) &
+    deallocate(reaction%eqsrfcplx_site_density_print)
+  nullify(reaction%eqsrfcplx_site_density_print)
   if (associated(reaction%eqsrfcplx_site_print)) &
     deallocate(reaction%eqsrfcplx_site_print)
   nullify(reaction%eqsrfcplx_site_print)

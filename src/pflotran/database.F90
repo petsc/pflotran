@@ -1972,6 +1972,9 @@ subroutine BasisInit(reaction,option)
     
     allocate(reaction%eqsrfcplx_site_print(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_print = PETSC_FALSE
+ 
+    allocate(reaction%eqsrfcplx_site_density_print(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_site_density_print = PETSC_FALSE
     
     allocate(reaction%eqsrfcplx_rxn_site_density(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_site_density = 0.d0
@@ -2032,6 +2035,9 @@ subroutine BasisInit(reaction,option)
         irxn = irxn + 1
         reaction%eqsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%eqsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
+                                              reaction%print_all_species
+        reaction%eqsrfcplx_site_density_print(irxn) = &
+                                              cur_srfcplx_rxn%site_density_print_me .or. &
                                               reaction%print_all_species
         if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
           reaction%eqsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
@@ -4931,6 +4937,9 @@ subroutine BasisInit_hpt(reaction,option)
     allocate(reaction%eqsrfcplx_site_print(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_print = PETSC_FALSE
     
+    allocate(reaction%eqsrfcplx_site_density_print(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_site_density_print = PETSC_FALSE
+    
     allocate(reaction%eqsrfcplx_rxn_site_density(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_site_density = 0.d0
     
@@ -4986,6 +4995,9 @@ subroutine BasisInit_hpt(reaction,option)
         irxn = irxn + 1
         reaction%eqsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%eqsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
+                                              reaction%print_all_species
+        reaction%eqsrfcplx_site_density_print(irxn) = &
+                                              cur_srfcplx_rxn%site_density_print_me .or. &
                                               reaction%print_all_species
         if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
           reaction%eqsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
