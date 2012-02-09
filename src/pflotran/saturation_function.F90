@@ -36,6 +36,11 @@ module Saturation_Function_module
   type, public :: saturation_function_ptr_type
     type(saturation_function_type), pointer :: ptr
   end type saturation_function_ptr_type
+
+  interface SaturationFunctionCompute
+    module procedure SaturationFunctionCompute1
+    module procedure SaturationFunctionCompute2
+  end interface
   
   public :: SaturationFunctionCreate, &
             SaturationFunctionDestroy, &
@@ -440,17 +445,52 @@ end subroutine SaturatFuncConvertListToArray
 
 ! ************************************************************************** !
 !
-! SaturationFunctionCompute: Computes the saturation and relative permeability
-!                            (and associated derivatives) as a function of 
-!                            capillary pressure
+! SaturationFunctionCompute1: Computes the saturation and relative permeability
+!                             (and associated derivatives) as a function of 
+!                             capillary pressure
+! author: Glenn Hammond
+! date: 2/9/12
+!
+! ************************************************************************** !
+subroutine SaturationFunctionCompute1(pressure,saturation,relative_perm, &
+                                     dsat_pres,dkr_pres, &
+                                     saturation_function, &
+                                     auxvar1,auxvar2, &
+                                     option)
+  use Option_module
+  
+  implicit none
+
+  PetscReal :: pressure, saturation, relative_perm, dsat_pres, dkr_pres
+  type(saturation_function_type) :: saturation_function
+  PetscReal :: auxvar1,auxvar2
+  type(option_type) :: option
+
+  PetscBool :: switch_to_saturated
+  
+  call SaturationFunctionCompute2(pressure,saturation,relative_perm, &
+                                  dsat_pres,dkr_pres, &
+                                  saturation_function, &
+                                  auxvar1,auxvar2, &
+                                  switch_to_saturated,option)
+
+end subroutine SaturationFunctionCompute1
+
+
+! ************************************************************************** !
+!
+! SaturationFunctionCompute2: Computes the saturation and relative permeability
+!                             (and associated derivatives) as a function of 
+!                             capillary pressure
 ! author: Glenn Hammond
 ! date: 12/11/07
 !
 ! ************************************************************************** !
-subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
-                                     dsat_pres,dkr_pres, &
-                                     saturation_function, &
-                                     auxvar1,auxvar2,option)
+subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
+                                      dsat_pres,dkr_pres, &
+                                      saturation_function, &
+                                      auxvar1,auxvar2, &
+                                      switch_to_saturated,option)
 
   use Option_module
   
@@ -459,6 +499,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   PetscReal :: pressure, saturation, relative_perm, dsat_pres, dkr_pres
   type(saturation_function_type) :: saturation_function
   PetscReal :: auxvar1,auxvar2
+  PetscBool :: switch_to_saturated
   type(option_type) :: option
 
   PetscInt :: iphase
@@ -469,6 +510,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: por, perm
   PetscReal :: Fg, a, Pd, PHg
+
+  PetscReal, parameter :: pc_alpha_n_epsilon = 1.d-15
   
   iphase = 1
   dsat_pres = 0.d0
@@ -480,6 +523,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       if (pressure >= option%reference_pressure) then
         saturation = 1.d0
         relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
         return
       else
         alpha = saturation_function%alpha
@@ -488,9 +532,14 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         n = 1.d0/(1.d0-m)
         pc_alpha = pc*alpha
         pc_alpha_n = pc_alpha**n
-        if (1.d0 + pc_alpha_n == 1.d0) then ! check for zero perturbation
+        !geh:  This conditional does not catch potential cancelation in 
+        !      the dkr_Se deriviative calculation.  Therefore, I am setting
+        !      an epsilon here
+!        if (1.d0 + pc_alpha_n == 1.d0) then ! check for zero perturbation
+        if (pc_alpha_n < pc_alpha_n_epsilon) then 
           saturation = 1.d0
           relative_perm = 1.d0
+          switch_to_saturated = PETSC_TRUE
           return
         endif
         one_plus_pc_alpha_n = 1.d0+pc_alpha_n
@@ -535,6 +584,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       if (pc < saturation_function%BC_pressure_low) then
         saturation = 1.d0
         relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
         return
       else if (pc < saturation_function%BC_pressure_high) then
         Sr = saturation_function%Sr(iphase)
@@ -551,6 +601,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       if (pc < one_over_alpha) then
         saturation = 1.d0
         relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
         return
 #endif        
       else
@@ -607,6 +658,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       else
         saturation = 1.d0
         relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
         return
       endif
     case default
@@ -617,7 +669,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   dsat_pres = -dsat_pc 
   dkr_pres = -dkr_pc
 
-end subroutine SaturationFunctionCompute
+end subroutine SaturationFunctionCompute2
 
 ! ************************************************************************** !
 !
