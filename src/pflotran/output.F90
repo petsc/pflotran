@@ -304,18 +304,27 @@ function OutputFilename(output_option,option,suffix,optional_string)
   character(len=*) :: optional_string
   
   character(len=MAXSTRINGLENGTH) :: OutputFilename
+
+  character(len=MAXWORDLENGTH) :: final_suffix
+  character(len=MAXSTRINGLENGTH) :: final_optional_string
+
+  if (len_trim(optional_string) > 0) then
+    final_optional_string = '-' // optional_string
+  endif
+  final_suffix = '.' // suffix
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    OutputFilename = trim(output_option%plot_name) // '.' // suffix
+    OutputFilename = trim(output_option%plot_name) // &
+            trim(final_optional_string) // &
+            final_suffix
   else  
     OutputFilename = trim(option%global_prefix) // &
             trim(option%group_prefix) // &
+            trim(final_optional_string) // &
             '-' // &
-            trim(optional_string) // &
             trim(OutputFilenameID(output_option,option)) // &
-            '.' // &
-            suffix
+            final_suffix
   endif
   
 end function OutputFilename
@@ -1482,7 +1491,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   output_option => realization%output_option
   discretization => realization%discretization
 
-  filename = OutputFilename(output_option,option,'tec','vel-')
+  filename = OutputFilename(output_option,option,'tec','vel')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
