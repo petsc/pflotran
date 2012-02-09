@@ -1006,7 +1006,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call InputFindStringInFile(input,option,string)
   call InputFindStringErrorMsg(input,option,string)
 
-  call DiscretizationRead(discretization,input,PETSC_TRUE,option)
+  call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
@@ -1246,8 +1246,7 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('GRID')
-        call DiscretizationRead(realization%discretization,input, &
-                                PETSC_FALSE,option)
+        call DiscretizationRead(realization%discretization,input,option)
 
 !....................
       case ('CHEMISTRY')
