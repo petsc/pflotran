@@ -177,7 +177,13 @@ subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine MiscibleAuxVarCopy
 
-
+! ************************************************************************** !
+!
+! Water_glycol_density: Computes water-propylene glycol mixture density 
+! author: Chuan Lu
+! date: 12/12/11
+!
+! ************************************************************************** !
 subroutine Water_glycol_density(y,p,dkg)
   implicit none
   PetscReal y, p ! water mass fraction
