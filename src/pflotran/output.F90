@@ -308,8 +308,11 @@ function OutputFilename(output_option,option,suffix,optional_string)
   character(len=MAXWORDLENGTH) :: final_suffix
   character(len=MAXSTRINGLENGTH) :: final_optional_string
 
+
   if (len_trim(optional_string) > 0) then
     final_optional_string = '-' // optional_string
+  else
+    final_optional_string = ''
   endif
   final_suffix = '.' // suffix
   
