@@ -769,6 +769,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
   PetscReal :: time, dt
   PetscReal :: fac,dtt,up,utmp,uc,ut,uus
   PetscBool :: update_time_step
+  PetscInt :: ifac
 
   ! FLOW
   update_time_step = PETSC_TRUE
@@ -864,20 +865,20 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
           endif
           dtt = fac * dt * (1.d0 + ut)
         case(RICHARDS_MODE)
-          fac = 0.5d0
-!          write(*,*) "flow_stepper%num_newton_iterations", flow_stepper%num_newton_iterations
-!          write(*,*) "flow_stepper%iaccel", flow_stepper%iaccel
-!          write(*,*) "option%dpmxe", option%dpmxe
-!          write(*,*) "option%dpmax", option%dpmax
-          if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
-            fac = 0.33d0
-            ut = 0.d0
+          if (flow_stepper%iaccel > 0) then
+            fac = 0.5d0
+            if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
+              fac = 0.33d0
+              ut = 0.d0
+            else
+              up = option%dpmxe/(option%dpmax+0.1)
+              ut = up
+            endif
+            dtt = fac * dt * (1.d0 + ut)
           else
-            up = option%dpmxe/(option%dpmax+0.1)
-            ut = up
+            ifac = max(min(flow_stepper%num_newton_iterations,flow_stepper%ntfac),1)
+            dtt = flow_stepper%tfac(ifac) * dt
           endif
-          dtt = fac * dt * (1.d0 + ut)
-!              write(*,*) "dtt", dtt
         case(G_MODE)   
           fac = 0.5d0
           if (flow_stepper%num_newton_iterations >= flow_stepper%iaccel) then
