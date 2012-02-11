@@ -375,6 +375,14 @@ subroutine CouplerComputeConnections(grid,option,coupler)
 
   connection_set => ConnectionCreate(region%num_cells,option%nphase, &
                                      connection_itype)
+    
+  ! if using higher order advection, allocate associated arrays
+  if (option%itranmode == EXPLICIT_ADVECTION .and. &
+      connection_set%itype == BOUNDARY_CONNECTION_TYPE) then
+    ! connections%id_up2 should remain null as it will not be used
+    allocate(connection_set%id_dn2(size(connection_set%id_dn)))
+    connection_set%id_dn2 = 0
+  endif  
 
   iface = coupler%iface
   do iconn = 1,region%num_cells

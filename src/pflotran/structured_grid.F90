@@ -995,10 +995,11 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   
   PetscReal, parameter :: Pi=3.141592653590d0
   
-  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscInt :: i, j, k, iconn, id_up, id_dn, id_up2, id_dn2
   PetscInt :: samr_ofx, samr_ofy, samr_ofz
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
+  PetscInt :: tvd_ghost_offset
   PetscReal :: dist_up, dist_dn
   PetscReal :: r1, r2
   type(connection_set_type), pointer :: connections, connections_2
@@ -1076,6 +1077,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   endif
 
   iconn = 0
+  tvd_ghost_offset = 0
   ! x-connections
   if (structured_grid%ngx > 1) then
     select case(structured_grid%itype)
@@ -1101,15 +1103,18 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
               
-              !geh: needs to be modified for parallel
               if (associated(connections%id_up2)) then
                 if (i == 1) then
-                  connections%id_up2(iconn) = id_up
+                  ! id_up indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
+                  id_up2 = 1 + j + k*structured_grid%nly
+                  connections%id_up2(iconn) = -id_up2
                 else
                   connections%id_up2(iconn) = id_up - 1
                 endif
                 if (i == lenx) then
-                  connections%id_dn2(iconn) = id_dn
+                  ! id_dn indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
+                  id_dn2 = 1 + j + k*structured_grid%nly + structured_grid%nlyz
+                  connections%id_up2(iconn) = -id_dn2
                 else
                   connections%id_dn2(iconn) = id_dn + 1
                 endif
@@ -1132,6 +1137,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
             enddo
           enddo
         enddo
+        tvd_ghost_offset = 2*structured_grid%nlyz ! west & east
       case(CYLINDRICAL_GRID)
         do k = structured_grid%kstart, structured_grid%kend
           do j = structured_grid%jstart, structured_grid%jend
@@ -1181,8 +1187,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
             enddo
           enddo
         enddo
-  end select
-    
+    end select
   endif
 
   ! y-connections
@@ -1212,15 +1217,19 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
               
-              !geh: needs to be modified for parallel
               if (associated(connections%id_up2)) then
                 if (j == 1) then
-                  connections%id_up2(iconn) = id_up
+                  ! id_up indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
+                  id_up2 = 1 + i + k*structured_grid%nlx + tvd_ghost_offset
+                  connections%id_up2(iconn) = -id_up2
                 else
                   connections%id_up2(iconn) = id_up - structured_grid%ngx
                 endif
                 if (j == leny) then
-                  connections%id_dn2(iconn) = id_dn
+                  ! id_dn indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
+                  id_dn2 = 1 + i + k*structured_grid%nlx + &
+                           structured_grid%nlxz + tvd_ghost_offset
+                  connections%id_up2(iconn) = -id_dn2
                 else
                   connections%id_dn2(iconn) = id_dn + structured_grid%ngx
                 endif
@@ -1242,13 +1251,14 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
             enddo
           enddo
         enddo
+        tvd_ghost_offset = tvd_ghost_offset + &
+          2*structured_grid%nlxz ! south & north
       case(CYLINDRICAL_GRID)
         option%io_buffer = 'For cylindrical coordinates, NY must be equal to 1.'
         call printErrMsg(option)
       case(SPHERICAL_GRID)
         option%io_buffer = 'For spherical coordinates, NY must be equal to 1.'
         call printErrMsg(option)
-
     end select
   endif
       
@@ -1279,15 +1289,18 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
               
-              !geh: needs to be modified for parallel
               if (associated(connections%id_up2)) then
                 if (k == 1) then
-                  connections%id_up2(iconn) = id_up
+                  id_up2 = 1 + i + j*structured_grid%nlx + tvd_ghost_offset
+                  connections%id_up2(iconn) = -id_up2
                 else
                   connections%id_up2(iconn) = id_up - structured_grid%ngxy
                 endif
                 if (k == lenz) then
-                  connections%id_dn2(iconn) = id_dn
+                  ! id_dn indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
+                  id_dn2 = 1 + i + j*structured_grid%nlx + &
+                           structured_grid%nlxy + tvd_ghost_offset
+                  connections%id_up2(iconn) = -id_dn2
                 else
                   connections%id_dn2(iconn) = id_dn + structured_grid%ngxy
                 endif
@@ -1345,74 +1358,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   end select
   endif
 
-#ifdef REARRANGE_CONN
-  allocate(int_array1(1:iconn))
-  allocate(int_array2(1:iconn))
-  allocate(int_array3(1:iconn))
-  allocate(int_array4(1:iconn))
-  allocate(int_array5(1:iconn))
-  allocate(index(1:iconn))
-
-  do i = 1,iconn
-    int_array1(i) = i
-    int_array2(i) = connections%id_up(i)
-  enddo
-  
-  int_array1 = int_array1 - 1
-  call PetscSortIntWithPermutation(iconn, int_array2, int_array1,ierr)
-  int_array1 = int_array1 + 1
-
-  count = 0
-  i = 1
-  count = count + 1
-  int_array3(count) = int_array2(int_array1(i))
-  int_array4(count) = connections%id_dn(int_array1(i))
-
-  do i=2,iconn
-    if ( int_array3(count).ne.int_array2(int_array1(i) )) then
-      do k = 1,count
-        int_array5(k) = k
-      enddo
-      int_array5 = int_array5 - 1
-      call PetscSortIntWithPermutation(count,int_array4,int_array5,ierr)
-      int_array5 = int_array5 + 1
-      do k = 1,count
-        index(i -count +k -1) = int_array1(i -count -1 + int_array5(k) )
-      enddo
-      count = 1
-      int_array3(count) = int_array2(int_array1(i))
-      int_array4(count) = connections%id_dn(int_array1(i))
-    else
-      count = count + 1
-      int_array3(count) = int_array2(int_array1(i))
-      int_array4(count) = connections%id_dn(int_array1(i))
-    endif
-  enddo
-    do k = 1,count
-      int_array5(k) = k
-    enddo
-    int_array5 = int_array5 - 1
-    call PetscSortIntWithPermutation(count,int_array4,int_array5,ierr)
-    int_array5 = int_array5 + 1
-    do k = 1,count
-      index(i -count +k -1) = int_array1(i -count -1 + int_array5(k) )
-    enddo
-  connections_2=> ConnectionCreate(nconn, &
-                                  option%nphase,INTERNAL_CONNECTION_TYPE)
-  do i=1,iconn
-    connections_2%id_up(i)     = connections%id_up(index(i))
-    connections_2%id_dn(i)     = connections%id_dn(index(i))
-    connections_2%dist(-1:3,i) = connections%dist(-1:3,index(i))
-    connections_2%area(i)      = connections%area(index(i))
-#ifdef DASVYAT
-    connections_2%local(i)     = connections%local(index(i))
-    connections_2%cntr(1:3,i)  = connections%cntr(1:3,index(i))
-#endif
-  enddo
-  StructGridComputeInternConnect => connections_2
-#else
   StructGridComputeInternConnect => connections
-#endif
 
 end function StructGridComputeInternConnect
 
@@ -1447,7 +1393,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   
   PetscReal, parameter :: Pi=3.141592653590d0
   
-  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscInt :: i, j, k, iconn, id_up, id_dn, id_dn2
   PetscInt :: samr_ofx, samr_ofy, samr_ofz
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
@@ -1486,13 +1432,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
   connections => ConnectionCreate(nconn, &
                                   option%nphase,BOUNDARY_CONNECTION_TYPE)
 
-  ! if using higher order advection, allocate associated arrays
-  if (option%itranmode == EXPLICIT_ADVECTION) then
-    ! connections%id_up2 should remain null as it will not be used
-    allocate(connections%id_dn2(size(connections%id_dn)))
-    connections%id_dn2 = 0
-  endif
-  
 !  StructGridComputeBoundConnect => connections
 
   iconn = 0
@@ -1512,15 +1451,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
               id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
               
               connections%id_dn(iconn) = id_dn
-
-              !geh: needs to be modified for parallel
-              if (associated(connections%id_dn2)) then
-                if (structured_grid%ngx > 1) then
-                  connections%id_dn2(iconn) = id_dn + 1
-                else
-                  connections%id_dn2(iconn) = id_dn
-                endif
-              endif              
 
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
@@ -1549,16 +1479,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
               id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
               
               connections%id_dn(iconn) = id_dn
-
-              !geh: needs to be modified for parallel
-              if (associated(connections%id_dn2)) then
-                if (structured_grid%ngx > 1) then
-                  connections%id_dn2(iconn) = id_dn - 1
-                else
-                  connections%id_dn2(iconn) = id_dn
-                endif
-              endif              
-
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1601,16 +1521,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
                   +samr_ofy
               
               connections%id_dn(iconn) = id_dn
-              
-              !geh: needs to be modified for parallel
-              if (associated(connections%id_dn2)) then
-                if (structured_grid%ngy > 1) then
-                  connections%id_dn2(iconn) = id_dn + structured_grid%ngx
-                else
-                  connections%id_dn2(iconn) = id_dn
-                endif
-              endif 
-              
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1638,16 +1548,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
                   +samr_ofy
               
               connections%id_dn(iconn) = id_dn
-
-              !geh: needs to be modified for parallel
-              if (associated(connections%id_dn2)) then
-                if (structured_grid%ngy > 1) then
-                  connections%id_dn2(iconn) = id_dn - structured_grid%ngx
-                else
-                  connections%id_dn2(iconn) = id_dn
-                endif
-              endif
-              
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1689,16 +1589,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
                   structured_grid%ngxy + samr_ofz
               
               connections%id_dn(iconn) = id_dn
-
-              !geh: needs to be modified for parallel
-              if (associated(connections%id_dn2)) then
-                if (structured_grid%ngy > 1) then
-                  connections%id_dn2(iconn) = id_dn + structured_grid%ngxy
-                else
-                  connections%id_dn2(iconn) = id_dn
-                endif
-              endif
-              
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1726,16 +1616,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
                   structured_grid%ngxy + samr_ofz
               
               connections%id_dn(iconn) = id_dn
-
-              !geh: needs to be modified for parallel
-              if (associated(connections%id_dn2)) then
-                if (structured_grid%ngy > 1) then
-                  connections%id_dn2(iconn) = id_dn - structured_grid%ngxy
-                else
-                  connections%id_dn2(iconn) = id_dn
-                endif
-              endif
-                            
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
@@ -1765,10 +1645,6 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 
 end function StructGridComputeBoundConnect
 
-
-
-
-
 ! ************************************************************************** !
 !
 ! StructGridPopulateConnection: Computes details of connection (area, dist, etc)
@@ -1777,9 +1653,10 @@ end function StructGridComputeBoundConnect
 !
 ! ************************************************************************** !
 subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface, &
-                                        iconn,ghosted_id)
+                                        iconn,ghosted_id,option)
 
   use Connection_module
+  use Option_module
   
   implicit none
  
@@ -1788,6 +1665,7 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
   PetscInt :: iface
   PetscInt :: iconn
   PetscInt :: ghosted_id
+  type(option_type) :: option
   PetscReal :: radius(:)
   
   PetscErrorCode :: ierr
@@ -1796,6 +1674,7 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
   
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
+    
       select case(iface)
 
         case(WEST_FACE,EAST_FACE)
@@ -1813,6 +1692,12 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
               else
                 connection%dist(1,iconn) = -1.d0
               endif
+              if (associated(connection%id_dn2)) then
+                  connection%id_dn2(iconn) = &
+                    StructGetTVDGhostConnection(ghosted_id, &
+                                                structured_grid, &
+                                                iface,option)
+              endif              
             case(CYLINDRICAL_GRID)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
@@ -1845,11 +1730,17 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
               connection%dist(0,iconn) = 0.5d0*structured_grid%dy(ghosted_id)
               connection%area(iconn) = structured_grid%dx(ghosted_id)* &
                                    structured_grid%dz(ghosted_id)
-              if (iface ==  SOUTH_FACE) then
+              if (iface == SOUTH_FACE) then
                 connection%dist(2,iconn) = 1.d0
               else
                 connection%dist(2,iconn) = -1.d0
               endif
+              if (associated(connection%id_dn2)) then
+                  connection%id_dn2(iconn) = &
+                    StructGetTVDGhostConnection(ghosted_id, &
+                                                structured_grid, &
+                                                iface,option)
+              endif              
             case(CYLINDRICAL_GRID)
               print *, 'Cylindrical coordinates not applicable.'
               stop
@@ -1873,12 +1764,18 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
                   connection%dist(3,iconn) = -1.d0
                 endif
               else
-                if (iface ==  TOP_FACE) then 
+                if (iface == BOTTOM_FACE) then 
                   connection%dist(3,iconn) = -1.d0
                 else
                   connection%dist(3,iconn) = 1.d0
                 endif
               endif
+              if (associated(connection%id_dn2)) then
+                  connection%id_dn2(iconn) = &
+                    StructGetTVDGhostConnection(ghosted_id, &
+                                                structured_grid, &
+                                                iface,option)
+              endif              
             case(CYLINDRICAL_GRID)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*structured_grid%dz(ghosted_id)
@@ -2507,145 +2404,153 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   PetscInt :: vector_size
   IS :: is_petsc
   IS :: is_ghost
-  PetscInt :: icount, index
+  PetscInt :: icount, index, offset
+  PetscInt :: increment
   PetscInt :: i, j, k
-  PetscInt, allocatable :: int_array(:)
-  PetscInt, allocatable :: int_array2(:)
-!  PetscInt, pointer :: global_indices_ptr(:)
+  PetscInt, allocatable :: global_indices_of_local_ghosted(:)
+  PetscInt, allocatable :: global_indices_from(:)
+  PetscInt, allocatable :: tvd_ghost_indices_to(:)
   ISLocalToGlobalMapping :: mapping_ltog
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   ! structured grid has 6 sides to it
   vector_size = 0
-  ! west
-  if (structured_grid%lxs /= structured_grid%gxs) then
-    vector_size = vector_size + structured_grid%nly*structured_grid%nlz
+  ! east-west
+  if (structured_grid%nx > 1) then
+    increment = structured_grid%nly*structured_grid%nlz
+    vector_size = vector_size + 2*increment
   endif
-  ! east
-  if (structured_grid%lxe /= structured_grid%gxe) then
-    vector_size = vector_size + structured_grid%nly*structured_grid%nlz
+  ! north-south
+  if (structured_grid%ny > 1) then
+    increment = structured_grid%nlx*structured_grid%nlz
+    vector_size = vector_size + 2*increment
   endif
-  ! south
-  if (structured_grid%lys /= structured_grid%gys) then
-    vector_size = vector_size + structured_grid%nlx*structured_grid%nlz
-  endif
-  ! north
-  if (structured_grid%lye /= structured_grid%gye) then
-    vector_size = vector_size + structured_grid%nlx*structured_grid%nlz
-  endif
-  ! bottom
-  if (structured_grid%lzs /= structured_grid%gzs) then
-    vector_size = vector_size + structured_grid%nlx*structured_grid%nly
-  endif
-  ! north
-  if (structured_grid%lze /= structured_grid%gze) then
-    vector_size = vector_size + structured_grid%nlx*structured_grid%nly
+  ! top-bottom
+  if (structured_grid%nz > 1) then
+    increment = structured_grid%nlx*structured_grid%nly
+    vector_size = vector_size + 2*increment
   endif
   
   call VecCreateSeq(PETSC_COMM_SELF,vector_size*ndof,ghost_vec,ierr)
   call VecSetBlockSize(ghost_vec,ndof,ierr)
   
   ! Create an IS composed of the petsc indexing of the ghost cells
-  allocate(int_array(vector_size))
+  allocate(global_indices_from(vector_size))
+  global_indices_from = -999 ! to catch bugs
+  allocate(tvd_ghost_indices_to(vector_size))
+  do i = 1, vector_size
+    tvd_ghost_indices_to(i) = i-1
+  enddo
   
   ! GEH: I'm going to play a trick here.  If I know the global index
   ! of my ghost cells, I can calculate the global index of the next
   ! layer of ghost cells in each direction since the block are 
   ! consistent through each dimension of the grid
-!  nullify(global_indices_ptr)
-!  call DMDAGetGlobalIndicesF90(dm_1dof,i,global_indices_ptr,ierr)
-  allocate(int_array2(structured_grid%ngmax))
+  allocate(global_indices_of_local_ghosted(structured_grid%ngmax))
   do i = 1, structured_grid%ngmax
-    int_array2(i) = i-1
+    global_indices_of_local_ghosted(i) = i-1
   enddo
   call DMGetLocalToGlobalMapping(dm_1dof,mapping_ltog,ierr)
-  call ISLocalToGlobalMappingApply(mapping_ltog,structured_grid%ngmax,int_array2, &
-                                   int_array2,ierr)
+  ! in and out integer arrays can be the same
+  call ISLocalToGlobalMappingApply(mapping_ltog,structured_grid%ngmax, &
+                                   global_indices_of_local_ghosted, &
+                                   global_indices_of_local_ghosted,ierr)
+  ! leave global_indices_of_local_ghosted() in zero-based for the below
+  
+  ! Need to make a list of all indices that will receive updates through
+  ! scatter/gather operation. Ghost cells representing physical boundaries
+  ! do not need such an update.
   icount = 0
   ! west
-  if (structured_grid%lxs /= structured_grid%gxs) then
-    i = 1
-    do k = structured_grid%kstart, structured_grid%kend
-      do j = structured_grid%jstart, structured_grid%jend
-        icount = icount + 1
-        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
-!        int_array(icount) = global_indices_ptr(index)-1
-        int_array(icount) = int_array2(index)-1
-      enddo
+  offset = 0
+  if (structured_grid%lxs /= structured_grid%gxs) offset = -1
+  i = structured_grid%istart
+  do k = structured_grid%kstart, structured_grid%kend
+    do j = structured_grid%jstart, structured_grid%jend
+      icount = icount + 1
+      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+      global_indices_from(icount) = &
+        global_indices_of_local_ghosted(index) + offset
     enddo
-  endif
+  enddo
+
   ! east
-  if (structured_grid%lxe /= structured_grid%gxe) then
-    i = structured_grid%ngx
-    do k = structured_grid%kstart, structured_grid%kend
-      do j = structured_grid%jstart, structured_grid%jend
-        icount = icount + 1
-        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
-!        int_array(icount) = global_indices_ptr(index)+1
-        int_array(icount) = int_array2(index)+1
-      enddo
+  offset = 0
+  if (structured_grid%lxe /= structured_grid%gxe) offset = 1
+  i = structured_grid%iend
+  do k = structured_grid%kstart, structured_grid%kend
+    do j = structured_grid%jstart, structured_grid%jend
+      icount = icount + 1
+      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+      global_indices_from(icount) = &
+        global_indices_of_local_ghosted(index) + offset
     enddo
-  endif
+  enddo
+
   ! south
-  if (structured_grid%lys /= structured_grid%gys) then
-    j = 1
-    do k = structured_grid%kstart, structured_grid%kend
-      do i = structured_grid%istart, structured_grid%iend
-        icount = icount + 1
-        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
-!        int_array(icount) = global_indices_ptr(index)-structured_grid%ngx
-        int_array(icount) = int_array2(index)-structured_grid%ngx
-     enddo
+  offset = 0
+  if (structured_grid%lys /= structured_grid%gys) offset = -structured_grid%ngx
+  j = structured_grid%jstart
+  do k = structured_grid%kstart, structured_grid%kend
+    do i = structured_grid%istart, structured_grid%iend
+      icount = icount + 1
+      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+      global_indices_from(icount) = &
+        global_indices_of_local_ghosted(index) + offset
     enddo
-  endif
-  ! north
-  if (structured_grid%lye /= structured_grid%gye) then
-    j = structured_grid%ngy
-    do k = structured_grid%kstart, structured_grid%kend
-      do i = structured_grid%istart, structured_grid%iend
-        icount = icount + 1
-        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
-!        int_array(icount) = global_indices_ptr(index)+structured_grid%ngx
-        int_array(icount) = int_array2(index)+structured_grid%ngx
-      enddo
-    enddo
-  endif
-  ! bottom
-  if (structured_grid%lzs /= structured_grid%gzs) then
-    k = 1
-    do j = structured_grid%jstart, structured_grid%jend
-      do i = structured_grid%istart, structured_grid%iend
-        icount = icount + 1
-        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
-!        int_array(icount) = global_indices_ptr(index)-structured_grid%ngxy
-        int_array(icount) = int_array2(index)-structured_grid%ngxy
-      enddo
-    enddo
-  endif
-  ! north
-  if (structured_grid%lze /= structured_grid%gze) then
-    k = structured_grid%ngz
-    do j = structured_grid%jstart, structured_grid%jend
-      do i = structured_grid%istart, structured_grid%iend
-        icount = icount + 1
-        index = i + j*structured_grid%ngx + k*structured_grid%ngxy
-!        int_array(icount) = global_indices_ptr(index)+structured_grid%ngxy
-        int_array(icount) = int_array2(index)+structured_grid%ngxy
-      enddo
-    enddo
-  endif
+  enddo
   
-  deallocate(int_array2)
+  ! north
+  offset = 0
+  if (structured_grid%lye /= structured_grid%gye) offset = structured_grid%ngx
+  j = structured_grid%jend
+  do k = structured_grid%kstart, structured_grid%kend
+    do i = structured_grid%istart, structured_grid%iend
+      icount = icount + 1
+      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+      global_indices_from(icount) = &
+        global_indices_of_local_ghosted(index) + offset
+    enddo
+  enddo
+  
+  ! bottom
+  offset = 0
+  if (structured_grid%lzs /= structured_grid%gzs) offset = -structured_grid%ngxy
+  k = structured_grid%kstart
+  do j = structured_grid%jstart, structured_grid%jend
+    do i = structured_grid%istart, structured_grid%iend
+      icount = icount + 1
+      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+      global_indices_from(icount) = &
+        global_indices_of_local_ghosted(index) + offset
+    enddo
+  enddo
+  
+  ! top
+  offset = 0
+  if (structured_grid%lze /= structured_grid%gze) offset = structured_grid%ngxy
+  k = structured_grid%kend
+  do j = structured_grid%jstart, structured_grid%jend
+    do i = structured_grid%istart, structured_grid%iend
+      icount = icount + 1
+      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+      global_indices_from(icount) = &
+        global_indices_of_local_ghosted(index) + offset
+    enddo
+  enddo
+  
+  deallocate(global_indices_of_local_ghosted)
 
   if (vector_size /= icount) then
     option%io_buffer = 'Mis-count in TVD ghosting.'
     call printErrMsgByRank(option)
   endif
 
-  ! since int_array2 was base-zero, int_array is base-zero.
+  ! since global_indices_from was base-zero, global_indices_from is base-zero.
   call ISCreateBlock(option%mycomm,ndof,vector_size, &
-                     int_array,PETSC_COPY_VALUES,is_petsc,ierr)
+                      global_indices_from,PETSC_COPY_VALUES,is_petsc,ierr)
+  deallocate(global_indices_from)
 
 #if TVD_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_petsc_tvd.out', &
@@ -2654,12 +2559,10 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  do i = 1, vector_size
-    int_array(i) = i-1
-  enddo
+  ! already zero-based
   call ISCreateBlock(option%mycomm,ndof,vector_size, &
-                     int_array,PETSC_COPY_VALUES,is_ghost,ierr)
-  deallocate(int_array)
+                      tvd_ghost_indices_to,PETSC_COPY_VALUES,is_ghost,ierr)
+  deallocate(tvd_ghost_indices_to)
 
 #if TVD_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghost_tvd.out', &
@@ -2678,5 +2581,133 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
 #endif
 
 end subroutine StructGridCreateTVDGhosts  
+
+! ************************************************************************** !
+!
+! StructGetTVDGhostConnection: Returns id of tvd ghost cell for connection
+! author: Glenn Hammond
+! date: 02/10/11
+!
+! ************************************************************************** !
+function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
+
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: ghosted_id
+  type(structured_grid_type) :: structured_grid
+  PetscInt :: iface
+  type(option_type) :: option
+  
+  PetscInt :: StructGetTVDGhostConnection
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: index
+  PetscInt :: offset
+  PetscInt :: i, j, k
+  PetscBool :: error
+  
+
+  select case(iface)
+    case(WEST_FACE,EAST_FACE)
+      if (structured_grid%ngx > 1) then
+        if (iface == WEST_FACE) then
+          StructGetTVDGhostConnection = ghosted_id + 1
+        else
+          StructGetTVDGhostConnection = ghosted_id - 1
+        endif
+        return
+      endif
+    case(SOUTH_FACE,NORTH_FACE)
+      if (structured_grid%ngy > 1) then
+        if (iface == SOUTH_FACE) then
+          StructGetTVDGhostConnection = ghosted_id + structured_grid%ngx
+        else
+          StructGetTVDGhostConnection = ghosted_id - structured_grid%ngx
+        endif
+        return
+      endif
+    case(BOTTOM_FACE,TOP_FACE)
+      if (structured_grid%ngz > 1) then
+        if (iface == BOTTOM_FACE) then
+          StructGetTVDGhostConnection = ghosted_id + structured_grid%ngxy
+        else
+          StructGetTVDGhostConnection = ghosted_id - structured_grid%ngxy
+        endif
+        return
+      endif
+  end select
+  
+  call StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
+  error = PETSC_FALSE
+  offset = 0
+  select case(iface)
+    case(WEST_FACE)
+      ! ensure that connection is on boundary face
+      if (i /= 1) then
+        error = PETSC_TRUE
+        string = 'WEST'
+      endif                       ! this must be in local dimension nly
+      index = j + k*structured_grid%nly
+    case(EAST_FACE)
+      if (i /= structured_grid%ngx) then
+        error = PETSC_TRUE
+        string = 'EAST'
+      endif
+      index = j + k*structured_grid%nly + structured_grid%nlyz
+    case(SOUTH_FACE)
+      if (j /= 1) then
+        error = PETSC_TRUE
+        string = 'SOUTH'
+      endif
+      if (structured_grid%nx > 1) then
+        offset = 2*structured_grid%nlyz
+      endif
+      index = i + k*structured_grid%nlx + offset
+    case(NORTH_FACE)
+      if (j /= structured_grid%ngy) then
+        error = PETSC_TRUE
+        string = 'NORTH'
+      endif
+      if (structured_grid%nx > 1) then
+        offset = 2*structured_grid%nlyz
+      endif
+      index = i + k*structured_grid%nlx + structured_grid%nlxz + offset
+    case(BOTTOM_FACE)
+      if (k /= 1) then
+        error = PETSC_TRUE
+        string = 'BOTTOM'
+      endif
+      if (structured_grid%nx > 1) then
+        offset = 2*structured_grid%nlyz
+      endif
+      if (structured_grid%ny > 1) then
+        offset = offset + 2*structured_grid%nlxz
+      endif
+      index = i + j*structured_grid%nlx + offset
+    case(TOP_FACE)
+      if (k /= structured_grid%ngz) then
+        error = PETSC_TRUE
+        string = 'TOP'
+      endif
+      if (structured_grid%nx > 1) then
+        offset = 2*structured_grid%nlyz
+      endif
+      if (structured_grid%ny > 1) then
+        offset = offset + 2*structured_grid%nlxz
+      endif
+      index = i + j*structured_grid%nlx + structured_grid%nlxy + offset
+  end select
+  
+  if (error) then
+    write(option%io_buffer, '(''StructGetTVDGhostConnection not on '', &
+          & a,''face for cell:'',3i)') trim(string), i,j,k
+    call printErrMsgByRank(option)
+  endif
+  
+  StructGetTVDGhostConnection = -index
+
+end function StructGetTVDGhostConnection
 
 end module Structured_Grid_module

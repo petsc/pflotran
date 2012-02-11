@@ -426,6 +426,8 @@ subroutine RealizationCreateDiscretization(realization)
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
+      ! set up nG2L, nL2G, etc.
+      call GridMapIndices(grid, discretization%dm_1dof%sgdm)
       if (option%itranmode == EXPLICIT_ADVECTION) then
         call StructGridCreateTVDGhosts(grid%structured_grid, &
                                        realization%reaction%naqcomp, &
@@ -435,8 +437,6 @@ subroutine RealizationCreateDiscretization(realization)
                                        discretization%tvd_ghost_scatter, &
                                        option)
       endif
-      ! set up nG2L, nL2G, etc.
-      call GridMapIndices(grid, discretization%dm_1dof%sgdm)
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume,option)
