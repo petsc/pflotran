@@ -6503,6 +6503,7 @@ end subroutine RTExplicitAdvection
 subroutine RTExplicitAdvectionPatch(realization)
 
   use Realization_module
+  use Discretization_module
   use Patch_module
   use Option_module
   use Field_module
@@ -6521,6 +6522,7 @@ subroutine RTExplicitAdvectionPatch(realization)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(reaction_type), pointer :: reaction
+  type(discretization_type), pointer :: discretization
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
@@ -6530,7 +6532,9 @@ subroutine RTExplicitAdvectionPatch(realization)
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscInt :: iphase
-  PetscInt :: local_start, local_end
+  PetscInt :: id_up2, id_dn2
+  PetscInt :: local_start, local_end, istart, iend
+  PetscInt :: ntvddof
   PetscReal :: qsrc, coef_in, coef_out
   PetscReal :: velocity, area, psv_t  
   PetscReal :: flux(realization%reaction%ncomp)
@@ -6540,8 +6544,10 @@ subroutine RTExplicitAdvectionPatch(realization)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: tran_xx_p(:)
+  PetscReal, pointer :: tvd_ghosts_p(:)
   PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
 
 #ifdef FORTRAN_2003_COMPLIANT  
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
@@ -6565,6 +6571,7 @@ subroutine RTExplicitAdvectionPatch(realization)
   option => realization%option
   field => realization%field
   patch => realization%patch
+  discretization => realization%discretization
   reaction => realization%reaction
   grid => patch%grid
 !  rt_parameter => patch%aux%RT%rt_parameter
@@ -6573,9 +6580,66 @@ subroutine RTExplicitAdvectionPatch(realization)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  nullify(total_up2)
-  nullify(total_dn2)
+  ntvddof = patch%aux%RT%rt_parameter%naqcomp
   
+  if (realization%option%tvd_flux_limiter /= TVD_LIMITER_UPWIND) then
+    allocate(total_up2(option%nphase,ntvddof))
+    allocate(total_dn2(option%nphase,ntvddof))
+  else
+    ! these must be nullifed so that the explicit scheme ignores them
+    nullify(total_up2)
+    nullify(total_up2)
+  endif
+
+  ! load total component concentrations into tran_xx_p.  it will be used
+  ! as local storage here and eventually be overwritten upon leaving 
+  ! this routine
+  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  tran_xx_p = 0.d0
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    local_end = local_id*ntvddof
+    local_start = local_end-ntvddof+1
+    do iphase = 1, option%nphase
+      tran_xx_p(local_start:local_end) = &
+        rt_aux_vars(ghosted_id)%total(:,iphase)
+    enddo
+  enddo
+  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call VecScatterBegin(discretization%tvd_ghost_scatter,field%tran_xx, &
+                       field%tvd_ghosts,INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(discretization%tvd_ghost_scatter,field%tran_xx, &
+                     field%tvd_ghosts,INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+! Update Boundary Concentrations------------------------------
+  call GridVecGetArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    if (associated(cur_connection_set%id_dn2)) then
+      do iconn = 1, cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        id_dn2 = cur_connection_set%id_dn2(iconn)
+        if (id_dn2 < 0) then
+          iend = abs(id_dn2)*ntvddof
+          istart = iend-ntvddof+1
+          tvd_ghosts_p(istart:iend) = rt_aux_vars_bc(sum_connection)%total(1,:)
+        endif
+      enddo
+    endif
+    boundary_condition => boundary_condition%next
+  enddo  
+  call GridVecRestoreArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
+#if TVD_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'tvd_ghosts.out', &
+                            viewer,ierr)
+  call VecView(field%tvd_ghosts,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
   sum_flux = 0.d0
   
   if (reaction%ncoll > 0) then
@@ -6600,13 +6664,9 @@ subroutine RTExplicitAdvectionPatch(realization)
   endif
   
 ! Interior Flux Terms -----------------------------------
+  call GridVecGetArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
-  if (associated(cur_connection_set%id_dn2) .and. &
-      .not.associated(total_dn2)) then
-    allocate(total_up2(option%nphase,patch%aux%RT%rt_parameter%naqcomp))
-    allocate(total_dn2(option%nphase,patch%aux%RT%rt_parameter%naqcomp))
-  endif
   sum_connection = 0  
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -6623,8 +6683,22 @@ subroutine RTExplicitAdvectionPatch(realization)
           patch%imat(ghosted_id_dn) <= 0) cycle
         
       if (associated(cur_connection_set%id_dn2)) then
-        total_up2 = rt_aux_vars(cur_connection_set%id_up2(iconn))%total
-        total_dn2 = rt_aux_vars(cur_connection_set%id_dn2(iconn))%total
+        id_up2 = cur_connection_set%id_up2(iconn)
+        if (id_up2 > 0) then
+          total_up2 = rt_aux_vars(id_up2)%total
+        else
+          iend = abs(id_up2)*ntvddof
+          istart = iend-ntvddof+1
+          total_up2(1,:) = tvd_ghosts_p(istart:iend)
+        endif
+        id_dn2 = cur_connection_set%id_up2(iconn)
+        if (id_dn2 > 0) then
+          total_dn2 = rt_aux_vars(id_dn2)%total
+        else
+          iend = abs(id_dn2)*ntvddof
+          istart = iend-ntvddof+1
+          total_dn2(1,:) = tvd_ghosts_p(istart:iend)
+        endif
       endif
       call TFluxTVD(patch%aux%RT%rt_parameter, &
                     patch%internal_velocities(:,sum_connection), &
@@ -6648,6 +6722,7 @@ subroutine RTExplicitAdvectionPatch(realization)
     enddo ! iconn
     cur_connection_set => cur_connection_set%next
   enddo
+  call GridVecRestoreArrayF90(grid,field%tvd_ghosts,tvd_ghosts_p,ierr)
     
 ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
@@ -6667,7 +6742,14 @@ subroutine RTExplicitAdvectionPatch(realization)
 
       if (associated(cur_connection_set%id_dn2)) then
         total_up2 = rt_aux_vars_bc(sum_connection)%total
-        total_dn2 = rt_aux_vars(cur_connection_set%id_dn2(iconn))%total
+        id_dn2 = cur_connection_set%id_dn2(iconn)
+        if (id_dn2 > 0) then
+          total_dn2 = rt_aux_vars(id_dn2)%total
+        else
+          iend = abs(id_dn2)*ntvddof
+          istart = iend-ntvddof+1
+          total_dn2(1,:) = tvd_ghosts_p(istart:iend)
+        endif
       endif
       call TFluxTVD(patch%aux%RT%rt_parameter, &
                     patch%boundary_velocities(:,sum_connection), &
@@ -6675,7 +6757,7 @@ subroutine RTExplicitAdvectionPatch(realization)
                     cur_connection_set%dist(:,iconn), &
                     total_up2, &
                     rt_aux_vars_bc(sum_connection), &
-                    rt_aux_vars(ghosted_id_dn), &
+                    rt_aux_vars(ghosted_id), &
                     total_dn2, &
 #ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
@@ -6744,8 +6826,8 @@ subroutine RTExplicitAdvectionPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    local_end = local_id*reaction%ncomp
-    local_start = local_end-reaction%ncomp+1
+    local_end = local_id*ntvddof
+    local_start = local_end-ntvddof+1
     do iphase = 1, option%nphase
       psv_t = porosity_loc_p(ghosted_id)* &
               global_aux_vars(ghosted_id)%sat(iphase)* &

@@ -230,7 +230,7 @@ subroutine FieldDestroy(field)
     call VecDestroy(field%tran_face_fluxes,ierr)
     
   if (field%tvd_ghosts /= 0) &
-    call VecDestroy(field%tvd_ghosts)
+    call VecDestroy(field%tvd_ghosts,ierr)
   
   deallocate(field)
   nullify(field)
