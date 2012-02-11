@@ -767,7 +767,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
   type(option_type) :: option
   
   PetscReal :: time, dt
-  PetscReal :: fac,dtt,up,utmp,uc,ut,uus
+  PetscReal :: fac,dtt,up,utmp,uc,ut,uus,dt_tfac,dt_p
   PetscBool :: update_time_step
   PetscInt :: ifac
 
@@ -876,8 +876,15 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
             endif
             dtt = fac * dt * (1.d0 + ut)
           else
-            ifac = max(min(flow_stepper%num_newton_iterations,flow_stepper%ntfac),1)
-            dtt = flow_stepper%tfac(ifac) * dt
+            ifac = max(min(flow_stepper%num_newton_iterations, &
+                           flow_stepper%ntfac),1)
+            dt_tfac = flow_stepper%tfac(ifac) * dt
+
+            fac = 0.5d0
+            up = option%dpmxe/(option%dpmax+0.1)
+            dt_p = fac * dt * (1.d0 + up)
+
+            dtt = min(dt_tfac,dt_p)
           endif
         case(G_MODE)   
           fac = 0.5d0
