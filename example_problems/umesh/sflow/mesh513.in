@@ -24,7 +24,7 @@ END
 
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured mesh513.dat top513.ss
+  TYPE unstructured mesh513.dat
 END
 
 :=========================== fluid properties =================================
@@ -116,11 +116,6 @@ REGION all
   /
 END 
 
-REGION top1cell
-  FILE top_2cell.ss
-  GRID unstructured
-END
-
 REGION top
   FILE top513.ss
   GRID unstructured
@@ -165,11 +160,6 @@ INITIAL_CONDITION
   REGION all
 END
 
-: top boundary condition
-BOUNDARY_CONDITION top1cell
-  FLOW_CONDITION recharge
-  REGION top1cell
-END
 :=========================== stratigraphy couplers ============================
 STRATA
   REGION all
@@ -178,4 +168,46 @@ END
 
 DEBUG
 VECVIEW_SOLUTION
+END
+
+:=========================== surface flow ======================================
+SURFACE_FLOW
+
+SURF_GRID
+  TYPE unstructured top513.ss
+END
+
+SURF_MATERIAL_PROPERTY surf1
+  ID 1
+  MANNINGS 0.02
+END
+
+SURF_REGION top_2cell
+  FILE top_2cell.ss
+  GRID unstructured
+END
+
+SURF_REGION surf_all
+  FILE top513.ss
+  SURF_GRID unstructured
+END
+
+SURF_FLOW_CONDITION rain
+  TYPE
+    FLUX neumann
+  /
+  FLUX 7.927d-9  ! 25 cm/yr
+END
+
+: top boundary condition
+SURF_BOUNDARY_CONDITION top_2cell
+  SURF_FLOW_CONDITION rain
+  SURF_REGION top_2cell
+END
+
+STRATA
+	SURF_REGION surf_all
+	MATERIAL surf1
+END
+
 END
