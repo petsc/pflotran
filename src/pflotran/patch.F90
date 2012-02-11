@@ -10,6 +10,10 @@ module Patch_module
   use Material_module
   use Field_module
   use Saturation_Function_module
+#ifdef SURFACE_FLOW
+  use Surface_field_module
+  use Surface_Material_module
+#endif
   
   use Auxilliary_module
 
@@ -72,6 +76,14 @@ module Patch_module
     
     type(patch_type), pointer :: next
 
+    PetscInt :: surf_or_subsurf_flag  ! Flag to identify if the current patch
+                                      ! is a surface or subsurface (default)
+#ifdef SURFACE_FLOW
+    type(surface_material_property_type), pointer     :: surf_material_properties
+    type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
+    type(surface_field_type),pointer                  :: surf_field
+#endif
+
   end type patch_type
 
   ! pointer data structure required for making an array of patch pointers in F90
@@ -120,6 +132,7 @@ function PatchCreate()
   allocate(patch)
 
   patch%id = 0
+  patch%surf_or_subsurf_flag = SUBSURFACE
   nullify(patch%imat)
   nullify(patch%sat_func_id)
 #ifdef SUBCONTINUUM_MODEL
@@ -166,6 +179,12 @@ function PatchCreate()
   
   nullify(patch%next)
   
+#ifdef SURFACE_FLOW
+    nullify(patch%surf_material_properties)
+    nullify(patch%surf_material_property_array)
+    nullify(patch%surf_field)
+#endif
+
   PatchCreate => patch
   
 end function PatchCreate
@@ -520,15 +539,33 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       endif
       if (strata%active) then
         ! pointer to material
-        strata%material_property => &
-          MaterialPropGetPtrFromArray(strata%material_property_name, &
-                                      patch%material_property_array)
-        if (.not.associated(strata%material_property)) then
-          option%io_buffer = 'Material ' // &
-                             trim(strata%material_property_name) // &
-                             ' not found in material list'
-          call printErrMsg(option)
+        ! gb: Depending on a surface/subsurface patch, use corresponding
+        !     material properties
+        if (patch%surf_or_subsurf_flag == SUBSURFACE) then
+          strata%material_property => &
+            MaterialPropGetPtrFromArray(strata%material_property_name, &
+                                        patch%material_property_array)
+          if (.not.associated(strata%material_property)) then
+            option%io_buffer = 'Material ' // &
+                              trim(strata%material_property_name) // &
+                              ' not found in material list'
+            call printErrMsg(option)
+          endif
         endif
+
+#ifdef SURFACE_FLOW        
+        if(patch%surf_or_subsurf_flag == SURFACE) then
+          strata%surf_material_property => &
+            MaterialPropGetPtrFromArraySurfaceFlow(strata%material_property_name, &
+                                                    patch%surf_material_property_array)
+          if (.not.associated(strata%surf_material_property)) then
+            option%io_buffer = 'Material ' // &
+                              trim(strata%material_property_name) // &
+                              ' not found in material list'
+            call printErrMsg(option)
+          endif
+        endif
+#endif
 
 #ifdef SUBCONTINUUM_PROPERTY
         ! connect subcontinuum properties pointers
@@ -3607,6 +3644,14 @@ subroutine PatchDestroy(patch)
   nullify(patch%saturation_function_array)
   ! Since this linked list will be destroyed by realization, just nullify here
   nullify(patch%saturation_functions)
+
+#ifdef SURFACE_FLOW
+  nullify(patch%surf_field)
+  if (associated(patch%surf_material_property_array)) &
+    deallocate(patch%surf_material_property_array)
+  nullify(patch%surf_material_property_array)
+  nullify(patch%surf_material_properties)
+#endif
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)

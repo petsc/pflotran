@@ -20,6 +20,8 @@ module Surface_Flow_module
 
 
   public SurfaceFlowSetup, &
+         SurfaceFlowReadRequiredCardsFromInput, &
+         SurfaceFlowRead, &
          SurfaceFlowResidual, &
          SurfaceFlowJacobian
   
@@ -36,6 +38,224 @@ subroutine SurfaceFlowSetup(realization)
   type(realization_type) :: realization
   
 end subroutine SurfaceFlowSetup
+
+! ************************************************************************** !
+!> This routine reads required surface flow data from the input file
+!! grids.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/09/12
+! ************************************************************************** !
+subroutine SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Surface_Material_module
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_module
+  use Discretization_module
+  use Region_module
+  use Condition_module
+
+  implicit none
+
+  type(realization_type)                       :: realization
+  type(discretization_type),pointer            :: discretization
+  type(grid_type), pointer                     :: grid
+  type(input_type)                             :: input
+  type(option_type)                            :: option
+  type(unstructured_grid_type), pointer        :: un_str_sfgrid
+  character(len=MAXWORDLENGTH)                 :: word
+
+  discretization => realization%discretization
+
+  input%ierr = 0
+! we initialize the word to blanks to avoid error reported by valgrind
+  word = ''
+
+  do
+    call InputReadFlotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      !.........................................................................
+      ! Read surface grid information
+      case ('SURF_GRID')
+        call InputReadFlotranString(input,option)
+        if (InputCheckExit(input,option)) exit
+
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','SURF_GRID')
+        call StringToUpper(word)
+        select case(trim(word))
+          case ('TYPE')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','TYPE')
+            call StringToUpper(word)
+
+            select case(trim(word))
+              case ('UNSTRUCTURED')
+                call InputReadNChars(input,option, &
+                                     discretization%surfgrid_filename, &
+                                     MAXSTRINGLENGTH, &
+                                     PETSC_TRUE)
+                call InputErrorMsg(input,option,'keyword','filename')
+
+                grid => GridCreate()
+                un_str_sfgrid => UGridCreate()
+                un_str_sfgrid%grid_type = TWO_DIM_GRID
+                call UGridReadSurfGrid(un_str_sfgrid, &
+                                       discretization%filename, &
+                                       discretization%surfgrid_filename, &
+                                       option)
+                grid%unstructured_grid => un_str_sfgrid
+                discretization%surfgrid => grid
+                grid%itype = discretization%itype
+                grid%ctype = discretization%ctype
+
+              case default
+              option%io_buffer = 'Surface-flow supports only unstructured grid'
+              call printErrMsg(option)
+            end select
+          case default
+            option%io_buffer = 'Keyword: ' // trim(word) // &
+              ' not recognized in SURF_GRID '
+            call printErrMsg(option)
+        end select
+        call InputSkipToEND(input,option,trim(word))
+
+    end select
+  enddo
+
+end subroutine SurfaceFlowReadRequiredCardsFromInput
+
+! ************************************************************************** !
+!> This routine reads surface flow data from the input file
+!! grids.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/09/12
+! ************************************************************************** !
+subroutine SurfaceFlowRead(realization,input,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Surface_Material_module
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_module
+  use Discretization_module
+  use Region_module
+  use Condition_module
+  use Coupler_module
+  use Strata_module
+
+  implicit none
+
+  type(realization_type)                       :: realization
+  type(discretization_type),pointer            :: discretization
+  type(grid_type), pointer                     :: grid
+  type(input_type)                             :: input
+  type(option_type)                            :: option
+  type(unstructured_grid_type), pointer        :: un_str_sfgrid
+  type(surface_material_property_type),pointer :: surf_material_property
+  type(region_type), pointer                   :: region
+  type(flow_condition_type), pointer           :: flow_condition
+  type(coupler_type), pointer                  :: coupler
+  type(strata_type), pointer                   :: strata
+  character(len=MAXWORDLENGTH)                 :: word
+
+  discretization => realization%discretization
+
+  input%ierr = 0
+! we initialize the word to blanks to avoid error reported by valgrind
+  word = ''
+
+  do
+    call InputReadFlotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
+    call StringToUpper(word)
+
+    select case(trim(word))
+      !.........................................................................
+      ! Read surface grid information
+      case ('SURF_GRID')
+        call InputSkipToEND(input,option,trim(word))
+
+      !.........................................................................
+      ! Read surface material information
+      case ('SURF_MATERIAL_PROPERTY')
+        surf_material_property => SurfaceMaterialPropertyCreate()
+
+        call InputReadWord(input,option,surf_material_property%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')
+        call SurfaceMaterialPropertyRead(surf_material_property,input,option)
+        call SurfaceMaterialPropertyAddToList(surf_material_property, &
+                                          realization%surf_material_properties)
+        nullify(surf_material_property)
+
+      !.........................................................................
+      case ('SURF_REGION')
+        region => RegionCreate()
+        call InputReadWord(input,option,region%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','SURF_REGION')
+        call printMsg(option,region%name)
+        call RegionRead(region,input,option)
+        ! we don't copy regions down to patches quite yet, since we
+        ! don't want to duplicate IO in reading the regions
+        call RegionAddToList(region,realization%surf_regions)
+        nullify(region)
+
+      !.........................................................................
+      case ('SURF_FLOW_CONDITION')
+        flow_condition => FlowConditionCreate(option)
+        call InputReadWord(input,option,flow_condition%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'SURF_FLOW_CONDITION','name')
+        call printMsg(option,flow_condition%name)
+        if (option%iflowmode == G_MODE) then
+          call FlowConditionGeneralRead(flow_condition,input,option)
+        else
+          call FlowConditionRead(flow_condition,input,option)
+        endif
+        call FlowConditionAddToList(flow_condition,realization%surf_flow_conditions)
+        nullify(flow_condition)
+
+      !.........................................................................
+      case ('SURF_BOUNDARY_CONDITION')
+        coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
+        call InputReadWord(input,option,coupler%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Boundary Condition name')
+        call CouplerRead(coupler,input,option)
+        call RealizationAddCouplerSurfaceFlow(realization,coupler)
+        nullify(coupler)
+
+      !.........................................................................
+      case ('STRATIGRAPHY','STRATA')
+        strata => StrataCreate()
+        call StrataRead(strata,input,option)
+        call RealizationAddStrataSurfaceFlow(realization,strata)
+        nullify(strata)
+
+    end select
+  enddo
+
+end subroutine SurfaceFlowRead
 
 
 ! ************************************************************************** !

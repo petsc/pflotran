@@ -627,12 +627,19 @@ end interface
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
 #ifdef SURFACE_FLOW
+  call RealizationLocalizeRegionsSurfaceFlow(realization)
   call RealizationMapSurfSubsurfaceGrids(realization)
 #endif
   call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
+#ifdef SURFACE_FLOW
+  call RealProcessPropSurfaceFlow(realization)
+#endif
   call RealizationProcessCouplers(realization)
+#ifdef SURFACE_FLOW
+  call RealizationProcessCouplersSurfaceFlow(realization)
+#endif
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
@@ -966,6 +973,10 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use Reaction_module  
   use Reaction_Aux_module  
 
+#ifdef SURFACE_FLOW
+  use Surface_Flow_module
+#endif
+
   implicit none
 
   type(realization_type) :: realization
@@ -1008,6 +1019,14 @@ subroutine InitReadRequiredCardsFromInput(realization)
 
   call DiscretizationReadRequiredCards(discretization,input,option)
   
+#ifdef SURFACE_FLOW
+  ! SURFACE_FLOW information
+  string = "SURFACE_FLOW"
+  call InputFindStringInFile(input,option,string)
+  call InputFindStringErrorMsg(input,option,string)
+  call SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
+#endif
+
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
@@ -1021,6 +1040,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
       patch2 => PatchCreate()
       patch2%grid => discretization%surfgrid
+      patch2%surf_or_subsurf_flag = SURFACE
       call PatchAddToList(patch2,level%surf_patch_list)
 #endif
       realization%patch => patch
@@ -1129,6 +1149,9 @@ subroutine InitReadInput(simulation)
   use String_module
   use Units_module
   use Velocity_module
+#ifdef SURFACE_FLOW
+  use Surface_Flow_module
+#endif
  
   implicit none
   
@@ -2079,6 +2102,12 @@ subroutine InitReadInput(simulation)
         option%flow_dt = default_stepper%dt_min
         option%tran_dt = default_stepper%dt_min
       
+#ifdef SURFACE_FLOW
+!.....................
+      case ('SURFACE_FLOW')
+        call SurfaceFlowRead(realization,input,option)
+#endif
+
 !....................
       case default
     
