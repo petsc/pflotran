@@ -73,7 +73,7 @@ subroutine Init(simulation)
   implicit none
   
   type(simulation_type) :: simulation
-  character(len=MAXWORDLENGTH) :: filename, filename_out
+  character(len=MAXSTRINGLENGTH) :: filename, filename_out
 
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
