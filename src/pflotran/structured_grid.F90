@@ -2432,6 +2432,11 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
     vector_size = vector_size + 2*increment
   endif
   
+  if (vector_size == 0) then
+    option%io_buffer = 'TVD does not handle a single grid cell.'
+    call printErrMsg(option)
+  endif
+  
   call VecCreateSeq(PETSC_COMM_SELF,vector_size*ndof,ghost_vec,ierr)
   call VecSetBlockSize(ghost_vec,ndof,ierr)
   
@@ -2462,83 +2467,90 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
   ! scatter/gather operation. Ghost cells representing physical boundaries
   ! do not need such an update.
   icount = 0
-  ! west
-  offset = 0
-  if (structured_grid%lxs /= structured_grid%gxs) offset = -1
-  i = structured_grid%istart
-  do k = structured_grid%kstart, structured_grid%kend
-    do j = structured_grid%jstart, structured_grid%jend
-      icount = icount + 1
-      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
-      global_indices_from(icount) = &
-        global_indices_of_local_ghosted(index) + offset
-    enddo
-  enddo
 
-  ! east
-  offset = 0
-  if (structured_grid%lxe /= structured_grid%gxe) offset = 1
-  i = structured_grid%iend
-  do k = structured_grid%kstart, structured_grid%kend
-    do j = structured_grid%jstart, structured_grid%jend
-      icount = icount + 1
-      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
-      global_indices_from(icount) = &
-        global_indices_of_local_ghosted(index) + offset
+  if (structured_grid%nx > 1) then
+    ! west
+    offset = 0
+    if (structured_grid%lxs /= structured_grid%gxs) offset = -1
+    i = structured_grid%istart
+    do k = structured_grid%kstart, structured_grid%kend
+      do j = structured_grid%jstart, structured_grid%jend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+        global_indices_from(icount) = &
+          global_indices_of_local_ghosted(index) + offset
+      enddo
     enddo
-  enddo
 
-  ! south
-  offset = 0
-  if (structured_grid%lys /= structured_grid%gys) offset = -structured_grid%ngx
-  j = structured_grid%jstart
-  do k = structured_grid%kstart, structured_grid%kend
-    do i = structured_grid%istart, structured_grid%iend
-      icount = icount + 1
-      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
-      global_indices_from(icount) = &
-        global_indices_of_local_ghosted(index) + offset
+    ! east
+    offset = 0
+    if (structured_grid%lxe /= structured_grid%gxe) offset = 1
+    i = structured_grid%iend
+    do k = structured_grid%kstart, structured_grid%kend
+      do j = structured_grid%jstart, structured_grid%jend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+        global_indices_from(icount) = &
+          global_indices_of_local_ghosted(index) + offset
+      enddo
     enddo
-  enddo
+  endif
+
+  if (structured_grid%ny > 1) then
+    ! south
+    offset = 0
+    if (structured_grid%lys /= structured_grid%gys) offset = -structured_grid%ngx
+    j = structured_grid%jstart
+    do k = structured_grid%kstart, structured_grid%kend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+        global_indices_from(icount) = &
+          global_indices_of_local_ghosted(index) + offset
+      enddo
+    enddo
   
-  ! north
-  offset = 0
-  if (structured_grid%lye /= structured_grid%gye) offset = structured_grid%ngx
-  j = structured_grid%jend
-  do k = structured_grid%kstart, structured_grid%kend
-    do i = structured_grid%istart, structured_grid%iend
-      icount = icount + 1
-      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
-      global_indices_from(icount) = &
-        global_indices_of_local_ghosted(index) + offset
+    ! north
+    offset = 0
+    if (structured_grid%lye /= structured_grid%gye) offset = structured_grid%ngx
+    j = structured_grid%jend
+    do k = structured_grid%kstart, structured_grid%kend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+        global_indices_from(icount) = &
+          global_indices_of_local_ghosted(index) + offset
+      enddo
     enddo
-  enddo
+  endif
   
-  ! bottom
-  offset = 0
-  if (structured_grid%lzs /= structured_grid%gzs) offset = -structured_grid%ngxy
-  k = structured_grid%kstart
-  do j = structured_grid%jstart, structured_grid%jend
-    do i = structured_grid%istart, structured_grid%iend
-      icount = icount + 1
-      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
-      global_indices_from(icount) = &
-        global_indices_of_local_ghosted(index) + offset
+  if (structured_grid%nz > 1) then
+    ! bottom
+    offset = 0
+    if (structured_grid%lzs /= structured_grid%gzs) offset = -structured_grid%ngxy
+    k = structured_grid%kstart
+    do j = structured_grid%jstart, structured_grid%jend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+        global_indices_from(icount) = &
+          global_indices_of_local_ghosted(index) + offset
+      enddo
     enddo
-  enddo
   
-  ! top
-  offset = 0
-  if (structured_grid%lze /= structured_grid%gze) offset = structured_grid%ngxy
-  k = structured_grid%kend
-  do j = structured_grid%jstart, structured_grid%jend
-    do i = structured_grid%istart, structured_grid%iend
-      icount = icount + 1
-      index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
-      global_indices_from(icount) = &
-        global_indices_of_local_ghosted(index) + offset
+    ! top
+    offset = 0
+    if (structured_grid%lze /= structured_grid%gze) offset = structured_grid%ngxy
+    k = structured_grid%kend
+    do j = structured_grid%jstart, structured_grid%jend
+      do i = structured_grid%istart, structured_grid%iend
+        icount = icount + 1
+        index = i + j*structured_grid%ngx + k*structured_grid%ngxy + 1
+        global_indices_from(icount) = &
+          global_indices_of_local_ghosted(index) + offset
+      enddo
     enddo
-  enddo
+  endif
   
   deallocate(global_indices_of_local_ghosted)
 
@@ -2608,6 +2620,7 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
   PetscInt :: i, j, k
   PetscBool :: error
   
+  error = PETSC_FALSE
 
   select case(iface)
     case(WEST_FACE,EAST_FACE)
@@ -2618,6 +2631,10 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
           StructGetTVDGhostConnection = ghosted_id - 1
         endif
         return
+      elseif (structured_grid%nx == 1) then
+        option%io_buffer = 'Boundary condition cannot be assigned in X ' // &
+          'dimension with nx = 1 with TVD.'
+        error = PETSC_TRUE
       endif
     case(SOUTH_FACE,NORTH_FACE)
       if (structured_grid%ngy > 1) then
@@ -2627,6 +2644,10 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
           StructGetTVDGhostConnection = ghosted_id - structured_grid%ngx
         endif
         return
+      elseif (structured_grid%ny == 1) then
+        option%io_buffer = 'Boundary condition cannot be assigned in Y ' // &
+          'dimension with ny = 1 with TVD.'
+        error = PETSC_TRUE
       endif
     case(BOTTOM_FACE,TOP_FACE)
       if (structured_grid%ngz > 1) then
@@ -2636,11 +2657,16 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
           StructGetTVDGhostConnection = ghosted_id - structured_grid%ngxy
         endif
         return
+      elseif (structured_grid%nz == 1) then
+        option%io_buffer = 'Boundary condition cannot be assigned in Z ' // &
+          'dimension with nz = 1 with TVD.'
+        error = PETSC_TRUE
       endif
   end select
+
+  if (error) call printErrMsg(option)
   
   call StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
-  error = PETSC_FALSE
   offset = 0
   select case(iface)
     case(WEST_FACE)
@@ -2701,8 +2727,8 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
   end select
   
   if (error) then
-    write(option%io_buffer, '(''StructGetTVDGhostConnection not on '', &
-          & a,''face for cell:'',3i)') trim(string), i,j,k
+    write(option%io_buffer, '("StructGetTVDGhostConnection not on ", &
+          & a,"face for cell:",3i)') trim(string), i,j,k
     call printErrMsgByRank(option)
   endif
   
