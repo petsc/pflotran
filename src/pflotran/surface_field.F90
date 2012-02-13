@@ -12,7 +12,9 @@ module Surface_Field_module
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type, public :: surface_field_type 
+  type, public :: surface_field_type
+
+    Vec :: mannings0, mannings_loc
 
     ! residual vectors
     Vec :: flow_r
@@ -45,6 +47,8 @@ function SurfaceFieldCreate()
   allocate(surface_field)
 
   ! nullify PetscVecs
+  surface_field%mannings0 = 0
+  surface_field%mannings_loc = 0
   surface_field%flow_r = 0
   surface_field%flow_xx = 0
   surface_field%flow_xx_loc = 0
@@ -69,6 +73,8 @@ subroutine SurfaceFieldDestroy(surface_field)
   PetscErrorCode :: ierr
 
   ! Destroy PetscVecs
+  if (surface_field%mannings0 /= 0) call VecDestroy(surface_field%mannings0,ierr)
+  if (surface_field%mannings_loc /= 0) call VecDestroy(surface_field%mannings_loc,ierr)
   if (surface_field%flow_r /= 0) call VecDestroy(surface_field%flow_r,ierr)
   if (surface_field%flow_xx /= 0) call VecDestroy(surface_field%flow_xx,ierr)
   if (surface_field%flow_xx_loc /= 0) call VecDestroy(surface_field%flow_xx_loc,ierr)
