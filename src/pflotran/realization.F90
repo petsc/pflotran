@@ -122,6 +122,7 @@ private
             RealizationAddStrataSurfaceFlow, &
             RealizationProcessCouplersSurfaceFlow, &
             RealProcessPropSurfaceFlow, &
+            RealLocalToLocalWithArraySurfaceFlow, &
 #endif
             RealizationCalculateCFL1Timestep
  
@@ -438,8 +439,17 @@ subroutine RealizationCreateDiscretization(realization)
                                   GLOBAL,option)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%flow_r)
-  call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%work)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%mannings0)
+
+  call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_xx_loc, &
                                   LOCAL,option)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx_loc, &
+                                     surf_field%work_loc)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx_loc, &
+                                     surf_field%mannings_loc)
 #endif
 
   select case(discretization%itype)
@@ -3435,6 +3445,72 @@ subroutine RealizationMapSurfSubsurfaceGrid(realization, &       !<
 #endif
 
 end subroutine RealizationMapSurfSubsurfaceGrid
+
+
+! ************************************************************************** !
+!> This routine takes an F90 array that is ghosted and updates the ghosted
+!! values (similar to RealLocalToLocalWithArray)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/13/12
+! ************************************************************************** !
+
+subroutine RealLocalToLocalWithArraySurfaceFlow(realization,array_id)
+
+  use Grid_module
+  use Surface_Field_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  PetscInt :: array_id
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
+  type(surface_field_type), pointer :: surf_field
+
+  surf_field => realization%surf_field
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,surf_field%work_loc, &
+                                         grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  call DiscretizationLocalToLocal(realization%discretization,surf_field%work_loc, &
+                                  surf_field%work_loc,ONEDOF)
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyVecToIntegerArray(grid, cur_patch%imat,surf_field%work_loc, &
+                                         grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealLocalToLocalWithArraySurfaceFlow
 
 #endif ! SURFACE_FLOW
 

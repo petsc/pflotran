@@ -187,10 +187,18 @@ SURF_REGION top_2cell
   GRID unstructured
 END
 
+:SURF_REGION surf_all
+:  FILE top513.ss
+:  SURF_GRID unstructured
+:END
+
 SURF_REGION surf_all
-  FILE top513.ss
-  SURF_GRID unstructured
-END
+  COORDINATES
+    -1.d0 -1.d0 2.5d0
+    5.d0 5.d0 3.5d0
+  /
+END 
+
 
 SURF_FLOW_CONDITION rain
   TYPE
