@@ -2701,8 +2701,8 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
   end select
   
   if (error) then
-    write(option%io_buffer, '(''StructGetTVDGhostConnection not on '', &
-          & a,''face for cell:'',3i)') trim(string), i,j,k
+    write(option%io_buffer, '(''StructGetTVDGhostConnection not on '', a, &
+    & ''face for cell:'',3i6)') trim(string), i,j,k
     call printErrMsgByRank(option)
   endif
   
