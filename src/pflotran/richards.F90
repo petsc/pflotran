@@ -201,6 +201,85 @@ end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
 !
+! RCheckUpdate: We use this to dampen the update in extreme cases
+! author: Glenn Hammond
+! date: 02/13/12
+!
+! ************************************************************************** !
+subroutine RCheckUpdate(snes_,P,dP,realization,changed,ierr)
+ 
+  use Realization_module
+  use Level_module
+  use Patch_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: P
+  Vec :: dP
+  type(realization_type) :: realization
+  PetscBool :: changed
+  PetscErrorCode :: ierr
+
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RCheckUpdate
+
+! ************************************************************************** !
+!
+! RCheckUpdatePatch: We use this to dampen the update in extreme cases
+! author: Glenn Hammond
+! date: 02/13/12
+!
+! ************************************************************************** !
+subroutine RCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
+
+  use Realization_module
+  use Grid_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: P
+  Vec :: dP
+  type(realization_type) :: realization
+  PetscBool :: changed
+  
+  PetscReal, pointer :: P_p(:)
+  PetscReal, pointer :: dP_p(:)
+  type(grid_type), pointer :: grid
+  PetscInt :: n
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  
+  call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+  call GridVecGetArrayF90(grid,P,P_p,ierr)
+  call VecGetLocalSize(P,n,ierr)
+    
+  ! P^p+1 = P^p - dP^p
+ 
+  call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+  call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+
+end subroutine RCheckUpdatePatch
+
+! ************************************************************************** !
+!
 ! RichardsComputeMassBalance: 
 ! author: Glenn Hammond
 ! date: 02/22/08
