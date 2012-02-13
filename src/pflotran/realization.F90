@@ -921,7 +921,6 @@ subroutine RealizationProcessCouplers(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      write(*,*),'PatchProcessCouplers'
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
                                 realization%option)
@@ -930,7 +929,6 @@ subroutine RealizationProcessCouplers(realization)
 !                                realization%material_properties, &
 !                                realization%subcontinuum_properties, &
 !                                realization%option)
-      write(*,*),'PatchProcessCouplers ... done'
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
