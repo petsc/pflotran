@@ -32,10 +32,14 @@ module Discretization_module
     PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
+    character(len=MAXSTRINGLENGTH) :: filename
+
 #ifdef SURFACE_FLOW
-    type(grid_type), pointer   :: surfgrid ! surface grid
-    type(dm_ptr_type), pointer :: surf_dm_1dof
+    type(grid_type), pointer       :: surfgrid ! surface grid
+    type(dm_ptr_type), pointer     :: surf_dm_1dof
+    character(len=MAXSTRINGLENGTH) :: surfgrid_filename
 #endif
+
     type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
@@ -163,10 +167,6 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
-#ifdef SURFACE_FLOW
-  type(unstructured_grid_type), pointer :: un_str_sfgrid
-  character(len=MAXSTRINGLENGTH) :: sfgrid_filename
-#endif
 
   character(len=MAXSTRINGLENGTH) :: string
 
@@ -217,13 +217,9 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             end select
           case('unstructured')
             discretization%itype = UNSTRUCTURED_GRID
-            call InputReadNChars(input,option,filename,MAXSTRINGLENGTH, &
+            call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
                                  PETSC_TRUE)
             call InputErrorMsg(input,option,'unstructured filename','GRID')
-#ifdef SURFACE_FLOW
-            call InputReadNChars(input,option,sfgrid_filename,MAXSTRINGLENGTH, &
-                                 PETSC_TRUE)
-#endif
           case('amr')
             discretization%itype = AMR_GRID
           case('structured_mimetic')
@@ -284,13 +280,10 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
       call printErrMsg(option)
     case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       grid => GridCreate()
-#ifdef SURFACE_FLOW
-      grid2=> GridCreate()
-#endif
       select case(discretization%itype)
         case(UNSTRUCTURED_GRID)
           un_str_grid => UGridCreate()
-          if (index(filename,'.h5') > 0) then
+          if (index(discretization%filename,'.h5') > 0) then
 #if !defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
             option%io_buffer = 'PFLOTRAN must be built with HDF5 ' // &
               'support to read unstructured grid .h5 files'
@@ -302,23 +295,14 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
 #else
 
 #ifdef PARALLELIO_LIB
-            call UGridReadHDF5PIOLib(un_str_grid,filename,option)
+            call UGridReadHDF5PIOLib(un_str_grid,discretization%filename,option)
 #else
-            call UGridReadHDF5(un_str_grid,filename,option)
+            call UGridReadHDF5(un_str_grid,discretization%filename,option)
 #endif ! #ifdef PARALLELIO_LIB
 
 #endif ! #ifndef SAMR_HAVE_HDF5
           else
-            call UGridRead(un_str_grid,filename,option)
-#ifdef SURFACE_FLOW
-            un_str_sfgrid => UGridCreate()
-            un_str_sfgrid%grid_type = TWO_DIM_GRID
-            call UGridReadSurfGrid(un_str_sfgrid,filename,sfgrid_filename,option)
-            grid2%unstructured_grid => un_str_sfgrid
-            discretization%surfgrid => grid2
-            grid2%itype = discretization%itype
-            grid2%ctype = discretization%ctype
-#endif
+            call UGridRead(un_str_grid,discretization%filename,option)
           endif
           grid%unstructured_grid => un_str_grid
         case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      

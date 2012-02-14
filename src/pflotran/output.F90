@@ -456,8 +456,10 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
   
   variable_count = comma_count + 1
 
-  write(fid,'(a)') &
-    trim(OutputTecplotZoneHeader(realization,variable_count))
+  !geh: due to pgi bug, cannot embed functions with calls to write() within
+  !     write statement
+  string = OutputTecplotZoneHeader(realization,variable_count)
+  write(fid,'(a)') trim(string)
 
 end subroutine OutputTecplotHeader
 
@@ -2558,8 +2560,10 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     string = trim(string) // ',"Material_ID"'
     write(fid,'(a)') trim(string)
   
-    write(fid,'(a)') &
-      trim(OutputTecplotZoneHeader(realization,FIVE_INTEGER))
+    !geh: due to pgi bug, cannot embed functions with calls to write() within
+    !     write statement
+    string = OutputTecplotZoneHeader(realization,FIVE_INTEGER)
+    write(fid,'(a)') trim(string)
   endif
   
   ! write blocks

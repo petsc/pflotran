@@ -334,4 +334,8 @@ PetscInt, parameter :: INTERPOLATION_NULL = 0
 PetscInt, parameter :: INTERPOLATION_STEP = 1
 PetscInt, parameter :: INTERPOLATION_LINEAR = 2
 
+! surface/subsurface flags
+PetscInt, parameter :: SUBSURFACE = 0
+PetscInt, parameter :: SURFACE    = 1
+
 #define HASH

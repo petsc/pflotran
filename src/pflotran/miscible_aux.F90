@@ -260,8 +260,8 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   
   aux_var%den(1) = denw/aux_var%avgmw(1)
   
-! Glycol-Water mixture viscosity (y mass fraction water)
-  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3
+! Glycol-Water mixture viscosity (yh2o mass fraction water)
+  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3 ! centipoise to Pa s.
   aux_var%vis(1) = visw
   
   aux_var%sat(1) = 1.d0
@@ -270,7 +270,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   
 ! Glycol-Water mixture diffusivity (yh2o mass fraction water)
   aux_var%diff(2) = ((((-4.021d0*yh2o + 9.1181d0)*yh2o - 5.9703d0)*yh2o &
-     + 0.4043d0)*yh2o + 0.5687d0)*1.d-9
+     + 0.4043d0)*yh2o + 0.5687d0) * 1.d-9 ! m^2/s
   aux_var%diff(1) = aux_var%diff(2)
 
 ! aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient

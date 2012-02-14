@@ -24,6 +24,7 @@ module Realization_module
   
 #ifdef SURFACE_FLOW
   use Surface_Field_module
+  use Surface_Material_module
 #endif
   implicit none
 
@@ -43,9 +44,6 @@ private
 
     type(input_type), pointer :: input
     type(field_type), pointer :: field
-#ifdef SURFACE_FLOW
-    type(surface_field_type), pointer :: surf_field
-#endif
     type(flow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
 
@@ -73,6 +71,14 @@ private
     
     type(waypoint_list_type), pointer :: waypoints
     
+#ifdef SURFACE_FLOW
+    type(surface_field_type), pointer                 :: surf_field
+    type(region_list_type), pointer                   :: surf_regions
+    type(condition_list_type),pointer                 :: surf_flow_conditions
+    type(surface_material_property_type), pointer     :: surf_material_properties
+    type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
+#endif
+
   end type realization_type
 
   interface RealizationCreate
@@ -109,8 +115,14 @@ private
             RealizatonPassFieldPtrToPatches, &
             RealLocalToLocalWithArray, &
 #ifdef SURFACE_FLOW
+            RealizationLocalizeRegionsSurfaceFlow, &
             RealizationMapSurfSubsurfaceGrids, &
             RealizationMapSurfSubsurfaceGrid, &
+            RealizationAddCouplerSurfaceFlow, &
+            RealizationAddStrataSurfaceFlow, &
+            RealizationProcessCouplersSurfaceFlow, &
+            RealProcessPropSurfaceFlow, &
+            RealLocalToLocalWithArraySurfaceFlow, &
 #endif
             RealizationCalculateCFL1Timestep
  
@@ -163,9 +175,6 @@ function RealizationCreate2(option)
   endif
   nullify(realization%input)
   realization%field => FieldCreate()
-#ifdef SURFACE_FLOW
-  realization%surf_field => SurfaceFieldCreate()
-#endif
   realization%debug => DebugCreateFlow()
   realization%output_option => OutputOptionCreate()
 
@@ -197,6 +206,18 @@ function RealizationCreate2(option)
   nullify(realization%reaction)
 
   nullify(realization%patch)    
+
+#ifdef SURFACE_FLOW
+  realization%surf_field => SurfaceFieldCreate()
+  nullify(realization%surf_material_properties)
+
+  allocate(realization%surf_regions)
+  call RegionInitList(realization%surf_regions)
+
+  allocate(realization%surf_flow_conditions)
+  call FlowConditionInitList(realization%surf_flow_conditions)
+#endif
+
   RealizationCreate2 => realization
   
 end function RealizationCreate2 
@@ -414,13 +435,21 @@ subroutine RealizationCreateDiscretization(realization)
 
 #ifdef SURFACE_FLOW
   surf_field => realization%surf_field
-  write(*,*),'Creating surf_field%flow_xx: '
   call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_xx, &
                                   GLOBAL,option)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%flow_r)
-  call DiscretizationCreateVector(discretization,NFLOWDOF,surf_field%flow_xx_loc, &
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%work)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%mannings0)
+
+  call DiscretizationCreateVector(discretization,SURF_ONEDOF,surf_field%flow_xx_loc, &
                                   LOCAL,option)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx_loc, &
+                                     surf_field%work_loc)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx_loc, &
+                                     surf_field%mannings_loc)
 #endif
 
   select case(discretization%itype)
@@ -595,22 +624,6 @@ subroutine RealizationLocalizeRegions(realization)
     cur_level => cur_level%next
   enddo
  
-#ifdef SURFACE_FLOW
-  ! localize the regions on each patch
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchLocalizeRegions(cur_patch,realization%regions, &
-                                realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-#endif
-
 end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
@@ -687,29 +700,6 @@ subroutine RealizationAddCoupler(realization,coupler)
     cur_level => cur_level%next
   enddo
 
-#ifdef SURFACE_FLOW  
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      ! only add to flow list for now, since they will be split out later
-      new_coupler => CouplerCreate(coupler)
-      select case(coupler%itype)
-        case(BOUNDARY_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
-        case(INITIAL_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
-        case(SRC_SINK_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
-      end select
-      nullify(new_coupler)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-#endif
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
@@ -953,8 +943,10 @@ subroutine RealizationProcessCouplers(realization)
     enddo
     cur_level => cur_level%next
   enddo
+  
 
-#ifdef SURFACE_FLOW 
+!#ifdef SURFACE_FLOW 
+#if 0
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
@@ -964,11 +956,6 @@ subroutine RealizationProcessCouplers(realization)
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
                                 realization%option)
-!      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
-!                                realization%transport_conditions, &
-!                                realization%material_properties, &
-!                                realization%subcontinuum_properties, &
-!                                realization%option)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -2722,9 +2709,7 @@ subroutine RealizationDestroy(realization)
   if (.not.associated(realization)) return
     
   call FieldDestroy(realization%field)
-#ifdef SURFACE_FLOW
-  call SurfaceFieldDestroy(realization%surf_field)
-#endif
+
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
   call RegionDestroyList(realization%regions)
   
@@ -2746,6 +2731,11 @@ subroutine RealizationDestroy(realization)
     deallocate(realization%material_property_array)
   nullify(realization%material_property_array)
   call MaterialPropertyDestroy(realization%material_properties)
+
+#ifdef SURFACE_FLOW
+  call SurfaceFieldDestroy(realization%surf_field)
+  call SurfaceMaterialPropertyDestroy(realization%surf_material_properties)
+#endif
   
   if (associated(realization%saturation_function_array)) &
     deallocate(realization%saturation_function_array)
@@ -2763,6 +2753,233 @@ subroutine RealizationDestroy(realization)
 end subroutine RealizationDestroy
   
 #ifdef SURFACE_FLOW
+
+! ************************************************************************** !
+!
+!> This routine adds a copy of a coupler to a list (similar to RealizationAddCoupler)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/10/12
+!
+! ************************************************************************** !
+subroutine RealizationAddCouplerSurfaceFlow(realization,coupler)
+
+  use Coupler_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  type(coupler_type), pointer :: coupler
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(coupler_type), pointer :: new_coupler
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      ! only add to flow list for now, since they will be split out later
+      new_coupler => CouplerCreate(coupler)
+      select case(coupler%itype)
+        case(BOUNDARY_COUPLER_TYPE)
+          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
+        case(INITIAL_COUPLER_TYPE)
+          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
+        case(SRC_SINK_COUPLER_TYPE)
+          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
+      end select
+      nullify(new_coupler)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  call CouplerDestroy(coupler)
+ 
+end subroutine RealizationAddCouplerSurfaceFlow
+
+! ************************************************************************** !
+!
+!> This routine adds a copy of a strata to a list (similar to RealizationAddStrata)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/10/12
+!
+! ************************************************************************** !
+subroutine RealizationAddStrataSurfaceFlow(realization,strata)
+
+  use Strata_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  type(strata_type), pointer :: strata
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(strata_type), pointer :: new_strata
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      new_strata => StrataCreate(strata)
+      call StrataAddToList(new_strata,cur_patch%strata)
+      nullify(new_strata)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  call StrataDestroy(strata)
+ 
+end subroutine RealizationAddStrataSurfaceFlow
+
+! ************************************************************************** !
+!
+!> This routine sets connectivity and pointers for couplers related to 
+!! surface flow (similar to RealizationProcessCouplers).
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/11/12
+!
+! ************************************************************************** !
+subroutine RealizationProcessCouplersSurfaceFlow(realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchProcessCouplers(cur_patch,realization%surf_flow_conditions, &
+                                realization%transport_conditions, &
+                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealizationProcessCouplersSurfaceFlow
+
+
+! ************************************************************************** !
+!
+!> This routine sets up linkeage between surface material properties
+!! (similar to RealProcessMatPropAndSatFunc)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/11/12
+!
+! ************************************************************************** !
+subroutine RealProcessPropSurfaceFlow(realization)
+
+  use String_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  PetscBool :: found
+  PetscInt :: i
+  type(option_type), pointer :: option
+  !type(material_property_type), pointer :: cur_material_property
+  character(len=MAXSTRINGLENGTH) :: string
+
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  option => realization%option
+  
+  ! organize lists
+  call MaterialPropConvertListToArraySurfaceFlow(realization%surf_material_properties, &
+                                      realization%surf_material_property_array, &
+                                      option)
+  ! set up mirrored pointer arrays within patches to saturation functions
+  ! and material properties
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      cur_patch%surf_material_properties => realization%surf_material_properties
+      call MaterialPropConvertListToArraySurfaceFlow(cur_patch%surf_material_properties, &
+                                          cur_patch%surf_material_property_array, &
+                                          option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo 
+  
+end subroutine RealProcessPropSurfaceFlow
+
+! ************************************************************************** !
+!
+!> This routine localizes surface regions within each patch
+!! (similar to RealizationLocalizeRegions)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/11/12
+!
+! ************************************************************************** !
+subroutine RealizationLocalizeRegionsSurfaceFlow(realization)
+
+  use Option_module
+  use String_module
+  use Grid_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch, cur_patch2
+  type (region_type), pointer :: cur_region, cur_region2
+  type(option_type), pointer :: option
+  type(region_type), pointer :: patch_region
+
+  option => realization%option
+
+  ! localize the regions on each patch
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchLocalizeRegions(cur_patch,realization%surf_regions, &
+                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealizationLocalizeRegionsSurfaceFlow
 
 ! ************************************************************************** !
 !
@@ -3229,6 +3446,72 @@ subroutine RealizationMapSurfSubsurfaceGrid(realization, &       !<
 
 end subroutine RealizationMapSurfSubsurfaceGrid
 
-#endif
+
+! ************************************************************************** !
+!> This routine takes an F90 array that is ghosted and updates the ghosted
+!! values (similar to RealLocalToLocalWithArray)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/13/12
+! ************************************************************************** !
+
+subroutine RealLocalToLocalWithArraySurfaceFlow(realization,array_id)
+
+  use Grid_module
+  use Surface_Field_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  PetscInt :: array_id
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
+  type(surface_field_type), pointer :: surf_field
+
+  surf_field => realization%surf_field
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,surf_field%work_loc, &
+                                         grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  call DiscretizationLocalToLocal(realization%discretization,surf_field%work_loc, &
+                                  surf_field%work_loc,ONEDOF)
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%surf_patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+
+      select case(array_id)
+        case(MATERIAL_ID_ARRAY)
+          call GridCopyVecToIntegerArray(grid, cur_patch%imat,surf_field%work_loc, &
+                                         grid%ngmax)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealLocalToLocalWithArraySurfaceFlow
+
+#endif ! SURFACE_FLOW
 
 end module Realization_module

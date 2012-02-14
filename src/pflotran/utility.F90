@@ -803,7 +803,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
   input%ierr = 0
   string2 = trim(input%buf)
   call InputReadWord(input,option,word,PETSC_TRUE)
-  call InputErrorMsg(input,option,'file or value','CONDITION')
+  call InputErrorMsg(input,option,'file or value','UtilityReadIntArray')
   call StringToLower(word)
   if (StringCompare(word,'file',FOUR_INTEGER)) then
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)

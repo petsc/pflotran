@@ -1057,7 +1057,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                             !   0 = magnitude of distance 
                             !   1-3 = components of unit vector 
                             
-  PetscReal :: iphase
+  PetscInt :: iphase
   PetscInt :: idof, ndof
   PetscReal :: dc, theta, correction, nu
   

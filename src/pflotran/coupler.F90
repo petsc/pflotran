@@ -229,9 +229,9 @@ subroutine CouplerRead(coupler,input,option)
     
     select case(trim(word))
     
-      case('REGION')
+      case('REGION','SURF_REGION')
         call InputReadWord(input,option,coupler%region_name,PETSC_TRUE)
-      case('FLOW_CONDITION')
+      case('FLOW_CONDITION','SURF_FLOW_CONDITION')
         call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
         call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
