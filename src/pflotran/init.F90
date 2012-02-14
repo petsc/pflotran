@@ -445,6 +445,16 @@ end interface
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
                                 flow_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 
+    
+    if (option%pressure_dampening_factor > 0.d0) then
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          call SNESLineSearchSetPreCheck(flow_solver%snes, &
+                                         RichardsCheckUpdate, &
+                                         realization,ierr)
+      end select
+    endif
+    
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
 #ifdef SURFACE_FLOW
@@ -995,6 +1005,8 @@ subroutine InitReadRequiredCardsFromInput(realization)
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   
+  PetscErrorCode :: ierr
+  
   patch => realization%patch
   option => realization%option
   discretization => realization%discretization
@@ -1012,6 +1024,12 @@ subroutine InitReadRequiredCardsFromInput(realization)
     ! read in keyword 
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
+
+    call InputReadWord(input,option,string,PETSC_TRUE)
+    if (input%ierr == 0) then
+      call InputReadDouble(string,option,option%pressure_dampening_factor,ierr)
+      call InputErrorMsg(input,option,'flowmode','pressure_dampening_factor')
+    endif
   endif
 
 !.........................................................................

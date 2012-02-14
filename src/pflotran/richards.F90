@@ -34,7 +34,8 @@ module Richards_module
          RichardsGetTecplotHeader, RichardsComputeMassBalance, &
          RichardsDestroy, RichardsResidualMFD, RichardsJacobianMFD, &
 !          RichardsInitialPressureReconstruction, &
-         RichardsResidualMFDLP, RichardsJacobianMFDLP
+         RichardsResidualMFDLP, RichardsJacobianMFDLP, &
+         RichardsCheckUpdate
 
 contains
 
@@ -201,12 +202,12 @@ end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
 !
-! RCheckUpdate: We use this to dampen the update in extreme cases
+! RichardsCheckUpdate: We use this to dampen the update in extreme cases
 ! author: Glenn Hammond
 ! date: 02/13/12
 !
 ! ************************************************************************** !
-subroutine RCheckUpdate(snes_,P,dP,realization,changed,ierr)
+subroutine RichardsCheckUpdate(snes_,P,dP,realization,changed,ierr)
  
   use Realization_module
   use Level_module
@@ -231,25 +232,26 @@ subroutine RCheckUpdate(snes_,P,dP,realization,changed,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
+      call RichardsCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RCheckUpdate
+end subroutine RichardsCheckUpdate
 
 ! ************************************************************************** !
 !
-! RCheckUpdatePatch: We use this to dampen the update in extreme cases
+! RichardsCheckUpdatePatch: We use this to dampen the update in extreme cases
 ! author: Glenn Hammond
 ! date: 02/13/12
 !
 ! ************************************************************************** !
-subroutine RCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
+subroutine RichardsCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
 
   use Realization_module
   use Grid_module
+  use Option_module
  
   implicit none
   
@@ -257,26 +259,43 @@ subroutine RCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
   Vec :: P
   Vec :: dP
   type(realization_type) :: realization
+  ! ignore changed flag for now.
   PetscBool :: changed
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)
   type(grid_type), pointer :: grid
-  PetscInt :: n
+  type(option_type), pointer :: option
+  PetscInt :: i, n
+  PetscReal :: P_R, P0, P1, delP
+  PetscReal :: scale
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
+  option => realization%option
   
   call GridVecGetArrayF90(grid,dP,dP_p,ierr)
   call GridVecGetArrayF90(grid,P,P_p,ierr)
   call VecGetLocalSize(P,n,ierr)
     
   ! P^p+1 = P^p - dP^p
+  P_R = option%reference_pressure
+  scale = option%pressure_dampening_factor
+  
+  do i = 1, n
+    delP = dP_p(i)
+    P0 = P_p(i)
+    P1 = P0 + delP
+    ! transition from unsaturated to saturated
+    if (P0 < P_R .and. P1 > P_R) then
+      dP_p(i) = scale*delP
+    endif
+  enddo
  
   call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
   call GridVecRestoreArrayF90(grid,P,P_p,ierr)
 
-end subroutine RCheckUpdatePatch
+end subroutine RichardsCheckUpdatePatch
 
 ! ************************************************************************** !
 !
