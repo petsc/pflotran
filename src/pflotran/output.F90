@@ -458,7 +458,8 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
 
   !geh: due to pgi bug, cannot embed functions with calls to write() within
   !     write statement
-  string = OutputTecplotZoneHeader(realization,variable_count)
+  string = OutputTecplotZoneHeader(realization,variable_count, &
+                                   output_option%tecplot_format)
   write(fid,'(a)') trim(string)
 
 end subroutine OutputTecplotHeader
@@ -470,7 +471,7 @@ end subroutine OutputTecplotHeader
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-function OutputTecplotZoneHeader(realization,variable_count)
+function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
 
   use Realization_module
   use Grid_module
@@ -480,6 +481,7 @@ function OutputTecplotZoneHeader(realization,variable_count)
 
   type(realization_type) :: realization
   PetscInt :: variable_count
+  PetscInt :: tecplot_format
   
   character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
 
@@ -496,7 +498,7 @@ function OutputTecplotZoneHeader(realization,variable_count)
            trim(OutputFormatDouble(option%time/output_option%tconv)) // &
            '"'
   string2 = ''
-  select case(output_option%tecplot_format)
+  select case(tecplot_format)
     case (TECPLOT_POINT_FORMAT)
       if ((realization%discretization%itype == STRUCTURED_GRID).or. &
           (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
@@ -1527,9 +1529,11 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     write(IUNIT3,'(a)') trim(string)
   
     if (option%nphase > 1) then
-      string = OutputTecplotZoneHeader(realization,TEN_INTEGER)
+      string = OutputTecplotZoneHeader(realization,TEN_INTEGER, &
+                                       TECPLOT_BLOCK_FORMAT)
     else
-      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER)
+      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER, &
+                                       TECPLOT_BLOCK_FORMAT)
     endif
     write(IUNIT3,'(a)') trim(string)
 
@@ -2562,7 +2566,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
     !geh: due to pgi bug, cannot embed functions with calls to write() within
     !     write statement
-    string = OutputTecplotZoneHeader(realization,FIVE_INTEGER)
+    string = OutputTecplotZoneHeader(realization,FIVE_INTEGER, &
+                                     TECPLOT_BLOCK_FORMAT)
     write(fid,'(a)') trim(string)
   endif
   
@@ -5444,34 +5449,6 @@ subroutine OutputVelocitiesVTK(realization)
     write(IUNIT3,'(''ASCII'')')
     write(IUNIT3,'(''DATASET UNSTRUCTURED_GRID'')')
     
-#if 0
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-    ! write variables
-    string = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]",' // &
-             '"vlx [m/' // trim(output_option%tunit) // ']",' // &
-             '"vly [m/' // trim(output_option%tunit) // ']",' // &
-             '"vlz [m/' // trim(output_option%tunit) // ']"'
-    if (option%nphase > 1) then
-      string = trim(string) // &
-               ',"vgx [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgy [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgz [m/' // trim(output_option%tunit) // ']"'
-    endif
-    string = trim(string) // ',"Material_ID"'
-    write(IUNIT3,'(a)') trim(string)
-  
-    if (option%nphase > 1) then
-      string = OutputTecplotZoneHeader(realization,TEN_INTEGER)
-    else
-      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER)
-    endif
-    write(IUNIT3,'(a)') trim(string)
-#endif
   endif
   
   ! write blocks
