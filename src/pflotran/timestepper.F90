@@ -249,6 +249,11 @@ subroutine TimestepperRead(stepper,input,option)
         call InputReadDouble(input,option,option%dsmxe)
         call InputDefaultMsg(input,option,'dsmxe')
 
+      case('PRESSURE_DAMPENING_FACTOR')
+        call InputReadDouble(input,option,option%pressure_dampening_factor)
+        call InputErrorMsg(input,option,'PRESSURE_DAMPENING_FACTOR', &
+                           'TIMESTEPPER')
+
       case default
         option%io_buffer = 'Timestepper option: '//trim(keyword)// &
                            ' not recognized.'

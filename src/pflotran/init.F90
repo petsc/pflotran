@@ -1005,8 +1005,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   
-  PetscErrorCode :: ierr
-  
   patch => realization%patch
   option => realization%option
   discretization => realization%discretization
@@ -1024,12 +1022,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
     ! read in keyword 
     call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
     call InputErrorMsg(input,option,'flowmode','mode')
-
-    call InputReadWord(input,option,string,PETSC_TRUE)
-    if (input%ierr == 0) then
-      call InputReadDouble(string,option,option%pressure_dampening_factor,ierr)
-      call InputErrorMsg(input,option,'flowmode','pressure_dampening_factor')
-    endif
   endif
 
 !.........................................................................
