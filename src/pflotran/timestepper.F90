@@ -557,6 +557,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
         call PetscLogStagePop(ierr)
         if (failure) return ! if flow solve fails, exit
         option%flow_time = flow_stepper%target_time
+      else
+        ! this serves as a flag for steady state within Transport DT.
+        flow_t0 = -999.d0
       endif
     endif
     ! (reactive) transport solution
@@ -579,21 +582,23 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
       ! half the flow time step, might as well cut it down to half the 
       ! flow time step size
       if (associated(flow_stepper)) then
-        flow_to_tran_ts_ratio = option%flow_dt / option%tran_dt
-        if (flow_to_tran_ts_ratio > 1.d0 .and. &
-            flow_to_tran_ts_ratio < 2.d0) then
-          option%tran_dt = option%flow_dt * 0.5d0
+        if (.not.flow_stepper%run_as_steady_state) then
+          flow_to_tran_ts_ratio = option%flow_dt / option%tran_dt
+          if (flow_to_tran_ts_ratio > 1.d0 .and. &
+              flow_to_tran_ts_ratio < 2.d0) then
+            option%tran_dt = option%flow_dt * 0.5d0
+          endif
         endif
       endif
       do ! loop on transport until it reaches the target time
         if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
           !global implicit
           call StepperStepTransportDT_GI(realization,tran_stepper, &
-                                      flow_t0,option%flow_time,failure)
+                                         flow_t0,option%flow_time,failure)
         else
           !operator splitting
           call StepperStepTransportDT_OS(realization,tran_stepper, &
-                                      flow_t0,option%flow_time,failure)
+                                         flow_t0,option%flow_time,failure)
         endif
         if (failure) then ! if transport solve fails, exit
           call PetscLogStagePop(ierr)

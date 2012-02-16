@@ -247,7 +247,7 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   endif
   if (associated(aux_var%den_store) .and. &
       associated(aux_var2%den_store)) then
-    aux_var2%pres_store = aux_var%den_store  
+    aux_var2%den_store = aux_var%den_store  
   endif
   if (associated(aux_var%temp_store) .and. &
       associated(aux_var2%temp_store)) then
