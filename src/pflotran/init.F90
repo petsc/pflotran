@@ -136,6 +136,11 @@ end interface
   nullify(flow_solver)
   nullify(tran_solver)
   
+  if (OptionPrintToScreen(option)) then
+    temp_int = 6
+    call InitPrintPFLOTRANHeader(option,temp_int)
+  endif
+  
   realization%input => InputCreate(IUNIT1,option%input_filename)
 
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
@@ -145,7 +150,10 @@ end interface
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
 
-  call InitPrintPFLOTRANHeader(option)
+  if (OptionPrintToFile(option)) then
+    call InitPrintPFLOTRANHeader(option,option%fid_out)
+  endif
+  
   call InitReadHDF5CardsFromInput(realization)
   call Create_IOGroups(option)
 
@@ -3893,21 +3901,17 @@ end subroutine assignMaterialPropToRegionsSurfaceFlow
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine InitPrintPFLOTRANHeader(option)
+subroutine InitPrintPFLOTRANHeader(option,fid)
 
   use Option_module
   
   implicit none
   
+  PetscInt :: fid
+  
   type(option_type) :: option
   
-  if (OptionPrintToScreen(option)) then
-    write(*,'(\," PFLOTRAN Header"\)') 
-  endif
-
-  if (OptionPrintToFile(option)) then
-    write(option%fid_out,'(\," PFLOTRAN Header"\)') 
-  endif
+  write(fid,'(" PFLOTRAN Header")') 
   
 end subroutine InitPrintPFLOTRANHeader
   
