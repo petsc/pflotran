@@ -145,6 +145,7 @@ end interface
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
 
+  call InitPrintPFLOTRANHeader(option)
   call InitReadHDF5CardsFromInput(realization)
   call Create_IOGroups(option)
 
@@ -3885,4 +3886,29 @@ end subroutine assignMaterialPropToRegionsSurfaceFlow
 
 #endif SURFACE_FLOW
 
+! ************************************************************************** !
+!
+! InitPrintPFLOTRANHeader: Initializes pflotran
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+subroutine InitPrintPFLOTRANHeader(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  
+  if (OptionPrintToScreen(option)) then
+    write(*,'(\," PFLOTRAN Header"\)') 
+  endif
+
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,'(\," PFLOTRAN Header"\)') 
+  endif
+  
+end subroutine InitPrintPFLOTRANHeader
+  
 end module Init_module
