@@ -250,7 +250,7 @@ subroutine ImmisSetupPatch(realization)
   patch%aux%Immis%aux_vars_ss => aux_vars_ss
   patch%aux%Immis%num_aux_ss = sum_connection
   
-  option%numerical_derivatives = PETSC_TRUE
+  option%numerical_derivatives_flow = PETSC_TRUE
 
   ! print *,' ims setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -1851,7 +1851,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
 
-    if (option%numerical_derivatives) then
+    if (option%numerical_derivatives_flow) then
       patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         patch%aux%Immis%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  

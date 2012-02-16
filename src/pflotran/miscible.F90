@@ -197,7 +197,7 @@ subroutine MiscibleSetupPatch(realization)
   enddo
   patch%aux%Miscible%aux_vars_bc => aux_vars_bc
   patch%aux%Miscible%num_aux_bc = sum_connection
-  option%numerical_derivatives = PETSC_TRUE
+  option%numerical_derivatives_flow = PETSC_TRUE
   
   allocate(patch%aux%Miscible%delx(option%nflowdof, grid%ngmax))
   allocate(patch%aux%Miscible%Resold_AR(grid%nlmax,option%nflowdof))
@@ -2074,7 +2074,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       print *,'Not associated global for Miscible'
     endif
 
-    if (option%numerical_derivatives) then
+    if (option%numerical_derivatives_flow) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
          
      do idof = 2, option%nflowdof

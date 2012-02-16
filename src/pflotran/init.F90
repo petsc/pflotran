@@ -1613,8 +1613,13 @@ subroutine InitReadInput(simulation)
 
 !......................
 
-      case ('NUMERICAL_JACOBIAN')
-        option%numerical_derivatives = PETSC_TRUE
+      case ('NUMERICAL_JACOBIAN_FLOW')
+        option%numerical_derivatives_flow = PETSC_TRUE
+
+!......................
+
+      case ('NUMERICAL_JACOBIAN_RXN')
+        option%numerical_derivatives_rxn = PETSC_TRUE
 
 !......................
 

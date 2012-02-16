@@ -3513,7 +3513,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
 
   ! add new reactions in the 3 locations below
 
-  if (.not.option%numerical_derivatives) then ! analytical derivative
+  if (.not.option%numerical_derivatives_rxn) then ! analytical derivative
   !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
     if (reaction%nkinmnrl > 0) then
@@ -4687,7 +4687,12 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     end select  
 
     ! if site_density = 0, dividing by free_site_conc will crash below.
-    if (site_density < 1.d-40) cycle
+    if (site_density < 1.d-40) then
+      option%io_buffer = 'Cannot have a zero site density for multirate ' // &
+        'surface complexation.  Set minimum site density to arbitrary ' // &
+        'small number (e.g. 1.e-40).'
+      call printErrMsgByRank(option)
+    endif
     
     ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
     free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)

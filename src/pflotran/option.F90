@@ -159,7 +159,8 @@ module Option_module
     
     PetscInt :: log_stage(10)
     
-    PetscBool :: numerical_derivatives
+    PetscBool :: numerical_derivatives_flow
+    PetscBool :: numerical_derivatives_rxn
     PetscBool :: compute_statistics
     PetscBool :: compute_mass_balance_new
     PetscBool :: use_touch_options
@@ -516,7 +517,8 @@ subroutine OptionInitRealization(option)
   
   option%log_stage = 0
   
-  option%numerical_derivatives = PETSC_FALSE
+  option%numerical_derivatives_flow = PETSC_FALSE
+  option%numerical_derivatives_rxn = PETSC_FALSE
   option%compute_statistics = PETSC_FALSE
   option%compute_mass_balance_new = PETSC_FALSE
 

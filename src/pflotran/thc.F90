@@ -1060,7 +1060,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 #endif
 
 
-  if (option%numerical_derivatives) then
+  if (option%numerical_derivatives_flow) then
     allocate(thc_aux_var_pert%xmol(option%nflowspec),thc_aux_var_pert%diff(option%nflowspec))
     call GlobalAuxVarInit(global_aux_var_pert,option)  
     call THCAuxVarCopy(thc_aux_var,thc_aux_var_pert,option)
@@ -1777,7 +1777,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
-  if (option%numerical_derivatives) then
+  if (option%numerical_derivatives_flow) then
     allocate(aux_var_pert_up%xmol(option%nflowspec),aux_var_pert_up%diff(option%nflowspec))
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
@@ -2485,7 +2485,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
 
   Jdn = Jdn * option%flow_dt
 
-  if (option%numerical_derivatives) then
+  if (option%numerical_derivatives_flow) then
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
     allocate(aux_var_pert_up%xmol(option%nflowspec),aux_var_pert_up%diff(option%nflowspec))
     

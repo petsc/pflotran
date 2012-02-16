@@ -271,7 +271,7 @@ subroutine MphaseSetupPatch(realization)
   mphase%aux_vars_ss => aux_vars_ss
   mphase%num_aux_ss = sum_connection
   
-  option%numerical_derivatives = PETSC_TRUE
+  option%numerical_derivatives_flow = PETSC_TRUE
 
 ! print *,' mph setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -2458,7 +2458,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
      endif
 #endif
 
-     if (option%numerical_derivatives) then
+     if (option%numerical_derivatives_flow) then
         mphase%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         mphase%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
         select case (iphase)
