@@ -325,7 +325,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
 
   option => realization%option
   output_option => realization%output_option
- 
+
   nullify(master_stepper,null_stepper)
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
@@ -544,30 +544,25 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
                                transient_plot_flag)
 
     ! flow solution
-    if (associated(flow_stepper)) then
-      if (.not.flow_stepper%run_as_steady_state) then
-        flow_t0 = option%flow_time
-        call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                               failure)
+    if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
+      flow_t0 = option%flow_time
+      call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
+      call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
+                              failure)
 #ifdef SURFACE_FLOW
-        call SNESSolve(surf_flow_stepper%solver%snes, PETSC_NULL_OBJECT, &
-                       realization%surf_field%flow_xx, ierr)
+      call SNESSolve(surf_flow_stepper%solver%snes, PETSC_NULL_OBJECT, &
+                      realization%surf_field%flow_xx, ierr)
 #endif
-        call PetscLogStagePop(ierr)
-        if (failure) return ! if flow solve fails, exit
-        option%flow_time = flow_stepper%target_time
-      else
-        ! this serves as a flag for steady state within Transport DT.
-        flow_t0 = -999.d0
-      endif
+      call PetscLogStagePop(ierr)
+      if (failure) return ! if flow solve fails, exit
+      option%flow_time = flow_stepper%target_time
     endif
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       tran_dt_save = -999.d0
       ! reset transpor time step if flow time step is cut
-      if (associated(flow_stepper)) then
+      if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
         if (flow_stepper%time_step_cut_flag) then
           tran_stepper%target_time = flow_stepper%target_time
           option%tran_dt = min(option%tran_dt,option%flow_dt)
@@ -581,23 +576,23 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
       ! if transport time step is less than flow step, but greater than
       ! half the flow time step, might as well cut it down to half the 
       ! flow time step size
-      if (associated(flow_stepper)) then
-        if (.not.flow_stepper%run_as_steady_state) then
-          flow_to_tran_ts_ratio = option%flow_dt / option%tran_dt
-          if (flow_to_tran_ts_ratio > 1.d0 .and. &
-              flow_to_tran_ts_ratio < 2.d0) then
-            option%tran_dt = option%flow_dt * 0.5d0
-          endif
+      if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
+        flow_to_tran_ts_ratio = option%flow_dt / option%tran_dt
+        if (flow_to_tran_ts_ratio > 1.d0 .and. &
+            flow_to_tran_ts_ratio < 2.d0) then
+          option%tran_dt = option%flow_dt * 0.5d0
         endif
       endif
       do ! loop on transport until it reaches the target time
         if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
           !global implicit
           call StepperStepTransportDT_GI(realization,tran_stepper, &
+                                         run_flow_as_steady_state, &
                                          flow_t0,option%flow_time,failure)
         else
           !operator splitting
           call StepperStepTransportDT_OS(realization,tran_stepper, &
+                                         run_flow_as_steady_state, &
                                          flow_t0,option%flow_time,failure)
         endif
         if (failure) then ! if transport solve fails, exit
@@ -784,26 +779,30 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
   ! FLOW
   update_time_step = PETSC_TRUE
   if (associated(flow_stepper)) then
-    ! if the time step was cut, set number of constant time steps to 1
-    if (flow_stepper%time_step_cut_flag) then
-      flow_stepper%time_step_cut_flag = PETSC_FALSE
-      flow_stepper%num_constant_time_steps = 1
-    ! otherwise, only increment if teh constant time step counter was
-    ! initialized to 1
-    else if (flow_stepper%num_constant_time_steps > 0) then
-      flow_stepper%num_constant_time_steps = &
-        flow_stepper%num_constant_time_steps + 1
-    endif
-    
-    ! num_constant_time_steps = 0: normal time stepping with growing steps
-    ! num_constant_time_steps > 0: restriction of constant time steps until
-    !                              constant_time_step_threshold is met
-    if (flow_stepper%num_constant_time_steps > &
-        flow_stepper%constant_time_step_threshold) then
-      flow_stepper%num_constant_time_steps = 0
-    else if (flow_stepper%num_constant_time_steps > 0) then
-      ! do not increase time step size
+    if (flow_stepper%run_as_steady_state) then
       update_time_step = PETSC_FALSE
+    else
+      ! if the time step was cut, set number of constant time steps to 1
+      if (flow_stepper%time_step_cut_flag) then
+        flow_stepper%time_step_cut_flag = PETSC_FALSE
+        flow_stepper%num_constant_time_steps = 1
+      ! otherwise, only increment if teh constant time step counter was
+      ! initialized to 1
+      else if (flow_stepper%num_constant_time_steps > 0) then
+        flow_stepper%num_constant_time_steps = &
+          flow_stepper%num_constant_time_steps + 1
+      endif
+    
+      ! num_constant_time_steps = 0: normal time stepping with growing steps
+      ! num_constant_time_steps > 0: restriction of constant time steps until
+      !                              constant_time_step_threshold is met
+      if (flow_stepper%num_constant_time_steps > &
+          flow_stepper%constant_time_step_threshold) then
+        flow_stepper%num_constant_time_steps = 0
+      else if (flow_stepper%num_constant_time_steps > 0) then
+        ! do not increase time step size
+        update_time_step = PETSC_FALSE
+      endif
     endif
     
     if (update_time_step) then
@@ -1004,7 +1003,9 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 
   ! ensure that transport time step is not larger than flow time step
   if (associated(flow_stepper) .and. associated(tran_stepper)) then
-    option%tran_dt = min(option%tran_dt,option%flow_dt)
+    if (.not.flow_stepper%run_as_steady_state) then
+      option%tran_dt = min(option%tran_dt,option%flow_dt)
+    endif
   endif
 
 end subroutine StepperUpdateDT
@@ -1167,6 +1168,7 @@ end subroutine StepperSetTargetTimes
 !
 ! ************************************************************************** !
 subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
+
   use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
                            Flash2TimeCut, Flash2UpdateReason
   use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
@@ -1641,8 +1643,9 @@ end subroutine StepperStepFlowDT
 ! date: 02/19/08
 !
 ! ************************************************************************** !
-subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
-                                  failure)
+subroutine StepperStepTransportDT_GI(realization,stepper, &
+                                     steady_flow,flow_t0,flow_t1, &
+                                     failure)
   
   use Reactive_Transport_module
   use Output_module, only : Output
@@ -1669,6 +1672,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
   PetscReal :: flow_t0, flow_t1
+  PetscBool :: steady_flow
   PetscBool :: failure
   
   PetscErrorCode :: ierr
@@ -1715,7 +1719,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   ! interpolate flow parameters/data
   ! this must remain here as these weighted values are used by both
   ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
-  if (option%nflowdof > 0) then
+  if (option%nflowdof > 0 .and. .not.steady_flow) then
     call TimestepperSetTranWeights(option,flow_t0, flow_t1)
     ! set densities and saturations to t
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
@@ -1725,7 +1729,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   ! note: RTUpdateTransportCoefs() is called within RTInitializeTimestep()
 
   ! set densities and saturations to t+dt
-  if (option%nflowdof > 0) then
+  if (option%nflowdof > 0 .and. .not.steady_flow) then
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
   endif
 
@@ -1843,7 +1847,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
 
 
       ! recompute weights
-      if (option%nflowdof > 0) then
+      if (option%nflowdof > 0 .and. .not.steady_flow) then
         call TimestepperSetTranWeights(option,flow_t0, flow_t1)
       endif
       call RTTimeCut(realization)
@@ -1874,7 +1878,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
   
-    if (option%nflowdof > 0) then
+    if (option%nflowdof > 0 .and. .not.steady_flow) then
 
     write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Target= ",1pe12.4, &
       & " Dt= ",1pe12.4," [",a1,"]", &
@@ -1951,8 +1955,10 @@ end subroutine StepperStepTransportDT_GI
 ! date: 02/19/08
 !
 ! ************************************************************************** !
-subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
-                                  failure)
+subroutine StepperStepTransportDT_OS(realization,stepper, &
+                                     steady_flow, flow_t0,flow_t1, &
+                                     failure)
+
   use Reactive_Transport_module, only : RTUpdateRHSCoefs, RTUpdateAuxVars, &
         RTCalculateRHS_t0, RTUpdateTransportCoefs, RTCalculateRHS_t1, &
         RTCalculateTransportMatrix, RTTransportResidual, RTReact, &
@@ -1981,6 +1987,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
   PetscReal :: flow_t0, flow_t1
+  PetscBool :: steady_flow
   PetscBool :: failure
   
   PetscErrorCode :: ierr
@@ -2024,7 +2031,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
 
   call PetscGetTime(log_start_time, ierr)
 
-  if (option%nflowdof > 0) then
+  if (option%nflowdof > 0 .and. .not.steady_flow) then
     call TimestepperSetTranWeights(option,flow_t0,flow_t1)
     ! set densities and saturations to t
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
@@ -2048,7 +2055,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
     call RTCalculateRHS_t0(realization)
     
     ! set densities and saturations to t+dt
-    if (option%nflowdof > 0) then
+    if (option%nflowdof > 0 .and. .not.steady_flow) then
       call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
     endif
 
