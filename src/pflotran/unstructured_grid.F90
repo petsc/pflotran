@@ -75,6 +75,7 @@ module Unstructured_Grid_module
     VecScatter :: scatter_gtol ! scatter context for global to local updates
     VecScatter :: scatter_ltol ! scatter context for local to local updates
     VecScatter :: scatter_gton ! scatter context for global to natural updates
+    VecScatter :: scatter_ntog ! scatter context for natural to global updates
     ISLocalToGlobalMapping :: mapping_ltog  ! petsc vec local to global mapping
     ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
     Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
@@ -151,6 +152,7 @@ function UGDMCreate()
   ugdm%scatter_gtol = 0
   ugdm%scatter_ltol  = 0
   ugdm%scatter_gton = 0
+  ugdm%scatter_ntog = 0
   ugdm%mapping_ltog = 0
   ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
@@ -2494,12 +2496,19 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecSetBlockSize(vec_tmp,ndof,ierr)
   call VecScatterCreate(ugdm%global_vec,ugdm%is_local_petsc,vec_tmp, &
                         ugdm%is_local_natural,ugdm%scatter_gton,ierr)
+  call VecScatterCreate(ugdm%global_vec,ugdm%is_local_natural,vec_tmp, &
+                        ugdm%is_local_petsc,ugdm%scatter_ntog,ierr)
   call VecDestroy(vec_tmp,ierr)
 
 #if UGRID_DEBUG
   string = 'scatter_gton' // trim(ndof_word) // '.out'
   call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecScatterView(ugdm%scatter_gton,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  string = 'scatter_ntog' // trim(ndof_word) // '.out'
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
+  call VecScatterView(ugdm%scatter_ntog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
@@ -4615,6 +4624,7 @@ subroutine UGridDMDestroy(ugdm)
   call VecScatterDestroy(ugdm%scatter_gtol,ierr)
   call VecScatterDestroy(ugdm%scatter_ltol,ierr)
   call VecScatterDestroy(ugdm%scatter_gton,ierr)
+  call VecScatterDestroy(ugdm%scatter_ntog,ierr)
   call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog,ierr)
   if (ugdm%mapping_ltogb /= 0) &
     call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb,ierr)
