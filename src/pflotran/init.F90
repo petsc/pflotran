@@ -1856,6 +1856,23 @@ subroutine InitReadInput(simulation)
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
               enddo
+            case('OUTPUT_FILE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                                 'OUTPUT,OUTPUT_FILE')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('OFF')
+                  option%print_to_file = PETSC_FALSE
+                case('PERIODIC')
+                  call InputReadInt(input,option,output_option%output_file_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'OUTPUT,PERIODIC,OUTPUT_FILE')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,OUTPUT_FILE.'
+                  call printErrMsg(option)
+              end select
             case('SCREEN')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment','OUTPUT,SCREEN')

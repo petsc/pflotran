@@ -530,7 +530,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
       option%print_screen_flag = PETSC_FALSE
     endif
 
-    if (OptionPrintToFile(option)) then
+    if (OptionPrintToFile(option) .and. &
+        mod(master_stepper%steps,output_option%output_file_imod) == 0) then
       option%print_file_flag = PETSC_TRUE
     else
       option%print_file_flag = PETSC_FALSE
