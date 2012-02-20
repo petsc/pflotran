@@ -3263,6 +3263,9 @@ subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
   ! WARNING: below assumes site concentration multiplicative factor
   allocate(rt_auxvar%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
   rt_auxvar%dtotal_sorb_eq = 0.d0
+  !geh: if jumpstarting, we need to zero the sorbed total as 
+  !     RTotalSorbeEqSurfCplx() will add but not initialize
+  rt_auxvar%total_sorb_eq = 0.d0
   call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   do irate = 1, reaction%kinmr_nrate
     rt_auxvar%kinmr_total_sorb(:,irate) = reaction%kinmr_frac(irate) * &
