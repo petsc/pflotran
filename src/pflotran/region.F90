@@ -845,11 +845,6 @@ subroutine RegionReadSideSet(sideset,filename,option)
   call InputReadInt(input,option,sideset%nfaces)
   call InputErrorMsg(input,option,'number of faces',card)
 
-#ifndef PARALLEL_SIDESET
-  num_to_read = sideset%nfaces
-  allocate(sideset%face_vertices(max_nvert_per_face,num_to_read))
-  sideset%face_vertices = -999
-#else
   ! divide faces across ranks
   num_faces_local = sideset%nfaces/option%mycommsize 
   num_faces_local_save = num_faces_local
@@ -872,7 +867,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
       temp_int_array = -999
       num_to_read = num_faces_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
-#endif      
+
       do iface = 1, num_to_read
         ! read in the vertices defining the cell face
         call InputReadFlotranString(input,option)
@@ -887,15 +882,10 @@ subroutine RegionReadSideSet(sideset,filename,option)
             num_vertices = 3
         end select
         do ivertex = 1, num_vertices
-#ifdef PARALLEL_SIDESET
           call InputReadInt(input,option,temp_int_array(ivertex,iface))
-#else
-          call InputReadInt(input,option,sideset%face_vertices(ivertex,iface))
-#endif
           call InputErrorMsg(input,option,'vertex id',card)
         enddo
       enddo
-#ifdef PARALLEL_SIDESET      
       ! if the faces reside on io_rank
       if (irank == option%io_rank) then
 #if UGRID_DEBUG
@@ -939,7 +929,6 @@ subroutine RegionReadSideSet(sideset,filename,option)
 
 !  unstructured_grid%nlmax = num_faces_local
 !  unstructured_grid%num_vertices_local = num_vertices_local
-#endif
 
   call InputDestroy(input)
 
