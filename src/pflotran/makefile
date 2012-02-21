@@ -48,6 +48,10 @@ ifdef ice
 ICE_FLAG = -DICE
 endif
 
+ifdef mech
+MECH_FLAG = -DMECH
+endif
+
 ifdef vapor
 VAPOR_FLAG = -DVAPOR
 endif
@@ -104,7 +108,7 @@ MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
 	$(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG)\
 	$(TAB_FLAG) $(PCL_FLAG) $(DBL_FLAG) $(TEMP_FLAG) $(GPU_FLAGS)\
 	$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG)\
-	$(GAUTAM_FLAGS) $(ICE_FLAG) $(VAPOR_FLAG) 
+	$(GAUTAM_FLAGS) $(ICE_FLAG) $(VAPOR_FLAG) $(MECH_FLAG)
 
 CFLAGS		 = 
 FFLAGS		 =
@@ -163,6 +167,7 @@ common_obj = ${common_src}option.o \
 	${common_src}immis_aux.o\
         ${common_src}mfd_aux.o\
 	${common_src}flash2_aux.o\
+        ${common_src}mech_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -367,3 +372,4 @@ velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
 utility.o : string.o input.o option.o
+mech_aux.o  : option.o

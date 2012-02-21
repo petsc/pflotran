@@ -77,7 +77,8 @@ module Structured_Grid_module
             StructuredGridVecGetArrayF90, &
             StructGridVecRestoreArrayF90, &
             StructGridGetGhostedNeighbors, &
-            StructGridCreateTVDGhosts
+            StructGridCreateTVDGhosts, &
+            StructGridGetGhostedNeighborsCorners
   
 contains
 
@@ -2139,6 +2140,70 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   end select
 
 end subroutine StructGridGetGhostedNeighbors
+
+
+! ************************************************************************** !
+!
+! StructGridGetGhostedNeighborsCorners: Returns an array of neighboring cells
+! including the corner nodes
+! Note that the previous subroutine does not return the corner nodes
+! author: Satish Karra
+! date: 02/19/12
+!
+! ************************************************************************** !
+subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
+                                         stencil_type, &
+                                         stencil_width_i,stencil_width_j, &
+                                         stencil_width_k, icount, &
+                                         ghosted_neighbors, &
+                                         option)
+
+  use Option_module
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: ghosted_neighbors(*)
+
+  PetscInt :: i, j, k
+  PetscInt :: icount
+  PetscInt :: ii, jj, kk
+
+  call StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
+
+  icount = 0
+  
+  select case(stencil_type)
+    case(STAR_STENCIL)
+      do ii = max(i-stencil_width_i,1), &
+                min(i+stencil_width_i,structured_grid%ngx)
+        do jj = max(j-stencil_width_j,1), & 
+                  min(j+stencil_width_j,structured_grid%ngy)
+          do kk = max(k-stencil_width_k,1), &
+                    min(k+stencil_width_k,structured_grid%ngz)
+            if (ii == i .and. jj == j .and. kk == k) then
+            ! do nothing
+            else
+              icount = icount + 1
+              ghosted_neighbors(icount) = &
+              StructGridGetGhostedIDFromIJK(structured_grid,ii,jj,kk)
+            endif
+          enddo
+        enddo          
+      enddo
+    case(BOX_STENCIL)
+      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
+        'StructGridGetNeighbors.'
+      call printErrMsg(option)
+  end select
+
+end subroutine StructGridGetGhostedNeighborsCorners
 
 ! ************************************************************************** !
 !

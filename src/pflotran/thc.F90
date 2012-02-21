@@ -476,7 +476,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
   use Coupler_module
   use Connection_module
   use Material_module
-  
+   
   implicit none
 
   type(realization_type) :: realization
@@ -499,10 +499,19 @@ subroutine THCUpdateAuxVarsPatch(realization)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
+  !!
+!  PetscReal, allocatable :: gradient(:,:)
+  !!
+  
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  
+  !!
+!  allocate(gradient(grid%ngmax,3))
+!  gradient = 0.d0
+  !!
   
   thc_aux_vars => patch%aux%THC%aux_vars
   thc_aux_vars_bc => patch%aux%THC%aux_vars_bc
@@ -525,6 +534,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
+    
    
 #ifdef ICE
     call THCAuxVarComputeIce(xx_loc_p(istart:iend), &
@@ -541,6 +551,10 @@ subroutine THCUpdateAuxVarsPatch(realization)
         porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
         option)
 #endif
+
+!    call THCComputeGradient(grid, global_aux_vars, ghosted_id, &
+!                       gradient(ghosted_id,:), option) 
+
 
     iphase_loc_p(ghosted_id) = iphase
   enddo
@@ -602,6 +616,8 @@ subroutine THCUpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   
   patch%aux%THC%aux_vars_up_to_date = PETSC_TRUE
+    
+!  deallocate(gradient)
 
 end subroutine THCUpdateAuxVarsPatch
 

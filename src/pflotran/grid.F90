@@ -131,7 +131,8 @@ module Grid_module
             GridIndexToCellID, &
             GridComputeCell2FaceConnectivity, &
             GridComputeGlobalCell2FaceConnectivity, &
-            GridGetGhostedNeighbors
+            GridGetGhostedNeighbors, &
+            GridGetGhostedNeighborsWithCorners
   
 contains
 
@@ -3041,6 +3042,51 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
   end select
 
 end subroutine GridGetGhostedNeighbors
+
+! ************************************************************************** !
+!
+! GridGetNeighborsWithCorners: Returns an array of neighboring cells along with corner
+! cells
+! author: Satish Karra
+! date: 02/19/12
+!
+! ************************************************************************** !
+subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
+                                   stencil_width_i,stencil_width_j, &
+                                   stencil_width_k,icount, &
+                                   ghosted_neighbors,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: icount
+  PetscInt :: ghosted_neighbors(*)
+  
+  select case(grid%itype)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      call StructGridGetGhostedNeighborsCorners(grid%structured_grid, &
+                                         ghosted_id,stencil_type, &
+                                         stencil_width_i, &
+                                         stencil_width_j, &
+                                         stencil_width_k, &
+                                         icount, &
+                                         ghosted_neighbors,option)
+    case(UNSTRUCTURED_GRID) 
+      option%io_buffer = 'GridGetNeighbors not currently supported for ' // &
+        'unstructured grids.'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridGetGhostedNeighborsWithCorners
+
 
 ! ************************************************************************** !
 !
