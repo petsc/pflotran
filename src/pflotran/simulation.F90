@@ -4,6 +4,9 @@ module Simulation_module
   use Timestepper_module
   use Solver_module
 
+#ifdef SURFACE_FLOW
+  use Surface_Realization_module
+#endif
   implicit none
 
 #include "definitions.h"
@@ -18,7 +21,9 @@ module Simulation_module
 #ifdef SURFACE_FLOW
     type(stepper_type), pointer :: surf_flow_stepper
 #endif
-
+#ifdef SURFACE_FLOW
+    type(surface_realization_type), pointer :: surf_realization
+#endif
   end type simulation_type
   
   interface SimulationCreate
@@ -81,6 +86,7 @@ function SimulationCreate2(option)
   simulation%tran_stepper => TimestepperCreate()
 #ifdef SURFACE_FLOW
   simulation%surf_flow_stepper => TimestepperCreate()
+  simulation%surf_realization => SurfaceRealizationCreate(option)
 #endif
   
   SimulationCreate2 => simulation
@@ -192,6 +198,22 @@ subroutine SimulationResetTimeSteppers(simulation)
     call TimestepperReset(simulation%surf_flow_stepper,dt_min)
   endif
 #endif
+#ifdef SURFACE_FLOW
+  simulation%surf_realization%option%flow_time = 0.d0
+  simulation%surf_realization%option%flow_dt = dt_min
+  simulation%surf_realization%option%tran_time = 0.d0
+  simulation%surf_realization%option%tran_dt = dt_min
+  simulation%surf_realization%option%match_waypoint = PETSC_FALSE
+
+  simulation%surf_realization%output_option%plot_number = 0
+
+  if (associated(simulation%flow_stepper)) then
+    simulation%surf_flow_stepper%cur_waypoint => &
+      simulation%surf_realization%waypoints%first
+    call TimestepperReset(simulation%surf_flow_stepper,dt_min)
+  endif
+
+#endif
 
 end subroutine SimulationResetTimeSteppers
 
@@ -232,6 +254,10 @@ subroutine SimulationDestroy(simulation)
   call TimestepperDestroy(simulation%tran_stepper)
 #ifdef SURFACE_FLOW
   call TimestepperDestroy(simulation%surf_flow_stepper)
+#endif
+
+#ifdef SURFACE_FLOW
+  call SurfaceRealizationDestroy(simulation%surf_realization)
 #endif
 
   deallocate(simulation)

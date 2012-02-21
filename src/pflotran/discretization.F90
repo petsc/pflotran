@@ -34,12 +34,6 @@ module Discretization_module
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     character(len=MAXSTRINGLENGTH) :: filename
 
-#ifdef SURFACE_FLOW
-    type(grid_type), pointer       :: surfgrid ! surface grid
-    type(dm_ptr_type), pointer     :: surf_dm_1dof
-    character(len=MAXSTRINGLENGTH) :: surfgrid_filename
-#endif
-
     type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
@@ -127,13 +121,6 @@ function DiscretizationCreate()
   nullify(discretization%grid)
   nullify(discretization%amrgrid)
   nullify(discretization%MFD)
-
-#ifdef SURFACE_FLOW
-  nullify(discretization%surfgrid)
-  allocate(discretization%surf_dm_1dof)
-  discretization%surf_dm_1dof%sgdm = 0
-  nullify(discretization%surf_dm_1dof%ugdm)
-#endif
 
   discretization%tvd_ghost_scatter = 0
   
@@ -579,10 +566,6 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(UNSTRUCTURED_GRID)
       call UGridDecompose(discretization%grid%unstructured_grid, &
                           option)
-#ifdef SURFACE_FLOW
-      call UGridDecompose(discretization%surfgrid%unstructured_grid, &
-                          option)
-#endif
     case(AMR_GRID)
   end select
 
@@ -620,27 +603,6 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(AMR_GRID)
       call AMRGridComputeLocalBounds(discretization%amrgrid)
   end select
-
-#ifdef SURFACE_FLOW
-  !-----------------------------------------------------------------------
-  ! Generate the DM objects that will manage communication.
-  !-----------------------------------------------------------------------
-  ndof = 1
-  call UGridCreateUGDM(discretization%surfgrid%unstructured_grid, &
-                       discretization%surf_dm_1dof%ugdm,ndof,option)
-
-  select case(discretization%itype)
-    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      option%io_buffer = 'Surface Flow implemented for Unstructured grid only'
-      call printErrMsg(option)
-    case(UNSTRUCTURED_GRID)
-      discretization%surfgrid%nlmax = discretization%surfgrid%unstructured_grid%nlmax
-      discretization%surfgrid%ngmax = discretization%surfgrid%unstructured_grid%ngmax
-    case(AMR_GRID)
-      option%io_buffer = 'Surface Flow implemented for Unstructured grid only'
-      call printErrMsg(option)
-  end select
-#endif
 
 end subroutine DiscretizationCreateDMs
 
@@ -699,7 +661,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
   type(dm_ptr_type), pointer :: dm_ptr
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
-  
+
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       select case (vector_type)
@@ -711,23 +673,9 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
           call DMDACreateNaturalVector(dm_ptr%sgdm,vector,ierr)
       end select
     case(UNSTRUCTURED_GRID)
-#ifdef SURFACE_FLOW
-      if(dm_index == SURF_ONEDOF) then
-        ! If surface grid vector needs to be created, pass surface grid
-        call UGridDMCreateVector(discretization%surfgrid%unstructured_grid, &
-                                dm_ptr%ugdm,vector, &
-                                vector_type,option)
-      else
-        call UGridDMCreateVector(discretization%grid%unstructured_grid, &
-                                dm_ptr%ugdm,vector, &
-                                vector_type,option)
-      endif
-#else
       call UGridDMCreateVector(discretization%grid%unstructured_grid, &
                                dm_ptr%ugdm,vector, &
                                vector_type,option)
-#endif
-
     case(AMR_GRID)
       select case(dm_index)
         case(ONEDOF)
@@ -788,11 +736,6 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
       DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
       DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
-#ifdef SURFACE_FLOW
-    case(SURF_ONEDOF)
-      DiscretizationGetDMPtrFromIndex => discretization%surf_dm_1dof
-#endif
-
   end select  
   
 end function DiscretizationGetDMPtrFromIndex
@@ -1960,10 +1903,6 @@ subroutine DiscretizationDestroy(discretization)
         call UGridDMDestroy(discretization%dm_nflowdof%ugdm)
       if (associated(discretization%dm_ntrandof%ugdm)) &
         call UGridDMDestroy(discretization%dm_ntrandof%ugdm)
-#ifdef SURFACE_FLOW
-      if (associated(discretization%surf_dm_1dof%ugdm)) &
-        call UGridDMDestroy(discretization%surf_dm_1dof%ugdm)
-#endif
   end select
   if (associated(discretization%dm_1dof)) &
     deallocate(discretization%dm_1dof)

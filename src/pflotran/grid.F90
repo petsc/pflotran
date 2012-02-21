@@ -82,9 +82,6 @@ module Grid_module
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
-#ifdef SURFACE_FLOW
-    !type(connection_set_list_type), pointer :: surface_internal_connection_set_list
-#endif
     type(face_type), pointer :: faces(:)
     type(mfd_type), pointer :: MFD
 
@@ -163,10 +160,6 @@ function GridCreate()
   nullify(grid%internal_connection_set_list)
 #ifdef DASVYAT
   nullify(grid%boundary_connection_set_list)
-#endif
-
-#ifdef SURFACE_FLOW
-  !nullify(grid%surface_internal_connection_set_list)
 #endif
 
   nullify(grid%nL2G)

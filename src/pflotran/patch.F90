@@ -553,11 +553,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
         endif
 
-#ifdef SURFACE_FLOW        
+#ifdef SURFACE_FLOW
         if(patch%surf_or_subsurf_flag == SURFACE) then
           strata%surf_material_property => &
-            MaterialPropGetPtrFromArraySurfaceFlow(strata%material_property_name, &
-                                                    patch%surf_material_property_array)
+            SurfaceMaterialPropGetPtrFromArray(strata%material_property_name, &
+                                            patch%surf_material_property_array)
           if (.not.associated(strata%surf_material_property)) then
             option%io_buffer = 'Material ' // &
                               trim(strata%material_property_name) // &

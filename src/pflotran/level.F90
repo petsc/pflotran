@@ -12,9 +12,6 @@ module Level_module
     
     PetscInt :: id
     type(patch_list_type), pointer :: patch_list
-#ifdef SURFACE_FLOW
-    type(patch_list_type), pointer :: surf_patch_list
-#endif
     type(level_type), pointer :: next
 
   end type level_type
@@ -55,9 +52,6 @@ function LevelCreate()
   level%id = 0
   level%patch_list => PatchCreateList()
   
-#ifdef SURFACE_FLOW
-  level%surf_patch_list => PatchCreateList()
-#endif
   nullify(level%next)
   
   LevelCreate => level
@@ -104,9 +98,6 @@ subroutine LevelAddPatch(new_patch,level)
   type(level_type) :: level
 
   call PatchAddToList(new_patch,level%patch_list)
-#ifdef SURFACE_FLOW
-  call PatchAddToList(new_patch,level%surf_patch_list)
-#endif
   
 end subroutine LevelAddPatch
 
@@ -361,9 +352,6 @@ subroutine LevelDestroy(level)
   type(level_type), pointer :: level
   
   call PatchDestroyList(level%patch_list)
-#ifdef SURFACE_FLOW
-  call PatchDestroyList(level%surf_patch_list)
-#endif
       
   deallocate(level)
   nullify(level)

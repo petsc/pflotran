@@ -189,12 +189,14 @@ subroutine StochasticRun(stochastic,option)
 
     call Init(simulation)
 
-#ifndef SURFACE_FLOW
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
+#ifdef SURFACE_FLOW
+    !call StepperRun(simulation%realization,simulation%flow_stepper, &
+    !                simulation%tran_stepper,simulation%surf_flow_stepper)
+    option%io_buffer = 'Stochastic mode not tested for surface-flow'
+    call printErrMsgByRank(option)
 #else
     call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper,simulation%surf_flow_stepper)
+                    simulation%tran_stepper)
 #endif
 
     call SimulationDestroy(simulation)

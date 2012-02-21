@@ -1,4 +1,4 @@
-#ifdef SURFACE_FLOW 
+#ifdef SURFACE_FLOW
 
 module Surface_Field_module
 

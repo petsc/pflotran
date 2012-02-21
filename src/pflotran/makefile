@@ -97,8 +97,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  GAUTAM_FLAGS = -DOS_STATISTICS -DENABLE_UNSTRUCTURED -w -DMIXED_UMESH -g -DREARRANGE_CONN \
-								#-DSURFACE_FLOW #-DUGRID_DEBUG #-DDMGET #-DPARALLELIO_LIB -DREARRANGE_CONN 
+  GAUTAM_FLAGS = -DOS_STATISTICS -w -g #-DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
@@ -222,6 +221,7 @@ common_obj = ${common_src}option.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_material.o \
+	${common_src}surface_realization.o \
 	${common_src}output.o \
 	${common_src}init.o
 
@@ -357,8 +357,11 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
-surface_flow.o : realization.o surface_field.o surface_material.o
+surface_flow.o : surface_realization.o surface_field.o surface_material.o
 surface_material.o : string.o option.o input.o
+surface_realization.o : condition.o debug.o discretization.o input.o level.o \
+	option.o patch.o region.o surface_field.o surface_material.o waypoint.o \
+	dataset_aux.o coupler.o string.o grid.o strata.o unstructured_grid.o dataset.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o

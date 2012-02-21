@@ -1,4 +1,4 @@
-#ifdef SURFACE_FLOW 
+#ifdef SURFACE_FLOW
 
 module Surface_Flow_module
 
@@ -31,11 +31,11 @@ contains
 !
 !
 ! ************************************************************************** !
-subroutine SurfaceFlowSetup(realization)
+subroutine SurfaceFlowSetup(surf_realization)
 
-  use Realization_module
+  use Surface_Realization_module
   
-  type(realization_type) :: realization
+  type(surface_realization_type) :: surf_realization
   
 end subroutine SurfaceFlowSetup
 
@@ -48,13 +48,13 @@ end subroutine SurfaceFlowSetup
 !!
 !! date: 02/09/12
 ! ************************************************************************** !
-subroutine SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
+subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
 
   use Option_module
   use Input_module
   use String_module
   use Surface_Material_module
-  use Realization_module
+  use Surface_Realization_module
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
@@ -64,7 +64,7 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
 
   implicit none
 
-  type(realization_type)                       :: realization
+  type(surface_realization_type)               :: surf_realization
   type(discretization_type),pointer            :: discretization
   type(grid_type), pointer                     :: grid
   type(input_type)                             :: input
@@ -72,7 +72,7 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
   type(unstructured_grid_type), pointer        :: un_str_sfgrid
   character(len=MAXWORDLENGTH)                 :: word
 
-  discretization => realization%discretization
+  discretization => surf_realization%discretization
 
   input%ierr = 0
 ! we initialize the word to blanks to avoid error reported by valgrind
@@ -104,8 +104,9 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
 
             select case(trim(word))
               case ('UNSTRUCTURED')
+                discretization%itype = UNSTRUCTURED_GRID
                 call InputReadNChars(input,option, &
-                                     discretization%surfgrid_filename, &
+                                     discretization%filename, &
                                      MAXSTRINGLENGTH, &
                                      PETSC_TRUE)
                 call InputErrorMsg(input,option,'keyword','filename')
@@ -114,11 +115,11 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
                 un_str_sfgrid => UGridCreate()
                 un_str_sfgrid%grid_type = TWO_DIM_GRID
                 call UGridReadSurfGrid(un_str_sfgrid, &
+                                       surf_realization%subsurf_filename, &
                                        discretization%filename, &
-                                       discretization%surfgrid_filename, &
                                        option)
                 grid%unstructured_grid => un_str_sfgrid
-                discretization%surfgrid => grid
+                discretization%grid => grid
                 grid%itype = discretization%itype
                 grid%ctype = discretization%ctype
 
@@ -147,13 +148,13 @@ end subroutine SurfaceFlowReadRequiredCardsFromInput
 !!
 !! date: 02/09/12
 ! ************************************************************************** !
-subroutine SurfaceFlowRead(realization,input,option)
+subroutine SurfaceFlowRead(surf_realization,input,option)
 
   use Option_module
   use Input_module
   use String_module
   use Surface_Material_module
-  use Realization_module
+  use Surface_Realization_module
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
@@ -165,7 +166,7 @@ subroutine SurfaceFlowRead(realization,input,option)
 
   implicit none
 
-  type(realization_type)                       :: realization
+  type(surface_realization_type)               :: surf_realization
   type(discretization_type),pointer            :: discretization
   type(grid_type), pointer                     :: grid
   type(input_type)                             :: input
@@ -178,7 +179,7 @@ subroutine SurfaceFlowRead(realization,input,option)
   type(strata_type), pointer                   :: strata
   character(len=MAXWORDLENGTH)                 :: word
 
-  discretization => realization%discretization
+  discretization => surf_realization%discretization
 
   input%ierr = 0
 ! we initialize the word to blanks to avoid error reported by valgrind
@@ -207,7 +208,7 @@ subroutine SurfaceFlowRead(realization,input,option)
         call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')
         call SurfaceMaterialPropertyRead(surf_material_property,input,option)
         call SurfaceMaterialPropertyAddToList(surf_material_property, &
-                                          realization%surf_material_properties)
+                                          surf_realization%surf_material_properties)
         nullify(surf_material_property)
 
       !.........................................................................
@@ -219,7 +220,7 @@ subroutine SurfaceFlowRead(realization,input,option)
         call RegionRead(region,input,option)
         ! we don't copy regions down to patches quite yet, since we
         ! don't want to duplicate IO in reading the regions
-        call RegionAddToList(region,realization%surf_regions)
+        call RegionAddToList(region,surf_realization%surf_regions)
         nullify(region)
 
       !.........................................................................
@@ -233,7 +234,7 @@ subroutine SurfaceFlowRead(realization,input,option)
         else
           call FlowConditionRead(flow_condition,input,option)
         endif
-        call FlowConditionAddToList(flow_condition,realization%surf_flow_conditions)
+        call FlowConditionAddToList(flow_condition,surf_realization%surf_flow_conditions)
         nullify(flow_condition)
 
       !.........................................................................
@@ -242,14 +243,14 @@ subroutine SurfaceFlowRead(realization,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Boundary Condition name')
         call CouplerRead(coupler,input,option)
-        call RealizationAddCouplerSurfaceFlow(realization,coupler)
+        call SurfaceRealizationAddCoupler(surf_realization,coupler)
         nullify(coupler)
 
       !.........................................................................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
         call StrataRead(strata,input,option)
-        call RealizationAddStrataSurfaceFlow(realization,strata)
+        call SurfaceRealizationAddStrata(surf_realization,strata)
         nullify(strata)
 
     end select
@@ -262,11 +263,11 @@ end subroutine SurfaceFlowRead
 !
 !
 ! ************************************************************************** !
-subroutine SurfaceFlowResidual(snes,xx,r,realization,ierr)
+subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
 !subroutine SurfaceFlowResidual(realization)
 
-  use Realization_module
-  use Field_module
+  use Surface_Realization_module
+  use Surface_Field_module
   use Patch_module
   use Level_module
   use Discretization_module
@@ -278,31 +279,31 @@ subroutine SurfaceFlowResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(surface_realization_type) :: surf_realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
-  type(field_type), pointer :: field
+  type(surface_field_type), pointer :: surf_field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)
   
-  field => realization%field
-  discretization => realization%discretization
-  option => realization%option
+  surf_field => surf_realization%surf_field
+  discretization => surf_realization%discretization
+  option => surf_realization%option
 
   ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_level => surf_realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
+    cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
+      surf_realization%patch => cur_patch
+      call SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       !call SurfaceFlowResidualPatch1(realization)
       cur_patch => cur_patch%next
     enddo
@@ -315,18 +316,18 @@ end subroutine SurfaceFlowResidual
 !
 !
 ! ************************************************************************** !
-subroutine SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
+subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
 !subroutine SurfaceFlowResidualPatch1(realization)
 
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Surface_Realization_module
   use Patch_module
   use Grid_module
   use Option_module
   use Coupler_module  
-  use Field_module
+  use Surface_Field_module
   use Debug_module
   
   implicit none
@@ -339,7 +340,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(surface_realization_type) :: surf_realization
 
   PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
@@ -353,13 +354,13 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: upweight
-  PetscReal :: Res(realization%option%nflowdof), v_darcy
+  PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
 
 
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
+  type(surface_field_type), pointer :: surf_field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -371,10 +372,10 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: direction, max_x_conn, max_y_conn
   PetscViewer :: viewer
   
-  patch => realization%patch
+  patch => surf_realization%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
+  option => surf_realization%option
+  surf_field => surf_realization%surf_field
   !richards_parameter => patch%aux%Richards%richards_parameter
   !rich_aux_vars => patch%aux%Richards%aux_vars
   !rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
@@ -386,6 +387,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
   
   ! Interior Flux Terms -----------------------------------
+  !write(*,*),'Interior fluxes:'
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -420,6 +422,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,realization,ierr)
   enddo
 
   ! Boundary Flux Terms -----------------------------------
+  !write(*,*),'Boundary fluxes:'
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -453,9 +456,9 @@ end subroutine SurfaceFlowResidualPatch1
 !
 !
 ! ************************************************************************** !
-subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
 
-  use Realization_module
+  use Surface_Realization_module
   use Level_module
   use Patch_module
   use Grid_module
@@ -467,7 +470,7 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(surface_realization_type) :: surf_realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -483,7 +486,7 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
-  option => realization%option
+  option => surf_realization%option
 
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
@@ -498,15 +501,15 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
   ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
+  cur_level => surf_realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
+    cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
+      surf_realization%patch => cur_patch
 
-      call SurfaceFlowJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
+      call SurfaceFlowJacobianPatch1(snes,xx,J,J,flag,surf_realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -520,12 +523,12 @@ end subroutine SurfaceFlowJacobian
 !
 ! ************************************************************************** !
 
-subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
        
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Surface_Realization_module
   use Option_module
   use Patch_module
   use Grid_module
@@ -538,7 +541,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  type(realization_type) :: realization
+  type(surface_realization_type) :: surf_realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -553,8 +556,8 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   
-  PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
-               Jdn(realization%option%nflowdof,realization%option%nflowdof)
+  PetscReal :: Jup(surf_realization%option%nflowdof,surf_realization%option%nflowdof), &
+               Jdn(surf_realization%option%nflowdof,surf_realization%option%nflowdof)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -573,9 +576,9 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   
   PetscViewer :: viewer
 
-  patch => realization%patch
+  patch => surf_realization%patch
   grid => patch%grid
-  option => realization%option
+  option => surf_realization%option
   !field => realization%field
   !richards_parameter => patch%aux%Richards%richards_parameter
   !rich_aux_vars => patch%aux%Richards%aux_vars
@@ -643,7 +646,6 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'jacobian_surfflow.out',viewer,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-
 
 end subroutine SurfaceFlowJacobianPatch1
 

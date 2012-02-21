@@ -271,10 +271,10 @@ end subroutine TimestepperRead
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-#ifndef SURFACE_FLOW
-subroutine StepperRun(realization,flow_stepper,tran_stepper)
+#ifdef SURFACE_FLOW
+subroutine StepperRun(realization,surf_realization,flow_stepper,tran_stepper,surf_flow_stepper)
 #else
-subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
+subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #endif
 
   use Realization_module
@@ -287,6 +287,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
   use Condition_Control_module
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
+  use Surface_Realization_module
 #endif
   implicit none
   
@@ -300,6 +301,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
   type(stepper_type), pointer :: tran_stepper
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer :: surf_flow_stepper
+  type(surface_realization_type), pointer :: surf_realization
 #endif
   
   type(stepper_type), pointer :: master_stepper
@@ -551,7 +553,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper,surf_flow_stepper)
                               failure)
 #ifdef SURFACE_FLOW
       call SNESSolve(surf_flow_stepper%solver%snes, PETSC_NULL_OBJECT, &
-                      realization%surf_field%flow_xx, ierr)
+                     surf_realization%surf_field%flow_xx, ierr)
 #endif
       call PetscLogStagePop(ierr)
       if (failure) return ! if flow solve fails, exit

@@ -157,12 +157,14 @@
 
     call Init(simulation)
 
-#ifndef SURFACE_FLOW
-    call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper)
+#ifdef SURFACE_FLOW
+    call StepperRun(simulation%realization,simulation%surf_realization, &
+                    simulation%flow_stepper, &
+                    simulation%tran_stepper, &
+                    simulation%surf_flow_stepper)
 #else
     call StepperRun(simulation%realization,simulation%flow_stepper, &
-                    simulation%tran_stepper,simulation%surf_flow_stepper)
+                    simulation%tran_stepper)
 #endif
 
   ! Clean things up.

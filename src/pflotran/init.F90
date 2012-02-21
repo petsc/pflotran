@@ -69,6 +69,7 @@ subroutine Init(simulation)
   use Surface_Field_module
   use Surface_Flow_Module
   use Unstructured_Grid_module
+  use Surface_Realization_module
 #endif
   implicit none
   
@@ -96,10 +97,10 @@ subroutine Init(simulation)
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
 #ifdef SURFACE_FLOW
-  type(stepper_type), pointer :: surf_flow_stepper
-  type(solver_type), pointer :: surf_flow_solver
-  type(surface_field_type),pointer :: surf_field
-  type(dm_ptr_type), pointer :: dm_ptr
+  type(stepper_type), pointer               :: surf_flow_stepper
+  type(solver_type), pointer                :: surf_flow_solver
+  type(surface_field_type), pointer         :: surf_field
+  type(surface_realization_type), pointer   :: surf_realization
 #endif
       
   interface
@@ -127,8 +128,9 @@ end interface
   debug => realization%debug
   input => realization%input
 #ifdef SURFACE_FLOW
+  surf_realization  => simulation%surf_realization
   surf_flow_stepper => simulation%surf_flow_stepper
-  surf_field => realization%surf_field
+  surf_field        => surf_realization%surf_field  
 #endif
   
   option%init_stage = PETSC_TRUE
@@ -159,6 +161,11 @@ end interface
 
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
+#ifdef SURFACE_FLOW
+  surf_realization%input => InputCreate(IUNIT1,option%input_filename)
+  surf_realization%subsurf_filename = realization%discretization%filename
+  call InitReadRequiredCardsFromInputSurf(simulation%surf_realization)
+#endif
 
   patch => realization%patch
 
@@ -247,6 +254,9 @@ end interface
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+#ifdef SURFACE_FLOW
+  call SurfaceRealizationCreateDiscretization(simulation%surf_realization)
+#endif  
 ! deprecated - geh
 !  if (option%compute_mass_balance) then
 !    call MassBalanceCreate(realization)
@@ -481,11 +491,13 @@ end interface
       endif
     endif
 
-    dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,SURF_ONEDOF)
-    
-    write(*,*),'Surfaceflow Jacobian: '
-    call UGridDMCreateJacobian(discretization%surfgrid%unstructured_grid, &
-                               dm_ptr%ugdm,surf_flow_solver%Jpre_mat_type,surf_flow_solver%Jpre,option)
+    call DiscretizationCreateJacobian( &
+                                      simulation%surf_realization%discretization, &
+                                      NFLOWDOF, &
+                                      surf_flow_solver%Jpre_mat_type, &
+                                      surf_flow_solver%Jpre, &
+                                      option)
+
     call MatSetOption(surf_flow_solver%Jpre,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
     call MatSetOption(surf_flow_solver%Jpre,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
@@ -497,10 +509,11 @@ end interface
 
     call SNESSetFunction(surf_flow_solver%snes,surf_field%flow_r, &
                           SurfaceFlowResidual, &
-                          realization,ierr)
+                          simulation%surf_realization,ierr)
 
-    call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J,surf_flow_solver%Jpre, &
-                        SurfaceFlowJacobian,realization,ierr)
+    call SNESSetJacobian(surf_flow_solver%snes,surf_flow_solver%J, &
+                         surf_flow_solver%Jpre, &
+                         SurfaceFlowJacobian,simulation%surf_realization,ierr)
 
     ! by default turn off line search
     call SNESLineSearchSet(surf_flow_solver%snes,SNESLineSearchNo, &
@@ -645,27 +658,26 @@ end interface
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
-#ifdef SURFACE_FLOW
-  call RealizationLocalizeRegionsSurfaceFlow(realization)
-  call RealizationMapSurfSubsurfaceGrids(realization)
-#endif
   call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
-#ifdef SURFACE_FLOW
-  call RealProcessPropSurfaceFlow(realization)
-#endif
   call RealizationProcessCouplers(realization)
-#ifdef SURFACE_FLOW
-  call RealizationProcessCouplersSurfaceFlow(realization)
-#endif
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
 
 #ifdef SURFACE_FLOW
-  call assignMaterialPropToRegionsSurfaceFlow(realization)
+  call readSurfaceRegionFiles(simulation%surf_realization)
+  call SurfaceRealizationMapSurfSubsurfaceGrids(realization,simulation%surf_realization)
+  call SurfaceRealizationLocalizeRegions(simulation%surf_realization)
+  call SurfaceRealizatonPassFieldPtrToPatches(simulation%surf_realization)
+  call SurfaceRealizationProcessMatProp(simulation%surf_realization)
+  call SurfaceRealizationProcessCouplers(simulation%surf_realization)
+  call SurfaceRealizationProcessConditions(simulation%surf_realization)
+  !call RealProcessFluidProperties(simulation%surf_realization)
+  call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
 #endif
+
 
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
@@ -1047,7 +1059,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   string = "SURFACE_FLOW"
   call InputFindStringInFile(input,option,string)
   call InputFindStringErrorMsg(input,option,string)
-  call SurfaceFlowReadRequiredCardsFromInput(realization,input,option)
+  !call SurfaceFlowReadRequiredCardsFromInput(simulation%surf_realization,input,option)
 #endif
 
   select case(discretization%itype)
@@ -1060,12 +1072,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
       level => LevelCreate()
       call LevelAddToList(level,realization%level_list)
       call PatchAddToList(patch,level%patch_list)
-#ifdef SURFACE_FLOW
-      patch2 => PatchCreate()
-      patch2%grid => discretization%surfgrid
-      patch2%surf_or_subsurf_flag = SURFACE
-      call PatchAddToList(patch2,level%surf_patch_list)
-#endif
       realization%patch => patch
     case(AMR_GRID)
       realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)
@@ -2133,7 +2139,7 @@ subroutine InitReadInput(simulation)
 #ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
-        call SurfaceFlowRead(realization,input,option)
+        call SurfaceFlowRead(simulation%surf_realization,input,option)
 #endif
 
 !....................
@@ -2875,36 +2881,6 @@ subroutine readRegionFiles(realization)
     endif
     region => region%next
   enddo
-
-#ifdef SURFACE_FLOW
-  ! read region files corresponding to surface-flow
-  region => realization%surf_regions%first
-  do 
-    if (.not.associated(region)) exit
-    if (len_trim(region%filename) > 1) then
-      if (index(region%filename,'.h5') > 0) then
-        if (region%grid_type == STRUCTURED_GRID) then
-          call HDF5ReadRegionFromFile(realization,region,region%filename)
-        else
-#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
-          call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
-#else
-     !geh: No.  AMR is entirely structured.
-      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
-#endif      
-        endif
-      else if (index(region%filename,'.ss') > 0) then
-        region%sideset => RegionCreateSideset()
-        call RegionReadFromFile(region%sideset,region%filename, &
-                                realization%option)
-      else
-        call RegionReadFromFile(region,realization%option, &
-                                region%filename)
-      endif
-    endif
-    region => region%next
-  enddo
-#endif SURFACE_FLOW
 
 end subroutine readRegionFiles
 
@@ -3693,6 +3669,77 @@ subroutine InitReadHDF5CardsFromInput(realization)
 end subroutine InitReadHDF5CardsFromInput
 
 #ifdef SURFACE_FLOW
+! ************************************************************************** !
+!> This routine reads the required input file cards related to surface flows
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/18/12
+! ************************************************************************** !
+
+subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
+
+  use Option_module
+  use Discretization_module
+  use Grid_module
+  use Input_module
+  use String_module
+  use Patch_module
+  use Level_module
+
+  use Surface_Flow_module
+  use Surface_Realization_module
+
+  implicit none
+
+  type(surface_realization_type)     :: surf_realization
+  type(discretization_type), pointer :: discretization
+
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  type(patch_type), pointer   :: patch
+  type(level_type), pointer   :: level
+  type(grid_type), pointer    :: grid
+  type(option_type), pointer  :: option
+  type(input_type), pointer   :: input
+  
+  patch          => surf_realization%patch
+  option         => surf_realization%option
+  discretization => surf_realization%discretization
+  
+  input => surf_realization%input
+  
+! Read in select required cards
+!.........................................................................
+ 
+  ! GRID information
+  string = "GRID"
+  call InputFindStringInFile(input,option,string)
+  call InputFindStringErrorMsg(input,option,string)
+
+  ! SURFACE_FLOW information
+  string = "SURFACE_FLOW"
+  call InputFindStringInFile(input,option,string)
+  call InputFindStringErrorMsg(input,option,string)
+  call SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
+
+  select case(discretization%itype)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      patch => PatchCreate()
+      patch%grid => discretization%grid
+      patch%surf_or_subsurf_flag = SURFACE
+      if (.not.associated(surf_realization%level_list)) then
+        surf_realization%level_list => LevelCreateList()
+      endif
+      level => LevelCreate()
+      call LevelAddToList(level,surf_realization%level_list)
+      call PatchAddToList(patch,level%patch_list)
+      surf_realization%patch => patch
+    case(AMR_GRID)
+  end select
+    
+end subroutine InitReadRequiredCardsFromInputSurf
 
 ! ************************************************************************** !
 !> This routine assigns surface material properties to associated regions in
@@ -3704,9 +3751,9 @@ end subroutine InitReadHDF5CardsFromInput
 !! date: 02/13/12
 ! ************************************************************************** !
 
-subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
+subroutine assignSurfaceMaterialPropToRegions(surf_realization)
 
-  use Realization_module
+  use Surface_Realization_module
   use Discretization_module
   use Strata_module
   use Region_module
@@ -3723,7 +3770,7 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(surface_realization_type) :: surf_realization
   
   PetscReal, pointer :: man0_p(:)
   PetscReal, pointer :: vec_p(:)
@@ -3748,15 +3795,15 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
   type(region_type), pointer :: region
   PetscBool :: update_ghosted_material_ids
   
-  option => realization%option
-  discretization => realization%discretization
-  surf_field => realization%surf_field
+  option => surf_realization%option
+  discretization => surf_realization%discretization
+  surf_field => surf_realization%surf_field
 
   ! loop over all patches and allocation material id arrays
-  cur_level => realization%level_list%first
+  cur_level => surf_realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
+    cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
       if (.not.associated(cur_patch%imat)) then
@@ -3775,10 +3822,10 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
   ! if material ids are set based on region, as opposed to being read in
   ! we must communicate the ghosted ids.  This flag toggles this operation.
   update_ghosted_material_ids = PETSC_FALSE
-  cur_level => realization%level_list%first
+  cur_level => surf_realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
+    cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
       grid => cur_patch%grid
@@ -3823,16 +3870,16 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
 
   if (update_ghosted_material_ids) then
     ! update ghosted material ids
-    call RealLocalToLocalWithArraySurfaceFlow(realization,MATERIAL_ID_ARRAY)
+    call SurfaceRealizationLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
   endif
 
   ! set cell by cell material properties
   ! create null material property for inactive cells
   null_surf_material_property => SurfaceMaterialPropertyCreate()
-  cur_level => realization%level_list%first
+  cur_level => surf_realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%surf_patch_list%first
+    cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
 
@@ -3845,9 +3892,9 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
           surf_material_property = null_surf_material_property
         else if ( surf_material_id > 0 .and. &
                   surf_material_id <= &
-                  size(realization%surf_material_property_array)) then
+                  size(surf_realization%surf_material_property_array)) then
           surf_material_property => &
-            realization%surf_material_property_array(surf_material_id)%ptr
+            surf_realization%surf_material_property_array(surf_material_id)%ptr
           if (.not.associated(surf_material_property)) then
             write(dataset_name,*) material_id
             option%io_buffer = 'No material property for surface material id ' // &
@@ -3860,7 +3907,7 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
           option%io_buffer = 'Uninitialized surface material id in patch at cell ' // &
                              trim(adjustl(dataset_name))
           call printErrMsgByRank(option)
-        else if (surf_material_id > size(realization%surf_material_property_array)) then
+        else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
           write(option%io_buffer,*) material_id
           option%io_buffer = 'Unmatched surface material id in patch:' // &
             adjustl(trim(option%io_buffer))
@@ -3885,14 +3932,60 @@ subroutine assignMaterialPropToRegionsSurfaceFlow(realization)
   nullify(null_surf_material_property)
 
   call DiscretizationGlobalToLocal(discretization,surf_field%mannings0, &
-                                   surf_field%mannings_loc,SURF_ONEDOF)
+                                   surf_field%mannings_loc,ONEDOF)
 
-  option%io_buffer = 'stopping for debugging'
-  call printErrMsgByRank(option)
+end subroutine assignSurfaceMaterialPropToRegions
 
-end subroutine assignMaterialPropToRegionsSurfaceFlow
+! ************************************************************************** !
+!> This routine reads surface region files
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/20/12
+! ************************************************************************** !
+subroutine readSurfaceRegionFiles(surf_realization)
 
-#endif SURFACE_FLOW
+  use Surface_Realization_module
+  use Region_module
+  use HDF5_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  
+  type(region_type), pointer :: surf_region
+  
+  surf_region => surf_realization%surf_regions%first
+  do 
+    if (.not.associated(surf_region)) exit
+    if (len_trim(surf_region%filename) > 1) then
+      if (index(surf_region%filename,'.h5') > 0) then
+        if (surf_region%grid_type == STRUCTURED_GRID) then
+          !call HDF5ReadRegionFromFile(surf_realization,surf_region,surf_region%filename)
+        else
+#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+          !call HDF5ReadUnstructuredGridRegionFromFile(surf_realization,surf_region,surf_region%filename)
+#else
+     !geh: No.  AMR is entirely structured.
+      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
+#endif      
+        endif
+      else if (index(surf_region%filename,'.ss') > 0) then
+        surf_region%sideset => RegionCreateSideset()
+        call RegionReadFromFile(surf_region%sideset,surf_region%filename, &
+                                surf_realization%option)
+      else
+        call RegionReadFromFile(surf_region,surf_realization%option, &
+                                surf_region%filename)
+      endif
+    endif
+    surf_region => surf_region%next
+  enddo
+
+end subroutine readSurfaceRegionFiles
+
+#endif ! SURF_FLOW
 
 ! ************************************************************************** !
 !
