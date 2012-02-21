@@ -217,6 +217,7 @@ module Option_module
     PetscBool :: print_mad 
 
     PetscInt :: screen_imod
+    PetscInt :: output_file_imod
     
     PetscInt :: periodic_output_ts_imod
     PetscInt :: periodic_tr_output_ts_imod
@@ -590,6 +591,7 @@ function OutputOptionCreate()
   output_option%print_final = PETSC_TRUE
   output_option%plot_number = 0
   output_option%screen_imod = 1
+  output_option%output_file_imod = 1
   output_option%periodic_output_ts_imod  = 100000000
   output_option%periodic_output_time_incr = 0.d0
   output_option%periodic_tr_output_ts_imod = 100000000

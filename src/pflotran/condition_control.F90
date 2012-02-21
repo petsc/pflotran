@@ -651,7 +651,10 @@ subroutine CondControlAssignTranInitCond(realization)
             enddo
           endif
           ! this is for the multi-rate surface complexation model
-          if (reaction%kinmr_nrate > 0) then
+          if (reaction%kinmr_nrate > 0 .and. &
+            ! geh: if we re-equilibrate at each grid cell, we do not want to
+            ! overwrite the reequilibrated values with those from the constraint
+              .not. re_equilibrate_at_each_cell) then
             ! copy over total sorbed concentration
             rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
               constraint_coupler%rt_auxvar%kinmr_total_sorb

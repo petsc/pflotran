@@ -429,6 +429,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   call StepperUpdateSolution(realization)
 
   if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
+    ! only user jumpstart for a restarted simulation
+    if (.not. option%restart_flag) then
+      option%io_buffer = 'Only use JUMPSTART_KINETIC_SORPTION on a ' // &
+        'restarted simulation.  ReactionEquilibrateConstraint() will ' // &
+        'appropriately set sorbed initial concentrations for a normal ' // &
+        '(non-restarted) simulation.'
+      call printErrMsg(option)
+    endif
     call StepperJumpStart(realization)
   endif
   
@@ -532,7 +540,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       option%print_screen_flag = PETSC_FALSE
     endif
 
-    if (OptionPrintToFile(option)) then
+    if (OptionPrintToFile(option) .and. &
+        mod(master_stepper%steps,output_option%output_file_imod) == 0) then
       option%print_file_flag = PETSC_TRUE
     else
       option%print_file_flag = PETSC_FALSE
