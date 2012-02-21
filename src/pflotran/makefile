@@ -167,7 +167,6 @@ common_obj = ${common_src}option.o \
 	${common_src}immis_aux.o\
         ${common_src}mfd_aux.o\
 	${common_src}flash2_aux.o\
-        ${common_src}mech_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -320,7 +319,7 @@ reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
 	matrix_buffer.o logging.o amrgrid.o
-thc_aux.o : option.o material.o water_eos.o saturation_function.o
+thc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 	matrix_buffer.o global_aux.o
 general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
