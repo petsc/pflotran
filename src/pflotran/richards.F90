@@ -2067,10 +2067,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
-
-       !   write(*,*) "Gravity Input", Dq*ukvr*gravity
-       !   write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
-!            write(*,*) "Dq", Dq, "ukvr ", ukvr, "density",density_ave 
    
       q = v_darcy * area
 
