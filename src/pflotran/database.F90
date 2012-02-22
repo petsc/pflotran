@@ -9,8 +9,11 @@ module Database_module
   
 #include "definitions.h"
 
-  public :: DatabaseRead, BasisInit, DatabaseRead_hpt, BasisInit_hpt
-  
+  public :: DatabaseRead, &
+#ifdef chuan_hpt
+            DatabaseRead_hpt, BasisInit_hpt
+#endif
+            BasisInit
 contains
 
 ! ************************************************************************** !
