@@ -285,7 +285,16 @@ subroutine RichardsCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
   do i = 1, n
     delP = dP_p(i)
     P0 = P_p(i)
-    P1 = P0 + delP
+    P1 = P0 - delP
+    if (P0 < P_R .and. P1 > P_R) then
+      write(option%io_buffer,'("U -> S:",1i7,2es15.7)') &
+        grid%nG2A(grid%nL2G(i)),P0,P1 
+      call printMsg(option)
+    else if (P1 < P_R .and. P0 > P_R) then
+      write(option%io_buffer,'("S -> U:",1i7,2es15.7)') &
+        grid%nG2A(grid%nL2G(i)),P0,P1
+      call printMsg(option)
+    endif
     ! transition from unsaturated to saturated
     if (P0 < P_R .and. P1 > P_R) then
       dP_p(i) = scale*delP
@@ -832,12 +841,19 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
      
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
-   
+
     call RichardsAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
+#if 0
+    if (ghosted_id == 96911) then
+      call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id),ghosted_id)
+    endif
+#endif
+   
   enddo
 
   call PetscLogEventEnd(logging%event_r_auxvars,ierr)
@@ -6413,6 +6429,35 @@ function RichardsGetTecplotHeader(realization,icolumn)
   RichardsGetTecplotHeader = string
 
 end function RichardsGetTecplotHeader
+
+! ************************************************************************** !
+!
+! RichardsPrintAuxVars: Prints out the contents of an auxvar
+! author: Glenn Hammond
+! date: 02/21/12
+!
+! ************************************************************************** !
+subroutine RichardsPrintAuxVars(richards_auxvar,global_auxvar,cell_id)
+
+  use Global_Aux_module
+
+  implicit none
+
+  type(richards_auxvar_type) :: richards_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscInt :: cell_id
+
+  print *, '      cell: ', cell_id
+  print *, '  pressure: ', global_auxvar%pres(1)
+  print *, 'saturation: ', global_auxvar%sat(1)
+  print *, '   density: ', global_auxvar%den_kg(1)
+  print *, '        pc: ', richards_auxvar%pc
+  print *, '       kvr: ', richards_auxvar%kvr
+  print *, '   dkvr_dp: ', richards_auxvar%dkvr_dp
+  print *, '   dsat_dp: ', richards_auxvar%dsat_dp
+  print *, '   dden_dp: ', richards_auxvar%dden_dp
+
+end subroutine RichardsPrintAuxVars
 
 ! ************************************************************************** !
 !
