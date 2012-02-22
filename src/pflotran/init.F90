@@ -235,8 +235,13 @@ end interface
   
   if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
+#ifdef chuan_hpt
+      call DatabaseRead_hpt(realization%reaction,option)
+      call BasisInit_hpt(realization%reaction,option)    
+#else
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
+#endif
     else
       ! turn off activity coefficients since the database has not been read
       realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF

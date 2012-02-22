@@ -9,7 +9,7 @@ module Database_module
   
 #include "definitions.h"
 
-  public :: DatabaseRead, BasisInit
+  public :: DatabaseRead, BasisInit, DatabaseRead_hpt, BasisInit_hpt
   
 contains
 
@@ -3665,7 +3665,7 @@ subroutine DatabaseRead_hpt(reaction,option)
 
   call InputDestroy(input)
 
-end subroutine DatabaseRead
+end subroutine DatabaseRead_hpt
 
 ! ************************************************************************** !
 !
@@ -3729,7 +3729,7 @@ subroutine BasisInit_hpt(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: pri_names(:)
   character(len=MAXWORDLENGTH), allocatable :: sec_names(:)
   character(len=MAXWORDLENGTH), allocatable :: gas_names(:)
-  PetscReal, allocatable :: logKvector_swapped(:,:)
+  PetscReal, allocatable :: logKCoeffvector_swapped(:,:)
   PetscBool, allocatable :: flags(:)
   PetscBool :: negative_flag
   PetscReal :: value
@@ -3969,7 +3969,7 @@ subroutine BasisInit_hpt(reaction,option)
   gas_names = ''
   
   allocate(logKCoeffvector(reaction%num_dbase_parameters,ncomp_secondary))
-  logCoeffKvector = 0.d0
+  logKCoeffvector = 0.d0
   
   ! fill in names
   icount = 1
@@ -4005,7 +4005,7 @@ subroutine BasisInit_hpt(reaction,option)
     if (.not.associated(cur_pri_aq_spec)) exit
     if (associated(cur_pri_aq_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_pri_aq_spec%dbaserxn%logK
+      logKCoeffvector(:,icount) = cur_pri_aq_spec%dbaserxn%logK
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_pri_aq_spec%name, &
                             cur_pri_aq_spec%name, &
@@ -4140,7 +4140,7 @@ subroutine BasisInit_hpt(reaction,option)
   deallocate(indices)
   deallocate(unit_vector)
   deallocate(sec_matrix_inverse)
-  deallocate(logKCoeffvector)
+  deallocate(logKCoeffvector_swapped)
   
   cur_pri_aq_spec => reaction%primary_species_list
   do
@@ -4237,7 +4237,7 @@ subroutine BasisInit_hpt(reaction,option)
   new_basis_names = pri_names
 
   deallocate(stoich_matrix)
-  deallocate(logKvector_swapped)
+  deallocate(logKCoeffvector_swapped)
 
   deallocate(pri_names)
   deallocate(sec_names)
@@ -5981,7 +5981,7 @@ subroutine BasisInit_hpt(reaction,option)
   if (allocated(transformation)) deallocate(transformation)
   if (allocated(stoich_prev)) deallocate(stoich_prev)
   if (allocated(stoich_new)) deallocate(stoich_new)
-  if (allocated(logKvector)) deallocate(logKvector)
+  if (allocated(logKCoeffvector)) deallocate(logKCoeffvector)
   if (allocated(indices)) deallocate(indices)
 
   if (allocated(new_basis_names)) deallocate(new_basis_names)
@@ -6319,7 +6319,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn)
   
   ! adjust the equilibrium coefficient
 #ifdef chuan_hpt
-  dbaserxn2%logKCoeff_hpt = dbaserxn2%logKCoeff_hpt + scale*dbaserxn1%logKCoeff_hpt
+  mnrl_dbaserxn%logKCoeff_hpt = mnrl_dbaserxn%logKCoeff_hpt + scale*sec_dbaserxn%logKCoeff_hpt
 #else
   mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
 #endif
