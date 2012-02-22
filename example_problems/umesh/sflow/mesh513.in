@@ -127,7 +127,7 @@ FLOW_CONDITION initial
     PRESSURE hydrostatic
   /
   INTERPOLATION linear
-  DATUM 0.d0 0.d0 1.d0
+  DATUM 0.d0 0.d0 0.5d0
   PRESSURE 101325.d0
 END
 
@@ -136,26 +136,11 @@ FLOW_CONDITION recharge
     FLUX neumann
   /
   FLUX 0d-9  ! 25 cm/yr
-:  FLUX 7.927d-9  ! 25 cm/yr
-END
-
-FLOW_CONDITION injection
-  TYPE
-    RATE volumetric_rate
-  /
-  RATE 1.157407d-1 ! m^3/s   ! 10,000 m^3/day
-END
-
-FLOW_CONDITION extraction
-  TYPE
-    RATE volumetric_rate
-  /
-  RATE -1.157407d-1 ! m^3/s  ! 10,000 m^3/day
 END
 
 :=========================== condition couplers ===============================
 : initial condition
-INITIAL_CONDITION
+INITIAL_CONDITION initial_copuler
   FLOW_CONDITION initial
   REGION all
 END
@@ -187,11 +172,6 @@ SURF_REGION top_2cell
   GRID unstructured
 END
 
-:SURF_REGION surf_all
-:  FILE top513.ss
-:  SURF_GRID unstructured
-:END
-
 SURF_REGION surf_all
   COORDINATES
     -1.d0 -1.d0 2.5d0
@@ -199,6 +179,14 @@ SURF_REGION surf_all
   /
 END 
 
+SURF_FLOW_CONDITION surf_initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  INTERPOLATION linear
+  DATUM 0.d0 0.d0 3.5d0
+  PRESSURE 101325.d0
+END
 
 SURF_FLOW_CONDITION rain
   TYPE
@@ -211,6 +199,12 @@ END
 SURF_BOUNDARY_CONDITION top_2cell
   SURF_FLOW_CONDITION rain
   SURF_REGION top_2cell
+END
+
+: initial condition
+SURF_INITIAL_CONDITION surf_initial_coupler
+  FLOW_CONDITION surf_initial
+  REGION surf_all
 END
 
 STRATA

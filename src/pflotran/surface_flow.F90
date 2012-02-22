@@ -19,6 +19,9 @@ module Surface_Flow_module
 #include "finclude/petsclog.h"
 
 
+! Cutoff parameters
+  PetscReal, parameter :: eps       = 1.D-8
+
   public SurfaceFlowSetup, &
          SurfaceFlowReadRequiredCardsFromInput, &
          SurfaceFlowRead, &
@@ -252,6 +255,20 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
         call StrataRead(strata,input,option)
         call SurfaceRealizationAddStrata(surf_realization,strata)
         nullify(strata)
+        
+      !.........................................................................
+      case ('SURF_INITIAL_CONDITION')
+        coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
+        call InputReadWord(input,option,coupler%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Initial Condition name') 
+        call CouplerRead(coupler,input,option)
+        call SurfaceRealizationAddCoupler(surf_realization,coupler)
+        nullify(coupler)        
+
+      case default
+        option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
+                           'not recognized'
+        call printErrMsg(option)
 
     end select
   enddo
@@ -264,7 +281,6 @@ end subroutine SurfaceFlowRead
 !
 ! ************************************************************************** !
 subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
-!subroutine SurfaceFlowResidual(realization)
 
   use Surface_Realization_module
   use Surface_Field_module
@@ -317,7 +333,6 @@ end subroutine SurfaceFlowResidual
 !
 ! ************************************************************************** !
 subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
-!subroutine SurfaceFlowResidualPatch1(realization)
 
   use water_eos_module
 
@@ -346,8 +361,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
-  PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
-                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: r_p(:), mannings_loc_p(:),xx_loc_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:)
   PetscInt :: icap_up, icap_dn
@@ -367,22 +381,21 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   PetscInt :: iconn
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
-  PetscReal :: distance_gravity
+  PetscReal :: distance_gravity, slope
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   PetscViewer :: viewer
+  PetscReal :: xm_nacl, rho, dw_kg
+  
   
   patch => surf_realization%patch
   grid => patch%grid
   option => surf_realization%option
   surf_field => surf_realization%surf_field
-  !richards_parameter => patch%aux%Richards%richards_parameter
-  !rich_aux_vars => patch%aux%Richards%aux_vars
-  !rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
-  !global_aux_vars => patch%aux%Global%aux_vars
-  !global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
   call GridVecGetArrayF90(grid,r, r_p, ierr)
+  call GridVecGetArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
+  call GridVecGetArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
 
   r_p = 0.d0
   
@@ -402,7 +415,37 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
       
-      !write(*,'(5I5)'),sum_connection,ghosted_id_dn,ghosted_id_up,local_id_dn,local_id_up
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
+      ! distance = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = distance * &                  ! distance_gravity = dx*g*n
+                         dot_product(option%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
+      dd_up = distance*fraction_upwind
+      dd_dn = distance-dd_up ! should avoid truncation error
+      ! upweight could be calculated as 1.d0-fraction_upwind
+      ! however, this introduces ever so slight error causing pflow-overhaul not
+      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
+      upweight = dd_dn/(dd_up+dd_dn)
+
+      slope = cur_connection_set%dist(3,iconn)/ &
+                dot_product(cur_connection_set%dist(1:3,iconn), &
+                            cur_connection_set%dist(1:3,iconn))
+
+      xm_nacl = option%m_nacl * FMWNACL
+      xm_nacl = xm_nacl /(1.d3 + xm_nacl)
+
+      call nacl_den(option%reference_temperature,option%reference_pressure*1.d-6,xm_nacl,dw_kg) 
+      rho = dw_kg * 1.d3
+
+      write(*,'(3I5,4es10.2)'),sum_connection,ghosted_id_dn,ghosted_id_up, &
+        !fraction_upwind,distance,distance_gravity,dd_up,dd_dn,cur_connection_set%dist(1:3,iconn)
+        slope,mannings_loc_p(ghosted_id_up),&
+        (xx_loc_p(ghosted_id_up)-option%reference_pressure)/option%gravity(3)/dw_kg/1.d3, dw_kg*1.d3
+        
+      !call SurfaceFluxKinematic()
 
       Res(1) = 1.0d0
 
@@ -420,6 +463,9 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
+
+  option%io_buffer = 'stopping for debugging'
+  call printErrMsgByRank(option)
 
   ! Boundary Flux Terms -----------------------------------
   !write(*,*),'Boundary fluxes:'
@@ -442,9 +488,8 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   enddo
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-
-  !realization%option%io_buffer = 'stopping '
-  !call printErrMsg(realization%option)
+  call GridVecRestoreArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
 
   call PetscViewerASCIIOpen(option%mycomm,'r_surfflow.out',viewer,ierr)
   call VecView(r,viewer,ierr)
