@@ -5857,7 +5857,7 @@ subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
   PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
   type(option_type) :: option
   
-  PetscReal :: coefs(FIVE_INTEGER,ONE_INTEGER)
+  PetscReal :: coefs(17,ONE_INTEGER)
   PetscReal :: temperature, pressure
   PetscInt :: itemperature
   PetscInt :: i
@@ -5888,7 +5888,7 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
   PetscReal :: coefs(17,n), logKs(n), temp, pres
 
   PetscInt :: i
-  PetscReal :: temp_kelvin, tr,pr
+  PetscReal :: temp_kelvin, tr,pr, logtr
   
   temp_kelvin = temp + 273.15d0
   tr=(temp_kelvin)/ 273.15d0
@@ -5915,7 +5915,7 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
              + coefs(17,i) * pr * pr/tr 
   enddo
   
-end subroutine ReactionInterpolateLogK
+end subroutine ReactionInterpolateLogK_hpt
 #endif
 ! ************************************************************************** !
 !
