@@ -465,7 +465,8 @@ end interface
                                 flow_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 
     
-    if (option%pressure_dampening_factor > 0.d0) then
+    if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+        option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call SNESLineSearchSetPreCheck(flow_solver%snes, &

@@ -27,6 +27,7 @@ module Solver_module
     PetscReal :: newton_rtol       ! relative tolerance
     PetscReal :: newton_stol       ! relative tolerance (relative to previous iteration)
     PetscReal :: newton_dtol       ! divergence tolerance
+    PetscReal :: newton_stomp_tol  ! tolerance based on STOMP convergence
     PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
     PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
     PetscInt :: newton_maxit     ! maximum number of iterations
@@ -115,6 +116,7 @@ function SolverCreate()
   solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
+  solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
 
@@ -648,6 +650,11 @@ subroutine SolverReadNewton(solver,input,option)
       case('ITOL_UPDATE', 'INF_TOL_UPDATE')
         call InputReadDouble(input,option,solver%newton_inf_upd_tol)
         call InputDefaultMsg(input,option,'newton_inf_upd_tol')
+   
+      case('ITOL_STOMP')
+        option%check_stomp_norm = PETSC_TRUE
+        call InputReadDouble(input,option,solver%newton_stomp_tol)
+        call InputDefaultMsg(input,option,'newton_stomp_tol')
    
       case('MAXIT')
         call InputReadInt(input,option,solver%newton_maxit)

@@ -251,6 +251,7 @@ subroutine RichardsCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
 
   use Realization_module
   use Grid_module
+  use Field_module
   use Option_module
  
   implicit none
@@ -264,45 +265,88 @@ subroutine RichardsCheckUpdatePatch(snes_,P,dP,realization,changed,ierr)
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: r_p(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  PetscInt :: i, n
+  type(field_type), pointer :: field
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  PetscInt :: local_id, ghosted_id
   PetscReal :: P_R, P0, P1, delP
   PetscReal :: scale
+  PetscReal :: Res(1)
+  PetscReal :: inf_norm
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
   option => realization%option
+  field => realization%field
+  rich_aux_vars => realization%patch%aux%Richards%aux_vars
+  global_aux_vars => realization%patch%aux%Global%aux_vars
   
-  call GridVecGetArrayF90(grid,dP,dP_p,ierr)
-  call GridVecGetArrayF90(grid,P,P_p,ierr)
-  call VecGetLocalSize(P,n,ierr)
+
+  if (option%check_stomp_norm) then
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
     
-  ! P^p+1 = P^p - dP^p
-  P_R = option%reference_pressure
-  scale = option%pressure_dampening_factor
+    inf_norm = 0.d0
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (realization%patch%imat(ghosted_id) <= 0) cycle
+    
+      call RichardsAccumulation(rich_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id), &
+                                porosity_loc_p(ghosted_id), &
+                                volume_p(local_id), &
+                                option,Res)
+      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P_p(local_id)), &
+                                  dabs(r_p(local_id)/Res(1))))
+    enddo
+    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION, &
+                       MPI_MAX,option%mycomm,ierr)
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+  endif
   
-  do i = 1, n
-    delP = dP_p(i)
-    P0 = P_p(i)
-    P1 = P0 - delP
-    if (P0 < P_R .and. P1 > P_R) then
-      write(option%io_buffer,'("U -> S:",1i7,2es15.7)') &
-        grid%nG2A(grid%nL2G(i)),P0,P1 
-      call printMsg(option)
-    else if (P1 < P_R .and. P0 > P_R) then
-      write(option%io_buffer,'("S -> U:",1i7,2es15.7)') &
-        grid%nG2A(grid%nL2G(i)),P0,P1
-      call printMsg(option)
-    endif
-    ! transition from unsaturated to saturated
-    if (P0 < P_R .and. P1 > P_R) then
-      dP_p(i) = scale*delP
-    endif
-  enddo
- 
-  call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
-  call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+
+
+  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+    ! P^p+1 = P^p - dP^p
+    P_R = option%reference_pressure
+    scale = option%pressure_dampening_factor
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+    do local_id = 1, grid%nlmax
+      delP = dP_p(local_id)
+      P0 = P_p(local_id)
+      P1 = P0 - delP
+      if (P0 < P_R .and. P1 > P_R) then
+        write(option%io_buffer,'("U -> S:",1i7,2es15.7)') &
+          grid%nG2A(grid%nL2G(local_id)),P0,P1 
+        call printMsgAnyRank(option)
+      else if (P1 < P_R .and. P0 > P_R) then
+        write(option%io_buffer,'("S -> U:",1i7,2es15.7)') &
+          grid%nG2A(grid%nL2G(local_id)),P0,P1
+        call printMsgAnyRank(option)
+      endif
+      ! transition from unsaturated to saturated
+      if (P0 < P_R .and. P1 > P_R) then
+        dP_p(local_id) = scale*delP
+      endif
+    enddo
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+  endif
 
 end subroutine RichardsCheckUpdatePatch
 

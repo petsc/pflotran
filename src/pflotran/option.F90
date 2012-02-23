@@ -131,7 +131,10 @@ module Option_module
     PetscReal :: reference_water_density
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
+    
     PetscReal :: pressure_dampening_factor
+    PetscReal :: stomp_norm
+    PetscBool :: check_stomp_norm
     
     PetscReal :: minimum_hydrostatic_pressure
     
@@ -463,8 +466,11 @@ subroutine OptionInitRealization(option)
   option%reference_water_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
+  
   option%pressure_dampening_factor = 0.d0
-
+  option%stomp_norm = 0.d0
+  option%check_stomp_norm = PETSC_FALSE
+  
   option%update_mnrl_surf_with_porosity = PETSC_FALSE
     
   option%jumpstart_kinetic_sorption = PETSC_FALSE
