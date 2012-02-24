@@ -789,7 +789,7 @@ subroutine ReactionRead(reaction,input,option)
 #ifndef FORTRAN_2003_COMPLIANT
           option%io_buffer = 'Specification of TVD flux limiter only ' // &
             'supported when compiled with -DFORTRAN_2003_COMPLIANT.'
-          call printWrnMsg(option)
+          call printErrMsg(option)
 #endif
           call StringToUpper(word)
           select case(word)
