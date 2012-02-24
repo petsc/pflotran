@@ -9,6 +9,8 @@ module Database_module
   
 #include "definitions.h"
 
+#define AMANZI_BGD 1
+
   public :: DatabaseRead, &
 #ifdef chuan_hpt
             DatabaseRead_hpt, BasisInit_hpt
@@ -693,6 +695,10 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), parameter :: h2oname = 'H2O'
   character(len=MAXWORDLENGTH) :: word, word2
   character(len=MAXSTRINGLENGTH) :: string, string2
+
+#if AMANZI_BGD
+  character(len=3), parameter :: amanzi_sep = " ; "
+#endif
   
   PetscInt, parameter :: h2o_id = 1
 
@@ -2960,6 +2966,47 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%neqionxcation, 'Ion Exchange Cations'
     write(option%fid_out,90)
   endif
+
+#if AMANZI_BGD
+  ! output reaction in amanzi "bgd" formatted file
+  if (OptionPrintToFile(option)) then
+    open(unit=86,file='reaction.bgd')
+
+    write(86,'(A)')"<Primary Species"
+    do icomp = 1, reaction%naqcomp
+      write(86,'(a12,3(a3,f6.2))') reaction%primary_species_names(icomp), &
+                                   amanzi_sep, reaction%primary_spec_a0(icomp), &
+                                   amanzi_sep, reaction%primary_spec_Z(icomp), &
+                                   amanzi_sep, reaction%primary_spec_molar_wt(icomp)
+    enddo
+
+    write(86,'(/A)')"<Aqueous Equilibrium Complexes"
+    do icplx = 1, reaction%neqcplx
+      write(86,'(a15,a3)',advance='no') reaction%secondary_species_names(icplx), " = "
+      if (reaction%eqcplxh2ostoich(icplx) .ne. 0) then
+        write(86,'(f6.2,a4)',advance='no') reaction%eqcplxh2ostoich(icplx), "H2O"
+      endif
+      do i = 1, reaction%naqcomp
+        if (reaction%eqcplxstoich(i,icplx) .ne. 0) then
+          j = reaction%eqcplxspecid(i,icplx)
+          write(86,'(f6.2,x,a20)',advance='no') reaction%eqcplxstoich(i,icplx), &
+                                              reaction%primary_species_names(j)
+        endif
+      enddo
+      write(86,'(4(a3,f10.5))') amanzi_sep, reaction%eqcplx_logK(icplx), &
+                                amanzi_sep, reaction%eqcplx_a0(icplx), &
+                                amanzi_sep, reaction%eqcplx_Z(icplx), &
+                                amanzi_sep, reaction%eqcplx_molar_wt(icplx)
+    enddo
+
+    write(86,'(/A)')"<Minerals"
+    write(86,'(/A)')"<Ion Exchange Sites"
+    write(86,'(/A)')"<Ion Exchange Complexes"
+    write(86,'(/A)')"<Surface Complex Sites"
+    write(86,'(/A)')"<Surface Complexes"
+    close(86)
+  endif
+#endif ! AMANZI_BGD
   
 #if 0
   ! output for ASCEM reactions
