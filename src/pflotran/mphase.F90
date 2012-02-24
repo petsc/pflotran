@@ -2192,9 +2192,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
               iphase_loc_p(ghosted_id) = 3 ! Liq -> 2ph
         
-              write(*,'(''Rachford-Rice: '','' z1, z2='', &
-        &     1p2e12.4,'' xeq='',1pe12.4,'' xg='',1pe12.4, &
-        &     '' sg='',1pe12.4)') z1,z2,xco2eq,xg,sg
+!             write(*,'(''Rachford-Rice: '','' z1, z2='', &
+!       &     1p2e12.4,'' xeq='',1pe12.4,'' xg='',1pe12.4, &
+!       &     '' sg='',1pe12.4)') z1,z2,xco2eq,xg,sg
         
 !             write(*,'(''Rachford-Rice: '',''K1,2='',1p2e12.4,'' z1,2='', &
 !       &     1p2e12.4,'' xeq='',1pe12.4,'' xg='',1pe12.4, &
@@ -2203,7 +2203,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
               sgg = den(1)*(z2-xco2eq)/(den(1)*(z2-xco2eq) - &
                 dg*(z2-(1.d0-wat_sat_x)))
-              write(*,'(''Rachford-Rice: sg = '',1p2e12.4)') sgg,sg
+!             write(*,'(''Rachford-Rice: sg = '',1p2e12.4)') sgg,sg
               
               xx_p(dof_offset+3) = sg   
               ichange = 1

@@ -2920,6 +2920,28 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 \end{description}
 
 \noindent
+{\bf Format of unstructured grid file:}
+\begin{verbatim}
+! 
+! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
+! vertn(H) = 8
+! vertn(T) = 4
+! vertn(W) = 6
+! vertn(P) = 5
+! -----------------------------------------------------------------
+! num_cells num_vertices  (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 1 (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 2
+! ...
+! ...
+! type vert1 vert2 vert3 ... vertn  ! for cell num_cells
+! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
+! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
+! ...
+! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
+! -----------------------------------------------------------------
+\end{verbatim}
+\noindent
 {\bf Examples:}
 \begin{verbatim}
 GRID

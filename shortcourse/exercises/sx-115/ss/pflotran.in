@@ -18,7 +18,7 @@ Tracer
 
 :=========================== solver options ===================================
 TIMESTEPPER
-MAX_STEPS -1
+:MAX_STEPS -1
 TS_ACCELERATION 8
 INITIALIZE_TO_STEADY_STATE 1.d0
 /
