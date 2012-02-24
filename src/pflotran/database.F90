@@ -2972,25 +2972,25 @@ subroutine BasisInit(reaction,option)
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.bgd')
 
-    write(86,'(A)')"<Primary Species"
+    write(86,'(/,"<Primary Species")')
     do icomp = 1, reaction%naqcomp
-      write(86,'(a12,3(a3,f6.2))') reaction%primary_species_names(icomp), &
+      write(86,'(a,x,3(a3,f6.2))') trim(reaction%primary_species_names(icomp)), &
                                    amanzi_sep, reaction%primary_spec_a0(icomp), &
                                    amanzi_sep, reaction%primary_spec_Z(icomp), &
                                    amanzi_sep, reaction%primary_spec_molar_wt(icomp)
     enddo
 
-    write(86,'(/A)')"<Aqueous Equilibrium Complexes"
+    write(86,'(/,"<Aqueous Equilibrium Complexes")')
     do icplx = 1, reaction%neqcplx
-      write(86,'(a15,a3)',advance='no') reaction%secondary_species_names(icplx), " = "
-      if (reaction%eqcplxh2ostoich(icplx) .ne. 0) then
-        write(86,'(f6.2,a4)',advance='no') reaction%eqcplxh2ostoich(icplx), "H2O"
+      write(86,'(a," = ")',advance='no') trim(reaction%secondary_species_names(icplx))
+      if (reaction%eqcplxh2ostoich(icplx) /= 0) then
+        write(86,'(f6.2," H2O ")',advance='no') reaction%eqcplxh2ostoich(icplx)
       endif
       do i = 1, reaction%naqcomp
-        if (reaction%eqcplxstoich(i,icplx) .ne. 0) then
+        if (reaction%eqcplxstoich(i,icplx) /= 0) then
           j = reaction%eqcplxspecid(i,icplx)
-          write(86,'(f6.2,x,a20)',advance='no') reaction%eqcplxstoich(i,icplx), &
-                                              reaction%primary_species_names(j)
+          write(86,'(f6.2,x,a,x)',advance='no') reaction%eqcplxstoich(i,icplx), &
+                                              trim(reaction%primary_species_names(j))
         endif
       enddo
       write(86,'(4(a3,f10.5))') amanzi_sep, reaction%eqcplx_logK(icplx), &
@@ -2999,11 +2999,11 @@ subroutine BasisInit(reaction,option)
                                 amanzi_sep, reaction%eqcplx_molar_wt(icplx)
     enddo
 
-    write(86,'(/A)')"<Minerals"
-    write(86,'(/A)')"<Ion Exchange Sites"
-    write(86,'(/A)')"<Ion Exchange Complexes"
-    write(86,'(/A)')"<Surface Complex Sites"
-    write(86,'(/A)')"<Surface Complexes"
+    write(86,'(/,"<Minerals")')
+    write(86,'(/,"<Ion Exchange Sites")')
+    write(86,'(/,"<Ion Exchange Complexes")')
+    write(86,'(/,"<Surface Complex Sites")')
+    write(86,'(/,"<Surface Complexes")')
     close(86)
   endif
 #endif ! AMANZI_BGD
