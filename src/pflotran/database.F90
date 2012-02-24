@@ -9,7 +9,7 @@ module Database_module
   
 #include "definitions.h"
 
-#define AMANZI_BGD 1
+!#define AMANZI_BGD
 
   public :: DatabaseRead, &
 #ifdef chuan_hpt
@@ -696,7 +696,7 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH) :: word, word2
   character(len=MAXSTRINGLENGTH) :: string, string2
 
-#if AMANZI_BGD
+#ifdef AMANZI_BGD
   character(len=3), parameter :: amanzi_sep = " ; "
 #endif
   
@@ -2967,7 +2967,7 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,90)
   endif
 
-#if AMANZI_BGD
+#ifdef AMANZI_BGD
   ! output reaction in amanzi "bgd" formatted file
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.bgd')
