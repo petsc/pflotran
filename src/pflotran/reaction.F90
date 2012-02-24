@@ -4489,7 +4489,20 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
     ncomp = reaction%eqionx_rxn_cationid(0,irxn)
 
     ! for now we assume that omega is equal to CEC.
-    omega = reaction%eqionx_rxn_CEC(irxn)
+    if (reaction%eqionx_rxn_to_surf(irxn) > 0) then
+      ! if tied to a mineral vol frac
+      omega = reaction%eqionx_rxn_CEC(irxn)* &
+              rt_auxvar%mnrl_volfrac(reaction%eqionx_rxn_to_surf(irxn))
+      if (rt_auxvar%mnrl_volfrac(reaction%eqionx_rxn_to_surf(irxn)) < &
+          1.d-40) then
+        !geh: this is a kludge in that the user cannot specify a S type
+        !     constraint at the boundary as the sorbed mass will be based
+        !     on the CEC, not the CEC scaled by the volume fraction
+        omega = reaction%eqionx_rxn_CEC(irxn)
+      endif
+    else
+      omega = reaction%eqionx_rxn_CEC(irxn)
+    endif
 
     if (reaction%eqionx_rxn_Z_flag(irxn)) then ! Zi /= Zj for any i,j
 

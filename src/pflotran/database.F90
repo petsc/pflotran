@@ -2460,6 +2460,8 @@ subroutine BasisInit(reaction,option)
     reaction%eqionx_rxn_cation_X_offset = 0
     allocate(reaction%eqionx_rxn_CEC(reaction%neqionxrxn))
     reaction%eqionx_rxn_CEC = 0.d0
+    allocate(reaction%eqionx_rxn_to_surf(reaction%neqionxrxn))
+    reaction%eqionx_rxn_to_surf = 0
     allocate(reaction%eqionx_rxn_k(icount,reaction%neqionxrxn))
     reaction%eqionx_rxn_k = 0.d0
 
@@ -2473,7 +2475,16 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_CEC(irxn) = cur_ionx_rxn%CEC
         ! compute the offset to the first cation in rxn
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
-        
+      if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
+        reaction%eqionx_rxn_to_surf(irxn) = &
+          GetMineralIDFromName(reaction,cur_ionx_rxn%mineral_name)
+        if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
+          option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
+                             'listed in ion exchange ' // &
+                             'reaction not found in mineral list'
+          call printErrMsg(option)
+        endif
+      endif
       cur_cation => cur_ionx_rxn%cation_list
       do
         if (.not.associated(cur_cation)) exit
@@ -2494,7 +2505,7 @@ subroutine BasisInit(reaction,option)
           option%io_buffer = 'Cation ' // trim(cur_cation%name) // &
                    ' in ion exchange reaction' // &
                    ' not found in swapped basis.'
-          call printErrMsg(option)     
+          call printErrMsg(option)  
         endif
         cur_cation => cur_cation%next
       enddo

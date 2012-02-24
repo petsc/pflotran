@@ -2412,7 +2412,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   output_option => realization%output_option
   discretization => realization%discretization
   
-  filename = OutputFilename(output_option,option,'tec','vel-')
+  filename = OutputFilename(output_option,option,'tec','vel')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
