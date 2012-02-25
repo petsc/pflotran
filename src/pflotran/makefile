@@ -288,7 +288,7 @@ condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
 	string.o hdf5_aux.F90 dataset.o time_series.o
 condition_control.o : realization.o discretization.o region.o option.o grid.o \
 	field.o coupler.o condition.o connection.o reaction.o \
-	hdf5.o mfd.o dataset_aux.o
+	hdf5.o mfd.o dataset_aux.o surface_realization.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	strata.o waypoint.o field.o hydrostatic.o debug.o \
 	observation.o velocity.o \

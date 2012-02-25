@@ -2091,8 +2091,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     density_ave = upweight*global_aux_var_up%den(1)+ &
                   (1.D0-upweight)*global_aux_var_dn%den(1)
 
-!    write(*,*) "upweight", upweight, "density_ave", density_ave
-
     gravity = (upweight*global_aux_var_up%den(1) + &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
               * FMWH2O * dist_gravity
@@ -2127,10 +2125,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
-
-       !   write(*,*) "Gravity Input", Dq*ukvr*gravity
-       !   write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
-!            write(*,*) "Dq", Dq, "ukvr ", ukvr, "density",density_ave 
    
       q = v_darcy * area
 
@@ -2551,17 +2545,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
 
   end select
 
-
-
   q = v_darcy * area
 
   fluxm = q*density_ave
 
   Res(1)=fluxm
-
-#ifdef DASVYAT
-!   write(*,*) "bound flux RichardsBCFlux", "v_darcy", v_darcy, "Res", Res(1), "den", density_ave
-#endif
 
 end subroutine RichardsBCFlux
 
@@ -3277,15 +3265,12 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     call RichardsZeroMassBalDeltaPatch(realization)
   endif
 
-
-
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,r, r_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  !print *,' Finished scattering non deriv'
 
   if (option%use_samr) then
      do axis=0,2  
@@ -3294,7 +3279,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   endif
 
   r_p = 0.d0
-#if 1
+
   if (option%use_samr) then
     nlx = grid%structured_grid%nlx  
     nly = grid%structured_grid%nly  
@@ -3368,9 +3353,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
-
-!       if (ghosted_id_up == 15.or.ghosted_id_dn == 15)  write(*,*) "dddddddddddddddddddddddddddd"
-
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
@@ -3387,11 +3369,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-#if 1
-!      if (ghosted_id_up == 555.or.ghosted_id_dn == 555)  write(*,*) "int flux ************", sum_connection, v_darcy, Res(1)
-#endif
-
-      
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
@@ -3438,8 +3415,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo    
 
-#endif
-#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -3448,12 +3423,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     
     cur_connection_set => boundary_condition%connection_set
 
-
-!    write(*,*) (boundary_condition%flow_aux_real_var(1, iconn), &
-!              iconn =1,cur_connection_set%num_connections)
-!    write(*,*)
-     
-    
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
@@ -3488,19 +3457,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 option, &
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
-
-
-#if 1
-!        if (ghosted_id==555) then
-!           write(*,*) "bound flux ************************************", sum_connection, "fl",v_darcy, "Res", Res
-!        end if 
-!            "lm", boundary_condition%flow_aux_real_var(1, iconn), &
-!            "p", global_aux_vars(ghosted_id)%pres(1)
-!            cur_connection_set%cntr(1, iconn), &      
-!            cur_connection_set%cntr(2, iconn), &      
-!            cur_connection_set%cntr(3, iconn)      
-!            cur_connection_set%id_dn(iconn)       
-#endif
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -3562,9 +3518,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif  
-
-!   write(*,*) "FV_Residual 15", r_p(15)
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)

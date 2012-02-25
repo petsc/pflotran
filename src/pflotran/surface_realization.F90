@@ -14,6 +14,7 @@ module Surface_Realization_module
   use Surface_Material_module
   use Waypoint_module
   use Dataset_Aux_module
+  use Reaction_Aux_module
   
   implicit none
   
@@ -41,6 +42,7 @@ private
     type(tran_condition_list_type),pointer            :: surf_transport_conditions
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
+    type(reaction_type), pointer                      :: surf_reaction
     character(len=MAXSTRINGLENGTH)                    :: surf_filename
     character(len=MAXSTRINGLENGTH)                    :: subsurf_filename
 
@@ -60,6 +62,7 @@ private
             SurfaceRealizationProcessConditions, &
             SurfaceRealizationProcessFlowConditions, &
             SurfaceRealizationMapSurfSubsurfaceGrids, &
+            SurfaceRealizationInitAllCouplerAuxVars, &
             SurfaceRealizationProcessMatProp
 
 contains
@@ -100,6 +103,8 @@ function SurfaceRealizationCreate(option)
   allocate(surf_realization%surf_transport_conditions)
   call TranConditionInitList(surf_realization%surf_transport_conditions)
   
+  nullify(surf_realization%surf_reaction)
+
   SurfaceRealizationCreate => surf_realization
 
 end function SurfaceRealizationCreate
@@ -600,7 +605,40 @@ subroutine SurfaceRealizationProcessFlowConditions(surf_realization)
 end subroutine SurfaceRealizationProcessFlowConditions
 
 ! ************************************************************************** !
-!
+!> This routine initializez coupler auxillary variables within list
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 02/21/12
+! ************************************************************************** !
+subroutine SurfaceRealizationInitAllCouplerAuxVars(surf_realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  cur_level => surf_realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchInitAllCouplerAuxVars(cur_patch,surf_realization%surf_reaction, &
+                                      surf_realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+end subroutine SurfaceRealizationInitAllCouplerAuxVars
+
+! ************************************************************************** !
 !> This routine creates vector scatter contexts between surface and subsurface 
 !! grids.
 !!
@@ -613,7 +651,6 @@ end subroutine SurfaceRealizationProcessFlowConditions
 !!    Matrix-Matrix mulitplication
 !!
 !! date: 01/17/12
-!
 ! ************************************************************************** !
 subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization)
 
