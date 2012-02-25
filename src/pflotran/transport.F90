@@ -1134,7 +1134,7 @@ function TFluxLimiter(theta)
   ! Linear
   !---------
   ! upwind
-  !TFluxLimiter = 0.d0
+  TFluxLimiter = 0.d0
   ! Lax-Wendroff
   !TFluxLimiter = 1.d0
   ! Beam-Warming
@@ -1149,7 +1149,7 @@ function TFluxLimiter(theta)
   ! superbee
   !TFluxLimiter = max(0.d0,min(1.d0,2.d0*theta),min(2.d0,theta))
   ! MC
-  TFluxLimiter = max(0.d0,min((1.d0+theta)/2.d0,2.d0,2.d0*theta))
+  !TFluxLimiter = max(0.d0,min((1.d0+theta)/2.d0,2.d0,2.d0*theta))
   ! van Leer
   !TFluxLimiter = (theta+dabs(theta))/(1.d0+dabs(theta)
 

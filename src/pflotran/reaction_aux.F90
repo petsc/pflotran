@@ -323,6 +323,7 @@ module Reaction_Aux_module
     PetscBool, pointer :: eqionx_rxn_Z_flag(:)
     PetscInt, pointer :: eqionx_rxn_cation_X_offset(:)
     PetscReal, pointer :: eqionx_rxn_CEC(:)
+    PetscInt, pointer :: eqionx_rxn_to_surf(:)
     PetscReal, pointer :: eqionx_rxn_k(:,:)
     PetscInt, pointer :: eqionx_rxn_cationid(:,:)
 #if 0    
@@ -655,6 +656,7 @@ function ReactionCreate()
   nullify(reaction%eqionx_rxn_Z_flag)
   nullify(reaction%eqionx_rxn_cation_X_offset)
   nullify(reaction%eqionx_rxn_CEC)
+  nullify(reaction%eqionx_rxn_to_surf)
   nullify(reaction%eqionx_rxn_k)
   nullify(reaction%eqionx_rxn_cationid)
 #if 0  
@@ -2556,6 +2558,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%eqionx_rxn_cation_X_offset)) &
     deallocate(reaction%eqionx_rxn_cation_X_offset)
   nullify(reaction%eqionx_rxn_cation_X_offset)
+  if (associated(reaction%eqionx_rxn_to_surf)) &
+    deallocate(reaction%eqionx_rxn_to_surf)
+  nullify(reaction%eqionx_rxn_to_surf)
   if (associated(reaction%eqionx_rxn_CEC)) &
     deallocate(reaction%eqionx_rxn_CEC)
   nullify(reaction%eqionx_rxn_CEC)

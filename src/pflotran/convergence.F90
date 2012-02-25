@@ -180,6 +180,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
 
+  
+  if (option%check_stomp_norm .and. &
+      option%stomp_norm < solver%newton_stomp_tol) then
+    reason = 12
+  endif
+  
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
   
@@ -215,6 +221,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_res'
         case(11)
           string = 'itol_upd'
+        case(12)
+          string = 'itol_stomp'
         case default
           write(string,'(i3)') reason
       end select
@@ -239,6 +247,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = 'itol_res'
         case(11)
           string = 'itol_upd'
+        case(12)
+          string = 'itol_stomp'
         case default
           write(string,'(i3)') reason
       end select

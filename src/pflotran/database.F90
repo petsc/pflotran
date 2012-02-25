@@ -9,6 +9,8 @@ module Database_module
   
 #include "definitions.h"
 
+!#define AMANZI_BGD
+
   public :: DatabaseRead, &
 #ifdef chuan_hpt
             DatabaseRead_hpt, BasisInit_hpt
@@ -693,6 +695,10 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), parameter :: h2oname = 'H2O'
   character(len=MAXWORDLENGTH) :: word, word2
   character(len=MAXSTRINGLENGTH) :: string, string2
+
+#ifdef AMANZI_BGD
+  character(len=3), parameter :: amanzi_sep = " ; "
+#endif
   
   PetscInt, parameter :: h2o_id = 1
 
@@ -2454,6 +2460,8 @@ subroutine BasisInit(reaction,option)
     reaction%eqionx_rxn_cation_X_offset = 0
     allocate(reaction%eqionx_rxn_CEC(reaction%neqionxrxn))
     reaction%eqionx_rxn_CEC = 0.d0
+    allocate(reaction%eqionx_rxn_to_surf(reaction%neqionxrxn))
+    reaction%eqionx_rxn_to_surf = 0
     allocate(reaction%eqionx_rxn_k(icount,reaction%neqionxrxn))
     reaction%eqionx_rxn_k = 0.d0
 
@@ -2467,7 +2475,16 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_CEC(irxn) = cur_ionx_rxn%CEC
         ! compute the offset to the first cation in rxn
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
-        
+      if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
+        reaction%eqionx_rxn_to_surf(irxn) = &
+          GetMineralIDFromName(reaction,cur_ionx_rxn%mineral_name)
+        if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
+          option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
+                             'listed in ion exchange ' // &
+                             'reaction not found in mineral list'
+          call printErrMsg(option)
+        endif
+      endif
       cur_cation => cur_ionx_rxn%cation_list
       do
         if (.not.associated(cur_cation)) exit
@@ -2488,7 +2505,7 @@ subroutine BasisInit(reaction,option)
           option%io_buffer = 'Cation ' // trim(cur_cation%name) // &
                    ' in ion exchange reaction' // &
                    ' not found in swapped basis.'
-          call printErrMsg(option)     
+          call printErrMsg(option)  
         endif
         cur_cation => cur_cation%next
       enddo
@@ -2960,6 +2977,47 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%neqionxcation, 'Ion Exchange Cations'
     write(option%fid_out,90)
   endif
+
+#ifdef AMANZI_BGD
+  ! output reaction in amanzi "bgd" formatted file
+  if (OptionPrintToFile(option)) then
+    open(unit=86,file='reaction.bgd')
+
+    write(86,'(/,"<Primary Species")')
+    do icomp = 1, reaction%naqcomp
+      write(86,'(a,x,3(a3,f6.2))') trim(reaction%primary_species_names(icomp)), &
+                                   amanzi_sep, reaction%primary_spec_a0(icomp), &
+                                   amanzi_sep, reaction%primary_spec_Z(icomp), &
+                                   amanzi_sep, reaction%primary_spec_molar_wt(icomp)
+    enddo
+
+    write(86,'(/,"<Aqueous Equilibrium Complexes")')
+    do icplx = 1, reaction%neqcplx
+      write(86,'(a," = ")',advance='no') trim(reaction%secondary_species_names(icplx))
+      if (reaction%eqcplxh2ostoich(icplx) /= 0) then
+        write(86,'(f6.2," H2O ")',advance='no') reaction%eqcplxh2ostoich(icplx)
+      endif
+      do i = 1, reaction%naqcomp
+        if (reaction%eqcplxstoich(i,icplx) /= 0) then
+          j = reaction%eqcplxspecid(i,icplx)
+          write(86,'(f6.2,x,a,x)',advance='no') reaction%eqcplxstoich(i,icplx), &
+                                              trim(reaction%primary_species_names(j))
+        endif
+      enddo
+      write(86,'(4(a3,f10.5))') amanzi_sep, reaction%eqcplx_logK(icplx), &
+                                amanzi_sep, reaction%eqcplx_a0(icplx), &
+                                amanzi_sep, reaction%eqcplx_Z(icplx), &
+                                amanzi_sep, reaction%eqcplx_molar_wt(icplx)
+    enddo
+
+    write(86,'(/,"<Minerals")')
+    write(86,'(/,"<Ion Exchange Sites")')
+    write(86,'(/,"<Ion Exchange Complexes")')
+    write(86,'(/,"<Surface Complex Sites")')
+    write(86,'(/,"<Surface Complexes")')
+    close(86)
+  endif
+#endif ! AMANZI_BGD
   
 #if 0
   ! output for ASCEM reactions
