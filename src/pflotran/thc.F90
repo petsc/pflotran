@@ -147,8 +147,10 @@ subroutine THCSetupPatch(realization)
   allocate(patch%aux%THC%thc_parameter%dencpr(size(realization%material_property_array)))
   allocate(patch%aux%THC%thc_parameter%ckwet(size(realization%material_property_array)))
   allocate(patch%aux%THC%thc_parameter%ckdry(size(realization%material_property_array)))
+  allocate(patch%aux%THC%thc_parameter%alpha(size(realization%material_property_array)))
 #ifdef ICE
   allocate(patch%aux%THC%thc_parameter%ckfrozen(size(realization%material_property_array)))
+  allocate(patch%aux%THC%thc_parameter%alpha_fr(size(realization%material_property_array)))
 #endif
 
   !Copy the values in the thc_parameter from the global realization 
@@ -161,9 +163,13 @@ subroutine THCSetupPatch(realization)
       realization%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
     patch%aux%THC%thc_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
+    patch%aux%THC%thc_parameter%alpha(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%alpha
 #ifdef ICE
     patch%aux%THC%thc_parameter%ckfrozen(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
+    patch%aux%THC%thc_parameter%alpha_fr(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%alpha_fr
 #endif
 
   enddo 
@@ -1271,7 +1277,10 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              area,dist_gravity,upweight, &
                              option,sat_func_up,sat_func_dn, &
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
-                             Dk_ice_up,Dk_ice_dn,Jup,Jdn)
+                             Dk_ice_up,Dk_ice_dn, &
+                             alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                             Jup,Jdn)
+                             
   use Option_module 
   use Saturation_Function_module             
   use water_eos_module       
@@ -1289,6 +1298,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: Dk_up, Dk_dn
   PetscReal :: Dk_dry_up, Dk_dry_dn
   PetscReal :: Dk_ice_up, Dk_ice_dn
+  PetscReal :: alpha_up, alpha_dn
+  PetscReal :: alpha_fr_up, alpha_fr_dn
   PetscReal :: Diff_up, Diff_dn
   PetscReal :: v_darcy, area
   PetscReal :: dist_gravity  ! distance along gravity vector
@@ -1311,7 +1322,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   
   PetscReal :: Dk_eff_up, Dk_eff_dn
   PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
-  PetscReal :: alpha 
   PetscReal, parameter :: epsilon = 1.d-6
   PetscReal :: dKe_dt_up, dKe_dp_up
   PetscReal :: dKe_dt_dn, dKe_dp_dn
@@ -1360,7 +1370,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: Diffg_ref, p_ref, T_ref
   PetscErrorCode :: ierr
   PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
-  PetscReal :: alpha_fr
   PetscReal :: dKe_fr_dt_up, dKe_fr_dt_dn
   PetscReal :: dKe_fr_dp_up, dKe_fr_dp_dn
 #endif
@@ -1697,43 +1706,39 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #endif 
 
         
-! conduction term
-  alpha = 4.5d-1     ! Need to read it from input file
+! conduction term  
+  Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha_up)   !unfrozen soil Kersten number
+  Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha_dn)
   
-  Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha)   !unfrozen soil Kersten number
-  Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha)
-  
-  dKe_dp_up = alpha*(global_aux_var_up%sat(1) + epsilon)**(alpha - 1.d0)* &
+  dKe_dp_up = alpha_up*(global_aux_var_up%sat(1) + epsilon)**(alpha_up - 1.d0)* &
                aux_var_up%dsat_dp
-  dKe_dp_dn = alpha*(global_aux_var_dn%sat(1) + epsilon)**(alpha - 1.d0)* &
+  dKe_dp_dn = alpha_dn*(global_aux_var_dn%sat(1) + epsilon)**(alpha_dn - 1.d0)* &
                aux_var_dn%dsat_dp
   
 #ifdef ICE
-       
-  alpha_fr = 9.5d-1
-     
-  Ke_fr_up = (aux_var_up%sat_ice + epsilon)**(alpha_fr)
-  Ke_fr_dn = (aux_var_dn%sat_ice + epsilon)**(alpha_fr)
+            
+  Ke_fr_up = (aux_var_up%sat_ice + epsilon)**(alpha_fr_up)
+  Ke_fr_dn = (aux_var_dn%sat_ice + epsilon)**(alpha_fr_dn)
 
   Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
               (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
   Dk_eff_dn = Dk_dn*Ke_dn + Dk_ice_dn*Ke_fr_dn + &
               (1.d0 - Ke_dn - Ke_fr_dn)*Dk_dry_dn
 
-  dKe_dt_up = alpha*(global_aux_var_up%sat(1) + epsilon)**(alpha - 1.d0)* &
+  dKe_dt_up = alpha_up*(global_aux_var_up%sat(1) + epsilon)**(alpha_up - 1.d0)* &
                aux_var_up%dsat_dt
-  dKe_dt_dn = alpha*(global_aux_var_dn%sat(1) + epsilon)**(alpha - 1.d0)* &
+  dKe_dt_dn = alpha_dn*(global_aux_var_dn%sat(1) + epsilon)**(alpha_dn - 1.d0)* &
                aux_var_dn%dsat_dt
                
-  dKe_fr_dt_up = alpha_fr*(global_aux_var_up%sat(1) + epsilon)** &
-                 (alpha_fr - 1.d0)*aux_var_up%dsat_dt
-  dKe_fr_dt_dn = alpha_fr*(global_aux_var_dn%sat(1) + epsilon)** &
-                 (alpha_fr - 1.d0)*aux_var_dn%dsat_dt
+  dKe_fr_dt_up = alpha_fr_up*(global_aux_var_up%sat(1) + epsilon)** &
+                 (alpha_fr_up - 1.d0)*aux_var_up%dsat_dt
+  dKe_fr_dt_dn = alpha_fr_dn*(global_aux_var_dn%sat(1) + epsilon)** &
+                 (alpha_fr_dn - 1.d0)*aux_var_dn%dsat_dt
                  
-  dKe_fr_dp_up = alpha_fr*(global_aux_var_up%sat(1) + epsilon)** &
-                 (alpha_fr - 1.d0)*aux_var_up%dsat_dp
-  dKe_fr_dp_dn = alpha_fr*(global_aux_var_dn%sat(1) + epsilon)** &
-                 (alpha_fr - 1.d0)*aux_var_dn%dsat_dp
+  dKe_fr_dp_up = alpha_fr_up*(global_aux_var_up%sat(1) + epsilon)** &
+                 (alpha_fr_up - 1.d0)*aux_var_up%dsat_dp
+  dKe_fr_dp_dn = alpha_fr_dn*(global_aux_var_dn%sat(1) + epsilon)** &
+                 (alpha_fr_dn - 1.d0)*aux_var_dn%dsat_dp
                  
 #else 
 
@@ -1815,7 +1820,9 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       aux_var_dn,global_aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
       area,dist_gravity,upweight, &
       option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
-      Dk_ice_up,Dk_ice_dn,res)
+      Dk_ice_up,Dk_ice_dn, &
+      alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+      res)
     do ideriv = 1,3
       pert_up = x_up(ideriv)*perturbation_tolerance
       pert_dn = x_dn(ideriv)*perturbation_tolerance
@@ -1888,14 +1895,18 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                    por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                    area,dist_gravity,upweight, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
-                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn,res_pert_up)
+                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
+                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                   res_pert_up)
       call THCFlux(aux_var_up,global_aux_var_up, &
                    por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                    aux_var_pert_dn,global_aux_var_pert_dn, &
                    por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                    area,dist_gravity,upweight, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
-                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn,res_pert_dn)
+                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
+                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                   res_pert_dn)
       J_pert_up(:,ideriv) = (res_pert_up(:)-res(:))/pert_up
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
     enddo
@@ -1922,7 +1933,10 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
                   por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                   area,dist_gravity,upweight, &
                   option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
-                  Dk_dry_dn,Dk_ice_up,Dk_ice_dn,Res)
+                  Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
+                  alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                  Res)
+                  
   use Option_module                              
   use water_eos_module
 
@@ -1939,13 +1953,14 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: Dk_up, Dk_dn
   PetscReal :: Dk_dry_up, Dk_dry_dn
   PetscReal :: Dk_ice_up, Dk_ice_dn
+  PetscReal :: alpha_up, alpha_dn
+  PetscReal :: alpha_fr_up, alpha_fr_dn
   PetscReal :: Dk_eff_up, Dk_eff_dn
   PetscReal :: Diff_up,Diff_dn
   PetscReal :: v_darcy,area
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
-  PetscReal :: alpha    
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
@@ -1975,7 +1990,6 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: Diffg_ref, p_ref, T_ref
   PetscErrorCode :: ierr
   PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
-  PetscReal :: alpha_fr
 #endif
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
@@ -2105,18 +2119,14 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
  endif
 #endif 
 
-! conduction term
-  alpha = 4.5d-1     ! Need to read it from input file
-  
-  Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha)   !unfrozen soil Kersten number
-  Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha)
+! conduction term  
+  Ke_up = (global_aux_var_up%sat(1) + epsilon)**(alpha_up)   !unfrozen soil Kersten number
+  Ke_dn = (global_aux_var_dn%sat(1) + epsilon)**(alpha_dn)
      
 #ifdef ICE
 
-  alpha_fr = 9.5d-1
-
-  Ke_fr_up = (aux_var_up%sat_ice + epsilon)**(alpha_fr)
-  Ke_fr_dn = (aux_var_dn%sat_ice + epsilon)**(alpha_fr)
+  Ke_fr_up = (aux_var_up%sat_ice + epsilon)**(alpha_fr_up)
+  Ke_fr_dn = (aux_var_dn%sat_ice + epsilon)**(alpha_fr_dn)
 
   Dk_eff_up = Dk_up*Ke_up + Dk_ice_up*Ke_fr_up + &
               (1.d0 - Ke_up - Ke_fr_up)*Dk_dry_up
@@ -3049,6 +3059,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: D_up, D_dn  ! thermal conductivity wet constants at upstream, downstream faces.
   PetscReal :: Dk_dry_up, Dk_dry_dn ! dry thermal conductivities
   PetscReal :: Dk_ice_up, Dk_ice_dn ! frozen soil thermal conductivities
+  PetscReal :: alpha_up, alpha_dn
+  PetscReal :: alpha_fr_up, alpha_fr_dn
   PetscReal :: Diff_up, Diff_dn  ! "Diffusion" constants at upstream, downstream faces.
   PetscReal :: dw_kg, dw_mol
   PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
@@ -3238,13 +3250,22 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       
       Dk_dry_up = thc_parameter%ckdry(ithrm_up)
       Dk_dry_dn = thc_parameter%ckdry(ithrm_dn)
+      
+      alpha_up = thc_parameter%alpha(ithrm_up)
+      alpha_dn = thc_parameter%alpha(ithrm_dn)
 
 #ifdef ICE
       Dk_ice_up = thc_parameter%ckfrozen(ithrm_up)
       DK_ice_dn = thc_parameter%ckfrozen(ithrm_dn)
+      
+      alpha_fr_up = thc_parameter%alpha_fr(ithrm_up)
+      alpha_fr_dn = thc_parameter%alpha_fr(ithrm_dn)
 #else
       Dk_ice_up = Dk_dry_up
       Dk_ice_dn = Dk_dry_dn
+      
+      alpha_fr_up = alpha_up
+      alpha_fr_dn = alpha_dn
 #endif
 
       Diff_up = thc_parameter%diffusion_coefficient(1)
@@ -3260,7 +3281,9 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                   dd_dn,perm_dn,D_dn, &
                   cur_connection_set%area(iconn),distance_gravity, &
                   upweight,option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
-                  Dk_dry_dn,Dk_ice_up,Dk_ice_dn,Res)
+                  Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
+                  alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                  Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
      
@@ -3530,6 +3553,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: D_up, D_dn  ! thermal conductivity wet constants at upstream, downstream faces.
   PetscReal :: Dk_dry_up, Dk_dry_dn ! dry thermal conductivities
   PetscReal :: Dk_ice_up, Dk_ice_dn ! frozen soil thermal conductivities
+  PetscReal :: alpha_up, alpha_dn
+  PetscReal :: alpha_fr_up, alpha_fr_dn
   PetscReal :: Diff_up, Diff_dn ! "Diffusion" constants upstream and downstream of a face.
   PetscReal :: zero, norm
   PetscReal :: upweight
@@ -3737,13 +3762,22 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
       Dk_dry_up = thc_parameter%ckdry(ithrm_up)
       Dk_dry_dn = thc_parameter%ckdry(ithrm_dn)
+      
+      alpha_up = thc_parameter%alpha(ithrm_up)
+      alpha_dn = thc_parameter%alpha(ithrm_dn)
 
 #ifdef ICE
       Dk_ice_up = thc_parameter%ckfrozen(ithrm_up)
       DK_ice_dn = thc_parameter%ckfrozen(ithrm_dn)
+      
+      alpha_fr_up = thc_parameter%alpha_fr(ithrm_up)
+      alpha_fr_dn = thc_parameter%alpha_fr(ithrm_dn)
 #else
       Dk_ice_up = Dk_dry_up
       Dk_ice_dn = Dk_dry_dn
+      
+      alpha_fr_up = alpha_up
+      alpha_fr_dn = alpha_dn
 #endif
 
       Diff_up = thc_parameter%diffusion_coefficient(1)
@@ -3765,7 +3799,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              realization%saturation_function_array(icap_up)%ptr, &
                              realization%saturation_function_array(icap_dn)%ptr, &
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
-                             Dk_ice_up,Dk_ice_dn,Jup,Jdn)
+                             Dk_ice_up,Dk_ice_dn, &
+                             alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                             Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
