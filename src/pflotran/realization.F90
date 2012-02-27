@@ -2609,7 +2609,8 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
 
   ! get the minimum across all cores
   call MPI_Allreduce(max_dt_cfl_1,tempreal,ONE_INTEGER_MPI, &
-                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+                     MPI_DOUBLE_PRECISION,MPI_MIN, &
+                     realization%option%mycomm,ierr)
   max_dt_cfl_1 = tempreal
 
 end subroutine RealizationCalculateCFL1Timestep
