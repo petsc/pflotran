@@ -2926,70 +2926,93 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         endif
         connections%id_up(iconn) = local_id
         connections%id_dn(iconn) = abs(dual_local_id)
-        ! need to add the surface areas, distance, etc.
-        point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
-        point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
-        point3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
-        if (face_type == QUAD_FACE_TYPE) then
-          point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(4,face_id))
-        endif
-        
-        call UCellComputePlane(plane1,point1,point2,point3)
-       
-        point_up%x = grid_x(local_id)
-        point_up%y = grid_y(local_id)
-        point_up%z = grid_z(local_id)
-        point_dn%x = grid_x(abs(dual_local_id))
-        point_dn%y = grid_y(abs(dual_local_id))
-        point_dn%z = grid_z(abs(dual_local_id))
-        v1(1) = point_dn%x-point_up%x
-        v1(2) = point_dn%y-point_up%y
-        v1(3) = point_dn%z-point_up%z
-        n_up_dn = v1 / sqrt(DotProduct(v1,v1))
-        call UCellGetPlaneIntercept(plane1,point_up,point_dn,intercept1)
-        
-        v1(1) = point3%x-point2%x
-        v1(2) = point3%y-point2%y
-        v1(3) = point3%z-point2%z
-        v2(1) = point1%x-point2%x
-        v2(2) = point1%y-point2%y
-        v2(3) = point1%z-point2%z
-        !geh: area = 0.5 * |v1 x v2|
-        vcross = CrossProduct(v1,v2)
-        !geh: but then we have to project the area onto the vector between
-        !     the cell centers (n_up_dn)
-        magnitude = sqrt(DotProduct(vcross,vcross))
-        n1 = vcross/magnitude
-        area1 = 0.5d0*magnitude
-        area1 = dabs(area1*DotProduct(n1,n_up_dn))
-        !geh: The below does not project onto the vector between cell centers.
-        !gehbug area1 = 0.5d0*sqrt(DotProduct(n1,n1))
-        
-        if (face_type == QUAD_FACE_TYPE) then
-          call UCellComputePlane(plane2,point3,point4,point1)
-          call UCellGetPlaneIntercept(plane2,point_up,point_dn,intercept2)
-          v1(1) = point1%x-point4%x
-          v1(2) = point1%y-point4%y
-          v1(3) = point1%z-point4%z
-          v2(1) = point3%x-point4%x
-          v2(2) = point3%y-point4%y
-          v2(3) = point3%z-point4%z
-          magnitude = sqrt(DotProduct(vcross,vcross))
-          n2 = vcross/magnitude
-          area2 = 0.5d0*magnitude
-          area2 = dabs(area2*DotProduct(n2,n_up_dn))
-        else 
-          area2 = 0.d0
-        endif
+        if(face_type == LINE_FACE_TYPE) then
 
-        if (face_type == QUAD_FACE_TYPE) then
+          point_up%x = grid_x(local_id)
+          point_up%y = grid_y(local_id)
+          point_up%z = grid_z(local_id)
+          point_dn%x = grid_x(abs(dual_local_id))
+          point_dn%y = grid_y(abs(dual_local_id))
+          point_dn%z = grid_z(abs(dual_local_id))
+          point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
+          point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
+
+          call UcellGetLineIntercept(point1,point2,point_up,intercept1)
+          call UcellGetLineIntercept(point1,point2,point_dn,intercept2)
           intercept%x = 0.5d0*(intercept1%x + intercept2%x)
           intercept%y = 0.5d0*(intercept1%y + intercept2%y)
           intercept%z = 0.5d0*(intercept1%z + intercept2%z)
+
         else
-          intercept%x = intercept1%x
-          intercept%y = intercept1%y
-          intercept%z = intercept1%z
+        
+          ! need to add the surface areas, distance, etc.
+          point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
+          point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
+          point3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
+          !write(*,*),'point1: ',point1%x,point1%y,point1%z
+          !write(*,*),'point2: ',point2%x,point2%y,point2%z
+          !write(*,*),'point3: ',point3%x,point2%y,point3%z
+          if (face_type == QUAD_FACE_TYPE) then
+            point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(4,face_id))
+          endif
+          
+          call UCellComputePlane(plane1,point1,point2,point3)
+         
+          point_up%x = grid_x(local_id)
+          point_up%y = grid_y(local_id)
+          point_up%z = grid_z(local_id)
+          point_dn%x = grid_x(abs(dual_local_id))
+          point_dn%y = grid_y(abs(dual_local_id))
+          point_dn%z = grid_z(abs(dual_local_id))
+          v1(1) = point_dn%x-point_up%x
+          v1(2) = point_dn%y-point_up%y
+          v1(3) = point_dn%z-point_up%z
+          n_up_dn = v1 / sqrt(DotProduct(v1,v1))
+          call UCellGetPlaneIntercept(plane1,point_up,point_dn,intercept1)
+          
+          v1(1) = point3%x-point2%x
+          v1(2) = point3%y-point2%y
+          v1(3) = point3%z-point2%z
+          v2(1) = point1%x-point2%x
+          v2(2) = point1%y-point2%y
+          v2(3) = point1%z-point2%z
+          !geh: area = 0.5 * |v1 x v2|
+          vcross = CrossProduct(v1,v2)
+          !geh: but then we have to project the area onto the vector between
+          !     the cell centers (n_up_dn)
+          magnitude = sqrt(DotProduct(vcross,vcross))
+          n1 = vcross/magnitude
+          area1 = 0.5d0*magnitude
+          area1 = dabs(area1*DotProduct(n1,n_up_dn))
+          !geh: The below does not project onto the vector between cell centers.
+          !gehbug area1 = 0.5d0*sqrt(DotProduct(n1,n1))
+          
+          if (face_type == QUAD_FACE_TYPE) then
+            call UCellComputePlane(plane2,point3,point4,point1)
+            call UCellGetPlaneIntercept(plane2,point_up,point_dn,intercept2)
+            v1(1) = point1%x-point4%x
+            v1(2) = point1%y-point4%y
+            v1(3) = point1%z-point4%z
+            v2(1) = point3%x-point4%x
+            v2(2) = point3%y-point4%y
+            v2(3) = point3%z-point4%z
+            magnitude = sqrt(DotProduct(vcross,vcross))
+            n2 = vcross/magnitude
+            area2 = 0.5d0*magnitude
+            area2 = dabs(area2*DotProduct(n2,n_up_dn))
+          else 
+            area2 = 0.d0
+          endif
+
+          if (face_type == QUAD_FACE_TYPE) then
+            intercept%x = 0.5d0*(intercept1%x + intercept2%x)
+            intercept%y = 0.5d0*(intercept1%y + intercept2%y)
+            intercept%z = 0.5d0*(intercept1%z + intercept2%z)
+          else
+            intercept%x = intercept1%x
+            intercept%y = intercept1%y
+            intercept%z = intercept1%z
+          endif
         endif
         
         !geh: this is very crude, but for now use average location of intercept
@@ -3008,6 +3031,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         v3 = v1 + v2
         connections%dist(1:3,iconn) = v3/sqrt(DotProduct(v3,v3))
         connections%area(iconn) = area1 + area2
+        connections%intercp(1,iconn) = intercept%x
+        connections%intercp(2,iconn) = intercept%y
+        connections%intercp(3,iconn) = intercept%z
        
       endif
     enddo
