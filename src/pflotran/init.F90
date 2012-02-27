@@ -679,19 +679,6 @@ end interface
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
 
-#ifdef SURFACE_FLOW
-  call readSurfaceRegionFiles(simulation%surf_realization)
-  call SurfaceRealizationMapSurfSubsurfaceGrids(realization,simulation%surf_realization)
-  call SurfaceRealizationLocalizeRegions(simulation%surf_realization)
-  call SurfaceRealizatonPassFieldPtrToPatches(simulation%surf_realization)
-  call SurfaceRealizationProcessMatProp(simulation%surf_realization)
-  call SurfaceRealizationProcessCouplers(simulation%surf_realization)
-  call SurfaceRealizationProcessConditions(simulation%surf_realization)
-  !call RealProcessFluidProperties(simulation%surf_realization)
-  call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
-#endif
-
-
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
   call assignSubcontinuumPropToRegions(realization)
@@ -896,6 +883,51 @@ end interface
   endif  
 #endif !VAMSI_HDF5_READ
 #endif !PETSC_HAVE_HDF5
+
+#ifdef SURFACE_FLOW
+  call readSurfaceRegionFiles(simulation%surf_realization)
+  call SurfaceRealizationMapSurfSubsurfaceGrids(realization,simulation%surf_realization)
+  call SurfaceRealizationLocalizeRegions(simulation%surf_realization)
+  call SurfaceRealizatonPassFieldPtrToPatches(simulation%surf_realization)
+  call SurfaceRealizationProcessMatProp(simulation%surf_realization)
+  call SurfaceRealizationProcessCouplers(simulation%surf_realization)
+  call SurfaceRealizationProcessConditions(simulation%surf_realization)
+  !call RealProcessFluidProperties(simulation%surf_realization)
+  call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
+  call SurfaceRealizationInitAllCouplerAuxVars(simulation%surf_realization)
+  !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
+
+  !call GlobalSetup(simulation%surf_realization)
+  ! initialize FLOW
+  ! set up auxillary variable arrays
+  if (option%nflowdof > 0) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        !call SurfaceSetup(realization)
+      case default
+        option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
+        call printErrMsgByRank(option)
+    end select
+  
+    ! assign initial conditionsRealizAssignFlowInitCond
+    call CondControlAssignFlowInitCondSurface(simulation%surf_realization)
+
+    ! override initial conditions if they are to be read from a file
+    if (len_trim(option%initialize_flow_filename) > 1) then
+        option%io_buffer = 'For surface-flow initial conditions cannot be read from file'
+        call printErrMsgByRank(option)
+    endif
+  
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        !call SurfaceFlowUpdateAuxVars(simulation%surf_realization)
+      case default
+        option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
+        call printErrMsgByRank(option)
+    end select
+  endif
+
+#endif
 
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
