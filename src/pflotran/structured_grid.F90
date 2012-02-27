@@ -1000,7 +1000,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   PetscInt :: samr_ofx, samr_ofy, samr_ofz
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
-  PetscInt :: tvd_ghost_offset
+  PetscInt :: tvd_ghost_offset, ghost_count
   PetscReal :: dist_up, dist_dn
   PetscReal :: r1, r2
   type(connection_set_type), pointer :: connections, connections_2
@@ -1079,6 +1079,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 
   iconn = 0
   tvd_ghost_offset = 0
+  ghost_count = 0
   ! x-connections
   if (structured_grid%ngx > 1) then
     select case(structured_grid%itype)
@@ -1107,15 +1108,18 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               if (associated(connections%id_up2)) then
                 if (i == 1) then
                   ! id_up indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
-                  id_up2 = 1 + j + k*structured_grid%nly
+!                  id_up2 = 1 + j + k*structured_grid%nly
+                  ghost_count = ghost_count + 1
+                  id_up2 = ghost_count
                   connections%id_up2(iconn) = -id_up2
                 else
                   connections%id_up2(iconn) = id_up - 1
                 endif
                 if (i == lenx) then
                   ! id_dn indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
-                  id_dn2 = 1 + j + k*structured_grid%nly + structured_grid%nlyz
-                  connections%id_up2(iconn) = -id_dn2
+!                  id_dn2 = 1 + j + k*structured_grid%nly + structured_grid%nlyz
+                  id_dn2 = ghost_count + structured_grid%nlyz
+                  connections%id_dn2(iconn) = -id_dn2
                 else
                   connections%id_dn2(iconn) = id_dn + 1
                 endif
@@ -1139,6 +1143,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
           enddo
         enddo
         tvd_ghost_offset = 2*structured_grid%nlyz ! west & east
+        ghost_count = tvd_ghost_offset
       case(CYLINDRICAL_GRID)
         do k = structured_grid%kstart, structured_grid%kend
           do j = structured_grid%jstart, structured_grid%jend
@@ -1221,16 +1226,19 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               if (associated(connections%id_up2)) then
                 if (j == 1) then
                   ! id_up indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
-                  id_up2 = 1 + i + k*structured_grid%nlx + tvd_ghost_offset
+!                  id_up2 = 1 + i + k*structured_grid%nlx + tvd_ghost_offset
+                  ghost_count = ghost_count + 1
+                  id_up2 = ghost_count
                   connections%id_up2(iconn) = -id_up2
                 else
                   connections%id_up2(iconn) = id_up - structured_grid%ngx
                 endif
                 if (j == leny) then
                   ! id_dn indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
-                  id_dn2 = 1 + i + k*structured_grid%nlx + &
-                           structured_grid%nlxz + tvd_ghost_offset
-                  connections%id_up2(iconn) = -id_dn2
+!                  id_dn2 = 1 + i + k*structured_grid%nlx + &
+!                           structured_grid%nlxz + tvd_ghost_offset
+                  id_dn2 = ghost_count + structured_grid%nlxz
+                  connections%id_dn2(iconn) = -id_dn2
                 else
                   connections%id_dn2(iconn) = id_dn + structured_grid%ngx
                 endif
@@ -1254,6 +1262,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
         enddo
         tvd_ghost_offset = tvd_ghost_offset + &
           2*structured_grid%nlxz ! south & north
+        ghost_count = tvd_ghost_offset
       case(CYLINDRICAL_GRID)
         option%io_buffer = 'For cylindrical coordinates, NY must be equal to 1.'
         call printErrMsg(option)
@@ -1292,16 +1301,19 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
               
               if (associated(connections%id_up2)) then
                 if (k == 1) then
-                  id_up2 = 1 + i + j*structured_grid%nlx + tvd_ghost_offset
+!                  id_up2 = 1 + i + j*structured_grid%nlx + tvd_ghost_offset
+                  ghost_count = ghost_count + 1
+                  id_up2 = ghost_count
                   connections%id_up2(iconn) = -id_up2
                 else
                   connections%id_up2(iconn) = id_up - structured_grid%ngxy
                 endif
                 if (k == lenz) then
                   ! id_dn indexes tvd_ghost_vec, see StructGridCreateTVDGhosts() 
-                  id_dn2 = 1 + i + j*structured_grid%nlx + &
-                           structured_grid%nlxy + tvd_ghost_offset
-                  connections%id_up2(iconn) = -id_dn2
+!                  id_dn2 = 1 + i + j*structured_grid%nlx + &
+!                           structured_grid%nlxy + tvd_ghost_offset
+                  id_dn2 = ghost_count + structured_grid%nlxy
+                  connections%id_dn2(iconn) = -id_dn2
                 else
                   connections%id_dn2(iconn) = id_dn + structured_grid%ngxy
                 endif

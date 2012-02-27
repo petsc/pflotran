@@ -2574,7 +2574,7 @@ end subroutine RealizationPrintGridStatistics
 ! ************************************************************************** !
 !
 ! RealizationCalculateCFL1Timestep: Calculates largest time step that  
-!                                   preserves aCFL # of 1 in a realization
+!                                   preserves a CFL # of 1 in a realization
 ! author: Glenn Hammond
 ! date: 10/07/11
 !
@@ -2589,6 +2589,8 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: max_dt_cfl_1_patch
+  PetscReal :: tempreal
+  PetscErrorCode :: ierr
   
   max_dt_cfl_1 = 1.d20
   cur_level => realization%level_list%first
@@ -2604,6 +2606,11 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
     enddo
     cur_level => cur_level%next
   enddo  
+
+  ! get the minimum across all cores
+  call MPI_Allreduce(max_dt_cfl_1,tempreal,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+  max_dt_cfl_1 = tempreal
 
 end subroutine RealizationCalculateCFL1Timestep
 

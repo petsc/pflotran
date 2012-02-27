@@ -6691,7 +6691,7 @@ subroutine RTExplicitAdvectionPatch(realization)
           istart = iend-ntvddof+1
           total_up2(1,:) = tvd_ghosts_p(istart:iend)
         endif
-        id_dn2 = cur_connection_set%id_up2(iconn)
+        id_dn2 = cur_connection_set%id_dn2(iconn)
         if (id_dn2 > 0) then
           total_dn2 = rt_aux_vars(id_dn2)%total
         else
