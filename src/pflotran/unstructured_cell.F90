@@ -27,6 +27,7 @@ module Unstructured_Cell_module
             UCellGetPlaneIntercept, &
             UCellProjectPointOntoPlane, &
             UCellComputeDistanceFromPlane, &
+            UcellGetLineIntercept, &
             UCellGetNVertices, &
             UCellGetNFaces, &
             UCellGetNFaceVertices, &
@@ -1089,5 +1090,39 @@ function UCellQuality(cell_type,vertices,option)
   UCellQuality = max_side / min_side
 
 end function UCellQuality
+
+! ************************************************************************** !
+!
+! UCellGetLineIntercept: Computes the intercept of a point with a line
+! author: Gautam Bisht
+! date: 02/26/12
+!
+! ************************************************************************** !
+subroutine UcellGetLineIntercept(line_start,line_end,point,intercept)
+
+  implicit none
+  type(point_type) :: line_start
+  type(point_type) :: line_end
+  type(point_type) :: point
+  type(point_type) :: intercept
+
+  PetscReal :: dx,dy,dz
+  PetscReal :: u, line_mag
+  
+  dx = (line_end%x - line_start%x)
+  dy = (line_end%y - line_start%y)
+  dz = (line_end%z - line_start%z)
+  
+  line_mag = sqrt(dx*dx + dy*dy + dz*dz)
+  
+  u = ((point%x - line_start%x)*(line_end%x - line_start%x) + &
+       (point%y - line_start%y)*(line_end%y - line_start%y) + &
+       (point%z - line_start%z)*(line_end%z - line_start%z))/ line_mag
+
+  intercept%x = line_start%x + u*(line_end%x - line_start%x)
+  intercept%y = line_start%y + u*(line_end%y - line_start%y)
+  intercept%z = line_start%z + u*(line_end%z - line_start%z)
+
+end subroutine
 
 end module Unstructured_Cell_module
