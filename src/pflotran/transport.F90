@@ -1059,14 +1059,19 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                             
   PetscInt :: iphase
   PetscInt :: idof, ndof
-  PetscReal :: dc, theta, correction, nu
+  PetscReal :: dc, theta, correction, nu, velocity_area
   
   ndof = rt_parameter%naqcomp
+
+  ! flux should be in mol/sec
   
   do iphase = 1, option%nphase
     nu = velocity(iphase)*option%tran_dt/dist(0)
-    if (velocity(iphase) >= 0.d0) then
-      flux = velocity(iphase)*area*rt_aux_var_up%total(:,iphase)
+    ! L/sec = m/sec * m^2 * 1000 [L/m^3]
+    velocity_area = velocity(iphase)*area*1000.d0
+    if (velocity_area >= 0.d0) then
+      ! mol/sec = L/sec * mol/L
+      flux = velocity_area*rt_aux_var_up%total(:,iphase)
       if (associated(total_up2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1078,7 +1083,8 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     total_up2(idof,iphase)) / &
                     dc
           endif
-          correction = 0.5d0*velocity(iphase)*(1.d0-nu)* &
+          ! mol/sec = L/sec * mol/L
+          correction = 0.5d0*velocity_area*(1.d0-nu)* &
 #ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
 #else
@@ -1089,7 +1095,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
         enddo
       endif
     else
-      flux = velocity(iphase)*area*rt_aux_var_dn%total(:,iphase)
+      flux = velocity_area*rt_aux_var_dn%total(:,iphase)
       if (associated(total_dn2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1101,7 +1107,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                      rt_aux_var_dn%total(idof,iphase)) / &
                     dc
           endif
-          correction = 0.5d0*velocity(iphase)*(1.d0+nu)* &
+          correction = 0.5d0*velocity_area*(1.d0+nu)* &
 #ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
 #else

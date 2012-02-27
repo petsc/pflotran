@@ -2048,20 +2048,27 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
   endif
 
+  ! update time derivative on RHS
+  call RTUpdateRHSCoefs(realization)
   if (option%itranmode == EXPLICIT_ADVECTION) then
+    ! update the totals (must be at t0)
+                                   ! cells      bcs         act. coefs.
     call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
+    ! set densities and saturations to t+dt
+    if (option%nflowdof > 0 .and. .not.steady_flow) then
+      call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
+    endif
     call RTExplicitAdvection(realization)
   else
   
     ! Between the next 3 subroutine calls:
-    ! RTUpdateRHSCoefs()
+    ! RTUpdateRHSCoefs() -- now calculated prior to conditional
     ! RTUpdateAuxVars()
     ! RTCalculateRHS_t0()
     ! the t0 portion of the accumulation term is calculated for the RHS vector
   
-    ! update time derivative on RHS
-    call RTUpdateRHSCoefs(realization)
     ! calculate total component concentrations based on t0 densities
+                                   ! cells      bcs         act. coefs.
     call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
     call RTCalculateRHS_t0(realization)
     
@@ -2072,7 +2079,8 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 
     ! update diffusion/dispersion coefficients
     call RTUpdateTransportCoefs(realization)
-    ! RTCalculateRHS_t1() updates aux vars to k+1 and calculates RHS fluxes and src/sinks
+    ! RTCalculateRHS_t1() updates aux vars (cell and boundary) to k+1 and calculates 
+    ! RHS fluxes and src/sinks
     call RTCalculateRHS_t1(realization)
 
     if (realization%debug%vecview_residual) then

@@ -6545,6 +6545,7 @@ subroutine RTExplicitAdvectionPatch(realization)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: tvd_ghosts_p(:)
+  PetscReal, pointer :: rhs_coef_p(:)
   PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -6810,9 +6811,8 @@ subroutine RTExplicitAdvectionPatch(realization)
         flux = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                           rt_auxvar%total(:,iphase)
-        !geh: TSrcSinkCoefNew() unit are in L/s.  Convert to m^3/s by dividing 
-        !     by 1000
-         sum_flux(:,ghosted_id) = sum_flux(:,ghosted_id) + flux * 1.d-3
+        !geh: TSrcSinkCoefNew() unit are in L/s.
+         sum_flux(:,ghosted_id) = sum_flux(:,ghosted_id) + flux
       enddo
     enddo
     source_sink => source_sink%next
@@ -6821,22 +6821,28 @@ subroutine RTExplicitAdvectionPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
+
   
   ! update concentration
+  iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
     local_end = local_id*ntvddof
     local_start = local_end-ntvddof+1
-    do iphase = 1, option%nphase
+!    do iphase = 1, option%nphase
+      ! psv_t must have same units [mol/sec] and be consistent with rhs_coef_p
+      ! in RTUpdateRHSCoefsPatch()
       psv_t = porosity_loc_p(ghosted_id)* &
               global_aux_vars(ghosted_id)%sat(iphase)* &
+              1000.d0* &
               volume_p(local_id)/option%tran_dt
       !geh: clearly dangerous that I reload into total, but I am going to do it!
       tran_xx_p(local_start:local_end) = &
-        rt_aux_vars(ghosted_id)%total(:,iphase) + &
-        sum_flux(:,ghosted_id) / psv_t
-    enddo
+        ((rhs_coef_p(local_id)*rt_aux_vars(ghosted_id)%total(:,iphase)) + &
+         sum_flux(:,ghosted_id)) / psv_t
+!    enddo
   enddo
   
   if (associated(total_up2)) then
@@ -6847,9 +6853,10 @@ subroutine RTExplicitAdvectionPatch(realization)
   endif
   
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
   
 end subroutine RTExplicitAdvectionPatch
 
