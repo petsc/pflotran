@@ -24,7 +24,7 @@ module Richards_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  PetscReal, parameter :: perturbation_tolerance = 1.d-6
   
   public RichardsResidual,RichardsJacobian, &
          RichardsUpdateFixedAccum,RichardsTimeCut,&
@@ -227,6 +227,7 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)
+  PetscReal, pointer :: r_p(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -240,12 +241,12 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
   
   grid => realization%patch%grid
   option => realization%option
+  field => realization%field
+  rich_aux_vars => realization%patch%aux%Richards%aux_vars
+  global_aux_vars => realization%patch%aux%Global%aux_vars
 
   if (dabs(option%saturation_change_limit) > 0.d0) then
 
-    field => realization%field
-    rich_aux_vars => realization%patch%aux%Richards%aux_vars
-    global_aux_vars => realization%patch%aux%Global%aux_vars
     patch => realization%patch
 
     call GridVecGetArrayF90(grid,dP,dP_p,ierr)
@@ -277,10 +278,6 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
 
   endif
 
-
-
-
-
   if (dabs(option%pressure_dampening_factor) > 0.d0) then
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
@@ -288,18 +285,33 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
 
     call GridVecGetArrayF90(grid,dP,dP_p,ierr)
     call GridVecGetArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
     do local_id = 1, grid%nlmax
       delP = dP_p(local_id)
       P0 = P_p(local_id)
       P1 = P0 - delP
       if (P0 < P_R .and. P1 > P_R) then
-        write(option%io_buffer,'("U -> S:",1i7,2f12.0)') &
+        write(option%io_buffer,'("U -> S:",1i7,2f12.1)') &
           grid%nG2A(grid%nL2G(local_id)),P0,P1 
         call printMsgAnyRank(option)
+#if 0
+        ghosted_id = grid%nL2G(local_id)
+        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id),ghosted_id)
+        write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
+        call printMsgAnyRank(option)
+#endif
       else if (P1 < P_R .and. P0 > P_R) then
-        write(option%io_buffer,'("S -> U:",1i7,2f12.0)') &
+        write(option%io_buffer,'("S -> U:",1i7,2f12.1)') &
           grid%nG2A(grid%nL2G(local_id)),P0,P1
         call printMsgAnyRank(option)
+#if 0
+        ghosted_id = grid%nL2G(local_id)
+        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id),ghosted_id)
+        write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
+        call printMsgAnyRank(option)
+#endif
       endif
       ! transition from unsaturated to saturated
       if (P0 < P_R .and. P1 > P_R) then
@@ -308,6 +320,7 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
     enddo
     call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
     call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
   endif
 
 end subroutine RichardsCheckUpdatePre
@@ -1836,9 +1849,11 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
     x(1) = global_aux_var%pres(1)
     call RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,option,res)
     ideriv = 1
-    pert = x(ideriv)*perturbation_tolerance
+    pert = max(dabs(x(ideriv)*perturbation_tolerance),0.1d0)
     x_pert = x
+    if (x_pert(ideriv) < option%reference_pressure) pert = -1.d0*pert
     x_pert(ideriv) = x_pert(ideriv) + pert
+    
     call RichardsAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
                                sat_func,0.d0,0.d0,option)
 #if 0      
@@ -2052,8 +2067,12 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                       area, dist, dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
-    pert_up = x_up(ideriv)*perturbation_tolerance
-    pert_dn = x_dn(ideriv)*perturbation_tolerance
+!    pert_up = x_up(ideriv)*perturbation_tolerance
+    pert_up = max(dabs(x_up(ideriv)*perturbation_tolerance),0.1d0)
+    if (x_up(ideriv) < option%reference_pressure) pert_up = -1.d0*pert_up
+!    pert_dn = x_dn(ideriv)*perturbation_tolerance
+    pert_dn = max(dabs(x_dn(ideriv)*perturbation_tolerance),0.1d0)
+    if (x_dn(ideriv) < option%reference_pressure) pert_dn = -1.d0*pert_dn
     x_pert_up = x_up
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
@@ -2407,7 +2426,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
       x_pert_up = x_up
     endif
     ideriv = 1
-    pert_dn = x_dn(ideriv)*perturbation_tolerance    
+!    pert_dn = x_dn(ideriv)*perturbation_tolerance    
+    pert_dn = max(dabs(x_dn(ideriv)*perturbation_tolerance),0.1d0)
+    if (x_dn(ideriv) < option%reference_pressure) pert_dn = -1.d0*pert_dn
     x_pert_dn = x_dn
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
     x_pert_up = x_up
