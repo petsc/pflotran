@@ -254,6 +254,11 @@ subroutine TimestepperRead(stepper,input,option)
         call InputErrorMsg(input,option,'PRESSURE_DAMPENING_FACTOR', &
                            'TIMESTEPPER')
 
+      case('SATURATION_CHANGE_LIMIT')
+        call InputReadDouble(input,option,option%saturation_change_limit)
+        call InputErrorMsg(input,option,'SATURATION_CHANGE_LIMIT', &
+                           'TIMESTEPPER')
+
       case default
         option%io_buffer = 'Timestepper option: '//trim(keyword)// &
                            ' not recognized.'

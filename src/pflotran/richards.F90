@@ -213,6 +213,8 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
   use Grid_module
   use Field_module
   use Option_module
+  use Saturation_Function_module
+  use Patch_module
  
   implicit none
   
@@ -227,13 +229,57 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
   PetscReal, pointer :: dP_p(:)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  PetscInt :: local_id
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  PetscInt :: local_id, ghosted_id
   PetscReal :: P_R, P0, P1, delP
-  PetscReal :: scale
+  PetscReal :: scale, sat, sat_pert, pert, pc_pert, press_pert, delP_pert
   PetscErrorCode :: ierr
   
   grid => realization%patch%grid
   option => realization%option
+
+  if (dabs(option%saturation_change_limit) > 0.d0) then
+
+    field => realization%field
+    rich_aux_vars => realization%patch%aux%Richards%aux_vars
+    global_aux_vars => realization%patch%aux%Global%aux_vars
+    patch => realization%patch
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+
+    pert =dabs(option%saturation_change_limit)
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      sat = global_aux_vars(ghosted_id)%sat(1)
+      sat_pert = sat - sign(1.d0,sat-0.5d0)*pert
+      call SatFuncGetCapillaryPressure(pc_pert,sat_pert, &
+             patch%saturation_function_array( &
+               patch%sat_func_id(ghosted_id))%ptr,option)
+      press_pert = option%reference_pressure - pc_pert
+      P0 = P_p(local_id)
+      delP = dP_p(local_id)
+      delP_pert = dabs(P0 - press_pert)
+      if (delP_pert < dabs(delP)) then
+        write(option%io_buffer,'("dP_trunc:",1i7,2es15.7)') &
+          grid%nG2A(grid%nL2G(local_id)),delP_pert,dabs(delP)
+        call printMsgAnyRank(option)
+      endif
+      delP = sign(min(dabs(delP),delP_pert),delP)
+      dP_p(local_id) = delP
+    enddo
+    
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+
+  endif
+
+
+
+
 
   if (dabs(option%pressure_dampening_factor) > 0.d0) then
     ! P^p+1 = P^p - dP^p
@@ -247,11 +293,11 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
       P0 = P_p(local_id)
       P1 = P0 - delP
       if (P0 < P_R .and. P1 > P_R) then
-        write(option%io_buffer,'("U -> S:",1i7,2es15.7)') &
+        write(option%io_buffer,'("U -> S:",1i7,2f12.0)') &
           grid%nG2A(grid%nL2G(local_id)),P0,P1 
         call printMsgAnyRank(option)
       else if (P1 < P_R .and. P0 > P_R) then
-        write(option%io_buffer,'("S -> U:",1i7,2es15.7)') &
+        write(option%io_buffer,'("S -> U:",1i7,2f12.0)') &
           grid%nG2A(grid%nL2G(local_id)),P0,P1
         call printMsgAnyRank(option)
       endif

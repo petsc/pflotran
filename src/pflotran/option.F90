@@ -133,6 +133,7 @@ module Option_module
     PetscReal :: reference_saturation
     
     PetscReal :: pressure_dampening_factor
+    PetscReal :: saturation_change_limit
     PetscReal :: stomp_norm
     PetscBool :: check_stomp_norm
     
@@ -468,6 +469,7 @@ subroutine OptionInitRealization(option)
   option%reference_saturation = 1.d0
   
   option%pressure_dampening_factor = 0.d0
+  option%saturation_change_limit = 0.d0
   option%stomp_norm = 0.d0
   option%check_stomp_norm = PETSC_FALSE
   
