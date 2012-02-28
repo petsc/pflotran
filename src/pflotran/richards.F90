@@ -1816,6 +1816,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
      
   PetscInt :: ispec 
   PetscReal :: porXvol
+  PetscReal :: dpor_dp
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_aux_var_pert
@@ -1824,11 +1825,23 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
 
   porXvol = por*vol/option%flow_dt
       
+!#define USE_COMPRESSIBLITY
+#ifndef USE_COMPRESSIBLITY  
   ! accumulation term units = dkmol/dp
   J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
            porXvol
 
+#else
+  dpor_dp = (por-1.d0)*-1.d-7*exp(-1.d-7*(global_aux_var%pres(1)- &
+                                          option%reference_pressure))
+  J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
+            rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+           porXvol + &
+           global_aux_var%sat(1)*global_aux_var%den(1)*dpor_dp* &
+           vol/option%flow_dt
+#endif  
+  
   if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_aux_var_pert,option)  
     call RichardsAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
@@ -1883,7 +1896,7 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
-  PetscReal :: vol, por
+  PetscReal :: vol, por, por1
        
   ! accumulation term units = kmol/s
 
@@ -1892,8 +1905,15 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
 !  write(*,*) "por ", por, " volume ", vol, " dt ", option%flow_dt
 #endif
 
+#ifndef USE_COMPRESSIBILITY
     Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
+#else
+    por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(global_aux_var%pres(1)- &
+                                       option%reference_pressure))
+    Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por1 * vol / &
+           option%flow_dt
+#endif
     
 end subroutine RichardsAccumulation
 
