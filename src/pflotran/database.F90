@@ -2983,7 +2983,7 @@ subroutine BasisInit(reaction,option)
     write(86,'("#       input : ",a)') trim(option%input_filename)
 
     write(86,'(/,"<Primary Species")')
-    do icomp = 1, reaction%naqcomp
+    do icomp = 1, reaction%ncomp
       write(86,'(a,x,3(" ; ",f6.2))') trim(reaction%primary_species_names(icomp)), &
                                       reaction%primary_spec_a0(icomp), &
                                       reaction%primary_spec_Z(icomp), &
@@ -2993,15 +2993,14 @@ subroutine BasisInit(reaction,option)
     write(86,'(/,"<Aqueous Equilibrium Complexes")')
     do icplx = 1, reaction%neqcplx
       write(86,'(a," = ")',advance='no') trim(reaction%secondary_species_names(icplx))
-      if (reaction%eqcplxh2ostoich(icplx) /= 0) then
+      if (reaction%eqcplxh2oid(icplx) > 0) then
         write(86,'(f6.2," H2O ")',advance='no') reaction%eqcplxh2ostoich(icplx)
       endif
-      do i = 1, reaction%naqcomp
-        if (reaction%eqcplxstoich(i,icplx) /= 0) then
-          idum = reaction%eqcplxspecid(i,icplx)
-          write(86,'(f6.2,x,a,x)',advance='no') reaction%eqcplxstoich(i,icplx), &
-                                              trim(reaction%primary_species_names(idum))
-        endif
+      
+      do i = 1,reaction%eqcplxspecid(0,icplx)
+        idum = reaction%eqcplxspecid(i,icplx)
+        write(86,'(f6.2,x,a,x)',advance='no') reaction%eqcplxstoich(i,icplx), &
+                                            trim(reaction%primary_species_names(idum))
       enddo
       write(86,'(4(" ; ",f10.5))') reaction%eqcplx_logK(icplx), &
                                    reaction%eqcplx_a0(icplx), &
@@ -3052,15 +3051,13 @@ subroutine BasisInit(reaction,option)
 
     do imnrl = 1, reaction%nkinmnrl
       write(86,'(a," = ")',advance='no') trim(reaction%kinmnrl_names(imnrl))
-      if (reaction%kinmnrlh2ostoich(imnrl) /= 0) then
+      if (reaction%kinmnrlh2oid(imnrl) > 0) then
         write(86,'(f6.2," H2O ")',advance='no') reaction%kinmnrlh2ostoich(imnrl)
       endif
-      do i = 1, reaction%naqcomp
-        if (reaction%kinmnrlstoich(i,imnrl) /= 0) then
-          idum = reaction%kinmnrlspecid(i,imnrl)
-          write(86,'(f6.2,x,a,x)',advance='no') reaction%kinmnrlstoich(i,imnrl), &
-                                                trim(reaction%primary_species_names(idum))
-        endif
+      do i = 1, reaction%kinmnrlstoich(0,imnrl)
+        idum = reaction%kinmnrlspecid(i,imnrl)
+        write(86,'(f6.2,x,a,x)',advance='no') reaction%kinmnrlstoich(i,imnrl), &
+                                              trim(reaction%primary_species_names(idum))
       enddo
       write(86,'(4(" ; ",1es13.5))') reaction%kinmnrl_logK(imnrl), &
                                      reaction%kinmnrl_molar_wt(imnrl), &
@@ -3120,22 +3117,19 @@ subroutine BasisInit(reaction,option)
         write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplx_free_site_stoich(icplx), &
                                             trim(reaction%eqsrfcplx_site_names(idum))
 
-        if (reaction%eqsrfcplxh2ostoich(icplx) /= 0) then
+        if (reaction%eqsrfcplxh2oid(icplx) > 0) then
           write(86,'(f6.2," H2O ")',advance='no') reaction%eqsrfcplxh2ostoich(icplx)
         endif
-        do j = 1, reaction%naqcomp
-          if (reaction%eqsrfcplxstoich(j,icplx) /= 0) then
-            idum = reaction%eqsrfcplxspecid(j,icplx)
-            write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplxstoich(j,icplx), &
-                                     trim(reaction%primary_species_names(idum))
-          endif
+        do j = 1, reaction%eqsrfcplxstoich(0,icplx)
+          idum = reaction%eqsrfcplxspecid(j,icplx)
+          write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplxstoich(j,icplx), &
+                                   trim(reaction%primary_species_names(idum))
         enddo
         write(86,'(" ; ",1es13.5," ; ",f6.2)') reaction%eqsrfcplx_logK(icplx), &
                                                reaction%eqsrfcplx_Z(icplx)
 
       enddo
     enddo
-
 
     close(86)
   endif

@@ -2798,13 +2798,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
          trim(constraint_coupler%constraint_name)
 
     write(86,'(/,"[total]")')
-    do icomp = 1, reaction%naqcomp
+    do icomp = 1, reaction%ncomp
       write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
                                 rt_auxvar%pri_molal(icomp)
     enddo
 
     write(86,'(/,"[free_ion]")')
-    do icomp = 1, reaction%naqcomp
+    do icomp = 1, reaction%ncomp
       write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
                                 rt_auxvar%total(icomp,1)*molar_to_molal
     enddo
@@ -2816,7 +2816,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
 
     write(86,'(/,"[sorbed]")')
-    do icomp = 1, reaction%naqcomp
+    do icomp = 1, reaction%ncomp
       write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
                                 rt_auxvar%eqsrfcplx_conc(icomp)
     enddo
@@ -2829,6 +2829,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   endif
 #endif
 ! end AMANZI_BGD
+
 end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
