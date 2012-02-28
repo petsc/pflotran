@@ -2783,6 +2783,52 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
   endif
 
+#ifdef AMANZI_BGD
+  ! output constraints for amanzi cfg formatted input
+  if (OptionPrintToFile(option)) then
+    open(unit=86,file='constraint.cfg')
+
+    write(86,'("# pflotran constraint preprocessing :")')
+    !call date_and_time(date=word,time=word2)
+    ! prints garbage? need to clear memory?
+    !write(86,'("#        date : ",a,"   ",a)') trim(word), trim(word2)
+    write(86,'("#       input : ",a)') trim(option%input_filename)
+
+    write(86,'(/,"Constraint: ",a)') &
+         trim(constraint_coupler%constraint_name)
+
+    write(86,'(/,"[total]")')
+    do icomp = 1, reaction%naqcomp
+      write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
+                                rt_auxvar%pri_molal(icomp)
+    enddo
+
+    write(86,'(/,"[free_ion]")')
+    do icomp = 1, reaction%naqcomp
+      write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
+                                rt_auxvar%total(icomp,1)*molar_to_molal
+    enddo
+
+    write(86,'(/,"[minerals]")')
+    do imnrl = 1, reaction%nkinmnrl
+      write(86,'(a," = ",f6.3)') trim(reaction%kinmnrl_names(imnrl)), &
+                                rt_auxvar%mnrl_volfrac(imnrl)
+    enddo
+
+    write(86,'(/,"[sorbed]")')
+    do icomp = 1, reaction%naqcomp
+      write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
+                                rt_auxvar%eqsrfcplx_conc(icomp)
+    enddo
+
+    write(86,'(/,"[ion_exchange]")')
+    do icomp = 1, reaction%neqionxrxn
+      write(86, '("X- = ",1es13.6)') reaction%eqionx_rxn_CEC(icomp)
+    enddo
+    close(86)
+  endif
+#endif
+! end AMANZI_BGD
 end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
