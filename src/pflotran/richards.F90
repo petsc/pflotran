@@ -1854,7 +1854,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
           print *, 'dkvr_z_dp:', aux_var%dkvr_z_dp, (rich_aux_var_pert%kvr_z-rich_aux_var%kvr_z)/pert
       end select     
 #endif     
-    call RichardsAccumulation(rich_aux_var_pert,global_aux_var,por,vol, &
+    call RichardsAccumulation(rich_aux_var_pert,global_aux_var_pert,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
