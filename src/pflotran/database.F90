@@ -3054,7 +3054,7 @@ subroutine BasisInit(reaction,option)
       if (reaction%kinmnrlh2oid(imnrl) > 0) then
         write(86,'(f6.2," H2O ")',advance='no') reaction%kinmnrlh2ostoich(imnrl)
       endif
-      do i = 1, reaction%kinmnrlstoich(0,imnrl)
+      do i = 1, reaction%kinmnrlspecid(0,imnrl)
         idum = reaction%kinmnrlspecid(i,imnrl)
         write(86,'(f6.2,x,a,x)',advance='no') reaction%kinmnrlstoich(i,imnrl), &
                                               trim(reaction%primary_species_names(idum))
@@ -3120,7 +3120,7 @@ subroutine BasisInit(reaction,option)
         if (reaction%eqsrfcplxh2oid(icplx) > 0) then
           write(86,'(f6.2," H2O ")',advance='no') reaction%eqsrfcplxh2ostoich(icplx)
         endif
-        do j = 1, reaction%eqsrfcplxstoich(0,icplx)
+        do j = 1, reaction%eqsrfcplxspecid(0,icplx)
           idum = reaction%eqsrfcplxspecid(j,icplx)
           write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplxstoich(j,icplx), &
                                    trim(reaction%primary_species_names(idum))
