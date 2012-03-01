@@ -2943,15 +2943,18 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           intercept%y = 0.5d0*(intercept1%y + intercept2%y)
           intercept%z = 0.5d0*(intercept1%z + intercept2%z)
 
+          v1(1) = point_dn%x-point_up%x
+          v1(2) = point_dn%y-point_up%y
+          v1(3) = point_dn%z-point_up%z
+
+          area1 = sqrt(DotProduct(v1,v1))
+          area2 = 0.d0
         else
         
           ! need to add the surface areas, distance, etc.
           point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
           point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
           point3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
-          !write(*,*),'point1: ',point1%x,point1%y,point1%z
-          !write(*,*),'point2: ',point2%x,point2%y,point2%z
-          !write(*,*),'point3: ',point3%x,point2%y,point3%z
           if (face_type == QUAD_FACE_TYPE) then
             point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(4,face_id))
           endif

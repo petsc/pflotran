@@ -23,9 +23,9 @@ module Saturation_Function_module
     PetscReal :: power
     PetscInt :: hysteresis_id
     PetscInt :: hysteresis_params(6)
-    PetscReal :: BC_pressure_low
-    PetscReal :: BC_pressure_high
-    PetscReal :: BC_spline_coefficients(4)
+    PetscReal :: spline_low
+    PetscReal :: spline_high
+    PetscReal :: spline_coefficients(4)
     PetscReal :: ani_A       ! parameters for anisotropic relative permeability model
     PetscReal :: ani_B       ! parameters for anisotropic relative permeability model
     PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
@@ -48,6 +48,7 @@ module Saturation_Function_module
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
             SaturationFunctionComputeSpline, &
+            PermFunctionComputeSpline, &
             SaturationFunctionRead, &
             SatFuncGetRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
@@ -104,9 +105,9 @@ function SaturationFunctionCreate(option)
   saturation_function%power = 0.d0
   saturation_function%hysteresis_id = 0
   saturation_function%hysteresis_params = 0
-  saturation_function%BC_pressure_low = 0.d0
-  saturation_function%BC_pressure_high = 0.d0
-  saturation_function%BC_spline_coefficients = 0.d0
+  saturation_function%spline_low = 0.d0
+  saturation_function%spline_high = 0.d0
+  saturation_function%spline_coefficients = 0.d0
   saturation_function%ani_A = 0.d0
   saturation_function%ani_B = 0.d0
   saturation_function%ani_C = 0.d0
@@ -275,53 +276,183 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   PetscInt :: d
   PetscReal :: pressure_high, pressure_low
   
-  PetscReal :: alpha
+  PetscReal :: n
 
-  if (saturation_function%saturation_function_itype /= BROOKS_COREY) &
-    return
+  select case(saturation_function%saturation_function_itype) 
+    case(BROOKS_COREY)
+
+      ! fill matix with values
+      pressure_high = 1.d0/saturation_function%alpha*2.d0
+      pressure_low = 1.d0/saturation_function%alpha*0.5d0
   
-  alpha = saturation_function%alpha
+      saturation_function%spline_low = pressure_low
+      saturation_function%spline_high = pressure_high
   
-  ! fill matix with values
-  pressure_high = 1.d0/alpha*2.d0
-  pressure_low = 1.d0/alpha*0.5d0
+      A(1,1) = 1.d0
+      A(2,1) = 1.d0
+      A(3,1) = 0.d0
+      A(4,1) = 0.d0
   
-  saturation_function%BC_pressure_low = pressure_low
-  saturation_function%BC_pressure_high = pressure_high
+      A(1,2) = pressure_high
+      A(2,2) = pressure_low
+      A(3,2) = 1.d0
+      A(4,2) = 1.d0
   
+      A(1,3) = pressure_high**2.d0
+      A(2,3) = pressure_low**2.d0
+      A(3,3) = 2.d0*pressure_high
+      A(4,3) = 2.d0*pressure_low
   
-  A(1,1) = 1.d0
-  A(2,1) = 1.d0
-  A(3,1) = 0.d0
-  A(4,1) = 0.d0
+      A(1,4) = pressure_high**3.d0
+      A(2,4) = pressure_low**3.d0
+      A(3,4) = 3.d0*pressure_high**2.d0
+      A(4,4) = 3.d0*pressure_low**2.d0
   
-  A(1,2) = pressure_high
-  A(2,2) = pressure_low
-  A(3,2) = 1.d0
-  A(4,2) = 1.d0
+      b(1) = (pressure_high*saturation_function%alpha)** &
+               (-saturation_function%lambda)
+      b(2) = 1.d0
+      b(3) = -saturation_function%lambda/pressure_high* &
+               (pressure_high*saturation_function%alpha)** &
+                 (-saturation_function%lambda)
+      b(4) = 0.d0
   
-  A(1,3) = pressure_high**2.d0
-  A(2,3) = pressure_low**2.d0
-  A(3,3) = 2.d0*pressure_high
-  A(4,3) = 2.d0*pressure_low
+      call ludcmp(A,FOUR_INTEGER,indx,d)
+      call lubksb(A,FOUR_INTEGER,indx,b)
   
-  A(1,4) = pressure_high**3.d0
-  A(2,4) = pressure_low**3.d0
-  A(3,4) = 3.d0*pressure_high**2.d0
-  A(4,4) = 3.d0*pressure_low**2.d0
+      saturation_function%spline_coefficients(1:4) = b(1:4)
+      
+  case(VAN_GENUCHTEN)
+ 
+      ! return for now
+      return
+
+      !geh: keep for now
+#if 0
+      ! fill matix with values
+      ! these are capillary pressures
+      pressure_low = 0  ! saturated
+      pressure_high = 0.01d0*option%reference_pressure  ! just below saturated
   
-  b(1) = (pressure_high*alpha)**(-saturation_function%lambda)
-  b(2) = 1.d0
-  b(3) = -saturation_function%lambda/pressure_high* &
-        (pressure_high*alpha)**(-saturation_function%lambda)
-  b(4) = 0.d0
+      saturation_function%spline_low = pressure_low
+      saturation_function%spline_high = pressure_high
+    
+      A(1,1) = 1.d0
+      A(2,1) = 1.d0
+      A(3,1) = 0.d0
+      A(4,1) = 0.d0
   
-  call ludcmp(A,FOUR_INTEGER,indx,d)
-  call lubksb(A,FOUR_INTEGER,indx,b)
+      A(1,2) = pressure_high
+      A(2,2) = pressure_low
+      A(3,2) = 1.d0
+      A(4,2) = 1.d0
   
-  saturation_function%BC_spline_coefficients(1:4) = b(1:4)
+      A(1,3) = pressure_high**2.d0
+      A(2,3) = pressure_low**2.d0
+      A(3,3) = 2.d0*pressure_high
+      A(4,3) = 2.d0*pressure_low
+  
+      A(1,4) = pressure_high**3.d0
+      A(2,4) = pressure_low**3.d0
+      A(3,4) = 3.d0*pressure_high**2.d0
+      A(4,4) = 3.d0*pressure_low**2.d0
+  
+      n = 1.d0/(1.d0 - saturation_function%m)
+      b(1) = (1.d0+(pressure_high*saturation_function%alpha)**n)** &
+               (-saturation_function%m)
+      b(2) = 1.d0
+      b(3) = -saturation_function%m*n*saturation_function%alpha* &
+             (saturation_function%alpha*pressure_high)**(n-1.d0)* &
+             (1.d0+(saturation_function%alpha*pressure_high)**n)** &
+               (-saturation_function%m-1.d0)
+      b(4) = 0.d0
+  
+      call ludcmp(A,FOUR_INTEGER,indx,d)
+      call lubksb(A,FOUR_INTEGER,indx,b)
+  
+      saturation_function%spline_coefficients(1:4) = b(1:4)
+#endif
+
+  end select
   
 end subroutine SaturationFunctionComputeSpline
+
+! ************************************************************************** !
+!
+! PermFunctionComputeSpline: Computes a spline spanning the 
+!                                  discontinuity in Brooks Corey
+! author: Glenn Hammond
+! date: 02/27/12
+!
+! ************************************************************************** !
+subroutine PermFunctionComputeSpline(option,saturation_function)
+  
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  type(option_type) :: option
+  type(saturation_function_type) :: saturation_function
+  
+  PetscReal :: A(4,4), x(4), b(4)
+  PetscInt :: indx(4)
+  PetscInt :: d
+  PetscReal :: Se_high, Se_low, one_over_m, Se_one_over_m, m
+  
+  select case(saturation_function%saturation_function_itype) 
+
+    case(BROOKS_COREY)
+
+    case(VAN_GENUCHTEN)
+ 
+#if 0
+      ! fill matix with values
+      Se_low = 0.99d0  ! saturated
+      Se_high = 1.d0  ! just below saturated
+  
+      saturation_function%spline_low = Se_low
+      saturation_function%spline_high = Se_high
+    
+      A(1,1) = 1.d0
+      A(2,1) = 1.d0
+      A(3,1) = 0.d0
+      A(4,1) = 0.d0
+  
+      A(1,2) = Se_high
+      A(2,2) = Se_low
+      A(3,2) = 1.d0
+      A(4,2) = 1.d0
+  
+      A(1,3) = Se_high**2.d0
+      A(2,3) = Se_low**2.d0
+      A(3,3) = 2.d0*Se_high
+      A(4,3) = 2.d0*Se_low
+  
+      A(1,4) = Se_high**3.d0
+      A(2,4) = Se_low**3.d0
+      A(3,4) = 3.d0*Se_high**2.d0
+      A(4,4) = 3.d0*Se_low**2.d0
+  
+      m = saturation_function%m
+      one_over_m = 1.d0/m
+      Se_one_over_m = Se_low**one_over_m
+      b(1) = 1.d0
+      b(2) = sqrt(Se_low)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
+      b(3) = 0.d0
+      b(4) = 0.5d0*b(2)/Se_low+ &
+             2.d0*Se_low**(one_over_m-0.5d0)* &
+             (1.d0-Se_one_over_m)**(m-1.d0)* &
+             (1.d0-(1.d0-Se_one_over_m)**m)
+  
+      call ludcmp(A,FOUR_INTEGER,indx,d)
+      call lubksb(A,FOUR_INTEGER,indx,b)
+  
+      saturation_function%spline_coefficients(1:4) = b(1:4)
+#endif
+
+  end select
+  
+end subroutine PermFunctionComputeSpline
 
 ! ************************************************************************** !
 !
@@ -520,11 +651,30 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
   ! compute saturation
   select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
+#if 0
+      if (pc < saturation_function%spline_low) then
+        saturation = 1.d0
+        relative_perm = 1.d0
+        switch_to_saturated = PETSC_TRUE
+        return
+      else if (pc < saturation_function%spline_high) then
+        Sr = saturation_function%Sr(iphase)
+        Se = saturation_function%spline_coefficients(1)+ &
+             saturation_function%spline_coefficients(2)*pc+ &
+             saturation_function%spline_coefficients(3)*pc**2.d0+ &
+             saturation_function%spline_coefficients(4)*pc**3.d0
+        dSe_pc = saturation_function%spline_coefficients(2)+ &
+                  saturation_function%spline_coefficients(3)*2.d0*pc+ &
+                  saturation_function%spline_coefficients(4)*3.d0*pc**2.d0
+        saturation = Sr + (1.d0-Sr)*Se
+        dsat_pc = (1.d0-Sr)*dSe_pc
+#else
       if (pressure >= option%reference_pressure) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
         return
+#endif        
       else
         alpha = saturation_function%alpha
         pc = option%reference_pressure-pressure
@@ -564,6 +714,17 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                    Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
           dkr_pc = dkr_Se*dSe_pc
         case(MUALEM)
+#if 0
+          if (Se > saturation_function%spline_low) then
+            relative_perm = saturation_function%spline_coefficients(1)+ &
+                            saturation_function%spline_coefficients(2)*Se+ &
+                            saturation_function%spline_coefficients(3)*Se**2.d0+ &
+                            saturation_function%spline_coefficients(4)*Se**3.d0
+            dkr_Se = saturation_function%spline_coefficients(2)+ &
+                     saturation_function%spline_coefficients(3)*2.d0*Se+ &
+                     saturation_function%spline_coefficients(4)*3.d0*Se**2.d0
+          else
+#endif          
           one_over_m = 1.d0/m
           Se_one_over_m = Se**one_over_m
           relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
@@ -571,6 +732,9 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                    2.d0*Se**(one_over_m-0.5d0)* &
                         (1.d0-Se_one_over_m)**(m-1.d0)* &
                         (1.d0-(1.d0-Se_one_over_m)**m)
+#if 0        
+          endif
+#endif          
           dkr_pc = dkr_Se*dSe_pc
         case default
           option%io_buffer = 'Unknown relative permeabilty function' 
@@ -581,12 +745,12 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
       one_over_alpha = 1.d0/alpha
       pc = option%reference_pressure-pressure
 #if 0      
-      if (pc < saturation_function%BC_pressure_low) then
+      if (pc < saturation_function%spline_low) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
         return
-      else if (pc < saturation_function%BC_pressure_high) then
+      else if (pc < saturation_function%BC_high) then
         Sr = saturation_function%Sr(iphase)
         Se = saturation_function%BC_spline_coefficients(1)+ &
              saturation_function%BC_spline_coefficients(2)*pc+ &

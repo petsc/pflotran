@@ -1783,6 +1783,7 @@ subroutine InitReadInput(simulation)
         call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
         call SaturationFunctionRead(saturation_function,input,option)
         call SaturationFunctionComputeSpline(option,saturation_function)
+        call PermFunctionComputeSpline(option,saturation_function)
         call SaturationFunctionAddToList(saturation_function, &
                                          realization%saturation_functions)
         nullify(saturation_function)   
