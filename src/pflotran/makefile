@@ -40,20 +40,8 @@ ifdef temp
 TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
 
-ifdef chuan_hpt
-HPT_FLAG = -Dchuan_hpt
-endif
-
 ifdef ice
 ICE_FLAG = -DICE
-endif
-
-ifdef mech
-MECH_FLAG = -DMECH
-endif
-
-ifdef vapor
-VAPOR_FLAG = -DVAPOR
 endif
 
 ifdef chuan_co2
@@ -108,7 +96,7 @@ MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
 	$(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG)\
 	$(TAB_FLAG) $(PCL_FLAG) $(DBL_FLAG) $(TEMP_FLAG) $(GPU_FLAGS)\
 	$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG)\
-	$(GAUTAM_FLAGS) $(ICE_FLAG) $(VAPOR_FLAG) $(MECH_FLAG) $(HPT_FLAG)
+	$(GAUTAM_FLAGS) $(ICE_FLAG) $(HPT_FLAG)
 
 CFLAGS		 = 
 FFLAGS		 =

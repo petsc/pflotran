@@ -723,7 +723,9 @@ subroutine ReactionRead(reaction,input,option)
         call InputErrorMsg(input,option,'keyword', &
                            'CHEMISTRY,DATABASE FILENAME')  
       case('LOG_FORMULATION')
-        reaction%use_log_formulation = PETSC_TRUE        
+        reaction%use_log_formulation = PETSC_TRUE
+      case('GEOTHERMAL_HPT')
+        reaction%use_geothermal_hpt = PETSC_TRUE           
       case('NO_CHECK_UPDATE')
         reaction%check_update = PETSC_FALSE       
       case('NO_RESTART_MINERAL_VOL_FRAC')
@@ -1605,54 +1607,53 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    if (associated(reaction%eqcplx_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                   global_auxvar%temp(iphase),reaction%neqcplx)
-    endif
-    if (associated(reaction%eqgas_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                   global_auxvar%temp(iphase),reaction%ngas)
-    endif
-    if (associated(reaction%eqsrfcplx_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                   global_auxvar%temp(iphase),reaction%neqsrfcplx)
-    endif
-    if (associated(reaction%kinmnrl_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                   global_auxvar%temp(iphase),reaction%nkinmnrl)
-    endif
-    if (associated(reaction%mnrl_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                   global_auxvar%temp(iphase),reaction%nmnrl)
-    endif
-  endif
-#endif  
-
-#ifdef CHUAN_HPT
-  if (.not.option%use_isothermal) then
-    if (associated(reaction%eqcplx_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                   global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
-                                   reaction%neqcplx)
-    endif
-    if (associated(reaction%eqgas_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                   global_auxvar%temp(iphase),reaction%ngas)
-    endif
-    if (associated(reaction%eqsrfcplx_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
-                                   reaction%neqsrfcplx)
-    endif
-    if (associated(reaction%kinmnrl_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
-                                   reaction%nkinmnrl)
-    endif
-    if (associated(reaction%mnrl_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
-                                   reaction%nmnrl)
+    if (.not.reaction%use_geothermal_hpt)then
+      if (associated(reaction%eqcplx_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                     global_auxvar%temp(iphase),reaction%neqcplx)
+      endif
+      if (associated(reaction%eqgas_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                     global_auxvar%temp(iphase),reaction%ngas)
+      endif
+      if (associated(reaction%eqsrfcplx_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                     global_auxvar%temp(iphase),reaction%neqsrfcplx)
+      endif
+      if (associated(reaction%kinmnrl_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                     global_auxvar%temp(iphase),reaction%nkinmnrl)
+      endif
+      if (associated(reaction%mnrl_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                     global_auxvar%temp(iphase),reaction%nmnrl)
+      endif
+    else 
+      if (associated(reaction%eqcplx_logKcoef)) then
+          call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                       reaction%neqcplx)
+        endif
+        if (associated(reaction%eqgas_logKcoef)) then
+          call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
+                                       reaction%ngas)
+        endif
+        if (associated(reaction%eqsrfcplx_logKcoef)) then
+          call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                       reaction%neqsrfcplx)
+        endif
+        if (associated(reaction%kinmnrl_logKcoef)) then
+          call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                       reaction%nkinmnrl)
+        endif
+        if (associated(reaction%mnrl_logKcoef)) then
+          call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                       reaction%nmnrl)
+        endif
     endif
   endif
 #endif  
@@ -2278,54 +2279,53 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    if (associated(reaction%eqcplx_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                   global_auxvar%temp(iphase),reaction%neqcplx)
-    endif
-    if (associated(reaction%eqgas_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                   global_auxvar%temp(iphase),reaction%ngas)
-    endif
-    if (associated(reaction%eqsrfcplx_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                   global_auxvar%temp(iphase),reaction%neqsrfcplx)
-    endif
-    if (associated(reaction%kinmnrl_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                   global_auxvar%temp(iphase),reaction%nkinmnrl)
-    endif
-    if (associated(reaction%mnrl_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                   global_auxvar%temp(iphase),reaction%nmnrl)
-    endif
-  endif
-#endif
-
-#ifdef CHUAN_HPT
-  if (.not.option%use_isothermal) then
-    if (associated(reaction%eqcplx_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                   global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
-                                   reaction%neqcplx)
-    endif
-    if (associated(reaction%eqgas_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                   global_auxvar%temp(iphase),reaction%ngas)
-    endif
-    if (associated(reaction%eqsrfcplx_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
-                                   reaction%neqsrfcplx)
-    endif
-    if (associated(reaction%kinmnrl_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
-                                   reaction%nkinmnrl)
-    endif
-    if (associated(reaction%mnrl_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                   global_auxvar%temp(iphase),,global_auxvar%pres(iphase), &
-                                   reaction%nmnrl)
+    if (.not.reaction%use_geothermal_hpt)then
+      if (associated(reaction%eqcplx_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                     global_auxvar%temp(iphase),reaction%neqcplx)
+      endif
+      if (associated(reaction%eqgas_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                     global_auxvar%temp(iphase),reaction%ngas)
+      endif
+      if (associated(reaction%eqsrfcplx_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                     global_auxvar%temp(iphase),reaction%neqsrfcplx)
+      endif
+      if (associated(reaction%kinmnrl_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                     global_auxvar%temp(iphase),reaction%nkinmnrl)
+      endif
+      if (associated(reaction%mnrl_logKcoef)) then
+        call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                     global_auxvar%temp(iphase),reaction%nmnrl)
+      endif
+    else 
+      if (associated(reaction%eqcplx_logKcoef)) then
+        call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                     reaction%neqcplx)
+      endif
+      if (associated(reaction%eqgas_logKcoef)) then
+        call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
+                                     reaction%ngas)
+      endif
+      if (associated(reaction%eqsrfcplx_logKcoef)) then
+        call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                     reaction%neqsrfcplx)
+      endif
+      if (associated(reaction%kinmnrl_logKcoef)) then
+        call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                     reaction%nkinmnrl)
+      endif
+      if (associated(reaction%mnrl_logKcoef)) then
+        call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
+                                     reaction%nmnrl)
+      endif
     endif
   endif
 #endif  
@@ -3732,16 +3732,14 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   
 #ifdef TEMP_DEPENDENT_LOGK
     if (.not.option%use_isothermal) then
-      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+      if (.not.reaction%use_geothermal_hpt)then
+        call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                global_auxvar%temp(1),reaction%neqcplx)
-    endif
-#endif  
-
-#ifdef CHUAN_HPT
-    if (.not.option%use_isothermal) then
-      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+      else
+        call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                global_auxvar%temp(1),global_auxvar%pres(1),reaction%neqcplx)
-    endif
+      endif
+    endif 
 #endif  
   
   ! compute primary species contribution to ionic strength
@@ -3991,16 +3989,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
-    call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+    if (.not.reaction%use_geothermal_hpt)then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                  global_auxvar%temp(iphase),reaction%neqcplx)
-  endif
-#endif  
-
-#ifdef CHUAN_HPT
-  if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
-    call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+    else
+       call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                  global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                  reaction%neqcplx)
+    endif
   endif
 #endif    
   do icplx = 1, reaction%neqcplx ! for each secondary species
@@ -4054,17 +4050,15 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   iphase = 2           
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal .and. reaction%ngas > 0) then
-    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+    if (.not.reaction%use_geothermal_hpt)then
+      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                  global_auxvar%temp(1),reaction%ngas)
-  endif
-#endif  
-
-#ifdef CHUAN_HPT
-  if (.not.option%use_isothermal .and. reaction%ngas > 0) then
-    call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+    else
+      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                  global_auxvar%temp(1),global_auxvar%pres(1),&
                                  reaction%ngas)
-  endif
+    endif
+  endif  
 #endif  
 
   if (iphase > option%nphase) return 
@@ -5148,16 +5142,14 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+    if (.not.reaction%use_geothermal_hpt)then
+      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
                                  global_auxvar%temp(iphase),reaction%nkinmnrl)
-  endif
-#endif  
-
-#ifdef CHUAN_HPT
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+    else
+      call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
                                  global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                  reaction%nkinmnrl)
+    endif
   endif
 #endif  
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
@@ -5463,16 +5455,14 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+    if (.not.reaction%use_geothermal_hpt)then
+      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
                                  global_auxvar%temp(iphase),reaction%nmnrl)
-  endif
-#endif  
-
-#ifdef CHUAN_HPT
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                 global_auxvar%temp(iphase),,global_auxvar%pres(iphase),&
+    else
+      call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                 global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                  reaction%nmnrl)
+    endif
   endif
 #endif  
 
@@ -5891,7 +5881,6 @@ subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
   
 end subroutine ReactionInterpolateLogK
 
-#ifdef chuan_hpt
 ! ************************************************************************** !
 !
 ! ReactionInitializeLogK: Least squares fit to log K over database temperature range
@@ -5970,7 +5959,7 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
   enddo
   
 end subroutine ReactionInterpolateLogK_hpt
-#endif
+
 ! ************************************************************************** !
 !
 ! RComputeKd: Computes the Kd for a given chemical component
