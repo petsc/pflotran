@@ -179,7 +179,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
-
+#ifdef ICE
+  if (fnorm > 1.d10 .or. pnorm > 1.d10 .or. inorm_residual > 1.d10) then
+    reason = -2
+  endif
+#endif
   
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
