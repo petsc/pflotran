@@ -382,7 +382,7 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
 
   ! write header
   ! write title
-  write(fid,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+  write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
                 option%time/output_option%tconv,output_option%tunit
 
   ! initial portion of header
@@ -1508,7 +1508,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   
     ! write header
     ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+    write(IUNIT3,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
@@ -1695,7 +1695,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
     ! write header
     ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+    write(IUNIT3,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
@@ -1723,15 +1723,15 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     ! write zone header
     select case(direction)
       case(X_DIRECTION)
-        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+        write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
       case(Y_DIRECTION)
-        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+        write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
       case(Z_DIRECTION)
-        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+        write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
     end select 
@@ -2422,7 +2422,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   
     ! write header
     ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+    write(IUNIT3,'(''TITLE = "'',1es13.4," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
@@ -2443,7 +2443,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
+    write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i5,'', J='',i5, &
                  &'', K='',i5)') &
                  option%time/output_option%tconv, &
                  grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
@@ -3201,7 +3201,7 @@ function OutputFormatDouble(real_value)
   
   character(len=MAXWORDLENGTH) :: OutputFormatDouble
 
-  write(OutputFormatDouble,'(1es12.4)') real_value
+  write(OutputFormatDouble,'(1es13.5)') real_value
   
   OutputFormatDouble = adjustl(OutputFormatDouble)
   
@@ -6119,7 +6119,7 @@ end subroutine SAMRWritePlotData
 #endif
         
      ! create a group for the data set
-      write(string,'(''Time:'',es12.4,x,a1)') &
+      write(string,'(''Time:'',es13.5,x,a1)') &
             option%time/output_option%tconv,output_option%tunit
       if (len_trim(output_option%plot_name) > 2) then
         string = trim(string) // ' ' // output_option%plot_name
