@@ -1428,8 +1428,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 #endif
       
         if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
-          &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-          &   1pe12.4)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
+          &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
+          &   1pe12.5)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
               option%flow_time/realization%output_option%tconv, &
               option%flow_dt/realization%output_option%tconv
 
@@ -1559,7 +1559,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
-    write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
+    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
@@ -1581,7 +1581,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
   endif
   if (option%print_file_flag) then
-    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
+    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
@@ -1856,8 +1856,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
       option%tran_dt = 0.5d0 * option%tran_dt
     
       if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
-        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
+        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
+        &   1pe12.5)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
             option%tran_time/realization%output_option%tconv, &
             option%tran_dt/realization%output_option%tconv
 
@@ -1896,8 +1896,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   
     if (option%nflowdof > 0 .and. .not.steady_flow) then
 
-    write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Target= ",1pe12.4, &
-      & " Dt= ",1pe12.4," [",a1,"]", &
+    write(*, '(/," TRAN ",i6," Time= ",1pe12.5," Target= ",1pe12.5, &
+      & " Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
@@ -1911,7 +1911,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
     else
 
-    write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
+    write(*, '(/," TRAN ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
@@ -1936,7 +1936,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   endif
 
   if (option%print_file_flag) then
-    write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4, &
+    write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
       & " [",a1,"]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
@@ -2205,8 +2205,8 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   stepper%steps = stepper%steps + 1     
   
   if (option%print_screen_flag) then
-    write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
-          & 1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
+    write(*, '(" TRAN ",i6," Time= ",1pe12.5," Dt= ", &
+          & 1pe12.5," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
           & " [",i10,"]")') stepper%steps, &
 !geh        option%tran_time/realization%output_option%tconv, &
         final_tran_time/realization%output_option%tconv, &
@@ -2216,8 +2216,8 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   endif
 
   if (option%print_file_flag) then
-    write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
-          & 1pe12.4," [",a1,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
+    write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.5," Dt= ", &
+          & 1pe12.5," [",a1,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
           & " [",i10,"]")') stepper%steps, &
 !geh        option%tran_time/realization%output_option%tconv, &
         final_tran_time/realization%output_option%tconv, &
