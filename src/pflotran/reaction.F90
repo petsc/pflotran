@@ -39,7 +39,8 @@ module Reaction_module
             RTAccumulationDerivative, &
             RTPrintAuxVar, &
             RMineralSaturationIndex, &
-            DoubleLayer
+            ReactionInterpolateLogK_hpt, &
+            ReactionInitializeLogK_hpt
 
 contains
 
@@ -2653,7 +2654,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     124 format(2x,a12,4x,1pe12.4)
 
 #ifdef DOUBLE_LAYER
-    call DoubleLayer (constraint_coupler,reaction,option)
+    call RDoubleLayer (constraint_coupler,reaction,option)
 #endif
 
   endif
@@ -2834,13 +2835,13 @@ end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
 !
-! DoubleLayer: Calculates double layer potential, surface charge, and
-!              sorbed surface complex concentrations
+! ReactionDoubleLayer: Calculates double layer potential, surface charge, and
+!                      sorbed surface complex concentrations
 ! author: Peter C. Lichtner
-! date: 10/28/08
+! date: ???
 !
 ! ************************************************************************** !
-subroutine DoubleLayer(constraint_coupler,reaction,option)
+subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
 
   use Option_module
   use Input_module
@@ -3030,7 +3031,7 @@ subroutine DoubleLayer(constraint_coupler,reaction,option)
   
   print *,'srfcmplx1: ',srfcplx_conc
 
-end subroutine DoubleLayer
+end subroutine ReactionDoubleLayer
 
 #if 0
 subroutine srfcmplx(irxn,icplx,lnQK,logK,Z,potential,tempk, &
