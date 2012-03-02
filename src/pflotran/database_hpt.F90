@@ -1524,13 +1524,13 @@ subroutine BasisInit_hpt(reaction,option)
         endif
       enddo
       reaction%eqcplxspecid(0,isec_spec) = ispec
-#if 0
-      TODO(Peter): fix argument list
-      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
+!#if 0
+!     TODO(Peter): fix argument list
+      call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
                                   cur_sec_aq_spec%dbaserxn%logK, &
                                   reaction%eqcplx_logK(isec_spec), &
                                   option,reaction)
-#endif
+!#endif
       reaction%eqcplx_Z(isec_spec) = cur_sec_aq_spec%Z
       reaction%eqcplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
       reaction%eqcplx_a0(isec_spec) = cur_sec_aq_spec%a0
@@ -1591,13 +1591,13 @@ subroutine BasisInit_hpt(reaction,option)
         endif
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
-#if 0      
-      TODO(Peter): fix argument list
-      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
+!#if 0      
+!     TODO(Peter): fix argument list
+      call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
                                   cur_gas_spec%dbaserxn%logK, &
                                   reaction%eqgas_logK(igas_spec), &
                                   option,reaction)
-#endif  
+!#endif  
       igas_spec = igas_spec + 1
       cur_gas_spec => cur_gas_spec%next
     enddo
