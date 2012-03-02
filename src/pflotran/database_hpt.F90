@@ -1,7 +1,8 @@
-module Database_module
+module Database_hpt_module
 
   use Reaction_module
   use Reaction_Aux_module
+  use Database_module
 
   implicit none
   
@@ -9,24 +10,18 @@ module Database_module
   
 #include "definitions.h"
 
-  public :: DatabaseRead, BasisInit
-  
-  public :: GetSpeciesBasisID, &
-            BasisPrint, &
-            BasisAlignSpeciesInRxn, &
-            BasisSubSpeciesInGasOrSecRxn, &
-            BasisSubSpeciesinMineralRxn
+  public :: DatabaseRead_hpt, BasisInit_hpt
             
 contains
 
 ! ************************************************************************** !
 !
-! DatabaseRead: Collects parameters from geochemical database
-! author: Glenn Hammond
-! date: 09/01/08
+! DatabaseRead_hpt: Collects parameters from geochemical database
+! author: ???
+! date: ???
 !
 ! ************************************************************************** !
-subroutine DatabaseRead(reaction,option)
+subroutine DatabaseRead_hpt(reaction,option)
 
   use Option_module
   use Input_module
@@ -103,15 +98,14 @@ subroutine DatabaseRead(reaction,option)
   call InputReadFlotranString(input,option)
   ! remove comment
   call InputReadQuotedWord(input,option,name,PETSC_TRUE)
-  call InputReadInt(input,option,reaction%num_dbase_temperatures)
-  call InputErrorMsg(input,option,'Number of database temperatures','DATABASE')  
-  allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
-  reaction%dbase_temperatures = 0.d0 
-   
-  do itemp = 1, reaction%num_dbase_temperatures
-    call InputReadDouble(input,option,reaction%dbase_temperatures(itemp))
-    call InputErrorMsg(input,option,'Database temperatures','DATABASE')            
-  enddo
+  call InputReadInt(input,option,reaction%num_dbase_parameters)
+  call InputErrorMsg(input,option,'Number of database parameters','DATABASE')  
+ ! allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
+ ! reaction%dbase_temperatures = 0.d0  
+!  do itemp = 1, reaction%num_dbase_temperatures
+!    call InputReadDouble(input,option,reaction%dbase_temperatures(itemp))
+!    call InputErrorMsg(input,option,'Database temperatures','DATABASE')            
+!  enddo
 
   num_nulls = 0
   null_name = 'null'
@@ -205,8 +199,8 @@ subroutine DatabaseRead(reaction,option)
           cur_aq_spec%dbaserxn%spec_name = ''
           allocate(cur_aq_spec%dbaserxn%stoich(cur_aq_spec%dbaserxn%nspec))
           cur_aq_spec%dbaserxn%stoich = 0.d0
-          allocate(cur_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
-          cur_aq_spec%dbaserxn%logK = 0.d0
+          allocate(cur_aq_spec%dbaserxn%logKCoeff_hpt(reaction%num_dbase_parameters))
+          cur_aq_spec%dbaserxn%logKCoeff_hpt = 0.d0
           ! read in species and stoichiometries
           do ispec = 1, cur_aq_spec%dbaserxn%nspec
             call InputReadDouble(input,option,cur_aq_spec%dbaserxn%stoich(ispec))
@@ -214,9 +208,9 @@ subroutine DatabaseRead(reaction,option)
             call InputReadQuotedWord(input,option,cur_aq_spec%dbaserxn%spec_name(ispec),PETSC_TRUE)
             call InputErrorMsg(input,option,'EQRXN species name','DATABASE')            
           enddo
-          do itemp = 1, reaction%num_dbase_temperatures
-            call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logK(itemp))
-            call InputErrorMsg(input,option,'EQRXN logKs','DATABASE')            
+          do itemp = 1, reaction%num_dbase_parameters
+            call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp))
+            call InputErrorMsg(input,option,'EQRXN logKs Coeff','DATABASE')            
           enddo
         endif
         ! read the Debye-Huckel ion size parameter (a0)
@@ -264,8 +258,8 @@ subroutine DatabaseRead(reaction,option)
         cur_gas_spec%dbaserxn%spec_name = ''
         allocate(cur_gas_spec%dbaserxn%stoich(cur_gas_spec%dbaserxn%nspec))
         cur_gas_spec%dbaserxn%stoich = 0.d0
-        allocate(cur_gas_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
-        cur_gas_spec%dbaserxn%logK = 0.d0
+        allocate(cur_gas_spec%dbaserxn%logKCoeff_hpt(reaction%num_dbase_parameters))
+        cur_gas_spec%dbaserxn%logKCoeff_hpt = 0.d0
         ! read in species and stoichiometries
         do ispec = 1, cur_gas_spec%dbaserxn%nspec
           call InputReadDouble(input,option,cur_gas_spec%dbaserxn%stoich(ispec))
@@ -273,9 +267,9 @@ subroutine DatabaseRead(reaction,option)
           call InputReadQuotedWord(input,option,cur_gas_spec%dbaserxn%spec_name(ispec),PETSC_TRUE)
           call InputErrorMsg(input,option,'GAS species name','DATABASE')            
         enddo
-        do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_gas_spec%dbaserxn%logK(itemp))
-          call InputErrorMsg(input,option,'GAS logKs','DATABASE')            
+        do itemp = 1, reaction%num_dbase_parameters
+          call InputReadDouble(input,option,cur_gas_spec%dbaserxn%logKCoeff_hpt(itemp))
+          call InputErrorMsg(input,option,'GAS logKs Coeff','DATABASE')            
         enddo
         ! read the molar weight
         call InputReadDouble(input,option,cur_gas_spec%molar_weight)
@@ -318,8 +312,8 @@ subroutine DatabaseRead(reaction,option)
         cur_mineral%dbaserxn%spec_name = ''
         allocate(cur_mineral%dbaserxn%stoich(cur_mineral%dbaserxn%nspec))
         cur_mineral%dbaserxn%stoich = 0.d0
-        allocate(cur_mineral%dbaserxn%logK(reaction%num_dbase_temperatures))
-        cur_mineral%dbaserxn%logK = 0.d0
+        allocate(cur_mineral%dbaserxn%logKCoeff_hpt(reaction%num_dbase_parameters))
+        cur_mineral%dbaserxn%logKCoeff_hpt = 0.d0
         ! read in species and stoichiometries
         do ispec = 1, cur_mineral%dbaserxn%nspec
           call InputReadDouble(input,option,cur_mineral%dbaserxn%stoich(ispec))
@@ -328,8 +322,8 @@ subroutine DatabaseRead(reaction,option)
                                    spec_name(ispec),PETSC_TRUE)
           call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
         enddo
-        do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_mineral%dbaserxn%logK(itemp))
+        do itemp = 1, reaction%num_dbase_parameters
+          call InputReadDouble(input,option,cur_mineral%dbaserxn%logKCoeff_hpt(itemp))
           call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
         enddo
         ! read the molar weight
@@ -373,8 +367,8 @@ subroutine DatabaseRead(reaction,option)
         cur_srfcplx%dbaserxn%spec_name = ''
         allocate(cur_srfcplx%dbaserxn%stoich(cur_srfcplx%dbaserxn%nspec))
         cur_srfcplx%dbaserxn%stoich = 0.d0
-        allocate(cur_srfcplx%dbaserxn%logK(reaction%num_dbase_temperatures))
-        cur_srfcplx%dbaserxn%logK = 0.d0
+        allocate(cur_srfcplx%dbaserxn%logKCoeff_hpt(reaction%num_dbase_parameters))
+        cur_srfcplx%dbaserxn%logKCoeff_hpt = 0.d0
         ! read in species and stoichiometries
         ispec = 0
         found = PETSC_FALSE
@@ -399,8 +393,8 @@ subroutine DatabaseRead(reaction,option)
                              trim(cur_srfcplx%name)
           call printErrMsg(option)
         endif
-        do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_srfcplx%dbaserxn%logK(itemp))
+        do itemp = 1, reaction%num_dbase_parameters
+          call InputReadDouble(input,option,cur_srfcplx%dbaserxn%logKCoeff_hpt(itemp))
           call InputErrorMsg(input,option,'SURFACE COMPLEX logKs','DATABASE')            
         enddo
         ! read the valence
@@ -647,16 +641,16 @@ subroutine DatabaseRead(reaction,option)
 
   call InputDestroy(input)
 
-end subroutine DatabaseRead
+end subroutine DatabaseRead_hpt
 
 ! ************************************************************************** !
 !
-! BasisInit: Initializes the basis for geochemistry
-! author: Glenn Hammond
-! date: 09/01/08
+! BasisInit_hpt: Initializes the basis for geochemistry
+! author: ???
+! date: ???
 !
 ! ************************************************************************** !
-subroutine BasisInit(reaction,option)
+subroutine BasisInit_hpt(reaction,option)
 
   use Option_module
   use String_module
@@ -696,12 +690,12 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), parameter :: h2oname = 'H2O'
   character(len=MAXWORDLENGTH) :: word, word2
   character(len=MAXSTRINGLENGTH) :: string, string2
-
+  
   PetscInt, parameter :: h2o_id = 1
 
   PetscReal :: logK(reaction%num_dbase_temperatures)
   PetscReal, allocatable :: transformation(:,:), old_basis(:,:), new_basis(:,:)
-  PetscReal, allocatable :: stoich_new(:), stoich_prev(:), logKvector(:,:)
+  PetscReal, allocatable :: stoich_new(:), stoich_prev(:), logKCoeffvector(:,:)
   PetscInt, allocatable :: indices(:)
   
   PetscReal, allocatable :: pri_matrix(:,:), sec_matrix(:,:)
@@ -711,7 +705,7 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: pri_names(:)
   character(len=MAXWORDLENGTH), allocatable :: sec_names(:)
   character(len=MAXWORDLENGTH), allocatable :: gas_names(:)
-  PetscReal, allocatable :: logKvector_swapped(:,:)
+  PetscReal, allocatable :: logKCoeffvector_swapped(:,:)
   PetscBool, allocatable :: flags(:)
   PetscBool :: negative_flag
   PetscReal :: value
@@ -727,7 +721,6 @@ subroutine BasisInit(reaction,option)
   PetscInt :: isrfcplx
   PetscInt :: ication
   PetscInt :: idum
-  PetscReal :: scale
   PetscReal :: temp_high, temp_low
   PetscInt :: itemp_high, itemp_low
   PetscInt :: species_count, max_species_count
@@ -951,8 +944,8 @@ subroutine BasisInit(reaction,option)
   allocate(gas_names(reaction%ngas))
   gas_names = ''
   
-  allocate(logKvector(reaction%num_dbase_temperatures,ncomp_secondary))
-  logKvector = 0.d0
+  allocate(logKCoeffvector(reaction%num_dbase_parameters,ncomp_secondary))
+  logKCoeffvector = 0.d0
   
   ! fill in names
   icount = 1
@@ -988,7 +981,7 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_pri_aq_spec)) exit
     if (associated(cur_pri_aq_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_pri_aq_spec%dbaserxn%logK
+      logKCoeffvector(:,icount) = cur_pri_aq_spec%dbaserxn%logK
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_pri_aq_spec%name, &
                             cur_pri_aq_spec%name, &
@@ -1020,7 +1013,7 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_sec_aq_spec)) exit
     if (associated(cur_sec_aq_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_sec_aq_spec%dbaserxn%logK
+      logKCoeffvector(:,icount) = cur_sec_aq_spec%dbaserxn%logKCoeff_hpt
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_sec_aq_spec%name, &
                             cur_sec_aq_spec%name, &
@@ -1052,7 +1045,7 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_gas_spec)) exit
     if (associated(cur_gas_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_gas_spec%dbaserxn%logK
+      logKCoeffvector(:,icount) = cur_gas_spec%dbaserxn%logKCoeff_hpt
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_gas_spec%name, &
                             cur_gas_spec%name, &
@@ -1107,14 +1100,14 @@ subroutine BasisInit(reaction,option)
   enddo
   stoich_matrix = -1.d0*stoich_matrix
 
-  allocate(logKvector_swapped(reaction%num_dbase_temperatures,ncomp_secondary))
-  logKvector_swapped = 0.d0
+  allocate(logKCoeffvector_swapped(reaction%num_dbase_parameters,ncomp_secondary))
+  logKCoeffvector_swapped = 0.d0
   
   do j = 1, ncomp_secondary
-    do i = 1, reaction%num_dbase_temperatures
-      logKvector_swapped(i,j) = logKvector_swapped(i,j) - &
+    do i = 1, reaction%num_dbase_parameters
+      logKCoeffvector_swapped(i,j) = logKCoeffvector_swapped(i,j) - &
         dot_product(sec_matrix_inverse(j,1:ncomp_secondary), &
-                    logKvector(i,1:ncomp_secondary))
+                    logKCoeffvector(i,1:ncomp_secondary))
     enddo
   enddo
     
@@ -1123,7 +1116,7 @@ subroutine BasisInit(reaction,option)
   deallocate(indices)
   deallocate(unit_vector)
   deallocate(sec_matrix_inverse)
-  deallocate(logKvector)
+  deallocate(logKCoeffvector_swapped)
   
   cur_pri_aq_spec => reaction%primary_species_list
   do
@@ -1158,8 +1151,8 @@ subroutine BasisInit(reaction,option)
     cur_sec_aq_spec%dbaserxn%spec_name = ''
     allocate(cur_sec_aq_spec%dbaserxn%spec_ids(cur_sec_aq_spec%dbaserxn%nspec))
     cur_sec_aq_spec%dbaserxn%spec_ids = 0
-    allocate(cur_sec_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
-    cur_sec_aq_spec%dbaserxn%logK = 0.d0
+    allocate(cur_sec_aq_spec%dbaserxn%logKCoeff_hpt(reaction%num_dbase_parameters))
+    cur_sec_aq_spec%dbaserxn%logKCoeff_hpt = 0.d0
 
     ispec = 0
     do icol = 1, ncomp_h2o
@@ -1171,7 +1164,7 @@ subroutine BasisInit(reaction,option)
       endif
     enddo
 
-    cur_sec_aq_spec%dbaserxn%logK = logKvector_swapped(:,icount)
+    cur_sec_aq_spec%dbaserxn%logKCoeff_hpt = logKCoeffvector_swapped(:,icount)
 
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
@@ -1199,8 +1192,8 @@ subroutine BasisInit(reaction,option)
     cur_gas_spec%dbaserxn%spec_name = ''
     allocate(cur_gas_spec%dbaserxn%spec_ids(cur_gas_spec%dbaserxn%nspec))
     cur_gas_spec%dbaserxn%spec_ids = 0
-    allocate(cur_gas_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
-    cur_gas_spec%dbaserxn%logK = 0.d0
+    allocate(cur_gas_spec%dbaserxn%logKCoeff_hpt(reaction%num_dbase_parameters))
+    cur_gas_spec%dbaserxn%logKCoeff_hpt = 0.d0
 
     ispec = 0
     do icol = 1, ncomp_h2o
@@ -1212,7 +1205,7 @@ subroutine BasisInit(reaction,option)
       endif
     enddo
 
-    cur_gas_spec%dbaserxn%logK = logKvector_swapped(:,icount)
+    cur_gas_spec%dbaserxn%logKCoeff_hpt = logKCoeffvector_swapped(:,icount)
 
     cur_gas_spec => cur_gas_spec%next
   enddo
@@ -1220,7 +1213,7 @@ subroutine BasisInit(reaction,option)
   new_basis_names = pri_names
 
   deallocate(stoich_matrix)
-  deallocate(logKvector_swapped)
+  deallocate(logKCoeffvector_swapped)
 
   deallocate(pri_names)
   deallocate(sec_names)
@@ -1249,10 +1242,9 @@ subroutine BasisInit(reaction,option)
           if (StringCompare(cur_gas_spec%name, &
                               cur_mineral%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
-            call BasisSubSpeciesInMineralRxn(cur_gas_spec%name, &
-                                             cur_gas_spec%dbaserxn, &
-                                             cur_mineral%dbaserxn, &
-                                             scale)
+            call BasisSubSpeciesInMineralRxn_hpt(cur_gas_spec%name, &
+                                                 cur_gas_spec%dbaserxn, &
+                                                 cur_mineral%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1277,10 +1269,9 @@ subroutine BasisInit(reaction,option)
             if (StringCompare(cur_gas_spec%name, &
                                 cur_srfcplx2%dbaserxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
-              call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec%name, &
+              call BasisSubSpecInGasOrSecRxn_hpt(cur_gas_spec%name, &
                                                 cur_gas_spec%dbaserxn, &
-                                                cur_srfcplx2%dbaserxn, &
-                                                scale)
+                                                cur_srfcplx2%dbaserxn)
               ispec = 0
             endif
             ispec = ispec + 1
@@ -1320,10 +1311,9 @@ subroutine BasisInit(reaction,option)
           if (StringCompare(cur_sec_aq_spec%name, &
                               cur_mineral%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
-            call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec%name, &
-                                             cur_sec_aq_spec%dbaserxn, &
-                                             cur_mineral%dbaserxn, &
-                                             scale)
+            call BasisSubSpeciesInMineralRxn_hpt(cur_sec_aq_spec%name, &
+                                                 cur_sec_aq_spec%dbaserxn, &
+                                                 cur_mineral%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1347,10 +1337,9 @@ subroutine BasisInit(reaction,option)
             if (StringCompare(cur_sec_aq_spec%name, &
                                 cur_srfcplx2%dbaserxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
-              call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec%name, &
-                                                cur_sec_aq_spec%dbaserxn, &
-                                                cur_srfcplx2%dbaserxn, &
-                                                scale)
+              call BasisSubSpecInGasOrSecRxn_hpt(cur_sec_aq_spec%name, &
+                                                 cur_sec_aq_spec%dbaserxn, &
+                                                 cur_srfcplx2%dbaserxn)
               ispec = 0
             endif
             ispec = ispec + 1
@@ -1493,13 +1482,9 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqcplx_logK(reaction%neqcplx))
     reaction%eqcplx_logK = 0.d0
 
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
+    allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_parameters,reaction%neqcplx))
     reaction%eqcplx_logKcoef = 0.d0
-#else
-    allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures,reaction%neqcplx))
-    reaction%eqcplx_logKcoef = 0.d0
-#endif
+
     allocate(reaction%eqcplx_Z(reaction%neqcplx))
     reaction%eqcplx_Z = 0.d0
 
@@ -1540,22 +1525,11 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%eqcplxspecid(0,isec_spec) = ispec
 
-#if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
-                               cur_sec_aq_spec%dbaserxn%logK, &
-                               reaction%secondary_species_names(isec_spec), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%eqcplx_logKcoef(:,isec_spec), &
+      call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
                                   cur_sec_aq_spec%dbaserxn%logK, &
                                   reaction%eqcplx_logK(isec_spec), &
                                   option,reaction)
-#else
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
-                       cur_sec_aq_spec%dbaserxn%logK(itemp_low), &
-                       reaction%eqcplx_logK(isec_spec))
-!      reaction%eqcplx_logK(isec_spec) = cur_sec_aq_spec%dbaserxn%logK(option%itemp_ref)
-#endif  
+
       reaction%eqcplx_Z(isec_spec) = cur_sec_aq_spec%Z
       reaction%eqcplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
       reaction%eqcplx_a0(isec_spec) = cur_sec_aq_spec%a0
@@ -1586,14 +1560,9 @@ subroutine BasisInit(reaction,option)
     reaction%eqgash2ostoich = 0.d0
     allocate(reaction%eqgas_logK(reaction%ngas))
     reaction%eqgas_logK = 0.d0
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
-    reaction%eqgas_logKcoef = 0.d0
-#else
-    allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
+    allocate(reaction%eqgas_logKcoef(reaction%num_dbase_parameters, &
                                      reaction%ngas))
     reaction%eqgas_logKcoef = 0.d0
-#endif
 
     ! pack in reaction arrays
     cur_gas_spec => reaction%gas_species_list
@@ -1622,22 +1591,10 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
       
-#if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%dbaserxn%logK, &
-                               reaction%gas_species_names(igas_spec), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
+      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
                                   cur_gas_spec%dbaserxn%logK, &
                                   reaction%eqgas_logK(igas_spec), &
                                   option,reaction)
-#else
-      reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_gas_spec%dbaserxn%logK(itemp_high), &
-                       cur_gas_spec%dbaserxn%logK(itemp_low), &
-                       reaction%eqgas_logK(igas_spec))
-!      reaction%eqgas_logK(igas_spec) = cur_gas_spec%dbaserxn%logK(option%itemp_ref)
-#endif      
   
       igas_spec = igas_spec + 1
       cur_gas_spec => cur_gas_spec%next
@@ -1698,14 +1655,10 @@ subroutine BasisInit(reaction,option)
     reaction%mnrl_logK = 0.d0
     allocate(reaction%mnrl_print(reaction%nmnrl))
     reaction%mnrl_print = PETSC_FALSE
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%mnrl_logKcoef(FIVE_INTEGER,reaction%nmnrl))
-    reaction%mnrl_logKcoef = 0.d0
-#else
-    allocate(reaction%mnrl_logKcoef(reaction%num_dbase_temperatures, &
+
+    allocate(reaction%mnrl_logKcoef(reaction%num_dbase_parameters, &
                                     reaction%nmnrl))
     reaction%mnrl_logKcoef = 0.d0
-#endif
 
     if (reaction%nkinmnrl > 0) then
       allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
@@ -1722,14 +1675,10 @@ subroutine BasisInit(reaction,option)
       reaction%kinmnrlh2ostoich = 0.d0
       allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
       reaction%kinmnrl_logK = 0.d0
-#if TEMP_DEPENDENT_LOGK
-      allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
-      reaction%kinmnrl_logKcoef = 0.d0
-#else
-      allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
+
+      allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_parameters, &
                                          reaction%nkinmnrl))
       reaction%kinmnrl_logKcoef = 0.d0
-#endif
 
       ! TST Rxn variables
       allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
@@ -1795,21 +1744,11 @@ subroutine BasisInit(reaction,option)
       enddo
       reaction%mnrlspecid(0,imnrl) = ispec
 
-#if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl), &
-                               cur_mineral%dbaserxn%logK, &
-                               reaction%mineral_names(imnrl), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
+      call ReactionInitializeLogK_hpt(reaction%mnrl_logKcoef(:,imnrl), &
                                   cur_mineral%dbaserxn%logK, &
                                   reaction%mnrl_logK(imnrl), &
                                   option,reaction)
-#else
-      call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_mineral%dbaserxn%logK(itemp_high), &
-                       cur_mineral%dbaserxn%logK(itemp_low), &
-                       reaction%mnrl_logK(imnrl))
-#endif
+
       ! geh - for now, the user must specify they want each individual
       !       mineral printed for non-kinetic reactions (e.g. for SI).
       reaction%mnrl_print(imnrl) = cur_mineral%print_me
@@ -1821,21 +1760,11 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
-#if TEMP_DEPENDENT_LOGK
-        call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                 cur_mineral%dbaserxn%logK, &
-                                 reaction%kinmnrl_names(ikinmnrl), &
-                                 option,reaction)
-        call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+
+        call ReactionInitializeLogK_hpt(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
                                     cur_mineral%dbaserxn%logK, &
                                     reaction%kinmnrl_logK(ikinmnrl), &
                                     option,reaction)
-#else
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                         cur_mineral%dbaserxn%logK(itemp_high), &
-                         cur_mineral%dbaserxn%logK(itemp_low), &
-                         reaction%kinmnrl_logK(ikinmnrl))
-#endif
 
         tstrxn => cur_mineral%tstrxn
         if (associated(tstrxn)) then
@@ -1983,7 +1912,7 @@ subroutine BasisInit(reaction,option)
     
     allocate(reaction%eqsrfcplx_site_print(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_print = PETSC_FALSE
- 
+    
     allocate(reaction%eqsrfcplx_site_density_print(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_density_print = PETSC_FALSE
     
@@ -2023,14 +1952,10 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqsrfcplx_logK(reaction%neqsrfcplx))
     reaction%eqsrfcplx_logK = 0.d0
     
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqsrfcplx_logKcoef(FIVE_INTEGER,reaction%neqsrfcplx))
-    reaction%eqsrfcplx_logKcoef = 0.d0
-#else
-    allocate(reaction%eqsrfcplx_logKcoef(reaction%num_dbase_temperatures, &
+    allocate(reaction%eqsrfcplx_logKcoef(reaction%num_dbase_parameters, &
                                            reaction%neqsrfcplx))
     reaction%eqsrfcplx_logKcoef = 0.d0
-#endif
+
     allocate(reaction%eqsrfcplx_Z(reaction%neqsrfcplx))
     reaction%eqsrfcplx_Z = 0.d0
 
@@ -2136,21 +2061,11 @@ subroutine BasisInit(reaction,option)
             endif
           enddo
           reaction%eqsrfcplxspecid(0,isrfcplx) = ispec
-#if TEMP_DEPENDENT_LOGK
-          call ReactionFitLogKCoef(reaction%eqsrfcplx_logKcoef(:,isrfcplx),cur_srfcplx%dbaserxn%logK, &
-                                   reaction%eqsrfcplx_names(isrfcplx), &
-                                   option,reaction)
-          call ReactionInitializeLogK(reaction%eqsrfcplx_logKcoef(:,isrfcplx), &
+          call ReactionInitializeLogK_hpt(reaction%eqsrfcplx_logKcoef(:,isrfcplx), &
                                       cur_srfcplx%dbaserxn%logK, &
                                       reaction%eqsrfcplx_logK(isrfcplx), &
                                       option,reaction)
-#else
-          call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                           cur_srfcplx%dbaserxn%logK(itemp_high), &
-                           cur_srfcplx%dbaserxn%logK(itemp_low), &
-                           reaction%eqsrfcplx_logK(isrfcplx))
-          !reaction%eqsrfcplx_logK(isrfcplx) = cur_srfcplx%dbaserxn%logK(option%itemp_ref)
-#endif
+
           reaction%eqsrfcplx_Z(isrfcplx) = cur_srfcplx%Z
 
           cur_srfcplx => cur_srfcplx%next
@@ -2363,6 +2278,8 @@ subroutine BasisInit(reaction,option)
             endif
           enddo
           reaction%kinsrfcplxspecid(0,isrfcplx) = ispec
+!  Chuan added, for surface complex reaction, the new data base 
+          cur_srfcplx%dbaserxn%logK(:) = cur_srfcplx%dbaserxn%logKCoeff_hpt(:)
 !  #if TEMP_DEPENDENT_LOGK
 !        call ReactionFitLogKCoef(reaction%kinsrfcplx_logKcoef(:,isrfcplx),cur_srfcplx%dbaserxn%logK, &
 !                                 reaction%kinsrfcplx_names(isrfcplx), &
@@ -2462,8 +2379,6 @@ subroutine BasisInit(reaction,option)
     reaction%eqionx_rxn_cation_X_offset = 0
     allocate(reaction%eqionx_rxn_CEC(reaction%neqionxrxn))
     reaction%eqionx_rxn_CEC = 0.d0
-    allocate(reaction%eqionx_rxn_to_surf(reaction%neqionxrxn))
-    reaction%eqionx_rxn_to_surf = 0
     allocate(reaction%eqionx_rxn_k(icount,reaction%neqionxrxn))
     reaction%eqionx_rxn_k = 0.d0
 
@@ -2477,16 +2392,7 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_CEC(irxn) = cur_ionx_rxn%CEC
         ! compute the offset to the first cation in rxn
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
-      if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
-        reaction%eqionx_rxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction,cur_ionx_rxn%mineral_name)
-        if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
-          option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
-                             'listed in ion exchange ' // &
-                             'reaction not found in mineral list'
-          call printErrMsg(option)
-        endif
-      endif
+        
       cur_cation => cur_ionx_rxn%cation_list
       do
         if (.not.associated(cur_cation)) exit
@@ -2507,7 +2413,7 @@ subroutine BasisInit(reaction,option)
           option%io_buffer = 'Cation ' // trim(cur_cation%name) // &
                    ' in ion exchange reaction' // &
                    ' not found in swapped basis.'
-          call printErrMsg(option)  
+          call printErrMsg(option)     
         endif
         cur_cation => cur_cation%next
       enddo
@@ -2979,169 +2885,6 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%neqionxcation, 'Ion Exchange Cations'
     write(option%fid_out,90)
   endif
-
-#ifdef AMANZI_BGD
-  ! output reaction in amanzi "bgd" formatted file
-  if (OptionPrintToFile(option)) then
-    open(unit=86,file='reaction.bgd')
-
-    write(86,'("# pflotran database preprocessing :")')
-    call date_and_time(date=word,time=word2)
-    write(86,'("#        date : ",a,"   ",a)') trim(word), trim(word2)
-    write(86,'("#       input : ",a)') trim(option%input_filename)
-
-    write(86,'(/,"<Primary Species")')
-    do icomp = 1, reaction%ncomp
-      write(86,'(a,x,3(" ; ",f6.2))') trim(reaction%primary_species_names(icomp)), &
-                                      reaction%primary_spec_a0(icomp), &
-                                      reaction%primary_spec_Z(icomp), &
-                                      reaction%primary_spec_molar_wt(icomp)
-    enddo
-
-    write(86,'(/,"<Aqueous Equilibrium Complexes")')
-    do icplx = 1, reaction%neqcplx
-      write(86,'(a," = ")',advance='no') trim(reaction%secondary_species_names(icplx))
-      if (reaction%eqcplxh2oid(icplx) > 0) then
-        write(86,'(f6.2," H2O ")',advance='no') reaction%eqcplxh2ostoich(icplx)
-      endif
-      
-      do i = 1,reaction%eqcplxspecid(0,icplx)
-        idum = reaction%eqcplxspecid(i,icplx)
-        write(86,'(f6.2,x,a,x)',advance='no') reaction%eqcplxstoich(i,icplx), &
-                                            trim(reaction%primary_species_names(idum))
-      enddo
-      write(86,'(4(" ; ",f10.5))') reaction%eqcplx_logK(icplx), &
-                                   reaction%eqcplx_a0(icplx), &
-                                   reaction%eqcplx_Z(icplx), &
-                                   reaction%eqcplx_molar_wt(icplx)
-    enddo
-
-    write(86,'(/,"<General Kinetics")')
-    do irxn = 1, reaction%ngeneral_rxn
-      do i = 1, reaction%generalforwardspecid(0,irxn)
-        idum = reaction%generalforwardspecid(i,irxn)
-        write(86,'(f6.2,x,a)',advance='no') reaction%generalforwardstoich(i,irxn), &
-                               trim(reaction%primary_species_names(idum))
-        if (i /= reaction%generalforwardspecid(0,irxn)) then
-          write(86,'(" + ")',advance='no')
-        endif
-      enddo
-      write(86,'(" <-> ")',advance='no')
-      do i = 1, reaction%generalbackwardspecid(0,irxn)
-        idum = reaction%generalbackwardspecid(i,irxn)
-        write(86,'(f6.2,x,a)',advance='no') reaction%generalbackwardstoich(i,irxn), &
-                               trim(reaction%primary_species_names(idum))
-        if (i /= reaction%generalbackwardspecid(0,irxn)) then
-          write(86,'(" + ")',advance='no')
-        endif
-      enddo
-      write(86,'(" ; ")',advance='no')
-      do i = 1, reaction%generalforwardspecid(0,irxn)
-        idum = reaction%generalforwardspecid(i,irxn)
-        write(86,'(f6.2,x,a)',advance='no') reaction%generalforwardstoich(i,irxn), &
-                               trim(reaction%primary_species_names(idum))
-      enddo
-      write(86,'(" ; ")',advance='no')
-      write(86,'(1es13.5)',advance='no') reaction%general_kf(irxn)
-      write(86,'(" ; ")',advance='no')
-      do i = 1, reaction%generalbackwardspecid(0,irxn)
-        idum = reaction%generalbackwardspecid(i,irxn)
-        write(86,'(f6.2,x,a)',advance='no') reaction%generalbackwardstoich(i,irxn), &
-                               trim(reaction%primary_species_names(idum))
-      enddo
-      write(86,'(" ; ")',advance='no')
-      write(86,'(1es13.5)') reaction%general_kr(irxn)
-      !write(86,'(" ; ")',advance='no')
-      !write(86,'(f6.2)',advance='no') reaction%generalh2ostoich(irxn)
-    enddo
-
-    write(86,'(/,"<Minerals")')
-
-    do imnrl = 1, reaction%nkinmnrl
-      write(86,'(a," = ")',advance='no') trim(reaction%kinmnrl_names(imnrl))
-      if (reaction%kinmnrlh2oid(imnrl) > 0) then
-        write(86,'(f6.2," H2O ")',advance='no') reaction%kinmnrlh2ostoich(imnrl)
-      endif
-      do i = 1, reaction%kinmnrlspecid(0,imnrl)
-        idum = reaction%kinmnrlspecid(i,imnrl)
-        write(86,'(f6.2,x,a,x)',advance='no') reaction%kinmnrlstoich(i,imnrl), &
-                                              trim(reaction%primary_species_names(idum))
-      enddo
-      write(86,'(4(" ; ",1es13.5))') reaction%kinmnrl_logK(imnrl), &
-                                     reaction%kinmnrl_molar_wt(imnrl), &
-                                     reaction%kinmnrl_molar_vol(imnrl), 1.0
-    enddo
-
-    write(86,'(/,"<Mineral Kinetics")')
-    do imnrl = 1, reaction%nkinmnrl
-      write(86,'(a," ; TST ; log10_rate_constant ")',advance='no') trim(reaction%kinmnrl_names(imnrl))
-      write(86,'(1es13.5," moles_m2_sec ")',advance='no') log10(reaction%kinmnrl_rate(imnrl))
-      if (reaction%kinmnrl_num_prefactors(imnrl) /= 0) then
-        write(86,'(" ; ")',advance='no')
-        do i = 1, reaction%kinmnrl_num_prefactors(imnrl)
-          ! number of prefactor species stored in kinmnrl_prefactor_id(0,i,imnrl)
-          do j = 1, reaction%kinmnrl_prefactor_id(0,i,imnrl)
-            idum = reaction%kinmnrl_prefactor_id(j,i,imnrl)
-            if (idum > 0) then
-              write(86,'(a)',advance='no') trim(reaction%primary_species_names(idum))
-            else
-              write(86,'(a)',advance='no') trim(reaction%secondary_species_names(-idum))
-            endif
-            write(86,'(x,1es13.5,x)',advance='no') reaction%kinmnrl_pref_alpha(j,i,imnrl)
-          enddo
-        enddo
-      endif
-      write(86,*)
-    enddo
-
-    write(86,'(/,"<Ion Exchange Sites")')
-    do irxn = 1, reaction%neqionxrxn
-      write(86,'("X- ; -1.0 ; ",a)') trim(reaction%ion_exchange_rxn_list%mineral_name)
-    enddo
-
-    write(86,'(/,"<Ion Exchange Complexes")')
-    do irxn = 1, reaction%neqionxrxn
-      do i = 1, reaction%neqionxcation
-        idum = reaction%eqionx_rxn_cationid(i,irxn)
-        write(86,'(a,"X = 1.0 ",a)',advance='no') trim(reaction%primary_species_names(idum)), &
-                                                  trim(reaction%primary_species_names(idum))
-        write(86,'(f6.2," X- ")',advance='no') reaction%primary_spec_Z(idum)
-        write(86,'(" ; ",1es13.5)') reaction%eqionx_rxn_k(i,irxn)
-      enddo
-    enddo
-
-    write(86,'(/,"<Surface Complex Sites")')
-    do irxn = 1, reaction%neqsrfcplxrxn
-      write(86,'(a, " ; ")',advance='no') trim(reaction%eqsrfcplx_site_names(irxn))
-      write(86,'(1es13.5)') reaction%eqsrfcplx_rxn_site_density(irxn)
-    enddo
-
-    write(86,'(/,"<Surface Complexes")')
-    do irxn = 1, reaction%neqsrfcplxrxn
-      do i = 1, reaction%eqsrfcplx_rxn_to_complex(0,irxn)
-        icplx = reaction%eqsrfcplx_rxn_to_complex(i,irxn)
-        write(86,'(a, " = ")',advance='no') trim(reaction%eqsrfcplx_names(icplx))
-        idum = reaction%eqsrfcplx_free_site_id(icplx)
-        write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplx_free_site_stoich(icplx), &
-                                            trim(reaction%eqsrfcplx_site_names(idum))
-
-        if (reaction%eqsrfcplxh2oid(icplx) > 0) then
-          write(86,'(f6.2," H2O ")',advance='no') reaction%eqsrfcplxh2ostoich(icplx)
-        endif
-        do j = 1, reaction%eqsrfcplxspecid(0,icplx)
-          idum = reaction%eqsrfcplxspecid(j,icplx)
-          write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplxstoich(j,icplx), &
-                                   trim(reaction%primary_species_names(idum))
-        enddo
-        write(86,'(" ; ",1es13.5," ; ",f6.2)') reaction%eqsrfcplx_logK(icplx), &
-                                               reaction%eqsrfcplx_Z(icplx)
-
-      enddo
-    enddo
-
-    close(86)
-  endif
-#endif ! AMANZI_BGD
   
 #if 0
   ! output for ASCEM reactions
@@ -3214,160 +2957,24 @@ subroutine BasisInit(reaction,option)
   if (allocated(transformation)) deallocate(transformation)
   if (allocated(stoich_prev)) deallocate(stoich_prev)
   if (allocated(stoich_new)) deallocate(stoich_new)
-  if (allocated(logKvector)) deallocate(logKvector)
+  if (allocated(logKCoeffvector)) deallocate(logKCoeffvector)
   if (allocated(indices)) deallocate(indices)
 
   if (allocated(new_basis_names)) deallocate(new_basis_names)
   if (allocated(old_basis_names)) deallocate(old_basis_names)
   
-end subroutine BasisInit
+end subroutine BasisInit_hpt
 
 ! ************************************************************************** !
 !
-! GetSpeciesBasisID: Reduces redundant coding above
-! author: Glenn Hammond
-! date: 12/02/08
-!
-! ************************************************************************** !
-function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
-                           species_name, &
-                           pri_names,sec_names,gas_names)
-
-  use Option_module
-  use String_module
-
-  implicit none
-
-  type(reaction_type) :: reaction
-  type(option_type) :: option
-  PetscInt :: ncomp_h2o
-  character(len=MAXWORDLENGTH) :: reaction_name
-  character(len=MAXWORDLENGTH) :: species_name
-  character(len=MAXWORDLENGTH) :: pri_names(:)
-  character(len=MAXWORDLENGTH) :: sec_names(:)
-  character(len=MAXWORDLENGTH) :: gas_names(:)
-
-  PetscInt :: GetSpeciesBasisID
-  PetscInt :: i
-
-  GetSpeciesBasisID = 0
-  do i=1,ncomp_h2o
-    if (StringCompare(species_name, &
-                        pri_names(i),MAXWORDLENGTH)) then
-      GetSpeciesBasisID = i
-      return
-    endif
-  enddo
-  ! secondary aqueous and gas species denoted by negative id
-  do i=1,reaction%neqcplx
-    if (StringCompare(species_name, &
-                        sec_names(i),MAXWORDLENGTH)) then
-      GetSpeciesBasisID = -i
-      return
-    endif
-  enddo
-  do i=1,reaction%ngas
-    if (StringCompare(species_name, &
-                        gas_names(i),MAXWORDLENGTH)) then
-      GetSpeciesBasisID = -(reaction%neqcplx+i)
-      return
-    endif
-  enddo
-  
-  option%io_buffer = 'Species ' // &
-           trim(species_name) // &
-           ' listed in reaction for ' // &
-           trim(reaction_name) // &
-           ' not found among primary, secondary, or gas species.'
-  call printErrMsg(option)
-
-end function GetSpeciesBasisID
-
-! ************************************************************************** !
-!
-! BasisAlignSpeciesInRxn: Aligns the ordering of species in reaction with
-!                         the current basis
-! author: Glenn Hammond
-! date: 10/07/08
-!
-! ************************************************************************** !
-subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
-                                  num_rxn_species,rxn_species_names, &
-                                  rxn_stoich,rxn_species_ids,species_name,option)
-
-  use Option_module
-  use String_module
-  
-  implicit none
-  
-  PetscInt :: num_basis_species
-  character(len=MAXWORDLENGTH) :: basis_names(num_basis_species), species_name
-  PetscInt :: num_rxn_species
-  character(len=MAXWORDLENGTH) :: rxn_species_names(num_rxn_species)
-  PetscReal :: rxn_stoich(num_rxn_species)
-  PetscInt :: rxn_species_ids(num_rxn_species)
-  type(option_type) :: option
-
-  PetscInt :: i_rxn_species
-  PetscInt :: i_basis_species
-  PetscReal :: stoich_new(num_basis_species)
-  PetscBool :: found
-  
-  stoich_new = 0.d0
-  do i_rxn_species = 1, num_rxn_species
-    found = PETSC_FALSE
-    do i_basis_species = 1, num_basis_species
-      if (StringCompare(rxn_species_names(i_rxn_species), &
-                            basis_names(i_basis_species), &
-                            MAXWORDLENGTH)) then
-        stoich_new(i_basis_species) = rxn_stoich(i_rxn_species)
-        found = PETSC_TRUE
-        exit
-      endif
-    enddo
-    if (.not.found) then
-      option%io_buffer = trim(rxn_species_names(i_rxn_species)) // &
-               ' not found in basis (BasisAlignSpeciesInRxn) for species ' // &
-               trim(species_name)
-      call printErrMsg(option)
-    endif
-  enddo
-  
-  ! zero everthing out
-  rxn_species_names = ''
-  rxn_stoich = 0.d0
-  rxn_species_ids = 0
-
-  ! fill in
-  i_rxn_species = 0
-  do i_basis_species = 1, num_basis_species
-    if (dabs(stoich_new(i_basis_species)) > 1.d-40) then
-      i_rxn_species = i_rxn_species + 1
-      rxn_species_names(i_rxn_species) = basis_names(i_basis_species)
-      rxn_stoich(i_rxn_species) = stoich_new(i_basis_species)
-      rxn_species_ids(i_rxn_species) = i_basis_species
-    endif
-  enddo
-  
-  if (i_rxn_species /= num_rxn_species) then
-    write(option%io_buffer,*) &
-                   'Number of reaction species does not match original:', &
-                    i_rxn_species, num_rxn_species
-    call printErrMsg(option)
-  endif
-
-end subroutine BasisAlignSpeciesInRxn 
-     
-! ************************************************************************** !
-!
-! BasisSubSpeciesInGasOrSecRxn: Swaps out a chemical species in a chemical  
+! BasisSubSpecInGasOrSecRxn_hpt: Swaps out a chemical species in a chemical  
 !                                reaction, replacing it with the species in a 
 !                                secondary reaction (swaps 1 into 2)
 ! author: Glenn Hammond
-! date: 10/06/08
+! date: 03/02/2012
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
+subroutine BasisSubSpecInGasOrSecRxn_hpt(name1,dbaserxn1,dbaserxn2)
 
   use String_module
 
@@ -3376,94 +2983,25 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
   character(len=MAXWORDLENGTH) :: name1
   type(database_rxn_type) :: dbaserxn1
   type(database_rxn_type) :: dbaserxn2
+
   PetscReal :: scale
   
-  PetscInt :: i, j, tempcount, prevcount
-  character(len=MAXWORDLENGTH) :: tempnames(20)
-  PetscReal :: tempstoich(20)
-  PetscBool :: found
+  call BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
+  dbaserxn2%logKCoeff_hpt = dbaserxn2%logKCoeff_hpt + &
+    scale*dbaserxn1%logKCoeff_hpt
 
-  tempnames = ''
-  tempstoich = 0.d0
-
-  ! load species in reaction other than species 1 into new arrays
-  scale = 1.d0
-  tempcount = 0
-  do i=1,dbaserxn2%nspec
-    if (.not.StringCompare(name1, &
-                             dbaserxn2%spec_name(i), &
-                             MAXWORDLENGTH)) then
-      tempcount = tempcount + 1
-      tempnames(tempcount) = dbaserxn2%spec_name(i)
-      tempstoich(tempcount) = dbaserxn2%stoich(i)
-    else
-      scale = dbaserxn2%stoich(i)
-    endif
-  enddo
-  
-  ! search for duplicate species and add stoichs or add new species
-  ! if not duplicated
-  do j=1,dbaserxn1%nspec
-    found = PETSC_FALSE
-    do i=1,tempcount
-      if (StringCompare(tempnames(i), &
-                          dbaserxn1%spec_name(j), &
-                          MAXWORDLENGTH)) then
-        tempstoich(i) = tempstoich(i) + scale*dbaserxn1%stoich(j)
-        found = PETSC_TRUE
-        exit
-      endif
-    enddo
-    if (.not.found) then
-      tempcount = tempcount + 1
-      tempnames(tempcount) = dbaserxn1%spec_name(j)
-      tempstoich(tempcount) = scale*dbaserxn1%stoich(j)
-    endif
-  enddo
-  
-  ! deallocate arrays
-  deallocate(dbaserxn2%spec_name)
-  deallocate(dbaserxn2%stoich)
-  
-  ! check for zero stoichiometries due to cancelation
-  prevcount = tempcount
-  tempcount = 0
-  do i=1,prevcount
-    if (dabs(tempstoich(i)) > 1.d-10) then
-      tempcount = tempcount + 1
-      tempnames(tempcount) = tempnames(i)
-      tempstoich(tempcount) = tempstoich(i)
-    endif
-  enddo
-  
-  tempnames(tempcount+1:) = ''
-  tempstoich(tempcount+1:) = 0.d0
-  
-  ! reallocate
-  allocate(dbaserxn2%spec_name(tempcount))
-  allocate(dbaserxn2%stoich(tempcount))
-  
-  ! fill arrays in dbaserxn
-  dbaserxn2%nspec = tempcount
-  do i=1,tempcount
-    dbaserxn2%spec_name(i) = tempnames(i)
-    dbaserxn2%stoich(i) = tempstoich(i)
-  enddo
-  
-  dbaserxn2%logK = dbaserxn2%logK + scale*dbaserxn1%logK
-
-end subroutine BasisSubSpeciesInGasOrSecRxn
+  end subroutine BasisSubSpecInGasOrSecRxn_hpt
 
 ! ************************************************************************** !
 !
-! BasisSubSpeciesInMineralRxn: Swaps out a chemical species in a chemical  
+! BasisSubSpeciesInMineralRxn_hpt: Swaps out a chemical species in a chemical  
 !                                reaction, replacing it with the species in a 
 !                                secondary reaction (swaps 1 into 2)
 ! author: Glenn Hammond
-! date: 10/06/08
+! date: 03/02/2012
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
+subroutine BasisSubSpeciesInMineralRxn_hpt(name,sec_dbaserxn,mnrl_dbaserxn)
 
   use String_module
   use Reaction_module
@@ -3473,374 +3011,13 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
   character(len=MAXWORDLENGTH) :: name
   type(database_rxn_type) :: sec_dbaserxn
   type(database_rxn_type) :: mnrl_dbaserxn
+  
   PetscReal :: scale
-  
-  PetscInt :: i, j, tempcount, prevcount
-  character(len=MAXWORDLENGTH) :: tempnames(20)
-  PetscReal :: tempstoich(20)
-  PetscBool :: found
 
-  tempnames = ''
-  tempstoich = 0.d0
-  
-  ! load species in reaction other than species 1 into new arrays
-  scale = 1.d0
-  tempcount = 0
-  do i=1,mnrl_dbaserxn%nspec
-    if (.not.StringCompare(name, &
-                           mnrl_dbaserxn%spec_name(i), &
-                           MAXWORDLENGTH)) then
-      tempcount = tempcount + 1
-      tempnames(tempcount) = mnrl_dbaserxn%spec_name(i)
-      tempstoich(tempcount) = mnrl_dbaserxn%stoich(i)
-    else
-      scale = mnrl_dbaserxn%stoich(i)
-    endif
-  enddo
-  
-  ! search for duplicate species and add stoichs or add new species
-  ! if not duplicated
-  do j=1,sec_dbaserxn%nspec
-    found = PETSC_FALSE
-    do i=1,mnrl_dbaserxn%nspec
-      if (StringCompare(tempnames(i), &
-                        sec_dbaserxn%spec_name(j), &
-                        MAXWORDLENGTH)) then
-        tempstoich(i) = tempstoich(i) + scale*sec_dbaserxn%stoich(j)
-        found = PETSC_TRUE
-        exit
-      endif
-    enddo
-    if (.not.found) then
-      tempcount = tempcount + 1
-      tempnames(tempcount) = sec_dbaserxn%spec_name(j)
-      tempstoich(tempcount) = scale*sec_dbaserxn%stoich(j)
-    endif
-  enddo
-  
-  ! deallocate arrays
-  deallocate(mnrl_dbaserxn%spec_name)
-  deallocate(mnrl_dbaserxn%stoich)
-  
-  ! check for zero stoichiometries due to cancelation
-  prevcount = tempcount
-  tempcount = 0
-  do i=1,prevcount
-    if (dabs(tempstoich(i)) > 1.d-10) then
-      tempcount = tempcount + 1
-      tempnames(tempcount) = tempnames(i)
-      tempstoich(tempcount) = tempstoich(i)
-    endif
-  enddo
+  call BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
+  mnrl_dbaserxn%logKCoeff_hpt = mnrl_dbaserxn%logKCoeff_hpt + &
+    scale*sec_dbaserxn%logKCoeff_hpt
 
-  tempnames(tempcount+1:) = ''
-  tempstoich(tempcount+1:) = 0.d0
-    
-  ! reallocate
-  allocate(mnrl_dbaserxn%spec_name(tempcount))
-  allocate(mnrl_dbaserxn%stoich(tempcount))
-  
-  ! fill arrays in dbaserxn
-  mnrl_dbaserxn%nspec = tempcount
-  do i=1,tempcount
-    mnrl_dbaserxn%spec_name(i) = tempnames(i)
-    mnrl_dbaserxn%stoich(i) = tempstoich(i)
-  enddo
-  
-  mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
+end subroutine BasisSubSpeciesInMineralRxn_hpt
 
-end subroutine BasisSubSpeciesInMineralRxn
-
-! ************************************************************************** !
-!
-! BasisPrint: Prints the basis
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
-subroutine BasisPrint(reaction,title,option)
-
-  use Option_module
-  use Reaction_module
-
-  implicit none
-  
-  type(reaction_type) :: reaction
-  character(len=*) :: title
-  type(option_type) :: option
-  
-  type(aq_species_type), pointer :: cur_aq_spec
-  type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
-  type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
-  type(surface_complex_type), pointer :: cur_srfcplx
-  type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
-  type(ion_exchange_cation_type), pointer :: cur_cation
-  
-  character(len=MAXSTRINGLENGTH) :: reactant_string, product_string
-  character(len=MAXWORDLENGTH) :: word
-  PetscInt :: fid
-
-  PetscInt :: ispec, itemp
-
-100 format(a)
-110 format(a,f9.4,a)
-120 format(a,f9.4,2x,a)
-130 format(a,100f11.4)
-140 format(a,f6.2)
-150 format(a,es11.4,a)
-160 format(i2,a)
-
-  if (OptionPrintToFile(option)) then
-    write(option%fid_out,*)
-    write(option%fid_out,*) '! *************************************************' // &
-                    '************************* !'
-    write(option%fid_out,*)
-    write(option%fid_out,*) trim(title)
-    write(option%fid_out,*)
-
-    write(option%fid_out,*) 'Primary Species:'
-    cur_aq_spec => reaction%primary_species_list
-    do
-      if (.not.associated(cur_aq_spec)) exit
-      write(option%fid_out,100,advance='no') '  ' // trim(cur_aq_spec%name)
-      if (cur_aq_spec%is_redox) then
-        write(option%fid_out,100) '   (redox species)'
-      else
-        write(option%fid_out,100) ''
-      endif
-      write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
-      write(option%fid_out,110) '    Molar Mass: ', cur_aq_spec%molar_weight, ' [g/mol]'
-      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0, ' [Angstrom]'
-      if (associated(cur_aq_spec%dbaserxn)) then
-        write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
-        write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
-        do ispec = 1, cur_aq_spec%dbaserxn%nspec
-          write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
-                          cur_aq_spec%dbaserxn%spec_name(ispec)
-        enddo
-        if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
-                                     itemp=1, reaction%num_dbase_parameters)
-        else
-          write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
-                                       reaction%num_dbase_temperatures)
-        endif
-      endif
-      write(option%fid_out,*)
-      cur_aq_spec => cur_aq_spec%next
-    enddo
-    
-    cur_aq_spec => reaction%secondary_species_list
-    if (associated(cur_aq_spec)) then
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Secondary Species:'
-    else
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Secondary Species: None'
-    endif
-!#define WRITE_LATEX
-#ifdef WRITE_LATEX
-    fid = 86
-    open(fid,file="rxns.txt",action="write")
-#endif
-    do
-      if (.not.associated(cur_aq_spec)) exit
-      write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
-      write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
-      write(option%fid_out,110) '    Molar Mass: ', cur_aq_spec%molar_weight,' [g/mol]'
-      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0, ' [Angstrom]'
-      if (associated(cur_aq_spec%dbaserxn)) then
-        write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
-        write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
-#ifdef WRITE_LATEX
-        reactant_string = cur_aq_spec%name
-        product_string = ''
-#endif
-        do ispec = 1, cur_aq_spec%dbaserxn%nspec
-          write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
-                          cur_aq_spec%dbaserxn%spec_name(ispec)
-#ifdef WRITE_LATEX
-          if (dabs(cur_aq_spec%dbaserxn%stoich(ispec)) > 1.d0) then
-            write(word,160) int(dabs(cur_aq_spec%dbaserxn%stoich(ispec))+1.e-10), &
-                          ' ' // trim(cur_aq_spec%dbaserxn%spec_name(ispec))
-            word = adjustl(word)
-          else
-            word = cur_aq_spec%dbaserxn%spec_name(ispec)
-          endif
-          if (cur_aq_spec%dbaserxn%stoich(ispec) < 0.d0) then
-            reactant_string = trim(reactant_string) // ' + ' // trim(word)
-          else
-            if (len_trim(product_string) > 0) then
-              product_string = trim(product_string) // ' + ' // trim(word)
-            else
-              product_string = word
-            endif
-          endif
-#endif          
-        enddo
-        if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
-                                   itemp=1, reaction%num_dbase_parameters)
-
-        else
-          write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
-                                       reaction%num_dbase_temperatures)
-        endif
-
-      endif
-#ifdef WRITE_LATEX
-      write(word,130) '', cur_aq_spec%dbaserxn%logK(2)
-      write(fid,*) trim(reactant_string) // ' $~\rightleftharpoons~$ ' // &
-        trim(product_string) // ' & ' // trim(adjustl(word)) // ' \\'
-#endif
-      write(option%fid_out,*)
-      cur_aq_spec => cur_aq_spec%next
-    enddo
-#ifdef WRITE_LATEX
-    close(fid)
-#endif
-    
-    cur_gas_spec => reaction%gas_species_list
-    if (associated(cur_gas_spec)) then
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Gas Components:'
-    else
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Gas Components: None'
-    endif
-    do
-      if (.not.associated(cur_gas_spec)) exit
-      write(option%fid_out,100) '  ' // trim(cur_gas_spec%name)
-      write(option%fid_out,110) '    Molar Mass: ', cur_gas_spec%molar_weight,' [g/mol]'
-      if (associated(cur_gas_spec%dbaserxn)) then
-        write(option%fid_out,100) '    Gas Reaction: '
-        write(option%fid_out,120) '      ', -1.d0, cur_gas_spec%name
-        do ispec = 1, cur_gas_spec%dbaserxn%nspec
-          write(option%fid_out,120) '      ', cur_gas_spec%dbaserxn%stoich(ispec), &
-                          cur_gas_spec%dbaserxn%spec_name(ispec)
-        enddo
-        if (reaction%use_geothermal_hpt)then
-           write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logKCoeff_hpt(itemp),&
-                                     itemp=1, reaction%num_dbase_parameters)
-
-        else
-        write(option%fid_out,130) '      logK:', (cur_gas_spec%dbaserxn%logK(itemp),itemp=1, &
-                                       reaction%num_dbase_temperatures)
-        endif                                       
-      endif
-      write(option%fid_out,*)
-      cur_gas_spec => cur_gas_spec%next
-    enddo
-    
-    cur_mineral => reaction%mineral_list
-    if (associated(cur_mineral)) then    
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Minerals:'
-    else
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Minerals: None'    
-    endif
-    do
-      if (.not.associated(cur_mineral)) exit
-      write(option%fid_out,100) '  ' // trim(cur_mineral%name)
-      write(option%fid_out,110) '    Molar Mass: ', cur_mineral%molar_weight,' [g/mol]'
-      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume,' [cm^3/mol]'
-      if (associated(cur_mineral%tstrxn)) then
-        write(option%fid_out,100) '    Mineral Reaction: '
-        write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
-        do ispec = 1, cur_mineral%dbaserxn%nspec
-          write(option%fid_out,120) '      ', cur_mineral%dbaserxn%stoich(ispec), &
-                          cur_mineral%dbaserxn%spec_name(ispec)
-        enddo
-        if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logKCoeff_hpt(itemp),&
-                                    itemp=1, reaction%num_dbase_parameters)
-        else        
-          write(option%fid_out,130) '      logK:', (cur_mineral%dbaserxn%logK(itemp),itemp=1, &
-                                       reaction%num_dbase_temperatures)
-        endif
-      endif
-      write(option%fid_out,*)
-      cur_mineral => cur_mineral%next
-    enddo
-    
-    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
-    if (associated(cur_srfcplx_rxn)) then
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Surface Complexation Reactions:'
-    else
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Surface Complexation Reactions: None'
-    endif
-    do
-      if (.not.associated(cur_srfcplx_rxn)) exit
-      cur_srfcplx => cur_srfcplx_rxn%complex_list
-      if (associated(cur_srfcplx)) then
-        write(option%fid_out,*)
-        write(option%fid_out,*) '  Surface Complexes:'
-      else
-        write(option%fid_out,*)
-        write(option%fid_out,*) '  Surface Complexes: None'
-      endif
-      do
-        if (.not.associated(cur_srfcplx)) exit
-        write(option%fid_out,100) '  ' // trim(cur_srfcplx%name)
-        write(option%fid_out,140) '    Charge: ', cur_srfcplx%Z
-        write(option%fid_out,100) '    Surface Complex Reaction: '
-        write(option%fid_out,120) '      ', -1.d0, cur_srfcplx%name
-        write(option%fid_out,120) '      ', cur_srfcplx%free_site_stoich, &
-          cur_srfcplx_rxn%free_site_name
-        do ispec = 1, cur_srfcplx%dbaserxn%nspec
-          write(option%fid_out,120) '      ', cur_srfcplx%dbaserxn%stoich(ispec), &
-                          cur_srfcplx%dbaserxn%spec_name(ispec)
-        enddo
-        if (reaction%use_geothermal_hpt)then
-          write(option%fid_out,130) '      logKCoeff(PT):', (cur_srfcplx%dbaserxn%logKCoeff_hpt(itemp),&
-                                    itemp=1, reaction%num_dbase_parameters)
-        else        
-          write(option%fid_out,130) '      logK:', (cur_srfcplx%dbaserxn%logK(itemp),itemp=1, &
-                                       reaction%num_dbase_temperatures)
-        endif
-        write(option%fid_out,*)
-        cur_srfcplx => cur_srfcplx%next
-      enddo
-      cur_srfcplx_rxn => cur_srfcplx_rxn%next
-    enddo
-    
-    cur_ionx_rxn => reaction%ion_exchange_rxn_list
-    if (associated(cur_ionx_rxn)) then
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Ion Exchange Reactions:'
-    else
-      write(option%fid_out,*)
-      write(option%fid_out,*) 'Ion Exchange Reactions: None'
-    endif
-    do
-      if (.not.associated(cur_ionx_rxn)) exit
-      write(option%fid_out,*) '  Mineral: ', trim(cur_ionx_rxn%mineral_name)
-      write(option%fid_out,150) '      CEC: ', cur_ionx_rxn%CEC
-      cur_cation => cur_ionx_rxn%cation_list
-      if (associated(cur_cation)) then
-        write(option%fid_out,*) '  Cations:'
-      else
-        write(option%fid_out,*) '  Cations: None'
-      endif
-      do
-        if (.not.associated(cur_cation)) exit
-        write(option%fid_out,150) '      ' // trim(cur_cation%name), cur_cation%k
-        cur_cation => cur_cation%next
-      enddo
-      write(option%fid_out,*)
-      cur_ionx_rxn => cur_ionx_rxn%next
-    enddo
-    
-    write(option%fid_out,*)
-    write(option%fid_out,*) '! *************************************************' // &
-                    '************************* !'
-    write(option%fid_out,*)
-  endif
-
-end subroutine BasisPrint
-
-end module Database_module
+end module Database_hpt_module

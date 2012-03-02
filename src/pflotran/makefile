@@ -187,6 +187,7 @@ common_obj = ${common_src}option.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
 	${common_src}database.o \
+	${common_src}database_hpt.o \
 	${common_src}velocity.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
@@ -253,7 +254,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
 	richards.o thc.o discretization.o logging.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
-	velocity.o dataset.o condition_control.o surface_flow.o
+	velocity.o dataset.o condition_control.o surface_flow.o \
+        database_hpt.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o geometry.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
@@ -339,6 +341,7 @@ hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
+database_hpt.o : database.o reaction.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
 dataset_aux.o : string.o utility.o option.o input.o
 time_series.o : string.o option.o input.o

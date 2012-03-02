@@ -46,6 +46,7 @@ subroutine Init(simulation)
 ! use Mass_Balance_module
   use Logging_module  
   use Database_module
+  use Database_hpt_module
   use Input_module
   use Condition_Control_module
   
