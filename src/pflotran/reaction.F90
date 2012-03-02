@@ -5932,31 +5932,31 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
   PetscReal :: coefs(17,n), logKs(n), temp, pres
 
   PetscInt :: i
-  PetscReal :: temp_kelvin, tr,pr, logtr
+  PetscReal :: temp_kelvin, tr, pr, logtr
   
   temp_kelvin = temp + 273.15d0
-  tr=(temp_kelvin)/ 273.15d0
-  pr= pres/1D7
-  logtr=log(tr)/log(10D0) 
+  tr = temp_kelvin/273.15d0
+  pr = pres/1.d7
+  logtr = log(tr)/log(10.d0) 
   
   do i = 1, n
-    logKs(i) = coefs(1,i)               &
-             + coefs(2,i) * tr          &
-             + coefs(3,i) / tr          &
-             + coefs(4,i) * logtr       &
-             + coefs(5,i) * tr *tr      &
-             + coefs(6,i) / tr /tr      &
-             + coefs(7,i) * sqrt(tr)    &
-             + coefs(8,i) * pr          &
-             + coefs(9,i) * pr *tr      &
-             + coefs(10,i) * pr /tr     &
-             + coefs(11,i) * pr *logtr  &
-             + coefs(12,i) / pr         &
-             + coefs(13,i) / pr * tr    &
-             + coefs(14,i) / pr / tr    &
-             + coefs(15,i) * pr * pr    &
-             + coefs(16,i) * pr * pr*tr &
-             + coefs(17,i) * pr * pr/tr 
+    logKs(i) = coefs(1,i)                 &
+             + coefs(2,i) * tr            &
+             + coefs(3,i) / tr            &
+             + coefs(4,i) * logtr         &
+             + coefs(5,i) * tr * tr       &
+             + coefs(6,i) / tr / tr       &
+             + coefs(7,i) * sqrt(tr)      &
+             + coefs(8,i) * pr            &
+             + coefs(9,i) * pr * tr       &
+             + coefs(10,i) * pr / tr      &
+             + coefs(11,i) * pr * logtr   &
+             + coefs(12,i) / pr           &
+             + coefs(13,i) / pr * tr      &
+             + coefs(14,i) / pr / tr      &
+             + coefs(15,i) * pr * pr      &
+             + coefs(16,i) * pr * pr * tr &
+             + coefs(17,i) * pr * pr / tr 
   enddo
   
 end subroutine ReactionInterpolateLogK_hpt
