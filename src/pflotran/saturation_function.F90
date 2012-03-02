@@ -405,7 +405,7 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
 
     case(VAN_GENUCHTEN)
  
-#if 0
+#ifdef MUALEM_SPLINE
       ! fill matix with values
       Se_low = 0.99d0  ! saturated
       Se_high = 1.d0  ! just below saturated
@@ -714,7 +714,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                    Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
           dkr_pc = dkr_Se*dSe_pc
         case(MUALEM)
-#if 0
+#ifdef MUALEM_SPLINE
           if (Se > saturation_function%spline_low) then
             relative_perm = saturation_function%spline_coefficients(1)+ &
                             saturation_function%spline_coefficients(2)*Se+ &
@@ -732,7 +732,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                    2.d0*Se**(one_over_m-0.5d0)* &
                         (1.d0-Se_one_over_m)**(m-1.d0)* &
                         (1.d0-(1.d0-Se_one_over_m)**m)
-#if 0        
+#ifdef MUALEM_SPLINE
           endif
 #endif          
           dkr_pc = dkr_Se*dSe_pc
