@@ -9,11 +9,8 @@ module Database_module
   
 #include "definitions.h"
 
-  public :: DatabaseRead, &
-#ifdef chuan_hpt
-            DatabaseRead_hpt, BasisInit_hpt
-#endif
-            BasisInit
+  public :: DatabaseRead, BasisInit, DatabaseRead_hpt, BasisInit_hpt
+            
 contains
 
 ! ************************************************************************** !
@@ -1247,7 +1244,8 @@ subroutine BasisInit(reaction,option)
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec%name, &
                                              cur_gas_spec%dbaserxn, &
-                                             cur_mineral%dbaserxn)
+                                             cur_mineral%dbaserxn, &
+                                             reaction%use_geothermal_hpt)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1274,7 +1272,8 @@ subroutine BasisInit(reaction,option)
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec%name, &
                                                 cur_gas_spec%dbaserxn, &
-                                                cur_srfcplx2%dbaserxn)
+                                                cur_srfcplx2%dbaserxn, &
+                                                reaction%use_geothermal_hpt)
               ispec = 0
             endif
             ispec = ispec + 1
@@ -1316,7 +1315,8 @@ subroutine BasisInit(reaction,option)
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec%name, &
                                              cur_sec_aq_spec%dbaserxn, &
-                                             cur_mineral%dbaserxn)
+                                             cur_mineral%dbaserxn, &
+                                             reaction%use_geothermal_hpt)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1342,7 +1342,8 @@ subroutine BasisInit(reaction,option)
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec%name, &
                                                 cur_sec_aq_spec%dbaserxn, &
-                                                cur_srfcplx2%dbaserxn)
+                                                cur_srfcplx2%dbaserxn, &
+                                                reaction%use_geothermal_hpt)
               ispec = 0
             endif
             ispec = ispec + 1
@@ -3221,7 +3222,6 @@ end subroutine BasisInit
 ! date: 09/01/08
 !
 ! ************************************************************************** !
-#ifdef chuan_hpt
 subroutine DatabaseRead_hpt(reaction,option)
 
   use Option_module
@@ -4445,7 +4445,8 @@ subroutine BasisInit_hpt(reaction,option)
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec%name, &
                                              cur_gas_spec%dbaserxn, &
-                                             cur_mineral%dbaserxn)
+                                             cur_mineral%dbaserxn, &
+                                             reaction%use_geothermal_hpt)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -4472,7 +4473,8 @@ subroutine BasisInit_hpt(reaction,option)
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec%name, &
                                                 cur_gas_spec%dbaserxn, &
-                                                cur_srfcplx2%dbaserxn)
+                                                cur_srfcplx2%dbaserxn, &
+                                                reaction%use_geothermal_hpt)
               ispec = 0
             endif
             ispec = ispec + 1
@@ -4514,7 +4516,8 @@ subroutine BasisInit_hpt(reaction,option)
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec%name, &
                                              cur_sec_aq_spec%dbaserxn, &
-                                             cur_mineral%dbaserxn)
+                                             cur_mineral%dbaserxn, &
+                                             reaction%use_geothermal_hpt)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -4540,7 +4543,8 @@ subroutine BasisInit_hpt(reaction,option)
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec%name, &
                                                 cur_sec_aq_spec%dbaserxn, &
-                                                cur_srfcplx2%dbaserxn)
+                                                cur_srfcplx2%dbaserxn, &
+                                                reaction%use_geothermal_hpt)
               ispec = 0
             endif
             ispec = ispec + 1
@@ -6165,7 +6169,7 @@ subroutine BasisInit_hpt(reaction,option)
   if (allocated(old_basis_names)) deallocate(old_basis_names)
   
 end subroutine BasisInit_hpt
-#endif
+
 ! ************************************************************************** !
 !
 ! GetSpeciesBasisID: Reduces redundant coding above
@@ -6311,21 +6315,23 @@ end subroutine BasisAlignSpeciesInRxn
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2)
+subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2, use_geothermal_hpt)
 
   use String_module
-  
+
   implicit none
   
   character(len=MAXWORDLENGTH) :: name1
   type(database_rxn_type) :: dbaserxn1
   type(database_rxn_type) :: dbaserxn2
   
+  
   PetscInt :: i, j, tempcount, prevcount
   character(len=MAXWORDLENGTH) :: tempnames(20)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
   PetscBool :: found
+  PetscBool :: use_geothermal_hpt
 
   tempnames = ''
   tempstoich = 0.d0
@@ -6395,11 +6401,11 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2)
   enddo
   
   ! adjust the equilibrium coefficient
-#ifdef chuan_hpt
-  dbaserxn2%logKCoeff_hpt = dbaserxn2%logKCoeff_hpt + scale*dbaserxn1%logKCoeff_hpt
-#else
-  dbaserxn2%logK = dbaserxn2%logK + scale*dbaserxn1%logK
-#endif
+  if (use_geothermal_hpt)then
+    dbaserxn2%logKCoeff_hpt = dbaserxn2%logKCoeff_hpt + scale*dbaserxn1%logKCoeff_hpt
+  else
+   dbaserxn2%logK = dbaserxn2%logK + scale*dbaserxn1%logK
+  endif
 end subroutine BasisSubSpeciesInGasOrSecRxn
 
 ! ************************************************************************** !
@@ -6411,9 +6417,10 @@ end subroutine BasisSubSpeciesInGasOrSecRxn
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn)
+subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,use_geothermal_hpt)
 
   use String_module
+  use Reaction_module
   
   implicit none
   
@@ -6426,6 +6433,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
   PetscBool :: found
+  PetscBool :: use_geothermal_hpt
 
   tempnames = ''
   tempstoich = 0.d0
@@ -6495,11 +6503,11 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn)
   enddo
   
   ! adjust the equilibrium coefficient
-#ifdef chuan_hpt
-  mnrl_dbaserxn%logKCoeff_hpt = mnrl_dbaserxn%logKCoeff_hpt + scale*sec_dbaserxn%logKCoeff_hpt
-#else
-  mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
-#endif
+  if (use_geothermal_hpt)then
+    mnrl_dbaserxn%logKCoeff_hpt = mnrl_dbaserxn%logKCoeff_hpt + scale*sec_dbaserxn%logKCoeff_hpt
+  else
+    mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
+  endif
 end subroutine BasisSubSpeciesInMineralRxn
 
 ! ************************************************************************** !
@@ -6570,13 +6578,13 @@ subroutine BasisPrint(reaction,title,option)
           write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
                           cur_aq_spec%dbaserxn%spec_name(ispec)
         enddo
-#ifdef chuan_hpt
-        write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),itemp=1, &
-                                       reaction%num_dbase_parameters)
-#else
-        write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
+        if (reaction%use_geothermal_hpt)then
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
+                                     itemp=1, reaction%num_dbase_parameters)
+        else
+          write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
-#endif
+        endif
       endif
       write(option%fid_out,*)
       cur_aq_spec => cur_aq_spec%next
@@ -6630,14 +6638,14 @@ subroutine BasisPrint(reaction,title,option)
           endif
 #endif          
         enddo
-#ifdef chuan_hpt
-        write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),itemp=1, &
-                                       reaction%num_dbase_parameters)
+        if (reaction%use_geothermal_hpt)then
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp),&
+                                   itemp=1, reaction%num_dbase_parameters)
 
-#else
-        write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
+        else
+          write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
-#endif
+        endif
 
       endif
 #ifdef WRITE_LATEX
@@ -6671,15 +6679,14 @@ subroutine BasisPrint(reaction,title,option)
           write(option%fid_out,120) '      ', cur_gas_spec%dbaserxn%stoich(ispec), &
                           cur_gas_spec%dbaserxn%spec_name(ispec)
         enddo
-#ifdef chuan_hpt
-        write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logKCoeff_hpt(itemp),itemp=1, &
-                                       reaction%num_dbase_parameters)
+        if (reaction%use_geothermal_hpt)then
+           write(option%fid_out,130) '      logKCoeff(PT):', (cur_gas_spec%dbaserxn%logKCoeff_hpt(itemp),&
+                                     itemp=1, reaction%num_dbase_parameters)
 
-#else
-
+        else
         write(option%fid_out,130) '      logK:', (cur_gas_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
-#endif                                       
+        endif                                       
       endif
       write(option%fid_out,*)
       cur_gas_spec => cur_gas_spec%next
@@ -6705,13 +6712,13 @@ subroutine BasisPrint(reaction,title,option)
           write(option%fid_out,120) '      ', cur_mineral%dbaserxn%stoich(ispec), &
                           cur_mineral%dbaserxn%spec_name(ispec)
         enddo
-#ifdef chuan_hpt
-        write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logKCoeff_hpt(itemp),itemp=1, &
-                                       reaction%num_dbase_parameters)
-#else        
-        write(option%fid_out,130) '      logK:', (cur_mineral%dbaserxn%logK(itemp),itemp=1, &
+        if (reaction%use_geothermal_hpt)then
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_mineral%dbaserxn%logKCoeff_hpt(itemp),&
+                                    itemp=1, reaction%num_dbase_parameters)
+        else        
+          write(option%fid_out,130) '      logK:', (cur_mineral%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
-#endif
+        endif
       endif
       write(option%fid_out,*)
       cur_mineral => cur_mineral%next
@@ -6747,13 +6754,13 @@ subroutine BasisPrint(reaction,title,option)
           write(option%fid_out,120) '      ', cur_srfcplx%dbaserxn%stoich(ispec), &
                           cur_srfcplx%dbaserxn%spec_name(ispec)
         enddo
-#ifdef chuan_hpt
-        write(option%fid_out,130) '      logKCoeff(PT):', (cur_srfcplx%dbaserxn%logKCoeff_hpt(itemp),itemp=1, &
-                                       reaction%num_dbase_parameters)
-#else        
-        write(option%fid_out,130) '      logK:', (cur_srfcplx%dbaserxn%logK(itemp),itemp=1, &
+        if (reaction%use_geothermal_hpt)then
+          write(option%fid_out,130) '      logKCoeff(PT):', (cur_srfcplx%dbaserxn%logKCoeff_hpt(itemp),&
+                                    itemp=1, reaction%num_dbase_parameters)
+        else        
+          write(option%fid_out,130) '      logK:', (cur_srfcplx%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
-#endif
+        endif
         write(option%fid_out,*)
         cur_srfcplx => cur_srfcplx%next
       enddo

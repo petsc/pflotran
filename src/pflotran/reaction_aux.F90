@@ -52,9 +52,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: logK(:)
-#ifdef chuan_hpt
     PetscReal, pointer :: logKCoeff_hpt(:)
-#endif    
   end type database_rxn_type
 
   type, public :: mineral_type
@@ -237,13 +235,12 @@ module Reaction_Aux_module
     PetscBool :: print_total_bulk ! total in aq and sorbed phases
     PetscBool :: initialize_with_molality
     PetscBool :: print_age
+    PetscBool :: use_geothermal_hpt
     PetscInt :: print_free_conc_type
     PetscInt :: print_tot_conc_type
     PetscInt :: print_secondary_conc_type
     PetscInt :: num_dbase_temperatures
-#ifdef chuan_hpt
     PetscInt :: num_dbase_parameters
-#endif
     PetscReal, pointer :: dbase_temperatures(:)
     type(species_idx_type), pointer :: species_idx
 
@@ -569,6 +566,7 @@ function ReactionCreate()
   reaction%print_total_component = PETSC_TRUE
   reaction%print_free_ion = PETSC_FALSE
   reaction%print_total_bulk = PETSC_FALSE
+  reaction%use_geothermal_hpt = PETSC_FALSE
 
   reaction%initialize_with_molality = PETSC_FALSE
   reaction%print_free_conc_type = 0
