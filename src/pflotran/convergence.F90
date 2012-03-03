@@ -179,7 +179,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
-#ifdef ICE
+
+#if defined (ICE) || defined (CHUAN_CO2)
   if (fnorm > 1.d10 .or. pnorm > 1.d10 .or. inorm_residual > 1.d10) then
     reason = -2
   endif
