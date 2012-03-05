@@ -1781,12 +1781,14 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 
       case('CONC','CONCENTRATIONS')
 
-        aq_species_constraint => AqueousSpeciesConstraintCreate(reaction,option)
+        aq_species_constraint => &
+          AqueousSpeciesConstraintCreate(reaction,option)
 
         icomp = 0
         do
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'CONSTRAINT, CONCENTRATIONS')
+          call InputReadStringErrorMsg(input,option, &
+                                       'CONSTRAINT, CONCENTRATIONS')
           
           if (InputCheckExit(input,option)) exit  
           
@@ -1808,7 +1810,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                              trim(aq_species_constraint%names(icomp))
           call printMsg(option)
           
-          call InputReadDouble(input,option,aq_species_constraint%constraint_conc(icomp))
+          call InputReadDouble(input,option, &
+                               aq_species_constraint%constraint_conc(icomp))
           call InputErrorMsg(input,option,'concentration', &
                           'CONSTRAINT, CONCENTRATIONS')          
           
@@ -1823,30 +1826,41 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
               case('T','TOTAL')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
-              case('S','TOTAL_SORB')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL_SORB
+              case('TOTAL_SORB')
+                aq_species_constraint%constraint_type(icomp) = &
+                  CONSTRAINT_TOTAL_SORB
+              case('S')
+                aq_species_constraint%constraint_type(icomp) = &
+                  CONSTRAINT_TOTAL_SORB_AQ_BASED
               case('P','PH')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_PH
               case('L','LOG')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
               case('M','MINERAL','MNRL') 
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
+                aq_species_constraint%constraint_type(icomp) = &
+                  CONSTRAINT_MINERAL
               case('G','GAS') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_GAS
               case('SC','CONSTRAINT_SUPERCRIT_CO2') 
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_SUPERCRIT_CO2
+                aq_species_constraint%constraint_type(icomp) = &
+                  CONSTRAINT_SUPERCRIT_CO2
               case('Z','CHG') 
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_CHARGE_BAL
+                aq_species_constraint%constraint_type(icomp) = &
+                  CONSTRAINT_CHARGE_BAL
               case default
                 option%io_buffer = 'Keyword: ' // trim(word) // &
                          ' not recognized in constraint,concentration'
                 call printErrMsg(option)
             end select 
             
-            if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
-                aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS .or.&
-                aq_species_constraint%constraint_type(icomp) == CONSTRAINT_SUPERCRIT_CO2) then
-              call InputReadWord(input,option,aq_species_constraint%constraint_aux_string(icomp), &
+            if (aq_species_constraint%constraint_type(icomp) == &
+                  CONSTRAINT_MINERAL .or. &
+                aq_species_constraint%constraint_type(icomp) == &
+                  CONSTRAINT_GAS .or.&
+                aq_species_constraint%constraint_type(icomp) == &
+                  CONSTRAINT_SUPERCRIT_CO2) then
+              call InputReadWord(input,option,aq_species_constraint% &
+                                 constraint_aux_string(icomp), &
                                  PETSC_TRUE)
               call InputErrorMsg(input,option,'constraint name', &
                               'CONSTRAINT, CONCENTRATIONS') 
@@ -1931,13 +1945,15 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
             tempreal = -1.d0
             mineral_constraint%constraint_vol_frac(imnrl) = sqrt(tempreal)
           else
-            call InputReadDouble(input,option,mineral_constraint%constraint_vol_frac(imnrl))
+            call InputReadDouble(input,option, &
+                                 mineral_constraint%constraint_vol_frac(imnrl))
             call InputErrorMsg(input,option,'volume fraction', &
                                'CONSTRAINT, MINERALS')   
           endif
 
           ! specific surface area
-          call InputReadDouble(input,option,mineral_constraint%constraint_area(imnrl))
+          call InputReadDouble(input,option, &
+                               mineral_constraint%constraint_area(imnrl))
           call InputErrorMsg(input,option,'area', &
                           'CONSTRAINT, MINERALS')          
         
@@ -1965,7 +1981,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         isrfcplx = 0
         do
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'CONSTRAINT, SURFACE_COMPLEXES')
+          call InputReadStringErrorMsg(input,option, &
+                                       'CONSTRAINT, SURFACE_COMPLEXES')
           
           if (InputCheckExit(input,option)) exit          
           
@@ -1973,8 +1990,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 
           if (isrfcplx > reaction%nkinsrfcplx) then
             option%io_buffer = &
-                     'Number of surface complex constraints exceeds number of ' // &
-                     'kinetic surface complexes in constraint: ' // &
+                     'Number of surface complex constraints exceeds ' // &
+                     'number of kinetic surface complexes in constraint: ' // &
                       trim(constraint%name)
             call printErrMsg(option)
           endif
@@ -1986,7 +2003,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           option%io_buffer = 'Constraint Surface Complex: ' // &
                              trim(srfcplx_constraint%names(isrfcplx))
           call printMsg(option)
-          call InputReadDouble(input,option,srfcplx_constraint%constraint_conc(isrfcplx))
+          call InputReadDouble(input,option, &
+                               srfcplx_constraint%constraint_conc(isrfcplx))
           call InputErrorMsg(input,option,'concentration', &
                           'CONSTRAINT, SURFACE COMPLEX')          
         enddo  
@@ -1994,8 +2012,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         if (isrfcplx < reaction%nkinsrfcplx) then
           option%io_buffer = &
                    'Number of surface complex constraints is less than ' // &
-                   'number of kinetic surface complexes in surface complex ' // &
-                   'constraint.'
+                   'number of kinetic surface complexes in surface ' // &
+                   'complex constraint.'
           call printErrMsg(option)        
         endif
         
@@ -2032,10 +2050,12 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           option%io_buffer = 'Constraint Colloids: ' // &
                              trim(colloid_constraint%names(icomp))
           call printMsg(option)
-          call InputReadDouble(input,option,colloid_constraint%constraint_conc_mob(icomp))
+          call InputReadDouble(input,option, &
+                               colloid_constraint%constraint_conc_mob(icomp))
           call InputErrorMsg(input,option,'mobile concentration', &
                           'CONSTRAINT, COLLOIDS')          
-          call InputReadDouble(input,option,colloid_constraint%constraint_conc_imb(icomp))
+          call InputReadDouble(input,option, &
+                               colloid_constraint%constraint_conc_imb(icomp))
           call InputErrorMsg(input,option,'immobile concentration', &
                           'CONSTRAINT, COLLOIDS')          
         

@@ -1670,9 +1670,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   total_conc = 0.d0
   do icomp = 1, reaction%naqcomp
     select case(constraint_type(icomp))
-      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
+      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB_AQ_BASED)
+        ! units = mol/L
         total_conc(icomp) = conc(icomp)*convert_molal_to_molar
         ! free_conc guess set above
+      case(CONSTRAINT_TOTAL_SORB)
+        ! units = mol/m^3 bulk
+        total_conc(icomp) = conc(icomp)
       case(CONSTRAINT_FREE)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal
       case(CONSTRAINT_LOG)
@@ -1758,13 +1762,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       select case(constraint_type(icomp))
       
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+        
           ! units = mol/L water
           Res(icomp) = rt_auxvar%total(icomp,1) - total_conc(icomp)
           ! dtotal units = kg water/L water
 
           ! Jac units = kg water/L water
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
-        case(CONSTRAINT_TOTAL_SORB)
+          
+        case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
+        
           ! conversion from m^3 bulk -> L water
           tempreal = porosity1*global_auxvar%sat(iphase)*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
@@ -1776,6 +1783,14 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1) + &
           ! dtotal_sorb units = kg water/m^3 bulk
                          rt_auxvar%dtotal_sorb_eq(icomp,:)/tempreal
+
+        case(CONSTRAINT_TOTAL_SORB)
+        
+          ! units = mol/m^3 bulk
+          Res(icomp) = rt_auxvar%total_sorb_eq(icomp) - total_conc(icomp)
+          ! dtotal_sorb units = kg water/m^3 bulk
+          ! Jac units = kg water/m^3 bulk
+          Jac(icomp,:) = rt_auxvar%dtotal_sorb_eq(icomp,:)
 
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
         
@@ -2421,9 +2436,11 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     do icomp = 1, reaction%naqcomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
-          string = 'total'
+          string = 'total aq'
         case(CONSTRAINT_TOTAL_SORB)
-          string = 'aq+sorb'
+          string = 'total sorb'
+        case(CONSTRAINT_TOTAL_SORB_AQ_BASED)
+          string = 'total aq+sorb'
         case(CONSTRAINT_FREE)
           string = 'free'
         case(CONSTRAINT_CHARGE_BAL)
