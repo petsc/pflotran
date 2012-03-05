@@ -821,6 +821,7 @@ subroutine CondControlScaleSourceSink(realization)
                enddo
                vec_ptr(local_id) = vec_ptr(local_id) + sum
             case(THC_MODE)
+            case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
@@ -842,6 +843,7 @@ subroutine CondControlScaleSourceSink(realization)
               cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
                 vec_ptr(local_id)
             case(THC_MODE)
+            case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)

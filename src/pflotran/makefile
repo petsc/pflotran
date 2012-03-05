@@ -148,6 +148,7 @@ common_obj = ${common_src}option.o \
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
+	${common_src}thmc_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}general_aux.o\
 	${common_src}mphase_aux.o\
@@ -201,6 +202,7 @@ common_obj = ${common_src}option.o \
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
 	${common_src}thc.o\
+	${common_src}thmc.o\
 	${common_src}richards.o\
 	${common_src}general.o\
 	${common_src}condition_control.o \
@@ -242,7 +244,7 @@ test: functions.o test.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
+auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
 	mphase_aux.o flash2_aux.o global_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
 	stochastic_aux.o stochastic.o
@@ -252,7 +254,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
-	richards.o thc.o discretization.o logging.o \
+	richards.o thc.o thmc.o discretization.o logging.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o condition_control.o surface_flow.o \
         database_hpt.o
@@ -296,7 +298,7 @@ waypoint.o : option.o
 output.o : grid.o structured_grid.o option.o realization.o field.o \
 	coupler.o connection.o hdf5.o observation.o \
 	reactive_transport.o \
-	thc.o richards.o mphase.o flash2.o general.o \
+	thc.o thmc.o richards.o mphase.o flash2.o general.o \
 	discretization.o logging.o amrgrid.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
@@ -307,9 +309,11 @@ reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
 	amrgrid.o
 reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
+thmc.o : thmc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
 	matrix_buffer.o logging.o amrgrid.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
+thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 	matrix_buffer.o global_aux.o
 general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
@@ -333,7 +337,7 @@ miscible_aux.o : option.o material.o
 flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 	co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
 	saturation_function.o
-timestepper.o : thc.o richards.o mphase.o flash2.o general.o \
+timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
 	realization.o grid.o option.o field.o solver.o \
 	output.o convergence.o checkpoint.o waypoint.o logging.o \
 	input.o string.o reactive_transport.o condition_control.o surface_flow.o 
@@ -362,4 +366,3 @@ velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
 utility.o : string.o input.o option.o
-mech_aux.o  : option.o

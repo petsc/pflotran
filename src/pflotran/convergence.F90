@@ -180,11 +180,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
 
-#if defined (ICE) || defined (CHUAN_CO2)
-  if (fnorm > 1.d10 .or. pnorm > 1.d10 .or. inorm_residual > 1.d10) then
+! Checking if norm exceeds divergence tolerance
+
+  if (fnorm > solver%newton_dtol .or. pnorm > solver%newton_dtol .or. &
+    inorm_residual > solver%newton_dtol) then
     reason = -2
   endif
-#endif
   
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
@@ -216,6 +217,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
+        case(-2)
+          string = 'dtol'
         case(2)
           string = 'atol'
         case(3)
