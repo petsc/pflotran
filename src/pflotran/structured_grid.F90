@@ -1070,7 +1070,8 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
                                   option%nphase,INTERNAL_CONNECTION_TYPE)
   
   ! if using higher order advection, allocate associated arrays
-  if (option%itranmode == EXPLICIT_ADVECTION) then
+  if (option%itranmode == EXPLICIT_ADVECTION .and. &
+      option%tvd_flux_limiter /= 1) then  ! 1 = upwind
     allocate(connections%id_up2(size(connections%id_up)))
     allocate(connections%id_dn2(size(connections%id_dn)))
     connections%id_up2 = 0

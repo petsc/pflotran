@@ -435,7 +435,7 @@ subroutine OptionInitRealization(option)
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
-  option%tvd_flux_limiter = 0
+  option%tvd_flux_limiter = 1
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
   option%ivar_centering = CELL_CENTERED

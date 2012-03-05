@@ -812,6 +812,8 @@ subroutine ReactionRead(reaction,input,option)
                 ' not recognized.'
               call printErrMsg(option)
           end select
+          option%io_buffer = 'Flux Limiter: ' // trim(word)
+          call printMsg(option)
         else
           call InputDefaultMsg(input,option,'TVD Flux Limiter')
         endif
