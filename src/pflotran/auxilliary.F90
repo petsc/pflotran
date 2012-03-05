@@ -2,6 +2,7 @@ module Auxilliary_module
   
   use Global_Aux_module
   use THC_Aux_module
+  use THMC_Aux_module
   use Richards_Aux_module
   use Reactive_Transport_Aux_module
   use Mphase_Aux_module
@@ -24,6 +25,7 @@ module Auxilliary_module
     type(subcontinuum_transport_type), pointer :: ST
 #endif
     type(thc_type), pointer :: THC
+    type(thmc_type), pointer :: THMC
     type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
@@ -57,6 +59,7 @@ subroutine AuxInit(aux)
   nullify(aux%ST)
 #endif
   nullify(aux%THC)
+  nullify(aux%THMC)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
@@ -86,6 +89,7 @@ subroutine AuxDestroy(aux)
   call STAuxDestroy(aux%ST) 
 #endif
   call THCAuxDestroy(aux%THC)
+  call THMCAuxDestroy(aux%THMC)
   call RichardsAuxDestroy(aux%Richards)
   call MphaseAuxDestroy(aux%Mphase)
   call MiscibleAuxDestroy(aux%Miscible)
@@ -97,6 +101,7 @@ subroutine AuxDestroy(aux)
   nullify(aux%ST)  
 #endif
   nullify(aux%THC)
+  nullify(aux%THMC)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
