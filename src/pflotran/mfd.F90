@@ -107,7 +107,11 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
       case(MATAIJ)
         d_nnz = d_nnz*mfd_aux%ndof
         o_nnz = o_nnz*mfd_aux%ndof
+#ifdef MATCREATE_OLD      
         call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
+#else
+        call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
+#endif        
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -116,7 +120,11 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
 
 
       case(MATBAIJ)
+#ifdef MATCREATE_OLD      
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#else
+        call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -254,7 +262,11 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
       case(MATAIJ)
         d_nnz = d_nnz*mfd_aux%ndof
         o_nnz = o_nnz*mfd_aux%ndof
+#ifdef MATCREATE_OLD      
         call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
+#else
+        call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
+#endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -263,7 +275,11 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 
 
       case(MATBAIJ)
+#ifdef MATCREATE_OLD      
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#else
+        call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)

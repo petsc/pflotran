@@ -2101,7 +2101,11 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     !  - mat_vert2cell(i,j) = j (i.e. i-th global vertex constitutes j-th
     !    cell
     !
+#ifdef MATCREATE_OLD
     call MatCreateMPIAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
+#else
+    call MatCreateAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
+#endif
                           ugrid%num_vertices_global, ugrid%nmax, &
                           ugrid%max_cells_sharing_a_vertex, &
                           PETSC_NULL_INTEGER, &

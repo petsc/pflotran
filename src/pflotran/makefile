@@ -24,6 +24,10 @@ ifdef glenn
 GLENN_FLAGS = -DGLENN -DTVD_DEBUG
 endif
 
+ifdef matcreate_old
+GLENN_FLAGS += -DMATCREATE_OLD
+endif
+
 ifdef dbl
 DBL_FLAG = -DDOUBLE_LAYER
 endif
