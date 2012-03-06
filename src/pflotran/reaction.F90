@@ -5908,7 +5908,7 @@ end subroutine ReactionInterpolateLogK
 ! date: 12/29/11
 !
 ! ************************************************************************** !
-subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
+subroutine ReactionInitializeLogK_hpt(logKcoef,logK,option,reaction)
 
   use Option_module
 
@@ -5916,7 +5916,6 @@ subroutine ReactionInitializeLogK_hpt(logKcoef,logKs,logK,option,reaction)
   
   type(reaction_type) :: reaction
   PetscReal :: logKcoef(17)
-  PetscReal :: logKs(reaction%num_dbase_temperatures)
   PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
   type(option_type) :: option
   
