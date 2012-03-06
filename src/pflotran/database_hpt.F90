@@ -1527,9 +1527,8 @@ subroutine BasisInit_hpt(reaction,option)
 !#if 0
 !     TODO(Peter): fix argument list
       call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
-                                  cur_sec_aq_spec%dbaserxn%logK, &
-                                  reaction%eqcplx_logK(isec_spec), &
-                                  option,reaction)
+                                      reaction%eqcplx_logK(isec_spec), &
+                                      option,reaction)
 !#endif
       reaction%eqcplx_Z(isec_spec) = cur_sec_aq_spec%Z
       reaction%eqcplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
@@ -1594,8 +1593,7 @@ subroutine BasisInit_hpt(reaction,option)
 !#if 0      
 !     TODO(Peter): fix argument list
       call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
-                                  cur_gas_spec%dbaserxn%logK, &
-                                  reaction%eqgas_logK(igas_spec), &
+                                   reaction%eqgas_logK(igas_spec), &
                                   option,reaction)
 !#endif  
       igas_spec = igas_spec + 1
@@ -1747,7 +1745,6 @@ subroutine BasisInit_hpt(reaction,option)
       reaction%mnrlspecid(0,imnrl) = ispec
 
       call ReactionInitializeLogK_hpt(reaction%mnrl_logKcoef(:,imnrl), &
-                                  cur_mineral%dbaserxn%logK, &
                                   reaction%mnrl_logK(imnrl), &
                                   option,reaction)
 
@@ -1764,9 +1761,8 @@ subroutine BasisInit_hpt(reaction,option)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
 
         call ReactionInitializeLogK_hpt(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                    cur_mineral%dbaserxn%logK, &
-                                    reaction%kinmnrl_logK(ikinmnrl), &
-                                    option,reaction)
+                                        reaction%kinmnrl_logK(ikinmnrl), &
+                                        option,reaction)
 
         tstrxn => cur_mineral%tstrxn
         if (associated(tstrxn)) then
@@ -2064,9 +2060,8 @@ subroutine BasisInit_hpt(reaction,option)
           enddo
           reaction%eqsrfcplxspecid(0,isrfcplx) = ispec
           call ReactionInitializeLogK_hpt(reaction%eqsrfcplx_logKcoef(:,isrfcplx), &
-                                      cur_srfcplx%dbaserxn%logK, &
-                                      reaction%eqsrfcplx_logK(isrfcplx), &
-                                      option,reaction)
+                                          reaction%eqsrfcplx_logK(isrfcplx), &
+                                          option,reaction)
 
           reaction%eqsrfcplx_Z(isrfcplx) = cur_srfcplx%Z
 
