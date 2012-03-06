@@ -113,7 +113,7 @@ function SolverCreate()
   solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%newton_dtol = 1.d20  ! set to a large value
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
