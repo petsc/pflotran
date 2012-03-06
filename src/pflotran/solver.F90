@@ -32,7 +32,7 @@ module Solver_module
     PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
-
+    PetscReal :: max_norm          ! maximum norm for divergence
     PetscBool :: use_galerkin_mg  ! If true, precondition linear systems with 
                                    ! Galerkin-type geometric multigrid.
     PetscInt :: galerkin_mg_levels  ! Number of discretization levels for 
@@ -113,7 +113,8 @@ function SolverCreate()
   solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_dtol = 1.d20  ! set to a large value
+  solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION 
+  solver%max_norm = 1.d20     ! set to a large value
   solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_stomp_tol = 1.d-6 ! the default in STOMP
@@ -642,6 +643,10 @@ subroutine SolverReadNewton(solver,input,option)
       case('DTOL')
         call InputReadDouble(input,option,solver%newton_dtol)
         call InputDefaultMsg(input,option,'newton_dtol')
+
+      case('MAX_NORM')
+        call InputReadDouble(input,option,solver%max_norm)
+        call InputDefaultMsg(input,option,'max_norm')
    
       case('ITOL', 'INF_TOL', 'ITOL_RES', 'INF_TOL_RES')
         call InputReadDouble(input,option,solver%newton_inf_res_tol)
@@ -790,6 +795,7 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
     write(*,'("     rtol:",1pe12.4)') solver%newton_rtol
     write(*,'("     stol:",1pe12.4)') solver%newton_stol
     write(*,'("     dtol:",1pe12.4)') solver%newton_dtol
+    write(*,'("  maxnorm:",1pe12.4)') solver%max_norm
     write(*,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
     write(*,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
     write(*,'("    maxit:",i6)') solver%newton_maxit
@@ -839,6 +845,7 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
     write(fid,'("     rtol:",1pe12.4)') solver%newton_rtol
     write(fid,'("     stol:",1pe12.4)') solver%newton_stol
     write(fid,'("     dtol:",1pe12.4)') solver%newton_dtol
+    write(fid,'("  maxnorm:",1pe12.4)') solver%max_norm
     write(fid,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
     write(fid,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
     write(fid,'("    maxit:",i6)') solver%newton_maxit

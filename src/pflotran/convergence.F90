@@ -181,12 +181,13 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
                             PETSC_NULL_OBJECT,ierr)
 
 ! Checking if norm exceeds divergence tolerance
-#ifdef ICE
-  if (fnorm > solver%newton_dtol .or. pnorm > solver%newton_dtol .or. &
-    inorm_residual > solver%newton_dtol) then
-    reason = -2
-  endif
-#endif
+  select case(option%iflowmode)
+    case(THC_MODE,MIS_MODE,MPH_MODE)
+      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
+        inorm_residual > solver%max_norm) then
+        reason = -2
+      endif
+  end select  
   
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
@@ -219,7 +220,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       i = int(reason)
       select case(i)
         case(-2)
-          string = 'dtol'
+          string = 'max_norm'
         case(2)
           string = 'atol'
         case(3)
