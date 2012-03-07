@@ -2806,15 +2806,16 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 #ifdef AMANZI_BGD
   ! output constraints for amanzi cfg formatted input
   if (OptionPrintToFile(option)) then
-    open(unit=86,file='constraint.cfg')
+    string = trim(option%global_prefix) // '-' // &
+             trim(constraint_coupler%constraint_name) // '.txt'
+    open(unit=86,file=trim(string))
 
     write(86,'("# pflotran constraint preprocessing :")')
     !call date_and_time(date=word,time=word2)
     ! prints garbage? need to clear memory?
     !write(86,'("#        date : ",a,"   ",a)') trim(word), trim(word2)
     write(86,'("#       input : ",a)') trim(option%input_filename)
-
-    write(86,'(/,"Constraint: ",a)') &
+    write(86,'(/,"# Constraint: ",a)') &
          trim(constraint_coupler%constraint_name)
 
     write(86,'(/,"[total]")')

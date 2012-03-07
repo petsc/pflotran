@@ -2983,7 +2983,8 @@ subroutine BasisInit(reaction,option)
 #ifdef AMANZI_BGD
   ! output reaction in amanzi "bgd" formatted file
   if (OptionPrintToFile(option)) then
-    open(unit=86,file='reaction.bgd')
+    string = trim(option%global_prefix) // '.bgd'
+    open(unit=86,file=trim(string))
 
     write(86,'("# pflotran database preprocessing :")')
     call date_and_time(date=word,time=word2)
