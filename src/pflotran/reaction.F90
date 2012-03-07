@@ -2835,11 +2835,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                 rt_auxvar%mnrl_volfrac(imnrl)
     enddo
 
-    write(86,'(/,"[sorbed]")')
-    do icomp = 1, reaction%ncomp
-      write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
-                                rt_auxvar%eqsrfcplx_conc(icomp)
-    enddo
+    if (associated(rt_auxvar%total_sorb_eq)) then
+      write(86,'(/,"[total_sorbed]")')
+      do icomp = 1, reaction%ncomp
+        write(86,'(a," = ",1es13.6)') trim(reaction%primary_species_names(icomp)), &
+                                  rt_auxvar%total_sorb_eq(icomp)
+      enddo
+    endif
 
     write(86,'(/,"[ion_exchange]")')
     do icomp = 1, reaction%neqionxrxn
