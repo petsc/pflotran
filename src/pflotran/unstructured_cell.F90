@@ -23,6 +23,7 @@ module Unstructured_Cell_module
   
   public :: UCellComputeCentroid, &
             UCellComputeVolume, &
+            UCellComputeArea, &
             UCellComputePlane, &
             UCellGetPlaneIntercept, &
             UCellProjectPointOntoPlane, &
@@ -197,8 +198,46 @@ function UCellComputeVolume(cell_type,vertices,option)
       UCellComputeVolume = &
         UCellComputeVolumeOfTetrahedron(vertices(1),vertices(2),vertices(3), &
                                         vertices(4))
+    case(QUAD_TYPE, TRI_TYPE)
+      option%io_buffer = 'Cell type is QUAD or TRI, thus one should call '// &
+        'UCellComputeArea instead of UCellComputeVolume'
+      call printErrMsg(option)
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
+  end select
+
+end function UCellComputeVolume
+
+! ************************************************************************** !
+!
+! UCellComputeArea: Computes the area a 2D grid cell
+! author: Gautam Bisht
+! date: 03/17/12
+!
+! ************************************************************************** !
+function UCellComputeArea(cell_type,vertices,option)
+
+  use Utility_module, only : DotProduct, CrossProduct
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: cell_type
+  type(point_type) :: vertices(*)
+  type(option_type) :: option
+  
+  PetscReal :: UCellComputeArea
+  PetscReal :: v(3)
+  PetscReal :: l1, l2, l3
+  PetscReal :: n1(3), n2(3), v1(3), v2(3)
+  PetscReal :: area1, area2, dz
+  PetscReal :: vv(3,8)
+  PetscInt :: i, j
+  
+  UCellComputeArea = 0.d0
+  select case(cell_type)
     case(QUAD_TYPE)
-      ! gb: 2D cell type, thus volume = area * unit-depth
       v1(1) = vertices(3)%x-vertices(2)%x
       v1(2) = vertices(3)%y-vertices(2)%y
       v1(3) = vertices(3)%z-vertices(2)%z
@@ -213,13 +252,12 @@ function UCellComputeVolume(cell_type,vertices,option)
       v1(3) = vertices(3)%z-vertices(4)%z
       v2(1) = vertices(1)%x-vertices(4)%x
       v2(2) = vertices(1)%y-vertices(4)%y
-      v2(3) = vertices(1)%z-vertices(24)%z
+      v2(3) = vertices(1)%z-vertices(4)%z
       n2 = CrossProduct(v1,v2)
       area1 = 0.5d0*sqrt(DotProduct(n2,n2))
       
-      UCellComputeVolume = (area1 + area2)*1.d0
+      UCellComputeArea = (area1 + area2)
     case(TRI_TYPE)
-      ! gb: 2D cell type, thus volume = area * unit-depth
       v1(1) = vertices(3)%x-vertices(2)%x
       v1(2) = vertices(3)%y-vertices(2)%y
       v1(3) = vertices(3)%z-vertices(2)%z
@@ -228,13 +266,14 @@ function UCellComputeVolume(cell_type,vertices,option)
       v2(3) = vertices(1)%z-vertices(2)%z
       n1 = CrossProduct(v1,v2)
       area1 = 0.5d0*sqrt(DotProduct(n1,n1))
-      UCellComputeVolume = area1*1.d0
+
+      UCellComputeArea = area1
     case default
       option%io_buffer = 'Cell type not recognized'
       call printErrMsg(option)
   end select
 
-end function UCellComputeVolume
+end function UCellComputeArea
 
 ! ************************************************************************** !
 !

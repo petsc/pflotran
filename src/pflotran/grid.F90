@@ -114,6 +114,7 @@ module Grid_module
             GridComputeSpacing, &
             GridComputeCoordinates, &
             GridComputeVolumes, &
+            GridComputeAreas, &
             GridLocalizeRegions, &
             GridLocalizeRegionsForUGrid, &
             GridPopulateConnection, &
@@ -1396,6 +1397,40 @@ subroutine GridComputeVolumes(grid,volume,option)
   end select
 
 end subroutine GridComputeVolumes
+
+! ************************************************************************** !
+!
+! GridComputeAreas: Computes the areas for 2D-mesh
+! author: Gautam Bisht
+! date: 03/07/2012
+!
+! ************************************************************************** !
+subroutine GridComputeAreas(grid,area,option)
+
+  use Option_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  Vec :: area
+  
+  select case(grid%itype)
+    !case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      !call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
+      !                                  grid%nL2G,volume)
+    case(UNSTRUCTURED_GRID)
+      call UGridComputeAreas(grid%unstructured_grid,option,area)
+      call UGridComputeQuality(grid%unstructured_grid,option)
+    case default
+      option%io_buffer = 'ERROR: GridComputeAreas only implemented for Unstructured grid'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridComputeAreas
 
 ! ************************************************************************** !
 !

@@ -110,6 +110,7 @@ module Unstructured_Grid_module
             UGridPopulateConnection, &
             UGridComputeCoord, &
             UGridComputeVolumes, &
+            UGridComputeAreas, &
             UGridComputeQuality, &
             UGridMapIndices, &
             UGridDMCreateJacobian, &
@@ -3334,6 +3335,58 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
   call VecRestoreArrayF90(volume,volume_p,ierr)
 
 end subroutine UGridComputeVolumes
+
+! ************************************************************************** !
+!
+! UGridComputeAreas: Computes area of unstructured grid cells
+! author: Gautam Bisht
+! date: 03/07/2012
+!
+! ************************************************************************** !
+subroutine UGridComputeAreas(unstructured_grid,option,area)
+
+  use Option_module
+  
+  implicit none
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+  Vec :: area
+  
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  type(point_type) :: vertex_4(4)
+  PetscReal, pointer :: area_p(:)
+  PetscErrorCode :: ierr
+
+  call VecGetArrayF90(area,area_p,ierr)
+
+  do local_id = 1, unstructured_grid%nlmax
+    ! ghosted_id = local_id on unstructured grids
+    ghosted_id = local_id
+    if (unstructured_grid%cell_vertices(0,ghosted_id) > 4 ) then
+      option%io_buffer = 'ERROR: In UGridComputeAreas the no. of vertices > 4'
+      call printErrMsg(option)
+    endif
+    do ivertex = 1, unstructured_grid%cell_vertices(0,ghosted_id)
+      vertex_id = unstructured_grid%cell_vertices(ivertex,ghosted_id)
+      vertex_4(ivertex)%x = &
+        unstructured_grid%vertices(vertex_id)%x
+      vertex_4(ivertex)%y = &
+        unstructured_grid%vertices(vertex_id)%y
+      vertex_4(ivertex)%z = &
+        unstructured_grid%vertices(vertex_id)%z
+    enddo
+    area_p(local_id) = UCellComputeArea(unstructured_grid%cell_type( &
+                           ghosted_id),vertex_4,option)
+  enddo
+      
+  call VecRestoreArrayF90(area,area_p,ierr)
+
+end subroutine UGridComputeAreas
 
 ! ************************************************************************** !
 !
