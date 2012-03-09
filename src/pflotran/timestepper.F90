@@ -951,16 +951,8 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
       if (dtt > flow_stepper%dt_max) dtt = flow_stepper%dt_max
-      ! geh: the issue here is that we do not want pflotran to cut the time step
-      ! (due to dt being large relative to time) if we restart the simulation 
-      ! setting the time back to zero.  the problem is that one cannot key 
-      ! off of option%restart_flag since that flag is also set when time is 
-      ! nonzero....  Therefore, must use option%restart_time
-      if (dabs(option%restart_time) < 1.d-40 .and. flow_stepper%steps <= 5) then
-        ! do nothing
-      else
-        if (dtt>.25d0*time) dtt=.25d0*time
-      endif
+      ! geh: There used to be code here that cut the time step if it is too
+      !      large relative to the simulation time.  This has been removed.
       dt = dtt
 
       option%flow_dt = dt
@@ -1016,11 +1008,6 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
       if (dtt > tran_stepper%dt_max) dtt = tran_stepper%dt_max
       ! geh: see comment above under flow stepper
-      if (dabs(option%restart_time) < 1.d-40 .and. tran_stepper%steps <= 5) then
-        ! do nothing
-      else
-        if (dtt>.25d0*time) dtt=.25d0*time
-      endif
       dt = dtt
 
       option%tran_dt = dt
