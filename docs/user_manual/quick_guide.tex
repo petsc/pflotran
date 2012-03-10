@@ -317,39 +317,72 @@ Capillary pressure is related to saturation by various
 phenomenological relations, one of which is the van Genuchten 
 (1980) relation 
 \EQ\label{seff}
-s_l^{\rm eff} \eq \left[1+\left( \alpha |P_c| \right)^n 
+s_e \eq \left[1+\left( \frac{p_c}{p_c^0} \right)^n 
 \right]^{-m}, 
 \EN 
-where $P_c$ represents the capillary pressure [Pa], and $s_l^{\rm 
-eff}$ is defined by 
+where $p_c$ represents the capillary pressure [Pa], and the effective saturation $s_e$ is defined by 
 \EQ 
-s_l^{\rm eff} \eq \frac{s_l - s_l^r}{s_l^0 - s_l^r}, 
+s_e \eq \frac{s - s_r}{s_0 - s_r}, 
 \EN 
-where $s_l^r$ denotes the residual saturation, and $s_l^0$ denotes 
-the maximum saturation. The quantity $n$ is related to $m$ by 
-the expression 
-\EQ\label{lambda} 
-m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
-\EN 
- 
-Relative permeability for the liquid phase is given by the expression \EQ\label{krl} 
-k_{rl} \eq \sqrt{s_l^{\rm eff}} \left\{1 - \left[1- \left( s_l^{\rm 
-eff} \right)^{1/m} \right]^m \right\}^2, 
-\EN 
-and for the gas phase by 
-\EQ 
-k_{rg} \eq 1 - k_{rl}. 
-\EN 
+where $s_r$ denotes the residual saturation, and $s_0$ denotes 
+the maximum saturation. 
+The inverse relation is given by
+\EQ
+p_c \eq p_c^0 \left(s_e^{-1/m}-1\right)^{1/n}.
+\EN
+The quantities $m$, $n$ and $p_c^0$ are impirical constants determined by fitting to experimental data.
 
-\subsubsection{Brook-Corey Functions} 
- 
-The Brook-Corey functions for relative permeability are defined by  
-\EQ\label{corey} 
-k_{rl} \eq s_*^4, \ \ \ k_{rg} \eq (1-s_*^2)(1-s_*)^2, \ \ \ s_* 
-\eq \frac{s_l - s_l^r}{1-s_l^r-s_g^r}. 
+\subsubsection{Brook-Corey Saturation Function} 
+
+The Brook-Corey saturation function is a limiting form of the van Genuchten relation for $p_c/p_c^0 \gg 1$, with the form
+\EQ
+s_e \eq \left(\frac{p_c}{p_c^0}\right)^{-\lambda},
+\EN
+with $\lambda=mn$ and inverse relation
+\EQ
+p_c \eq p_c^0 s_e^{-1/\lambda}.
+\EN
+
+\subsubsection{Relative Permeability}
+
+Two forms of the relative permeability function are implemented based on the Mualem and Burdine formulations.
+The quantity $n$ is related to $m$ by 
+the expression 
+\EQ\label{lambda_mualem} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}, 
 \EN 
-Capillary pressure is not incorporated in the Brook-Corey functions. 
- 
+for the Mualem formulation and by
+\EQ\label{lambda_burdine} 
+m \eq 1-\frac{2}{n}, \ \ \ \ \ n \eq \frac{2}{1-m}, 
+\EN 
+for the Burdine formulation.
+
+For the Mualem relative permeability function based on the van Genuchten saturation function is given by the expression 
+\EQ\label{krl_mualem} 
+k_{r} \eq \sqrt{s_e} \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \right\}^2. 
+\EN 
+%and for the gas phase by 
+%\EQ 
+%k_{rg} \eq 1 - k_{rl}. 
+%\EN 
+
+The Mualem relative permeability function based on the Brook-Corey saturation function is defined by 
+\BA
+k_r &\eq \big(s_e\big)^{5/2+2/\lambda},\\
+&\eq \big(p_c/p_c^0\big)^{-(5\lambda/2+2)}.
+\EA
+
+For the Burdine formulation
+\EQ\label{krl_burdine} 
+k_{r} \eq s_e^2 \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \right\}. 
+\EN 
+The Burdine relative permeability function based on the Brooks-Corey saturation function has the form
+\BA
+k_r &\eq \big(s_e\big)^{2+3/\lambda},\\
+&\eq \left(\frac{p_c}{p_c^0}\right)^{-(2+3\lambda)}.
+\EA
+
+\begin{comment}
 \subsubsection{Linear} 
  
 The linear relation is defined by 
@@ -357,7 +390,46 @@ The linear relation is defined by
 k_{rl} \eq s_*, \ \ \ k_{rg} \eq 1-k_{rl}, \ \ \ s_* \eq \frac{s_l 
 - s_l^r}{1-s_l^r}. 
 \EN 
- 
+\end{comment}
+
+\subsubsection{Smoothing}
+
+At the end points of the saturation and relative permeability functions it is sometimes necessary to smooth the functions in order for the Newton-Raphson equations to converge. This is accomplished using a third order polynomial interpolation by matching the values of the function to be fit (capillary pressure or relative permeability), and imposing zero slope at the fully saturated end point and matching the derivative at a chosen variably saturated point that is close to fully saturated. The resulting equations for coefficients $a_i$, $i=0-3$, are given by
+\begin{subequations}
+\BA
+a_0 + a_1 x_1 + a_2 x_1^2 + a_3 x_1^3 &\eq f_1,\\
+a_0 + a_1 x_2 + a_2 x_2^2 + a_3 x_2^3 &\eq f_1,\\
+a_1 x_1 + a_2 x_1^2 + a_3 x_1^3 &\eq f_1',\\
+a_1 x_2 + a_2 x_2^2 + a_3 x_2^3 &\eq f_2',
+\EA
+\end{subequations}
+for chosen points $x_1$ and $x_2$. In matrix form these equations become
+\EQ
+\begin{bmatrix}
+1 & x_1 & x_1^2 & x_1^3\\
+1 & x_2 & x_2^2 & x_2^3\\
+0 & 1 & 2x_1 & 3x_1^2\\
+0 & 1 & 2x_2 & 3x_2^2
+\end{bmatrix}
+\begin{bmatrix}
+a_0\\
+a_1\\
+a_2\\
+a_3
+\end{bmatrix}
+\eq
+\begin{bmatrix}
+f_1\\
+f_2\\
+f_1'\\
+f_2'
+\end{bmatrix}.
+\EN
+The conditions imposed on the smoothing equations for capillary pressure $f=s_e(p_c)$ are 
+$x_1=2 p_c^0$, $x_2=p_c^0/2$, $f_1 = (s_e)_1$, $f_2 = 1$, $f_1' = (s_e')_1$, $f_2' = 0$.
+For relative permeability $f=k_r(s_e)$, $x_1 = 1$, $x_2 = 0.99$, $f_1 = 1$, $f_2 = (k_r)_2$, $f_1' = 0$, $f_2' = (k_r')_2$. 
+
+\begin{comment}
 \subsection{Kelvin's Equations for Vapor Pressure Lowering} 
  
 Vapor pressure lowering resulting from capillary suction is 
@@ -369,6 +441,7 @@ where $P_v$ represents the vapor pressure, $P_{\rm sat}$ the
 saturation pressure of pure water, $T$ denotes the absolute 
 temperature and $R$ denotes the gas constant. Note that the density 
 of the liquid phase, $n_l$, is represented on a molar basis. 
+\end{comment}
 
 \subsection{Mode: {\tt MPHASE}}
 
