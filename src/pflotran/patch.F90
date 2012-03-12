@@ -3643,7 +3643,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   PetscInt :: iconn
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
-  PetscReal :: porosity_ave, por_sat_ave, v_darcy, v_pore
+  PetscReal :: por_sat_ave, por_sat_min, v_darcy, v_pore_ave, v_pore_max
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
@@ -3675,17 +3675,23 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
           patch%imat(ghosted_id_dn) <= 0) cycle
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
-      !porosity_ave = fraction_upwind*porosity_loc_p(ghosted_id_up) + &
-      !               (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)
       do iphase = 1, option%nphase
+        por_sat_min = min(porosity_loc_p(ghosted_id_up)* &
+                          global_aux_vars(ghosted_id_up)%sat(iphase), &
+                          porosity_loc_p(ghosted_id_dn)* &
+                          global_aux_vars(ghosted_id_dn)%sat(iphase))
         por_sat_ave = (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
                        global_aux_vars(ghosted_id_up)%sat(iphase) + &
                       (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
                       global_aux_vars(ghosted_id_dn)%sat(iphase))
         v_darcy = patch%internal_velocities(iphase,sum_connection)
-!        v_pore = v_darcy / porosity_ave
-        v_pore = v_darcy / por_sat_ave
-        dt_cfl_1 = distance / dabs(v_pore)
+        v_pore_max = v_darcy / por_sat_min
+        v_pore_ave = v_darcy / por_sat_ave
+        !geh: I use v_por_max to ensure that we limit the cfl based on the
+        !     highest velocity through the face.  If porosity*saturation
+        !     varies, the pore water velocity will be highest on the side
+        !     of the face with the smalled value of porosity*saturation.
+        dt_cfl_1 = distance / dabs(v_pore_max)
         max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
       enddo
     enddo
@@ -3704,14 +3710,12 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       if (patch%imat(ghosted_id_dn) <= 0) cycle
       !geh: since on boundary, dist must be scaled by 2.d0
       distance = 2.d0*cur_connection_set%dist(0,iconn)
- !     porosity_ave = porosity_loc_p(ghosted_id_dn)
       do iphase = 1, option%nphase
         por_sat_ave = porosity_loc_p(ghosted_id_dn)* &
                       global_aux_vars(ghosted_id_dn)%sat(iphase)
         v_darcy = patch%boundary_velocities(iphase,sum_connection)
-!        v_pore = v_darcy / porosity_ave
-        v_pore = v_darcy / por_sat_ave
-        dt_cfl_1 = distance / dabs(v_pore)
+        v_pore_ave = v_darcy / por_sat_ave
+        dt_cfl_1 = distance / dabs(v_pore_ave)
         max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
       enddo
     enddo
