@@ -1201,4 +1201,85 @@ function BestFloat(float,upper_bound,lower_bound)
   
 end function BestFloat
 
+! ************************************************************************** !
+!
+! CubicPolynomialSetup: Sets up a cubic polynomial for smoothing 
+!                       discontinuous functions
+! author: Glenn Hammond
+! date: 03/12/12
+!
+! ************************************************************************** !
+subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
+
+  implicit none
+
+  PetscReal :: upper_value
+  PetscReal :: lower_value
+  PetscReal :: coefficients(4)
+  
+  PetscReal :: A(4,4)
+  PetscInt :: indx(4)
+  PetscInt :: d
+
+  A(1,1) = 1.d0
+  A(2,1) = 1.d0
+  A(3,1) = 0.d0
+  A(4,1) = 0.d0
+  
+  A(1,2) = upper_value
+  A(2,2) = lower_value
+  A(3,2) = 1.d0
+  A(4,2) = 1.d0
+  
+  A(1,3) = upper_value**2.d0
+  A(2,3) = lower_value**2.d0
+  A(3,3) = 2.d0*upper_value
+  A(4,3) = 2.d0*lower_value
+  
+  A(1,4) = upper_value**3.d0
+  A(2,4) = lower_value**3.d0
+  A(3,4) = 3.d0*upper_value**2.d0
+  A(4,4) = 3.d0*lower_value**2.d0
+  
+  ! coefficients(1): value at upper_value
+  ! coefficients(2): value at lower_value
+  ! coefficients(3): derivative at upper_value
+  ! coefficients(4): derivative at lower_value
+  
+  call ludcmp(A,FOUR_INTEGER,indx,d)
+  call lubksb(A,FOUR_INTEGER,indx,coefficients)
+
+end subroutine CubicPolynomialSetup
+
+! ************************************************************************** !
+!
+! CubicPolynomialEvaluate: Evaluates value in cubic polynomial
+! author: Glenn Hammond
+! date: 03/12/12
+!
+! ************************************************************************** !
+subroutine CubicPolynomialEvaluate(coefficients,x,f,df_dx)
+
+  implicit none
+
+  PetscReal :: coefficients(4)
+  PetscReal :: x
+  PetscReal :: f
+  PetscReal :: df_dx
+
+  PetscReal :: x_squared
+  
+  x_squared = x*x
+  
+  f = coefficients(1) + &
+      coefficients(2)*x + &
+      coefficients(3)*x_squared + &
+      coefficients(4)*x_squared*x
+  
+  df_dx = coefficients(2) + &
+          coefficients(3)*2.d0*x + &
+          coefficients(4)*3.d0*x_squared
+  
+end subroutine CubicPolynomialEvaluate
+  
 end module Utility_module
