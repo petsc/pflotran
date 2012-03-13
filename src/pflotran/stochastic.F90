@@ -150,7 +150,7 @@ subroutine StochasticRun(stochastic,option)
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option
 
-  PetscLogDouble :: timex(4), timex_wall(4)
+  PetscLogDouble :: timex_wall(4)
   PetscInt :: irealization
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
@@ -183,7 +183,6 @@ subroutine StochasticRun(stochastic,option)
     endif
 #endif
 
-    call PetscGetCPUTime(timex(1), ierr)
     call PetscGetTime(timex_wall(1), ierr)
     option%start_time = timex_wall(1)
 
@@ -202,28 +201,17 @@ subroutine StochasticRun(stochastic,option)
     call SimulationDestroy(simulation)
 
   ! Final Time
-    call PetscGetCPUTime(timex(2), ierr)
     call PetscGetTime(timex_wall(2), ierr)
     
     if (option%myrank == option%io_rank) then
 
       if (option%print_to_screen) then
-        write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
-          (timex(2)-timex(1))/3600.d0
-
         write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
         & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
           timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
           (timex_wall(2)-timex_wall(1))/3600.d0
       endif
       if (option%print_to_file) then
-        write(option%fid_out,'(/," CPU Time:", 1pe12.4, " [sec] ", &
-        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-          timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
-          (timex(2)-timex(1))/3600.d0
-
         write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
         & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
           timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
