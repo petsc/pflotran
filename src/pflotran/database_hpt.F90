@@ -4,6 +4,7 @@ module Database_hpt_module
   use Reaction_Aux_module
   use Database_module
   use Database_aux_module
+  use Surface_Complexation_Aux_module
 
   implicit none
   
@@ -51,7 +52,8 @@ subroutine DatabaseRead_hpt(reaction,option)
   type(input_type), pointer :: input
   PetscInt :: iostat
   PetscInt :: num_nulls
-  
+!TODO(geh)
+#if 0  
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
   do
@@ -641,7 +643,8 @@ subroutine DatabaseRead_hpt(reaction,option)
   if (flag) call printErrMsg(option,'Species not found in database.')
 
   call InputDestroy(input)
-
+!TODO(geh)
+#endif
 end subroutine DatabaseRead_hpt
 
 ! ************************************************************************** !
@@ -733,7 +736,8 @@ subroutine BasisInit_hpt(reaction,option)
   PetscBool :: compute_new_basis
   PetscBool :: found
   PetscErrorCode :: ierr
-
+!TODO(geh)
+#if 0
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
     reaction%debyeA = 0.4939d0 
@@ -1902,9 +1906,9 @@ subroutine BasisInit_hpt(reaction,option)
     allocate(reaction%eqsrfcplx_rxn_surf_type(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_surf_type = 0
     
-    allocate(reaction%eqsrfcplx_rxn_to_complex(0:icount, &
+    allocate(reaction%srfcplxrxn_to_complex(0:icount, &
                                                  reaction%neqsrfcplxrxn))
-    reaction%eqsrfcplx_rxn_to_complex = 0
+    reaction%srfcplxrxn_to_complex = 0
     
     allocate(reaction%eqsrfcplx_site_names(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_names = ''
@@ -1927,8 +1931,8 @@ subroutine BasisInit_hpt(reaction,option)
     allocate(reaction%eqsrfcplx_print(reaction%neqsrfcplx))
     reaction%eqsrfcplx_print = PETSC_FALSE
     
-    allocate(reaction%eqsrfcplxspecid(0:reaction%naqcomp,reaction%neqsrfcplx))
-    reaction%eqsrfcplxspecid = 0
+    allocate(reaction%srfcplxspecid(0:reaction%naqcomp,reaction%neqsrfcplx))
+    reaction%srfcplxspecid = 0
     
     allocate(reaction%eqsrfcplxstoich(reaction%naqcomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxstoich = 0.d0
@@ -2026,10 +2030,10 @@ subroutine BasisInit_hpt(reaction,option)
           
           ! set up integer pointers from site to complexes
           ! increment count for site
-          reaction%eqsrfcplx_rxn_to_complex(0,irxn) = &
-            reaction%eqsrfcplx_rxn_to_complex(0,irxn) + 1
-          reaction%eqsrfcplx_rxn_to_complex( &
-            reaction%eqsrfcplx_rxn_to_complex(0,irxn),irxn) = isrfcplx 
+          reaction%srfcplxrxn_to_complex(0,irxn) = &
+            reaction%srfcplxrxn_to_complex(0,irxn) + 1
+          reaction%srfcplxrxn_to_complex( &
+            reaction%srfcplxrxn_to_complex(0,irxn),irxn) = isrfcplx 
           
           reaction%eqsrfcplx_names(isrfcplx) = cur_srfcplx%name
           reaction%eqsrfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
@@ -2049,7 +2053,7 @@ subroutine BasisInit_hpt(reaction,option)
               ispec = ispec + 1
               spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
               if (spec_id > h2o_id) spec_id = spec_id - 1
-              reaction%eqsrfcplxspecid(ispec,isrfcplx) = spec_id
+              reaction%srfcplxspecid(ispec,isrfcplx) = spec_id
               reaction%eqsrfcplxstoich(ispec,isrfcplx) = &
                 cur_srfcplx%dbaserxn%stoich(i)
               
@@ -2059,7 +2063,7 @@ subroutine BasisInit_hpt(reaction,option)
                 cur_srfcplx%dbaserxn%stoich(i)
             endif
           enddo
-          reaction%eqsrfcplxspecid(0,isrfcplx) = ispec
+          reaction%srfcplxspecid(0,isrfcplx) = ispec
           call ReactionInitializeLogK_hpt(reaction%eqsrfcplx_logKcoef(:,isrfcplx), &
                                           reaction%eqsrfcplx_logK(isrfcplx), &
                                           option,reaction)
@@ -2919,12 +2923,12 @@ subroutine BasisInit_hpt(reaction,option)
     do irxn = 1, reaction%neqsrfcplxrxn
       write(86,'(a32)')reaction%eqsrfcplx_site_names(irxn)
       write(86,'(1es13.5)') reaction%eqsrfcplx_rxn_site_density(irxn)
-      write(86,'(i4)') reaction%eqsrfcplx_rxn_to_complex(0,irxn) ! # complexes
-      do i = 1, reaction%eqsrfcplx_rxn_to_complex(0,irxn)
-        icplx = reaction%eqsrfcplx_rxn_to_complex(i,irxn)
+      write(86,'(i4)') reaction%srfcplxrxn_to_complex(0,irxn) ! # complexes
+      do i = 1, reaction%srfcplxrxn_to_complex(0,irxn)
+        icplx = reaction%srfcplxrxn_to_complex(i,irxn)
         write(86,'(a32,f6.2)') reaction%eqsrfcplx_names(icplx), &
                                reaction%eqsrfcplx_Z(icplx)
-        write(86,'(40i4)') reaction%eqsrfcplxspecid(:,icplx)
+        write(86,'(40i4)') reaction%srfcplxspecid(:,icplx)
         write(86,'(40f6.2)') reaction%eqsrfcplxstoich(:,icplx)
         write(86,'(i4)') reaction%eqsrfcplxh2oid(icplx)
         write(86,'(f6.2)') reaction%eqsrfcplxh2ostoich(icplx)
@@ -2960,7 +2964,8 @@ subroutine BasisInit_hpt(reaction,option)
 
   if (allocated(new_basis_names)) deallocate(new_basis_names)
   if (allocated(old_basis_names)) deallocate(old_basis_names)
-  
+!TODO(geh)
+#endif  
 end subroutine BasisInit_hpt
 
 ! ************************************************************************** !

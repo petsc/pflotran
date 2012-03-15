@@ -238,7 +238,7 @@ end interface
   if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
       if (realization%reaction%use_geothermal_hpt)then
-        call DatabaseRead_hpt(realization%reaction,option)
+!geh        call DatabaseRead_hpt(realization%reaction,option)
         call BasisInit_hpt(realization%reaction,option)    
       else
         call DatabaseRead(realization%reaction,option)

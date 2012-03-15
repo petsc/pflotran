@@ -2,6 +2,7 @@ module Condition_module
  
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
+  use Surface_Complexation_Aux_module  
   use Global_Aux_module
   use Dataset_Aux_module
   use Time_Series_module
@@ -1743,7 +1744,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   use Input_module
   use String_module
   use Logging_module
-  
+ 
   implicit none
   
   type(tran_constraint_type) :: constraint
@@ -1975,8 +1976,16 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         constraint%minerals => mineral_constraint 
                             
       case('SURFACE_COMPLEXES')
+      
+        if (.not.associated(reaction%surface_complexation)) then
+          option%io_buffer = 'Cannot accept constraint for surface ' // &
+            'complexes in constraint ' // trim(constraint%name) // &
+            ' since no surface complexation is defined in problem.'
+          call printErrMsg(option)
+        endif
 
-        srfcplx_constraint => SurfaceComplexConstraintCreate(reaction,option)
+        srfcplx_constraint => &
+          SurfaceComplexConstraintCreate(reaction%surface_complexation,option)
 
         isrfcplx = 0
         do
@@ -1988,7 +1997,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           
           isrfcplx = isrfcplx + 1
 
-          if (isrfcplx > reaction%nkinsrfcplx) then
+          if (isrfcplx > reaction%surface_complexation%nkinsrfcplx) then
             option%io_buffer = &
                      'Number of surface complex constraints exceeds ' // &
                      'number of kinetic surface complexes in constraint: ' // &
@@ -2009,7 +2018,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                           'CONSTRAINT, SURFACE COMPLEX')          
         enddo  
         
-        if (isrfcplx < reaction%nkinsrfcplx) then
+        if (isrfcplx < reaction%surface_complexation%nkinsrfcplx) then
           option%io_buffer = &
                    'Number of surface complex constraints is less than ' // &
                    'number of kinetic surface complexes in surface ' // &

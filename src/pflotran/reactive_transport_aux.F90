@@ -29,8 +29,8 @@ module Reactive_Transport_Aux_module
     
     ! sorption reactions
     ! PetscReal, pointer :: kinionx_molfrac(:)
-    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}^k
-    PetscReal, pointer :: kinsrfcplx_conc_kp1(:) ! S_{i\alpha}^k+1
+    PetscReal, pointer :: kinsrfcplx_conc(:,:) ! S_{i\alpha}^k
+    PetscReal, pointer :: kinsrfcplx_conc_kp1(:,:) ! S_{i\alpha}^k+1
     PetscReal, pointer :: kinsrfcplx_free_site_conc(:)  ! S_\alpha
     PetscReal, pointer :: eqsrfcplx_conc(:)
     PetscReal, pointer :: eqsrfcplx_free_site_conc(:)
@@ -57,7 +57,7 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: mass_balance(:,:)
     PetscReal, pointer :: mass_balance_delta(:,:)
     
-    PetscReal, pointer :: kinmr_total_sorb(:,:)
+    PetscReal, pointer :: kinmr_total_sorb(:,:,:)
 
     type(colloid_auxvar_type), pointer :: colloid
     
@@ -256,12 +256,17 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 
   use Option_module
   use Reaction_Aux_module
+  use Surface_Complexation_Aux_module
 
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
   type(reaction_type) :: reaction
-  type(option_type) :: option  
+  type(option_type) :: option
+  
+  type(surface_complexation_type), pointer :: surface_complexation
+  
+  surface_complexation => reaction%surface_complexation
   
   allocate(aux_var%pri_molal(reaction%naqcomp))
   aux_var%pri_molal = 0.d0
@@ -289,49 +294,50 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%neqsorb > 0) then  
     allocate(aux_var%total_sorb_eq(reaction%naqcomp))
     aux_var%total_sorb_eq = 0.d0
-    if (reaction%kinmr_nrate <= 0) then
-      allocate(aux_var%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
-      aux_var%dtotal_sorb_eq = 0.d0
-    else
-      nullify(aux_var%dtotal_sorb_eq)
-    endif
+    allocate(aux_var%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
+    aux_var%dtotal_sorb_eq = 0.d0
   else
     nullify(aux_var%total_sorb_eq)
     nullify(aux_var%dtotal_sorb_eq)
   endif    
   
-  if (reaction%neqsrfcplxrxn > 0) then
-    allocate(aux_var%eqsrfcplx_conc(reaction%neqsrfcplx))
-    aux_var%eqsrfcplx_conc = 0.d0
+  ! surface complexation
+  nullify(aux_var%eqsrfcplx_conc)
+  nullify(aux_var%eqsrfcplx_free_site_conc)
+  nullify(aux_var%kinsrfcplx_conc)
+  nullify(aux_var%kinsrfcplx_conc_kp1)
+  nullify(aux_var%kinsrfcplx_free_site_conc)
+  nullify(aux_var%kinmr_total_sorb)
+  if (surface_complexation%nsrfcplxrxn > 0) then
+    if (surface_complexation%neqsrfcplxrxn > 0) then
+      !TODO(geh): sort out how to deal with multiple sites and surface complexes
+!      allocate(aux_var%eqsrfcplx_conc(surface_complexation%nsrfcplx))
+!      aux_var%eqsrfcplx_conc = 0.d0
     
-    allocate(aux_var%eqsrfcplx_free_site_conc(reaction%neqsrfcplxrxn))
-    aux_var%eqsrfcplx_free_site_conc = 1.d-9 ! initialize to guess
-    
-!   allocate(aux_var%eqsurf_site_density(reaction%neqsrfcplxrxn))
-!   aux_var%eqsurf_site_density = 0.d0
-  else
-    nullify(aux_var%eqsrfcplx_conc)
-    nullify(aux_var%eqsrfcplx_free_site_conc)
-!   nullify(aux_var%eqsurf_site_density)
-  endif
-  
-  if (reaction%nkinsrfcplxrxn > 0) then
-    allocate(aux_var%kinsrfcplx_conc(reaction%nkinsrfcplx))
-    aux_var%kinsrfcplx_conc = 0.d0
+      allocate(aux_var%eqsrfcplx_free_site_conc(surface_complexation%neqsrfcplxrxn))
+      aux_var%eqsrfcplx_free_site_conc = 1.d-9 ! initialize to guess
+    endif
+    if (surface_complexation%nkinsrfcplxrxn > 0) then
+      !geh: currently hardwired to only 1 reaction
+      allocate(aux_var%kinsrfcplx_conc(surface_complexation%nkinsrfcplx,1))
+      aux_var%kinsrfcplx_conc = 0.d0
 
-    allocate(aux_var%kinsrfcplx_conc_kp1(reaction%nkinsrfcplx))
-    aux_var%kinsrfcplx_conc_kp1 = 0.d0
+      allocate(aux_var%kinsrfcplx_conc_kp1(surface_complexation%nkinsrfcplx,1))
+      aux_var%kinsrfcplx_conc_kp1 = 0.d0
     
-    allocate(aux_var%kinsrfcplx_free_site_conc(reaction%nkinsrfcplxrxn))
-    aux_var%kinsrfcplx_free_site_conc = 0.d0 ! initialize to guess
-    
-!   allocate(aux_var%kinsurf_site_density(reaction%nkinsrfcplxrxn))
-!   aux_var%kinsurf_site_density = 0.d0
-  else
-    nullify(aux_var%kinsrfcplx_conc)
-    nullify(aux_var%kinsrfcplx_conc_kp1)
-    nullify(aux_var%kinsrfcplx_free_site_conc)
-!   nullify(aux_var%kinsurf_site_density)
+      allocate(aux_var%kinsrfcplx_free_site_conc(surface_complexation%nkinsrfcplxrxn))
+      aux_var%kinsrfcplx_free_site_conc = 0.d0 ! initialize to guess
+    endif
+    if (surface_complexation%nkinmrsrfcplxrxn > 0) then
+      ! the zeroth entry here stores the equilibrium concentration used in the 
+      ! update
+      ! the zeroth entry of kinmr_nrate holds the maximum number of rates
+      ! prescribed in a multirate reaction...required for appropriate sizing
+      allocate(aux_var%kinmr_total_sorb(reaction%naqcomp, &
+                                        0:surface_complexation%kinmr_nrate(0), &
+                                        surface_complexation%nkinmrsrfcplxrxn))
+      aux_var%kinmr_total_sorb = 0.d0
+    endif
   endif
   
   if (reaction%neqionxrxn > 0) then
@@ -390,13 +396,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mass_balance_delta)
   endif
   
-  if (reaction%kinmr_nrate > 0) then
-    allocate(aux_var%kinmr_total_sorb(reaction%naqcomp,reaction%kinmr_nrate))
-    aux_var%kinmr_total_sorb = 0.d0
-  else
-    nullify(aux_var%kinmr_total_sorb)
-  endif
-
   if (reaction%ncollcomp > 0) then
     allocate(aux_var%colloid)
     allocate(aux_var%colloid%conc_mob(reaction%ncoll))
