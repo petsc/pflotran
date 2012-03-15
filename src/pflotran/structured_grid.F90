@@ -1772,16 +1772,16 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
               connection%area(iconn) = structured_grid%dx(ghosted_id)* &
                                    structured_grid%dy(ghosted_id)
               if (structured_grid%invert_z_axis) then
-                if (iface ==  TOP_FACE) then 
-                  connection%dist(3,iconn) = 1.d0
-                else
+                if (iface == TOP_FACE) then 
                   connection%dist(3,iconn) = -1.d0
+                else
+                  connection%dist(3,iconn) = 1.d0
                 endif
               else
                 if (iface == BOTTOM_FACE) then 
-                  connection%dist(3,iconn) = -1.d0
-                else
                   connection%dist(3,iconn) = 1.d0
+                else
+                  connection%dist(3,iconn) = -1.d0
                 endif
               endif
               if (associated(connection%id_dn2)) then
