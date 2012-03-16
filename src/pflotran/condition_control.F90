@@ -663,8 +663,8 @@ subroutine CondControlAssignTranInitCond(realization)
             rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
               constraint_coupler%rt_auxvar%kinmr_total_sorb
             ! copy over free site concentration
-            rt_aux_vars(ghosted_id)%eqsrfcplx_free_site_conc = &
-              constraint_coupler%rt_auxvar%eqsrfcplx_free_site_conc
+            rt_aux_vars(ghosted_id)%srfcplxrxn_free_site_conc = &
+              constraint_coupler%rt_auxvar%srfcplxrxn_free_site_conc
             ! copy over surface complex concentrations
 !TODO(geh): fix            
 !            rt_aux_vars(ghosted_id)%eqsrfcplx_conc = &

@@ -2188,7 +2188,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
-              eqsrfcplx_free_site_conc(isubvar)
+              srfcplxrxn_free_site_conc(isubvar)
           enddo
         case(KIN_SURFACE_CMPLX)
           do local_id=1,grid%nlmax
@@ -2694,7 +2694,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         case(SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_free_site_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%srfcplxrxn_free_site_conc(isubvar)
         case(SURFACE_SITE_DENSITY)
           select case(reaction%surface_complexation%srfcplxrxn_surf_type(isubvar))
             case(MINERAL_SURFACE)

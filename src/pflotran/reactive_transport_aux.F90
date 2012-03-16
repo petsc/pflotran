@@ -28,17 +28,13 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: gas_molal(:)
     
     ! sorption reactions
-    ! PetscReal, pointer :: kinionx_molfrac(:)
+    PetscReal, pointer :: srfcplxrxn_free_site_conc(:)
     PetscReal, pointer :: kinsrfcplx_conc(:,:) ! S_{i\alpha}^k
     PetscReal, pointer :: kinsrfcplx_conc_kp1(:,:) ! S_{i\alpha}^k+1
     PetscReal, pointer :: kinsrfcplx_free_site_conc(:)  ! S_\alpha
     PetscReal, pointer :: eqsrfcplx_conc(:)
-    PetscReal, pointer :: eqsrfcplx_free_site_conc(:)
-!   PetscReal, pointer :: eqsurf_site_density(:)
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
     PetscReal, pointer :: eqionx_conc(:,:)
-!   PetscReal, pointer :: eqionx_cec(:)
-    ! PetscReal, pointer :: eqionx_molfrac(:)
     
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac0(:)
@@ -303,19 +299,19 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   
   ! surface complexation
   nullify(aux_var%eqsrfcplx_conc)
-  nullify(aux_var%eqsrfcplx_free_site_conc)
+  nullify(aux_var%srfcplxrxn_free_site_conc)
   nullify(aux_var%kinsrfcplx_conc)
   nullify(aux_var%kinsrfcplx_conc_kp1)
   nullify(aux_var%kinsrfcplx_free_site_conc)
   nullify(aux_var%kinmr_total_sorb)
   if (surface_complexation%nsrfcplxrxn > 0) then
+    allocate(aux_var%srfcplxrxn_free_site_conc(surface_complexation%nsrfcplxrxn))
+    aux_var%srfcplxrxn_free_site_conc = 1.d-9 ! initialize to guess
     if (surface_complexation%neqsrfcplxrxn > 0) then
       !TODO(geh): sort out how to deal with multiple sites and surface complexes
       allocate(aux_var%eqsrfcplx_conc(surface_complexation%nsrfcplx))
       aux_var%eqsrfcplx_conc = 0.d0
     
-      allocate(aux_var%eqsrfcplx_free_site_conc(surface_complexation%neqsrfcplxrxn))
-      aux_var%eqsrfcplx_free_site_conc = 1.d-9 ! initialize to guess
     endif
     if (surface_complexation%nkinsrfcplxrxn > 0) then
       !geh: currently hardwired to only 1 reaction
@@ -324,9 +320,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 
       allocate(aux_var%kinsrfcplx_conc_kp1(surface_complexation%nkinsrfcplx,1))
       aux_var%kinsrfcplx_conc_kp1 = 0.d0
-    
-      allocate(aux_var%kinsrfcplx_free_site_conc(surface_complexation%nkinsrfcplxrxn))
-      aux_var%kinsrfcplx_free_site_conc = 0.d0 ! initialize to guess
     endif
     if (surface_complexation%nkinmrsrfcplxrxn > 0) then
       ! the zeroth entry here stores the equilibrium concentration used in the 
@@ -459,8 +452,11 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%gas_molal = aux_var2%gas_molal
   
   if (associated(aux_var%eqsrfcplx_conc)) then
+    aux_var%srfcplxrxn_free_site_conc = aux_var2%srfcplxrxn_free_site_conc
+  endif
+  
+  if (associated(aux_var%eqsrfcplx_conc)) then
     aux_var%eqsrfcplx_conc = aux_var2%eqsrfcplx_conc
-    aux_var%eqsrfcplx_free_site_conc = aux_var2%eqsrfcplx_free_site_conc
   endif
   
   if (associated(aux_var%kinsrfcplx_conc)) then
@@ -470,7 +466,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   endif
   
   if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) then
-    aux_var%eqionx_ref_cation_sorbed_conc = aux_var2%eqionx_ref_cation_sorbed_conc
+    aux_var%eqionx_ref_cation_sorbed_conc = &
+      aux_var2%eqionx_ref_cation_sorbed_conc
     aux_var%eqionx_conc = aux_var2%eqionx_conc
   endif  
   
@@ -680,9 +677,9 @@ subroutine RTAuxVarStrip(aux_var)
 
   if (associated(aux_var%eqsrfcplx_conc)) deallocate(aux_var%eqsrfcplx_conc)
   nullify(aux_var%eqsrfcplx_conc)
-  if (associated(aux_var%eqsrfcplx_free_site_conc)) &
-    deallocate(aux_var%eqsrfcplx_free_site_conc)
-  nullify(aux_var%eqsrfcplx_free_site_conc)
+  if (associated(aux_var%srfcplxrxn_free_site_conc)) &
+    deallocate(aux_var%srfcplxrxn_free_site_conc)
+  nullify(aux_var%srfcplxrxn_free_site_conc)
   
   if (associated(aux_var%kinsrfcplx_conc)) deallocate(aux_var%kinsrfcplx_conc)
   nullify(aux_var%kinsrfcplx_conc)

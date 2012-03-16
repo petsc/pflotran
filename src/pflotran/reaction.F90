@@ -2623,7 +2623,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
       irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
       write(option%fid_out,122) surface_complexation%srfcplxrxn_site_names(irxn), &
-                                rt_auxvar%eqsrfcplx_free_site_conc(ieqrxn)
+                                rt_auxvar%srfcplxrxn_free_site_conc(irxn)
       ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
       do i = 1, ncplx
         icplx = surface_complexation%srfcplxrxn_to_complex(i,irxn)
@@ -2989,7 +2989,8 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   
     ncplx = reaction%srfcplxrxn_to_complex(0,irxn)
     
-    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc( &
+                       reaction%eqsrfcplxrxn_to_srfcplxrxn(irxn))
 
     site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
     num_types_of_sites = 1
