@@ -718,7 +718,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
-    free_site_conc = rt_auxvar%srfcplx_free_site_conc(irxn)
+    free_site_conc = rt_auxvar%srfcplxrxn_free_site_conc(irxn)
 
     ! get a pointer to the first complex (there will always be at least 1)
     ! in order to grab free site conc
@@ -901,7 +901,7 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
   PetscReal, pointer :: external_srfcplx_conc(:)
   PetscReal :: external_total_sorb(reaction%naqcomp)
   PetscReal :: external_dtotal_sorb(reaction%naqcomp,reaction%naqcomp)
-  PetscReal :: external_total_mob(reaction%naqcomp)
+  PetscReal, pointer :: external_total_mob(:)
   type(matrix_block_auxvar_type), pointer :: external_dRj_dCj
   
   PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
@@ -1062,7 +1062,7 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
 !!!!!!!!!!!!
     
     if (isite == 1 .and. associated(external_srfcplx_conc)) then
-      external_srfcplx_conc(icplx) = srfcplx_conc(icplx)
+      external_srfcplx_conc(:) = srfcplx_conc(:)
     endif
    
     do k = 1, ncplx
