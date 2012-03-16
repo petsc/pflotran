@@ -33,7 +33,7 @@ DBL_FLAG = -DDOUBLE_LAYER
 endif
 
 ifdef pcl
-PCL_FLAG = -DPCL
+PCL_FLAG = -DPCL -DMUALEM_SPLINE
 endif
 
 ifdef tab
