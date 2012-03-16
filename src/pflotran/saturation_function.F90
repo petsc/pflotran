@@ -556,7 +556,7 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                                       auxvar1,auxvar2, &
                                       switch_to_saturated,option)
   use Option_module
-  use Utility_module, only:CubicPolynomialEvaluate
+  use Utility_module, only: CubicPolynomialEvaluate
   
   implicit none
 

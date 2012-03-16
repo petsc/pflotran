@@ -1773,6 +1773,9 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
                                    structured_grid%dy(ghosted_id)
               if (structured_grid%invert_z_axis) then
                 if (iface == TOP_FACE) then 
+                  option%io_buffer = 'Need to ensure that direction of ' // &
+                    'inverted z is correct in StructGridPopulateConnection()'
+                  call printErrMsg(option)
                   connection%dist(3,iconn) = -1.d0
                 else
                   connection%dist(3,iconn) = 1.d0
