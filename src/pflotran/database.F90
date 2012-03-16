@@ -44,8 +44,8 @@ subroutine DatabaseRead(reaction,option)
   type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
-  type(surface_complex_type), pointer :: surface_complex_list
-  type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2
+  type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
+                                         cur_srfcplx_in_master_list
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -87,7 +87,7 @@ subroutine DatabaseRead(reaction,option)
     cur_mineral => cur_mineral%next
   enddo
 
-  cur_srfcplx => surface_complex_list
+  cur_srfcplx => surface_complexation%complex_list
   do  
     if (.not.associated(cur_srfcplx)) exit
     cur_srfcplx%id = -abs(cur_srfcplx%id)
@@ -339,7 +339,7 @@ subroutine DatabaseRead(reaction,option)
         
         
       case(4) ! surface complexes
-        cur_srfcplx => surface_complex_list
+        cur_srfcplx => surface_complexation%complex_list
         found = PETSC_FALSE
         do
           if (.not.associated(cur_srfcplx)) exit
@@ -372,14 +372,14 @@ subroutine DatabaseRead(reaction,option)
         cur_srfcplx%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
         ispec = 0
-        found = PETSC_FALSE
         do i = 1, cur_srfcplx%dbaserxn%nspec+1 ! recall that nspec was decremented above
           call InputReadDouble(input,option,stoich)
           call InputErrorMsg(input,option,'SURFACE COMPLEX species stoichiometry','DATABASE')            
           call InputReadQuotedWord(input,option,name,PETSC_TRUE)
           call InputErrorMsg(input,option,'SURFACE COMPLEX species name','DATABASE')            
-          if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
-            found = PETSC_TRUE
+!          if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+          if (StringStartsWith(name,'>')) then
+            cur_srfcplx%free_site_name = name
             cur_srfcplx%free_site_stoich = stoich
           else
             ispec = ispec + 1
@@ -387,13 +387,6 @@ subroutine DatabaseRead(reaction,option)
             cur_srfcplx%dbaserxn%spec_name(ispec) = name
           endif
         enddo
-        if (.not.found) then
-          option%io_buffer = 'Free site name: ' // &
-                             trim(cur_srfcplx_rxn%free_site_name) // &
-                             ' not found in surface complex:' // &
-                             trim(cur_srfcplx%name)
-          call printErrMsg(option)
-        endif
         do itemp = 1, reaction%num_dbase_temperatures
           call InputReadDouble(input,option,cur_srfcplx%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'SURFACE COMPLEX logKs','DATABASE')            
@@ -544,14 +537,67 @@ subroutine DatabaseRead(reaction,option)
     enddo
     cur_mineral => cur_mineral%next
   enddo
-  
+
   ! surface complexes
+  ! ensure that duplicate surface complexes do not exist in master list
+  cur_srfcplx_in_master_list => surface_complexation%complex_list
+  do
+    if (.not.associated(cur_srfcplx_in_master_list)) exit
+    cur_srfcplx2 => cur_srfcplx_in_master_list%next
+    do
+      if (.not.associated(cur_srfcplx2)) exit
+      if (StringCompare(cur_srfcplx_in_master_list%name, &
+                        cur_srfcplx2%name,MAXWORDLENGTH)) then
+        flag = PETSC_TRUE
+        option%io_buffer = 'Surface complex (' // &
+                            trim(cur_srfcplx2%name) // &
+                    ') duplicated in master surface complex list.'
+        call printMsg(option)                          
+      endif
+      cur_srfcplx2 => cur_srfcplx2%next
+    enddo
+    cur_srfcplx_in_master_list => cur_srfcplx_in_master_list%next
+  enddo
+
+  ! surface complexation reaction
   cur_srfcplx_rxn => surface_complexation%rxn_list
   do
     if (.not.associated(cur_srfcplx_rxn)) exit
     cur_srfcplx => cur_srfcplx_rxn%complex_list
     do
       if (.not.associated(cur_srfcplx)) exit
+      
+      ! link reaction complexes to those in master complex list
+      cur_srfcplx_in_master_list => surface_complexation%complex_list
+      do
+        if (.not.associated(cur_srfcplx_in_master_list)) exit
+        if (.not.StringCompare(cur_srfcplx%name, &
+                           cur_srfcplx_in_master_list%name,MAXWORDLENGTH)) then
+          cur_srfcplx%ptr => cur_srfcplx_in_master_list
+          cur_srfcplx%id = cur_srfcplx_in_master_list%id
+        endif
+        cur_srfcplx_in_master_list => cur_srfcplx_in_master_list%next
+      enddo
+      if (.not.associated(cur_srfcplx%ptr)) then
+        option%io_buffer = 'Surface complex "' // &
+                           trim(cur_srfcplx%name) // &
+                           '" not found in master list.'
+        call printErrMsg(option)
+      endif
+    
+      ! ensure that site listed in reaction matches site in complex
+      ! note that we use %ptr%free_site_name to access the site name of
+      ! the surface complex in the master list
+      if (.not.StringCompare(cur_srfcplx%ptr%free_site_name, &
+                            cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+        option%io_buffer = 'Free site name: ' // &
+                           trim(cur_srfcplx_rxn%free_site_name) // &
+                           ' not found in surface complex:' // &
+                           trim(cur_srfcplx%name)
+        call printErrMsg(option)
+      endif
+      ! ensure that duplicate surface complexes do not exist in reaction
+      ! complex list
       cur_srfcplx2 => cur_srfcplx%next
       do
         if (.not.associated(cur_srfcplx2)) exit
@@ -621,7 +667,7 @@ subroutine DatabaseRead(reaction,option)
     endif
     cur_mineral => cur_mineral%next
   enddo
-  cur_srfcplx => surface_complex_list
+  cur_srfcplx => surface_complexation%complex_list
   do
     if (.not.associated(cur_srfcplx)) exit
     if (cur_srfcplx%id < 0) then
@@ -727,11 +773,14 @@ subroutine BasisInit(reaction,option)
   PetscInt :: forward_count, max_forward_count
   PetscInt :: backward_count, max_backward_count
   PetscInt :: midpoint
+  PetscInt :: max_aq_species
   PetscInt :: max_num_prefactors, max_num_prefactor_species
   
   PetscBool :: compute_new_basis
   PetscBool :: found
   PetscErrorCode :: ierr
+  
+  surface_complexation => reaction%surface_complexation
   
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
@@ -1442,19 +1491,29 @@ subroutine BasisInit(reaction,option)
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   
   if (reaction%neqcplx > 0) then
+  
+    ! get maximum # of aqueous species in a aqueous complexation reaction
+    cur_sec_aq_spec => reaction%secondary_species_list
+    max_aq_species = 0
+    do
+      if (.not.associated(cur_sec_aq_spec)) exit
+      max_aq_species = max(cur_sec_aq_spec%dbaserxn%nspec,max_aq_species)
+      cur_sec_aq_spec => cur_sec_aq_spec%next
+    enddo
+    
     allocate(reaction%secondary_species_names(reaction%neqcplx))
     reaction%secondary_species_names = ''
 
     allocate(reaction%secondary_species_print(reaction%neqcplx))
     reaction%secondary_species_print = PETSC_FALSE
 
-    allocate(reaction%eqcplx_basis_names(reaction%naqcomp,reaction%neqcplx))
+    allocate(reaction%eqcplx_basis_names(max_aq_species,reaction%neqcplx))
     reaction%eqcplx_basis_names = ''
 
-    allocate(reaction%eqcplxspecid(0:reaction%naqcomp,reaction%neqcplx))
+    allocate(reaction%eqcplxspecid(0:max_aq_species,reaction%neqcplx))
     reaction%eqcplxspecid = 0
 
-    allocate(reaction%eqcplxstoich(0:reaction%naqcomp,reaction%neqcplx))
+    allocate(reaction%eqcplxstoich(0:max_aq_species,reaction%neqcplx))
     reaction%eqcplxstoich = 0.d0
 
     allocate(reaction%eqcplxh2oid(reaction%neqcplx))
@@ -1470,7 +1529,8 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
     reaction%eqcplx_logKcoef = 0.d0
 #else
-    allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures,reaction%neqcplx))
+    allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures, &
+                                      reaction%neqcplx))
     reaction%eqcplx_logKcoef = 0.d0
 #endif
     allocate(reaction%eqcplx_Z(reaction%neqcplx))
@@ -1545,13 +1605,23 @@ subroutine BasisInit(reaction,option)
   reaction%ngas = GetGasCount(reaction)
   
   if (reaction%ngas > 0) then
+  
+    ! get maximum # of aqueous species in a gas reaction
+    cur_gas_spec => reaction%gas_species_list
+    max_aq_species = 0
+    do
+      if (.not.associated(cur_gas_spec)) exit
+      max_aq_species = max(cur_gas_spec%dbaserxn%nspec,max_aq_species)
+      cur_gas_spec => cur_gas_spec%next
+    enddo
+    
     allocate(reaction%gas_species_names(reaction%ngas))
     reaction%gas_species_names = ''
     allocate(reaction%gas_species_print(reaction%ngas))
     reaction%gas_species_print = PETSC_FALSE
-    allocate(reaction%eqgasspecid(0:reaction%naqcomp,reaction%ngas))
+    allocate(reaction%eqgasspecid(0:max_aq_species,reaction%ngas))
     reaction%eqgasspecid = 0
-    allocate(reaction%eqgasstoich(0:reaction%naqcomp,reaction%ngas))
+    allocate(reaction%eqgasstoich(0:max_aq_species,reaction%ngas))
     reaction%eqgasstoich = 0.d0
     allocate(reaction%eqgash2oid(reaction%ngas))
     reaction%eqgash2oid = 0
@@ -1657,11 +1727,21 @@ subroutine BasisInit(reaction,option)
   enddo
 
   if (reaction%nmnrl > 0) then
+  
+    ! get maximum # of aqueous species in a mineral reaction
+    cur_mineral => reaction%mineral_list
+    max_aq_species = 0
+    do
+      if (.not.associated(cur_mineral)) exit
+      max_aq_species = max(cur_mineral%dbaserxn%nspec,max_aq_species)
+      cur_mineral => cur_mineral%next
+    enddo
+    
     allocate(reaction%mineral_names(reaction%nmnrl))
     reaction%mineral_names = ''
-    allocate(reaction%mnrlspecid(0:reaction%naqcomp,reaction%nmnrl))
+    allocate(reaction%mnrlspecid(0:max_aq_species,reaction%nmnrl))
     reaction%mnrlspecid = 0
-    allocate(reaction%mnrlstoich(reaction%naqcomp,reaction%nmnrl))
+    allocate(reaction%mnrlstoich(max_aq_species,reaction%nmnrl))
     reaction%mnrlstoich = 0.d0
     allocate(reaction%mnrlh2oid(reaction%nmnrl))
     reaction%mnrlh2oid = 0
@@ -1681,13 +1761,25 @@ subroutine BasisInit(reaction,option)
 #endif
 
     if (reaction%nkinmnrl > 0) then
+    
+      ! get maximum # of aqueous species in a mineral reaction
+      cur_mineral => reaction%mineral_list
+      max_aq_species = 0
+      do
+        if (.not.associated(cur_mineral)) exit
+        if (associated(cur_mineral%tstrxn)) then ! reaction is kinetic
+          max_aq_species = max(cur_mineral%dbaserxn%nspec,max_aq_species)
+        endif
+        cur_mineral => cur_mineral%next
+      enddo
+    
       allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
       reaction%kinmnrl_names = ''
       allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
       reaction%kinmnrl_print = PETSC_FALSE
-      allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
+      allocate(reaction%kinmnrlspecid(0:max_aq_species,reaction%nkinmnrl))
       reaction%kinmnrlspecid = 0
-      allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
+      allocate(reaction%kinmnrlstoich(max_aq_species,reaction%nkinmnrl))
       reaction%kinmnrlstoich = 0.d0
       allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
       reaction%kinmnrlh2oid = 0
@@ -1921,6 +2013,15 @@ subroutine BasisInit(reaction,option)
 
   if (surface_complexation%nsrfcplxrxn > 0) then
   
+    if (surface_complexation%nsrfcplxrxn /= &
+        surface_complexation%neqsrfcplxrxn + &
+        surface_complexation%nkinmrsrfcplxrxn + &
+        surface_complexation%nkinsrfcplxrxn) then
+      option%io_buffer = 'Inconsistent number of surface complexation ' // &
+                         'reactions. (Initial Check)'
+      call printErrMsg(option)
+    endif
+  
     ! generic list of surface complexes
     ! count number of surface complexes
     icount = 0
@@ -1928,8 +2029,17 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_srfcplx)) exit
       icount = icount + 1
+      cur_srfcplx => cur_srfcplx%next
     enddo
-    nullify(cur_srfcplx)  
+    
+    ! get maximum # of aqueous species in a surface complexation reaction
+    cur_srfcplx => surface_complexation%complex_list
+    do
+      if (.not.associated(cur_srfcplx)) exit
+      max_aq_species = max(cur_srfcplx%dbaserxn%nspec,max_aq_species)
+      cur_srfcplx => cur_srfcplx%next
+    enddo
+
     surface_complexation%nsrfcplx = icount
 
     allocate(surface_complexation%srfcplx_names(icount))
@@ -1938,10 +2048,10 @@ subroutine BasisInit(reaction,option)
     allocate(surface_complexation%srfcplx_print(icount))
     surface_complexation%srfcplx_print = PETSC_FALSE
     
-    allocate(surface_complexation%srfcplxspecid(0:reaction%naqcomp,icount))
+    allocate(surface_complexation%srfcplxspecid(0:max_aq_species,icount))
     surface_complexation%srfcplxspecid = 0
     
-    allocate(surface_complexation%srfcplxstoich(reaction%naqcomp, &
+    allocate(surface_complexation%srfcplxstoich(max_aq_species, &
                                                 icount))
     surface_complexation%srfcplxstoich = 0.d0
     
@@ -1969,6 +2079,7 @@ subroutine BasisInit(reaction,option)
     allocate(surface_complexation%srfcplx_Z(icount))
     surface_complexation%srfcplx_Z = 0.d0
     
+    isrfcplx = 0
     cur_srfcplx => surface_complexation%complex_list
     do
       if (.not.associated(cur_srfcplx)) exit
@@ -2035,7 +2146,6 @@ subroutine BasisInit(reaction,option)
         cur_srfcplx => cur_srfcplx%next
       enddo
       icount = max(isrfcplx,icount)
-      cur_srfcplx_rxn => cur_srfcplx_rxn%next
       select case(cur_srfcplx_rxn%itype)
         case(SRFCMPLX_RXN_EQUILIBRIUM)
           surface_complexation%neqsrfcplxrxn = &
@@ -2049,6 +2159,7 @@ subroutine BasisInit(reaction,option)
             surface_complexation%nkinmrsrfcplxrxn + 1
           icount2 = max(size(cur_srfcplx_rxn%rates),icount2)
       end select      
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
     nullify(cur_srfcplx_rxn)  
 
@@ -2156,9 +2267,24 @@ subroutine BasisInit(reaction,option)
             surface_complexation%kinsrfcplx_forward_rate(isrfcplx, &
               surface_complexation%nkinsrfcplxrxn) = &
               cur_srfcplx%forward_rate
-            surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
-              surface_complexation%nkinsrfcplxrxn) = &
-              cur_srfcplx%backward_rate
+            ! if backward rate = -999, the backward rate is calculated
+            ! as a function of the forward and and equilibrium coefficient
+            if (surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
+                  surface_complexation%nkinsrfcplxrxn) < -998.d0) then
+              ! backward rate will be calculated based on Kb = Kf * Keq
+              call Interpolate(temp_high,temp_low, &
+                               option%reference_temperature, &
+                               cur_srfcplx%dbaserxn%logK(itemp_high), &
+                               cur_srfcplx%dbaserxn%logK(itemp_low), &
+                               value)
+              surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
+                surface_complexation%nkinsrfcplxrxn) = 10.d0**value * &
+                                                       cur_srfcplx%forward_rate
+            else
+              surface_complexation%kinsrfcplx_backward_rate(isrfcplx, &
+                surface_complexation%nkinsrfcplxrxn) = &
+                cur_srfcplx%backward_rate
+            endif
             cur_srfcplx => cur_srfcplx%next
           enddo
           nullify(cur_srfcplx)
@@ -2263,7 +2389,16 @@ subroutine BasisInit(reaction,option)
       cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
     nullify(cur_srfcplx_rxn)  
-  
+
+    if (surface_complexation%nsrfcplxrxn /= &
+        surface_complexation%neqsrfcplxrxn + &
+        surface_complexation%nkinmrsrfcplxrxn + &
+        surface_complexation%nkinsrfcplxrxn) then
+      option%io_buffer = 'Inconsistent number of surface complexation ' // &
+                         'reactions. (Final Check)'
+      call printErrMsg(option)
+    endif
+    
   endif ! surface_complexation%nsrfcplxrxn > 0
 
   ! allocate colloids species names, mappings, etc.

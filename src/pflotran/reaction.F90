@@ -2500,7 +2500,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       icount = 0
       do icplx = 1, reaction%neqcplx
         found = PETSC_FALSE
-        do i = 1, reaction%naqcomp
+        do i = 1, reaction%eqcplxspecid(0,icplx)
           if (reaction%eqcplxspecid(i,icplx) == icomp) then
             icount = icount + 1
             found = PETSC_TRUE
@@ -2623,7 +2623,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
       irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
       write(option%fid_out,122) surface_complexation%srfcplxrxn_site_names(irxn), &
-                                rt_auxvar%kinsrfcplx_free_site_conc(irxn)
+                                rt_auxvar%eqsrfcplx_free_site_conc(ieqrxn)
       ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
       do i = 1, ncplx
         icplx = surface_complexation%srfcplxrxn_to_complex(i,irxn)

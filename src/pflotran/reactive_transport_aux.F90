@@ -311,8 +311,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (surface_complexation%nsrfcplxrxn > 0) then
     if (surface_complexation%neqsrfcplxrxn > 0) then
       !TODO(geh): sort out how to deal with multiple sites and surface complexes
-!      allocate(aux_var%eqsrfcplx_conc(surface_complexation%nsrfcplx))
-!      aux_var%eqsrfcplx_conc = 0.d0
+      allocate(aux_var%eqsrfcplx_conc(surface_complexation%nsrfcplx))
+      aux_var%eqsrfcplx_conc = 0.d0
     
       allocate(aux_var%eqsrfcplx_free_site_conc(surface_complexation%neqsrfcplxrxn))
       aux_var%eqsrfcplx_free_site_conc = 1.d-9 ! initialize to guess

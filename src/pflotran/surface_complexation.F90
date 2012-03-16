@@ -59,7 +59,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   nullify(cur_srfcplx_rxn)
   nullify(cur_srfcplx)
   
-  surface_complexation => SurfaceComplexationCreate()
+  surface_complexation => reaction%surface_complexation
            
   srfcplx_rxn => SurfaceComplexationRxnCreate()
   ! default
@@ -212,6 +212,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   ! if duplicated.
   cur_srfcplx_in_rxn => srfcplx_rxn%complex_list
   do
+    if (.not.associated(cur_srfcplx_in_rxn)) exit
     cur_srfcplx => surface_complexation%complex_list
     found = PETSC_FALSE
     do
@@ -224,17 +225,25 @@ subroutine SurfaceComplexationRead(reaction,input,option)
         found = PETSC_TRUE
         exit
       endif
-      prev_srfcplx = cur_srfcplx
+      prev_srfcplx => cur_srfcplx
       cur_srfcplx => cur_srfcplx%next
     enddo
     if (.not.found) then
       srfcplx => SurfaceComplexCreate()
       srfcplx%name = cur_srfcplx_in_rxn%name
-      prev_srfcplx%next = srfcplx
+      if (.not.associated(prev_srfcplx)) then
+        surface_complexation%complex_list => srfcplx
+        srfcplx%id = 1
+      else
+        prev_srfcplx%next => srfcplx
+        srfcplx%id = prev_srfcplx%id + 1
+      endif
     endif
     cur_srfcplx_in_rxn => cur_srfcplx_in_rxn%next
   enddo
-  
+
+  surface_complexation%nsrfcplxrxn = &
+    surface_complexation%nsrfcplxrxn + 1
   select case(srfcplx_rxn%itype)
     ! default (NULL) to EQUILIBRIUM
     case(SRFCMPLX_RXN_NULL,SRFCMPLX_RXN_EQUILIBRIUM)

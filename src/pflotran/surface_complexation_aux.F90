@@ -16,6 +16,7 @@ module Surface_Complexation_Aux_module
   type, public :: surface_complex_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: free_site_name
     PetscReal :: free_site_stoich
     PetscReal :: Z
     PetscReal :: forward_rate
@@ -254,6 +255,7 @@ function SurfaceComplexCreate()
   allocate(srfcplx)
   srfcplx%id = 0
   srfcplx%name = ''
+  srfcplx%free_site_name = ''
   srfcplx%Z = 0.d0
   srfcplx%free_site_stoich = 0.d0
   srfcplx%forward_rate = 0.d0
@@ -446,6 +448,9 @@ subroutine SurfaceComplexationDestroy(surface_complexation)
   enddo
 
   !TODO(geh): deallocate all arrays
+  print *, 'Finish SurfaceComplexationDestroy()'
+  stop
+  
   call DeallocateArray(surface_complexation%srfcplx_names)
   
   call DeallocateArray(surface_complexation%srfcplxrxn_site_names)
