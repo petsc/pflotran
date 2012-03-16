@@ -3277,11 +3277,13 @@ subroutine ReactionReadOutput(reaction,input,option)
           cur_srfcplx_rxn => reaction%surface_complexation%rxn_list
           do
             if (.not.associated(cur_srfcplx_rxn)) exit
-            if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+            if (StringCompare(name,cur_srfcplx_rxn%free_site_name, &
+                              MAXWORDLENGTH)) then
               cur_srfcplx_rxn%free_site_print_me = PETSC_TRUE
               found = PETSC_TRUE
               exit
             endif
+            cur_srfcplx_rxn => cur_srfcplx_rxn%next
           enddo
           if (.not.found) then
             cur_srfcplx => reaction%surface_complexation%complex_list
