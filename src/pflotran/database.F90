@@ -2787,6 +2787,12 @@ subroutine BasisInit(reaction,option)
   ! Kd reactions
   
   if (reaction%neqkdrxn > 0) then
+
+    if (reaction%neqcplx > 0) then
+      option%io_buffer = 'Isotherm reactions currently calculated as a ' // &
+                         'function of free-ion, not totals.  Contact Glenn!'
+      call printErrMsg(option)
+    endif
   
     ! allocate arrays
     allocate(reaction%eqkdspecid(reaction%neqkdrxn))

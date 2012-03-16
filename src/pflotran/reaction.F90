@@ -371,9 +371,6 @@ subroutine ReactionRead(reaction,input,option)
           select case(trim(word))
 
             case('ISOTHERM_REACTIONS')
-              option%io_buffer = 'Isotherm reactions currently calculated as ' // &
-                'a function of free-ion, not totals.  Contact Glenn!'
-              call printErrMsg(option)
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
