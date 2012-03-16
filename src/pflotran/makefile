@@ -307,7 +307,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 	reactive_transport.o \
 	thc.o thmc.o richards.o mphase.o flash2.o general.o \
 	discretization.o logging.o amrgrid.o
-reaction.o : reactive_transport_aux.o reaction_aux.o \
+reaction.o : reactive_transport_aux.o reaction_aux.o surface_complexation.o \
              surface_complexation_aux.o option.o string.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o database_aux.o
