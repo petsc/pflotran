@@ -1,0 +1,1258 @@
+module Surface_Complexation_module
+
+  use Surface_Complexation_Aux_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  
+  implicit none
+  
+  private 
+
+#include "definitions.h"
+
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  
+  public :: SurfaceComplexationRead, &
+            RTotalSorbEqSurfCplx, &
+            RMultiRateSorption, &
+            RKineticSurfCplx
+            
+contains
+
+! ************************************************************************** !
+!
+! ReactionRead: Reads chemical species
+! author: Glenn Hammond
+! date: 05/02/08
+!
+! ************************************************************************** !
+subroutine SurfaceComplexationRead(reaction,input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: card
+  type(surface_complexation_type), pointer :: surface_complexation
+  type(surface_complex_type), pointer :: srfcplx, cur_srfcplx, prev_srfcplx, &
+                                         cur_srfcplx_in_rxn
+  type(surface_complex_type), pointer :: rate_list, cur_srfcplx_rate, &
+                                         prev_srfcplx_rate  
+  type(surface_complexation_rxn_type), pointer :: srfcplx_rxn, cur_srfcplx_rxn
+  PetscInt :: temp_srfcplx_count
+  PetscBool :: found
+  PetscReal :: tempreal
+  PetscInt :: i
+  
+  nullify(srfcplx_rxn)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
+  
+  surface_complexation => SurfaceComplexationCreate()
+           
+  srfcplx_rxn => SurfaceComplexationRxnCreate()
+  ! default
+  srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
+  temp_srfcplx_count = 0
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword', &
+                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN')
+    call StringToUpper(word)
+                
+    select case(trim(word))
+      case('EQUILIBRIUM')
+        srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
+      case('MULTIRATE_KINETIC')
+        srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
+      case('KINETIC')
+        srfcplx_rxn%itype = SRFCMPLX_RXN_KINETIC
+      case('COMPLEX_KINETICS')
+        nullify(prev_srfcplx)
+        do
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+                      
+          srfcplx => SurfaceComplexCreate()
+          call InputReadWord(input,option,srfcplx%name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+            'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
+                        
+          do
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'word', &
+                    'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE') 
+            select case(trim(word))
+              case('FORWARD_RATE_CONSTANT')
+                call InputReadDouble(input,option,srfcplx%forward_rate)
+                call InputErrorMsg(input,option,'forward_rate', &
+                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
+              case('BACKWARD_RATE_CONSTANT')
+                call InputReadDouble(input,option,srfcplx%backward_rate)
+                call InputErrorMsg(input,option,'backward_rate', &
+                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
+              case default
+                option%io_buffer = 'CHEMISTRY,SURFACE_COMPLEXATION_RXN,' // &
+                                   'COMPLEX_KINETIC_RATE keyword: ' // &
+                                    trim(word) // ' not recognized'
+                call printErrMsg(option)
+            end select
+          enddo
+                                      
+          if (.not.associated(rate_list)) then
+            rate_list => srfcplx
+          endif
+          if (associated(prev_srfcplx)) then
+            prev_srfcplx%next => srfcplx
+          endif
+          prev_srfcplx => srfcplx
+          nullify(srfcplx)
+        enddo
+        nullify(prev_srfcplx)
+      case('RATE','RATES') 
+        srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
+        string = 'RATES inside SURFACE_COMPLEXATION_RXN'
+        call UtilityReadArray(srfcplx_rxn%rates,NEG_ONE_INTEGER,string,input, &
+                              option) 
+      case('SITE_FRACTION') 
+        string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
+        call UtilityReadArray(srfcplx_rxn%site_fractions,NEG_ONE_INTEGER, &
+                              string,input,option) 
+      case('MULTIRATE_SCALE_FACTOR')
+        call InputReadDouble(input,option,srfcplx_rxn%kinmr_scale_factor)
+        call InputErrorMsg(input,option,'keyword', &
+          'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
+      case('MINERAL')
+        call InputReadWord(input,option,srfcplx_rxn%mineral_name, &
+          PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword', &
+          'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
+      case('COLLOID')
+        call InputReadWord(input,option,srfcplx_rxn%colloid_name, &
+          PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword', &
+          'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COLLOID_NAME')
+      case('SITE')
+        call InputReadWord(input,option,srfcplx_rxn%free_site_name, &
+          PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword', &
+          'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
+        ! site density in mol/m^3 bulk
+        call InputReadDouble(input,option,srfcplx_rxn%site_density)
+        call InputErrorMsg(input,option,'keyword', &
+          'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY')                   
+      case('COMPLEXES')
+        nullify(prev_srfcplx)
+        do
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+                      
+          temp_srfcplx_count = temp_srfcplx_count + 1
+          srfcplx => SurfaceComplexCreate()
+          srfcplx%id = temp_srfcplx_count
+          call InputReadWord(input,option,srfcplx%name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+            'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME')
+                
+          if (.not.associated(srfcplx_rxn%complex_list)) then
+            srfcplx_rxn%complex_list => srfcplx
+          endif
+          if (associated(prev_srfcplx)) then
+            prev_srfcplx%next => srfcplx
+          endif
+          prev_srfcplx => srfcplx
+          nullify(srfcplx)
+        enddo
+        nullify(prev_srfcplx)
+      case default
+        option%io_buffer = 'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
+                          trim(word)//' not recognized'
+        call printErrMsg(option)
+    end select
+
+  enddo
+  
+  if (.not.associated(surface_complexation%rxn_list)) then
+    surface_complexation%rxn_list => srfcplx_rxn
+    srfcplx_rxn%id = 1
+  else
+    cur_srfcplx_rxn => surface_complexation%rxn_list
+    do
+      if (.not.associated(cur_srfcplx_rxn%next)) then
+        cur_srfcplx_rxn%next => srfcplx_rxn
+        srfcplx_rxn%id = cur_srfcplx_rxn%id + 1
+        exit
+      endif
+    enddo
+    nullify(cur_srfcplx_rxn)
+  endif
+  
+  ! Add surface complexes in reaction to master list, without duplicating.
+  ! Set the id of the surface complex to the one in the master list, even
+  ! if duplicated.
+  cur_srfcplx_in_rxn => srfcplx_rxn%complex_list
+  do
+    cur_srfcplx => surface_complexation%complex_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_srfcplx)) exit
+      if (StringCompare(cur_srfcplx_in_rxn%name,cur_srfcplx%name, &
+                        MAXWORDLENGTH)) then
+        ! set id to id in master list
+        cur_srfcplx_in_rxn%id = cur_srfcplx%id
+        cur_srfcplx_in_rxn%ptr => cur_srfcplx
+        found = PETSC_TRUE
+        exit
+      endif
+      prev_srfcplx = cur_srfcplx
+      cur_srfcplx => cur_srfcplx%next
+    enddo
+    if (.not.found) then
+      srfcplx => SurfaceComplexCreate()
+      srfcplx%name = cur_srfcplx_in_rxn%name
+      prev_srfcplx%next = srfcplx
+    endif
+    cur_srfcplx_in_rxn => cur_srfcplx_in_rxn%next
+  enddo
+  
+  select case(srfcplx_rxn%itype)
+    ! default (NULL) to EQUILIBRIUM
+    case(SRFCMPLX_RXN_NULL,SRFCMPLX_RXN_EQUILIBRIUM)
+      surface_complexation%neqsrfcplx = surface_complexation%neqsrfcplx + &
+        temp_srfcplx_count
+      surface_complexation%neqsrfcplxrxn = &
+        surface_complexation%neqsrfcplxrxn + 1
+    case(SRFCMPLX_RXN_MULTIRATE_KINETIC)
+      surface_complexation%nkinmrsrfcplx = &
+        surface_complexation%nkinmrsrfcplx + temp_srfcplx_count
+      surface_complexation%nkinmrsrfcplxrxn = &
+        surface_complexation%nkinmrsrfcplxrxn + 1
+      ! check to ensure that rates for multirate surface complexation 
+      ! are aligned with surface fractions
+      if (size(srfcplx_rxn%rates) /= size(srfcplx_rxn%site_fractions)) then
+        write(word,*) size(srfcplx_rxn%rates)
+        write(string,*) size(srfcplx_rxn%site_fractions)
+        option%io_buffer = 'Number of kinetic rates (' // &
+          trim(adjustl(word)) // &
+          ') does not match the number of surface fractions (' // &
+          trim(adjustl(string)) // ').'
+        call printErrMsg(option)
+      endif
+      tempreal = 0.d0
+      do i = 1, size(srfcplx_rxn%site_fractions)
+        tempreal = tempreal + srfcplx_rxn%site_fractions(i)
+        srfcplx_rxn%rates(i) = srfcplx_rxn%rates(i) * &
+          srfcplx_rxn%kinmr_scale_factor
+      enddo
+    
+      if (dabs(1.d0 - tempreal) > 1.d-6) then
+        write(string,*) tempreal
+        option%io_buffer = 'The sum of the surface fractions for ' // &
+          'multirate kinetic sorption does not add up to 1.d0 (' // &
+          trim(adjustl(string)) // '.'
+        call printErrMsg(option)
+      endif
+    case(SRFCMPLX_RXN_KINETIC)
+      ! match up rates with their corresponding surface complex
+      cur_srfcplx => srfcplx_rxn%complex_list
+      do
+        if (.not.associated(cur_srfcplx)) exit
+        found = PETSC_FALSE
+        nullify(prev_srfcplx_rate)
+        cur_srfcplx_rate => rate_list
+        do
+          if (.not.associated(cur_srfcplx_rate)) exit
+          ! check for same name
+          if (StringCompare(cur_srfcplx_rate%name, &
+                            cur_srfcplx%name, &
+                            MAXWORDLENGTH)) then
+            ! set rates
+            cur_srfcplx%forward_rate = cur_srfcplx_rate%forward_rate
+            cur_srfcplx%backward_rate = cur_srfcplx_rate%backward_rate
+            ! remove srfcplx_rate from list of rates
+            if (associated(prev_srfcplx_rate)) then
+              prev_srfcplx_rate%next => cur_srfcplx_rate%next
+            else
+              rate_list => cur_srfcplx_rate%next
+            endif
+            ! destroy the object
+            call SurfaceComplexDestroy(cur_srfcplx_rate)
+            found = PETSC_TRUE
+            exit
+          endif
+          prev_srfcplx_rate => cur_srfcplx_rate
+          cur_srfcplx_rate => cur_srfcplx_rate%next
+        enddo
+        if (.not.found) then
+          option%io_buffer = 'Rates for surface complex ' // &
+            trim(cur_srfcplx%name) // ' not found in kinetic rate list'
+          call printErrMsg(option)
+        endif
+        cur_srfcplx => cur_srfcplx%next
+      enddo
+      ! check to ensure that rates are matched
+      if (associated(rate_list)) then
+        option%io_buffer = '# of rates is greater than # of surface complexes'
+        call printErrMsg(option)
+      endif
+      nullify(cur_srfcplx)
+      nullify(prev_srfcplx)
+      nullify(rate_list)
+      nullify(cur_srfcplx_rate)
+      nullify(prev_srfcplx_rate)                  
+      surface_complexation%nkinsrfcplx = &
+        surface_complexation%nkinsrfcplx + temp_srfcplx_count
+      surface_complexation%nkinsrfcplxrxn = &
+        surface_complexation%nkinsrfcplxrxn + 1
+  end select
+  srfcplx_rxn%free_site_id = srfcplx_rxn%id
+              
+  nullify(srfcplx_rxn)
+
+end subroutine SurfaceComplexationRead
+
+! ************************************************************************** !
+!
+! RTotalSorbEqSurfCplx: Computes the total sorbed component concentrations and 
+!                       derivative with respect to free-ion for equilibrium 
+!                       surface complexation
+! author: Glenn Hammond
+! date: 10/22/08; 05/26/09
+!
+! ************************************************************************** !
+subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: srfcplx_conc(reaction%surface_complexation%neqsrfcplx)
+  PetscReal :: dSx_dmi(reaction%naqcomp)
+  PetscReal :: nui_Si_over_Sx
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
+  PetscInt :: irxn, ieqrxn
+  PetscInt, parameter :: iphase = 1
+  PetscReal, parameter :: tol = 1.d-12
+  PetscBool :: one_more
+  PetscReal :: res, dres_dfree_site, dfree_site_conc
+  PetscReal :: site_density(2)
+  PetscReal :: mobile_fraction
+  PetscInt :: num_types_of_sites
+  PetscInt :: isite
+  type(surface_complexation_type), pointer :: surface_complexation
+
+  surface_complexation => reaction%surface_complexation
+  
+  if (reaction%ncollcomp > 0) then  
+    rt_auxvar%colloid%total_eq_mob = 0.d0
+    rt_auxvar%colloid%dRj_dCj%dtotal = 0.d0
+  endif
+  
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+
+#ifdef TEMP_DEPENDENT_LOGK
+  !TODO(geh): move this outside so it is called only once per cell
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%srfcplx_logKcoef,reaction%srfcplx_logK, &
+                               global_auxvar%temp(iphase),reaction%nsrfcplx)
+  endif
+! surface reaction in hpt option not functional yet .Chuan 12/29/11 
+#endif  
+
+  ! Surface Complexation
+  do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
+  
+    irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
+    
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
+
+    select case(surface_complexation%srfcplxrxn_surf_type(irxn))
+      case(MINERAL_SURFACE)
+        site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)* &
+                  rt_auxvar%mnrl_volfrac(surface_complexation%srfcplxrxn_to_surf(irxn))
+        num_types_of_sites = 1
+      case(COLLOID_SURFACE)
+        mobile_fraction = reaction%colloid_mobile_fraction(surface_complexation%srfcplxrxn_to_surf(irxn))
+        site_density(1) = (1.d0-mobile_fraction)*surface_complexation%srfcplxrxn_site_density(irxn)
+        site_density(2) = mobile_fraction*surface_complexation%srfcplxrxn_site_density(irxn)
+!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+!                       rt_auxvar%colloid%total_colloid_conc(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        num_types_of_sites = 2 ! two types of sites (mobile and immobile) with separate
+                               ! site densities
+      case(NULL_SURFACE)
+        site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)
+        num_types_of_sites = 1
+    end select
+    
+    do isite=1, num_types_of_sites
+      ! isite == 1 - immobile (colloids, minerals, etc.)
+      ! isite == 2 - mobile (colloids)
+    
+      if (site_density(isite) < 1.d-40) cycle
+    
+      ! get a pointer to the first complex (there will always be at least 1)
+      ! in order to grab free site conc
+      one_more = PETSC_FALSE
+      do
+
+        total = free_site_conc
+        ln_free_site = log(free_site_conc)
+        do j = 1, ncplx
+          icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -surface_complexation%srfcplx_logK(icplx)*LOG_TO_LN
+
+          ! activity of water
+          if (surface_complexation%srfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + surface_complexation%srfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          endif
+
+          lnQK = lnQK + surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = surface_complexation%srfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = surface_complexation%srfcplxspecid(i,icplx)
+            lnQK = lnQK + surface_complexation%srfcplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          srfcplx_conc(icplx) = exp(lnQK)
+          total = total + surface_complexation%srfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
+          
+        enddo
+        
+        if (one_more) exit
+        
+        if (surface_complexation%srfcplxrxn_stoich_flag(irxn)) then 
+          ! stoichiometry for free sites in one of reactions is not 1, thus must
+          ! use nonlinear iteration to solve
+          res = site_density(isite)-total
+          
+          dres_dfree_site = 1.d0
+
+          do j = 1, ncplx
+            icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+            dres_dfree_site = dres_dfree_site + &
+              surface_complexation%srfcplx_free_site_stoich(icplx)* &
+              srfcplx_conc(icplx)/free_site_conc
+          enddo
+
+          dfree_site_conc = res / dres_dfree_site
+          free_site_conc = free_site_conc + dfree_site_conc
+        
+          if (dabs(dfree_site_conc/free_site_conc) < tol) then
+            one_more = PETSC_TRUE
+          endif
+        
+        else
+        
+          total = total / free_site_conc
+          free_site_conc = site_density(isite) / total  
+          
+          one_more = PETSC_TRUE 
+        
+        endif
+
+      enddo ! generic do
+      
+      rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
+   
+  !!!!!!!!!!!!
+      ! 2.3-46
+
+      ! Sx = free site
+      ! mi = molality of component i
+      dSx_dmi = 0.d0
+      tempreal = 0.d0
+      do j = 1, ncplx
+        icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        do i = 1, ncomp
+          icomp = surface_complexation%srfcplxspecid(i,icplx)
+          ! sum of nu_li * nu_i * S_i
+          dSx_dmi(icomp) = dSx_dmi(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
+                                            surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                                            srfcplx_conc(icplx)
+        enddo
+        ! sum of nu_i^2 * S_i
+        tempreal = tempreal + surface_complexation%srfcplx_free_site_stoich(icplx)* & 
+                              surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                              srfcplx_conc(icplx)
+      enddo 
+      ! divide denominator by Sx
+      tempreal = tempreal / free_site_conc
+      ! add 1.d0 to denominator
+      tempreal = tempreal + 1.d0
+      ! divide numerator by denominator
+      dSx_dmi = -dSx_dmi / tempreal
+      ! convert from dlogm to dm
+      dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
+  !!!!!!!!!!!!
+   
+      do k = 1, ncplx
+        icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+
+        rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
+
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        if (isite == 1) then ! immobile sites  
+          do i = 1, ncomp
+            icomp = surface_complexation%srfcplxspecid(i,icplx)
+            rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
+              surface_complexation%srfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+        else ! mobile sites
+          do i = 1, ncomp
+            icomp = reaction%pri_spec_to_coll_spec(surface_complexation%srfcplxspecid(i,icplx))
+            rt_auxvar%colloid%total_eq_mob(icomp) = rt_auxvar%colloid%total_eq_mob(icomp) + &
+              surface_complexation%srfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+        endif
+        
+        ! for 2.3-47 which feeds into 2.3-50
+        nui_Si_over_Sx = surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                         srfcplx_conc(icplx)/ &
+                         free_site_conc
+
+        do j = 1, ncomp
+          jcomp = surface_complexation%srfcplxspecid(j,icplx)
+          tempreal = surface_complexation%srfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
+                     rt_auxvar%pri_molal(jcomp)+ &
+                     nui_Si_over_Sx*dSx_dmi(jcomp)
+          if (isite == 1) then ! immobile sites                  
+            do i = 1, ncomp
+              icomp = surface_complexation%srfcplxspecid(i,icplx)
+              rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = &
+                rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
+                                                   surface_complexation%srfcplxstoich(i,icplx)* &
+                                                   tempreal
+            enddo ! i
+          else ! mobile sites
+            do i = 1, ncomp
+              icomp = surface_complexation%srfcplxspecid(i,icplx)
+              rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) = &
+                rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) + &
+                                       surface_complexation%srfcplxstoich(i,icplx)* &
+                                       tempreal
+            enddo ! i
+          endif
+        enddo ! j
+      enddo ! k
+    enddo ! isite
+  enddo ! irxn
+  
+  ! units of total_sorb = mol/m^3
+  ! units of dtotal_sorb = kg water/m^3 bulk
+  
+end subroutine RTotalSorbEqSurfCplx
+
+! ************************************************************************** !
+!
+! RMultiRateSorption: Computes contribution to the accumualtion term due
+!                     due to multirate sorption
+! author: Glenn Hammond
+! date: 05/20/09
+!
+! ************************************************************************** !
+subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
+                              global_auxvar,volume,reaction,option)
+
+  use Option_module
+
+  PetscBool :: compute_derivative
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscReal :: volume
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  type(option_type) :: option
+  
+  PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
+  PetscInt, parameter :: iphase = 1
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: srfcplx_conc(reaction%surface_complexation%neqsrfcplx)
+  PetscReal :: dSx_dmi(reaction%naqcomp)
+  PetscReal :: nui_Si_over_Sx
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
+  PetscInt :: irxn, ikinmrrxn
+  PetscReal, parameter :: tol = 1.d-12
+  PetscBool :: one_more
+  PetscReal :: residual, dres_dfree_site, dfree_site_conc
+  PetscReal :: site_density
+  type(surface_complexation_type), pointer :: surface_complexation
+  
+  PetscInt :: irate
+  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscReal :: total_sorb_eq(reaction%naqcomp)
+  PetscReal :: dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp)
+
+  surface_complexation => reaction%surface_complexation
+  
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+    
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%srfcplx_logKcoef,reaction%srfcplx_logK, &
+                               global_auxvar%temp(iphase),reaction%nsrfcplx)
+! surface reaction in hpt option not functional yet .Chuan 12/29/11 
+  endif
+#endif  
+
+  rt_auxvar%total_sorb_eq = 0.d0
+  rt_auxvar%eqsrfcplx_conc = 0.d0
+
+  ! Surface Complexation
+  do ikinmrrxn = 1, surface_complexation%nkinmrsrfcplxrxn
+
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinmrrxn)
+
+    !WARNING! the below assumes site density multiplicative factor
+    select case(surface_complexation%srfcplxrxn_surf_type(irxn))
+      case(MINERAL_SURFACE)
+        site_density = surface_complexation%srfcplxrxn_site_density(irxn)* &
+                       rt_auxvar%mnrl_volfrac(surface_complexation%srfcplxrxn_to_surf(irxn))
+      case(COLLOID_SURFACE)
+        site_density = surface_complexation%srfcplxrxn_site_density(irxn)
+      case(NULL_SURFACE)
+        site_density = surface_complexation%srfcplxrxn_site_density(irxn)
+    end select  
+
+    ! if site_density = 0, dividing by free_site_conc will crash below.
+    if (site_density < 1.d-40) then
+      option%io_buffer = 'Cannot have a zero site density for multirate ' // &
+        'surface complexation.  Set minimum site density to arbitrary ' // &
+        'small number (e.g. 1.e-40).'
+      call printErrMsgByRank(option)
+    endif
+    
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
+
+    ! get a pointer to the first complex (there will always be at least 1)
+    ! in order to grab free site conc
+    one_more = PETSC_FALSE
+    do
+      total = free_site_conc
+      ln_free_site = log(free_site_conc)
+      do j = 1, ncplx
+        icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+        ! compute secondary species concentration
+        lnQK = -surface_complexation%srfcplx_logK(icplx)*LOG_TO_LN
+
+        ! activity of water
+        if (surface_complexation%srfcplxh2oid(icplx) > 0) then
+          lnQK = lnQK + surface_complexation%srfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+        endif
+
+        lnQK = lnQK + surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                      ln_free_site
+      
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        do i = 1, ncomp
+          icomp = surface_complexation%srfcplxspecid(i,icplx)
+          lnQK = lnQK + surface_complexation%srfcplxstoich(i,icplx)*ln_act(icomp)
+        enddo
+        srfcplx_conc(icplx) = exp(lnQK)
+        total = total + surface_complexation%srfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
+        
+      enddo
+      
+      if (one_more) exit
+      
+      if (surface_complexation%srfcplxrxn_stoich_flag(irxn)) then 
+        ! stoichiometry for free sites in one of reactions is not 1, thus must
+        ! use nonlinear iteration to solve
+        residual = site_density-total
+        
+        dres_dfree_site = 1.d0
+
+        do j = 1, ncplx
+          icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+          dres_dfree_site = dres_dfree_site + &
+            surface_complexation%srfcplx_free_site_stoich(icplx)* &
+            srfcplx_conc(icplx)/free_site_conc
+        enddo
+
+        dfree_site_conc = residual / dres_dfree_site
+        free_site_conc = free_site_conc + dfree_site_conc
+      
+        if (dabs(dfree_site_conc/free_site_conc) < tol) then
+          one_more = PETSC_TRUE
+        endif
+      
+      else
+      
+        total = total / free_site_conc
+        free_site_conc = site_density / total  
+        
+        one_more = PETSC_TRUE
+      endif
+    enddo
+
+    rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
+   
+    dSx_dmi = 0.d0
+    tempreal = 0.d0
+    do j = 1, ncplx
+      icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+      ncomp = surface_complexation%srfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = surface_complexation%srfcplxspecid(i,icplx)
+        ! numerator of 4.39
+        dSx_dmi(icomp) = dSx_dmi(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
+          surface_complexation%srfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx)
+      enddo
+      ! denominator of 4.39
+      tempreal = tempreal + surface_complexation%srfcplx_free_site_stoich(icplx)* & 
+        surface_complexation%srfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx)
+    enddo 
+    ! divide denominator by Sx
+    tempreal = tempreal / free_site_conc
+    ! add 1.d0 to denominator
+    tempreal = tempreal + 1.d0
+    ! divide numerator by denominator
+    dSx_dmi = -dSx_dmi / tempreal
+    ! convert from dlogm to dm
+    dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
+
+    ! initialize total sorbed concentrations and derivatives
+    total_sorb_eq = 0.d0
+    dtotal_sorb_eq = 0.d0
+      
+    do k = 1, ncplx
+      icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+
+      rt_auxvar%eqsrfcplx_conc(k) = &
+        rt_auxvar%eqsrfcplx_conc(k) + srfcplx_conc(icplx)
+
+      ncomp = surface_complexation%srfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = surface_complexation%srfcplxspecid(i,icplx)
+        total_sorb_eq(icomp) = total_sorb_eq(icomp) + &
+          surface_complexation%srfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+      enddo
+      
+      if (compute_derivative) then
+        nui_Si_over_Sx = surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                         srfcplx_conc(icplx)/free_site_conc
+
+        do j = 1, ncomp
+          jcomp = surface_complexation%srfcplxspecid(j,icplx)
+          tempreal = surface_complexation%srfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
+            rt_auxvar%pri_molal(jcomp) + nui_Si_over_Sx*dSx_dmi(jcomp)
+                      
+          do i = 1, ncomp
+            icomp = surface_complexation%srfcplxspecid(i,icplx)
+            dtotal_sorb_eq(icomp,jcomp) = dtotal_sorb_eq(icomp,jcomp) + &
+              surface_complexation%srfcplxstoich(i,icplx)*tempreal
+          enddo
+        enddo
+      endif
+    enddo
+      
+    ! WARNING: this assumes site fraction multiplicative factor 
+    do irate = 1, surface_complexation%kinmr_nrate(irxn)
+      kdt = surface_complexation%kinmr_rate(irate,irxn) * option%tran_dt
+      one_plus_kdt = 1.d0 + kdt
+      k_over_one_plus_kdt = surface_complexation%kinmr_rate(irate,irxn)/one_plus_kdt
+        
+      ! this is the constribution to the accumulation term in the residual
+      Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
+        (surface_complexation%kinmr_frac(irate,irxn)*total_sorb_eq(:) - &
+         rt_auxvar%kinmr_total_sorb(:,irate,ikinmrrxn))
+      
+      if (compute_derivative) then
+        Jac = Jac + volume * k_over_one_plus_kdt * &
+          surface_complexation%kinmr_frac(irate,irxn) * dtotal_sorb_eq
+      endif
+
+    enddo
+    
+    ! store the target equilibrium concentration to update the sorbed 
+    ! concentration at the end of the time step.
+    rt_auxvar%kinmr_total_sorb(:,0,ikinmrrxn) = total_sorb_eq
+  
+  enddo ! irxn
+  
+end subroutine RMultiRateSorption
+
+! ************************************************************************** !
+!
+! RTotalSorbEqSurfCplx1: Computes the total sorbed component concentrations and 
+!                       derivative with respect to free-ion for equilibrium 
+!                       surface complexation
+! author: Glenn Hammond
+! date: 10/22/08; 05/26/09
+!
+! ************************************************************************** !
+subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: srfcplx_conc(reaction%surface_complexation%neqsrfcplx)
+  PetscReal :: dSx_dmi(reaction%naqcomp)
+  PetscReal :: nui_Si_over_Sx
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
+  PetscInt :: irxn, ieqrxn
+  PetscInt, parameter :: iphase = 1
+  PetscReal, parameter :: tol = 1.d-12
+  PetscBool :: one_more
+  PetscReal :: res, dres_dfree_site, dfree_site_conc
+  PetscReal :: site_density(2)
+  PetscReal :: mobile_fraction
+  PetscInt :: num_types_of_sites
+  PetscInt :: isite
+  type(surface_complexation_type), pointer :: surface_complexation
+
+  surface_complexation => reaction%surface_complexation
+  
+  if (reaction%ncollcomp > 0) then  
+    rt_auxvar%colloid%total_eq_mob = 0.d0
+    rt_auxvar%colloid%dRj_dCj%dtotal = 0.d0
+  endif
+  
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+
+#ifdef TEMP_DEPENDENT_LOGK
+  !TODO(geh): move this outside so it is called only once per cell
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%srfcplx_logKcoef,reaction%srfcplx_logK, &
+                               global_auxvar%temp(iphase),reaction%nsrfcplx)
+  endif
+! surface reaction in hpt option not functional yet .Chuan 12/29/11 
+#endif  
+
+  ! Surface Complexation
+  do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
+  
+    irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
+    
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
+
+    select case(surface_complexation%srfcplxrxn_surf_type(irxn))
+      case(MINERAL_SURFACE)
+        site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)* &
+                  rt_auxvar%mnrl_volfrac(surface_complexation%srfcplxrxn_to_surf(irxn))
+        num_types_of_sites = 1
+      case(COLLOID_SURFACE)
+        mobile_fraction = reaction%colloid_mobile_fraction(surface_complexation%srfcplxrxn_to_surf(irxn))
+        site_density(1) = (1.d0-mobile_fraction)*surface_complexation%srfcplxrxn_site_density(irxn)
+        site_density(2) = mobile_fraction*surface_complexation%srfcplxrxn_site_density(irxn)
+!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+!                       rt_auxvar%colloid%total_colloid_conc(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        num_types_of_sites = 2 ! two types of sites (mobile and immobile) with separate
+                               ! site densities
+      case(NULL_SURFACE)
+        site_density(1) = surface_complexation%srfcplxrxn_site_density(irxn)
+        num_types_of_sites = 1
+    end select
+    
+    do isite=1, num_types_of_sites
+      ! isite == 1 - immobile (colloids, minerals, etc.)
+      ! isite == 2 - mobile (colloids)
+    
+      if (site_density(isite) < 1.d-40) cycle
+    
+      ! get a pointer to the first complex (there will always be at least 1)
+      ! in order to grab free site conc
+      one_more = PETSC_FALSE
+      do
+
+        total = free_site_conc
+        ln_free_site = log(free_site_conc)
+        do j = 1, ncplx
+          icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -surface_complexation%srfcplx_logK(icplx)*LOG_TO_LN
+
+          ! activity of water
+          if (surface_complexation%srfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + surface_complexation%srfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          endif
+
+          lnQK = lnQK + surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = surface_complexation%srfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = surface_complexation%srfcplxspecid(i,icplx)
+            lnQK = lnQK + surface_complexation%srfcplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          srfcplx_conc(icplx) = exp(lnQK)
+          total = total + surface_complexation%srfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
+          
+        enddo
+        
+        if (one_more) exit
+        
+        if (surface_complexation%srfcplxrxn_stoich_flag(irxn)) then 
+          ! stoichiometry for free sites in one of reactions is not 1, thus must
+          ! use nonlinear iteration to solve
+          res = site_density(isite)-total
+          
+          dres_dfree_site = 1.d0
+
+          do j = 1, ncplx
+            icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+            dres_dfree_site = dres_dfree_site + &
+              surface_complexation%srfcplx_free_site_stoich(icplx)* &
+              srfcplx_conc(icplx)/free_site_conc
+          enddo
+
+          dfree_site_conc = res / dres_dfree_site
+          free_site_conc = free_site_conc + dfree_site_conc
+        
+          if (dabs(dfree_site_conc/free_site_conc) < tol) then
+            one_more = PETSC_TRUE
+          endif
+        
+        else
+        
+          total = total / free_site_conc
+          free_site_conc = site_density(isite) / total  
+          
+          one_more = PETSC_TRUE 
+        
+        endif
+
+      enddo ! generic do
+      
+      rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
+   
+  !!!!!!!!!!!!
+      ! 2.3-46
+
+      ! Sx = free site
+      ! mi = molality of component i
+      dSx_dmi = 0.d0
+      tempreal = 0.d0
+      do j = 1, ncplx
+        icplx = surface_complexation%srfcplxrxn_to_complex(j,irxn)
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        do i = 1, ncomp
+          icomp = surface_complexation%srfcplxspecid(i,icplx)
+          ! sum of nu_li * nu_i * S_i
+          dSx_dmi(icomp) = dSx_dmi(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
+                                            surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                                            srfcplx_conc(icplx)
+        enddo
+        ! sum of nu_i^2 * S_i
+        tempreal = tempreal + surface_complexation%srfcplx_free_site_stoich(icplx)* & 
+                              surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                              srfcplx_conc(icplx)
+      enddo 
+      ! divide denominator by Sx
+      tempreal = tempreal / free_site_conc
+      ! add 1.d0 to denominator
+      tempreal = tempreal + 1.d0
+      ! divide numerator by denominator
+      dSx_dmi = -dSx_dmi / tempreal
+      ! convert from dlogm to dm
+      dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
+  !!!!!!!!!!!!
+   
+      do k = 1, ncplx
+        icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+
+        rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
+
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        if (isite == 1) then ! immobile sites  
+          do i = 1, ncomp
+            icomp = surface_complexation%srfcplxspecid(i,icplx)
+            rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
+              surface_complexation%srfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+        else ! mobile sites
+          do i = 1, ncomp
+            icomp = reaction%pri_spec_to_coll_spec(surface_complexation%srfcplxspecid(i,icplx))
+            rt_auxvar%colloid%total_eq_mob(icomp) = rt_auxvar%colloid%total_eq_mob(icomp) + &
+              surface_complexation%srfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+        endif
+        
+        ! for 2.3-47 which feeds into 2.3-50
+        nui_Si_over_Sx = surface_complexation%srfcplx_free_site_stoich(icplx)* &
+                         srfcplx_conc(icplx)/ &
+                         free_site_conc
+
+        do j = 1, ncomp
+          jcomp = surface_complexation%srfcplxspecid(j,icplx)
+          tempreal = surface_complexation%srfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
+                     rt_auxvar%pri_molal(jcomp)+ &
+                     nui_Si_over_Sx*dSx_dmi(jcomp)
+          if (isite == 1) then ! immobile sites                  
+            do i = 1, ncomp
+              icomp = surface_complexation%srfcplxspecid(i,icplx)
+              rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = &
+                rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
+                                                   surface_complexation%srfcplxstoich(i,icplx)* &
+                                                   tempreal
+            enddo ! i
+          else ! mobile sites
+            do i = 1, ncomp
+              icomp = surface_complexation%srfcplxspecid(i,icplx)
+              rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) = &
+                rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) + &
+                                       surface_complexation%srfcplxstoich(i,icplx)* &
+                                       tempreal
+            enddo ! i
+          endif
+        enddo ! j
+      enddo ! k
+    enddo ! isite
+  enddo ! irxn
+  
+  ! units of total_sorb = mol/m^3
+  ! units of dtotal_sorb = kg water/m^3 bulk
+  
+end subroutine RTotalSorbEqSurfCplx1
+
+! ************************************************************************** !
+!
+! RKineticSurfCplx: Computes contribution to residual and jacobian for 
+!                   kinetic surface complexation reactions
+! author: Glenn Hammond
+! date: 12/07/09
+!
+! ************************************************************************** !
+subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
+                            global_auxvar,volume,reaction,option)
+
+  use Option_module
+  
+  PetscBool :: compute_derivative
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscReal :: volume
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  type(option_type) :: option
+
+  PetscInt :: i, j, k, l, icplx, icomp, jcomp, lcomp, ncomp, ncplx
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscInt :: irxn, isite, ikinrxn
+  PetscReal :: dt
+  type(surface_complexation_type), pointer :: surface_complexation
+
+  PetscReal :: numerator_sum(reaction%surface_complexation%nkinsrfcplxrxn)
+  PetscReal :: denominator_sum(reaction%surface_complexation%nkinsrfcplxrxn)
+
+  PetscReal :: denominator
+  PetscReal :: fac
+  PetscReal :: fac_sum(reaction%naqcomp)
+  PetscReal :: lnQ(reaction%surface_complexation%nkinsrfcplx)
+  PetscReal :: Q(reaction%surface_complexation%nkinsrfcplx)
+  PetscReal :: srfcplx_conc_k(maxval(reaction%surface_complexation%srfcplxrxn_to_complex(0,:)),1)
+  PetscReal :: srfcplx_conc_kp1(maxval(reaction%surface_complexation%srfcplxrxn_to_complex(0,:)),1)
+  
+  surface_complexation => reaction%surface_complexation
+  
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+
+! Members of the rt aux var object: mol/m^3
+! PetscReal, pointer :: kinsrfcplx_conc(:)          ! S_{i\alpha}^k
+! PetscReal, pointer :: kinsrfcplx_conc_kp1(:)      ! S_{i\alpha}^k+1
+! PetscReal, pointer :: kinsrfcplx_free_site_conc(:) ! S_\alpha
+  
+! units
+! k_f: dm^3/mol/sec
+! k_b: 1/sec
+! Res: mol/sec
+
+  dt = option%tran_dt
+  
+! compute ion activity product and store: units mol/L
+  lnQ = 0.d0
+  do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+      if (surface_complexation%srfcplxh2oid(icplx) > 0) then
+        lnQ(icplx) = lnQ(icplx) + surface_complexation%srfcplxh2ostoich(icplx)* &
+          rt_auxvar%ln_act_h2o
+      endif
+    
+      ncomp = surface_complexation%srfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = surface_complexation%srfcplxspecid(i,icplx)
+        lnQ(icplx) = lnQ(icplx) + surface_complexation%srfcplxstoich(i,icplx)* &
+          ln_act(icomp)
+      enddo
+      Q(icplx) = exp(lnQ(icplx))
+    enddo
+  enddo
+    
+  ! compute summation in numerator of 5.1-29: units mol/m^3
+  numerator_sum = 0.d0
+  do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+    isite = surface_complexation%srfcplxrxn_to_surf(irxn)
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+      numerator_sum(isite) = numerator_sum(isite) + &
+                  rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn)/ &
+                  (1.d0+surface_complexation%kinsrfcplx_backward_rate(icplx,ikinrxn)*dt)
+    enddo
+  enddo
+
+  do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+    isite = surface_complexation%srfcplxrxn_to_surf(irxn)
+    numerator_sum(isite) = surface_complexation%srfcplxrxn_site_density(isite) - &
+                           numerator_sum(isite)
+  enddo
+  
+  ! compute summation in denominator of 5.1-29
+  denominator_sum = 1.d0
+  do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+    isite = surface_complexation%srfcplxrxn_to_surf(irxn)
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+      denominator_sum(isite) = denominator_sum(isite) + &
+                               (surface_complexation%kinsrfcplx_forward_rate(icplx,ikinrxn)*dt)/ &
+                               (1.d0+surface_complexation%kinsrfcplx_backward_rate(icplx,ikinrxn)*dt)* &
+                               Q(icplx)
+    enddo
+  enddo
+
+! compute surface complex conc. at new time step (5.1-30)  
+  do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+    isite = surface_complexation%srfcplxrxn_to_surf(irxn)
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+      srfcplx_conc_k(icplx,ikinrxn) = rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn)
+      denominator = 1.d0 + surface_complexation%kinsrfcplx_backward_rate(icplx,ikinrxn)*dt
+      srfcplx_conc_kp1(icplx,ikinrxn) = (srfcplx_conc_k(icplx,ikinrxn) + &
+                                surface_complexation%kinsrfcplx_forward_rate(icplx,ikinrxn)*dt * &
+                                numerator_sum(isite)/denominator_sum(isite)* &
+                                Q(icplx))/denominator
+      rt_auxvar%kinsrfcplx_conc_kp1(icplx,ikinrxn) = srfcplx_conc_kp1(icplx,ikinrxn)
+    enddo
+    rt_auxvar%kinsrfcplx_free_site_conc(isite) = numerator_sum(isite)/ &
+                                               denominator_sum(isite)
+  enddo
+
+! compute residual (5.1-34)
+  
+  do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+    irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+    ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+      ncomp = surface_complexation%srfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = surface_complexation%srfcplxspecid(i,icplx)
+        Res(icomp) = Res(icomp) + surface_complexation%srfcplxstoich(i,icplx)* &
+                     (srfcplx_conc_kp1(icplx,ikinrxn)-rt_auxvar%kinsrfcplx_conc(icplx,ikinrxn))/ &
+                     dt * volume
+      enddo
+    enddo
+  enddo
+
+  if (compute_derivative) then
+  ! compute jacobian (5.1-39)
+    fac_sum = 0.d0
+    do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+      irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+      ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+      do k = 1, ncplx ! ncplx in rxn
+        icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+        denominator = 1.d0 + surface_complexation%kinsrfcplx_backward_rate(icplx,ikinrxn)*dt
+        fac = surface_complexation%kinsrfcplx_forward_rate(icplx,ikinrxn)/denominator
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        do j = 1, ncomp
+          jcomp = surface_complexation%srfcplxspecid(j,icplx)
+          fac_sum(jcomp) = fac_sum(jcomp) + surface_complexation%srfcplxstoich(j,icplx)* &
+            fac * Q(icplx)
+        enddo
+      enddo
+    enddo
+
+    do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
+      irxn = surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+      isite = surface_complexation%srfcplxrxn_to_surf(irxn)
+      ncplx = surface_complexation%srfcplxrxn_to_complex(0,irxn)
+      do k = 1, ncplx ! ncplx in rxn
+        icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)
+        denominator = 1.d0 + surface_complexation%kinsrfcplx_backward_rate(icplx,ikinrxn)*dt
+        fac = surface_complexation%kinsrfcplx_forward_rate(icplx,ikinrxn)/denominator
+        ncomp = surface_complexation%srfcplxspecid(0,icplx)
+        do j = 1, ncomp
+          jcomp = surface_complexation%srfcplxspecid(j,icplx)
+          do l = 1, ncomp
+            lcomp = surface_complexation%srfcplxspecid(l,icplx)
+            Jac(jcomp,lcomp) = Jac(jcomp,lcomp) + &
+              (surface_complexation%srfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
+              Q(icplx) * (surface_complexation%srfcplxstoich(l,icplx) - &
+              dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
+              exp(-ln_conc(lcomp)) * volume
+          enddo
+        enddo
+      enddo
+    enddo
+  endif
+  
+  ! units of total_sorb = mol/m^3
+  ! units of dtotal_sorb = kg water/m^3 bulk
+  
+end subroutine RKineticSurfCplx
+
+end module Surface_Complexation_module
