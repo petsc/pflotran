@@ -447,22 +447,39 @@ subroutine SurfaceComplexationDestroy(surface_complexation)
     nullify(prev_srfcplx)
   enddo
 
-  !TODO(geh): deallocate all arrays
-  print *, 'Finish SurfaceComplexationDestroy()'
-  stop
-  
+  ! surface complexes
   call DeallocateArray(surface_complexation%srfcplx_names)
-  
+  call DeallocateArray(surface_complexation%srfcplx_print)
+  call DeallocateArray(surface_complexation%srfcplxspecid)
+  call DeallocateArray(surface_complexation%srfcplxstoich)
+  call DeallocateArray(surface_complexation%srfcplxh2oid)
+  call DeallocateArray(surface_complexation%srfcplxh2ostoich)
+  call DeallocateArray(surface_complexation%srfcplx_free_site_stoich)
+  call DeallocateArray(surface_complexation%srfcplx_logK)
+  call DeallocateArray(surface_complexation%srfcplx_logKcoef)
+  call DeallocateArray(surface_complexation%srfcplx_Z)
+    
+  ! surface complexation reaction (general members)
   call DeallocateArray(surface_complexation%srfcplxrxn_site_names)
   call DeallocateArray(surface_complexation%srfcplxrxn_site_print)
   call DeallocateArray(surface_complexation%srfcplxrxn_site_density_print)
-
   call DeallocateArray(surface_complexation%srfcplxrxn_to_surf)
   call DeallocateArray(surface_complexation%srfcplxrxn_surf_type)
   call DeallocateArray(surface_complexation%srfcplxrxn_to_complex)
   call DeallocateArray(surface_complexation%srfcplxrxn_site_density)
   call DeallocateArray(surface_complexation%srfcplxrxn_stoich_flag)
-  
+
+  ! equilibrium
+  call DeallocateArray(surface_complexation%eqsrfcplxrxn_to_srfcplxrxn)
+    
+  ! kinetic
+  call DeallocateArray(surface_complexation%kinsrfcplxrxn_to_srfcplxrxn)
+  call DeallocateArray(surface_complexation%kinsrfcplx_to_name)
+  call DeallocateArray(surface_complexation%kinsrfcplx_forward_rate)
+  call DeallocateArray(surface_complexation%kinsrfcplx_backward_rate)
+
+  ! multirate kinetic surface complexation
+  call DeallocateArray(surface_complexation%kinmrsrfcplxrxn_to_srfcplxrxn)
   call DeallocateArray(surface_complexation%kinmr_nrate)
   call DeallocateArray(surface_complexation%kinmr_rate)
   call DeallocateArray(surface_complexation%kinmr_frac)
