@@ -100,7 +100,6 @@ subroutine DatabaseRead_hpt(reaction,option)
   ! remove comment
   call InputReadQuotedWord(input,option,name,PETSC_TRUE)
   call InputReadInt(input,option,reaction%num_dbase_parameters)
-  print *,'Number of points ::',reaction%num_dbase_parameters
   call InputErrorMsg(input,option,'Number of database parameters','DATABASE')  
  ! allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
  ! reaction%dbase_temperatures = 0.d0  
@@ -130,7 +129,7 @@ subroutine DatabaseRead_hpt(reaction,option)
     ! surface complexes
     ! null
     ! --
-    print *,'read name', name
+ 
     if (StringCompare(name,null_name,MAXWORDLENGTH)) then
       num_nulls = num_nulls + 1
       if (num_nulls >= 4) exit
@@ -222,8 +221,6 @@ subroutine DatabaseRead_hpt(reaction,option)
             call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logKCoeff_hpt(itemp))
             call InputErrorMsg(input,option,'EQRXN logKs Coeff','DATABASE')            
           enddo
-          print *,'reaction specs:', cur_aq_spec%dbaserxn%spec_name
-          print *,'coeffs: ', cur_aq_spec%dbaserxn%logKCoeff_hpt
         endif
         ! read the Debye-Huckel ion size parameter (a0)
         call InputReadDouble(input,option,cur_aq_spec%a0)
@@ -750,7 +747,7 @@ subroutine BasisInit_hpt(reaction,option)
   PetscErrorCode :: ierr
 
 ! get database temperature based on REFERENCE_TEMPERATURE
-  print *,'Basicinit: begin'
+!  print *,'Basicinit: begin'
   if (option%reference_temperature <= 0.01d0) then
     reaction%debyeA = 0.4939d0 
     reaction%debyeB = 0.3253d0 
@@ -844,7 +841,7 @@ subroutine BasisInit_hpt(reaction,option)
   if (.not.reaction%act_coef_use_bdot) then
     reaction%debyeBdot = 0.d0
   endif
-  print *,'Basicinit: checking temp'
+ ! print *,'Basicinit: checking temp'
  
   if (option%reference_temperature <= 0.0) then
      print *,'Tempreature lower than tolerence'
@@ -853,7 +850,7 @@ subroutine BasisInit_hpt(reaction,option)
      print *,'Tempreature higherer than tolerence'
      stop
   endif
-  print *,'Basicinit: end checking temp'
+ ! print *,'Basicinit: end checking temp'
   ! # of components sorbed to colloids
   reaction%naqcomp = GetPrimarySpeciesCount(reaction)
   reaction%ncoll = GetColloidCount(reaction)
@@ -945,7 +942,7 @@ subroutine BasisInit_hpt(reaction,option)
   sec_names = ''
   allocate(gas_names(reaction%ngas))
   gas_names = ''
-  print *, 'allocate logKCoeffvector'
+ ! print *, 'allocate logKCoeffvector'
   allocate(logKCoeffvector(reaction%num_dbase_parameters,ncomp_secondary))
   logKCoeffvector = 0.d0
   
@@ -1112,7 +1109,7 @@ subroutine BasisInit_hpt(reaction,option)
                     logKCoeffvector(i,1:ncomp_secondary))
     enddo
   enddo
-  print *, 'end lu decomp'  
+ 
   deallocate(pri_matrix)
   deallocate(sec_matrix)
   deallocate(indices)
@@ -1226,7 +1223,7 @@ subroutine BasisInit_hpt(reaction,option)
   nullify(cur_mineral)
   nullify(cur_srfcplx_rxn)
   nullify(cur_srfcplx)
-  print *,'rearrange gas'  
+
   ! first off, lets remove all the secondary gases from all other reactions
   cur_gas_spec => reaction%gas_species_list
   do
@@ -1296,7 +1293,7 @@ subroutine BasisInit_hpt(reaction,option)
   nullify(cur_srfcplx)
 
   ! secondary aqueous species
-   print *,'rearrange aq sec for min'  
+  ! print *,'rearrange aq sec for min'  
   cur_sec_aq_spec => reaction%secondary_species_list
   do
 
@@ -1314,11 +1311,11 @@ subroutine BasisInit_hpt(reaction,option)
           if (StringCompare(cur_sec_aq_spec%name, &
                               cur_mineral%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
-            print *,'min sub sec aq: ', cur_sec_aq_spec%name, cur_mineral%dbaserxn%spec_name                  
+           ! print *,'min sub sec aq: ', cur_sec_aq_spec%name, cur_mineral%dbaserxn%spec_name                  
             call BasisSubSpeciesInMineralRxn_hpt(cur_sec_aq_spec%name, &
                                                  cur_sec_aq_spec%dbaserxn, &
                                                  cur_mineral%dbaserxn)
-            print *,'min sub sec aq: ', cur_sec_aq_spec%name,' done'                                     
+           ! print *,'min sub sec aq: ', cur_sec_aq_spec%name,' done'                                     
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1328,7 +1325,7 @@ subroutine BasisInit_hpt(reaction,option)
     enddo
 
     ! secondary aqueous species in surface complex reactions
-    print *,'rearrange aq sec for surf'  
+   ! print *,'rearrange aq sec for surf'  
 
 #if 0
     cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
@@ -1373,7 +1370,7 @@ subroutine BasisInit_hpt(reaction,option)
 
   ! substitute new basis into mineral and surface complexation rxns,
   ! if necessary
-  print *,'rearrange mineral'
+ ! print *,'rearrange mineral'
   cur_mineral => reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
@@ -3029,7 +3026,7 @@ subroutine BasisSubSpeciesInMineralRxn_hpt(name,sec_dbaserxn,mnrl_dbaserxn)
   PetscReal :: scale
 
   call BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
-  print *,' scale= ', scale
+ ! print *,' scale= ', scale
   mnrl_dbaserxn%logKCoeff_hpt = mnrl_dbaserxn%logKCoeff_hpt + &
     scale*sec_dbaserxn%logKCoeff_hpt
 
