@@ -5233,8 +5233,8 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 #endif
 
 
-  write(*,*) "Exit RichardsJacobianMFDLP"
-  read(*,*)
+!  write(*,*) "Exit RichardsJacobianMFDLP"
+!  read(*,*)
 !  stop
 
 end subroutine RichardsJacobianMFDLP
