@@ -144,9 +144,9 @@ subroutine DatabaseRead_hpt(reaction,option)
         
         do
           if (found .or. .not.associated(cur_aq_spec)) exit
-          print *,'Looking for pri::',cur_aq_spec%name,' vs. ' ,name
+        !  print *,'Looking for pri::',cur_aq_spec%name,' vs. ' ,name
           if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
-            print *, 'Found ', cur_aq_spec%name
+          !  print *, 'Found ', cur_aq_spec%name
             found = PETSC_TRUE
             ! change negative id to positive, indicating it was found in database
             cur_aq_spec%id = abs(cur_aq_spec%id)
@@ -158,9 +158,9 @@ subroutine DatabaseRead_hpt(reaction,option)
         do
           
           if (found .or. .not.associated(cur_aq_spec)) exit
-          print *,'Looking for sec::',cur_aq_spec%name,' vs. ' ,name
+         ! print *,'Looking for sec::',cur_aq_spec%name,' vs. ' ,name
           if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
-             print *, 'Found ', cur_aq_spec%name
+           !  print *, 'Found ', cur_aq_spec%name
              found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_aq_spec%id = abs(cur_aq_spec%id)
@@ -242,7 +242,7 @@ subroutine DatabaseRead_hpt(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_gas_spec)) exit
-          print *,'Looking for gas::',cur_gas_spec%name,' vs. ' ,name
+         ! print *,'Looking for gas::',cur_gas_spec%name,' vs. ' ,name
           if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
@@ -295,9 +295,9 @@ subroutine DatabaseRead_hpt(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_mineral)) exit
-          print *,'Looking for sec::',cur_mineral%name,' vs. ' ,name
+       !   print *,'Looking for sec::',cur_mineral%name,' vs. ' ,name
           if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
-           print *, 'Found min:', cur_mineral%name
+         !  print *, 'Found min:', cur_mineral%name
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_mineral%id = abs(cur_mineral%id)
