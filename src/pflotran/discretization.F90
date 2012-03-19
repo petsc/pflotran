@@ -32,6 +32,8 @@ module Discretization_module
     PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
+    character(len=MAXSTRINGLENGTH) :: filename
+
     type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
@@ -40,10 +42,12 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_nflowdof
     type(dm_ptr_type), pointer :: dm_ntrandof
     type(mfd_type), pointer :: MFD
+    VecScatter :: tvd_ghost_scatter
   end type discretization_type
 
   public :: DiscretizationCreate, &
             DiscretizationDestroy, &
+            DiscretizationReadRequiredCards, &
             DiscretizationRead, &
             DiscretizationCreateVector, &
             DiscretizationDuplicateVector, &         
@@ -76,7 +80,8 @@ module Discretization_module
             DiscretizNaturalToGlobalBegin, &
             DiscretizNaturalToGlobalEnd, &
             DiscretizationCreateDMs,&
-            DiscretizationGetDMPtrFromIndex
+            DiscretizationGetDMPtrFromIndex, &
+            DiscretizationUpdateTVDGhosts
   
 contains
 
@@ -116,6 +121,8 @@ function DiscretizationCreate()
   nullify(discretization%grid)
   nullify(discretization%amrgrid)
   nullify(discretization%MFD)
+
+  discretization%tvd_ghost_scatter = 0
   
   DiscretizationCreate => discretization
 
@@ -123,12 +130,12 @@ end function DiscretizationCreate
 
 ! ************************************************************************** !
 !
-! DiscretizationRead: Reads a discretization from the input file
+! DiscretizationReadRequiredCards: Reads a discretization from the input file
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationRead(discretization,input,first_time,option)
+subroutine DiscretizationReadRequiredCards(discretization,input,option)
 
   use Option_module
   use Input_module
@@ -140,9 +147,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   type(discretization_type),pointer :: discretization
-  PetscBool :: first_time
   character(len=MAXWORDLENGTH) :: word
-  type(grid_type), pointer :: grid
+  type(grid_type), pointer :: grid, grid2
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
   type(amrgrid_type), pointer :: amrgrid
@@ -174,310 +180,359 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
     call InputErrorMsg(input,option,'keyword','GRID')
     call StringToUpper(word)
       
-    if (first_time) then ! first time read
-      select case(trim(word))
-        case('TYPE')
-          call InputReadWord(input,option,discretization%ctype,PETSC_TRUE)
-          call InputErrorMsg(input,option,'type','GRID')   
-          call StringToLower(discretization%ctype)
-          select case(trim(discretization%ctype))
-            case('structured')
-              discretization%itype = STRUCTURED_GRID
-              call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
-              call InputDefaultMsg(input,option,'structured_grid_type') 
-              call StringToLower(structured_grid_ctype)
-              select case(trim(structured_grid_ctype))
-                case('cartesian')
-                  structured_grid_itype = CARTESIAN_GRID
-                case('cylindrical')
-                  structured_grid_itype = CYLINDRICAL_GRID
-                case('spherical')
-                  structured_grid_itype = SPHERICAL_GRID
-                case default
-                  structured_grid_itype = CARTESIAN_GRID
-                  structured_grid_ctype = 'cartesian'
-              end select
-            case('unstructured')
-              discretization%itype = UNSTRUCTURED_GRID
-              call InputReadNChars(input,option,filename,MAXSTRINGLENGTH, &
-                                   PETSC_TRUE)
-              call InputErrorMsg(input,option,'unstructured filename','GRID')
-            case('amr')
-              discretization%itype = AMR_GRID
-            case('structured_mimetic')
-              discretization%itype = STRUCTURED_GRID_MIMETIC
-              option%mimetic = PETSC_TRUE
-              call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
-              call InputDefaultMsg(input,option,'structured_grid_type')   
-              call StringToLower(structured_grid_ctype)
-              select case(trim(structured_grid_ctype))
-                case('cartesian')
-                  structured_grid_itype = CARTESIAN_GRID
-                case('cylindrical')
-                  structured_grid_itype = CYLINDRICAL_GRID
-                case('spherical')
-                  structured_grid_itype = SPHERICAL_GRID
-                case default
-                  structured_grid_itype = CARTESIAN_GRID
-                  structured_grid_ctype = 'cartesian'
-              end select
-            case default
-              option%io_buffer = 'Discretization type: ' // &
-                                 trim(discretization%ctype) // &
-                                 ' not recognized.'
-              call printErrMsg(option)
-          end select    
-        case('NXYZ')
-          call InputReadInt(input,option,nx)
-          call InputErrorMsg(input,option,'nx','GRID')
-          call InputReadInt(input,option,ny)
-          call InputErrorMsg(input,option,'ny','GRID')
-          call InputReadInt(input,option,nz)
-          call InputErrorMsg(input,option,'nz','GRID')
-          if (structured_grid_itype /= CARTESIAN_GRID) then
-            ny = 1 ! cylindrical and spherical have 1 cell in Y
-            if (structured_grid_itype /= CYLINDRICAL_GRID) nz = 1 ! spherical has 1 cell in Z
-          endif
-        case('ORIG','ORIGIN')
-          call InputReadDouble(input,option,discretization%origin(X_DIRECTION))
-          call InputErrorMsg(input,option,'X direction','Origin')
-          call InputReadDouble(input,option,discretization%origin(Y_DIRECTION))
-          call InputErrorMsg(input,option,'Y direction','Origin')
-          call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
-          call InputErrorMsg(input,option,'Z direction','Origin')        
-        case('FILE')
-        case ('GRAVITY')
-        case ('INVERT_Z')
-        case('DXYZ')
-          call InputSkipToEND(input,option,word) 
-        case('BOUNDS')
-          call InputSkipToEND(input,option,word) 
-        case default
-          option%io_buffer = 'Keyword: ' // trim(word) // &
-                   ' not recognized in DISCRETIZATION, first read.'
-          call printErrMsg(option)          
-      end select 
-    else ! should be the second time it is read
-      select case(trim(word))
-        case('TYPE')
-        case('NXYZ')
-        case('ORIG','ORIGIN')
-        case('FILE')
-        case('DXYZ')
-          select case(discretization%itype)
-            case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-              call StructuredGridReadDXYZ(discretization%grid%structured_grid,input,option)
-            case(AMR_GRID)
-              call AMRGridReadDXYZ(discretization%amrgrid,input,option)
-            case default
-              call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
-          end select
-          call InputReadFlotranString(input,option) ! read END card
-          call InputReadStringErrorMsg(input,option,'DISCRETIZATION,DXYZ,END')
-          if (.not.(InputCheckExit(input,option))) then
-            option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
-                     '(one for each grid direction or NX+NY+NZ entries)'
+    select case(trim(word))
+      case('TYPE')
+        call InputReadWord(input,option,discretization%ctype,PETSC_TRUE)
+        call InputErrorMsg(input,option,'type','GRID')   
+        call StringToLower(discretization%ctype)
+        select case(trim(discretization%ctype))
+          case('structured')
+            discretization%itype = STRUCTURED_GRID
+            call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
+            call InputDefaultMsg(input,option,'structured_grid_type') 
+            call StringToLower(structured_grid_ctype)
+            select case(trim(structured_grid_ctype))
+              case('cartesian')
+                structured_grid_itype = CARTESIAN_GRID
+              case('cylindrical')
+                structured_grid_itype = CYLINDRICAL_GRID
+              case('spherical')
+                structured_grid_itype = SPHERICAL_GRID
+              case default
+                structured_grid_itype = CARTESIAN_GRID
+                structured_grid_ctype = 'cartesian'
+            end select
+          case('unstructured')
+            discretization%itype = UNSTRUCTURED_GRID
+            call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
+                                 PETSC_TRUE)
+            call InputErrorMsg(input,option,'unstructured filename','GRID')
+          case('amr')
+            discretization%itype = AMR_GRID
+          case('structured_mimetic')
+            discretization%itype = STRUCTURED_GRID_MIMETIC
+            option%mimetic = PETSC_TRUE
+            call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
+            call InputDefaultMsg(input,option,'structured_grid_type')   
+            call StringToLower(structured_grid_ctype)
+            select case(trim(structured_grid_ctype))
+              case('cartesian')
+                structured_grid_itype = CARTESIAN_GRID
+              case('cylindrical')
+                structured_grid_itype = CYLINDRICAL_GRID
+              case('spherical')
+                structured_grid_itype = SPHERICAL_GRID
+              case default
+                structured_grid_itype = CARTESIAN_GRID
+                structured_grid_ctype = 'cartesian'
+            end select
+          case default
+            option%io_buffer = 'Discretization type: ' // &
+                               trim(discretization%ctype) // &
+                               ' not recognized.'
             call printErrMsg(option)
-          endif
-        case('BOUNDS')
-          select case(discretization%itype)
-            case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-              grid => discretization%grid
-
-              ! read first line and we will split off the legacy approach vs. new
-              call InputReadFlotranString(input,option)
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or Min Coordinate')
-              string = input%buf
-
-              do i = 1, 3
-                call InputReadDouble(input,option,tempreal)
-                if (input%ierr /= 0) exit
-              enddo
-
-              input%ierr = 0
-              input%buf = string
-
-              if (i == 3) then ! only 2 successfully read
-                if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                    grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
-                    grid%structured_grid%itype == SPHERICAL_GRID) then
-!geh                  call InputReadFlotranString(input,option) ! x-direction
-!geh                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
-                  call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
-                  call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
-                  call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
-                  call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
-                endif
-                if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                  call InputReadFlotranString(input,option) ! y-direction
-                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
-                  call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
-                  call InputErrorMsg(input,option,'Lower Y','BOUNDS')
-                  call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
-                  call InputErrorMsg(input,option,'Upper Y','BOUNDS')
-                else
-                  grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                  grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-                endif
-                if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
-                    grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                  call InputReadFlotranString(input,option) ! z-direction
-                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
-                  call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
-                  call InputErrorMsg(input,option,'Lower Z','BOUNDS')
-                  call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
-                  call InputErrorMsg(input,option,'Upper Z','BOUNDS')
-                else
-                  grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                  grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-                endif
-              else ! new min max coordinate approach
-                select case(grid%structured_grid%itype)
-                  case(CARTESIAN_GRID)
-                    i = 3
-                  case(CYLINDRICAL_GRID)
-                    i = 2
-                  case(SPHERICAL_GRID)
-                    i = 1
-                end select
-                call InputReadNDoubles(input,option, &
-                                       grid%structured_grid%bounds(:,LOWER), &
-                                       i)
-                call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
-                call InputReadFlotranString(input,option)
-                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,MAX COORDINATE')
-                call InputReadNDoubles(input,option, &
-                                       grid%structured_grid%bounds(:,UPPER), &
-                                       i)
-                call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
-                if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                  grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
-                  grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
-                endif
-                if (grid%structured_grid%itype == SPHERICAL_GRID) then
-                  grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
-                  grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
-                endif
-              endif
-              call InputReadFlotranString(input,option)
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,END')
-              if (.not.(InputCheckExit(input,option))) then
-                if (OptionPrintToScreen(option)) then
-                  if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                    print *, 'BOUNDS card for a cartesian structured grid must include ' // &
-                             '4 lines.  I.e.'
-                    print *, 'BOUNDS'
-                    print *, '  x_min  y_min  z_min'
-                    print *, '  x_max  y_max  z_max'
-                    print *, 'END'
-                  else if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                    print *, 'BOUNDS card for a cylindrical structured grid must include ' // &
-                             '4 lines.  I.e.'
-                    print *, 'BOUNDS'
-                    print *, '  r_min  z_min'
-                    print *, '  r_max  z_max'
-                    print *, 'END'
-                  else if (grid%structured_grid%itype == SPHERICAL_GRID) then
-                    print *, 'BOUNDS card for a spherical structured grid must include ' // &
-                             '4 lines.  I.e.'
-                    print *, 'BOUNDS'
-                    print *, '  r_min'
-                    print *, '  r_max'
-                    print *, 'END'
-                  endif
-                endif
-                stop
-              endif            
-              discretization%origin(X_DIRECTION) = grid%structured_grid%bounds(X_DIRECTION,LOWER)
-              discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
-              discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-           case(AMR_GRID)
-              call InputSkipToEND(input,option,word) 
-          end select
-        case ('GRAVITY')
-          call InputReadDouble(input,option,option%gravity(X_DIRECTION))
-          call InputErrorMsg(input,option,'x-direction','GRAVITY')
-          call InputReadDouble(input,option,option%gravity(Y_DIRECTION))
-          call InputErrorMsg(input,option,'y-direction','GRAVITY')
-          call InputReadDouble(input,option,option%gravity(Z_DIRECTION))
-          call InputErrorMsg(input,option,'z-direction','GRAVITY')
-          if (option%myrank == option%io_rank .and. &
-              option%print_to_screen) &
-            write(option%fid_out,'(/," *GRAV",/, &
-              & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
-              & )') option%gravity(1:3)
-        case ('INVERT_Z')
-          if (associated(grid%structured_grid)) then
-            grid%structured_grid%invert_z_axis = PETSC_TRUE
-          endif          
-        case default
-          option%io_buffer = 'Keyword: ' // trim(word) // &
-                   ' not recognized in DISCRETIZATION, second read.'
-          call printErrMsg(option)          
-      end select 
-    endif
-  
+        end select    
+      case('NXYZ')
+        call InputReadInt(input,option,nx)
+        call InputErrorMsg(input,option,'nx','GRID')
+        call InputReadInt(input,option,ny)
+        call InputErrorMsg(input,option,'ny','GRID')
+        call InputReadInt(input,option,nz)
+        call InputErrorMsg(input,option,'nz','GRID')
+        if (structured_grid_itype /= CARTESIAN_GRID) then
+          ny = 1 ! cylindrical and spherical have 1 cell in Y
+          if (structured_grid_itype /= CYLINDRICAL_GRID) nz = 1 ! spherical has 1 cell in Z
+        endif
+      case('ORIGIN')
+        call InputReadDouble(input,option,discretization%origin(X_DIRECTION))
+        call InputErrorMsg(input,option,'X direction','Origin')
+        call InputReadDouble(input,option,discretization%origin(Y_DIRECTION))
+        call InputErrorMsg(input,option,'Y direction','Origin')
+        call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
+        call InputErrorMsg(input,option,'Z direction','Origin')        
+      case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX')
+      case('DXYZ','BOUNDS')
+        call InputSkipToEND(input,option,word) 
+      case default
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                 ' not recognized in DISCRETIZATION, first read.'
+        call printErrMsg(option)          
+    end select 
   enddo  
 
-  if (first_time) then ! first time read
-    select case(discretization%itype)
-      case(NULL_GRID)
-        option%io_buffer = 'Discretization type not defined under ' // &
-                           'keyword GRID.' 
-        call printErrMsg(option)
-      case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-        grid => GridCreate()
-        select case(discretization%itype)
-          case(UNSTRUCTURED_GRID)
-            un_str_grid => UGridCreate()
-            if (index(filename,'.h5') > 0) then
-#if defined SAMR_HAVE_HDF5
-              option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not ' // &
-                'incorporated yet'
-              call printErrMsg(option)
+  select case(discretization%itype)
+    case(NULL_GRID)
+      option%io_buffer = 'Discretization type not defined under ' // &
+                         'keyword GRID.' 
+      call printErrMsg(option)
+    case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      grid => GridCreate()
+      select case(discretization%itype)
+        case(UNSTRUCTURED_GRID)
+          un_str_grid => UGridCreate()
+          if (index(discretization%filename,'.h5') > 0) then
+#if !defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+            option%io_buffer = 'PFLOTRAN must be built with HDF5 ' // &
+              'support to read unstructured grid .h5 files'
+            call printErrMsg(option)
+#elif defined SAMR_HAVE_HDF5
+            option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not ' // &
+              'incorporated yet'
+            call printErrMsg(option)
 #else
 
 #ifdef PARALLELIO_LIB
-              call UGridReadHDF5PIOLib(un_str_grid,filename,option)
+            call UGridReadHDF5PIOLib(un_str_grid,discretization%filename,option)
 #else
-              call UGridReadHDF5(un_str_grid,filename,option)
+            call UGridReadHDF5(un_str_grid,discretization%filename,option)
 #endif ! #ifdef PARALLELIO_LIB
 
 #endif ! #ifndef SAMR_HAVE_HDF5
-            else
-              call UGridRead(un_str_grid,filename,option)
-            endif
-            grid%unstructured_grid => un_str_grid
-          case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
-            if (nx*ny*nz <= 0) &
-              call printErrMsg(option,'NXYZ not set correctly for structured grid.')
-            str_grid => StructuredGridCreate()
-            str_grid%nx = nx
-            str_grid%ny = ny
-            str_grid%nz = nz
-            str_grid%nxy = str_grid%nx*str_grid%ny
-            str_grid%nmax = str_grid%nxy*str_grid%nz
-            grid%structured_grid => str_grid
-            grid%nmax = str_grid%nmax
-            grid%structured_grid%itype = structured_grid_itype
-            grid%structured_grid%ctype = structured_grid_ctype
-        end select
-        discretization%grid => grid
-        grid%itype = discretization%itype
-        grid%ctype = discretization%ctype
-      case(AMR_GRID)
-         amrgrid=>discretization%amrgrid
-         call AMRGridInitialize(amrgrid)
-    end select
+          else
+            call UGridRead(un_str_grid,discretization%filename,option)
+          endif
+          grid%unstructured_grid => un_str_grid
+        case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
+          if (nx*ny*nz <= 0) &
+            call printErrMsg(option,'NXYZ not set correctly for structured grid.')
+          str_grid => StructuredGridCreate()
+          str_grid%nx = nx
+          str_grid%ny = ny
+          str_grid%nz = nz
+          str_grid%nxy = str_grid%nx*str_grid%ny
+          str_grid%nmax = str_grid%nxy*str_grid%nz
+          grid%structured_grid => str_grid
+          grid%nmax = str_grid%nmax
+          grid%structured_grid%itype = structured_grid_itype
+          grid%structured_grid%ctype = structured_grid_ctype
+      end select
+      discretization%grid => grid
+      grid%itype = discretization%itype
+      grid%ctype = discretization%ctype
+    case(AMR_GRID)
+       amrgrid=>discretization%amrgrid
+       call AMRGridInitialize(amrgrid)
+  end select
 
-  else
-    select case(discretization%itype)
-      case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-        if (discretization%grid%structured_grid%invert_z_axis) then
-          option%gravity(Z_DIRECTION) = -1.d0*option%gravity(Z_DIRECTION)
+end subroutine DiscretizationReadRequiredCards
+
+! ************************************************************************** !
+!
+! DiscretizationRead: Reads a discretization from the input file
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine DiscretizationRead(discretization,input,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use AMR_Grid_module
+
+  implicit none
+
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  type(discretization_type),pointer :: discretization
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid, grid2
+  type(structured_grid_type), pointer :: str_grid
+  type(unstructured_grid_type), pointer :: un_str_grid
+  type(amrgrid_type), pointer :: amrgrid
+  character(len=MAXWORDLENGTH) :: structured_grid_ctype
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+
+  PetscInt :: structured_grid_itype
+  PetscInt :: nx, ny, nz
+  PetscInt :: i
+  PetscReal :: tempreal
+
+  nx = 0
+  ny = 0
+  nz = 0
+
+! we initialize the word to blanks to avoid error reported by valgrind
+  word = ''
+
+  do
+  
+    call InputReadFlotranString(input,option)
+    if (input%ierr /= 0) exit
+
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','GRID')
+    call StringToUpper(word)
+      
+    select case(trim(word))
+      case('TYPE','NXYZ','ORIGIN','FILE')
+      case('DXYZ')
+        select case(discretization%itype)
+          case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+            call StructuredGridReadDXYZ(discretization%grid%structured_grid,input,option)
+          case(AMR_GRID)
+            call AMRGridReadDXYZ(discretization%amrgrid,input,option)
+          case default
+            call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
+        end select
+        call InputReadFlotranString(input,option) ! read END card
+        call InputReadStringErrorMsg(input,option,'DISCRETIZATION,DXYZ,END')
+        if (.not.(InputCheckExit(input,option))) then
+          option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
+                   '(one for each grid direction or NX+NY+NZ entries)'
+          call printErrMsg(option)
         endif
-    end select
-  endif
+      case('BOUNDS')
+        select case(discretization%itype)
+          case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+            grid => discretization%grid
+
+            ! read first line and we will split off the legacy approach vs. new
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or Min Coordinate')
+            string = input%buf
+
+            do i = 1, 3
+              call InputReadDouble(input,option,tempreal)
+              if (input%ierr /= 0) exit
+            enddo
+
+            input%ierr = 0
+            input%buf = string
+
+            if (i == 3) then ! only 2 successfully read
+              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
+                  grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
+                  grid%structured_grid%itype == SPHERICAL_GRID) then
+!geh                  call InputReadFlotranString(input,option) ! x-direction
+!geh                  call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
+                call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
+                call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
+              endif
+              if (grid%structured_grid%itype == CARTESIAN_GRID) then
+                call InputReadFlotranString(input,option) ! y-direction
+                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
+                call InputErrorMsg(input,option,'Lower Y','BOUNDS')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
+                call InputErrorMsg(input,option,'Upper Y','BOUNDS')
+              else
+                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+              endif
+              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
+                  grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                call InputReadFlotranString(input,option) ! z-direction
+                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
+                call InputErrorMsg(input,option,'Lower Z','BOUNDS')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
+                call InputErrorMsg(input,option,'Upper Z','BOUNDS')
+              else
+                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
+              endif
+            else ! new min max coordinate approach
+              select case(grid%structured_grid%itype)
+                case(CARTESIAN_GRID)
+                  i = 3
+                case(CYLINDRICAL_GRID)
+                  i = 2
+                case(SPHERICAL_GRID)
+                  i = 1
+              end select
+              call InputReadNDoubles(input,option, &
+                                     grid%structured_grid%bounds(:,LOWER), &
+                                     i)
+              call InputErrorMsg(input,option,'Minimum Coordinate','BOUNDS')
+              call InputReadFlotranString(input,option)
+              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,MAX COORDINATE')
+              call InputReadNDoubles(input,option, &
+                                     grid%structured_grid%bounds(:,UPPER), &
+                                     i)
+              call InputErrorMsg(input,option,'Maximum Coordinate','BOUNDS')
+              if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                grid%structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+                grid%structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+              endif
+              if (grid%structured_grid%itype == SPHERICAL_GRID) then
+                grid%structured_grid%bounds(Z_DIRECTION,LOWER) = 0.d0
+                grid%structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
+              endif
+            endif
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,END')
+            if (.not.(InputCheckExit(input,option))) then
+              if (OptionPrintToScreen(option)) then
+                if (grid%structured_grid%itype == CARTESIAN_GRID) then
+                  print *, 'BOUNDS card for a cartesian structured grid must include ' // &
+                           '4 lines.  I.e.'
+                  print *, 'BOUNDS'
+                  print *, '  x_min  y_min  z_min'
+                  print *, '  x_max  y_max  z_max'
+                  print *, 'END'
+                else if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                  print *, 'BOUNDS card for a cylindrical structured grid must include ' // &
+                           '4 lines.  I.e.'
+                  print *, 'BOUNDS'
+                  print *, '  r_min  z_min'
+                  print *, '  r_max  z_max'
+                  print *, 'END'
+                else if (grid%structured_grid%itype == SPHERICAL_GRID) then
+                  print *, 'BOUNDS card for a spherical structured grid must include ' // &
+                           '4 lines.  I.e.'
+                  print *, 'BOUNDS'
+                  print *, '  r_min'
+                  print *, '  r_max'
+                  print *, 'END'
+                endif
+              endif
+              stop
+            endif            
+            discretization%origin(X_DIRECTION) = grid%structured_grid%bounds(X_DIRECTION,LOWER)
+            discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+            discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
+         case(AMR_GRID)
+            call InputSkipToEND(input,option,word) 
+        end select
+      case ('GRAVITY')
+        call InputReadDouble(input,option,option%gravity(X_DIRECTION))
+        call InputErrorMsg(input,option,'x-direction','GRAVITY')
+        call InputReadDouble(input,option,option%gravity(Y_DIRECTION))
+        call InputErrorMsg(input,option,'y-direction','GRAVITY')
+        call InputReadDouble(input,option,option%gravity(Z_DIRECTION))
+        call InputErrorMsg(input,option,'z-direction','GRAVITY')
+        if (option%myrank == option%io_rank .and. &
+            option%print_to_screen) &
+          write(option%fid_out,'(/," *GRAV",/, &
+            & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
+            & )') option%gravity(1:3)
+      case ('MAX_CELLS_SHARING_A_VERTEX')
+        if (associated(discretization%grid%unstructured_grid)) then
+          call InputReadInt(input,option,discretization%grid% &
+                            unstructured_grid%max_cells_sharing_a_vertex)
+          call InputErrorMsg(input,option,'max_cells_sharing_a_vertex', &
+                             'GRID')
+        endif          
+      case ('INVERT_Z')
+      case default
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                 ' not recognized in DISCRETIZATION, second read.'
+        call printErrMsg(option)          
+    end select 
+  enddo  
+
+  select case(discretization%itype)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      if (discretization%grid%structured_grid%invert_z_axis) then
+        option%gravity(Z_DIRECTION) = -1.d0*option%gravity(Z_DIRECTION)
+      endif
+  end select
 
 end subroutine DiscretizationRead
 
@@ -534,9 +589,10 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                 ndof,stencil_width,option)
   endif
 
+
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      ! this function must be called to set up str_grid%nxs, etc.
+      ! this function must be called to set up str_grid%lxs, etc.
       call StructGridComputeLocalBounds(discretization%grid%structured_grid, &
                                         discretization%dm_1dof%sgdm)    
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax
@@ -547,7 +603,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(AMR_GRID)
       call AMRGridComputeLocalBounds(discretization%amrgrid)
   end select
-  
+
 end subroutine DiscretizationCreateDMs
 
 ! ************************************************************************** !
@@ -605,7 +661,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
   type(dm_ptr_type), pointer :: dm_ptr
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
-  
+
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       select case (vector_type)
@@ -680,7 +736,6 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
       DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
       DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
-
   end select  
   
 end function DiscretizationGetDMPtrFromIndex
@@ -1285,6 +1340,10 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
       call DMDANaturalToGlobalBegin(dm_ptr%sgdm,natural_vec,INSERT_VALUES,global_vec,ierr)
       call DMDANaturalToGlobalEnd(dm_ptr%sgdm,natural_vec,INSERT_VALUES,global_vec,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_ntog,natural_vec,global_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_ntog,natural_vec,global_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
   end select
   
 end subroutine DiscretizationNaturalToGlobal
@@ -1771,6 +1830,31 @@ end subroutine DiscretizNaturalToGlobalEnd
 
 ! ************************************************************************** !
 !
+! DiscretizationUpdateTVDGhosts: Updates tvd extended ghost cell values
+! author: Glenn Hammond
+! date: 02/04/12
+!
+! ************************************************************************** !
+subroutine DiscretizationUpdateTVDGhosts(discretization,global_vec, &
+                                         tvd_ghost_vec)
+
+  implicit none
+  
+  type(discretization_type) :: discretization
+  Vec :: global_vec
+  Vec :: tvd_ghost_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  
+  call VecScatterBegin(discretization%tvd_ghost_scatter,global_vec, &
+                       tvd_ghost_vec,INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(discretization%tvd_ghost_scatter,global_vec, &
+                       tvd_ghost_vec,INSERT_VALUES,SCATTER_FORWARD,ierr)
+  
+end subroutine DiscretizationUpdateTVDGhosts
+
+! ************************************************************************** !
+!
 ! DiscretizationDestroy: Deallocates a discretization
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1835,6 +1919,9 @@ subroutine DiscretizationDestroy(discretization)
         call MFDAuxDestroy(discretization%MFD) 
   nullify(discretization%MFD)
 
+  if (discretization%tvd_ghost_scatter /= 0) &
+    call VecScatterDestroy(discretization%tvd_ghost_scatter)
+  
 end subroutine DiscretizationDestroy
  
 end module Discretization_module

@@ -317,39 +317,72 @@ Capillary pressure is related to saturation by various
 phenomenological relations, one of which is the van Genuchten 
 (1980) relation 
 \EQ\label{seff}
-s_l^{\rm eff} \eq \left[1+\left( \alpha |P_c| \right)^n 
+s_e \eq \left[1+\left( \frac{p_c}{p_c^0} \right)^n 
 \right]^{-m}, 
 \EN 
-where $P_c$ represents the capillary pressure [Pa], and $s_l^{\rm 
-eff}$ is defined by 
+where $p_c$ represents the capillary pressure [Pa], and the effective saturation $s_e$ is defined by 
 \EQ 
-s_l^{\rm eff} \eq \frac{s_l - s_l^r}{s_l^0 - s_l^r}, 
+s_e \eq \frac{s - s_r}{s_0 - s_r}, 
 \EN 
-where $s_l^r$ denotes the residual saturation, and $s_l^0$ denotes 
-the maximum saturation. The quantity $n$ is related to $m$ by 
-the expression 
-\EQ\label{lambda} 
-m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
-\EN 
- 
-Relative permeability for the liquid phase is given by the expression \EQ\label{krl} 
-k_{rl} \eq \sqrt{s_l^{\rm eff}} \left\{1 - \left[1- \left( s_l^{\rm 
-eff} \right)^{1/m} \right]^m \right\}^2, 
-\EN 
-and for the gas phase by 
-\EQ 
-k_{rg} \eq 1 - k_{rl}. 
-\EN 
+where $s_r$ denotes the residual saturation, and $s_0$ denotes 
+the maximum saturation. 
+The inverse relation is given by
+\EQ
+p_c \eq p_c^0 \left(s_e^{-1/m}-1\right)^{1/n}.
+\EN
+The quantities $m$, $n$ and $p_c^0$ are impirical constants determined by fitting to experimental data.
 
-\subsubsection{Brook-Corey Functions} 
- 
-The Brook-Corey functions for relative permeability are defined by  
-\EQ\label{corey} 
-k_{rl} \eq s_*^4, \ \ \ k_{rg} \eq (1-s_*^2)(1-s_*)^2, \ \ \ s_* 
-\eq \frac{s_l - s_l^r}{1-s_l^r-s_g^r}. 
+\subsubsection{Brook-Corey Saturation Function} 
+
+The Brook-Corey saturation function is a limiting form of the van Genuchten relation for $p_c/p_c^0 \gg 1$, with the form
+\EQ
+s_e \eq \left(\frac{p_c}{p_c^0}\right)^{-\lambda},
+\EN
+with $\lambda=mn$ and inverse relation
+\EQ
+p_c \eq p_c^0 s_e^{-1/\lambda}.
+\EN
+
+\subsubsection{Relative Permeability}
+
+Two forms of the relative permeability function are implemented based on the Mualem and Burdine formulations.
+The quantity $n$ is related to $m$ by 
+the expression 
+\EQ\label{lambda_mualem} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}, 
 \EN 
-Capillary pressure is not incorporated in the Brook-Corey functions. 
- 
+for the Mualem formulation and by
+\EQ\label{lambda_burdine} 
+m \eq 1-\frac{2}{n}, \ \ \ \ \ n \eq \frac{2}{1-m}, 
+\EN 
+for the Burdine formulation.
+
+For the Mualem relative permeability function based on the van Genuchten saturation function is given by the expression 
+\EQ\label{krl_mualem} 
+k_{r} \eq \sqrt{s_e} \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \right\}^2. 
+\EN 
+%and for the gas phase by 
+%\EQ 
+%k_{rg} \eq 1 - k_{rl}. 
+%\EN 
+
+The Mualem relative permeability function based on the Brook-Corey saturation function is defined by 
+\BA
+k_r &\eq \big(s_e\big)^{5/2+2/\lambda},\\
+&\eq \big(p_c/p_c^0\big)^{-(5\lambda/2+2)}.
+\EA
+
+For the Burdine formulation
+\EQ\label{krl_burdine} 
+k_{r} \eq s_e^2 \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \right\}. 
+\EN 
+The Burdine relative permeability function based on the Brooks-Corey saturation function has the form
+\BA
+k_r &\eq \big(s_e\big)^{2+3/\lambda},\\
+&\eq \left(\frac{p_c}{p_c^0}\right)^{-(2+3\lambda)}.
+\EA
+
+\begin{comment}
 \subsubsection{Linear} 
  
 The linear relation is defined by 
@@ -357,7 +390,46 @@ The linear relation is defined by
 k_{rl} \eq s_*, \ \ \ k_{rg} \eq 1-k_{rl}, \ \ \ s_* \eq \frac{s_l 
 - s_l^r}{1-s_l^r}. 
 \EN 
- 
+\end{comment}
+
+\subsubsection{Smoothing}
+
+At the end points of the saturation and relative permeability functions it is sometimes necessary to smooth the functions in order for the Newton-Raphson equations to converge. This is accomplished using a third order polynomial interpolation by matching the values of the function to be fit (capillary pressure or relative permeability), and imposing zero slope at the fully saturated end point and matching the derivative at a chosen variably saturated point that is close to fully saturated. The resulting equations for coefficients $a_i$, $i=0-3$, are given by
+\begin{subequations}
+\BA
+a_0 + a_1 x_1 + a_2 x_1^2 + a_3 x_1^3 &\eq f_1,\\
+a_0 + a_1 x_2 + a_2 x_2^2 + a_3 x_2^3 &\eq f_1,\\
+a_1 x_1 + a_2 x_1^2 + a_3 x_1^3 &\eq f_1',\\
+a_1 x_2 + a_2 x_2^2 + a_3 x_2^3 &\eq f_2',
+\EA
+\end{subequations}
+for chosen points $x_1$ and $x_2$. In matrix form these equations become
+\EQ
+\begin{bmatrix}
+1 & x_1 & x_1^2 & x_1^3\\
+1 & x_2 & x_2^2 & x_2^3\\
+0 & 1 & 2x_1 & 3x_1^2\\
+0 & 1 & 2x_2 & 3x_2^2
+\end{bmatrix}
+\begin{bmatrix}
+a_0\\
+a_1\\
+a_2\\
+a_3
+\end{bmatrix}
+\eq
+\begin{bmatrix}
+f_1\\
+f_2\\
+f_1'\\
+f_2'
+\end{bmatrix}.
+\EN
+The conditions imposed on the smoothing equations for capillary pressure $f=s_e(p_c)$ are 
+$x_1=2 p_c^0$, $x_2=p_c^0/2$, $f_1 = (s_e)_1$, $f_2 = 1$, $f_1' = (s_e')_1$, $f_2' = 0$.
+For relative permeability $f=k_r(s_e)$, $x_1 = 1$, $x_2 = 0.99$, $f_1 = 1$, $f_2 = (k_r)_2$, $f_1' = 0$, $f_2' = (k_r')_2$. 
+
+\begin{comment}
 \subsection{Kelvin's Equations for Vapor Pressure Lowering} 
  
 Vapor pressure lowering resulting from capillary suction is 
@@ -369,6 +441,7 @@ where $P_v$ represents the vapor pressure, $P_{\rm sat}$ the
 saturation pressure of pure water, $T$ denotes the absolute 
 temperature and $R$ denotes the gas constant. Note that the density 
 of the liquid phase, $n_l$, is represented on a molar basis. 
+\end{comment}
 
 \subsection{Mode: {\tt MPHASE}}
 
@@ -536,7 +609,96 @@ w_i \eq \frac{M_i}{M} \eq \frac{W_i n_i}{\sum W_l n_l} \eq \frac{W_i x_i}{\sum W
 
 \subsection{Mode: {\tt IMMIS}}
 
-The {\tt IMMIS} mode applies to multiple immiscible phases.
+The {\tt IMMIS} mode applies to multiple completely immiscible phases.
+The code PIMS, parallel immiscible multiphase flow simulator, is a simplified version of the  MPHASE mode in which the dependency on thermodynamic relations have been removed, since for immiscible systems the solubility is identically zero for each component. In this case the number of components is equal to the number of phases, or degrees of freedom associated with each node for an isothermal system. The immiscible property removes the variable switching strategy used in MPHASE, which may be the most numerically difficult part of PFLOTRAN, and may cause problems for multi-level solvers. 
+%The code PMIS, parallel miscible single phase flow, applies to a completely miscible multicomponent single phase system.
+
+The governing equations solved by PIMS are given by
+\EQ\label{mass}
+\frac{\p}{\p t}\big(\varphi\rho_\a^{} s_\a^{}\big) + \bnabla\cdot \big(\rho_\a^{} \bq_\a \big) \eq Q_\a,
+\EN
+where the subscript $\a$ denotes an immiscible phase.
+\begin{comment}
+, and for PMIS
+\EQ\label{massmis}
+\frac{\p}{\p t}\big(\varphi\rho x_i^{}\big) + \bnabla\cdot \big(\rho \bq x_i \big) \eq Q_i,
+\EN
+for the $i$th component in a single phase system.
+\end{comment}
+In this equation $\varphi$ is porosity, $s_\a$, $\rho_\a$ refer to the $\a$th phase saturation and density, respectively, $\bq_\a$ is the Darcy velocity of the $\a$th phase given by
+\EQ
+\bq_\a \eq -\frac{kk_\a}{\mu_\a} \big(\bnabla p-\rho_\a g \hat\bz\big), 
+\EN
+with permeability $k$, relative permeability $k_\a$, fluid viscosity $\mu_\a$, and $Q_\a$ is the source/sink term.  
+The selection of primary variables are pressure $p$ and $n\!-\!1$ independent phase saturation variables $s_\a, \a=1,...,n\!-\!1$ with
+\EQ
+\sum_{\a=1}^n s_\a = 1.
+\EN
+The mass conservation equations are coupled to the energy balance equation given by
+\EQ
+\frac{\p}{\p t} \Big(\varphi\sum_\a s_\a\rho_\a U_\a + (1-\varphi) \rho_r C_r T\Big) + \bnabla\cdot\Big(\sum_\a\rho_\a\bq_\a H_\a - \kappa\bnabla T\Big) \eq Q_e,
+\EN
+where $U_\a$, $H_\a$ denote the internal energy and enthalpy of the $\a$th fluid phase, $\kappa$ denotes the thermal conductivity of the bulk porous medium, $\rho_r$, $C_r$ denote the rock density and heat capacity, and $T$ refers to the temperature.
+%, if incompressibility of all phases or one of them is assumed. In this case, the reference pressure has to be specified as a boundary condition.
+%The primary variables also could be $s_i, i=1,...,n$, if suitable EOS are applied to every phases. Then the second type BC could be assigned to all boundaries.
+Thus the number of equations is equal to number of phases plus one, which is equal to the number of unknowns: ($p$, $T$, $s_1$, \ldots, $s_{n-1}$).
+
+\subsection{Mode: {\tt MISCIBLE}}
+
+The miscible mode applies to a mixture of water and proplyene glycol. In terms of molar density for the mixture $\eta$ and mole fractions $x_i$, $i$=1 (water), $i$=2 (proplyene glycol), the mass conservation equations have the form
+\EQ
+\frac{\p}{\p t} \varphi \eta x_i + \bnabla\cdot\left[\bq\eta x_i - \varphi D \eta \bnabla x_i\right] \eq Q_i,
+\EN
+with source/sink term $Q_i$. It should be noted that the mass- and mole-fraction formulations of the conservation equations are not exactly equivalent. This is due to the diffusion term which gives an extra term when transformed from the mole-fraction  to mass-fraction gradient.
+
+The molar density $\eta$ is related to the mass density by
+\EQ
+\eta \eq W^{-1} \rho,
+\EN
+and
+\EQ
+W_i\eta x_i \eq \rho y_i.
+\EN
+It follows that
+\EQ
+W_i \eta \bnabla x_i \eq \rho \bnabla y_i + \rho y_i \bnabla \ln W.
+\EN
+The second term on the right-hand side is ignored.
+
+Simple equations of state are provided for density [g/cm$^3$], viscosity [Pa s], and diffusivity [m$^2$/s] given by
+\EQ
+\rho(y_1) \eq \Big(\big((0.0806 y_1 - 0.203) y_1 + 0.0873\big) y_1 + 1.0341\Big)10^3,
+\EN
+\EQ
+\mu(y_1) \eq 10^{(1.6743 y_1 - 0.0758)} 10^{-3},
+\EN
+and
+\EQ
+D(y_1) \eq \Big(\big(((-4.021 y_1 + 9.1181) y_1 - 5.9703) y_1 
+     + 0.4043\big) y_1 + 0.5687\Big) 10^{-9},
+\EN
+with mass fraction of water $y_1$. The mass fraction is related to mole fraction according to
+\EQ
+y_1 = \frac{x_1 W_{\rm H_2O}}{W},
+\EN
+where the mean formula weight $W$ is given by
+\EQ
+W = x_1 W_{\rm H_2O} + x_2 W_{\rm GLYC},
+\EN
+with formula weights for water and proplyene glycol equal to $W_{\rm H_2O}$ = 18.01534 and $W_{\rm GLYC}$ = 76.09 [kg/kmol].
+
+Global mass conservation satisfies the relation
+\EQ
+\frac{d}{dt}M_i \eq -\int\bF_i\cdot\bdS + \int Q_i dV,
+\EN
+with
+\EQ
+M_i \eq \int \varphi \eta x_i dV.
+\EN
+In terms of mass fractions and mass density
+\EQ
+M_i^m \eq W_i M_i \eq \int \varphi \rho y_i dV.
+\EN
 
 \subsection{Mode: {\tt Air-Water}}
 
@@ -638,7 +800,10 @@ Diffusion is assumed to be species independent, but may be different for differe
 \EN
 with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$. The diffusivity/dispersivity tensor $\bD_\a$ is the sum of contributions from molecular diffusion and dispersion which for an isotropic medium has the form
 \EQ
-\bD_\a \eq \varphi s \Big(\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v}\Big),
+\bD_\a \eq %\varphi s 
+%\Big(
+\tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v},
+%\Big),
 \EN
 with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. The temperature dependence of the diffusion coefficient is defined through the relation
 \EQ
@@ -2261,6 +2426,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 
+\item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
 \item[LOG\_FORMULATION]
 \item[NO\_CHECKPOINT\_ACT\_COEFS]
@@ -2609,7 +2775,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[FLUX] {\tt [dirichlet, neumann, mass\_rate, hydrostatic, conductance,  \linebreak zero\_gradient, production\_well, seepage, volumetric, \linebreak volumetric\_rate, equilibrium]}
 \item[TEMPERATURE] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \item[CONCENTRATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
-\item[SATURATION] {\tt [dirichlet, hydrostatic, zero\_gradient]}
+\item[SATURATION] {\tt [dirichlet]}
 \item[ENTHALPY (H)] {\tt [dirichlet, hydrostatic, zero\_gradient]}
 \end{deflist}
 \item[(., /, END)]
@@ -2641,7 +2807,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[RATE] \ {\tt Value}
 \item[FLUX, VELOCITY, VEL] \ {\tt <float>}
 \item[CONC, CONCENTRATION] \ {\tt <float>}
-\item[SATURATION] \ {\tt <float>}
+\item[SAT,SATURATION] \ {\tt <float>}
 \item[CONDUCTANCE] \ {\tt <float>}
 %\item[CONSTRAINT\_LIST]
 \end{deflist}
@@ -2668,7 +2834,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \bf PRESSURE & Specifies the type of pressure condition.\\
  \bf TEMPERATURE & Specifies the type of temperature condition.\\
     \bf CONCENTRATION & Specifies the type of concentration condition.\\
-    \bf SATURATION & Specifies the type of concentration condition.\\
+    \bf SATURATION & Specifies the type of saturation condition.\\
     \bf ENTHALPY & Specifies the type of enthalpy condition.\\
     \bf END & Terminates type entry.\\
 \midrule\midrule
@@ -2684,7 +2850,7 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \bf FLUX & Darcy velocity of fluid defining flux across a boundary.\\
 \bf TEMPERATURE & Temperature in $^\circ$C at the datum.\\
 \bf CONCENTRATION & Solute concentration at the datum.\\
-\bf SATURATION & Solute concentration at the datum.\\
+\bf SATURATION & Solute saturation at the datum.\\
 \bf ENTHALPY & Enthalpy at the datum.\\
 \bf CONSTRAINT\_LIST & Specifies a list of concentration constraints for solute transport.\\
 \bf END & Terminates the condition entry.\\
@@ -2827,6 +2993,28 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 \end{description}
 \end{description}
 
+\noindent
+{\bf Format of unstructured grid file:}
+\begin{verbatim}
+! 
+! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
+! vertn(H) = 8
+! vertn(T) = 4
+! vertn(W) = 6
+! vertn(P) = 5
+! -----------------------------------------------------------------
+! num_cells num_vertices  (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 1 (integers)
+! type vert1 vert2 vert3 ... vertn  ! for cell 2
+! ...
+! ...
+! type vert1 vert2 vert3 ... vertn  ! for cell num_cells
+! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
+! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
+! ...
+! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
+! -----------------------------------------------------------------
+\end{verbatim}
 \noindent
 {\bf Examples:}
 \begin{verbatim}
@@ -3141,8 +3329,9 @@ MODE THC
 \item[DTOL]
 \item[ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)]
 \item[ITOL\_UPDATE (INF\_TOL\_UPDATE)]
-\item[MAXIT]
+\item[MAXIT] Cuts time step if the number of iterations exceed this value
 \item[MAXF]
+\item[MAX\_NORM]  Cuts time step if the convergence norm exceeds this value. Only works for THC, MPHASE and MISCIBLE modes. 
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}

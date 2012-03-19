@@ -51,7 +51,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
   condition => coupler%flow_condition
 
   ! in this case, the saturation is stored within concentration dataset
-  saturation = condition%concentration%flow_dataset%time_series%cur_value(1)
+  saturation = condition%saturation%flow_dataset%time_series%cur_value(1)
 
   do iconn = 1, coupler%connection_set%num_connections
     local_id = coupler%connection_set%id_dn(iconn)
@@ -137,7 +137,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
     endif
 
     select case(option%iflowmode)
-      case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+      case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
         temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
@@ -204,7 +204,7 @@ subroutine SaturationUpdateCoupler(coupler,option,grid,saturation_functions, &
       endif
 
       select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+        case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
            temperature = temperature_at_datum + &
                       temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                       temperature_gradient(Y_DIRECTION)*dist_y + &

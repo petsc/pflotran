@@ -52,9 +52,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: logK(:)
-#ifdef chuan_hpt
     PetscReal, pointer :: logKCoeff_hpt(:)
-#endif    
   end type database_rxn_type
 
   type, public :: mineral_type
@@ -143,6 +141,7 @@ module Reaction_Aux_module
     PetscInt :: free_site_id
     character(len=MAXWORDLENGTH) :: free_site_name
     PetscBool :: free_site_print_me
+    PetscBool :: site_density_print_me
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     character(len=MAXWORDLENGTH) :: colloid_name
@@ -233,15 +232,15 @@ module Reaction_Aux_module
     PetscBool :: print_act_coefs
     PetscBool :: print_total_component
     PetscBool :: print_free_ion
+    PetscBool :: print_total_bulk ! total in aq and sorbed phases
     PetscBool :: initialize_with_molality
     PetscBool :: print_age
+    PetscBool :: use_geothermal_hpt
     PetscInt :: print_free_conc_type
     PetscInt :: print_tot_conc_type
     PetscInt :: print_secondary_conc_type
     PetscInt :: num_dbase_temperatures
-#ifdef chuan_hpt
     PetscInt :: num_dbase_parameters
-#endif
     PetscReal, pointer :: dbase_temperatures(:)
     type(species_idx_type), pointer :: species_idx
 
@@ -321,6 +320,7 @@ module Reaction_Aux_module
     PetscBool, pointer :: eqionx_rxn_Z_flag(:)
     PetscInt, pointer :: eqionx_rxn_cation_X_offset(:)
     PetscReal, pointer :: eqionx_rxn_CEC(:)
+    PetscInt, pointer :: eqionx_rxn_to_surf(:)
     PetscReal, pointer :: eqionx_rxn_k(:,:)
     PetscInt, pointer :: eqionx_rxn_cationid(:,:)
 #if 0    
@@ -338,6 +338,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqsrfcplx_rxn_site_density(:) ! site density in mol/m^3 bulk
     PetscBool, pointer :: eqsrfcplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_site_names(:)
+    PetscBool, pointer :: eqsrfcplx_site_density_print(:)
     PetscBool, pointer :: eqsrfcplx_site_print(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_names(:)
     PetscBool, pointer :: eqsrfcplx_print(:)
@@ -459,7 +460,13 @@ module Reaction_Aux_module
     PetscReal :: max_dlnC
     PetscReal :: max_relative_change_tolerance
     PetscReal :: max_residual_tolerance
-
+    
+    PetscBool :: update_permeability
+    PetscBool :: update_tortuosity
+    PetscBool :: update_porosity
+    PetscReal :: minimum_porosity
+    PetscBool :: update_mineral_surface_area
+    
   end type reaction_type
 
   public :: ReactionCreate, &
@@ -558,6 +565,8 @@ function ReactionCreate()
   reaction%print_age = PETSC_FALSE
   reaction%print_total_component = PETSC_TRUE
   reaction%print_free_ion = PETSC_FALSE
+  reaction%print_total_bulk = PETSC_FALSE
+  reaction%use_geothermal_hpt = PETSC_FALSE
 
   reaction%initialize_with_molality = PETSC_FALSE
   reaction%print_free_conc_type = 0
@@ -594,6 +603,7 @@ function ReactionCreate()
   nullify(reaction%secondary_species_print)
   nullify(reaction%eqcplx_basis_print)
   nullify(reaction%gas_species_print)
+  nullify(reaction%eqsrfcplx_site_density_print)
   nullify(reaction%eqsrfcplx_site_print)
   nullify(reaction%eqsrfcplx_print)
   nullify(reaction%mnrl_print)
@@ -644,6 +654,7 @@ function ReactionCreate()
   nullify(reaction%eqionx_rxn_Z_flag)
   nullify(reaction%eqionx_rxn_cation_X_offset)
   nullify(reaction%eqionx_rxn_CEC)
+  nullify(reaction%eqionx_rxn_to_surf)
   nullify(reaction%eqionx_rxn_k)
   nullify(reaction%eqionx_rxn_cationid)
 #if 0  
@@ -700,10 +711,10 @@ function ReactionCreate()
 
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)
-  nullify(reaction%mnrlstoich)
   nullify(reaction%mnrlh2oid)
   nullify(reaction%mnrlstoich)
   nullify(reaction%mnrlh2ostoich)
+  nullify(reaction%mnrl_logK)
   nullify(reaction%mnrl_logKcoef)
 
   reaction%ncoll = 0
@@ -759,6 +770,12 @@ function ReactionCreate()
   reaction%max_dlnC = 5.d0
   reaction%max_relative_change_tolerance = 1.d-6
   reaction%max_residual_tolerance = 1.d-12
+
+  reaction%update_permeability = PETSC_FALSE
+  reaction%update_tortuosity = PETSC_FALSE
+  reaction%update_porosity = PETSC_FALSE
+  reaction%minimum_porosity = 0.d0
+  reaction%update_mineral_surface_area = PETSC_FALSE
 
   ReactionCreate => reaction
   
@@ -1056,6 +1073,7 @@ function SurfaceComplexationRxnCreate()
   srfcplxrxn%itype = SRFCMPLX_RXN_NULL
   srfcplxrxn%free_site_name = ''
   srfcplxrxn%free_site_print_me = PETSC_FALSE
+  srfcplxrxn%site_density_print_me = PETSC_FALSE
 
   srfcplxrxn%mineral_id = 0
   srfcplxrxn%mineral_name = ''
@@ -1767,7 +1785,7 @@ subroutine SpeciesIndexDestroy(species_idx)
     
   type(species_idx_type), pointer :: species_idx
 
-  deallocate(species_idx)  
+  if (associated(species_idx)) deallocate(species_idx)  
   nullify(species_idx)
 
 end subroutine SpeciesIndexDestroy
@@ -2440,6 +2458,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%gas_species_print)) &
     deallocate(reaction%gas_species_print)
   nullify(reaction%gas_species_print)
+  if (associated(reaction%eqsrfcplx_site_density_print)) &
+    deallocate(reaction%eqsrfcplx_site_density_print)
+  nullify(reaction%eqsrfcplx_site_density_print)
   if (associated(reaction%eqsrfcplx_site_print)) &
     deallocate(reaction%eqsrfcplx_site_print)
   nullify(reaction%eqsrfcplx_site_print)
@@ -2535,6 +2556,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%eqionx_rxn_cation_X_offset)) &
     deallocate(reaction%eqionx_rxn_cation_X_offset)
   nullify(reaction%eqionx_rxn_cation_X_offset)
+  if (associated(reaction%eqionx_rxn_to_surf)) &
+    deallocate(reaction%eqionx_rxn_to_surf)
+  nullify(reaction%eqionx_rxn_to_surf)
   if (associated(reaction%eqionx_rxn_CEC)) &
     deallocate(reaction%eqionx_rxn_CEC)
   nullify(reaction%eqionx_rxn_CEC)

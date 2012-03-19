@@ -23,7 +23,6 @@ type, public :: Miscible_auxvar_elem_type
  end type Miscible_auxvar_elem_type
 
   type, public :: Miscible_auxvar_type
-    
     type(Miscible_auxvar_elem_type), pointer :: aux_var_elem(:) 
   end type Miscible_auxvar_type
   
@@ -37,17 +36,17 @@ type, public :: Miscible_auxvar_elem_type
   type, public :: Miscible_type
      PetscInt :: n_zero_rows
      PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
-
      PetscBool :: aux_vars_up_to_date
      PetscBool :: inactive_cells_exist
-     PetscInt :: num_aux, num_aux_bc
+     PetscInt :: num_aux, num_aux_bc, num_aux_ss
      type(Miscible_parameter_type), pointer :: Miscible_parameter
      type(Miscible_auxvar_type), pointer :: aux_vars(:)
      type(Miscible_auxvar_type), pointer :: aux_vars_bc(:)
-     PetscReal , pointer :: Resold_AR(:,:)
-     PetscReal , pointer :: Resold_BC(:,:)
-     PetscReal , pointer :: Resold_FL(:,:)
-     PetscReal , pointer :: delx(:,:)
+     type(Miscible_auxvar_type), pointer :: aux_vars_ss(:)
+     PetscReal, pointer :: Resold_AR(:,:)
+     PetscReal, pointer :: Resold_BC(:,:)
+     PetscReal, pointer :: Resold_FL(:,:)
+     PetscReal, pointer :: delx(:,:)
   end type Miscible_type
 
   public :: MiscibleAuxCreate, MiscibleAuxDestroy, &
@@ -78,8 +77,10 @@ function MiscibleAuxCreate()
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+  nullify(aux%aux_vars_ss)
   aux%n_zero_rows = 0
   allocate(aux%Miscible_parameter)
   nullify(aux%Miscible_parameter%sir)
@@ -176,14 +177,20 @@ subroutine MiscibleAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine MiscibleAuxVarCopy
 
-
+! ************************************************************************** !
+!
+! Water_glycol_density: Computes water-propylene glycol mixture density 
+! author: Chuan Lu
+! date: 12/12/11
+!
+! ************************************************************************** !
 subroutine Water_glycol_density(y,p,dkg)
   implicit none
   PetscReal y, p ! water mass fraction
   PetscReal dkg
 
   dkg = ((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0
-  dkg = (4.49758d-10* y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
+  dkg = (4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
   dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
  
 end subroutine Water_glycol_density
@@ -253,8 +260,8 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   
   aux_var%den(1) = denw/aux_var%avgmw(1)
   
-! Glycol-Water mixture viscosity (y mass fraction water)
-  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3
+! Glycol-Water mixture viscosity (yh2o mass fraction water)
+  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3 ! centipoise to Pa s.
   aux_var%vis(1) = visw
   
   aux_var%sat(1) = 1.d0
@@ -263,7 +270,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   
 ! Glycol-Water mixture diffusivity (yh2o mass fraction water)
   aux_var%diff(2) = ((((-4.021d0*yh2o + 9.1181d0)*yh2o - 5.9703d0)*yh2o &
-     + 0.4043d0)*yh2o + 0.5687d0)*1.d-9
+     + 0.4043d0)*yh2o + 0.5687d0) * 1.d-9 ! m^2/s
   aux_var%diff(1) = aux_var%diff(2)
 
 ! aux_var%diff(1:option%nflowspec) = fluid_properties%diffusion_coefficient

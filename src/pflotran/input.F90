@@ -36,6 +36,20 @@ module Input_module
   interface InputReadInt
     module procedure InputReadInt1
     module procedure InputReadInt2
+#if defined(PETSC_USE_64BIT_INDICES) && (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64)
+    ! If PetscInt and PetscMPIInt have different sizes (occurs for some builds
+    ! with 64 bit indices), then we need to have additional routines for the 
+    ! InputReadInt() generic subroutine.  (We use the above check instead of 
+    ! directly checking to see if PetscInt and PetscMPIInt have the same size
+    ! because the size of PetscInt is not included in the 
+    ! $PETSC_DIR/$PETSC_ARCH/include/petscconf.h file.) If the two types have
+    ! the same size, then these additional routines for type PetscMPIInt must
+    ! *not* be defined, because then the interface becomes ambiguous, since 
+    ! Fortran doesn't know the difference between PetscInt and PetscMPIInt if
+    ! they are identically sized integers.  --RTM
+    module procedure InputReadInt3
+    module procedure InputReadInt4
+#endif
   end interface
   
   interface InputReadDouble
@@ -118,6 +132,7 @@ function InputCreate(fid,filename)
 
   open(unit=input%fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
+    if (len_trim(filename) == 0) filename = '<blank>'
     print *, 'file: ', trim(filename), ' not found'
     stop
   endif
@@ -334,6 +349,67 @@ subroutine InputReadInt2(string, option, int, ierr)
   endif
 
 end subroutine InputReadInt2
+
+#if defined(PETSC_USE_64BIT_INDICES) && (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64)
+! InputReadInt3() and InputReadInt4() must only be defined if PetscInt and
+! PetscMPIInt differ in size.  See notes above in the interface definition. 
+!   --RTM
+
+! ************************************************************************** !
+!
+! InputReadInt3: reads and removes an integer value from a string
+! authors: Glenn Hammond, Richard Mills
+! date: 2/3/2012
+!
+! ************************************************************************** !
+subroutine InputReadInt3(input, option, int)
+
+  implicit none
+
+  type(input_type) :: input
+  type(option_type) :: option
+  PetscMPIInt :: int
+
+  character(len=MAXWORDLENGTH) :: word
+
+  call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  
+  if (.not.InputError(input)) then
+    read(word,*,iostat=input%ierr) int
+  endif
+
+end subroutine InputReadInt3
+
+! ************************************************************************** !
+!
+! InputReadInt4: reads and removes an integer value from a string
+! authors: Glenn Hammond, Richard Mills
+! date: 2/3/2012
+!
+! ************************************************************************** !
+subroutine InputReadInt4(string, option, int, ierr)
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscMPIInt :: int
+  PetscErrorCode :: ierr
+
+  character(len=MAXWORDLENGTH) :: word
+
+  ierr = 0
+  call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+  if (.not.InputError(ierr)) then
+    read(word,*,iostat=ierr) int
+  endif
+
+end subroutine InputReadInt4
+
+#endif
+!End of defined(PETSC_USE_64BIT_INDICES) && 
+!  (PETSC_SIZEOF_MPI_FINT * PETSC_BITS_PER_BYTE != 64) conditional
 
 ! ************************************************************************** !
 !
@@ -618,11 +694,15 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   tab = achar(9)
   backslash = achar(92)
 
-  ! Initialize character string to blank.
-  lenword = len_trim(word)
-  do i=1,lenword
-    word(i:i) = ' '
-  enddo
+  ! Initialize character string to blank.  len_trim(word) is not
+  ! defined if word is allocated but not initialized.  This works on
+  ! most compilers, but may not work on some?  Holler if it
+  ! errors... - etc
+  word = ''
+  ! lenword = len_trim(word)
+  ! do i=1,lenword
+  !   word(i:i) = ' '
+  ! enddo
 
   input%ierr = len_trim(input%buf)
   
@@ -692,9 +772,14 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
   backslash = achar(92)
   
   ! Initialize character string to blank.
-  do i=1,len_trim(word)
-    word(i:i) = ' '
-  enddo
+  ! Initialize character string to blank.  len_trim(word) is not
+  ! defined if word is allocated but not initialized.  This works on
+  ! most compilers, but may not work on some?  Holler if it
+  ! errors... - etc
+  word = ''
+  ! do i=1,len_trim(word)
+  !   word(i:i) = ' '
+  ! enddo
 
   ierr = len_trim(string)
   

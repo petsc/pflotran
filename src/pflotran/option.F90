@@ -58,6 +58,7 @@ module Option_module
     PetscInt :: iflowmode
     character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
+    PetscInt :: tvd_flux_limiter
 
     ! vector centering, used by SAMR
     ! 0 - CELL CENTERED
@@ -131,12 +132,13 @@ module Option_module
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
+    PetscReal :: pressure_dampening_factor
+    PetscReal :: saturation_change_limit
+    PetscReal :: stomp_norm
+    PetscBool :: check_stomp_norm
+    
     PetscReal :: minimum_hydrostatic_pressure
     
-    PetscBool :: update_porosity
-    PetscBool :: update_tortuosity
-    PetscBool :: update_permeability
-    PetscBool :: update_mineral_surface_area
     PetscBool :: update_mnrl_surf_with_porosity
     
     PetscBool :: jumpstart_kinetic_sorption
@@ -161,7 +163,8 @@ module Option_module
     
     PetscInt :: log_stage(10)
     
-    PetscBool :: numerical_derivatives
+    PetscBool :: numerical_derivatives_flow
+    PetscBool :: numerical_derivatives_rxn
     PetscBool :: compute_statistics
     PetscBool :: compute_mass_balance_new
     PetscBool :: use_touch_options
@@ -217,6 +220,7 @@ module Option_module
     PetscBool :: print_mad 
 
     PetscInt :: screen_imod
+    PetscInt :: output_file_imod
     
     PetscInt :: periodic_output_ts_imod
     PetscInt :: periodic_tr_output_ts_imod
@@ -243,6 +247,11 @@ module Option_module
     module procedure printMsg2
   end interface
 
+  interface printMsgAnyRank
+    module procedure printMsgAnyRank1
+    module procedure printMsgAnyRank2
+  end interface
+
   interface printErrMsgByRank
     module procedure printErrMsgByRank1
     module procedure printErrMsgByRank2
@@ -265,6 +274,7 @@ module Option_module
             printErrMsgByRank, &
             printWrnMsg, &
             printMsg, &
+            printMsgAnyRank, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
@@ -423,6 +433,7 @@ subroutine OptionInitRealization(option)
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
+  option%tvd_flux_limiter = 1
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
   option%ivar_centering = CELL_CENTERED
@@ -454,11 +465,12 @@ subroutine OptionInitRealization(option)
   option%reference_water_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
-
-  option%update_porosity = PETSC_FALSE
-  option%update_tortuosity = PETSC_FALSE
-  option%update_permeability = PETSC_FALSE
-  option%update_mineral_surface_area = PETSC_FALSE
+  
+  option%pressure_dampening_factor = 0.d0
+  option%saturation_change_limit = 0.d0
+  option%stomp_norm = 0.d0
+  option%check_stomp_norm = PETSC_FALSE
+  
   option%update_mnrl_surf_with_porosity = PETSC_FALSE
     
   option%jumpstart_kinetic_sorption = PETSC_FALSE
@@ -512,7 +524,8 @@ subroutine OptionInitRealization(option)
   
   option%log_stage = 0
   
-  option%numerical_derivatives = PETSC_FALSE
+  option%numerical_derivatives_flow = PETSC_FALSE
+  option%numerical_derivatives_rxn = PETSC_FALSE
   option%compute_statistics = PETSC_FALSE
   option%compute_mass_balance_new = PETSC_FALSE
 
@@ -583,6 +596,7 @@ function OutputOptionCreate()
   output_option%print_final = PETSC_TRUE
   output_option%plot_number = 0
   output_option%screen_imod = 1
+  output_option%output_file_imod = 1
   output_option%periodic_output_ts_imod  = 100000000
   output_option%periodic_output_time_incr = 0.d0
   output_option%periodic_tr_output_ts_imod = 100000000
@@ -643,7 +657,10 @@ subroutine OptionCheckCommandLine(option)
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr)
-  if (option_found) option%flowmode = "thc"                           
+  if (option_found) option%flowmode = "thc"     
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thmc", &
+                           option_found, ierr)
+  if (option_found) option%flowmode = "thmc"     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)
@@ -674,18 +691,7 @@ subroutine printErrMsg1(option)
   
   type(option_type) :: option
   
-  PetscBool :: petsc_initialized
-  PetscErrorCode :: ierr
-  
-  if (OptionPrintToScreen(option)) then
-    print *
-    print *, 'ERROR: ' // trim(option%io_buffer)
-    print *, 'Stopping!'
-  endif    
-  call MPI_Barrier(option%mycomm,ierr)
-  call PetscInitialized(petsc_initialized, ierr)
-  if (petsc_initialized) call PetscFinalize(ierr)
-  stop
+  call printErrMsg2(option,option%io_buffer)
   
 end subroutine printErrMsg1
 
@@ -774,7 +780,7 @@ subroutine printWrnMsg1(option)
   
   type(option_type) :: option
   
-  if (OptionPrintToScreen(option)) print *, 'WARNING: ' // trim(option%io_buffer)
+  call printWrnMsg2(option,option%io_buffer)
   
 end subroutine printWrnMsg1
 
@@ -809,7 +815,7 @@ subroutine printMsg1(option)
   
   type(option_type) :: option
   
-  if (OptionPrintToScreen(option)) print *, trim(option%io_buffer)
+  call printMsg2(option,option%io_buffer)
   
 end subroutine printMsg1
 
@@ -830,6 +836,40 @@ subroutine printMsg2(option,string)
   if (OptionPrintToScreen(option)) print *, trim(string)
   
 end subroutine printMsg2
+
+! ************************************************************************** !
+!
+! printMsgAnyRank1: Prints the message from any processor core
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine printMsgAnyRank1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  call printMsgAnyRank2(option%io_buffer)
+  
+end subroutine printMsgAnyRank1
+
+! ************************************************************************** !
+!
+! printMsgAnyRank2: Prints the message from any processor core
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine printMsgAnyRank2(string)
+
+  implicit none
+  
+  character(len=*) :: string
+  
+  print *, trim(string)
+  
+end subroutine printMsgAnyRank2
 
 ! ************************************************************************** !
 !

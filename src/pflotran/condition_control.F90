@@ -15,6 +15,9 @@ module Condition_Control_module
 
   public :: CondControlAssignFlowInitCond, &
             CondControlAssignTranInitCond, &
+#ifdef SURFACE_FLOW
+            CondControlAssignFlowInitCondSurface, &
+#endif
             CondControlScaleSourceSink
  
 contains
@@ -571,7 +574,7 @@ subroutine CondControlAssignTranInitCond(realization)
                   xx_loc_p(offset+dataset_to_idof(idataset))
               enddo
             endif
-            option%iflag = grid%nL2A(local_id)
+            option%iflag = grid%nG2A(grid%nL2G(local_id))
             if (icell == 1) then
               call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                 global_aux_vars(ghosted_id),reaction, &
@@ -651,7 +654,10 @@ subroutine CondControlAssignTranInitCond(realization)
             enddo
           endif
           ! this is for the multi-rate surface complexation model
-          if (reaction%kinmr_nrate > 0) then
+          if (reaction%kinmr_nrate > 0 .and. &
+            ! geh: if we re-equilibrate at each grid cell, we do not want to
+            ! overwrite the reequilibrated values with those from the constraint
+              .not. re_equilibrate_at_each_cell) then
             ! copy over total sorbed concentration
             rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
               constraint_coupler%rt_auxvar%kinmr_total_sorb
@@ -815,6 +821,7 @@ subroutine CondControlScaleSourceSink(realization)
                enddo
                vec_ptr(local_id) = vec_ptr(local_id) + sum
             case(THC_MODE)
+            case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
@@ -836,6 +843,7 @@ subroutine CondControlScaleSourceSink(realization)
               cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
                 vec_ptr(local_id)
             case(THC_MODE)
+            case(THMC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
             case(MIS_MODE)
@@ -855,5 +863,146 @@ subroutine CondControlScaleSourceSink(realization)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
    
 end subroutine CondControlScaleSourceSink
+
+! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine CondControlAssignFlowInitCondSurface(surf_realization)
+
+  use Surface_Realization_module
+  use Discretization_module
+  use Region_module
+  use Option_module
+  use Surface_Field_module
+  use Coupler_module
+  use Condition_module
+  use Grid_module
+  use Level_module
+  use Patch_module
+  use water_eos_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(surface_realization_type) :: surf_realization
+  
+  PetscInt :: icell, iconn, idof, iface
+  PetscInt :: local_id, ghosted_id, iend, ibegin
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:), xx_faces_p(:)
+  PetscErrorCode :: ierr
+  
+  PetscReal :: temperature, p_sat
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer :: surf_field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(coupler_type), pointer :: initial_condition
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(flow_general_condition_type), pointer :: general
+
+  option => surf_realization%option
+  discretization => surf_realization%discretization
+  surf_field => surf_realization%surf_field
+  patch => surf_realization%patch
+
+
+  cur_level => surf_realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+
+      select case(option%iflowmode)
+      
+        case(G_MODE) ! general phase mode
+
+        case default
+          ! assign initial conditions values to domain
+          call GridVecGetArrayF90(grid,surf_field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+    
+          xx_p = -999.d0
+      
+          initial_condition => cur_patch%initial_conditions%first
+          do
+      
+            if (.not.associated(initial_condition)) exit
+
+            if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            else 
+               if (.not.associated(initial_condition%flow_aux_real_var)) then
+                   if (.not.associated(initial_condition%flow_condition)) then
+                        option%io_buffer = 'Flow condition is NULL in initial condition'
+                        call printErrMsg(option)
+                   endif
+                   do icell=1,initial_condition%region%num_cells
+                      local_id = initial_condition%region%cell_ids(icell)
+                      ghosted_id = grid%nL2G(local_id)
+                      iend = local_id*option%nflowdof
+                      ibegin = iend-option%nflowdof+1
+                      if (associated(cur_patch%imat)) then
+                         if (cur_patch%imat(ghosted_id) <= 0) then
+                            xx_p(ibegin:iend) = 0.d0
+                            iphase_loc_p(ghosted_id) = 0
+                            cycle
+                         endif
+                      endif
+                      do idof = 1, option%nflowdof
+                         xx_p(ibegin+idof-1) = &
+                             initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                      enddo
+                      iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+                      if (option%iflowmode == G_MODE) then
+                          cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                              iphase_loc_p(ghosted_id)
+                      endif
+                    enddo
+                else
+                    do iconn=1,initial_condition%connection_set%num_connections
+                        local_id = initial_condition%connection_set%id_dn(iconn)
+                        ghosted_id = grid%nL2G(local_id)
+                        iend = local_id*option%nflowdof
+                        ibegin = iend-option%nflowdof+1
+                        if (associated(cur_patch%imat)) then
+                            if (cur_patch%imat(ghosted_id) <= 0) then
+                                 xx_p(ibegin:iend) = 0.d0
+                                 iphase_loc_p(ghosted_id) = 0
+                                 cycle
+                            endif
+                        endif
+                        xx_p(ibegin:iend) = &
+                              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+                        if (option%iflowmode == G_MODE) then
+                              cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                              iphase_loc_p(ghosted_id)
+                        endif
+                     enddo
+                 endif
+            end if
+            initial_condition => initial_condition%next
+          enddo
+     
+          call GridVecRestoreArrayF90(grid,surf_field%flow_xx,xx_p, ierr)
+
+      end select 
+   
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,surf_field%flow_xx,surf_field%flow_xx_loc,NFLOWDOF)  
+  !call VecCopy(surf_field%flow_xx, surf_field%flow_yy, ierr)
+
+end subroutine CondControlAssignFlowInitCondSurface
+#endif ! SURFACE_FLOW
 
 end module Condition_Control_module

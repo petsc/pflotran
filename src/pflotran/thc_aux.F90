@@ -46,9 +46,11 @@ module THC_Aux_module
   type, public :: thc_parameter_type
     PetscReal, pointer :: dencpr(:)
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
-    PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
+    PetscReal, pointer :: ckwet(:) ! Thermal conductivity (wet)
+    PetscReal, pointer :: alpha(:)
 #ifdef ICE
-    PetscReal, pointer :: ckice(:) ! Thermal conductivity (frozen soil)
+    PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
+    PetscReal, pointer :: alpha_fr(:)
 #endif
     PetscReal, pointer :: sir(:,:)
     PetscReal, pointer :: diffusion_coefficient(:)
@@ -69,7 +71,7 @@ module THC_Aux_module
 
   public :: THCAuxCreate, THCAuxDestroy, &
             THCAuxVarCompute, THCAuxVarInit, &
-            THCAuxVarCopy
+            THCAuxVarCopy, THCComputeGradient
 
 #ifdef ICE
   public :: THCAuxVarComputeIce
@@ -314,8 +316,16 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+!              option%scale,ierr)
+              
+!  print *, 'wateos:', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
+
+  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
+                         dw_dt, hw, hw_dp, hw_dt, ierr)
+                         
+!  print *, 'wateos_simple', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
+
 
 ! may need to compute dpsat_dt to pass to VISW
   call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
@@ -363,6 +373,69 @@ subroutine THCAuxVarCompute(x,aux_var,global_aux_var, &
   
 end subroutine THCAuxVarCompute
 
+
+! ************************************************************************** !
+! 
+! THCComputeGradient: Computes the gradient of temperature (for now) using
+! least square fit of values from neighboring cells
+! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
+! for incompressible linear elasticity, CMAME
+! Author: Satish Karra
+! Date: 2/20/12
+!
+! ************************************************************************** !
+
+
+subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
+                              option) 
+
+
+  use Grid_module
+  use Global_Aux_module
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+
+  
+  PetscInt :: ghosted_neighbors_size, ghosted_id
+  PetscInt :: ghosted_neighbors(26)
+  PetscReal :: gradient(3), disp_vec(3,1), disp_mat(3,3)
+  PetscReal :: temp_weighted(3,1)
+  PetscInt :: i
+  
+  PetscInt :: INDX(3)
+  PetscInt :: D
+   
+  call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
+                                         STAR_STENCIL, &
+                                         1,1,1,ghosted_neighbors_size, &
+                                         ghosted_neighbors, &
+                                         option)   
+
+  disp_vec = 0.d0
+  disp_mat = 0.d0
+  temp_weighted = 0.d0
+  do i = 1, ghosted_neighbors_size
+    disp_vec(1,1) = grid%x(ghosted_neighbors(i)) - grid%x(ghosted_id)
+    disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
+    disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
+    disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
+    temp_weighted = temp_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
+                     global_aux_vars(ghosted_id)%temp(1))
+  enddo
+
+  call ludcmp(disp_mat,3,INDX,D)
+  call lubksb(disp_mat,3,INDX,temp_weighted)
+  
+  gradient(:) = temp_weighted(:,1)
+  
+end subroutine THCComputeGradient
 
 ! ************************************************************************** !
 ! 
@@ -450,8 +523,17 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, option)
 
 
-  call wateos(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, dw_dt, &
-              hw, hw_dp, hw_dt, option%scale, ierr)
+!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+!              option%scale,ierr)
+              
+!  print *, 'wateos:', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
+
+  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
+                         dw_dt, hw, hw_dp, hw_dt, ierr)
+                         
+!  print *, 'wateos_simple', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
+
+   
 
   call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
   
@@ -570,9 +652,13 @@ subroutine THCAuxDestroy(aux)
     nullify(aux%thc_parameter%ckwet)
     if (associated(aux%thc_parameter%ckdry)) deallocate(aux%thc_parameter%ckdry)
     nullify(aux%thc_parameter%ckdry)
+    if (associated(aux%thc_parameter%alpha)) deallocate(aux%thc_parameter%alpha)
+    nullify(aux%thc_parameter%alpha)
 #ifdef ICE
-    if (associated(aux%thc_parameter%ckice)) deallocate(aux%thc_parameter%ckice)
-    nullify(aux%thc_parameter%ckice)
+    if (associated(aux%thc_parameter%ckfrozen)) deallocate(aux%thc_parameter%ckfrozen)
+    nullify(aux%thc_parameter%ckfrozen)
+    if (associated(aux%thc_parameter%alpha_fr)) deallocate(aux%thc_parameter%alpha_fr)
+    nullify(aux%thc_parameter%alpha_fr)
 #endif
     if (associated(aux%thc_parameter%sir)) deallocate(aux%thc_parameter%sir)
     nullify(aux%thc_parameter%sir)

@@ -107,7 +107,11 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
       case(MATAIJ)
         d_nnz = d_nnz*mfd_aux%ndof
         o_nnz = o_nnz*mfd_aux%ndof
+#ifdef MATCREATE_OLD      
         call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
+#else
+        call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
+#endif        
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -116,7 +120,11 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
 
 
       case(MATBAIJ)
+#ifdef MATCREATE_OLD      
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#else
+        call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -254,7 +262,11 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
       case(MATAIJ)
         d_nnz = d_nnz*mfd_aux%ndof
         o_nnz = o_nnz*mfd_aux%ndof
+#ifdef MATCREATE_OLD      
         call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
+#else
+        call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
+#endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -263,7 +275,11 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 
 
       case(MATBAIJ)
+#ifdef MATCREATE_OLD      
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#else
+        call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
+#endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
@@ -335,7 +351,8 @@ subroutine MFDInitializeMassMatrices(grid, field, &
 
 
   type(mfd_auxvar_type), pointer :: aux_var
-  PetscInt :: ghosted_cell_id, icell, ierr,i,j
+  PetscInt :: ghosted_cell_id, icell, i, j
+  PetscErrorCode :: ierr
   PetscReal :: PermTensor(3,3) 
   PetscReal, pointer :: volume_p(:), perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
@@ -1469,7 +1486,8 @@ subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
   PetscReal, parameter :: tol = 1.d-3
 
 
-  PetscInt :: numfaces, i, ierr
+  PetscInt :: numfaces, i
+  PetscErrorCode :: ierr
   PetscReal :: den, dden_dp, pc, pw 
   PetscReal :: dw_kg, dw_mol, dw_dp, dw_dt, hw, hw_dp, hw_dt
 

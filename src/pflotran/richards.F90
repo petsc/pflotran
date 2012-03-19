@@ -24,7 +24,7 @@ module Richards_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
-  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  PetscReal, parameter :: perturbation_tolerance = 1.d-6
   
   public RichardsResidual,RichardsJacobian, &
          RichardsUpdateFixedAccum,RichardsTimeCut,&
@@ -34,7 +34,8 @@ module Richards_module
          RichardsGetTecplotHeader, RichardsComputeMassBalance, &
          RichardsDestroy, RichardsResidualMFD, RichardsJacobianMFD, &
 !          RichardsInitialPressureReconstruction, &
-         RichardsResidualMFDLP, RichardsJacobianMFDLP
+         RichardsResidualMFDLP, RichardsJacobianMFDLP, &
+         RichardsCheckUpdatePre, RichardsCheckUpdatePost
 
 contains
 
@@ -198,6 +199,213 @@ subroutine RichardsSetupPatch(realization)
 
 
 end subroutine RichardsSetupPatch
+
+! ************************************************************************** !
+!
+! RichardsCheckUpdatePre: Checks update prior to update
+! author: Glenn Hammond
+! date: 02/13/12
+!
+! ************************************************************************** !
+subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
+
+  use Realization_module
+  use Grid_module
+  use Field_module
+  use Option_module
+  use Saturation_Function_module
+  use Patch_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: P
+  Vec :: dP
+  type(realization_type) :: realization
+  ! ignore changed flag for now.
+  PetscBool :: changed
+  
+  PetscReal, pointer :: P_p(:)
+  PetscReal, pointer :: dP_p(:)
+  PetscReal, pointer :: r_p(:)
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  PetscInt :: local_id, ghosted_id
+  PetscReal :: P_R, P0, P1, delP
+  PetscReal :: scale, sat, sat_pert, pert, pc_pert, press_pert, delP_pert
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  option => realization%option
+  field => realization%field
+  rich_aux_vars => realization%patch%aux%Richards%aux_vars
+  global_aux_vars => realization%patch%aux%Global%aux_vars
+
+  if (dabs(option%saturation_change_limit) > 0.d0) then
+
+    patch => realization%patch
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+
+    pert =dabs(option%saturation_change_limit)
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      sat = global_aux_vars(ghosted_id)%sat(1)
+      sat_pert = sat - sign(1.d0,sat-0.5d0)*pert
+      call SatFuncGetCapillaryPressure(pc_pert,sat_pert, &
+             patch%saturation_function_array( &
+               patch%sat_func_id(ghosted_id))%ptr,option)
+      press_pert = option%reference_pressure - pc_pert
+      P0 = P_p(local_id)
+      delP = dP_p(local_id)
+      delP_pert = dabs(P0 - press_pert)
+      if (delP_pert < dabs(delP)) then
+        write(option%io_buffer,'("dP_trunc:",1i7,2es15.7)') &
+          grid%nG2A(grid%nL2G(local_id)),delP_pert,dabs(delP)
+        call printMsgAnyRank(option)
+      endif
+      delP = sign(min(dabs(delP),delP_pert),delP)
+      dP_p(local_id) = delP
+    enddo
+    
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+
+  endif
+
+  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+    ! P^p+1 = P^p - dP^p
+    P_R = option%reference_pressure
+    scale = option%pressure_dampening_factor
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+    do local_id = 1, grid%nlmax
+      delP = dP_p(local_id)
+      P0 = P_p(local_id)
+      P1 = P0 - delP
+      if (P0 < P_R .and. P1 > P_R) then
+        write(option%io_buffer,'("U -> S:",1i7,2f12.1)') &
+          grid%nG2A(grid%nL2G(local_id)),P0,P1 
+        call printMsgAnyRank(option)
+#if 0
+        ghosted_id = grid%nL2G(local_id)
+        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id),ghosted_id)
+        write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
+        call printMsgAnyRank(option)
+#endif
+      else if (P1 < P_R .and. P0 > P_R) then
+        write(option%io_buffer,'("S -> U:",1i7,2f12.1)') &
+          grid%nG2A(grid%nL2G(local_id)),P0,P1
+        call printMsgAnyRank(option)
+#if 0
+        ghosted_id = grid%nL2G(local_id)
+        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id),ghosted_id)
+        write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
+        call printMsgAnyRank(option)
+#endif
+      endif
+      ! transition from unsaturated to saturated
+      if (P0 < P_R .and. P1 > P_R) then
+        dP_p(local_id) = scale*delP
+      endif
+    enddo
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+  endif
+
+end subroutine RichardsCheckUpdatePre
+
+! ************************************************************************** !
+!
+! RichardsCheckUpdatePost: Checks update after to update
+! author: Glenn Hammond
+! date: 02/13/12
+!
+! ************************************************************************** !
+subroutine RichardsCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
+                                   P1_changed,ierr)
+
+  use Realization_module
+  use Grid_module
+  use Field_module
+  use Option_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: P0
+  Vec :: dP
+  Vec :: P1
+  type(realization_type) :: realization
+  ! ignore changed flag for now.
+  PetscBool :: dP_changed
+  PetscBool :: P1_changed
+  
+  PetscReal, pointer :: P1_p(:)
+  PetscReal, pointer :: dP_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: r_p(:)
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  PetscInt :: local_id, ghosted_id
+  PetscReal :: Res(1)
+  PetscReal :: inf_norm
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  option => realization%option
+  field => realization%field
+  rich_aux_vars => realization%patch%aux%Richards%aux_vars
+  global_aux_vars => realization%patch%aux%Global%aux_vars
+  
+  dP_changed = PETSC_FALSE
+  P1_changed = PETSC_FALSE
+  
+  if (option%check_stomp_norm) then
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P1,P1_p,ierr)
+    call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+    
+    inf_norm = 0.d0
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (realization%patch%imat(ghosted_id) <= 0) cycle
+    
+      call RichardsAccumulation(rich_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id), &
+                                porosity_loc_p(ghosted_id), &
+                                volume_p(local_id), &
+                                option,Res)
+      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P1_p(local_id)), &
+                                  dabs(r_p(local_id)/Res(1))))
+    enddo
+    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION, &
+                       MPI_MAX,option%mycomm,ierr)
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P1,P1_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+  endif
+  
+end subroutine RichardsCheckUpdatePost
 
 ! ************************************************************************** !
 !
@@ -734,12 +942,19 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
      
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
-   
+
     call RichardsAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
+#if 0
+    if (ghosted_id == 96911) then
+      call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id),ghosted_id)
+    endif
+#endif
+   
   enddo
 
   call PetscLogEventEnd(logging%event_r_auxvars,ierr)
@@ -1614,6 +1829,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
      
   PetscInt :: ispec 
   PetscReal :: porXvol
+  PetscReal :: dpor_dp
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_aux_var_pert
@@ -1622,21 +1838,35 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
 
   porXvol = por*vol/option%flow_dt
       
+!#define USE_COMPRESSIBLITY
+#ifndef USE_COMPRESSIBLITY  
   ! accumulation term units = dkmol/dp
   J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
            porXvol
 
-  if (option%numerical_derivatives) then
+#else
+  dpor_dp = (por-1.d0)*-1.d-7*exp(-1.d-7*(global_aux_var%pres(1)- &
+                                          option%reference_pressure))
+  J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
+            rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+           porXvol + &
+           global_aux_var%sat(1)*global_aux_var%den(1)*dpor_dp* &
+           vol/option%flow_dt
+#endif  
+  
+  if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_aux_var_pert,option)  
     call RichardsAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
     x(1) = global_aux_var%pres(1)
     call RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,option,res)
     ideriv = 1
-    pert = x(ideriv)*perturbation_tolerance
+    pert = max(dabs(x(ideriv)*perturbation_tolerance),0.1d0)
     x_pert = x
+    if (x_pert(ideriv) < option%reference_pressure) pert = -1.d0*pert
     x_pert(ideriv) = x_pert(ideriv) + pert
+    
     call RichardsAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
                                sat_func,0.d0,0.d0,option)
 #if 0      
@@ -1652,7 +1882,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
           print *, 'dkvr_z_dp:', aux_var%dkvr_z_dp, (rich_aux_var_pert%kvr_z-rich_aux_var%kvr_z)/pert
       end select     
 #endif     
-    call RichardsAccumulation(rich_aux_var_pert,global_aux_var,por,vol, &
+    call RichardsAccumulation(rich_aux_var_pert,global_aux_var_pert,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
@@ -1681,7 +1911,7 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
-  PetscReal :: vol, por
+  PetscReal :: vol, por, por1
        
   ! accumulation term units = kmol/s
 
@@ -1690,8 +1920,15 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
 !  write(*,*) "por ", por, " volume ", vol, " dt ", option%flow_dt
 #endif
 
+#ifndef USE_COMPRESSIBILITY
     Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
+#else
+    por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(global_aux_var%pres(1)- &
+                                       option%reference_pressure))
+    Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por1 * vol / &
+           option%flow_dt
+#endif
     
 end subroutine RichardsAccumulation
 
@@ -1836,7 +2073,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
-  if (option%numerical_derivatives) then
+  if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
     call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
     call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
@@ -1850,8 +2087,12 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                       area, dist, dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
-    pert_up = x_up(ideriv)*perturbation_tolerance
-    pert_dn = x_dn(ideriv)*perturbation_tolerance
+!    pert_up = x_up(ideriv)*perturbation_tolerance
+    pert_up = max(dabs(x_up(ideriv)*perturbation_tolerance),0.1d0)
+    if (x_up(ideriv) < option%reference_pressure) pert_up = -1.d0*pert_up
+!    pert_dn = x_dn(ideriv)*perturbation_tolerance
+    pert_dn = max(dabs(x_dn(ideriv)*perturbation_tolerance),0.1d0)
+    if (x_dn(ideriv) < option%reference_pressure) pert_dn = -1.d0*pert_dn
     x_pert_up = x_up
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
@@ -1935,8 +2176,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     density_ave = upweight*global_aux_var_up%den(1)+ &
                   (1.D0-upweight)*global_aux_var_dn%den(1)
 
-!    write(*,*) "upweight", upweight, "density_ave", density_ave
-
     gravity = (upweight*global_aux_var_up%den(1) + &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
               * FMWH2O * dist_gravity
@@ -1971,11 +2210,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
-
-       !   write(*,*) "Gravity Input", Dq*ukvr*gravity
-       !   write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
-!            write(*,*) "Dq", Dq, "ukvr ", ukvr, "density",density_ave 
-
+   
     if (Res(1) == -10.0) then
       write(*,*) "v_darcy=",v_darcy
       write(*,*) "fluxm", v_darcy * area * density_ave
@@ -2194,7 +2429,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
 
-  if (option%numerical_derivatives) then
+  if (option%numerical_derivatives_flow) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
     call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
     call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
@@ -2216,7 +2451,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
       x_pert_up = x_up
     endif
     ideriv = 1
-    pert_dn = x_dn(ideriv)*perturbation_tolerance    
+!    pert_dn = x_dn(ideriv)*perturbation_tolerance    
+    pert_dn = max(dabs(x_dn(ideriv)*perturbation_tolerance),0.1d0)
+    if (x_dn(ideriv) < option%reference_pressure) pert_dn = -1.d0*pert_dn
     x_pert_dn = x_dn
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
     x_pert_up = x_up
@@ -2404,17 +2641,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
 
   end select
 
-
-
   q = v_darcy * area
 
   fluxm = q*density_ave
 
   Res(1)=fluxm
-
-#ifdef DASVYAT
-   write(*,*) "bound flux RichardsBCFlux", "v_darcy", v_darcy, "Res", Res(1), "den", density_ave
-#endif
 
 end subroutine RichardsBCFlux
 
@@ -3121,17 +3352,14 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     call RichardsZeroMassBalDeltaPatch(realization)
   endif
 
-
 !  write(*,*) "RichardsResidual"
 !  read(*,*)
-
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,r, r_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
-  !print *,' Finished scattering non deriv'
 
   if (option%use_samr) then
      do axis=0,2  
@@ -3140,7 +3368,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   endif
 
   r_p = 0.d0
-#if 1
+
   if (option%use_samr) then
     nlx = grid%structured_grid%nlx  
     nly = grid%structured_grid%nly  
@@ -3214,12 +3442,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
-
-       if (ghosted_id_up == 77.or.ghosted_id_dn == 77)  then 
             write(*,*) "dddddddddddddddddddddddddddd"
             Res = -10.0
        end if
-
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
@@ -3236,11 +3461,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-#if 1
-      if (ghosted_id_up == 77.or.ghosted_id_dn == 77)  write(*,*) "int flux ************", sum_connection, v_darcy, Res(1)
-#endif
-
-      
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
@@ -3291,8 +3511,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo    
 
-#endif
-#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -3301,12 +3519,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     
     cur_connection_set => boundary_condition%connection_set
 
-
-!    write(*,*) (boundary_condition%flow_aux_real_var(1, iconn), &
-!              iconn =1,cur_connection_set%num_connections)
-!    write(*,*)
-     
-    
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
@@ -3341,19 +3553,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 option, &
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
-
-
-#if 1
-        if (ghosted_id==77) then
-           write(*,*) "bound flux ************************************", sum_connection, "fl",v_darcy, "Res", Res
-        end if 
-!            "lm", boundary_condition%flow_aux_real_var(1, iconn), &
-!            "p", global_aux_vars(ghosted_id)%pres(1)
-!            cur_connection_set%cntr(1, iconn), &      
-!            cur_connection_set%cntr(2, iconn), &      
-!            cur_connection_set%cntr(3, iconn)      
-!            cur_connection_set%id_dn(iconn)       
-#endif
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -3415,8 +3614,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif  
-
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -6372,6 +6569,35 @@ function RichardsGetTecplotHeader(realization,icolumn)
   RichardsGetTecplotHeader = string
 
 end function RichardsGetTecplotHeader
+
+! ************************************************************************** !
+!
+! RichardsPrintAuxVars: Prints out the contents of an auxvar
+! author: Glenn Hammond
+! date: 02/21/12
+!
+! ************************************************************************** !
+subroutine RichardsPrintAuxVars(richards_auxvar,global_auxvar,cell_id)
+
+  use Global_Aux_module
+
+  implicit none
+
+  type(richards_auxvar_type) :: richards_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscInt :: cell_id
+
+  print *, '      cell: ', cell_id
+  print *, '  pressure: ', global_auxvar%pres(1)
+  print *, 'saturation: ', global_auxvar%sat(1)
+  print *, '   density: ', global_auxvar%den_kg(1)
+  print *, '        pc: ', richards_auxvar%pc
+  print *, '       kvr: ', richards_auxvar%kvr
+  print *, '   dkvr_dp: ', richards_auxvar%dkvr_dp
+  print *, '   dsat_dp: ', richards_auxvar%dsat_dp
+  print *, '   dden_dp: ', richards_auxvar%dden_dp
+
+end subroutine RichardsPrintAuxVars
 
 ! ************************************************************************** !
 !

@@ -132,6 +132,33 @@ subroutine GlobalAuxVarInit(aux_var,option)
       aux_var%reaction_rate_store = 0.d0
     ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
     ! aux_var%reaction_rate_store = 0.d0
+    case(THC_MODE,THMC_MODE)
+    ! allocate(aux_var%xmass(option%nphase))
+    ! aux_var%xmass = 1.d0
+      allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
+      aux_var%pres_store = 0.d0
+      allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
+      aux_var%temp_store = 0.d0
+    ! allocate(aux_var%fugacoeff(ONE_INTEGER))
+    ! aux_var%fugacoeff = 1.d0
+    ! allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
+    ! aux_var%fugacoeff_store = 1.d0    
+      allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
+      aux_var%den_store = 0.d0
+    ! allocate(aux_var%m_nacl(TWO_INTEGER))
+    ! aux_var%m_nacl = option%m_nacl
+    ! allocate(aux_var%reaction_rate(option%nflowspec))
+    ! aux_var%reaction_rate = 0.d0
+    ! allocate(aux_var%reaction_rate_store(option%nflowspec))
+    ! aux_var%reaction_rate_store = 0.d0
+    ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
+    ! aux_var%reaction_rate_store = 0.d0
+      nullify(aux_var%xmass)
+      nullify(aux_var%fugacoeff)
+      nullify(aux_var%fugacoeff_store)
+      nullify(aux_var%m_nacl)
+      nullify(aux_var%reaction_rate)
+      nullify(aux_var%reaction_rate_store)  
     case (G_MODE)
       nullify(aux_var%xmass)
       nullify(aux_var%pres_store)
@@ -220,7 +247,7 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   endif
   if (associated(aux_var%den_store) .and. &
       associated(aux_var2%den_store)) then
-    aux_var2%pres_store = aux_var%den_store  
+    aux_var2%den_store = aux_var%den_store  
   endif
   if (associated(aux_var%temp_store) .and. &
       associated(aux_var2%temp_store)) then

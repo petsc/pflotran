@@ -197,6 +197,8 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
       input%err_buf2 = 'VELOCITY_DATASET'
       call InputErrorMsg(input,option)
       read_from_file = PETSC_TRUE
+    else if (StringCompare(word,'list',FOUR_INTEGER)) then
+      read_multiple_values = PETSC_TRUE
     else
       read_multiple_values = PETSC_FALSE
     endif
@@ -219,7 +221,7 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
     do irank=1,dataset%rank
       call InputReadDouble(input,option,dataset%values(irank,1))
       write(input%err_buf,'(a,i2)') trim(keyword) // ' dataset_values, irank = ', irank
-      input%err_buf2 = 'VELCITY_DATASET'
+      input%err_buf2 = 'VELOCITY_DATASET'
       call InputErrorMsg(input,option) 
     enddo
     call InputReadWord(input,option,word,PETSC_TRUE)

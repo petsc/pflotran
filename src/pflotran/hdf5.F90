@@ -3142,16 +3142,15 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, pointer :: integer_array(:)
   
-#if !defined(PETSC_HAVE_HDF5)
   option => realization%option
+
+#if !defined(PETSC_HAVE_HDF5)
   call printMsg(option,'')
   write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
 
-
-  option => realization%option
   patch => realization%patch
   grid => patch%grid
 
@@ -3376,7 +3375,13 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
 
   option => realization%option
 
-  ! Initialize FOTRAN predefined datatypes
+#if !defined(PETSC_HAVE_HDF5)
+  call printMsg(option,'')
+  write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
+                           &"read HDF5 formatted unstructured grids.")')
+  call printErrMsg(option)
+#else
+  ! Initialize FORTRAN predefined datatypes
   call h5open_f(hdf5_err)
 
   ! Setup file access property with parallel I/O access
@@ -3412,8 +3417,6 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   ! Get dimensions of dataset
   call h5sget_simple_extent_dims_f(data_space_id,dims_h5,max_dims_h5,hdf5_err)
   
-  !write(*,*), 'dims_h5: ',dims_h5(:)
-
   select case(ndims)
     case(1)
     !
@@ -3543,12 +3546,12 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
        allocate(sideset%face_vertices(MAX_VERT_PER_FACE,sideset%nfaces))
        sideset%face_vertices = -999
   
-       do ii = 1,region%num_verts
-         region%vertex_ids(0,ii) = int_buffer(1,ii)
-           do jj = 2,int_buffer(1,ii)+1
-           !region%vertex_ids(jj-1,ii) = int_buffer(jj,ii)
-           sideset%face_vertices(jj-1,ii) = int_buffer(jj,ii)
-         enddo
+       do ii = 1,sideset%nfaces
+        !region%vertex_ids(0,ii) = int_buffer(1,ii)
+        do jj = 2,int_buffer(1,ii)+1
+         !region%vertex_ids(jj-1,ii) = int_buffer(jj,ii)
+         sideset%face_vertices(jj-1,ii) = int_buffer(jj,ii)
+        enddo
        enddo
      endif
 
@@ -3562,11 +3565,14 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
 
+#endif
+! if defined(PETSC_HAVE_HDF5)
 
 end subroutine HDF5ReadUnstructuredGridRegionFromFile
 
 
 #else
+! if !defined(SAMR_HAVE_HDF5)
 
             
 ! ************************************************************************** !
@@ -4340,7 +4346,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
 end subroutine HDF5WriteStructDataSetFromVec
 
-#else
+#elif defined(PETSC_HAVE_HDF5)
 
 
 ! ************************************************************************** !
@@ -4387,9 +4393,9 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
                                   grid%structured_grid%nlx, &
                                   grid%structured_grid%nly, &
                                   grid%structured_grid%nlz, &
-                                  grid%structured_grid%nxs, &
-                                  grid%structured_grid%nys, &
-                                  grid%structured_grid%nzs)
+                                  grid%structured_grid%lxs, &
+                                  grid%structured_grid%lys, &
+                                  grid%structured_grid%lzs)
 !GEH - Structured Grid Dependence - End
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   

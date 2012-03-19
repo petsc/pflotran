@@ -36,13 +36,12 @@ module Miscible_module
   PetscReal, parameter :: dfac = 1D-8
   PetscReal, parameter :: floweps = 1.D-24
   PetscReal, parameter :: zerocut =0.D0 
-  
 
   PetscInt, parameter :: jh2o=1, jglyc=2
   
-  public MiscibleResidual,MiscibleJacobian, MiscibleResidualFluxContribPatch,&
-         MiscibleUpdateFixedAccumulation,MiscibleTimeCut,&
-         MiscibleSetup,&
+  public MiscibleResidual,MiscibleJacobian, MiscibleResidualFluxContribPatch, &
+         MiscibleUpdateFixedAccumulation,MiscibleTimeCut, &
+         MiscibleSetup, &
          MiscibleMaxChange, MiscibleUpdateSolution, &
          MiscibleGetTecplotHeader, MiscibleInitializeTimestep, &
          MiscibleUpdateAuxVars,MiscibleComputeMassBalance
@@ -198,7 +197,7 @@ subroutine MiscibleSetupPatch(realization)
   enddo
   patch%aux%Miscible%aux_vars_bc => aux_vars_bc
   patch%aux%Miscible%num_aux_bc = sum_connection
-  option%numerical_derivatives = PETSC_TRUE
+  option%numerical_derivatives_flow = PETSC_TRUE
   
   allocate(patch%aux%Miscible%delx(option%nflowdof, grid%ngmax))
   allocate(patch%aux%Miscible%Resold_AR(grid%nlmax,option%nflowdof))
@@ -283,7 +282,8 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: ispec
-
+  PetscInt :: jh2o=1,jglyc=2
+  
   option => realization%option
   patch => realization%patch
   grid => patch%grid
@@ -305,10 +305,12 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
     do ispec = 1,option%nflowspec
       mass_balance(ispec,1) = mass_balance(ispec,1) + &
         miscible_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec)* &
-        global_aux_vars(ghosted_id)%den_kg(1)* &
+        global_aux_vars(ghosted_id)%den(1)* &
         porosity_loc_p(ghosted_id)*volume_p(local_id)
     enddo
   enddo
+  mass_balance(jh2o,1) = mass_balance(jh2o,1)*FMWH2O
+  mass_balance(jglyc,1) = mass_balance(jglyc,1)*FMWGLYC
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -359,6 +361,11 @@ subroutine MiscibleZeroMassBalDeltaPatch(realization)
       global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
+  if (patch%aux%Miscible%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_ss
+      global_aux_vars_ss(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
  
 end subroutine MiscibleZeroMassBalDeltaPatch
 
@@ -404,6 +411,14 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
 
   if (patch%aux%Miscible%num_aux_bc > 0) then
     do iconn = 1, patch%aux%Miscible%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
+
+  if (patch%aux%Miscible%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%Miscible%num_aux_ss
       global_aux_vars_bc(iconn)%mass_balance = &
         global_aux_vars_bc(iconn)%mass_balance + &
         global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
@@ -470,7 +485,7 @@ end subroutine MiscibleUpdateMassBalancePatch
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-  function  MiscibleInitGuessCheckPatch(realization)
+  function MiscibleInitGuessCheckPatch(realization)
    
      use span_wagner_module
      
@@ -1626,6 +1641,10 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
  ! call MiscibleUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
  ! patch%MiscibleAux%aux_vars_up_to_date = PETSC_FALSE 
+  
+  if (option%compute_mass_balance_new) then
+    call MiscibleZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -1734,10 +1753,10 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
            realization%fluid_properties, option)
 
     if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+      global_aux_vars_bc(sum_connection)%pres(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%pres - &
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%sat(:)=1D0
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+      global_aux_vars_bc(sum_connection)%sat(:) = 1.D0
+      global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
@@ -2050,12 +2069,12 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       global_aux_vars(ghosted_id)%sat(:)=1D0
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+            * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
     else
       print *,'Not associated global for Miscible'
     endif
 
-    if (option%numerical_derivatives) then
+    if (option%numerical_derivatives_flow) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
          
      do idof = 2, option%nflowdof
@@ -2249,10 +2268,10 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      call MiscibleSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+      call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0), &
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
-                            enthalpy_flag, option)
+                            enthalpy_flag,option)
       if (option%compute_mass_balance_new) then
         global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) = &
           global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &

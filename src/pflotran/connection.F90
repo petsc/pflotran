@@ -14,10 +14,14 @@ module Connection_module
     PetscInt, pointer :: local(:)      ! 1 if connection is local, 0 if connection is ghosted
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
+    PetscInt, pointer :: id_up2(:)     ! list of ids of 2nd upwind cells
+    PetscInt, pointer :: id_dn2(:)     ! list of ids of 2nd downwind cells
     PetscReal, pointer :: dist(:,:)    ! list of distance vectors, size(-1:3,num_connections) where
                                        !   -1 = fraction upwind
                                        !   0 = magnitude of distance 
                                        !   1-3 = components of unit vector
+    PetscReal, pointer :: intercp(:,:) ! x,y,z location of intercept between the line connecting
+                                       ! upwind and downwind cells with the face shared by the cells
     PetscReal, pointer :: area(:)      ! list of areas of faces normal to distance vectors
     PetscReal, pointer :: cntr(:,:)    ! coordinates (1:3, num_connections) of the mass center of the face
     type(connection_set_type), pointer :: next
@@ -69,38 +73,51 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   nullify(connection%local)
   nullify(connection%id_up)
   nullify(connection%id_dn)
+  nullify(connection%id_up2)
+  nullify(connection%id_dn2)
   nullify(connection%dist)
+  nullify(connection%intercp)
   nullify(connection%area)
   nullify(connection%cntr)
 !  nullify(connection%velocity)
   select case(connection_itype)
     case(INTERNAL_CONNECTION_TYPE)
-      allocate(connection%local(num_connections))
       allocate(connection%id_up(num_connections))
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
+      allocate(connection%intercp(1:3,num_connections))
       allocate(connection%area(num_connections))
+#ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
+      allocate(connection%local(num_connections))
 !      allocate(connection%velocity(num_dof,num_connections))
       connection%local = 0
+#endif
       connection%id_up = 0
       connection%id_dn = 0
       connection%dist = 0.d0
+      connection%intercp = 0.d0
       connection%area = 0.d0
 !      connection%velocity = 0.d0
     case(BOUNDARY_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
+      allocate(connection%intercp(1:3,num_connections))
       allocate(connection%area(num_connections))
+#ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
 !      allocate(connection%velocity(num_dof,num_connections))
+#endif
       connection%id_dn = 0
       connection%dist = 0.d0
+      connection%intercp = 0.d0
       connection%area = 0.d0
 !      connection%velocity = 0.d0
     case(SRC_SINK_CONNECTION_TYPE,INITIAL_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
+#ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
+#endif
       connection%id_dn = 0
   end select
   nullify(connection%next)
@@ -229,8 +246,14 @@ subroutine ConnectionDestroy(connection)
   nullify(connection%id_up)
   if (associated(connection%id_dn)) deallocate(connection%id_dn)
   nullify(connection%id_dn)
+  if (associated(connection%id_up2)) deallocate(connection%id_up2)
+  nullify(connection%id_up2)
+  if (associated(connection%id_dn2)) deallocate(connection%id_dn2)
+  nullify(connection%id_dn2)
   if (associated(connection%dist)) deallocate(connection%dist)
   nullify(connection%dist)
+  if (associated(connection%intercp)) deallocate(connection%intercp)
+  nullify(connection%intercp)
   if (associated(connection%area)) deallocate(connection%area)
   nullify(connection%area)
   if (associated(connection%cntr)) deallocate(connection%cntr)

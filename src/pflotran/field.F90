@@ -63,6 +63,8 @@ module Field_module
     Vec :: flow_xx_faces, flow_xx_loc_faces, flow_dxx_faces, flow_yy_faces, flow_bc_loc_faces
     Vec :: work_loc_faces   
 
+    ! vector that holds the second layer of ghost cells for tvd
+    Vec :: tvd_ghosts
 
   end type field_type
 
@@ -135,6 +137,8 @@ function FieldCreate()
   field%tran_yy = 0
   field%tran_accum = 0
   field%tran_work_loc = 0
+
+  field%tvd_ghosts = 0
 
   field%tran_rhs = 0
   field%tran_rhs_coef = 0
@@ -225,6 +229,9 @@ subroutine FieldDestroy(field)
   if (field%tran_face_fluxes /= 0) &
     call VecDestroy(field%tran_face_fluxes,ierr)
     
+  if (field%tvd_ghosts /= 0) &
+    call VecDestroy(field%tvd_ghosts,ierr)
+  
   deallocate(field)
   nullify(field)
   

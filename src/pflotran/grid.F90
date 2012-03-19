@@ -50,23 +50,16 @@ module Grid_module
     !
     ! Entries of a vector created with DMCreateLocalVector() should be 
     ! indexed using 'ghosted local' indices.  The array returned from a call 
-    ! to VecGetArrayF90() on such a vector contains the truly local entries 
+    ! to VecGetArrayF90() on such a vector contains the truly3 local entries 
     ! as well as ghost points.
     !
     ! The index mapping arrays are the following:
     ! nL2G :  not collective, local processor: local  =>  ghosted local  
     ! nG2L :  not collective, local processor:  ghosted local => local  
-    ! nG2A :  collective,  ghosted local => global index , used for   
-    !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
-    ! nL2A :   collective, local => natural index, used for initialization   
-    !                               and source/sink setup  (zero-based)
-    PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
-    PetscInt, pointer :: nG2A(:), nG2P(:), nG2LP(:)
+    ! nG2A :  not collective, ghosted local => natural
 
-    ! nL2G :  not collective, local processor: local  =>  ghosted local  
-    ! nG2L :  not collective, local processor:  ghosted local => local  
-    ! nG2A :  collective,  ghosted local => global index , used for   
-    !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
+    PetscInt, pointer :: nL2G(:), nG2L(:)
+    PetscInt, pointer :: nG2A(:), nG2P(:), nG2LP(:)
 
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
     PetscInt, pointer :: fL2B(:)
@@ -121,6 +114,7 @@ module Grid_module
             GridComputeSpacing, &
             GridComputeCoordinates, &
             GridComputeVolumes, &
+            GridComputeAreas, &
             GridLocalizeRegions, &
             GridLocalizeRegionsForUGrid, &
             GridPopulateConnection, &
@@ -138,7 +132,9 @@ module Grid_module
             GridIndexToCellID, &
             GridComputeCell2FaceConnectivity, &
             GridComputeGlobalCell2FaceConnectivity, &
-            GridGetGhostedNeighbors
+            GridGetGhostedNeighbors, &
+            GridGetGhostedNeighborsWithCorners
+  
 contains
 
 ! ************************************************************************** !
@@ -170,7 +166,6 @@ function GridCreate()
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
-  nullify(grid%nL2A)
   nullify(grid%nG2A)
   nullify(grid%nG2P)
 
@@ -238,6 +233,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
   type(ugdm_type), optional :: ugdm
   
   type(connection_set_type), pointer :: connection_set, connection_bound_set
+  type(connection_set_type), pointer :: connection_set_2
   nullify(connection_set); nullify(connection_bound_set)
   
   select case(grid%itype)
@@ -320,7 +316,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructGridPopulateConnection(grid%x,grid%structured_grid,connection, &
-                                        iface,iconn,cell_id_ghosted)
+                                        iface,iconn,cell_id_ghosted,option)
     case(UNSTRUCTURED_GRID)
       call UGridPopulateConnection(grid%unstructured_grid,connection,iface,&
                                    iconn,cell_id_ghosted,option)
@@ -1241,7 +1237,7 @@ subroutine GridMapIndices(grid, sgdm)
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                    grid%nL2A,grid%nG2A)
+                                    grid%nG2A)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
@@ -1278,8 +1274,7 @@ subroutine GridComputeSpacing(grid,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructuredGridComputeSpacing(grid%structured_grid,grid%nG2A, &
-                                        grid%nG2L,option)
+      call StructuredGridComputeSpacing(grid%structured_grid,option)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -1398,9 +1393,44 @@ subroutine GridComputeVolumes(grid,volume,option)
                                         grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
+      call UGridComputeQuality(grid%unstructured_grid,option)
   end select
 
 end subroutine GridComputeVolumes
+
+! ************************************************************************** !
+!
+! GridComputeAreas: Computes the areas for 2D-mesh
+! author: Gautam Bisht
+! date: 03/07/2012
+!
+! ************************************************************************** !
+subroutine GridComputeAreas(grid,area,option)
+
+  use Option_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  Vec :: area
+  
+  select case(grid%itype)
+    !case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+      !call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
+      !                                  grid%nL2G,volume)
+    case(UNSTRUCTURED_GRID)
+      call UGridComputeAreas(grid%unstructured_grid,option,area)
+      call UGridComputeQuality(grid%unstructured_grid,option)
+    case default
+      option%io_buffer = 'ERROR: GridComputeAreas only implemented for Unstructured grid'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridComputeAreas
 
 ! ************************************************************************** !
 !
@@ -1441,6 +1471,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     
     if (.not.(associated(region%cell_ids) .or. &
               associated(region%sideset) .or. &
+              associated(region%polygonal_volume) .or. &
               associated(region%vertex_ids))) then
       ! i, j, k block
       if (region%i1 > 0 .and. region%i2 > 0 .and. &
@@ -1448,12 +1479,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           region%k1 > 0 .and. region%k2 > 0) then
 
         ! convert indexing from global (entire domain) to local processor
-        region%i1 = region%i1 - grid%structured_grid%nxs
-        region%i2 = region%i2 - grid%structured_grid%nxs
-        region%j1 = region%j1 - grid%structured_grid%nys
-        region%j2 = region%j2 - grid%structured_grid%nys
-        region%k1 = region%k1 - grid%structured_grid%nzs
-        region%k2 = region%k2 - grid%structured_grid%nzs
+        region%i1 = region%i1 - grid%structured_grid%lxs
+        region%i2 = region%i2 - grid%structured_grid%lxs
+        region%j1 = region%j1 - grid%structured_grid%lys
+        region%j2 = region%j2 - grid%structured_grid%lys
+        region%k1 = region%k1 - grid%structured_grid%lzs
+        region%k2 = region%k2 - grid%structured_grid%lzs
           
         ! clip region to within local processor domain
         region%i1 = max(region%i1,1)
@@ -1799,10 +1830,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         endif  
       endif 
     else if (associated(region%sideset)) then
-      call UGridMapSideSet(grid%unstructured_grid, &
-                            region%sideset%face_vertices, &
-                            region%sideset%nfaces,region%name, &
-                            option,region%cell_ids,region%faces)
+      call UGridMapSideSet(grid%unstructured_grid, & 
+                           region%sideset%face_vertices, & 
+                           region%sideset%nfaces,region%name, & 
+                           option,region%cell_ids,region%faces) 
+      region%num_cells = size(region%cell_ids)
+    else if (associated(region%polygonal_volume)) then
+      call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
+                                      region%polygonal_volume, &
+                                      region%name,option, &
+                                      region%cell_ids,region%faces)
       region%num_cells = size(region%cell_ids)
     else if (associated(region%cell_ids)) then
       select case(grid%itype) 
@@ -1833,12 +1870,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 #if 0
           do count=1,region%num_cells
             i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
-                  grid%structured_grid%nxs
+                  grid%structured_grid%lxs
             j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
                     grid%structured_grid%ny)+1 - &
-                  grid%structured_grid%nys
+                  grid%structured_grid%lys
             k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
-                  grid%structured_grid%nzs
+                  grid%structured_grid%lzs
             if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
                 j > 0 .and. j <= grid%structured_grid%nly .and. &
                 k > 0 .and. k <= grid%structured_grid%nlz) then
@@ -2099,10 +2136,16 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     !  - mat_vert2cell(i,j) = j (i.e. i-th global vertex constitutes j-th
     !    cell
     !
+#ifdef MATCREATE_OLD
     call MatCreateMPIAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
+#else
+    call MatCreateAIJ(option%mycomm, PETSC_DECIDE, PETSC_DECIDE, &
+#endif
                           ugrid%num_vertices_global, ugrid%nmax, &
-                          MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
-                          MAX_CELLS_SHARING_A_VERTEX, PETSC_NULL_INTEGER, &
+                          ugrid%max_cells_sharing_a_vertex, &
+                          PETSC_NULL_INTEGER, &
+                          ugrid%max_cells_sharing_a_vertex, &
+                          PETSC_NULL_INTEGER, &
                           mat_vert2cell, ierr)
     
     do ghosted_id = 1, ugrid%ngmax
@@ -2137,13 +2180,13 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     if (option%mycommsize > 1) then
       call MatMPIAIJGetSeqAIJ(mat_vert2cell, mat_vert2cell_diag, &
                               mat_vert2cell_offdiag, icol, iicol, ierr)
-      call MatGetRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, PETSC_FALSE, &
-                          n, ia_p, ja_p, done, ierr)
+      call MatGetRowIJF90(mat_vert2cell_diag, ONE_INTEGER, PETSC_FALSE, &
+                          PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatGetArray(mat_vert2cell_diag, aa, aaa, ierr)
       ! call MatGetArrayF90(mat_vert2cell_diag, aa, ierr)
     else 
-      call MatGetRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
-                          ia_p, ja_p, done, ierr)
+      call MatGetRowIJF90(mat_vert2cell, ONE_INTEGER, PETSC_FALSE, &
+                          PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatGetArray(mat_vert2cell, aa, aaa, ierr)
       !call MatGetArrayF90(mat_vert2cell, aa, ierr)
     endif
@@ -2156,14 +2199,15 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     !  - vert2cell_array((i-1)*MCSV + 1: i*MCSV ) = Cell ids (in natural 
     !    index) which contain i-th vertex as one of its vertices
     !
-    allocate(vert2cell_array(1: (rend - rstart)*MAX_CELLS_SHARING_A_VERTEX))
+    allocate(vert2cell_array(1: (rend - rstart)* &
+                                ugrid%max_cells_sharing_a_vertex))
     vert2cell_array = -1
     do ii = 1, n
       count = ia_p(ii + 1) - ia_p(ii)
       do jj = ia_p(ii), ia_p(ii + 1) - 1
         found = PETSC_FALSE
-        do kk = 1, MAX_CELLS_SHARING_A_VERTEX
-          index = (ii - 1)*MAX_CELLS_SHARING_A_VERTEX + kk
+        do kk = 1, ugrid%max_cells_sharing_a_vertex
+          index = (ii - 1)*ugrid%max_cells_sharing_a_vertex + kk
           if (vert2cell_array(index) == -1) then
             found = PETSC_TRUE
             exit
@@ -2171,26 +2215,26 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         enddo
         if (.not.found) then
           option%io_buffer = 'Increase the value of ' // &
-            'MAX_CELLS_SHARING_A_VERTEX within the code.'
+            'MAX_CELLS_SHARING_A_VERTEX in the input file.'
           call printErrMsg(option)
         endif
         vert2cell_array(index) = aa(aaa+ jj)
       enddo
     enddo
     if (option%mycommsize > 1) then
-      call MatRestoreRowIJF90(mat_vert2cell_diag, 1, PETSC_FALSE, &
+      call MatRestoreRowIJF90(mat_vert2cell_diag, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
       !call MatRestoreArrayF90(mat_vert2cell_diag, aa, ierr)
     else
-      call MatRestoreRowIJF90(mat_vert2cell, 1, PETSC_FALSE, PETSC_FALSE, n, &
-                              ia_p, ja_p, done, ierr)
+      call MatRestoreRowIJF90(mat_vert2cell, ONE_INTEGER, PETSC_FALSE, &
+                              PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatRestoreArray(mat_vert2cell, aa, aaa, ierr)
       ! call MatRestoreArrayF90(mat_vert2cell, aa, ierr)
     endif
       
     if (option%mycommsize > 1) then
-      call MatGetRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
+      call MatGetRowIJF90(mat_vert2cell_offdiag, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
       !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
@@ -2198,8 +2242,8 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
         count = ia_p(ii+1) - ia_p(ii)
         do jj = ia_p(ii), ia_p(ii+1)-1
           found = PETSC_FALSE
-          do kk = 1,MAX_CELLS_SHARING_A_VERTEX
-            if (vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk) &
+          do kk = 1,ugrid%max_cells_sharing_a_vertex
+            if (vert2cell_array( (ii-1)*ugrid%max_cells_sharing_a_vertex + kk) &
                                   == -1) then
               found = PETSC_TRUE
               exit
@@ -2207,14 +2251,14 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
           enddo
           if (.not.found) then
             option%io_buffer = 'Increase the value of ' // &
-              'MAX_CELLS_SHARING_A_VERTEX within the code.'
+              'MAX_CELLS_SHARING_A_VERTEX in the input file.'
             call printErrMsg(option)
           endif
-          vert2cell_array( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + kk ) = &
+          vert2cell_array( (ii-1)*ugrid%max_cells_sharing_a_vertex + kk ) = &
             aa(aaa+jj)
         enddo
       enddo
-      call MatRestoreRowIJF90(mat_vert2cell_offdiag, 1, PETSC_FALSE, &
+      call MatRestoreRowIJF90(mat_vert2cell_offdiag, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
       call MatGetArray(mat_vert2cell_offdiag,aa,aaa,ierr)
       !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
@@ -2222,7 +2266,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     endif
             
     !
-    call VecCreateMPI(option%mycomm, (rend-rstart)*MAX_CELLS_SHARING_A_VERTEX, &
+    call VecCreateMPI(option%mycomm, (rend-rstart)*ugrid%max_cells_sharing_a_vertex, &
       PETSC_DECIDE, vec_vert2cell, ierr)
       
     call VecGetArrayF90(vec_vert2cell,v_loc_p,ierr)
@@ -2296,34 +2340,34 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     call PetscViewerDestroy(viewer, ierr)
 #endif
       
-    allocate(tmp_int_array(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
+    allocate(tmp_int_array(region%num_verts*ugrid%max_cells_sharing_a_vertex))
     count = 0
     do ii = 1, region%num_verts
-      do jj = 1, MAX_CELLS_SHARING_A_VERTEX
+      do jj = 1, ugrid%max_cells_sharing_a_vertex
         count = count + 1
-        tmp_int_array(count) = region%vertex_ids(1,ii)*MAX_CELLS_SHARING_A_VERTEX + jj
+        tmp_int_array(count) = region%vertex_ids(1,ii)*ugrid%max_cells_sharing_a_vertex + jj
       enddo
     enddo
 
     tmp_int_array = tmp_int_array - 1
     call ISCreateBlock(option%mycomm, 1, &
-                        region%num_verts*MAX_CELLS_SHARING_A_VERTEX, &
+                        region%num_verts*ugrid%max_cells_sharing_a_vertex, &
                         tmp_int_array, PETSC_COPY_VALUES, is_from, ierr)
     deallocate(tmp_int_array)
       
     call VecCreateMPI(option%mycomm, &
-                region%num_verts*MAX_CELLS_SHARING_A_VERTEX, PETSC_DECIDE, &
+                region%num_verts*ugrid%max_cells_sharing_a_vertex, PETSC_DECIDE, &
                 vec_vert2cell_reg_subset, ierr)
     call VecGetOwnershipRange(vec_vert2cell_reg_subset, istart, iend, ierr)
 
-    allocate(tmp_int_array(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
-    do ii = 1, region%num_verts*MAX_CELLS_SHARING_A_VERTEX
+    allocate(tmp_int_array(region%num_verts*ugrid%max_cells_sharing_a_vertex))
+    do ii = 1, region%num_verts*ugrid%max_cells_sharing_a_vertex
       tmp_int_array(ii) = ii + istart
     enddo
       
     tmp_int_array = tmp_int_array - 1
     call ISCreateBlock(option%mycomm, 1, &
-                        region%num_verts*MAX_CELLS_SHARING_A_VERTEX, &
+                        region%num_verts*ugrid%max_cells_sharing_a_vertex, &
                         tmp_int_array, PETSC_COPY_VALUES, is_to, ierr)
     deallocate(tmp_int_array)
       
@@ -2347,18 +2391,18 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       
     call VecGetArrayF90(vec_vert2cell_reg_subset, v_loc_p, ierr)
     allocate(cell_count(region%num_verts))
-    allocate(cell_ids(region%num_verts*MAX_CELLS_SHARING_A_VERTEX))
+    allocate(cell_ids(region%num_verts*ugrid%max_cells_sharing_a_vertex))
       
     ! initialize
     cell_count    = 0
     count         = 0
       
     do ii = 1,region%num_verts
-      do jj = 1,MAX_CELLS_SHARING_A_VERTEX
-        if (v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj) == -1) exit
+      do jj = 1,ugrid%max_cells_sharing_a_vertex
+        if (v_loc_p( (ii-1)*ugrid%max_cells_sharing_a_vertex + jj) == -1) exit
         count = count + 1
         cell_count(ii) = cell_count(ii) + 1
-        cell_ids(count) = v_loc_p( (ii-1)*MAX_CELLS_SHARING_A_VERTEX + jj )
+        cell_ids(count) = v_loc_p( (ii-1)*ugrid%max_cells_sharing_a_vertex + jj )
       enddo
       if (cell_count(ii) < 0) then
         option%io_buffer = 'For a given vertex, no cell found. Stopping'
@@ -2813,9 +2857,9 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
   hash(:,:,:) = 0
 
-  ! recall that natural ids are zero-based
+  
   do local_ghosted_id = 1, grid%ngmax
-    natural_id = grid%nG2A(local_ghosted_id)+1
+    natural_id = grid%nG2A(local_ghosted_id) !nG2A is 1-based
     hash_id = mod(natural_id,grid%num_hash_bins)+1 
     num_in_hash = hash(1,0,hash_id)
     num_in_hash = num_in_hash+1
@@ -2874,7 +2918,7 @@ PetscInt function GridGetLocalIdFromNaturalId(grid,natural_id)
   PetscInt :: natural_id, local_id
   
   do local_id = 1, grid%nlmax
-    if (natural_id == grid%nL2A(local_id)+1) then
+    if (natural_id == grid%nG2A(grid%nL2G(local_id))) then
       GridGetLocalIdFromNaturalId = local_id
       return
     endif
@@ -2903,7 +2947,8 @@ PetscInt function GridGetLocalGhostedIdFromNatId(grid,natural_id)
   PetscInt :: local_ghosted_id
   
   do local_ghosted_id = 1, grid%ngmax
-    if (natural_id == grid%nG2A(local_ghosted_id)+1) then
+    !geh: nG2A is 1-based
+    if (natural_id == grid%nG2A(local_ghosted_id)) then
       GridGetLocalGhostedIdFromNatId = local_ghosted_id
       return 
     endif
@@ -3039,6 +3084,51 @@ end subroutine GridGetGhostedNeighbors
 
 ! ************************************************************************** !
 !
+! GridGetNeighborsWithCorners: Returns an array of neighboring cells along with corner
+! cells
+! author: Satish Karra
+! date: 02/19/12
+!
+! ************************************************************************** !
+subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
+                                   stencil_width_i,stencil_width_j, &
+                                   stencil_width_k,icount, &
+                                   ghosted_neighbors,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: icount
+  PetscInt :: ghosted_neighbors(*)
+  
+  select case(grid%itype)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      call StructGridGetGhostedNeighborsCorners(grid%structured_grid, &
+                                         ghosted_id,stencil_type, &
+                                         stencil_width_i, &
+                                         stencil_width_j, &
+                                         stencil_width_k, &
+                                         icount, &
+                                         ghosted_neighbors,option)
+    case(UNSTRUCTURED_GRID) 
+      option%io_buffer = 'GridGetNeighbors not currently supported for ' // &
+        'unstructured grids.'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridGetGhostedNeighborsWithCorners
+
+
+! ************************************************************************** !
+!
 ! GridDestroy: Deallocates a grid
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -3056,8 +3146,6 @@ subroutine GridDestroy(grid)
   nullify(grid%nL2G)
   if (associated(grid%nG2L)) deallocate(grid%nG2L)
   nullify(grid%nG2L)
-  if (associated(grid%nL2A)) deallocate(grid%nL2A)
-  nullify(grid%nL2A)
   if (associated(grid%nG2A)) deallocate(grid%nG2A)
   nullify(grid%nG2A)
   if (associated(grid%nG2P)) deallocate(grid%nG2P)
@@ -3235,9 +3323,9 @@ function GridIndexToCellID(vec,index,grid,vec_type)
   if (index >= low .and. index < high) then
     cell_id = (index-low)/ndof+1
     if (vec_type == GLOBAL) then
-      cell_id = grid%nL2A(cell_id)+1
+      cell_id = grid%nG2A(grid%nL2G(cell_id))
     else if (vec_type == LOCAL) then
-      cell_id = grid%nG2A(cell_id)+1
+      cell_id = grid%nG2A(cell_id) !nG2A is 1-based
     endif
   endif
   
@@ -3245,7 +3333,6 @@ function GridIndexToCellID(vec,index,grid,vec_type)
                      MPI_MAX,PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID
-
 
 !! ********************************************************************** !
 !!

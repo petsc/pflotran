@@ -229,9 +229,9 @@ subroutine CouplerRead(coupler,input,option)
     
     select case(trim(word))
     
-      case('REGION')
+      case('REGION','SURF_REGION')
         call InputReadWord(input,option,coupler%region_name,PETSC_TRUE)
-      case('FLOW_CONDITION')
+      case('FLOW_CONDITION','SURF_FLOW_CONDITION')
         call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
         call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
@@ -375,6 +375,15 @@ subroutine CouplerComputeConnections(grid,option,coupler)
 
   connection_set => ConnectionCreate(region%num_cells,option%nphase, &
                                      connection_itype)
+    
+  ! if using higher order advection, allocate associated arrays
+  if (option%itranmode == EXPLICIT_ADVECTION .and. &
+      option%tvd_flux_limiter /= 1 .and. &  ! 1 = upwind
+      connection_set%itype == BOUNDARY_CONNECTION_TYPE) then
+    ! connections%id_up2 should remain null as it will not be used
+    allocate(connection_set%id_dn2(size(connection_set%id_dn)))
+    connection_set%id_dn2 = 0
+  endif  
 
   iface = coupler%iface
   do iconn = 1,region%num_cells

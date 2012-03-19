@@ -76,13 +76,15 @@ PetscInt, parameter :: NPHASEDOF = 2
 PetscInt, parameter :: THREENPDOF = 3
 PetscInt, parameter :: NFLOWDOF = 4
 PetscInt, parameter :: NTRANDOF = 5
+PetscInt, parameter :: SURF_ONEDOF = 6
 
 PetscInt, parameter :: GLOBAL = 1
 PetscInt, parameter :: LOCAL = 2
 PetscInt, parameter :: NATURAL = 3
 
-! modes
 PetscInt, parameter :: NULL_MODE = 0
+
+! flow modes
 PetscInt, parameter :: THC_MODE = 1
 PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_MODE = 3
@@ -91,6 +93,10 @@ PetscInt, parameter :: IMS_MODE = 5
 PetscInt, parameter :: FLASH2_MODE = 6
 PetscInt, parameter :: G_MODE = 7
 PetscInt, parameter :: MIS_MODE = 8
+PetscInt, parameter :: THMC_MODE = 9
+
+! transport modes
+PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 
 ! grid types
 PetscInt, parameter :: NULL_GRID = 0
@@ -102,6 +108,8 @@ PetscInt, parameter :: CYLINDRICAL_GRID = 5
 PetscInt, parameter :: SPHERICAL_GRID = 6
 PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
 PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
+PetscInt, parameter :: TWO_DIM_GRID = 9
+PetscInt, parameter :: THREE_DIM_GRID = 10
 
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0
@@ -136,8 +144,9 @@ PetscInt, parameter :: CONSTRAINT_PH = 4
 PetscInt, parameter :: CONSTRAINT_MINERAL = 5
 PetscInt, parameter :: CONSTRAINT_GAS = 6
 PetscInt, parameter :: CONSTRAINT_CHARGE_BAL = 7
-PetscInt, parameter :: CONSTRAINT_TOTAL_SORB = 8
-PetscInt, parameter :: CONSTRAINT_SUPERCRIT_CO2 = 9
+PetscInt, parameter :: CONSTRAINT_TOTAL_SORB_AQ_BASED = 8
+PetscInt, parameter :: CONSTRAINT_TOTAL_SORB = 9
+PetscInt, parameter :: CONSTRAINT_SUPERCRIT_CO2 = 10
 
 ! mineral types
 PetscInt, parameter :: MINERAL_REFERENCE = 1
@@ -169,6 +178,12 @@ PetscInt, parameter :: THC_TEMPERATURE_DOF = 2
 !PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
 PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
 PetscInt, parameter :: THC_ENTHALPY_DOF = 5
+
+PetscInt, parameter :: THMC_PRESSURE_DOF = 1
+PetscInt, parameter :: THMC_TEMPERATURE_DOF = 2
+PetscInt, parameter :: THMC_CONCENTRATION_DOF = 3
+PetscInt, parameter :: THMC_MASS_RATE_DOF = 4
+PetscInt, parameter :: THMC_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1
 PetscInt, parameter :: MPH_TEMPERATURE_DOF = 2
@@ -229,20 +244,23 @@ PetscInt, parameter :: MINERAL_SATURATION_INDEX =32
 PetscInt, parameter :: PH =                      33
 PetscInt, parameter :: SURFACE_CMPLX =           34
 PetscInt, parameter :: SURFACE_CMPLX_FREE =      35
-PetscInt, parameter :: KIN_SURFACE_CMPLX =       36
-PetscInt, parameter :: KIN_SURFACE_CMPLX_FREE =  37
-PetscInt, parameter :: PRIMARY_ACTIVITY_COEF =   38
-PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 39
-PetscInt, parameter :: SC_FUGA_COEFF =           40
-PetscInt, parameter :: PRIMARY_KD =              41
-PetscInt, parameter :: TOTAL_SORBED =            42
-PetscInt, parameter :: TOTAL_SORBED_MOBILE =     43
-PetscInt, parameter :: COLLOID_MOBILE =          44
-PetscInt, parameter :: COLLOID_IMMOBILE =        45
-PetscInt, parameter :: AGE =                     46
-PetscInt, parameter :: STATE =                   47
-PetscInt, parameter :: PROCESSOR_ID =            48
-PetscInt, parameter :: ICE_SATURATION =          49
+PetscInt, parameter :: SURFACE_SITE_DENSITY =    36
+PetscInt, parameter :: KIN_SURFACE_CMPLX =       37
+PetscInt, parameter :: KIN_SURFACE_CMPLX_FREE =  38
+PetscInt, parameter :: PRIMARY_ACTIVITY_COEF =   39
+PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 40
+PetscInt, parameter :: SC_FUGA_COEFF =           41
+PetscInt, parameter :: PRIMARY_KD =              42
+PetscInt, parameter :: TOTAL_SORBED =            43
+PetscInt, parameter :: TOTAL_SORBED_MOBILE =     44
+PetscInt, parameter :: COLLOID_MOBILE =          45
+PetscInt, parameter :: COLLOID_IMMOBILE =        46
+PetscInt, parameter :: AGE =                     47
+PetscInt, parameter :: STATE =                   48
+PetscInt, parameter :: PROCESSOR_ID =            49
+PetscInt, parameter :: ICE_SATURATION =          50
+PetscInt, parameter :: TOTAL_BULK =              51
+PetscInt, parameter :: ICE_DENSITY =             52
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
@@ -305,13 +323,16 @@ PetscInt, parameter :: HEX_TYPE          = 1
 PetscInt, parameter :: TET_TYPE          = 2
 PetscInt, parameter :: WEDGE_TYPE        = 3
 PetscInt, parameter :: PYR_TYPE          = 4
+! 2D cell types:
+PetscInt, parameter :: TRI_TYPE          = 5
+PetscInt, parameter :: QUAD_TYPE         = 6
 
 ! grid cell properties
-PetscInt, parameter :: TRI_FACE_TYPE     = 1
-PetscInt, parameter :: QUAD_FACE_TYPE    = 2
+PetscInt, parameter :: LINE_FACE_TYPE    = 1
+PetscInt, parameter :: TRI_FACE_TYPE     = 2
+PetscInt, parameter :: QUAD_FACE_TYPE    = 3
 PetscInt, parameter :: MAX_VERT_PER_FACE = 4
 PetscInt, parameter :: MAX_FACE_PER_CELL = 6
-PetscInt, parameter :: MAX_CELLS_SHARING_A_VERTEX = 24
 
 ! ids of non-petsc arrays
 PetscInt, parameter :: MATERIAL_ID_ARRAY = 1
@@ -321,5 +342,9 @@ PetscInt, parameter :: SATURATION_FUNCTION_ID_ARRAY = 2
 PetscInt, parameter :: INTERPOLATION_NULL = 0
 PetscInt, parameter :: INTERPOLATION_STEP = 1
 PetscInt, parameter :: INTERPOLATION_LINEAR = 2
+
+! surface/subsurface flags
+PetscInt, parameter :: SUBSURFACE = 0
+PetscInt, parameter :: SURFACE    = 1
 
 #define HASH

@@ -18,7 +18,7 @@ module water_eos_module
 
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
             wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
-            Tsat, DensityIce, InternalEnergyIce
+            Tsat, DensityIce, InternalEnergyIce, wateos_simple
 
 contains
 
@@ -1502,6 +1502,71 @@ subroutine InternalEnergyIce(T, u_ice, du_ice_dT)
   du_ice_dT = a + b*(T + T_ref) + c/((T + T_ref)**(2.d0)) !kJ/kmol/K
   
 end subroutine InternalEnergyIce
+
+
+! ************************************************************************** !
+!
+! wateos_simple: Simple water equation of state from Scott Painter
+! author: Satish Karra
+! date: 02/1/12
+! T in C, P in Pa
+!
+! ************************************************************************** !
+
+subroutine wateos_simple(T, P, den_water_kg, den_water_kmol, dden_water_dp, &
+                         dden_water_dt, h_MJ_kmol, dh_dp, dh_dt, ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: T
+  PetscReal, intent(in) :: P
+  PetscReal, intent(out) :: den_water_kg, den_water_kmol, h_MJ_kmol
+  PetscReal, intent(out) :: dden_water_dp, dden_water_dt
+  PetscReal, intent(out) :: dh_dp, dh_dt
+  
+  PetscErrorCode, intent(out) :: ierr  
+  
+  PetscReal, parameter :: a = 999.915d0
+  PetscReal, parameter :: b = 0.0416516d0
+  PetscReal, parameter :: c = 0.0100836d0
+  PetscReal, parameter :: d = 0.000206355
+  PetscReal, parameter :: alpha = 5.0d-10     ! in Pa^(-1)
+  PetscReal, parameter :: T_ref = 273.15d0    ! in K
+  PetscReal, parameter :: P_ref = 1.0d5       ! in Pa
+ 
+  PetscReal :: den_w_one_bar, T_K
+  PetscReal :: u_J_mol, u_J_kg, h_J_kg
+  PetscReal :: du_dt
+
+
+  ! Density of water
+  T_K = T + T_ref    ! convert to Kelvin
+  den_w_one_bar = a + b*(T_K - T_ref) + c*(T_K - T_ref)**(2.d0) + &
+                  d*(T_K - T_ref)**(3.d0)
+  den_water_kg = den_w_one_bar*(1 + alpha*(P - P_ref))
+  den_water_kmol = den_water_kg/FMWH2O     ! in Kmol
+  
+  ! Internal energy
+  u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
+  u_J_kg = 4.217*1.0d3*(T_K - T_ref)    ! in J/kg
+  h_J_kg = u_J_kg + P/den_water_kg    ! in J/kg
+  h_MJ_kmol = h_J_kg*FMWH2O*1.d-6     ! in MJ/kmol
+  
+  ! Derivatives of density
+  dden_water_dp = 1/FMWH2O*den_w_one_bar*alpha    ! in Kmol/Pa
+  dden_water_dt = 1/FMWH2O*(1 + alpha*(P - P_ref))*(b + 2.d0*c*(T_K - T_ref) + &
+                            3.d0*d*(T_K - T_ref)**(2.d0))      ! in Kmol/K
+                            
+  ! Derivatives of enthalpy
+  dh_dp = FMWH2O*1.d-6/den_water_kg   ! in MJ/kmol/Pa
+  du_dt = 4.217*1.d3                  ! in J/kg/K
+  dh_dt = FMWH2O*1.d-6*(du_dt + P*(-1.d0/den_water_kg**(2.d0))* &
+                        dden_water_dt*FMWH2O)    ! in MJ/kmol/K
+  
+  ierr = 0
+  
+end subroutine wateos_simple
+
 
 
 end module water_eos_module

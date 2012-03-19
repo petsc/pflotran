@@ -27,8 +27,10 @@ module Material_module
     PetscReal :: specific_heat ! J/kg-K
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
+    PetscReal :: alpha    ! conductivity saturation relation exponent
 #ifdef ICE
-    PetscReal :: thermal_conductivity_ice
+    PetscReal :: thermal_conductivity_frozen
+    PetscReal :: alpha_fr
 #endif
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
@@ -94,8 +96,10 @@ function MaterialPropertyCreate()
   material_property%specific_heat = 0.d0
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
+  material_property%alpha = 0.45d0
 #ifdef ICE
-  material_property%thermal_conductivity_ice = 0.d0
+  material_property%thermal_conductivity_frozen = 0.d0
+  material_property%alpha_fr = 0.95d0
 #endif
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
@@ -182,11 +186,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%thermal_conductivity_wet)
         call InputErrorMsg(input,option,'wet thermal conductivity', &
                            'MATERIAL_PROPERTY')
-#ifdef ICE
-      case('THERMAL_CONDUCTIVITY_ICE') 
+      case('THERMAL_COND_EXPONENT') 
         call InputReadDouble(input,option, &
-                             material_property%thermal_conductivity_wet)
-        call InputErrorMsg(input,option,'ice thermal conductivity', &
+                             material_property%alpha)
+        call InputErrorMsg(input,option,'thermal conductivity exponent', &
+                           'MATERIAL_PROPERTY')
+#ifdef ICE
+      case('THERMAL_CONDUCTIVITY_FROZEN') 
+        call InputReadDouble(input,option, &
+                             material_property%thermal_conductivity_frozen)
+        call InputErrorMsg(input,option,'frozen thermal conductivity', &
+                           'MATERIAL_PROPERTY')
+      case('THERMAL_COND_EXPONENT_FROZEN') 
+        call InputReadDouble(input,option, &
+                             material_property%alpha_fr)
+        call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
 #endif
       case('PORE_COMPRESSIBILITY') 

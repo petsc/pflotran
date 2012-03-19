@@ -250,7 +250,7 @@ subroutine ImmisSetupPatch(realization)
   patch%aux%Immis%aux_vars_ss => aux_vars_ss
   patch%aux%Immis%num_aux_ss = sum_connection
   
-  option%numerical_derivatives = PETSC_TRUE
+  option%numerical_derivatives_flow = PETSC_TRUE
 
   ! print *,' ims setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -1503,69 +1503,73 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave, v_darcy
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
-  
+
   fluxm = 0.d0
   fluxe = 0.d0
-  v_darcy = 0.d0
-  density_ave = 0.d0
-  q = 0.d0
 
-  ! Flow   
-!  diffdp = por_dn*tor_dn/dd_up*area
-  do np = 1, option%nphase  
-     select case(ibndtype(1))
-        ! figure out the direction of flow
-     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-        Dq = perm_dn / dd_up
-        ! Flow term
-        ukvr=0.D0
-        v_darcy=0.D0 
-        if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-           upweight=1.D0
-           if (aux_var_up%sat(np) < eps) then 
-              upweight=0.d0
-           else if (aux_var_dn%sat(np) < eps) then 
-              upweight=1.d0
-           endif
-           density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
-           
-           gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
-                (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
-                * dist_gravity
-       
-           dphi = aux_var_up%pres - aux_var_dn%pres &
-                - aux_var_up%pc(np) + aux_var_dn%pc(np) &
-                + gravity
-   
-           if (dphi>=0.D0) then
-              ukvr = aux_var_up%kvr(np)
-           else
-              ukvr = aux_var_dn%kvr(np)
-           endif
-     
-           if (ukvr*Dq>floweps) then
-              v_darcy = Dq * ukvr * dphi
-           endif
+  do np = 1, option%nphase
+    v_darcy = 0.d0
+    density_ave = 0.d0
+    q = 0.d0
+    ukvr=0.D0
+    select case(ibndtype(MPH_PRESSURE_DOF))
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+      Dq = perm_dn / dd_up
+
+      ! only consider phase that exists, this also deals with IPHASE=1,2
+      if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+
+        ! upweight according to saturation?
+        upweight=1.D0
+        if (aux_var_up%sat(np) < eps) then 
+          upweight=0.d0
+        else if (aux_var_dn%sat(np) < eps) then 
+          upweight=1.d0
+        endif
+        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
+
+        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+             (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+             * dist_gravity
+
+        ! calculate the pressure gradient
+        dphi = aux_var_up%pres - aux_var_dn%pres &
+             - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+             + gravity
+
+        ! upwind rel perm by the pressure gradient
+        if (dphi>=0.D0) then
+          ukvr = aux_var_up%kvr(np)
+        else
+          ukvr = aux_var_dn%kvr(np)
         endif
 
-     case(NEUMANN_BC)
-        v_darcy = 0.D0
-        if (dabs(aux_vars(1)) > floweps) then
-           v_darcy = aux_vars(MPH_PRESSURE_DOF)
-           if (v_darcy > 0.d0) then 
-              density_ave = aux_var_up%den(np)
-           else 
-              density_ave = aux_var_dn%den(np)
-           endif
+        if (ukvr*Dq>floweps) then
+          v_darcy = Dq * ukvr * dphi
         endif
+      endif
 
+    case(NEUMANN_BC) ! fixed by etc, 1/23/2012
+      ! only consider phase that exists, this also deals with IPHASE=1,2
+      if (aux_var_up%sat(np) > sir_dn(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+
+        ! upwind by imposed Neumann velocity
+        if (dabs(aux_vars(MPH_PRESSURE_DOF)) > floweps) then
+          v_darcy = aux_vars(MPH_PRESSURE_DOF)
+          if (v_darcy > 0.d0) then
+            density_ave = aux_var_up%den(np)
+          else
+            density_ave = aux_var_dn%den(np)
+          endif
+        endif
+      end if
      end select
-     
+
      q = v_darcy * area
      vv_darcy(np) = v_darcy
      uh=0.D0
      uxmol=0.D0
-     
+
      if (v_darcy >= 0.D0) then
         !if(option%use_isothermal == PETSC_FALSE)&
          uh = aux_var_up%h(np)
@@ -1575,7 +1579,7 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         uh = aux_var_dn%h(np)
          ! uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
-    
+
         fluxm(np) = fluxm(np) + q*density_ave ! *uxmol(ispec)
 
       !if(option%use_isothermal == PETSC_FALSE) &
@@ -1600,7 +1604,7 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
            enddo
           endif         
         enddo
-     
+
   end select
 #endif
   ! Conduction term
@@ -1847,7 +1851,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
       realization%fluid_properties,option)
 
-    if (option%numerical_derivatives) then
+    if (option%numerical_derivatives_flow) then
       patch%aux%Immis%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         patch%aux%Immis%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
@@ -2173,7 +2177,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isothermal) then
+!  if(option%use_isothermal) then
+#ifdef ISOTHERMAL
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
       if (associated(patch%imat)) then
@@ -2182,7 +2187,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       istart = 3 + (local_id-1)*option%nflowdof
       r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
     enddo
-  endif
+#endif
+!  endif
   !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
 
@@ -2599,7 +2605,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)

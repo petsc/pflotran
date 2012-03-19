@@ -184,6 +184,7 @@ function RealizationCreate2(option)
   nullify(realization%reaction)
 
   nullify(realization%patch)    
+
   RealizationCreate2 => realization
   
 end function RealizationCreate2 
@@ -200,6 +201,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Grid_module
   use Unstructured_Grid_module, only : UGridMapIndices, &
                                        UGridEnsureRightHandRule
+  use Structured_Grid_module, only : StructGridCreateTVDGhosts
   use AMR_Grid_module
   use MFD_module
   use Coupler_module
@@ -226,11 +228,9 @@ subroutine RealizationCreateDiscretization(realization)
   option => realization%option
   field => realization%field
  
- 
   discretization => realization%discretization
   
   call DiscretizationCreateDMs(discretization,option)
-
 
 
   option%ivar_centering = CELL_CENTERED
@@ -402,6 +402,15 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, discretization%dm_1dof%sgdm)
+      if (option%itranmode == EXPLICIT_ADVECTION) then
+        call StructGridCreateTVDGhosts(grid%structured_grid, &
+                                       realization%reaction%naqcomp, &
+                                       field%tran_xx, &
+                                       discretization%dm_1dof%sgdm, &
+                                       field%tvd_ghosts, &
+                                       discretization%tvd_ghost_scatter, &
+                                       option)
+      endif
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume,option)
@@ -414,11 +423,11 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
-                           grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
+                           grid%nG2L,grid%nL2G,grid%nG2A)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                    discretization%dm_1dof%ugdm) 
       call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &
-                                    grid%y,grid%z,grid%nL2A,option)
+                                    grid%y,grid%z,grid%nG2A,grid%nL2G,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
@@ -502,15 +511,17 @@ subroutine RealizationLocalizeRegions(realization)
 
   use Option_module
   use String_module
+  use Grid_module
 
   implicit none
   
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: cur_patch, cur_patch2
   type (region_type), pointer :: cur_region, cur_region2
   type(option_type), pointer :: option
+  type(region_type), pointer :: patch_region
 
   option => realization%option
 
@@ -619,7 +630,7 @@ subroutine RealizationAddCoupler(realization,coupler)
     enddo
     cur_level => cur_level%next
   enddo
-  
+
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
@@ -863,7 +874,7 @@ subroutine RealizationProcessCouplers(realization)
     enddo
     cur_level => cur_level%next
   enddo
- 
+  
 end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
@@ -2006,7 +2017,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif
 
   porosity_updated = PETSC_FALSE
-  if (realization%option%update_porosity) then
+  if (reaction%update_porosity) then
     porosity_updated = PETSC_TRUE
   
     call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -2022,7 +2033,8 @@ subroutine RealizationUpdatePropertiesPatch(realization)
           sum_volfrac = sum_volfrac + &
                         rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)
         enddo 
-        porosity_loc_p(ghosted_id) = 1.d0-sum_volfrac
+        porosity_loc_p(ghosted_id) = max(1.d0-sum_volfrac, &
+                                         reaction%minimum_porosity)
       enddo
     endif
 
@@ -2031,11 +2043,11 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   endif
   
   if ((porosity_updated .and. &
-       (option%update_tortuosity .or. &
-        option%update_permeability)) .or. &
+       (reaction%update_tortuosity .or. &
+        reaction%update_permeability)) .or. &
       ! if porosity ratio is used in mineral surface area update, we must
       ! recalculate it every time.
-      (option%update_mineral_surface_area .and. &
+      (reaction%update_mineral_surface_area .and. &
        option%update_mnrl_surf_with_porosity)) then
     call GridVecGetArrayF90(grid,field%porosity0,porosity0_p,ierr)
     call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -2049,7 +2061,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
   endif      
 
-  if (option%update_mineral_surface_area) then
+  if (reaction%update_mineral_surface_area) then
     porosity_scale = 1.d0
     if (option%update_mnrl_surf_with_porosity) then
       ! placing the get/restore array calls within the condition will 
@@ -2083,7 +2095,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
                                      field%tortuosity_loc,ONEDOF)
   endif
       
-  if (option%update_tortuosity) then
+  if (reaction%update_tortuosity) then
     call GridVecGetArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)  
     call GridVecGetArrayF90(grid,field%tortuosity0,tortuosity0_p,ierr)  
     call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
@@ -2101,7 +2113,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
                                      field%tortuosity_loc,ONEDOF)
   endif
       
-  if (option%update_permeability) then
+  if (reaction%update_permeability) then
     call GridVecGetArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
@@ -2562,7 +2574,7 @@ end subroutine RealizationPrintGridStatistics
 ! ************************************************************************** !
 !
 ! RealizationCalculateCFL1Timestep: Calculates largest time step that  
-!                                   preserves aCFL # of 1 in a realization
+!                                   preserves a CFL # of 1 in a realization
 ! author: Glenn Hammond
 ! date: 10/07/11
 !
@@ -2577,6 +2589,8 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: max_dt_cfl_1_patch
+  PetscReal :: tempreal
+  PetscErrorCode :: ierr
   
   max_dt_cfl_1 = 1.d20
   cur_level => realization%level_list%first
@@ -2592,6 +2606,12 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
     enddo
     cur_level => cur_level%next
   enddo  
+
+  ! get the minimum across all cores
+  call MPI_Allreduce(max_dt_cfl_1,tempreal,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN, &
+                     realization%option%mycomm,ierr)
+  max_dt_cfl_1 = tempreal
 
 end subroutine RealizationCalculateCFL1Timestep
 
@@ -2611,6 +2631,7 @@ subroutine RealizationDestroy(realization)
   if (.not.associated(realization)) return
     
   call FieldDestroy(realization%field)
+
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
   call RegionDestroyList(realization%regions)
   
@@ -2632,7 +2653,7 @@ subroutine RealizationDestroy(realization)
     deallocate(realization%material_property_array)
   nullify(realization%material_property_array)
   call MaterialPropertyDestroy(realization%material_properties)
-  
+
   if (associated(realization%saturation_function_array)) &
     deallocate(realization%saturation_function_array)
   nullify(realization%saturation_function_array)
@@ -2647,5 +2668,5 @@ subroutine RealizationDestroy(realization)
   call ReactionDestroy(realization%reaction)
   
 end subroutine RealizationDestroy
-  
+
 end module Realization_module

@@ -255,6 +255,300 @@ end subroutine OutputObservation
 
 ! ************************************************************************** !
 !
+! OutputFilenameID: Creates an ID for filename
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFilenameID(output_option,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+
+  character(len=MAXWORDLENGTH) :: OutputFilenameID
+  
+  if (output_option%plot_number < 10) then
+    write(OutputFilenameID,'("00",i1)') output_option%plot_number  
+  else if (output_option%plot_number < 100) then
+    write(OutputFilenameID,'("0",i2)') output_option%plot_number  
+  else if (output_option%plot_number < 1000) then
+    write(OutputFilenameID,'(i3)') output_option%plot_number  
+  else if (output_option%plot_number < 10000) then
+    write(OutputFilenameID,'(i4)') output_option%plot_number  
+  endif 
+  
+  OutputFilenameID = adjustl(OutputFilenameID)
+
+end function OutputFilenameID
+
+! ************************************************************************** !
+!
+! OutputFilename: Creates a filename for a Tecplot file
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFilename(output_option,option,suffix,optional_string)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+  character(len=*) :: suffix
+  character(len=*) :: optional_string
+  
+  character(len=MAXSTRINGLENGTH) :: OutputFilename
+
+  character(len=MAXWORDLENGTH) :: final_suffix
+  character(len=MAXSTRINGLENGTH) :: final_optional_string
+
+
+  if (len_trim(optional_string) > 0) then
+    final_optional_string = '-' // optional_string
+  else
+    final_optional_string = ''
+  endif
+  final_suffix = '.' // suffix
+  
+  ! open file
+  if (len_trim(output_option%plot_name) > 2) then
+    OutputFilename = trim(output_option%plot_name) // &
+            trim(final_optional_string) // &
+            final_suffix
+  else  
+    OutputFilename = trim(option%global_prefix) // &
+            trim(option%group_prefix) // &
+            trim(final_optional_string) // &
+            '-' // &
+            trim(OutputFilenameID(output_option,option)) // &
+            final_suffix
+  endif
+  
+end function OutputFilename
+
+! ************************************************************************** !
+!
+! OutputTecplotHeader: Print header to Tecplot file
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+subroutine OutputTecplotHeader(fid,realization,icolumn)
+
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: icolumn
+  
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  output_option => realization%output_option
+
+  ! write header
+  ! write title
+  write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
+                option%time/output_option%tconv,output_option%tunit
+
+  ! initial portion of header
+  header = 'VARIABLES=' // &
+            '"X [m]",' // &
+            '"Y [m]",' // &
+            '"Z [m]"'
+
+  ! write flow variables
+  header2 = ''
+  select case(option%iflowmode)
+    case (MIS_MODE)
+      header2 = MiscibleGetTecplotHeader(realization,icolumn)
+    case (IMS_MODE)
+      header2 = ImmisGetTecplotHeader(realization,icolumn)
+    case (MPH_MODE)
+      header2 = MphaseGetTecplotHeader(realization,icolumn)
+    case (FLASH2_MODE)
+      header2 = FLASH2GetTecplotHeader(realization,icolumn)
+    case(THC_MODE)
+      header2 = THCGetTecplotHeader(realization,icolumn)
+    case(THMC_MODE)
+      header2 = THMCGetTecplotHeader(realization,icolumn)
+    case(RICHARDS_MODE)
+      header2 = RichardsGetTecplotHeader(realization,icolumn)
+    case(G_MODE)
+      header2 = GeneralGetTecplotHeader(realization,icolumn)
+  end select
+  header = trim(header) // trim(header2)
+
+  ! write transport variables
+  if (option%ntrandof > 0) then
+    string = ''
+    header2 = RTGetTecplotHeader(realization,string,icolumn)
+    header = trim(header) // trim(header2)
+  endif
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    header = trim(header) // ',"Porosity"'
+  endif
+
+  ! write material ids
+  header = trim(header) // ',"Material_ID"'
+
+  if (associated(output_option%plot_variables)) then
+    do i = 1, size(output_option%plot_variables)
+      header = trim(header) // ',"' // &
+        trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
+                                        option)) // &
+        '"'
+    enddo
+  endif
+
+  write(fid,'(a)') trim(header)
+
+#ifdef GLENN_NEW_IO
+  call OutputOptionPlotVarFinalize(output_option)
+#endif
+
+  ! count vars in header
+  quote_count = 0
+  comma_count = 0
+  do i=1,len_trim(header)
+    ! 34 = '"'
+    if (iachar(header(i:i)) == 34) then
+      quote_count = quote_count + 1
+    ! 44 = ','
+    else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
+      comma_count = comma_count + 1
+    endif
+  enddo
+  
+  variable_count = comma_count + 1
+
+  !geh: due to pgi bug, cannot embed functions with calls to write() within
+  !     write statement
+  string = OutputTecplotZoneHeader(realization,variable_count, &
+                                   output_option%tecplot_format)
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputTecplotHeader
+
+! ************************************************************************** !
+!
+! OutputTecplotZoneHeader: Print zone header to Tecplot file
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  PetscInt :: variable_count
+  PetscInt :: tecplot_format
+  
+  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
+
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  
+  grid => realization%patch%grid
+  option => realization%option
+  output_option => realization%output_option  
+
+  string = 'ZONE T="' // &
+           trim(OutputFormatDouble(option%time/output_option%tconv)) // &
+           '"'
+  string2 = ''
+  select case(tecplot_format)
+    case (TECPLOT_POINT_FORMAT)
+      if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+          (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+        string2 = ', I=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nx)) // &
+                  ', J=' // &
+                  trim(OutputFormatInt(grid%structured_grid%ny)) // &
+                  ', K=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nz))
+      else
+        string2 = 'POINT format currently not supported for unstructured'
+      endif  
+      string2 = trim(string2) // &
+              ', DATAPACKING=POINT'
+    case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
+      if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+          (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+        string2 = ', I=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nx+1)) // &
+                  ', J=' // &
+                  trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
+                  ', K=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nz+1))
+      else
+        string2 = ', N=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                  ', ELEMENTS=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%nmax))
+        string2 = trim(string2) // ', ZONETYPE=FEBRICK'
+      endif  
+  
+      if (variable_count > 4) then
+        string3 = ', VARLOCATION=([4-' // &
+                  trim(OutputFormatInt(variable_count)) // &
+                  ']=CELLCENTERED)'
+      else
+        string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+      endif
+      string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
+  end select
+  
+  OutputTecplotZoneHeader = trim(string) // string2  
+
+end function OutputTecplotZoneHeader
+
+! ************************************************************************** !
+!
 ! OutputTecplotBlock: Print to Tecplot file in BLOCK format
 ! author: Glenn Hammond
 ! date: 10/25/07
@@ -273,6 +567,7 @@ subroutine OutputTecplotBlock(realization)
   use Mphase_module
   use Immis_module
   use THC_module
+  use THMC_module
   use Richards_module
   use Flash2_module
   use Miscible_module
@@ -310,126 +605,15 @@ subroutine OutputTecplotBlock(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.tec'
-  endif
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-  
-    ! write header
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-
-    ! initial portion of header
-    header = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
-
-    ! write flow variables
-    header2 = ''
-    select case(option%iflowmode)
-      case (MIS_MODE)
-        header2 = MiscibleGetTecplotHeader(realization,icolumn)
-      case (IMS_MODE)
-        header2 = ImmisGetTecplotHeader(realization,icolumn)
-      case (MPH_MODE)
-        header2 = MphaseGetTecplotHeader(realization,icolumn)
-      case (FLASH2_MODE)
-        header2 = FLASH2GetTecplotHeader(realization,icolumn)
-      case(THC_MODE)
-        header2 = THCGetTecplotHeader(realization,icolumn)
-      case(RICHARDS_MODE)
-        header2 = RichardsGetTecplotHeader(realization,icolumn)
-      case(G_MODE)
-        header2 = GeneralGetTecplotHeader(realization,icolumn)
-    end select
-    header = trim(header) // trim(header2)
-
-    ! write transport variables
-    if (option%ntrandof > 0) then
-      string = ''
-      header2 = RTGetTecplotHeader(realization,string,icolumn)
-      header = trim(header) // trim(header2)
-    endif
-
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      header = trim(header) // ',"Porosity"'
-    endif
-
-    ! write material ids
-    header = trim(header) // ',"Material_ID"'
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        header = trim(header) // ',"' // &
-          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                          option)) // &
-          '"'
-      enddo
-    endif
-
-    write(IUNIT3,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO
-    call OutputOptionPlotVarFinalize(output_option)
-#endif
-
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
-      ! count vars in header
-      quote_count = 0
-      comma_count = 0
-      do i=1,len_trim(header)
-        ! 34 = '"'
-        if (iachar(header(i:i)) == 34) then
-          quote_count = quote_count + 1
-        ! 44 = ','
-        else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-          comma_count = comma_count + 1
-        endif
-      enddo
-      ! there are comma_count+1 variables
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4)') &
-                   option%time/output_option%tconv,grid%structured_grid%nx+1, &
-                   grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      if (comma_count > 3) then
-        write(string2,'(i5)') comma_count+1
-        string = trim(string) // ', VARLOCATION=([4-' // &
-                 trim(adjustl(string2)) // ']=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
-      endif
-    else
-     !sp changed from structured to unstructured below 9/24/2010
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
-                   option%time/output_option%tconv, &
-                   grid%ngmax
-    endif
-    string = trim(string) // ', DATAPACKING=BLOCK'
-    write(IUNIT3,'(a)') trim(string)
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)
   endif
-  
+    
   ! write blocks
   ! write out data sets  
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -438,29 +622,20 @@ subroutine OutputTecplotBlock(realization)
                                   option)  
 
   ! write out coordinates
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+  if (realization%discretization%itype == STRUCTURED_GRID .or. &
+      realization%discretization%itype == STRUCTURED_GRID_MIMETIC ) then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
-    call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotUGridVertices(IUNIT3,realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+         FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -468,7 +643,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -484,7 +659,7 @@ subroutine OutputTecplotBlock(realization)
       
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -492,17 +667,33 @@ subroutine OutputTecplotBlock(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
 #ifdef ICE    
+      ! gas saturation
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+      
       ! ice saturation
       select case(option%iflowmode)
-        case(THC_MODE)
+        case(THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! ice density
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -510,7 +701,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! liquid density
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -526,7 +717,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -542,7 +733,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! liquid viscosity
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -558,7 +749,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -573,7 +764,7 @@ subroutine OutputTecplotBlock(realization)
       end select
     
       select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,THC_MODE,MIS_MODE,G_MODE)
+        case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,MIS_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
@@ -640,6 +831,15 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -673,6 +873,13 @@ subroutine OutputTecplotBlock(realization)
       do i=1,reaction%nmnrl
         if (reaction%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
@@ -783,6 +990,10 @@ subroutine OutputTecplotBlock(realization)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+
+  if (realization%discretization%itype == UNSTRUCTURED_GRID) then
+    call WriteTecplotUGridElements(IUNIT3,realization)
+  endif
   
   if (option%myrank == option%io_rank) close(IUNIT3)
   
@@ -842,6 +1053,7 @@ subroutine OutputTecplotFEBrick(realization)
   use Mphase_module
   use Immis_module
   use THC_module
+  use THMC_module
   use Richards_module
   use Flash2_module
   use Miscible_module
@@ -882,152 +1094,31 @@ subroutine OutputTecplotFEBrick(realization)
   field => realization%field
   reaction => realization%reaction
   output_option => realization%output_option
-  
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.tec'
-  endif
+
+  filename = OutputFilename(output_option,option,'tec','')
     
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
-  
-    ! write header
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-
-    ! initial portion of header
-    header = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
-
-    ! write flow variables
-    header2 = ''
-    select case(option%iflowmode)
-      case (IMS_MODE)
-        header2 = ImmisGetTecplotHeader(realization,icolumn)
-      case (MIS_MODE)
-        header2 = MiscibleGetTecplotHeader(realization,icolumn)
-      case (MPH_MODE)
-        header2 = MphaseGetTecplotHeader(realization,icolumn)
-      case (FLASH2_MODE)
-        header2 = FLASH2GetTecplotHeader(realization,icolumn)
-      case(THC_MODE)
-        header2 = THCGetTecplotHeader(realization,icolumn)
-      case(RICHARDS_MODE)
-       header2 = RichardsGetTecplotHeader(realization,icolumn)
-      case(G_MODE)
-       header2 = GeneralGetTecplotHeader(realization,icolumn)
-    end select
-    header = trim(header) // trim(header2)
-
-    ! write transport variables
-    if (option%ntrandof > 0) then
-      string = ''
-      header2 = RTGetTecplotHeader(realization,string,icolumn)
-      header = trim(header) // trim(header2)
-    endif
-
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      header = trim(header) // ',"Porosity"'
-    endif
-
-    ! write material ids
-    header = trim(header) // ',"Material_ID"'
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        header = trim(header) // ',"' // &
-          trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                          option)) // &
-          '"'
-      enddo
-    endif
-
-    write(IUNIT3,'(a)') trim(header)
-    quote_count = 0
-    comma_count = 0
-    do i=1,len_trim(header)
-      ! 34 = '"'
-      if (iachar(header(i:i)) == 34) then
-        quote_count = quote_count + 1
-      ! 44 = ','
-      else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
-        comma_count = comma_count + 1
-      endif
-    enddo
-
-#ifdef GLENN_NEW_IO
-    call OutputOptionPlotVarFinalize(output_option)
-#endif
-
-    ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12,'' ELEMENTS='',i12)') &
-                   option%time/output_option%tconv, &
-                   grid%unstructured_grid%num_vertices_global, &
-                   grid%unstructured_grid%nmax 
-     string = trim(string) // ', DATAPACKING=BLOCK'
-     string = trim(string) // ', ZONETYPE=FEBRICK'
-     if (comma_count > 3) then
-       write(string2,'(i5)') comma_count+1
-       string = trim(string) // ', VARLOCATION=([4-' // &
-                trim(adjustl(string2)) // ']=CELLCENTERED)'
-     else
-       string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
-     endif
-    write(IUNIT3,'(a)') trim(string)
-    
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)    
   endif
 
-  ! write blocks
-  ! write out data sets
-  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
-                    grid%unstructured_grid%num_vertices_global,global_vertex_vec,ierr)
-  call DiscretizationCreateVector(discretization, ONEDOF, global_vec,GLOBAL, &
+  ! write vertices
+  call WriteTecplotUGridVertices(IUNIT3,realization)
+
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)  
-  call DiscretizationCreateVector(discretization, ONEDOF, natural_vec, NATURAL, &
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)  
-
-  call VecGetLocalSize(global_vertex_vec,i,ierr)
-  call GetVertexCoordinates(grid, global_vertex_vec, X_COORDINATE, option)
-  call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
-  call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
-
-  call GetVertexCoordinates(grid, global_vertex_vec, Y_COORDINATE, option)
-  call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
-  call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
-
-  call GetVertexCoordinates(grid, global_vertex_vec, Z_COORDINATE, option)
-  call VecGetArrayF90(global_vertex_vec, vec_ptr, ierr)
-  call WriteTecplotDataSet(IUNIT3, realization,vec_ptr, TECPLOT_REAL,i)
-  call VecRestoreArrayF90(global_vertex_vec, vec_ptr, ierr)
-
-  call VecDestroy(global_vertex_vec, ierr)
-
+  
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+         FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1035,7 +1126,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1051,7 +1142,7 @@ subroutine OutputTecplotFEBrick(realization)
       
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1059,17 +1150,33 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
 #ifdef ICE
+      ! gas saturation
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+      
       ! ice saturation
       select case(option%iflowmode)
-        case(THC_MODE)
+        case(THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! ice density
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -1077,7 +1184,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! liquid density
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1093,7 +1200,7 @@ subroutine OutputTecplotFEBrick(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1109,7 +1216,7 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! liquid viscosity
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1125,7 +1232,7 @@ subroutine OutputTecplotFEBrick(realization)
     
       ! liquid mobility
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1140,7 +1247,7 @@ subroutine OutputTecplotFEBrick(realization)
       end select
     
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
@@ -1207,6 +1314,15 @@ subroutine OutputTecplotFEBrick(realization)
           endif
         enddo
       endif
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -1244,6 +1360,13 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo      
       do i=1,reaction%neqsrfcplxrxn
         if (reaction%eqsrfcplx_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
@@ -1351,25 +1474,8 @@ subroutine OutputTecplotFEBrick(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
   
-  
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
-                           GLOBAL,option) 
-  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
-                           NATURAL,option) 
-  call GetCellConnections(grid,global_vec)
-  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
-                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
-  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
-  call WriteTecplotDataSetNumPerLine(IUNIT3,realization,vec_ptr, &
-                                     TECPLOT_INTEGER, &
-                                     grid%unstructured_grid%nlmax*8,8)
-  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
-  call VecDestroy(global_vec,ierr)
-  call VecDestroy(natural_vec,ierr)
-  call UGridDMDestroy(ugdm_element)
+  ! write vertices
+  call WriteTecplotUGridElements(IUNIT3,realization)
 
   if (option%myrank == option%io_rank) close(IUNIT3)
 
@@ -1414,23 +1520,8 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   option => realization%option
   output_option => realization%output_option
   discretization => realization%discretization
-  
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.tec'
-  endif
+
+  filename = OutputFilename(output_option,option,'tec','vel')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
@@ -1440,7 +1531,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   
     ! write header
     ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+    write(IUNIT3,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
@@ -1460,25 +1551,12 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     string = trim(string) // ',"Material_ID"'
     write(IUNIT3,'(a)') trim(string)
   
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      string = trim(string) // ' DATAPACKING=BLOCK'
-      if (option%nphase > 1) then
-        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-      endif
+    if (option%nphase > 1) then
+      string = OutputTecplotZoneHeader(realization,TEN_INTEGER, &
+                                       TECPLOT_BLOCK_FORMAT)
     else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-      string = trim(string) // ' DATAPACKING=BLOCK'
+      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER, &
+                                       TECPLOT_BLOCK_FORMAT)
     endif
     write(IUNIT3,'(a)') trim(string)
 
@@ -1492,21 +1570,11 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                                   option)    
 
   ! write out coorindates
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
+  if (realization%discretization%itype == STRUCTURED_GRID .or. &
+      realization%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
-    call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotUGridVertices(IUNIT3,realization)
   endif
   
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
@@ -1542,6 +1610,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+
+  if (realization%discretization%itype == UNSTRUCTURED_GRID) then
+    call WriteTecplotUGridElements(IUNIT3,realization)
+  endif
 
   if (option%myrank == option%io_rank) close(IUNIT3)
   
@@ -1634,15 +1706,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
       filename = trim(filename) // 'z'
   end select 
   
-  if (output_option%plot_number < 10) then
-    write(string,'("00",i1)') output_option%plot_number  
-  else if (output_option%plot_number < 100) then
-    write(string,'("0",i2)') output_option%plot_number  
-  else if (output_option%plot_number < 1000) then
-    write(string,'(i3)') output_option%plot_number  
-  else if (output_option%plot_number < 10000) then
-    write(string,'(i4)') output_option%plot_number  
-  endif
+  string = trim(OutputFilenameID(output_option,option))
   
   filename = trim(filename) // '-' // trim(string) // '.tec'
   
@@ -1654,7 +1718,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
     ! write header
     ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+    write(IUNIT3,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
@@ -1682,21 +1746,19 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     ! write zone header
     select case(direction)
       case(X_DIRECTION)
-        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
+        write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i4,'', J='',i4, &
+                     &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
       case(Y_DIRECTION)
-        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
+        write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i4,'', J='',i4, &
+                     &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
       case(Z_DIRECTION)
-        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
+        write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i4,'', J='',i4, &
+                     &'', K='',i4)') &
                      option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
     end select 
-  
-  
-    string = trim(string) // ' DATAPACKING=BLOCK'
+    string = trim(string) // ', DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
   endif
@@ -1717,21 +1779,21 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     case(X_DIRECTION)
       global_size = grid%nmax-grid%structured_grid%ny*grid%structured_grid%nz
       nx_global = grid%structured_grid%nx-1
-      if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
+      if (grid%structured_grid%gxe-grid%structured_grid%lxe == 0) then
         local_size = grid%nlmax-grid%structured_grid%nlyz
         nx_local = grid%structured_grid%nlx-1
       endif
     case(Y_DIRECTION)
       global_size = grid%nmax-grid%structured_grid%nx*grid%structured_grid%nz
       ny_global = grid%structured_grid%ny-1
-      if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
+      if (grid%structured_grid%gye-grid%structured_grid%lye == 0) then
         local_size = grid%nlmax-grid%structured_grid%nlxz
         ny_local = grid%structured_grid%nly-1
       endif
     case(Z_DIRECTION)
       global_size = grid%nmax-grid%structured_grid%nxy
       nz_global = grid%structured_grid%nz-1
-      if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
+      if (grid%structured_grid%gze-grid%structured_grid%lze == 0) then
         local_size = grid%nlmax-grid%structured_grid%nlxy
         nz_local = grid%structured_grid%nlz-1
       endif
@@ -1744,8 +1806,8 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     do j=1,ny_local
       do i=1,nx_local
         count = count + 1
-        indices(count) = i+grid%structured_grid%nxs+(j-1+grid%structured_grid%nys)*nx_global+ &
-                         (k-1+grid%structured_grid%nzs)*nx_global*ny_global
+        indices(count) = i+grid%structured_grid%lxs+(j-1+grid%structured_grid%lys)*nx_global+ &
+                         (k-1+grid%structured_grid%lzs)*nx_global*ny_global
       enddo
     enddo
   enddo
@@ -1893,6 +1955,7 @@ subroutine OutputTecplotPoint(realization)
   use Mphase_module
   use Immis_module
   use THC_module
+  use THMC_module
   use Richards_module
   use Flash2_module
   use Miscible_module
@@ -1932,23 +1995,8 @@ subroutine OutputTecplotPoint(realization)
   field => realization%field
   reaction => realization%reaction
   output_option => realization%output_option
-  
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
-  else
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-' // trim(string) // '.tec'    
-  endif
+
+  filename = OutputFilename(output_option,option,'tec','')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot output file: ' // &
@@ -1956,78 +2004,12 @@ subroutine OutputTecplotPoint(realization)
     call printMsg(option)                       
     open(unit=IUNIT3,file=filename,action="write")
   
-    ! write header
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-
-    ! initial portion of header
-    header = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
-
     if (output_option%print_column_ids) then
       icolumn = 3
     else
       icolumn = -1
     endif
-
-    ! write flow variables
-    header2 = ''
-    select case(option%iflowmode)
-      case (Flash2_MODE)
-        header2 = Flash2GetTecplotHeader(realization,icolumn)
-      case (MIS_MODE)
-        header2 = MiscibleGetTecplotHeader(realization,icolumn)
-      case (IMS_MODE)
-        header2 = ImmisGetTecplotHeader(realization,icolumn)
-      case (MPH_MODE)
-        header2 = MphaseGetTecplotHeader(realization,icolumn)
-      case(THC_MODE)
-        header2 = THCGetTecplotHeader(realization,icolumn)
-      case(RICHARDS_MODE)
-       header2 = RichardsGetTecplotHeader(realization,icolumn)
-      case(G_MODE)
-       header2 = GeneralGetTecplotHeader(realization,icolumn)
-    end select
-    header = trim(header) // trim(header2)
-
-    ! write transport variables
-    if (option%ntrandof > 0) then
-      string = ''
-      header2 = RTGetTecplotHeader(realization,string,icolumn)
-      header = trim(header) // trim(header2)
-    endif
-
-    ! add porosity to header
-    if (output_option%print_porosity) then
-      call OutputAppendToHeader(header,'Porosity','','',icolumn)
-    endif
-        
-    ! write material ids
-    call OutputAppendToHeader(header,'Material_ID','','',icolumn)
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        string = trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i),option))
-        call OutputAppendToHeader(header,string,'','',icolumn)
-      enddo
-    endif
-
-    write(IUNIT3,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO    
-    call OutputOptionPlotVarFinalize(output_option)
-#endif
-
-    ! write zone header
-    write(header,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
-                   &'', K='',i5)') &
-                   option%time/output_option%tconv,grid%structured_grid%nx, &
-                   grid%structured_grid%ny,grid%structured_grid%nz 
-    header = trim(header) // ', DATAPACKING=POINT'
-    write(IUNIT3,'(a)') trim(header)
+    call OutputTecplotHeader(IUNIT3,realization,icolumn)
   endif
   
 1000 format(es13.6,1x)
@@ -2041,11 +2023,12 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') grid%z(ghosted_id)
 
     select case(option%iflowmode)
-      case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
+      case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE, &
+           MIS_MODE,G_MODE)
 
         ! temperature
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,TEMPERATURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2053,7 +2036,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! pressure
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,PRESSURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2069,7 +2052,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2077,17 +2060,33 @@ subroutine OutputTecplotPoint(realization)
 
         ! gas saturation
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE,THC_MODE)
+          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
 
 #ifdef ICE
+        ! gas saturation
+        select case(option%iflowmode)
+          case(THC_MODE,THMC_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+        
         ! ice saturation
         select case(option%iflowmode)
-          case(THC_MODE)
+          case(THC_MODE,THMC_MODE)
             value = RealizGetDatasetValueAtCell(realization,ICE_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+
+        ! ice density
+        select case(option%iflowmode)
+          case(THC_MODE,THMC_MODE)
+            value = RealizGetDatasetValueAtCell(realization,ICE_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
@@ -2095,7 +2094,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid density
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2111,7 +2110,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid energy
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2127,7 +2126,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid viscosity
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE,MIS_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2143,7 +2142,7 @@ subroutine OutputTecplotPoint(realization)
       
         ! liquid mobility
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,IMS_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2158,7 +2157,7 @@ subroutine OutputTecplotPoint(realization)
         end select
       
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,MIS_MODE,G_MODE)
+          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,MIS_MODE,G_MODE)
             ! liquid mole fractions
             do i=1,option%nflowspec
               value = RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION, &
@@ -2215,7 +2214,16 @@ subroutine OutputTecplotPoint(realization)
               write(IUNIT3,1000,advance='no') value
             endif
           enddo
-        endif        
+        endif
+        if (reaction%print_total_bulk) then
+          do i=1,reaction%naqcomp
+            if (reaction%primary_species_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,TOTAL_BULK, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+        endif
         if (reaction%print_act_coefs) then
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
@@ -2249,6 +2257,13 @@ subroutine OutputTecplotPoint(realization)
         do i=1,reaction%nmnrl
           if (reaction%mnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%neqsrfcplxrxn
+          if (reaction%eqsrfcplx_site_density_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
@@ -2430,22 +2445,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   output_option => realization%output_option
   discretization => realization%discretization
   
-  ! open file
-  if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '-vel.tec'
-  else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '-vel-' // trim(string) // '.tec'
-  endif
+  filename = OutputFilename(output_option,option,'tec','vel')
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity output file: ' // &
@@ -2455,7 +2455,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   
     ! write header
     ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+    write(IUNIT3,'(''TITLE = "'',1es13.4," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
@@ -2476,11 +2476,11 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
-                 &'', K='',i5,'','')') &
+    write(string,'(''ZONE T= "'',1es13.5,''",'','' I='',i5,'', J='',i5, &
+                 &'', K='',i5)') &
                  option%time/output_option%tconv, &
                  grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-    string = trim(string) // ' DATAPACKING=POINT'
+    string = trim(string) // ', DATAPACKING=POINT'
     write(IUNIT3,'(a)') trim(string)
 
   endif
@@ -2597,24 +2597,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     string = trim(string) // ',"Material_ID"'
     write(fid,'(a)') trim(string)
   
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
-                   &'', K='',i5,'','')') &
-                   option%time/realization%output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      string = trim(string) // ' DATAPACKING=BLOCK'
-                                                ! 4=dataset name, 5=material_id
-      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
-    else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i12)') &
-                   option%time/realization%output_option%tconv, &
-                   grid%ngmax
-      string = trim(string) // ' DATAPACKING=BLOCK'
-    endif
+    !geh: due to pgi bug, cannot embed functions with calls to write() within
+    !     write statement
+    string = OutputTecplotZoneHeader(realization,FIVE_INTEGER, &
+                                     TECPLOT_BLOCK_FORMAT)
     write(fid,'(a)') trim(string)
-
   endif
   
   ! write blocks
@@ -2626,21 +2613,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   ! write out coorindates
 
-  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
+  if (realization%discretization%itype == STRUCTURED_GRID .or. &
+      realization%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
     call WriteTecplotStructuredGrid(fid,realization)
   else  
-    call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
-
-    call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotUGridVertices(fid,realization)
   endif    
 
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
@@ -2652,6 +2629,10 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
+
+  if (realization%discretization%itype == UNSTRUCTURED_GRID)  then
+    call WriteTecplotUGridElements(fid,realization)
+  endif    
 
   close(fid)
 
@@ -2685,6 +2666,121 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
+
+! ************************************************************************** !
+!
+! WriteTecplotUGridVertices: Writes unstructured grid vertices
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine WriteTecplotUGridVertices(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Unstructured_Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization 
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vertex_vec
+  PetscInt :: local_size
+  PetscErrorCode :: ierr
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_vertex_vec,ierr)
+  call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+  call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call VecDestroy(global_vertex_vec, ierr)
+
+end subroutine WriteTecplotUGridVertices
+
+! ************************************************************************** !
+!
+! WriteTecplotUGridVertices: Writes unstructured grid elements
+! author: Glenn Hammond
+! date: 01/12/12
+!
+! ************************************************************************** !
+subroutine WriteTecplotUGridElements(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Unstructured_Grid_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  Vec :: global_cconn_vec
+  type(ugdm_type), pointer :: ugdm_element
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  Vec :: global_vec
+  Vec :: natural_vec
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option) 
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option) 
+  call GetCellConnections(grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr) 
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  call WriteTecplotDataSetNumPerLine(fid,realization,vec_ptr, &
+                                     TECPLOT_INTEGER, &
+                                     grid%unstructured_grid%nlmax*8, &
+                                     EIGHT_INTEGER)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine WriteTecplotUGridElements
 
 ! ************************************************************************** !
 !
@@ -3104,6 +3200,48 @@ end subroutine WriteTecplotDataSetNumPerLine
 
 ! ************************************************************************** !
 !
+! OutputFormatInt: Writes a integer to a string
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFormatInt(int_value)
+
+  implicit none
+  
+  PetscInt :: int_value
+  
+  character(len=MAXWORDLENGTH) :: OutputFormatInt
+
+  write(OutputFormatInt,'(1i12)') int_value
+  
+  OutputFormatInt = adjustl(OutputFormatInt)
+  
+end function OutputFormatInt
+
+! ************************************************************************** !
+!
+! OutputFormatDouble: Writes a double or real to a string
+! author: Glenn Hammond
+! date: 01/13/12
+!
+! ************************************************************************** !  
+function OutputFormatDouble(real_value)
+
+  implicit none
+  
+  PetscReal :: real_value
+  
+  character(len=MAXWORDLENGTH) :: OutputFormatDouble
+
+  write(OutputFormatDouble,'(1es13.5)') real_value
+  
+  OutputFormatDouble = adjustl(OutputFormatDouble)
+  
+end function OutputFormatDouble
+
+! ************************************************************************** !
+!
 ! OutputObservationTecplot: Print to observation data to TECPLOT file
 ! author: Glenn Hammond
 ! date: 02/11/08
@@ -3309,7 +3447,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   grid => realization%patch%grid
   
   local_id = region%cell_ids(icell)
-  write(cell_string,*) grid%nL2A(region%cell_ids(icell))+1 ! nL2A is zero-based
+  write(cell_string,*) grid%nG2A(grid%nL2G(region%cell_ids(icell)))
   cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
 
   ! add coordinate of cell center
@@ -3452,13 +3590,13 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
         string = 'Xg(' // trim(adjustl(string)) // ')'
         call OutputAppendToHeader(header,string,'',cell_string,icolumn)
       enddo
-    case(THC_MODE,RICHARDS_MODE)
-      if (option%iflowmode == THC_MODE) then
+    case(THC_MODE,THMC_MODE,RICHARDS_MODE)
+      if (option%iflowmode == THC_MODE .or. option%iflowmode == THMC_MODE) then
         call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
       endif
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
-      if (option%iflowmode == THC_MODE) then
+      if (option%iflowmode == THC_MODE .or. option%iflowmode == THMC_MODE) then
         call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
         do i = 1, option%nflowspec
           write(string,'(i2)') i
@@ -3536,6 +3674,7 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
     case(MPH_MODE)
     case(IMS_MODE)
     case(THC_MODE)
+    case(THMC_MODE)
     case(MIS_MODE)
     case(RICHARDS_MODE)
       string = ',"Darcy flux ' // trim(coupler_name) // &
@@ -3604,14 +3743,15 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE, &
+         MIS_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
   end select
@@ -3625,14 +3765,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
 
  ! gas saturation
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
@@ -3640,15 +3780,22 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 #ifdef ICE
  ! ice saturation
   select case(option%iflowmode)
-    case(THC_MODE)
+    case(THC_MODE,THMC_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,ICE_SATURATION,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! ice density
+  select case(option%iflowmode)
+    case(THC_MODE,THMC_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,ICE_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
 #endif
 
   ! liquid density
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3662,7 +3809,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3676,7 +3823,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid viscosity
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3690,7 +3837,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid mobility
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
   end select
@@ -3704,7 +3851,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! liquid mole fractions
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION,i,ghosted_id)
@@ -3722,7 +3869,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! phase
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,111,advance="no") &
         int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
   end select
@@ -3753,6 +3900,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif      
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,TOTAL_BULK,i,ghosted_id)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -3783,6 +3938,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         if (reaction%mnrl_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX,i,ghosted_id)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+           write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY,i,ghosted_id)
         endif
       enddo
       do i=1,reaction%neqsrfcplxrxn
@@ -3975,7 +4136,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3986,7 +4147,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+         FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4008,7 +4170,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4019,7 +4181,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! gas saturation
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
       ! gas saturation
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
@@ -4032,10 +4194,22 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 #ifdef ICE
 ! ice saturation
   select case(option%iflowmode)
-    case(THC_MODE)
+    case(THC_MODE,THMC_MODE)
       ! ice saturation
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,ICE_SATURATION,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+! ice density
+  select case(option%iflowmode)
+    case(THC_MODE,THMC_MODE)
+      ! ice saturation
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,ICE_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
@@ -4045,7 +4219,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid density
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4067,7 +4241,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4089,7 +4263,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid viscosity
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_VISCOSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4111,7 +4285,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid mobility
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -4133,7 +4307,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid mole fraction
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
@@ -4159,7 +4333,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! phase
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
      write(fid,111,advance="no") &
        int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
                                         region%coordinates(ONE_INTEGER)%x, &
@@ -4205,6 +4379,18 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif      
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,TOTAL_BULK,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -4251,6 +4437,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         if (reaction%mnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_SATURATION_INDEX,i, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,SURFACE_SITE_DENSITY,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
@@ -4432,7 +4628,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   if (associated(connection_set)) then
     offset = connection_set%offset
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+      case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
       case(MIS_MODE)
       case(RICHARDS_MODE)
         sum_volumetric_flux = 0.d0
@@ -4593,7 +4789,7 @@ function GetVelocityAtCell(fid,realization,local_id)
           area = cur_connection_set%area(iconn)* &
                  dabs(cur_connection_set%dist(direction,iconn))
           sum_velocity(direction) = sum_velocity(direction) + &
-                                    patch%internal_velocities(iphase,sum_connection)* &
+                                    patch%boundary_velocities(iphase,sum_connection)* &
                                     area
           sum_area(direction) = sum_area(direction) + area
         enddo
@@ -4810,6 +5006,7 @@ subroutine OutputVTK(realization)
   use Immis_module
   use Miscible_module
   use THC_module
+  use THMC_module
   use Richards_module
   
   use Reactive_Transport_module
@@ -4865,15 +5062,7 @@ subroutine OutputVTK(realization)
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.vtk'
   else
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
+    string = OutputFilenameID(output_option,option)
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-' // trim(string) // '.vtk'    
   endif
@@ -4902,11 +5091,12 @@ subroutine OutputVTK(realization)
   write(IUNIT3,'(''CELL_DATA'',i8)') grid%nmax
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+         FLASH2_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           word = 'Temperature'
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4915,7 +5105,7 @@ subroutine OutputVTK(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           word = 'Pressure'
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4933,7 +5123,7 @@ subroutine OutputVTK(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           word = 'Liquid_Saturation'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4942,7 +5132,7 @@ subroutine OutputVTK(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
           word = 'Gas_Saturation'
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4952,9 +5142,18 @@ subroutine OutputVTK(realization)
 #ifdef ICE
       ! ice saturation
       select case(option%iflowmode)
-        case(THC_MODE)
+        case(THC_MODE,THMC_MODE)
           word = 'Ice_Saturation'
           call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+
+      ! ice density
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          word = 'Ice_Density'
+          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
       end select
@@ -4962,7 +5161,7 @@ subroutine OutputVTK(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           word = 'Liquid_Energy'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4979,7 +5178,7 @@ subroutine OutputVTK(realization)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(word,'(i2)') i
@@ -5037,6 +5236,15 @@ subroutine OutputVTK(realization)
                                       natural_vec,VTK_REAL)
         enddo
       endif    
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%primary_species_names(i)) // '_total_bulk'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word, &
+                                      natural_vec,VTK_REAL)
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -5079,6 +5287,14 @@ subroutine OutputVTK(realization)
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           word = trim(reaction%kinmnrl_names(i)) // '_si'
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          word = trim(reaction%kinsrfcplx_site_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
@@ -5281,15 +5497,7 @@ subroutine OutputVelocitiesVTK(realization)
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '-vel.vtk'
   else  
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
+    string = OutputFilenameID(output_option,option)
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '-vel-' // trim(string) // '.vtk'
   endif
@@ -5307,49 +5515,6 @@ subroutine OutputVelocitiesVTK(realization)
     write(IUNIT3,'(''ASCII'')')
     write(IUNIT3,'(''DATASET UNSTRUCTURED_GRID'')')
     
-#if 0
-    ! write title
-    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/output_option%tconv,output_option%tunit
-    ! write variables
-    string = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]",' // &
-             '"vlx [m/' // trim(output_option%tunit) // ']",' // &
-             '"vly [m/' // trim(output_option%tunit) // ']",' // &
-             '"vlz [m/' // trim(output_option%tunit) // ']"'
-    if (option%nphase > 1) then
-      string = trim(string) // &
-               ',"vgx [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgy [m/' // trim(output_option%tunit) // ']",' // &
-               '"vgz [m/' // trim(output_option%tunit) // ']"'
-    endif
-    string = trim(string) // ',"Material_ID"'
-    write(IUNIT3,'(a)') trim(string)
-  
-    ! write zone header
-    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      string = trim(string) // ' DATAPACKING=BLOCK'
-      if (option%nphase > 1) then
-        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
-      else
-        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
-      endif
-    else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-      string = trim(string) // ' DATAPACKING=BLOCK'
-    endif
-    write(IUNIT3,'(a)') trim(string)
-#endif
   endif
   
   ! write blocks
@@ -5902,15 +6067,7 @@ end subroutine SAMRWritePlotData
     first = hdf5_first
     filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
   else
-    if (output_option%plot_number < 10) then
-      write(string,'("00",i1)') output_option%plot_number  
-    else if (output_option%plot_number < 100) then
-      write(string,'("0",i2)') output_option%plot_number  
-    else if (output_option%plot_number < 1000) then
-      write(string,'(i3)') output_option%plot_number  
-    else if (output_option%plot_number < 10000) then
-      write(string,'(i4)') output_option%plot_number  
-    endif
+    string = OutputFilenameID(output_option,option)
     first = PETSC_TRUE
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                 '-' // trim(string) // '.h5'
@@ -6028,7 +6185,7 @@ end subroutine SAMRWritePlotData
 #endif
         
      ! create a group for the data set
-      write(string,'(''Time:'',es12.4,x,a1)') &
+      write(string,'(''Time:'',es13.5,x,a1)') &
             option%time/output_option%tconv,output_option%tunit
       if (len_trim(output_option%plot_name) > 2) then
         string = trim(string) // ' ' // output_option%plot_name
@@ -6069,6 +6226,8 @@ end subroutine SAMRWritePlotData
            nviz_flow = 2+4*option%nphase
         case(THC_MODE)
            nviz_flow = 4+option%nflowspec
+        case(THMC_MODE)
+           nviz_flow = 4+option%nflowspec
         case(MIS_MODE)
            nviz_flow = 6+option%nflowspec
         case(G_MODE)
@@ -6099,7 +6258,14 @@ end subroutine SAMRWritePlotData
                    nviz_tran=nviz_tran+1
                 endif
              end do
-          endif
+           endif
+           if (reaction%print_total_bulk) then
+             do i=1,reaction%naqcomp
+                if (reaction%primary_species_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+           endif  
           if (reaction%print_act_coefs) then
             do i=1,reaction%naqcomp
                 if (reaction%primary_species_print(i)) then
@@ -6200,12 +6366,12 @@ end subroutine SAMRWritePlotData
 
   select case(option%iflowmode)
   
-    case(FLASH2_MODE,MPH_MODE,THC_MODE,MIS_MODE,IMS_MODE, &
+    case(FLASH2_MODE,MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,IMS_MODE, &
          RICHARDS_MODE,G_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           if (.not.(option%use_samr)) then
@@ -6221,7 +6387,7 @@ end subroutine SAMRWritePlotData
 
       ! pressure
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
           if (.not.(option%use_samr)) then
@@ -6237,7 +6403,7 @@ end subroutine SAMRWritePlotData
 
       ! liquid saturation
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
           if (.not.(option%use_samr)) then
@@ -6253,7 +6419,7 @@ end subroutine SAMRWritePlotData
 
       ! gas saturation
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
           if (.not.(option%use_samr)) then
@@ -6270,9 +6436,25 @@ end subroutine SAMRWritePlotData
 #ifdef ICE
       ! ice saturation
       select case(option%iflowmode)
-        case (THC_MODE)
+        case (THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
           string = "Ice Saturation"
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+      end select
+
+      ! ice density
+      select case(option%iflowmode)
+        case (THC_MODE,THMC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
+          string = "Ice Density"
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
@@ -6287,7 +6469,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid density
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           string = "Liquid Density"
           if (.not.(option%use_samr)) then
@@ -6319,7 +6501,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid viscosity
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           string = "Liquid Viscosity"
           if (.not.(option%use_samr)) then
@@ -6351,7 +6533,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid mobility
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           string = "Liquid Mobility"
           if (.not.(option%use_samr)) then
@@ -6383,7 +6565,7 @@ end subroutine SAMRWritePlotData
       
       ! liquid energy
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           if (.not.(option%use_samr)) then
@@ -6415,7 +6597,7 @@ end subroutine SAMRWritePlotData
     
       ! liquid mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction-'',i1)') i
@@ -6543,6 +6725,23 @@ end subroutine SAMRWritePlotData
           endif
         enddo
       endif      
+      if (reaction%print_total_bulk) then
+        do i=1,reaction%naqcomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
+            write(string,'(a,''_total_bulk'')') trim(reaction%primary_species_names(i))
+            if (.not.(option%use_samr)) then
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if (first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
@@ -6609,6 +6808,21 @@ end subroutine SAMRWritePlotData
         if (reaction%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if (first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_density_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
+          write(string,'(a)') reaction%eqsrfcplx_site_names(i) // '_den'
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -7159,19 +7373,19 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     nx_local = grid%structured_grid%nlx
     ny_local = grid%structured_grid%nly
     nz_local = grid%structured_grid%nlz
-    if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
+    if (grid%structured_grid%gxe-grid%structured_grid%lxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
     call MPI_Allreduce(nx_local,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
                        option%mycomm,ierr)
     if (i == 0) trick_flux_vel_x = PETSC_TRUE
-    if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
+    if (grid%structured_grid%gye-grid%structured_grid%lye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
     call MPI_Allreduce(ny_local,j,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
                        option%mycomm,ierr)
     if (j == 0) trick_flux_vel_y = PETSC_TRUE
-    if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
+    if (grid%structured_grid%gze-grid%structured_grid%lze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
     call MPI_Allreduce(nz_local,k,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
@@ -7189,19 +7403,19 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   select case(direction)
     case(X_DIRECTION)
       nx_global = grid%structured_grid%nx-1
-      if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
+      if (grid%structured_grid%gxe-grid%structured_grid%lxe == 0) then
         nx_local = grid%structured_grid%nlx-1
       endif
       if (trick_flux_vel_x) trick_hdf5 = PETSC_TRUE
     case(Y_DIRECTION)
       ny_global = grid%structured_grid%ny-1
-      if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
+      if (grid%structured_grid%gye-grid%structured_grid%lye == 0) then
         ny_local = grid%structured_grid%nly-1
       endif
       if (trick_flux_vel_y) trick_hdf5 = PETSC_TRUE
     case(Z_DIRECTION)
       nz_global = grid%structured_grid%nz-1
-      if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
+      if (grid%structured_grid%gze-grid%structured_grid%lze == 0) then
         nz_local = grid%structured_grid%nlz-1
       endif
       if (trick_flux_vel_z) trick_hdf5 = PETSC_TRUE
@@ -7250,7 +7464,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE,option, &
                         nx_global,ny_global,nz_global, &
                         nx_local,ny_local,nz_local, &
-                        grid%structured_grid%nxs,grid%structured_grid%nys,grid%structured_grid%nzs)
+                        grid%structured_grid%lxs,grid%structured_grid%lys,grid%structured_grid%lzs)
 !GEH - Structured Grid Dependence - End
 
   deallocate(array)
@@ -7802,7 +8016,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       area = cur_connection_set%area(iconn)* &
              cur_connection_set%dist(direction,iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          patch%boundary_velocities(1,sum_connection)* &
+                          patch%boundary_velocities(iphase,sum_connection)* &
                           area
       sum_area(local_id) = sum_area(local_id) + dabs(area)
     enddo
@@ -8014,6 +8228,7 @@ subroutine OutputMassBalanceNew(realization)
   use Immis_module
   use Miscible_module
   use THC_module
+  use THMC_module
   use Reactive_Transport_module
   use General_module
   
@@ -8106,6 +8321,9 @@ subroutine OutputMassBalanceNew(realization)
         case(THC_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     '[kg]','',icol)
+        case(THMC_MODE)
+          call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
+                                    '[kg]','',icol)
         case(G_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
                                     '[mol]','',icol)
@@ -8131,9 +8349,9 @@ subroutine OutputMassBalanceNew(realization)
                                     '[kmol]','',icol)
         case(MIS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[kmol]','',icol)
+                                    '[kg]','',icol)
           call OutputAppendToHeader(header,'Global Glycol Mass in Liquid Phase', &
-                                    '[kmol]','',icol)
+                                    '[kg]','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
 
@@ -8175,6 +8393,13 @@ subroutine OutputMassBalanceNew(realization)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(THC_MODE)
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            
+            units = '[kg/' // trim(output_option%tunit) // ']'
+            string = trim(coupler%name) // ' Water Mass'
+            call OutputAppendToHeader(header,string,units,'',icol)
+          case(THMC_MODE)
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,'[kg]','',icol)
             
@@ -8253,6 +8478,9 @@ subroutine OutputMassBalanceNew(realization)
           case(THC_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               trim(adjustl(word)) // 'm Water Mass [kg]"'
+          case(THMC_MODE)
+            write(fid,'(a)',advance="no") ',"' // &
+              trim(adjustl(word)) // 'm Water Mass [kg]"'
         end select
         
         if (option%ntrandof > 0) then
@@ -8292,6 +8520,8 @@ subroutine OutputMassBalanceNew(realization)
         call RichardsComputeMassBalance(realization,sum_kg(1,:))
       case(THC_MODE)
         call THCComputeMassBalance(realization,sum_kg(1,:))
+      case(THMC_MODE)
+        call THMCComputeMassBalance(realization,sum_kg(1,:))
       case(MIS_MODE)
         call MiscibleComputeMassBalance(realization,sum_kg(:,1))
       case(MPH_MODE)
@@ -8310,7 +8540,8 @@ subroutine OutputMassBalanceNew(realization)
                         
     if (option%myrank == option%io_rank) then
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,IMS_MODE,MIS_MODE,G_MODE,THC_MODE)
+        case(RICHARDS_MODE,MPH_MODE,FLASH2_MODE,IMS_MODE,MIS_MODE,G_MODE, &
+             THC_MODE,THMC_MODE)
           do iphase = 1, option%nphase
             do ispec = 1, option%nflowspec
               write(fid,110,advance="no") sum_kg_global(ispec,iphase)
@@ -8438,6 +8669,7 @@ subroutine OutputMassBalanceNew(realization)
           do iconn = 1, coupler%connection_set%num_connections
             sum_kg = sum_kg + global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta
           enddo
+          
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
           sum_kg = sum_kg*FMWH2O
 
@@ -8451,7 +8683,7 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-       case(THC_MODE)
+        case(THC_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
@@ -8486,7 +8718,7 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
 
-       case(MIS_MODE)
+        case(THMC_MODE)
           ! print out cumulative H2O flux
           sum_kg = 0.d0
           do iconn = 1, coupler%connection_set%num_connections
@@ -8520,9 +8752,61 @@ subroutine OutputMassBalanceNew(realization)
             ! change sign for positive in / negative out
             write(fid,110,advance="no") -sum_kg_global*output_option%tconv
           endif
+
+        case(MIS_MODE)
+          ! print out cumulative mixture flux
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
+            enddo
+            
+            if (icomp == 1) then
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O
+            else
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWGLYC
+            endif
+            
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+          
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)
+            endif
+          enddo
+
+          ! print out mixture flux
+          sum_kg = 0.d0
+          do icomp = 1, option%nflowspec
+            do iconn = 1, coupler%connection_set%num_connections
+              sum_kg(icomp,1) = sum_kg(icomp,1) + &
+                global_aux_vars_bc_or_ss(offset+iconn)%mass_balance_delta(icomp,1)
+            enddo
+            
+        !   mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o/glycol
+            if (icomp == 1) then
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O
+            else
+              sum_kg(icomp,1) = sum_kg(icomp,1)*FMWGLYC
+            endif
+
+            int_mpi = option%nphase
+            call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+            if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_kg_global(icomp,1)*output_option%tconv
+            endif
+          enddo
 
         case(MPH_MODE)
-        ! print out cumulative H2O & CO2 fluxes
+        ! print out cumulative H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
@@ -8540,7 +8824,7 @@ subroutine OutputMassBalanceNew(realization)
             endif
           enddo
           
-        ! print out H2O & CO2 fluxes
+        ! print out H2O & CO2 fluxes in kmol and kmol/time
           sum_kg = 0.d0
           do icomp = 1, option%nflowspec
             do iconn = 1, coupler%connection_set%num_connections
