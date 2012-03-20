@@ -115,7 +115,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
       allocate(aux_var%xmass(option%nphase))
       aux_var%xmass = 1.d0
       allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
-      aux_var%pres_store = 0.d0
+      aux_var%pres_store = option%reference_pressure
       allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
       aux_var%temp_store = 0.d0
       allocate(aux_var%fugacoeff(ONE_INTEGER))

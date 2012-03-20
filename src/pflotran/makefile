@@ -149,6 +149,7 @@ common_obj = ${common_src}option.o \
 	${common_src}global_aux.o\
 	${common_src}material_aux.o\
 	${common_src}matrix_block_aux.o\
+	${common_src}database_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
@@ -306,7 +307,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 	discretization.o logging.o amrgrid.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
-reaction_aux.o : option.o string.o
+reaction_aux.o : option.o string.o database_aux.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
 	reactive_transport_aux.o fluid.o logging.o global_aux.o \
@@ -348,8 +349,10 @@ timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 checkpoint.o : realization.o logging.o
-database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
-database_hpt.o : database.o reaction.o
+database_aux.o : option.o string.o
+database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o \
+             database_aux.o
+database_hpt.o : database.o reaction.o database_aux.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
 dataset_aux.o : string.o utility.o option.o input.o
 time_series.o : string.o option.o input.o

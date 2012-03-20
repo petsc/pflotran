@@ -1,7 +1,9 @@
 module Reaction_Aux_module
   
-  implicit none
+  use Database_Aux_module
 
+  implicit none
+  
   private 
 
 #include "definitions.h"
@@ -45,15 +47,6 @@ module Reaction_Aux_module
     type(database_rxn_type), pointer :: dbaserxn
     type(gas_species_type), pointer :: next    
   end type gas_species_type
-
-  type, public :: database_rxn_type
-    PetscInt :: nspec
-    character(len=MAXWORDLENGTH), pointer :: spec_name(:)
-    PetscReal, pointer :: stoich(:)
-    PetscInt, pointer :: spec_ids(:)
-    PetscReal, pointer :: logK(:)
-    PetscReal, pointer :: logKCoeff_hpt(:)
-  end type database_rxn_type
 
   type, public :: mineral_type
     PetscInt :: id
@@ -940,32 +933,6 @@ function ColloidCreate()
   ColloidCreate => colloid
   
 end function ColloidCreate
-
-! ************************************************************************** !
-!
-! DatabaseRxnCreate: Allocate and initialize an equilibrium reaction
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
-function DatabaseRxnCreate()
-
-  implicit none
-    
-  type(database_rxn_type), pointer :: DatabaseRxnCreate
-
-  type(database_rxn_type), pointer :: dbaserxn
-
-  allocate(dbaserxn)
-  dbaserxn%nspec = 0
-  nullify(dbaserxn%spec_name)
-  nullify(dbaserxn%stoich)
-  nullify(dbaserxn%spec_ids)
-  nullify(dbaserxn%logK)
-  
-  DatabaseRxnCreate => dbaserxn
-  
-end function DatabaseRxnCreate
 
 ! ************************************************************************** !
 !
@@ -1894,35 +1861,6 @@ subroutine ColloidDestroy(colloid)
   nullify(colloid)
 
 end subroutine ColloidDestroy
-
-! ************************************************************************** !
-!
-! DatabaseRxnDestroy: Deallocates a database reaction
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
-subroutine DatabaseRxnDestroy(dbaserxn)
-
-  implicit none
-    
-  type(database_rxn_type), pointer :: dbaserxn
-
-  if (.not.associated(dbaserxn)) return
-  
-  if (associated(dbaserxn%spec_name)) deallocate(dbaserxn%spec_name)
-  nullify(dbaserxn%spec_name)
-  if (associated(dbaserxn%spec_ids)) deallocate(dbaserxn%spec_ids)
-  nullify(dbaserxn%spec_ids)
-  if (associated(dbaserxn%stoich)) deallocate(dbaserxn%stoich)
-  nullify(dbaserxn%stoich)
-  if (associated(dbaserxn%logK)) deallocate(dbaserxn%logK)
-  nullify(dbaserxn%logK)
-
-  deallocate(dbaserxn)  
-  nullify(dbaserxn)
-
-end subroutine DatabaseRxnDestroy
 
 ! ************************************************************************** !
 !
