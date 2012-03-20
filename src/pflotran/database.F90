@@ -571,10 +571,11 @@ subroutine DatabaseRead(reaction,option)
       cur_srfcplx_in_master_list => surface_complexation%complex_list
       do
         if (.not.associated(cur_srfcplx_in_master_list)) exit
-        if (.not.StringCompare(cur_srfcplx%name, &
-                           cur_srfcplx_in_master_list%name,MAXWORDLENGTH)) then
+        if (StringCompare(cur_srfcplx%name, &
+                          cur_srfcplx_in_master_list%name,MAXWORDLENGTH)) then
           cur_srfcplx%ptr => cur_srfcplx_in_master_list
           cur_srfcplx%id = cur_srfcplx_in_master_list%id
+          exit
         endif
         cur_srfcplx_in_master_list => cur_srfcplx_in_master_list%next
       enddo
@@ -1457,7 +1458,7 @@ subroutine BasisInit(reaction,option)
 
   allocate(reaction%kd_print(reaction%naqcomp))
   reaction%kd_print = PETSC_FALSE
-  if (reaction%neqsorb > 0) then
+  if (reaction%nsorb > 0) then
     allocate(reaction%total_sorb_print(reaction%naqcomp))
     reaction%total_sorb_print = PETSC_FALSE
   endif
@@ -1476,7 +1477,7 @@ subroutine BasisInit(reaction,option)
     reaction%kd_print(ispec) = (cur_pri_aq_spec%print_me .or. &
                                 reaction%print_all_primary_species) .and. &
                                 reaction%print_kd
-    if (reaction%neqsorb > 0) then
+    if (reaction%nsorb > 0) then
       reaction%total_sorb_print(ispec) = (cur_pri_aq_spec%print_me .or. &
                                   reaction%print_all_primary_species) .and. &
                                   reaction%print_total_sorb
@@ -2224,7 +2225,7 @@ subroutine BasisInit(reaction,option)
       allocate(surface_complexation%kinmrsrfcplxrxn_to_srfcplxrxn( &
                   surface_complexation%nkinmrsrfcplxrxn))
       surface_complexation%kinmrsrfcplxrxn_to_srfcplxrxn = 0
-      allocate(surface_complexation%kinmr_nrate( &
+      allocate(surface_complexation%kinmr_nrate(0: &
                   surface_complexation%nkinmrsrfcplxrxn))
       surface_complexation%kinmr_nrate = 0
       allocate(surface_complexation%kinmr_rate(icount2, &
@@ -2296,6 +2297,9 @@ subroutine BasisInit(reaction,option)
           surface_complexation%kinmr_nrate( &
             surface_complexation%nkinmrsrfcplxrxn) = &
             size(cur_srfcplx_rxn%rates)
+          surface_complexation%kinmr_nrate(0) = &
+            maxval(surface_complexation%kinmr_nrate(1: &
+              surface_complexation%nkinmrsrfcplxrxn))
           surface_complexation%kinmr_rate(1:size(cur_srfcplx_rxn%rates), &
             surface_complexation%nkinmrsrfcplxrxn) = cur_srfcplx_rxn%rates
           surface_complexation%kinmr_frac( &
@@ -3515,7 +3519,7 @@ subroutine BasisPrint(reaction,title,option)
       cur_mineral => cur_mineral%next
     enddo
     
-    if (associated(reaction%surface_complexation)) then
+    if (reaction%surface_complexation%nsrfcplxrxn > 0) then
       cur_srfcplx_rxn => reaction%surface_complexation%rxn_list
       write(option%fid_out,*)
       write(option%fid_out,*) 'Surface Complexation Reactions:'

@@ -1977,13 +1977,6 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                             
       case('SURFACE_COMPLEXES')
       
-        if (.not.associated(reaction%surface_complexation)) then
-          option%io_buffer = 'Cannot accept constraint for surface ' // &
-            'complexes in constraint ' // trim(constraint%name) // &
-            ' since no surface complexation is defined in problem.'
-          call printErrMsg(option)
-        endif
-
         srfcplx_constraint => &
           SurfaceComplexConstraintCreate(reaction%surface_complexation,option)
 

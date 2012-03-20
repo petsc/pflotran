@@ -264,6 +264,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
     
+    PetscInt :: nsorb
     PetscInt :: neqsorb
     PetscBool, pointer :: kd_print(:)
     PetscBool, pointer :: total_sorb_print(:)
@@ -537,6 +538,7 @@ function ReactionCreate()
   reaction%debyeB = 0.3288d0 
   reaction%debyeBdot = 0.0410d0 
 
+  reaction%nsorb = 0
   reaction%neqsorb = 0
 
   reaction%neqionxrxn = 0

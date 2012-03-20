@@ -932,7 +932,7 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
@@ -1416,7 +1416,7 @@ subroutine OutputTecplotFEBrick(realization)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
@@ -2318,7 +2318,7 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo
         endif
-        if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        if (associated(reaction%total_sorb_mobile_print)) then
           do i=1,reaction%ncollcomp
             if (reaction%total_sorb_mobile_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE, &
@@ -3991,7 +3991,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             write(fid,110,advance="no") &
@@ -4523,7 +4523,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             write(fid,110,advance="no") &
@@ -5357,7 +5357,7 @@ subroutine OutputVTK(realization)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
@@ -6332,15 +6332,15 @@ end subroutine SAMRWritePlotData
 
           if (associated(reaction%total_sorb_print)) then
              do i=1,reaction%naqcomp
-                 if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+                 if (reaction%total_sorb_print(i)) then
                    nviz_tran=nviz_tran+1
                  endif
              end do
           endif
 
-          if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+          if (reaction%nsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
              do i=1,reaction%ncollcomp
-                if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+                if (reaction%total_sorb_mobile_print(i)) then
                    nviz_tran=nviz_tran+1
                 endif
              end do
@@ -6933,7 +6933,7 @@ end subroutine SAMRWritePlotData
       endif
       if (associated(reaction%total_sorb_print)) then
         do i=1,reaction%naqcomp
-          if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+          if (reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
             if (.not.(option%use_samr)) then
@@ -6948,9 +6948,9 @@ end subroutine SAMRWritePlotData
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
-          if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+          if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
             write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
             if (.not.(option%use_samr)) then

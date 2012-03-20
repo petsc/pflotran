@@ -1429,7 +1429,7 @@ subroutine BasisInit_hpt(reaction,option)
 
   allocate(reaction%kd_print(reaction%naqcomp))
   reaction%kd_print = PETSC_FALSE
-  if (reaction%neqsorb > 0) then
+  if (reaction%nsorb > 0) then
     allocate(reaction%total_sorb_print(reaction%naqcomp))
     reaction%total_sorb_print = PETSC_FALSE
   endif
@@ -1448,7 +1448,7 @@ subroutine BasisInit_hpt(reaction,option)
     reaction%kd_print(ispec) = (cur_pri_aq_spec%print_me .or. &
                                 reaction%print_all_primary_species) .and. &
                                 reaction%print_kd
-    if (reaction%neqsorb > 0) then
+    if (reaction%nsorb > 0) then
       reaction%total_sorb_print(ispec) = (cur_pri_aq_spec%print_me .or. &
                                   reaction%print_all_primary_species) .and. &
                                   reaction%print_total_sorb
