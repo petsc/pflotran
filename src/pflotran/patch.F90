@@ -914,7 +914,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   use Hydrostatic_module
   use Saturation_module
   use water_eos_module
-  use Dataset_module
+  use Dataset_Aux_module
 
   implicit none
   
