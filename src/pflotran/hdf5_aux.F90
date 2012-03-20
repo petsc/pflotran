@@ -338,10 +338,6 @@ subroutine HDF5ReadDataset(dataset,option)
   
   ! open the "data" dataset
   dataset_name = 'data'
-  if (dataset%realization_dependent) then
-    write(word,'(i9)') option%id
-    dataset_name = trim(dataset_name) // trim(adjustl(word))
-  endif 
   call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
   call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
 

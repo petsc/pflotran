@@ -1252,6 +1252,8 @@ subroutine BasisInit(reaction,option)
                                              cur_gas_spec%dbaserxn, &
                                              cur_mineral%dbaserxn, &
                                              scale)
+             cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
+                                       + scale*cur_gas_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1280,6 +1282,8 @@ subroutine BasisInit(reaction,option)
                                                 cur_gas_spec%dbaserxn, &
                                                 cur_srfcplx2%dbaserxn, &
                                                 scale)
+              cur_srfcplx2%dbaserxn%logK=cur_srfcplx2%dbaserxn%logK &
+                                        + scale *cur_gas_spec%dbaserxn%logK
               ispec = 0
             endif
             ispec = ispec + 1
@@ -1323,6 +1327,8 @@ subroutine BasisInit(reaction,option)
                                              cur_sec_aq_spec%dbaserxn, &
                                              cur_mineral%dbaserxn, &
                                              scale)
+            cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
+                                      + scale*cur_sec_aq_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1350,6 +1356,8 @@ subroutine BasisInit(reaction,option)
                                                 cur_sec_aq_spec%dbaserxn, &
                                                 cur_srfcplx2%dbaserxn, &
                                                 scale)
+              cur_srfcplx2%dbaserxn%logK=cur_srfcplx2%dbaserxn%logK &
+                                        + scale *cur_sec_aq_spec%dbaserxn%logK
               ispec = 0
             endif
             ispec = ispec + 1
