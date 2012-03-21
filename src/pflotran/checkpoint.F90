@@ -722,7 +722,7 @@ subroutine Restart(realization, &
       call VecGetBlockSize(field%flow_xx_faces, k, ierr)
 !              write(*,*) "Size", j, "block", k
       call VecLoad(field%flow_xx_faces, viewer,ierr)
-      call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+      call DiscretizationGlobalToLocalLP(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
       call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
     end if
     

@@ -202,6 +202,9 @@ function GridCreate()
 #ifdef DASVYAT  
   nullify(grid%faces)
   nullify(grid%MFD)
+  grid%e2f = 0
+  grid%e2n = 0
+  grid%e2n_LP = 0
 #endif
 
   nullify(grid%hash)
@@ -857,6 +860,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     call VecDestroy(ghosted_e2n, ierr)
     call VecDestroy(ghosted_e2f, ierr)
+    call VecScatterDestroy(VC_global2ghosted, ierr)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
@@ -3143,6 +3147,7 @@ subroutine GridDestroy(grid)
   implicit none
   
   type(grid_type), pointer :: grid
+  PetscErrorCode :: ierr
     
   if (.not.associated(grid)) return
       
@@ -3166,6 +3171,10 @@ subroutine GridDestroy(grid)
   nullify(grid%fL2P)
   if (associated(grid%fL2B)) deallocate(grid%fL2B)
   nullify(grid%fL2B)
+
+  if (grid%e2f /= 0) Call VecDestroy(grid%e2f, ierr)
+  if (grid%e2n /= 0) Call VecDestroy(grid%e2n, ierr)
+  if (grid%e2n_LP /= 0) Call VecDestroy(grid%e2n_LP, ierr)
 
   call MFDAuxDestroy(grid%MFD)
 #endif

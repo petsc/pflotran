@@ -755,7 +755,9 @@ subroutine RealizationCreatenG2LP(realization)
 
     call VecDestroy(vec_LP_cell_id, ierr)
     call VecDestroy(vec_LP_cell_id_loc, ierr)
-
+    call VecScatterDestroy(VC_global2ghosted , ierr)
+    call ISDestroy(is_ghosted, ierr)
+    call ISDestroy(is_global, ierr)
 !    call MPI_Barrier(PETSC_COMM_WORLD, ierr)
 
 end subroutine

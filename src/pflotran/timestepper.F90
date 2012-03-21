@@ -1357,10 +1357,10 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
     write(*,*) "After SNESSolve" 
 
-    if (tempreal2/tempreal > 1e+4) stop
+!    if (tempreal2/tempreal > 1e+4) stop
 
 !     stop
-!      read(*,*)   
+      read(*,*)   
      
 #endif
 

@@ -97,7 +97,20 @@ function MFDAuxCreate()
   aux%mapping_ltog_faces = 0
   aux%mapping_ltogb_faces = 0
 
- 
+  aux%is_ghosted_local_LP  = 0
+  aux%is_local_local_LP  = 0
+  aux%is_ghosted_petsc_LP = 0
+  aux%is_local_petsc_LP = 0
+  aux%is_ghosts_local_LP  = 0
+  aux%is_ghosts_petsc_LP  = 0
+        
+  aux%scatter_gtol_LP = 0
+  aux%scatter_ltog_LP = 0
+  aux%scatter_ltol_LP = 0
+
+  aux%mapping_ltog_LP  = 0  
+  aux%mapping_ltogb_LP = 0 
+
   MFDAuxCreate => aux
   
 end function MFDAuxCreate
@@ -199,7 +212,7 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
      endif
   enddo
 
-  if (done.eqv.PETSC_FALSE) then
+  if (.not.done) then
      call printMsg(option, "Imposible to add face to  MFDAuxVar")
      stop
   endif
@@ -259,7 +272,8 @@ subroutine MFDAuxDestroy(aux)
   implicit none
 
   type(mfd_type), pointer :: aux
-  PetscInt :: iaux
+  PetscInt :: iaux, sz
+  PetscErrorCode :: ierr
   
   if (.not.associated(aux)) return
   
@@ -271,6 +285,59 @@ subroutine MFDAuxDestroy(aux)
   endif
   nullify(aux%aux_vars)
   
+  if (aux%is_ghosted_local_faces /= 0) &
+         call ISDestroy(aux%is_ghosted_local_faces, ierr)
+  if (aux%is_local_local_faces /= 0) &
+           call ISDestroy(aux%is_local_local_faces, ierr)
+  if (aux%is_ghosted_petsc_faces /= 0) &
+           call ISDestroy(aux%is_ghosted_petsc_faces, ierr)
+  if (aux%is_local_petsc_faces /= 0) &
+           call ISDestroy(aux%is_local_petsc_faces, ierr)
+  if (aux%is_ghosts_local_faces /= 0) &
+           call ISDestroy(aux%is_ghosts_local_faces, ierr)
+  if (aux%is_ghosts_petsc_faces /= 0) &
+           call ISDestroy(aux%is_ghosts_petsc_faces, ierr)
+
+  if (aux%is_ghosted_local_LP /= 0) &
+                 call ISDestroy(aux%is_ghosted_local_LP, ierr)
+  if (aux%is_local_local_LP /= 0)  &
+                 call ISDestroy(aux%is_local_local_LP, ierr)
+  if (aux%is_ghosted_petsc_LP /= 0) & 
+                 call ISDestroy(aux%is_ghosted_petsc_LP, ierr)
+  if (aux%is_local_petsc_LP /= 0)  &
+                 call ISDestroy(aux%is_local_petsc_LP, ierr) 
+  if (aux%is_ghosts_local_LP /= 0)  &
+                 call ISDestroy(aux%is_ghosts_local_LP, ierr)
+
+  if (aux%is_ghosts_petsc_LP /= 0)  &
+                 call ISDestroy(aux%is_ghosts_petsc_LP, ierr)
+
+  if (aux%scatter_ltog_faces /= 0) &
+                 call VecScatterDestroy(aux%scatter_ltog_faces, ierr)
+  if (aux%scatter_gtol_faces /= 0) &
+                 call VecScatterDestroy(aux%scatter_gtol_faces, ierr)
+  if (aux%scatter_ltol_faces /= 0) &
+                 call VecScatterDestroy(aux%scatter_ltol_faces, ierr)
+  if (aux%scatter_gtogh_faces /= 0) &
+                 call VecScatterDestroy(aux%scatter_gtogh_faces, ierr)
+  if (aux%scatter_gtol_LP /= 0) &
+                 call VecScatterDestroy(aux%scatter_gtol_LP, ierr)
+  if (aux%scatter_ltog_LP /= 0) &
+                 call VecScatterDestroy(aux%scatter_ltog_LP, ierr)
+  if (aux%scatter_ltol_LP /= 0) &
+                 call VecScatterDestroy(aux%scatter_ltol_LP, ierr)
+
+  if (aux%mapping_ltog_faces /= 0) &
+                 call ISLocalToGlobalMappingDestroy(aux%mapping_ltog_faces, ierr) 
+  
+  if (aux%mapping_ltogb_faces /= 0) &
+                 call ISLocalToGlobalMappingDestroy(aux%mapping_ltogb_faces , ierr) 
+  
+  if (aux%mapping_ltog_LP /= 0) &
+                 call ISLocalToGlobalMappingDestroy(aux%mapping_ltog_LP, ierr) 
+  
+  if (aux%mapping_ltogb_LP /= 0) &
+                 call ISLocalToGlobalMappingDestroy(aux%mapping_ltogb_LP , ierr) 
   
     
 end subroutine MFDAuxDestroy
