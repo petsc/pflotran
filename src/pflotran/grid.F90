@@ -1231,7 +1231,9 @@ subroutine GridMapIndices(grid, sgdm)
   DM :: sgdm
 
   PetscInt :: ierr, icount
-  PetscInt, allocatable :: int_tmp(:)
+!geh  PetscInt, allocatable :: int_tmp(:)
+  PetscInt, pointer :: int_tmp(:)
+  PetscInt :: n
   PetscOffset :: i_da
   
   select case(grid%itype)
@@ -1242,10 +1244,12 @@ subroutine GridMapIndices(grid, sgdm)
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
-         call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
+         call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
+!geh         call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, ierr)
          do icount = 1, grid%ngmax
          !   write(*,*) icount, int_tmp(icount + i_da)
-            grid%nG2P(icount) = int_tmp(icount + i_da)
+!geh            grid%nG2P(icount) = int_tmp(icount + i_da)
+            grid%nG2P(icount) = int_tmp(icount)
          end do
         deallocate(int_tmp)
       end if
