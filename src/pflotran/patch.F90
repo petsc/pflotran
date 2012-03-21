@@ -2163,11 +2163,13 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
                                                   reaction,option)
           enddo
         case(SURFACE_CMPLX)
-          if (associated(patch%aux%RT%aux_vars(1)%srfcplx_conc)) then
+          if (associated(patch%aux%RT%aux_vars(1)%eqsrfcplx_conc)) then
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
-                                    srfcplx_conc(isubvar)
+                                    eqsrfcplx_conc(isubvar)
             enddo
+          else
+            vec_ptr = -999.d0
           endif
         case(SURFACE_SITE_DENSITY)
           tempreal = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)
@@ -2703,8 +2705,10 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                                           patch%aux%Global%aux_vars(ghosted_id), &
                                           reaction,option)
         case(SURFACE_CMPLX)
-          if (associated(patch%aux%RT%aux_vars(ghosted_id)%srfcplx_conc)) then
-            value = patch%aux%RT%aux_vars(ghosted_id)%srfcplx_conc(isubvar)
+          if (associated(patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc)) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
+          else
+            value = -999.d0
           endif
         case(SURFACE_CMPLX_FREE)
           value = patch%aux%RT%aux_vars(ghosted_id)%srfcplxrxn_free_site_conc(isubvar)

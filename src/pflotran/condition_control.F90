@@ -665,10 +665,6 @@ subroutine CondControlAssignTranInitCond(realization)
             ! copy over free site concentration
             rt_aux_vars(ghosted_id)%srfcplxrxn_free_site_conc = &
               constraint_coupler%rt_auxvar%srfcplxrxn_free_site_conc
-            ! copy over surface complex concentrations
-!TODO(geh): fix            
-!            rt_aux_vars(ghosted_id)%srfcplx_conc = &
-!              constraint_coupler%rt_auxvar%srfcplx_conc
           endif
         enddo
         if (use_dataset) then
