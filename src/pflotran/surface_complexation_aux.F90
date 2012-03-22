@@ -92,6 +92,9 @@ module Surface_Complexation_Aux_module
     PetscInt :: neqsrfcplx
     PetscInt :: neqsrfcplxrxn 
     PetscInt, pointer :: eqsrfcplxrxn_to_srfcplxrxn(:)
+!geh: will not use for now.  allocate eqsrfcplx_conc to size of total #
+!     of surface complexes
+    !PetscInt, pointer :: srfcplx_to_eqsrfcplx(:)
     
     ! kinetic
     PetscInt :: nkinsrfcplx
@@ -116,6 +119,8 @@ module Surface_Complexation_Aux_module
             SurfaceComplexationRxnCreate, &
             SurfaceComplexCreate, &
             SurfaceComplexConstraintCreate, &
+            SrfCplxGetSrfCplxCountInRxnType, &
+            SrfCplxMapMasterSrfCplxToRxn, &
             SurfaceComplexationDestroy, &
             SurfaceComplexationRxnDestroy, &
             SurfaceComplexDestroy, &
@@ -308,7 +313,152 @@ function SurfaceComplexConstraintCreate(surface_complexation,option)
   SurfaceComplexConstraintCreate => constraint
 
 end function SurfaceComplexConstraintCreate
+
+! ************************************************************************** !
+!
+! SrfCplxGetSrfCplxCountInRxnType: Deallocates a surface complexation reaction
+! author: Glenn Hammond
+! date: 03/22/12
+!
+! ************************************************************************** !
+function SrfCplxGetSrfCplxCountInRxnType(surface_complexation,rxn_type)
+
+  implicit none
   
+  type(surface_complexation_type) :: surface_complexation
+  PetscInt :: rxn_type
+  
+  type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
+  type(surface_complex_type), pointer :: cur_srfcplx
+  
+  PetscInt :: SrfCplxGetSrfCplxCountInRxnType
+  
+  SrfCplxGetSrfCplxCountInRxnType = 0
+
+  ! to determine the number of unique equilibrium surface complexes,
+  ! we negate the ids of the complexes in the master list as a flag
+  ! to avoid duplicate counts.  We then traverse the list of 
+  ! complexes in the rxn and see how many ids are negated
+  cur_srfcplx => surface_complexation%complex_list
+  do
+    if (.not.associated(cur_srfcplx)) exit
+    cur_srfcplx%id = -abs(cur_srfcplx%id)
+    cur_srfcplx => cur_srfcplx%next
+  enddo   
+  cur_srfcplx_rxn => surface_complexation%rxn_list
+  do
+    if (.not.associated(cur_srfcplx_rxn)) exit
+    if (cur_srfcplx_rxn%itype == rxn_type) then
+      cur_srfcplx => cur_srfcplx_rxn%complex_list
+      do
+        if (.not.associated(cur_srfcplx)) exit
+        ! recall that complexes in rxns point to complexes in master list
+        ! through a ptr member of the derived type
+        if (cur_srfcplx%ptr%id < 0) then
+          cur_srfcplx%ptr%id = abs(cur_srfcplx%ptr%id)
+          SrfCplxGetSrfCplxCountInRxnType = SrfCplxGetSrfCplxCountInRxnType + 1
+        endif
+        cur_srfcplx => cur_srfcplx%next
+      enddo
+    endif
+    cur_srfcplx_rxn => cur_srfcplx_rxn%next
+  enddo
+  ! unflag complexes (see comment above)
+  cur_srfcplx => surface_complexation%complex_list
+  do
+    if (.not.associated(cur_srfcplx)) exit
+    cur_srfcplx%id = abs(cur_srfcplx%id)
+    cur_srfcplx => cur_srfcplx%next
+  enddo   
+
+end function SrfCplxGetSrfCplxCountInRxnType
+
+! ************************************************************************** !
+!
+! SrfCplxMapMasterSrfCplxToRxn: Maps surface complexes from the master list
+!                               to a compressed rxn list (e.g. for array)
+! author: Glenn Hammond
+! date: 03/22/12
+!
+! ************************************************************************** !
+subroutine SrfCplxMapMasterSrfCplxToRxn(surface_complexation,rxn_type)
+
+  implicit none
+  
+  type(surface_complexation_type) :: surface_complexation
+  PetscInt :: rxn_type
+  
+  type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
+  type(surface_complex_type), pointer :: cur_srfcplx
+  PetscInt, allocatable :: srfcplx_to_rxnsrfcplx(:)
+  PetscInt :: isrfcplx, isrfcplx_in_rxn
+  
+  isrfcplx = SrfCplxGetSrfCplxCountInRxnType(surface_complexation,rxn_type)
+  allocate(srfcplx_to_rxnsrfcplx(isrfcplx))
+
+  ! flag the master list
+  cur_srfcplx => surface_complexation%complex_list
+  isrfcplx = 0
+  do
+    if (.not.associated(cur_srfcplx)) exit
+    ! don't need the ptr here since it is the master list
+    isrfcplx = isrfcplx + 1
+    cur_srfcplx%id = -abs(cur_srfcplx%id)
+    cur_srfcplx => cur_srfcplx%next
+  enddo
+  allocate(srfcplx_to_rxnsrfcplx(isrfcplx))
+  srfcplx_to_rxnsrfcplx = 0
+  
+  ! determine which surface complexes in master list are include in 
+  ! reaction by flagging them
+  cur_srfcplx_rxn => surface_complexation%rxn_list
+  do
+    if (.not.associated(cur_srfcplx_rxn)) exit
+    if (cur_srfcplx_rxn%itype == rxn_type) then
+      cur_srfcplx => cur_srfcplx_rxn%complex_list
+      do
+        if (.not.associated(cur_srfcplx)) exit
+        cur_srfcplx%ptr%id = abs(cur_srfcplx%ptr%id)
+        cur_srfcplx => cur_srfcplx%next
+      enddo
+    endif
+    cur_srfcplx_rxn => cur_srfcplx_rxn%next
+  enddo
+  
+  ! load flagged names in master list into the list of names in the
+  ! same order as master list
+  ! flag the master list
+  cur_srfcplx => surface_complexation%complex_list
+  isrfcplx = 0
+  isrfcplx_in_rxn = 0
+  do
+    if (.not.associated(cur_srfcplx)) exit
+    ! don't need the ptr here since it is the master list
+    isrfcplx = isrfcplx + 1
+    if (cur_srfcplx%id > 0) then
+      isrfcplx_in_rxn = isrfcplx_in_rxn + 1
+      srfcplx_to_rxnsrfcplx(isrfcplx) = isrfcplx_in_rxn
+    endif
+    ! clear all flags
+    cur_srfcplx%ptr%id = abs(cur_srfcplx%ptr%id)
+    cur_srfcplx => cur_srfcplx%next
+  enddo   
+  
+  select case(rxn_type)
+    case(SRFCMPLX_RXN_EQUILIBRIUM)
+!      if (.not.associated(surface_complexation%srfcplx_to_eqsrfcplx)) then
+!        allocate(surface_complexation% &
+!                   srfcplx_to_eqsrfcplx(size(srfcplx_to_rxnsrfcplx)))
+!      endif
+!      surface_complexation%srfcplx_to_eqsrfcplx = srfcplx_to_rxnsrfcplx
+    case(SRFCMPLX_RXN_MULTIRATE_KINETIC)
+    case(SRFCMPLX_RXN_KINETIC)
+  end select
+  
+  deallocate(srfcplx_to_rxnsrfcplx)
+  
+end subroutine SrfCplxMapMasterSrfCplxToRxn
+
 ! ************************************************************************** !
 !
 ! SurfaceComplexationRxnDestroy: Deallocates a surface complexation reaction
@@ -411,7 +561,7 @@ end subroutine SurfaceComplexConstraintDestroy
 !
 ! SurfaceComplexationDestroy: Deallocates a reaction object
 ! author: Glenn Hammond
-! date: 05/29/08
+! date: 03/13/12
 !
 ! ************************************************************************** !
 subroutine SurfaceComplexationDestroy(surface_complexation)

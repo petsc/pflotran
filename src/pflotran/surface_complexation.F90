@@ -470,10 +470,6 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
                                null_array_ptr, &
                                null_matrix_block)    
 
-    rt_auxvar%total_sorb_eq = rt_auxvar%total_sorb_eq + total_sorb_eq
-    rt_auxvar%dtotal_sorb_eq = rt_auxvar%dtotal_sorb_eq + &
-                               dtotal_sorb_eq(:,:)
-    
     rt_auxvar%kinmr_total_sorb(:,0,ikinmrrxn) = total_sorb_eq(:)
   
   enddo ! irxn
@@ -553,19 +549,21 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
                                null_matrix_block)
 
     ! WARNING: this assumes site fraction multiplicative factor 
-    do irate = 1, surface_complexation%kinmr_nrate(irxn)
-      kdt = surface_complexation%kinmr_rate(irate,irxn) * option%tran_dt
+    do irate = 1, surface_complexation%kinmr_nrate(ikinmrrxn)
+      kdt = surface_complexation%kinmr_rate(irate,ikinmrrxn) * &
+            option%tran_dt
       one_plus_kdt = 1.d0 + kdt
-      k_over_one_plus_kdt = surface_complexation%kinmr_rate(irate,irxn)/one_plus_kdt
+      k_over_one_plus_kdt = &
+        surface_complexation%kinmr_rate(irate,ikinmrrxn)/one_plus_kdt
         
       ! this is the constribution to the accumulation term in the residual
       Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
-        (surface_complexation%kinmr_frac(irate,irxn)*total_sorb_eq(:) - &
+        (surface_complexation%kinmr_frac(irate,ikinmrrxn)*total_sorb_eq(:) - &
          rt_auxvar%kinmr_total_sorb(:,irate,ikinmrrxn))
       
       if (compute_derivative) then
         Jac = Jac + volume * k_over_one_plus_kdt * &
-          surface_complexation%kinmr_frac(irate,irxn) * dtotal_sorb_eq
+          surface_complexation%kinmr_frac(irate,ikinmrrxn) * dtotal_sorb_eq
       endif
 
     enddo
@@ -574,7 +572,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     ! concentration at the end of the time step.
     rt_auxvar%kinmr_total_sorb(:,0,ikinmrrxn) = total_sorb_eq
   
-  enddo ! irxn
+  enddo ! ikinmrrxn
   
 end subroutine RMultiRateSorption
 
@@ -773,6 +771,18 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
     if (isite == 1 .and. associated(external_srfcplx_conc)) then
       external_srfcplx_conc(:) = external_srfcplx_conc(:) + srfcplx_conc(:)
     endif
+#if 0
+!geh: for use if we decide to map surface complexes to master
+    if (isite == 1 .and. associated(ext_srfcplx_to_rxn_srfcplx_map)) then
+      do i = 1, surface_complexation%nsrfcplx
+        icplx = ext_srfcplx_to_rxn_srfcplx_map(i)
+        if (icplx > 0) then
+          external_srfcplx_conc(icplx) = external_srfcplx_conc(icplx) + &
+                                         srfcplx_conc(i)
+        endif
+      enddo
+    endif    
+#endif
    
     do k = 1, ncplx
       icplx = surface_complexation%srfcplxrxn_to_complex(k,irxn)

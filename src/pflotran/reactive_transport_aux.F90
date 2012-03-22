@@ -308,7 +308,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     allocate(aux_var%srfcplxrxn_free_site_conc(surface_complexation%nsrfcplxrxn))
     aux_var%srfcplxrxn_free_site_conc = 1.d-9 ! initialize to guess
     if (surface_complexation%neqsrfcplxrxn > 0) then
-      allocate(aux_var%eqsrfcplx_conc(surface_complexation%neqsrfcplx))
+      allocate(aux_var%eqsrfcplx_conc(surface_complexation%nsrfcplx))
       aux_var%eqsrfcplx_conc = 0.d0
     endif
     if (surface_complexation%nkinsrfcplxrxn > 0) then

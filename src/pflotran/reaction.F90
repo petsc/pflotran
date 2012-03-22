@@ -1589,13 +1589,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     return
   endif
   
-  ! if using multirate reaction, we need to turn it off to equilibrate the system
-  ! then turn it back on
-  if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-    allocate(rt_auxvar%total_sorb_eq(reaction%naqcomp))
-    allocate(rt_auxvar%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
-  endif
-
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
     if (.not.reaction%use_geothermal_hpt)then
@@ -2119,24 +2112,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
   endif
   
-  if (reaction%neqsorb == 0) then
-    !geh: cannot place this in the else statement as rt_auxvar%total_sorb_eq
-    !     may be used by RTotalSorbMultiRateAsEQ()
-    
-    ! if rt_auxvar%total_sorb_eq is allocated, but reaction%neqsorb == 0, then
-    ! we are using the array solely to initialized multirate kinetic sorption
-    ! and need to deallcate both %total_sorb_eq and %dtotal_sorb_eq here.
-    if (associated(rt_auxvar%total_sorb_eq)) &
-      deallocate(rt_auxvar%total_sorb_eq)
-    nullify(rt_auxvar%total_sorb_eq)
-    if (associated(rt_auxvar%dtotal_sorb_eq)) &
-      deallocate(rt_auxvar%dtotal_sorb_eq)
-    nullify(rt_auxvar%dtotal_sorb_eq)
-    if (associated(rt_auxvar%dtotal_sorb_eq)) &
-      deallocate(rt_auxvar%dtotal_sorb_eq)
-    nullify(rt_auxvar%dtotal_sorb_eq)
-  endif
-
   ! WARNING: below assumes site concentration multiplicative factor
   if (surface_complexation%nsrfcplxrxn > 0) then
     do irxn = 1, surface_complexation%nkinmrsrfcplxrxn

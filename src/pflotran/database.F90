@@ -2080,6 +2080,7 @@ subroutine BasisInit(reaction,option)
     allocate(surface_complexation%srfcplx_Z(icount))
     surface_complexation%srfcplx_Z = 0.d0
     
+    ! fill in surface complex arrays with info from linked lists
     isrfcplx = 0
     cur_srfcplx => surface_complexation%complex_list
     do
@@ -2131,11 +2132,10 @@ subroutine BasisInit(reaction,option)
     enddo
     nullify(cur_srfcplx)
     
-  
     ! determine max # complexes for a given reaction
     icount = 0 ! maximum # or surface complexes per rxn
     icount2 = 0 ! will hold the maximum # rates for multirate
-    icount3 = 0 ! maximum # or surface complexes per kinetic rxn
+    icount3 = 0 ! maximum # of surface complexes per kinetic rxn
     cur_srfcplx_rxn => surface_complexation%rxn_list
     do
       if (.not.associated(cur_srfcplx_rxn)) exit
@@ -2149,20 +2149,24 @@ subroutine BasisInit(reaction,option)
       icount = max(isrfcplx,icount)
       select case(cur_srfcplx_rxn%itype)
         case(SRFCMPLX_RXN_EQUILIBRIUM)
-          surface_complexation%neqsrfcplxrxn = &
-            surface_complexation%neqsrfcplxrxn + 1
         case(SRFCMPLX_RXN_KINETIC)
-          surface_complexation%nkinsrfcplxrxn = &
-            surface_complexation%nkinsrfcplxrxn + 1
           icount3 = max(icount3,isrfcplx)
         case(SRFCMPLX_RXN_MULTIRATE_KINETIC)
-          surface_complexation%nkinmrsrfcplxrxn = &
-            surface_complexation%nkinmrsrfcplxrxn + 1
           icount2 = max(size(cur_srfcplx_rxn%rates),icount2)
       end select      
       cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
-    nullify(cur_srfcplx_rxn)  
+    nullify(cur_srfcplx_rxn)
+    
+    surface_complexation%neqsrfcplx = &
+      SrfCplxGetSrfCplxCountInRxnType(surface_complexation, &
+                                      SRFCMPLX_RXN_EQUILIBRIUM)
+    surface_complexation%nkinmrsrfcplx = &
+      SrfCplxGetSrfCplxCountInRxnType(surface_complexation, &
+                                      SRFCMPLX_RXN_MULTIRATE_KINETIC)
+    surface_complexation%nkinsrfcplx = &
+      SrfCplxGetSrfCplxCountInRxnType(surface_complexation, &
+                                      SRFCMPLX_RXN_KINETIC)
 
     ! surface complexation reaction (general members)
     allocate(surface_complexation%srfcplxrxn_to_surf( &
@@ -2202,6 +2206,14 @@ subroutine BasisInit(reaction,option)
       allocate(surface_complexation%eqsrfcplxrxn_to_srfcplxrxn( &
                   surface_complexation%neqsrfcplxrxn))
       surface_complexation%eqsrfcplxrxn_to_srfcplxrxn = 0
+#if 0
+!geh: save for later
+      allocate(surface_complexation%srfcplx_to_eqsrfcplx( &
+                 surface_complexation%nsrfcplx))
+      surface_complexation%srfcplx_to_eqsrfcplx = 0
+      call SrfCplxMapMasterSrfCplxToRxn(surface_complexation, &
+                                        SRFCMPLX_RXN_EQUILIBRIUM)
+#endif
     endif
     
     ! kinetic
