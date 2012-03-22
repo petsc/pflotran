@@ -231,7 +231,7 @@ function SurfaceComplexationRxnCreate()
   srfcplxrxn%mineral_name = ''
   srfcplxrxn%colloid_name = ''
   srfcplxrxn%site_density = 0.d0
-  srfcplxrxn%kinmr_scale_factor = 0.d0
+  srfcplxrxn%kinmr_scale_factor = 1.d0
   nullify(srfcplxrxn%rates)
   nullify(srfcplxrxn%site_fractions)
   
