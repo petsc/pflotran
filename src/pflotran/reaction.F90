@@ -860,7 +860,7 @@ subroutine ReactionRead(reaction,input,option)
       reaction%print_secondary_conc_type = SECONDARY_MOLARITY
     endif
   endif
-  if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl + &
+  if (reaction%neqcplx + reaction%nsorb + reaction%nmnrl + &
       reaction%ngeneral_rxn > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
@@ -2704,7 +2704,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     128 format(2x,a8,2x,1pe12.4,4x,1pe12.4,4x,1pe12.4,4x,1pe12.4)
   endif
   
-! total retardation from ion exchange and surface complexation
+! total retardation from ion exchange and equilibrium surface complexation
   if (reaction%neqsorb > 0) then
     write(option%fid_out,1128)
     write(option%fid_out,90)
@@ -5396,7 +5396,7 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
   PetscInt, parameter :: iphase = 1
 
   retardation = 0.d0
-  if (reaction%neqsorb == 0) return
+  if (reaction%nsorb == 0) return
   
   bulk_vol_to_fluid_vol = porosity*global_auxvar%sat(iphase)*1000.d0
 
