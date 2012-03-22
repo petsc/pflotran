@@ -1731,7 +1731,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
      endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%nsorb > 0) then
-      call RZeroSorb(rt_auxvar)
       if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
       if (reaction%surface_complexation%nkinmrsrfcplx > 0) then
         call RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
@@ -2112,7 +2111,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
   ! once equilibrated, compute sorbed concentrations
   if (reaction%nsorb > 0) then
-    call RZeroSorb(rt_auxvar)
     if (reaction%neqsorb > 0) then
       call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     endif
@@ -2131,6 +2129,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (associated(rt_auxvar%total_sorb_eq)) &
       deallocate(rt_auxvar%total_sorb_eq)
     nullify(rt_auxvar%total_sorb_eq)
+    if (associated(rt_auxvar%dtotal_sorb_eq)) &
+      deallocate(rt_auxvar%dtotal_sorb_eq)
+    nullify(rt_auxvar%dtotal_sorb_eq)
     if (associated(rt_auxvar%dtotal_sorb_eq)) &
       deallocate(rt_auxvar%dtotal_sorb_eq)
     nullify(rt_auxvar%dtotal_sorb_eq)
@@ -2610,12 +2611,12 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         icplx = eqsrfcplxsort(i)
         icplx2 = eqsrfcplxsort(i+1)
         if (icplx > 0) then
-          conc = rt_auxvar%srfcplx_conc(icplx)
+          conc = rt_auxvar%eqsrfcplx_conc(icplx)
         else
           conc = rt_auxvar%eqsrfcplx_free_site_conc(-icplx)
         endif
         if (icplx2 > 0) then
-          conc2 = rt_auxvar%srfcplx_conc(icplx2)
+          conc2 = rt_auxvar%eqsrfcplx_conc(icplx2)
         else
           conc2 = rt_auxvar%eqsrfcplx_free_site_conc(-icplx2)
         endif
@@ -2634,7 +2635,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       icplx = eqsrfcplxsort(i)
       if (icplx > 0) then
         write(option%fid_out,121) reaction%eqsrfcplx_names(icplx), &
-                                  rt_auxvar%srfcplx_conc(icplx), &
+                                  rt_auxvar%eqsrfcplx_conc(icplx), &
                                   reaction%eqsrfcplx_logK(icplx)
       else
         write(option%fid_out,122) reaction%eqsrfcplx_site_names(-icplx), &
@@ -2658,7 +2659,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       do i = 1, ncplx
         icplx = surface_complexation%srfcplxrxn_to_complex(i,irxn)
         write(option%fid_out,121) surface_complexation%srfcplx_names(icplx), &
-                                  rt_auxvar%srfcplx_conc(icplx), &
+                                  rt_auxvar%eqsrfcplx_conc(icplx), &
                                   surface_complexation%srfcplx_logK(icplx)
       enddo
     enddo
@@ -2681,7 +2682,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                 if (rt_auxvar%total(j,iphase) /= 0.d0) &
                 retardation = retardation + &
                               surface_complexation%srfcplxstoich(jj,icplx)* &
-                              rt_auxvar%srfcplx_conc(icplx)/ &
+                              rt_auxvar%eqsrfcplx_conc(icplx)/ &
                               bulk_vol_to_fluid_vol/ &
                               rt_auxvar%total(j,iphase)
                 exit
@@ -2985,7 +2986,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
       do i = 1, ncplx
         icplx = reaction%srfcplxrxn_to_complex(i,irxn)
         surface_charge = surface_charge + reaction%eqsrfcplx_Z(icplx)* &
-                         rt_auxvar%srfcplx_conc(icplx)
+                         rt_auxvar%eqsrfcplx_conc(icplx)
       enddo
     enddo
     surface_charge = faraday*surface_charge
@@ -2998,7 +2999,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
       srfchrg_capacitance_model
     print *,'ionic strength = ',ionic_strength
     print *,'chrg bal. = ',charge_balance,' Tk = ',tempk,' Boltz. = ',boltzmann
-    print *,'srfcmplx: ',rt_auxvar%srfcplx_conc
+    print *,'srfcmplx: ',rt_auxvar%eqsrfcplx_conc
     print *,'========================='
 
 !   compute surface complex concentrations  
@@ -3676,9 +3677,8 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
       
       call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
-      if (reaction%nsorb > 0) call RZeroSorb(rt_auxvar_pert)
       if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
-                                              reaction,option)
+                                                reaction,option)
 
       if (reaction%nkinmnrl > 0) then
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
@@ -4220,7 +4220,7 @@ subroutine RZeroSorb(rt_auxvar)
   
   if (associated(rt_auxvar%total_sorb_eq)) rt_auxvar%total_sorb_eq = 0.d0
   if (associated(rt_auxvar%dtotal_sorb_eq)) rt_auxvar%dtotal_sorb_eq = 0.d0
-  if (associated(rt_auxvar%srfcplx_conc)) rt_auxvar%srfcplx_conc = 0.d0
+  if (associated(rt_auxvar%eqsrfcplx_conc)) rt_auxvar%eqsrfcplx_conc = 0.d0
   
 end subroutine RZeroSorb
 
@@ -4242,6 +4242,8 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
+  
+  call RZeroSorb(rt_auxvar)
   
   if (reaction%surface_complexation%neqsrfcplxrxn > 0) then
     call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
@@ -5505,7 +5507,6 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
   
 !already set  rt_auxvar%pri_molal = x
   call RTotal(rt_auxvar,global_auxvar,reaction,option)
-  if (reaction%nsorb > 0) call RZeroSorb(rt_auxvar)
   if (reaction%neqsorb > 0) then
     call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   endif
@@ -5538,7 +5539,6 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
     
     call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
     dtotal(:,jcomp) = (rt_auxvar_pert%total(:,1) - rt_auxvar%total(:,1))/pert
-    if (reaction%nsorb > 0) call RZeroSorb(rt_auxvar_pert)
     if (reaction%neqsorb > 0) then
       call RTotalSorb(rt_auxvar_pert,global_auxvar,reaction,option)
       dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb_eq(:) - &
@@ -5887,10 +5887,10 @@ subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
       write(option%fid_out,20) 'EQ Surface Complex Conc.', 'mol/m^3'
     do i = 1, reaction%surface_complexation%neqsrfcplx
       if (OptionPrintToScreen(option)) &
-        write(*,10) reaction%eqsrfcplx_names(i), rt_auxvar%srfcplx_conc(i)
+        write(*,10) reaction%eqsrfcplx_names(i), rt_auxvar%eqsrfcplx_conc(i)
       if (OptionPrintToFile(option)) &
         write(option%fid_out,10) reaction%eqsrfcplx_names(i), &
-          rt_auxvar%srfcplx_conc(i)
+          rt_auxvar%eqsrfcplx_conc(i)
     enddo
     if (OptionPrintToScreen(option)) write(*,30)
     if (OptionPrintToFile(option)) write(option%fid_out,30)

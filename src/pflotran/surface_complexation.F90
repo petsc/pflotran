@@ -397,7 +397,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
-                               rt_auxvar%srfcplx_conc, &
+                               rt_auxvar%eqsrfcplx_conc, &
                                rt_auxvar%total_sorb_eq, &
                                rt_auxvar%dtotal_sorb_eq, &
                                colloid_array_ptr, &
@@ -464,7 +464,7 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
     call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
-                               rt_auxvar%srfcplx_conc, &
+                               null_array_ptr, &
                                total_sorb_eq, &
                                dtotal_sorb_eq, &
                                null_array_ptr, &
@@ -546,7 +546,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     call RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
                                irxn, &
                                rt_auxvar%srfcplxrxn_free_site_conc(irxn), &
-                               rt_auxvar%srfcplx_conc, &
+                               null_array_ptr, &
                                total_sorb_eq, &
                                dtotal_sorb_eq, &
                                null_array_ptr, &

@@ -32,7 +32,7 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: kinsrfcplx_conc(:,:) ! S_{i\alpha}^k
     PetscReal, pointer :: kinsrfcplx_conc_kp1(:,:) ! S_{i\alpha}^k+1
     PetscReal, pointer :: kinsrfcplx_free_site_conc(:)  ! S_\alpha
-    PetscReal, pointer :: srfcplx_conc(:)
+    PetscReal, pointer :: eqsrfcplx_conc(:)
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
     PetscReal, pointer :: eqionx_conc(:,:)
     
@@ -298,7 +298,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif    
   
   ! surface complexation
-  nullify(aux_var%srfcplx_conc)
+  nullify(aux_var%eqsrfcplx_conc)
   nullify(aux_var%srfcplxrxn_free_site_conc)
   nullify(aux_var%kinsrfcplx_conc)
   nullify(aux_var%kinsrfcplx_conc_kp1)
@@ -307,8 +307,10 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (surface_complexation%nsrfcplxrxn > 0) then
     allocate(aux_var%srfcplxrxn_free_site_conc(surface_complexation%nsrfcplxrxn))
     aux_var%srfcplxrxn_free_site_conc = 1.d-9 ! initialize to guess
-    allocate(aux_var%srfcplx_conc(surface_complexation%nsrfcplx))
-    aux_var%srfcplx_conc = 0.d0
+    if (surface_complexation%neqsrfcplxrxn > 0) then
+      allocate(aux_var%eqsrfcplx_conc(surface_complexation%neqsrfcplx))
+      aux_var%eqsrfcplx_conc = 0.d0
+    endif
     if (surface_complexation%nkinsrfcplxrxn > 0) then
       !geh: currently hardwired to only 1 reaction
       allocate(aux_var%kinsrfcplx_conc(surface_complexation%nkinsrfcplx,1))
@@ -447,12 +449,12 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%gas_molal)) &
     aux_var%gas_molal = aux_var2%gas_molal
   
-  if (associated(aux_var%srfcplx_conc)) then
+  if (associated(aux_var%srfcplxrxn_free_site_conc)) then
     aux_var%srfcplxrxn_free_site_conc = aux_var2%srfcplxrxn_free_site_conc
   endif
   
-  if (associated(aux_var%srfcplx_conc)) then
-    aux_var%srfcplx_conc = aux_var2%srfcplx_conc
+  if (associated(aux_var%eqsrfcplx_conc)) then
+    aux_var%eqsrfcplx_conc = aux_var2%eqsrfcplx_conc
   endif
   
   if (associated(aux_var%kinsrfcplx_conc)) then
@@ -671,8 +673,8 @@ subroutine RTAuxVarStrip(aux_var)
   if (associated(aux_var%dtotal_sorb_eq))deallocate(aux_var%dtotal_sorb_eq)
   nullify(aux_var%dtotal_sorb_eq)
 
-  if (associated(aux_var%srfcplx_conc)) deallocate(aux_var%srfcplx_conc)
-  nullify(aux_var%srfcplx_conc)
+  if (associated(aux_var%eqsrfcplx_conc)) deallocate(aux_var%eqsrfcplx_conc)
+  nullify(aux_var%eqsrfcplx_conc)
   if (associated(aux_var%srfcplxrxn_free_site_conc)) &
     deallocate(aux_var%srfcplxrxn_free_site_conc)
   nullify(aux_var%srfcplxrxn_free_site_conc)
