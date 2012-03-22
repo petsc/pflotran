@@ -1235,8 +1235,8 @@ subroutine GridMapIndices(grid, sgdm)
   DM :: sgdm
 
   PetscInt :: ierr, icount
-!  PetscInt, allocatable :: int_tmp(:)
-  PetscInt, pointer :: int_tmp(:)
+  PetscInt, allocatable :: int_tmp(:)
+! PetscInt, pointer :: int_tmp(:)
   PetscInt :: n
   PetscOffset :: i_da
   
