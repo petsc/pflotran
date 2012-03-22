@@ -7,7 +7,7 @@ module Reaction_module
   use Surface_Complexation_Aux_module
   
   implicit none
-  
+ 
   private 
 
 #include "definitions.h"
@@ -372,9 +372,6 @@ subroutine ReactionRead(reaction,input,option)
           select case(trim(word))
 
             case('ISOTHERM_REACTIONS')
-              option%io_buffer = 'Isotherm reactions currently calculated as ' // &
-                'a function of free-ion, not totals.  Contact Glenn!'
-              call printErrMsg(option)
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
@@ -1549,7 +1546,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
   iphase = 1
   
-  xmass = 1.d0  
+  xmass = 1.d0
+  print *,'ReactionEquilibrateConstraint: ', global_auxvar%pres(:)  
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   
   if (reaction%initialize_with_molality) then
@@ -3719,6 +3717,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: sat_pressure
   PetscErrorCode :: ierr 
 
+ ! print *,'CO2AqActCoeff: ', global_auxvar%pres(:) 
   tc = global_auxvar%temp(1)
   pco2 = global_auxvar%pres(2)
   sat_pressure =0D0
@@ -3779,6 +3778,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
         call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                global_auxvar%temp(1),reaction%neqcplx)
       else
+        print *,'Activity:', global_auxvar%pres(1)
         call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                global_auxvar%temp(1),global_auxvar%pres(1),reaction%neqcplx)
       endif
@@ -4038,6 +4038,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                  global_auxvar%temp(iphase),reaction%neqcplx)
     else
+     !  print *,'Rtotal:: P:', global_auxvar%pres(:),' T:',  global_auxvar%temp(:)
        call ReactionInterpolateLogK_hpt(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                  global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                  reaction%neqcplx)
@@ -4099,6 +4100,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                  global_auxvar%temp(1),reaction%ngas)
     else
+      print *,'Rtotal2:: ', global_auxvar%pres(1)
       call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                  global_auxvar%temp(1),global_auxvar%pres(1),&
                                  reaction%ngas)
@@ -4557,6 +4559,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
                                  global_auxvar%temp(iphase),reaction%nkinmnrl)
     else
+     ! print *,'RKineticMineral:: ', global_auxvar%pres(iphase)
       call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
                                  global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                  reaction%nkinmnrl)
@@ -4872,6 +4875,7 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
       call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
                                  global_auxvar%temp(iphase),reaction%nmnrl)
     else
+    !  print *,'RMineralSaturationIndex:: ',global_auxvar%pres(iphase)
       call ReactionInterpolateLogK_hpt(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
                                  global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                  reaction%nmnrl)
@@ -5328,7 +5332,7 @@ subroutine ReactionInitializeLogK_hpt(logKcoef,logK,option,reaction)
   coefs(:,ONE_INTEGER) = logKcoef(:)
   call ReactionInterpolateLogK_hpt(coefs,logK_1D_Array,temperature,pressure,ONE_INTEGER)
   logK = logK_1D_Array(ONE_INTEGER)
-
+!   print *,'ReactionInitializeLogK_hpt: ', pressure,temperature, logK
 
 end subroutine ReactionInitializeLogK_hpt
 
@@ -5374,7 +5378,7 @@ subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
              + coefs(16,i) * pr * pr * tr &
              + coefs(17,i) * pr * pr / tr 
   enddo
-  
+ ! print *,'ReactionInterpolateLogK_hpt: ', pres,temp, logKs, coefs
 end subroutine ReactionInterpolateLogK_hpt
 
 ! ************************************************************************** !

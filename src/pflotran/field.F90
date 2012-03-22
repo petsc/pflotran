@@ -148,6 +148,16 @@ function FieldCreate()
   field%tran_ts_mass_balance = 0
   field%tran_total_mass_balance = 0
 
+  field%flow_r_faces = 0
+  field%flow_r_loc_faces = 0
+  field%flow_xx_faces = 0
+  field%flow_xx_loc_faces = 0
+  field%flow_dxx_faces = 0
+  field%flow_yy_faces = 0
+  field%flow_bc_loc_faces = 0
+  field%work_loc_faces = 0
+   
+
   FieldCreate => field
   
 end function FieldCreate
@@ -231,7 +241,31 @@ subroutine FieldDestroy(field)
     
   if (field%tvd_ghosts /= 0) &
     call VecDestroy(field%tvd_ghosts,ierr)
-  
+
+  if (field%flow_r_faces/= 0) &
+    call VecDestroy(field%flow_r_faces,ierr)
+
+  if (field%flow_r_loc_faces /= 0) &
+    call VecDestroy(field%flow_r_loc_faces ,ierr)
+
+  if (field%flow_xx_faces /= 0) &
+    call VecDestroy(field%flow_xx_faces ,ierr)
+
+  if (field%flow_xx_loc_faces /= 0) &
+    call VecDestroy(field%flow_xx_loc_faces ,ierr)
+
+  if (field%flow_dxx_faces /= 0) &
+    call VecDestroy(field%flow_dxx_faces ,ierr)
+
+  if (field%flow_yy_faces /= 0) &
+    call VecDestroy(field%flow_yy_faces ,ierr)
+
+  if (field%flow_bc_loc_faces /= 0) &
+    call VecDestroy(field%flow_bc_loc_faces ,ierr)
+
+  if (field%work_loc_faces /= 0) &
+    call VecDestroy(field%work_loc_faces ,ierr)
+
   deallocate(field)
   nullify(field)
   

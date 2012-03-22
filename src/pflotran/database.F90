@@ -1296,6 +1296,8 @@ subroutine BasisInit(reaction,option)
                                              cur_gas_spec%dbaserxn, &
                                              cur_mineral%dbaserxn, &
                                              scale)
+             cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
+                                       + scale*cur_gas_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1320,6 +1322,8 @@ subroutine BasisInit(reaction,option)
                                               cur_gas_spec%dbaserxn, &
                                               cur_srfcplx2%dbaserxn, &
                                               scale)
+!geh            cur_srfcplx2%dbaserxn%logK=cur_srfcplx2%dbaserxn%logK &
+!geh                                      + scale *cur_gas_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1360,6 +1364,8 @@ subroutine BasisInit(reaction,option)
                                              cur_sec_aq_spec%dbaserxn, &
                                              cur_mineral%dbaserxn, &
                                              scale)
+            cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
+                                      + scale*cur_sec_aq_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1383,6 +1389,8 @@ subroutine BasisInit(reaction,option)
                                               cur_sec_aq_spec%dbaserxn, &
                                               cur_srfcplx2%dbaserxn, &
                                               scale)
+!geh            cur_srfcplx2%dbaserxn%logK=cur_srfcplx2%dbaserxn%logK &
+!geh                                      + scale *cur_sec_aq_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -2808,6 +2816,12 @@ subroutine BasisInit(reaction,option)
   ! Kd reactions
   
   if (reaction%neqkdrxn > 0) then
+
+    if (reaction%neqcplx > 0) then
+      option%io_buffer = 'Isotherm reactions currently calculated as a ' // &
+                         'function of free-ion, not totals.  Contact Glenn!'
+      call printErrMsg(option)
+    endif
   
     ! allocate arrays
     allocate(reaction%eqkdspecid(reaction%neqkdrxn))

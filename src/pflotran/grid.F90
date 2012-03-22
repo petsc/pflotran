@@ -202,6 +202,9 @@ function GridCreate()
 #ifdef DASVYAT  
   nullify(grid%faces)
   nullify(grid%MFD)
+  grid%e2f = 0
+  grid%e2n = 0
+  grid%e2n_LP = 0
 #endif
 
   nullify(grid%hash)
@@ -857,6 +860,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     call VecDestroy(ghosted_e2n, ierr)
     call VecDestroy(ghosted_e2f, ierr)
+    call VecScatterDestroy(VC_global2ghosted, ierr)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
@@ -1232,6 +1236,8 @@ subroutine GridMapIndices(grid, sgdm)
 
   PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
+! PetscInt, pointer :: int_tmp(:)
+  PetscInt :: n
   PetscOffset :: i_da
   
   select case(grid%itype)
@@ -1242,12 +1248,15 @@ subroutine GridMapIndices(grid, sgdm)
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
+!geh     call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
          call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
          do icount = 1, grid%ngmax
-         !   write(*,*) icount, int_tmp(icount + i_da)
+!geh         write(*,*) icount,  int_tmp(icount + i_da)
             grid%nG2P(icount) = int_tmp(icount + i_da)
+!             write(*,*) icount,  int_tmp(icount)
+!geh        grid%nG2P(icount) = int_tmp(icount)
          end do
-        deallocate(int_tmp)
+       deallocate(int_tmp)
       end if
 #endif
     case(UNSTRUCTURED_GRID)
@@ -3139,6 +3148,7 @@ subroutine GridDestroy(grid)
   implicit none
   
   type(grid_type), pointer :: grid
+  PetscErrorCode :: ierr
     
   if (.not.associated(grid)) return
       
@@ -3162,6 +3172,10 @@ subroutine GridDestroy(grid)
   nullify(grid%fL2P)
   if (associated(grid%fL2B)) deallocate(grid%fL2B)
   nullify(grid%fL2B)
+
+  if (grid%e2f /= 0) Call VecDestroy(grid%e2f, ierr)
+  if (grid%e2n /= 0) Call VecDestroy(grid%e2n, ierr)
+  if (grid%e2n_LP /= 0) Call VecDestroy(grid%e2n_LP, ierr)
 
   call MFDAuxDestroy(grid%MFD)
 #endif

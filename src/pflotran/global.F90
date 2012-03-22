@@ -340,6 +340,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
         case default
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%aux_vars(ghosted_id)%pres(option%liquid_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(TEMPERATURE)

@@ -909,12 +909,12 @@ end subroutine PatchUpdateAllCouplerAuxVars
 ! ************************************************************************** !
 subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                                      option)
-
   use Option_module
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
   use water_eos_module
+  use Dataset_Aux_module
 
   implicit none
   
@@ -927,13 +927,16 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(flow_general_condition_type), pointer :: general
+  type(dataset_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat
+  character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   
   PetscInt :: idof, num_connections
   
+
   if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
@@ -1116,9 +1119,26 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%concentration)) then
               select case(flow_condition%concentration%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  coupler%flow_aux_real_var(MIS_CONCENTRATION_DOF, &
-                                            1:num_connections) = &
-                    flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                  if (associated(flow_condition%concentration%flow_dataset% &
+                                   time_series)) then
+                    coupler%flow_aux_real_var(MIS_CONCENTRATION_DOF, &
+                                              1:num_connections) = &
+                      flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+#if 0
+call PatchMapDatasetToCoupler(realization,flow_dataset,coupler,option, &
+                              MIS_CONCENTRATION_DOF)
+                  else if (associated(flow_condition%concentration%flow_dataset% &
+                                        dataset)) then
+                    dataset => flow_condition%concentration%flow_dataset%dataset
+                    string = '' ! group name
+                    call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                                      dataset%filename, &
+                                                      string,dataset%h5_dataset_name, &
+                                                      dataset%realization_dependent)
+
+
+#endif
+                  endif
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
              !  case(SATURATION_BC)
@@ -1168,6 +1188,59 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchMapDatasetToCoupler: maps an external dataset to cells linked to a
+!                           boundary/initial condition through a coupler
+! author: Glenn Hammond
+! date: 03/19/12
+!
+! ************************************************************************** !
+subroutine PatchMapDatasetToCoupler(flow_dataset,coupler,option, &
+                                    idof)
+
+  use Option_module
+  use Condition_module
+  use Dataset_module
+
+  implicit none
+  
+  type(flow_condition_dataset_type) :: flow_dataset
+  type(coupler_type), pointer :: coupler
+  type(option_type) :: option
+  PetscInt :: idof ! index in flow_aux_real_var
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: num_connections
+  PetscErrorCode :: ierr
+
+
+  num_connections = coupler%connection_set%num_connections
+#ifdef DASVYAT      
+  if (option%mimetic) then
+    num_connections = coupler%numfaces_set
+  end if
+#endif
+
+  if (associated(flow_dataset%time_series)) then
+    coupler%flow_aux_real_var(idof,1:num_connections) = &
+      flow_dataset%time_series%cur_value(1)
+#if 0
+  else if (associated(flow_dataset%dataset)) then
+    string = '' ! group name
+!TODO(geh): finish.  Cannot access this subroutine there!
+    call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                      flow_dataset%dataset%filename, &
+                                      string,dataset%h5_dataset_name, &
+                                      dataset%realization_dependent)
+#endif
+  endif
+
+
+
+end subroutine PatchMapDatasetToCoupler
+
 
 ! ************************************************************************** !
 !

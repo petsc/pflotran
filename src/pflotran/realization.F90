@@ -755,7 +755,9 @@ subroutine RealizationCreatenG2LP(realization)
 
     call VecDestroy(vec_LP_cell_id, ierr)
     call VecDestroy(vec_LP_cell_id_loc, ierr)
-
+    call VecScatterDestroy(VC_global2ghosted , ierr)
+    call ISDestroy(is_ghosted, ierr)
+    call ISDestroy(is_global, ierr)
 !    call MPI_Barrier(PETSC_COMM_WORLD, ierr)
 
 end subroutine
@@ -1133,7 +1135,7 @@ subroutine RealProcessFlowConditions(realization)
     !TODO(geh): could destroy the time_series here if dataset allocated
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE)
+      case(RICHARDS_MODE,MIS_MODE)
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! check for dataset in flow_dataset
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
