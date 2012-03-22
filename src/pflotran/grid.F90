@@ -1159,9 +1159,9 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
     call ISLocalToGlobalMappingBlock(MFD_aux%mapping_ltog_LP, ndof, &
                                    MFD_aux%mapping_ltogb_LP, ierr)
 
-!   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc_LP.out',viewer,ierr)
-!   call ISView(MFD_aux%is_ghosted_petsc_LP,viewer,ierr)
-!   call PetscViewerDestroy(viewer,ierr)
+   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc_LP.out',viewer,ierr)
+   call ISView(MFD_aux%is_ghosted_petsc_LP,viewer,ierr)
+   call PetscViewerDestroy(viewer,ierr)
 
 
 !   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)

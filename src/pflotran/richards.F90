@@ -6374,8 +6374,8 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
 #if 0
   write(*,*) "EXIT MFDLP JACOBIAN"
   write(*,*) "richard 5932"
-  read(*,*)
-!   stop
+!  read(*,*)
+   stop
 #endif
 
 end subroutine RichardsJacobianPatchMFDLP
