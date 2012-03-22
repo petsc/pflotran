@@ -5,7 +5,7 @@ module Reaction_module
   use Global_Aux_module
   
   implicit none
-  
+ 
   private 
 
 #include "definitions.h"
