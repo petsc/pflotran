@@ -1557,7 +1557,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   iphase = 1
   
   xmass = 1.d0
-  print *,'ReactionEquilibrateConstraint: ', global_auxvar%pres(:)  
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   
   if (reaction%initialize_with_molality) then
