@@ -1670,7 +1670,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
   PetscReal :: xmass
   PetscReal :: tempreal
   PetscInt :: tempint
-  PetscInt :: irate, istate
+  PetscInt :: irate, istate, irxn
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -2199,17 +2199,23 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           enddo
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
           ! add in total sorbed.  already in mol/m^3 bulk
-          if (patch%reaction%neqsorb > 0) then
+          if (patch%reaction%nsorb > 0) then
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              if (patch%reaction%kinmr_nrate > 0) then
-                do irate = 1, patch%reaction%kinmr_nrate
-                  vec_ptr(local_id) = vec_ptr(local_id) + &
-                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
-                enddo            
-              else
+              if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
                 vec_ptr(local_id) = vec_ptr(local_id) + &
                   patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+              endif
+              if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+                do irxn = 1, &
+                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                  do irate = 1, &
+                     patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                    vec_ptr(local_id) = vec_ptr(local_id) + &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        kinmr_total_sorb(isubvar,irate,irxn)
+                  enddo 
+                enddo
               endif
             enddo
           endif
@@ -2230,14 +2236,19 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
                                                   reaction,option)
           enddo
         case(SURFACE_CMPLX)
-          do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_conc(isubvar)
-          enddo
+          if (associated(patch%aux%RT%aux_vars(1)%eqsrfcplx_conc)) then
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+                                    eqsrfcplx_conc(isubvar)
+            enddo
+          else
+            vec_ptr = -999.d0
+          endif
         case(SURFACE_SITE_DENSITY)
-          tempreal = reaction%eqsrfcplx_rxn_site_density(isubvar)
-          select case(reaction%eqsrfcplx_rxn_surf_type(isubvar))
+          tempreal = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)
+          select case(reaction%surface_complexation%srfcplxrxn_surf_type(isubvar))
             case(MINERAL_SURFACE)
-              tempint = reaction%eqsrfcplx_rxn_to_surf(isubvar)
+              tempint = reaction%surface_complexation%srfcplxrxn_to_surf(isubvar)
               do local_id=1,grid%nlmax
                 vec_ptr(local_id) = tempreal* &
                                     patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
@@ -2254,15 +2265,18 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           end select          
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_free_site_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+              srfcplxrxn_free_site_conc(isubvar)
           enddo
         case(KIN_SURFACE_CMPLX)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+              kinsrfcplx_conc(isubvar,1)
           enddo
         case(KIN_SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_free_site_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+              kinsrfcplx_free_site_conc(isubvar)
           enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
@@ -2287,22 +2301,29 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           enddo
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
-          if (patch%reaction%neqsorb > 0) then
+          if (patch%reaction%nsorb > 0) then
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              if (patch%reaction%kinmr_nrate > 0) then
+              if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
+                vec_ptr(local_id) = &
+                  patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+              endif
+              if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
                 vec_ptr(local_id) = 0.d0
-                do irate = 1, patch%reaction%kinmr_nrate
-                  vec_ptr(local_id) = vec_ptr(local_id) + &
-                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+                do irxn = 1, &
+                  patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                  do irate = 1, &
+                    patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                    vec_ptr(local_id) = vec_ptr(local_id) + &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        kinmr_total_sorb(isubvar,irate,irxn)
+                  enddo            
                 enddo            
-              else
-                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
               endif
             enddo
           endif
         case(TOTAL_SORBED_MOBILE)
-          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+          if (patch%reaction%nsorb > 0 .and. patch%reaction%ncollcomp > 0) then
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%colloid% &
@@ -2429,7 +2450,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   PetscInt :: ghosted_id
 
   PetscReal :: value, xmass
-  PetscInt :: irate, istate
+  PetscInt :: irate, istate, irxn
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
   PetscErrorCode :: ierr
@@ -2732,15 +2753,20 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
               patch%aux%Global%aux_vars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
           ! add in total sorbed.  already in mol/m^3 bulk
-          if (patch%reaction%neqsorb > 0) then
-            if (patch%reaction%kinmr_nrate > 0) then
-              do irate = 1, patch%reaction%kinmr_nrate
-                value = value + &
-                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
-              enddo            
-            else
+          if (patch%reaction%nsorb > 0) then
+            if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
               value = value + &
                 patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+            endif
+            if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+              do irxn = 1, patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                do irate = 1, &
+                  patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                  value = value + &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        kinmr_total_sorb(isubvar,irate,irxn)
+                enddo
+              enddo            
             endif
           endif          
         case(MINERAL_VOLUME_FRACTION)
@@ -2752,24 +2778,28 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                                           patch%aux%Global%aux_vars(ghosted_id), &
                                           reaction,option)
         case(SURFACE_CMPLX)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
+          if (associated(patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc)) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
+          else
+            value = -999.d0
+          endif
         case(SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_free_site_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%srfcplxrxn_free_site_conc(isubvar)
         case(SURFACE_SITE_DENSITY)
-          select case(reaction%eqsrfcplx_rxn_surf_type(isubvar))
+          select case(reaction%surface_complexation%srfcplxrxn_surf_type(isubvar))
             case(MINERAL_SURFACE)
-              value = reaction%eqsrfcplx_rxn_site_density(isubvar)* &
+              value = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)* &
                       patch%aux%RT%aux_vars(ghosted_id)% &
-                        mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(isubvar))
+                        mnrl_volfrac(reaction%surface_complexation%srfcplxrxn_to_surf(isubvar))
             case(COLLOID_SURFACE)
                 option%io_buffer = 'Printing of surface site density for colloidal surfaces ' // &
                   'not implemented.'
                 call printErrMsg(option)
             case(NULL_SURFACE)
-              value = reaction%eqsrfcplx_rxn_site_density(isubvar)
+              value = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)
           end select
         case(KIN_SURFACE_CMPLX)
-          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar,1)
         case(KIN_SURFACE_CMPLX_FREE)
           value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
@@ -2784,20 +2814,26 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                                  vec_ptr2(ghosted_id),patch%reaction,option)
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
-          if (patch%reaction%neqsorb > 0) then
-            if (patch%reaction%kinmr_nrate > 0) then
-              value = 0.d0
-              do irate = 1, patch%reaction%kinmr_nrate
-                value = value + &
-                  patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
-              enddo            
-            else
+          if (patch%reaction%nsorb > 0) then
+            if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
               value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+            endif
+            if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+              value = 0.d0
+              do irxn = 1, patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                do irate = 1, &
+                  patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                  value = value + &
+                    patch%aux%RT%aux_vars(ghosted_id)% &
+                      kinmr_total_sorb(isubvar,irate,irxn)
+                enddo
+              enddo            
             endif
           endif
         case(TOTAL_SORBED_MOBILE)
-          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
-            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
+          if (patch%reaction%nsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+            value = &
+              patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
           endif
         case(COLLOID_MOBILE)
           if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then

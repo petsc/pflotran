@@ -246,7 +246,7 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
     dbaserxn2%stoich(i) = tempstoich(i)
   enddo
   
-  !dbaserxn2%logK = dbaserxn2%logK + scale*dbaserxn1%logK
+  dbaserxn2%logK = dbaserxn2%logK + scale*dbaserxn1%logK
 
 end subroutine BasisSubSpeciesInGasOrSecRxn
 
@@ -342,7 +342,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
     mnrl_dbaserxn%stoich(i) = tempstoich(i)
   enddo
   
-   !mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
+  mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
 
 end subroutine BasisSubSpeciesInMineralRxn
 

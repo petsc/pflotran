@@ -877,36 +877,38 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_density_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplx
-        if (reaction%eqsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplxrxn
-        if (reaction%kinsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+          !TODO(geh): fix
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplx
-        if (reaction%kinsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
+          !TODO(geh): fix
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -930,7 +932,7 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
@@ -1360,36 +1362,37 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_density_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo      
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplx
-        if (reaction%eqsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplxrxn
-        if (reaction%kinsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+        !TODO(geh): fix
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplx
-        if (reaction%kinsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1413,7 +1416,7 @@ subroutine OutputTecplotFEBrick(realization)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
@@ -2261,36 +2264,37 @@ subroutine OutputTecplotPoint(realization)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%neqsrfcplxrxn
-          if (reaction%eqsrfcplx_site_density_print(i)) then
+        do i=1,reaction%surface_complexation%nsrfcplxrxn
+          if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%neqsrfcplxrxn
-          if (reaction%eqsrfcplx_site_print(i)) then
+        do i=1,reaction%surface_complexation%nsrfcplxrxn
+          if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%neqsrfcplx
-          if (reaction%eqsrfcplx_print(i)) then
+        do i=1,reaction%surface_complexation%nsrfcplx
+          if (reaction%surface_complexation%srfcplx_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%nkinsrfcplxrxn
-          if (reaction%kinsrfcplx_site_print(i)) then
+        do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+          if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+          !TODO(geh): fix
             value = RealizGetDatasetValueAtCell(realization,KIN_SURFACE_CMPLX_FREE, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%nkinsrfcplx
-          if (reaction%kinsrfcplx_print(i)) then
+        do i=1,reaction%surface_complexation%nkinsrfcplx
+          if (reaction%surface_complexation%srfcplx_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,KIN_SURFACE_CMPLX, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2314,7 +2318,7 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo
         endif
-        if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        if (associated(reaction%total_sorb_mobile_print)) then
           do i=1,reaction%ncollcomp
             if (reaction%total_sorb_mobile_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE, &
@@ -3940,32 +3944,33 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
             RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_density_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%neqsrfcplx
-        if (reaction%eqsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplxrxn
-        if (reaction%kinsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+        !TODO(geh): fix
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,KIN_SURFACE_CMPLX_FREE,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplx
-        if (reaction%kinsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,KIN_SURFACE_CMPLX,i,ghosted_id)
         endif
@@ -3986,7 +3991,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             write(fid,110,advance="no") &
@@ -4443,8 +4448,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_density_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,SURFACE_SITE_DENSITY,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4453,8 +4458,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,SURFACE_CMPLX_FREE,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4463,8 +4468,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%neqsrfcplx
-        if (reaction%eqsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,SURFACE_CMPLX,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4473,8 +4478,9 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplxrxn
-        if (reaction%kinsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+        !TODO(geh): fix
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,KIN_SURFACE_CMPLX_FREE,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4483,8 +4489,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplx
-        if (reaction%kinsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,KIN_SURFACE_CMPLX,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4517,7 +4523,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             write(fid,110,advance="no") &
@@ -5290,43 +5296,44 @@ subroutine OutputVTK(realization)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_density_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinsrfcplx_site_names(i))
+          word = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinsrfcplx_site_names(i))
+          word = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%neqsrfcplx
-        if (reaction%eqsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%eqsrfcplx_names(i))
+          word = trim(reaction%surface_complexation%srfcplx_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplxrxn
-        if (reaction%kinsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+        !TODO(geh): fix
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinsrfcplx_site_names(i))
+          word = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%nkinsrfcplx
-        if (reaction%kinsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinsrfcplx_names(i))
+          word = trim(reaction%surface_complexation%srfcplx_names(i))
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
@@ -5350,7 +5357,7 @@ subroutine OutputVTK(realization)
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
@@ -6289,23 +6296,29 @@ end subroutine SAMRWritePlotData
                     nviz_tran=nviz_tran+1
              endif
           end do
-          do i=1,reaction%neqsrfcplxrxn
-               if (reaction%eqsrfcplx_site_print(i)) then
+          do i=1,reaction%surface_complexation%nsrfcplxrxn
+               if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
                     nviz_tran=nviz_tran+1
                endif
           end do
-          do i=1,reaction%neqsrfcplx
-              if (reaction%eqsrfcplx_print(i)) then
+          do i=1,reaction%surface_complexation%nsrfcplxrxn
+               if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+                    nviz_tran=nviz_tran+1
+               endif
+          end do
+          do i=1,reaction%surface_complexation%nsrfcplx
+              if (reaction%surface_complexation%srfcplx_print(i)) then
                    nviz_tran=nviz_tran+1
               endif
           end do
-          do i=1,reaction%nkinsrfcplxrxn
-              if (reaction%kinsrfcplx_site_print(i)) then
+          do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+              if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
                    nviz_tran=nviz_tran+1
               endif
           end do
-          do i=1,reaction%nkinsrfcplx
-             if (reaction%kinsrfcplx_print(i)) then
+          do i=1,reaction%surface_complexation%nkinsrfcplx
+             if (reaction%surface_complexation%srfcplx_print(i)) then
+             !TODO(geh): fix
                    nviz_tran=nviz_tran+1
              endif
           end do
@@ -6319,15 +6332,15 @@ end subroutine SAMRWritePlotData
 
           if (associated(reaction%total_sorb_print)) then
              do i=1,reaction%naqcomp
-                 if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+                 if (reaction%total_sorb_print(i)) then
                    nviz_tran=nviz_tran+1
                  endif
              end do
           endif
 
-          if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+          if (reaction%nsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
              do i=1,reaction%ncollcomp
-                if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+                if (reaction%total_sorb_mobile_print(i)) then
                    nviz_tran=nviz_tran+1
                 endif
              end do
@@ -6819,10 +6832,10 @@ end subroutine SAMRWritePlotData
           endif
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_density_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
-          write(string,'(a)') reaction%eqsrfcplx_site_names(i) // '_den'
+          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i) // '_den'
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -6834,10 +6847,10 @@ end subroutine SAMRWritePlotData
           endif
         endif
       enddo
-      do i=1,reaction%neqsrfcplxrxn
-        if (reaction%eqsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
-          write(string,'(a)') reaction%eqsrfcplx_site_names(i)
+          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -6849,10 +6862,10 @@ end subroutine SAMRWritePlotData
           endif
         endif
       enddo
-      do i=1,reaction%neqsrfcplx
-        if (reaction%eqsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
-          write(string,'(a)') reaction%eqsrfcplx_names(i)
+          write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -6867,10 +6880,10 @@ end subroutine SAMRWritePlotData
       
 ! Kinetic surface complexes
 
-      do i=1,reaction%nkinsrfcplxrxn
-        if (reaction%kinsrfcplx_site_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
-          write(string,'(a)') reaction%kinsrfcplx_site_names(i)
+          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -6882,10 +6895,11 @@ end subroutine SAMRWritePlotData
           endif
         endif
       enddo
-      do i=1,reaction%nkinsrfcplx
-        if (reaction%kinsrfcplx_print(i)) then
+      do i=1,reaction%surface_complexation%nkinsrfcplx
+        if (reaction%surface_complexation%srfcplx_print(i)) then
+        !TODO(geh): fix
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
-          write(string,'(a)') reaction%kinsrfcplx_names(i)
+          write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
           if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
@@ -6919,7 +6933,7 @@ end subroutine SAMRWritePlotData
       endif
       if (associated(reaction%total_sorb_print)) then
         do i=1,reaction%naqcomp
-          if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+          if (reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
             if (.not.(option%use_samr)) then
@@ -6934,9 +6948,9 @@ end subroutine SAMRWritePlotData
           endif
         enddo
       endif
-      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+      if (associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
-          if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+          if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
             write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
             if (.not.(option%use_samr)) then

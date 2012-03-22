@@ -2,7 +2,9 @@ module Reactive_Transport_module
 
   use Transport_module
   use Reaction_module
+#ifdef CHUNK  
   use Reaction_Chunk_module
+#endif
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
@@ -431,7 +433,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iphase
-  PetscInt :: i, icomp, imnrl, ncomp, irate
+  PetscInt :: i, icomp, imnrl, ncomp, irate, irxn
 
   iphase = 1
   option => realization%option
@@ -460,18 +462,20 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         
       if (iphase == 1) then
       ! add contribution of equilibrium sorption
-        if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+        if (reaction%neqsorb > 0) then
           mass_balance(:,iphase) = mass_balance(:,iphase) + &
             rt_aux_vars(ghosted_id)%total_sorb_eq(:) * volume_p(local_id)
         endif
 
 
       ! add contribution of kinetic multirate sorption
-        if (reaction%kinmr_nrate > 0) then
-          do irate = 1, reaction%kinmr_nrate
-            mass_balance(:,iphase) = mass_balance(:,iphase) + &
-              rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) * &
-              volume_p(local_id)
+        if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+          do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+            do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+              mass_balance(:,iphase) = mass_balance(:,iphase) + &
+                rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) * &
+                volume_p(local_id)
+            enddo
           enddo
         endif
                
@@ -724,7 +728,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
   PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
-  PetscInt :: k, irate, irxn, icplx, ncplx
+  PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   
   option => realization%option
@@ -784,31 +788,37 @@ subroutine RTUpdateSolutionPatch(realization)
 
     ! update multirate sorption concentrations 
   ! WARNING: below assumes site concentration multiplicative factor
-    if (reaction%kinmr_nrate > 0) then 
+    if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then 
       do ghosted_id = 1, grid%ngmax 
         if (patch%imat(ghosted_id) <= 0) cycle
-        do irate = 1, reaction%kinmr_nrate 
-          kdt = reaction%kinmr_rate(irate) * option%tran_dt 
-          one_plus_kdt = 1.d0 + kdt 
-          k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
-          rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
-            (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
-            kdt * reaction%kinmr_frac(irate) * &
-            rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt
-        enddo 
+        do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+          do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+            kdt = reaction%surface_complexation%kinmr_rate(irate,irxn) * &
+                  option%tran_dt 
+            one_plus_kdt = 1.d0 + kdt 
+            k_over_one_plus_kdt = &
+              reaction%surface_complexation%kinmr_rate(irate,irxn)/one_plus_kdt
+            rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) = & 
+              (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) + & 
+              kdt * reaction%surface_complexation%kinmr_frac(irate,irxn) * &
+              rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,0,irxn))/one_plus_kdt
+          enddo
+        enddo
       enddo 
     endif
 
     ! update kinetic sorption concentrations
-    if (reaction%nkinsrfcplxrxn > 0) then
+    if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
       do ghosted_id = 1, grid%ngmax 
         if (patch%imat(ghosted_id) <= 0) cycle
-        do irxn = 1, reaction%nkinsrfcplxrxn
-          ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+        do ikinrxn = 1, reaction%surface_complexation%nkinsrfcplxrxn
+          irxn = reaction%surface_complexation%&
+                   kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+          ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
           do k = 1, ncplx ! ncplx in rxn
-            icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
-            rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx) = &
-              rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx)
+            icplx = reaction%surface_complexation%srfcplxrxn_to_complex(k,irxn)
+            rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx,ikinrxn) = &
+              rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx,ikinrxn)
           enddo
         enddo
       enddo
@@ -908,7 +918,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         reaction,option,accum_p(istart:iendall)) 
-    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                              global_aux_vars(ghosted_id), &
                              volume_p(local_id), &
@@ -4495,7 +4505,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                           porosity_loc_p(ghosted_id), &
                           volume_p(local_id), &
                           reaction,option,Res)
-      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+      if (reaction%neqsorb > 0) then
         call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
                                volume_p(local_id), &
@@ -5328,7 +5338,7 @@ end interface
                                     global_aux_vars(ghosted_id), &
                                     porosity_loc_p(ghosted_id), &
                                     volume_p(local_id),reaction,option,Jup) 
-      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+      if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_aux_vars(ghosted_id), &
                                          global_aux_vars(ghosted_id), &
                                          volume_p(local_id),reaction, &
@@ -6132,9 +6142,9 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
 
-  do i=1,realization%reaction%neqsrfcplxrxn
-    if (reaction%eqsrfcplx_site_density_print(i)) then
-      string = trim(reaction%eqsrfcplx_site_names(i)) // '_den'
+  do i=1,realization%reaction%surface_complexation%nsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
+      string = trim(reaction%surface_complexation%srfcplxrxn_site_names(i)) // '_den'
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -6144,9 +6154,9 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
   
-  do i=1,realization%reaction%neqsrfcplxrxn
-    if (reaction%eqsrfcplx_site_print(i)) then
-      string = trim(reaction%eqsrfcplx_site_names(i))
+  do i=1,realization%reaction%surface_complexation%nsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+      string = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -6156,9 +6166,9 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
   
-  do i=1,realization%reaction%neqsrfcplx
-    if (reaction%eqsrfcplx_print(i)) then
-      string = trim(reaction%eqsrfcplx_names(i))
+  do i=1,realization%reaction%surface_complexation%nsrfcplx
+    if (reaction%surface_complexation%srfcplx_print(i)) then
+      string = trim(reaction%surface_complexation%srfcplx_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -6168,9 +6178,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
   
-  do i=1,realization%reaction%nkinsrfcplxrxn
-    if (reaction%kinsrfcplx_site_print(i)) then
-      string = trim(reaction%kinsrfcplx_site_names(i))
+  do i=1,realization%reaction%surface_complexation%nkinsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+    option%io_buffer = 'Printing of kinetic surface complexes needs to be fixed'
+    call printErrMsg(option)
+      string = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -6180,9 +6192,11 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
   
-  do i=1,realization%reaction%nkinsrfcplx
-    if (reaction%kinsrfcplx_print(i)) then
-      string = trim(reaction%kinsrfcplx_names(i))
+  do i=1,realization%reaction%surface_complexation%nkinsrfcplx
+    if (reaction%surface_complexation%srfcplx_print(i)) then
+    option%io_buffer = 'Printing of kinetic surface complexes needs to be fixed'
+    call printErrMsg(option)
+      string = trim(reaction%surface_complexation%srfcplx_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -6351,7 +6365,7 @@ subroutine RTJumpStartKineticSorptionPatch(realization)
   
   ! This subroutine assumes that the auxilliary variables are current!
 
-  if (reaction%kinmr_nrate > 0) then
+  if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
     do ghosted_id = 1, grid%ngmax
       if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
       !geh - Ignore inactive cells with inactive materials
@@ -6395,7 +6409,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   PetscReal, pointer :: vec_p(:)
 
   PetscBool :: checkpoint_flag(realization%reaction%naqcomp)
-  PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate
+  PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate, ikinmrrxn
   PetscInt :: local_id
   PetscErrorCode :: ierr
   
@@ -6407,13 +6421,14 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
 
   ! Loop over sorption reactions to find the necessary components
   
-  do irxn = 1, reaction%neqsrfcplxrxn
-    ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
+  do ikinmrrxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+    irxn = reaction%surface_complexation%kinmrsrfcplxrxn_to_srfcplxrxn(ikinmrrxn)
+    ncplx = reaction%surface_complexation%srfcplxrxn_to_complex(0,irxn)
     do j = 1, ncplx
-      icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
-      ncomp = reaction%eqsrfcplxspecid(0,icplx)
+      icplx = reaction%surface_complexation%srfcplxrxn_to_complex(j,irxn)
+      ncomp = reaction%surface_complexation%srfcplxspecid(0,icplx)
       do i = 1, ncomp
-        icomp = reaction%eqsrfcplxspecid(i,icplx)
+        icomp = reaction%surface_complexation%srfcplxspecid(i,icplx)
         checkpoint_flag(icomp) = PETSC_TRUE
       enddo
     enddo
@@ -6429,26 +6444,28 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
       grid => cur_patch%grid
       do icomp = 1, reaction%naqcomp
         if (checkpoint_flag(icomp)) then
-          do irate = 1, reaction%kinmr_nrate
-            if (checkpoint) then
-              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-              do local_id = 1, grid%nlmax
-                vec_p(local_id) = &
-                  rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate)
-              enddo
-              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
-              call VecView(field%work,viewer,ierr)
-            else
-              call VecLoad(field%work,viewer,ierr)
-              if (.not.option%no_restart_kinetic_sorption) then
+          do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+            do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+              if (checkpoint) then
                 call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
                 do local_id = 1, grid%nlmax
-                  rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate) = &
-                     vec_p(local_id)
+                  vec_p(local_id) = &
+                    rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate,irxn)
                 enddo
                 call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+                call VecView(field%work,viewer,ierr)
+              else
+                call VecLoad(field%work,viewer,ierr)
+                if (.not.option%no_restart_kinetic_sorption) then
+                  call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+                  do local_id = 1, grid%nlmax
+                    rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate,irxn) = &
+                       vec_p(local_id)
+                  enddo
+                  call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+                endif
               endif
-            endif
+            enddo
           enddo
         endif
       enddo

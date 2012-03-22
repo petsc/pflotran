@@ -469,7 +469,7 @@ subroutine Checkpoint(realization, &
       enddo
     endif
     ! sorbed concentrations for multirate kinetic sorption
-    if (realization%reaction%kinmr_nrate > 0 .and. &
+    if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
         .not.option%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorption(realization,viewer,PETSC_TRUE)
@@ -769,7 +769,7 @@ subroutine Restart(realization, &
       enddo
     endif
     ! sorbed concentrations for multirate kinetic sorption
-    if (realization%reaction%kinmr_nrate > 0 .and. &
+    if (realization%reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
         .not.option%no_checkpoint_kinetic_sorption .and. &
         ! we need to fix this.  We need something to skip over the reading
         ! of sorbed concentrations altogether if they do not exist in the

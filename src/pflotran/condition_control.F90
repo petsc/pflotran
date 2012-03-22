@@ -432,7 +432,7 @@ subroutine CondControlAssignTranInitCond(realization)
   
   PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscInt :: irxn, isite, imnrl
+  PetscInt :: irxn, isite, imnrl, ikinrxn
   PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
   PetscErrorCode :: ierr
   
@@ -643,18 +643,19 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           ! kinetic surface complexes
           if (associated(constraint_coupler%surface_complexes)) then
-            do idof = 1, reaction%nkinsrfcplx
-              rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof) = &
+            do idof = 1, reaction%surface_complexation%nkinsrfcplx
+              rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof,-1) = & !geh: to catch bug
                 constraint_coupler%surface_complexes%basis_conc(idof)
             enddo
-            do irxn = 1, reaction%nkinsrfcplxrxn
-              isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+            do ikinrxn = 1, reaction%surface_complexation%nkinsrfcplxrxn
+              irxn = reaction%surface_complexation%kinsrfcplxrxn_to_srfcplxrxn(ikinrxn)
+              isite = reaction%surface_complexation%srfcplxrxn_to_surf(irxn)
               rt_aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isite) = &
                 constraint_coupler%surface_complexes%basis_free_site_conc(isite)
             enddo
           endif
           ! this is for the multi-rate surface complexation model
-          if (reaction%kinmr_nrate > 0 .and. &
+          if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0 .and. &
             ! geh: if we re-equilibrate at each grid cell, we do not want to
             ! overwrite the reequilibrated values with those from the constraint
               .not. re_equilibrate_at_each_cell) then
@@ -662,11 +663,8 @@ subroutine CondControlAssignTranInitCond(realization)
             rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
               constraint_coupler%rt_auxvar%kinmr_total_sorb
             ! copy over free site concentration
-            rt_aux_vars(ghosted_id)%eqsrfcplx_free_site_conc = &
-              constraint_coupler%rt_auxvar%eqsrfcplx_free_site_conc
-            ! copy over surface complex concentrations
-            rt_aux_vars(ghosted_id)%eqsrfcplx_conc = &
-              constraint_coupler%rt_auxvar%eqsrfcplx_conc
+            rt_aux_vars(ghosted_id)%srfcplxrxn_free_site_conc = &
+              constraint_coupler%rt_auxvar%srfcplxrxn_free_site_conc
           endif
         enddo
         if (use_dataset) then
