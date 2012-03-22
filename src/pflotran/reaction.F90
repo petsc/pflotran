@@ -2569,7 +2569,15 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   endif 
           
-  if (surface_complexation%nsrfcplxrxn > 0) then
+  if (surface_complexation%nsrfcplxrxn > 0 .and. &
+      surface_complexation%neqsrfcplxrxn /= &
+      surface_complexation%nsrfcplxrxn) then
+    string = 'WARNING: Only equilibrium surface complexes are printed to ' // &
+             'this file!'
+    write(option%fid_out,'(/,2x,a,/)') trim(string)
+  endif
+
+  if (surface_complexation%neqsrfcplxrxn > 0) then
     ! sort surface complex concentrations from largest to smallest
     ! note that we include free site concentrations; their ids negated
 #if 0
