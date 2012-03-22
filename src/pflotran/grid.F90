@@ -1159,9 +1159,9 @@ subroutine CreateMFDStruct4LP(grid, MFD_aux, ndof, option)
     call ISLocalToGlobalMappingBlock(MFD_aux%mapping_ltog_LP, ndof, &
                                    MFD_aux%mapping_ltogb_LP, ierr)
 
-   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc_LP.out',viewer,ierr)
-   call ISView(MFD_aux%is_ghosted_petsc_LP,viewer,ierr)
-   call PetscViewerDestroy(viewer,ierr)
+!   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc_LP.out',viewer,ierr)
+!   call ISView(MFD_aux%is_ghosted_petsc_LP,viewer,ierr)
+!   call PetscViewerDestroy(viewer,ierr)
 
 
 !   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)
@@ -1235,9 +1235,7 @@ subroutine GridMapIndices(grid, sgdm)
   DM :: sgdm
 
   PetscInt :: ierr, icount
-!geh  PetscInt, allocatable :: int_tmp(:)
-  PetscInt, pointer :: int_tmp(:)
-  PetscInt :: n
+  PetscInt, allocatable :: int_tmp(:)
   PetscOffset :: i_da
   
   select case(grid%itype)
@@ -1248,12 +1246,10 @@ subroutine GridMapIndices(grid, sgdm)
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
-         call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
-!geh         call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, ierr)
+         call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
          do icount = 1, grid%ngmax
          !   write(*,*) icount, int_tmp(icount + i_da)
-!geh            grid%nG2P(icount) = int_tmp(icount + i_da)
-            grid%nG2P(icount) = int_tmp(icount)
+            grid%nG2P(icount) = int_tmp(icount + i_da)
          end do
         deallocate(int_tmp)
       end if
