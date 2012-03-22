@@ -529,7 +529,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif  
 
-  rt_auxvar%kinmr_total_sorb = 0.d0
+  ! only zero out the zero index.  The other indices hold values from 
+  ! the previous time step
+  rt_auxvar%kinmr_total_sorb(:,0,:) = 0.d0
   
   ! Surface Complexation
   do ikinmrrxn = 1, surface_complexation%nkinmrsrfcplxrxn
