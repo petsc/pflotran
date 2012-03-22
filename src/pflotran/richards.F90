@@ -2595,11 +2595,6 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-
-#ifdef DASVYAT_DEBUG
-          write(*,*) "gravity ", gravity * Dq * ukvr, "density", density_ave
-!          write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
-#endif
         endif
       endif 
 
@@ -2607,14 +2602,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
       if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
         v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
 
-       write(*,*) "BC den", "up", global_aux_var_up%den(1), "dn", global_aux_var_dn%den(1), v_darcy
-
         if (v_darcy > 0.d0) then 
           density_ave = global_aux_var_up%den(1)
         else 
           density_ave = global_aux_var_dn%den(1)
         endif 
-       write(*,*) "density_ave", density_ave
       endif
 
     case(UNIT_GRADIENT_BC)
@@ -5192,9 +5184,6 @@ end interface
 
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
 
-  write(*,*) "End RichardsJacobian"
-  read(*,*)
-!  stop
   
 end subroutine RichardsJacobian
 ! ************************************************************************** !
@@ -6374,8 +6363,8 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
 #if 0
   write(*,*) "EXIT MFDLP JACOBIAN"
   write(*,*) "richard 5932"
-!  read(*,*)
-   stop
+  read(*,*)
+!   stop
 #endif
 
 end subroutine RichardsJacobianPatchMFDLP
