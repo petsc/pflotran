@@ -90,30 +90,11 @@ end subroutine RichardsTimeCut
 subroutine RichardsSetup(realization)
 
   use Realization_module
-  use Level_module
   use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsSetupPatch(realization)
-!      if (realization%option%mimetic) then
-!         call RealizationSetUpBC4Faces(realization)
-!      end if
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
+  call RichardsSetupPatch(realization)
 
 end subroutine RichardsSetup
 
@@ -417,29 +398,13 @@ end subroutine RichardsCheckUpdatePost
 subroutine RichardsComputeMassBalance(realization,mass_balance)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
   mass_balance = 0.d0
   
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsComputeMassBalancePatch(realization,mass_balance)
 
 end subroutine RichardsComputeMassBalance
 
@@ -763,35 +728,17 @@ end subroutine RichardsUpdateMassBalancePatch
 subroutine RichardsUpdateAuxVars(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+  if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
 !          if (.not.cur_patch%aux%Richards%aux_vars_cell_pressures_up_to_date) then
 !             call RichardsUpdateCellPressurePatch(realization)
 !          end if
-            call RichardsUpdateAuxVarsPatchMFDLP(realization)
-      else
-            call RichardsUpdateAuxVarsPatch(realization)
-      end if  
-
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+    call RichardsUpdateAuxVarsPatchMFDLP(realization)
+  else
+    call RichardsUpdateAuxVarsPatch(realization)
+  end if  
 
 end subroutine RichardsUpdateAuxVars
 
@@ -809,7 +756,6 @@ end subroutine RichardsUpdateAuxVars
 ! subroutine RichardsInitialPressureReconstruction(realization)
 ! 
 !   use Realization_module
-!   use Level_module
 !   use Patch_module
 ! 
 !   type(realization_type) :: realization
@@ -848,29 +794,13 @@ end subroutine RichardsUpdateAuxVars
 subroutine RichardsUpdateCellPressure(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
 
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
-
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      if (.not.cur_patch%aux%Richards%aux_vars_cell_pressures_up_to_date) then
-         call RichardsUpdateCellPressurePatch(realization)
-      end if
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  if (.not.realization%patch%aux%Richards% &
+      aux_vars_cell_pressures_up_to_date) then
+    call RichardsUpdateCellPressurePatch(realization)
+  end if
 
 end subroutine RichardsUpdateCellPressure 
 
@@ -1520,16 +1450,12 @@ subroutine RichardsUpdateSolution(realization)
 
   use Realization_module
   use Field_module
-  use Level_module
-  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   PetscViewer :: viewer
   
@@ -1541,20 +1467,8 @@ subroutine RichardsUpdateSolution(realization)
 
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsUpdateSolutionPatch(realization)
 
-  
 end subroutine RichardsUpdateSolution
 
 
@@ -1592,26 +1506,10 @@ end subroutine RichardsUpdateSolutionPatch
 subroutine RichardsUpdateFixedAccum(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsUpdateFixedAccumPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsUpdateFixedAccumPatch(realization)
 
 end subroutine RichardsUpdateFixedAccum
 
@@ -2652,8 +2550,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Field_module
-  use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
   use Logging_module
@@ -2669,8 +2565,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)
@@ -2689,33 +2583,11 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   
   ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsResidualPatch1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
   ! pass #2 for everything else
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsResidualPatch2(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-   
+  call RichardsResidualPatch2(snes,xx,r,realization,ierr)
+
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
                               viewer,ierr)
@@ -2740,7 +2612,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
 call PetscLogEventEnd(logging%event_r_residual,ierr)
 
-
 #ifdef DASVYAT
 !  write(*,*) "End of RichardsResidual"
 !  read(*,*)
@@ -2762,7 +2633,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   use Realization_module
   use Field_module
   use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
   use Grid_module
@@ -2786,8 +2656,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   type(connection_set_type), pointer :: conn
   
@@ -2837,33 +2705,11 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
   
   ! pass #1 for flux terms and accumulation term
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   ! pass #2 for boundary and source data
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
-!      call RichardsCheckMassBalancePatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
+!  call RichardsCheckMassBalancePatch(realization)
 
    call VecCopy(field%flow_xx_loc_faces, field%work_loc_faces, ierr)
 
@@ -2919,7 +2765,6 @@ use Logging_module
   use Realization_module
   use Field_module
   use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
   use Grid_module
@@ -4764,7 +4609,6 @@ end subroutine RichardsResidualPatchMFDLP2
 subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
-  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -4782,8 +4626,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
@@ -4805,34 +4647,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
   ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      grid => cur_patch%grid
-      call RichardsJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
 
   ! pass #2 for everything else
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      grid => cur_patch%grid
-      call RichardsJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 1  
@@ -4886,7 +4704,6 @@ end subroutine RichardsJacobian
 subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
-  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -4904,8 +4721,6 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
@@ -4927,20 +4742,7 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      grid => cur_patch%grid
-      call RichardsJacobianPatchMFD(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
+  call RichardsJacobianPatchMFD(snes,xx,J,J,flag,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 0  
@@ -4974,7 +4776,6 @@ end subroutine RichardsJacobianMFD
 subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
-  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -4992,8 +4793,6 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
@@ -5016,20 +4815,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
 
   call MatZeroEntries(J,ierr)
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      grid => cur_patch%grid
-      call RichardsJacobianPatchMFDLP(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
+  call RichardsJacobianPatchMFDLP(snes,xx,J,J,flag,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
 #if 1  
@@ -6212,26 +5998,10 @@ end subroutine RichardsPrintAuxVars
 subroutine RichardsDestroy(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsDestroyPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RichardsDestroyPatch(realization)
 
 end subroutine RichardsDestroy
 
