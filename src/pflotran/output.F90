@@ -5985,36 +5985,6 @@ subroutine OutputHDF5(realization)
   
   implicit none
 
-  interface
-
-subroutine SAMRCopyVecToVecComponent(vec,svec, component)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec, svec
-       PetscInt :: component
-end subroutine SAMRCopyVecToVecComponent
-
-subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
-       use ISO_C_BINDING
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: ptr
-       Vec :: vec
-       PetscInt :: component
-       character(kind=C_CHAR), dimension(*) :: namestr 
-       
-end subroutine SAMRRegisterForViz
-       
-subroutine SAMRWritePlotData(ptr, time)
-#include "finclude/petscsysdef.h"
-       PetscFortranAddr :: ptr
-       PetscReal :: time
-end subroutine SAMRWritePlotData
-
-  end interface
-
   type(realization_type) :: realization
 
 #if defined(PARALLELIO_LIB_WRITE)
@@ -6078,299 +6048,136 @@ end subroutine SAMRWritePlotData
                 '-' // trim(string) // '.h5'
   endif
 
-  if (.not.(option%use_samr)) then
-     
-     grid => patch%grid
+    grid => patch%grid
 #if defined(PARALLELIO_LIB_WRITE)
-    if (.not.first) then
-      filename = trim(filename) // CHAR(0)
-      call parallelio_open_file(filename, option%iowrite_group_id, &
-                                FILE_READWRITE, file_id, ierr)
-      if (file_id == -1) first = PETSC_TRUE
-    endif
-    if (first) then
-      filename = trim(filename) // CHAR(0)
-      call parallelio_open_file(filename, option%iowrite_group_id, &
-                                FILE_CREATE, file_id, ierr)
-    endif
+  if (.not.first) then
+    filename = trim(filename) // CHAR(0)
+    call parallelio_open_file(filename, option%iowrite_group_id, &
+                              FILE_READWRITE, file_id, ierr)
+    if (file_id == -1) first = PETSC_TRUE
+  endif
+  if (first) then
+    filename = trim(filename) // CHAR(0)
+    call parallelio_open_file(filename, option%iowrite_group_id, &
+                              FILE_CREATE, file_id, ierr)
+  endif
 
 #else  ! PARALLELIO_LIB_WRITE is not defined
 
-     ! initialize fortran interface
-    call h5open_f(hdf5_err)
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
 
 #ifdef VAMSI_HDF5_WRITE
-    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
 
-      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+    call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
 #ifdef VAMSI_HDF5_WRITE
-      call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
+    call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
 #else
-      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
 #endif
-      if (.not.first) then
-        call h5eset_auto_f(OFF,hdf5_err)
-        call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-        if (hdf5_err /= 0) first = PETSC_TRUE
-        call h5eset_auto_f(ON,hdf5_err)
-      endif
-      if (first) then 
-        call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
-                         H5P_DEFAULT_F,prop_id)
-      endif
-      call h5pclose_f(prop_id,hdf5_err)
+    if (.not.first) then
+      call h5eset_auto_f(OFF,hdf5_err)
+      call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+      if (hdf5_err /= 0) first = PETSC_TRUE
+      call h5eset_auto_f(ON,hdf5_err)
+    endif
+    if (first) then 
+      call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                        H5P_DEFAULT_F,prop_id)
+    endif
+    call h5pclose_f(prop_id,hdf5_err)
 #endif ! PARALLELIO_LIB_WRITE
 
-      if (first) then
-        option%io_buffer = '--> creating hdf5 output file: ' // filename
-      else
-        option%io_buffer = '--> appending to hdf5 output file: ' // filename
-      endif
-      call printMsg(option)
+    if (first) then
+      option%io_buffer = '--> creating hdf5 output file: ' // filename
+    else
+      option%io_buffer = '--> appending to hdf5 output file: ' // filename
+    endif
+    call printMsg(option)
 
-#if !defined(SAMR_HAVE_HDF5)
-     
-      if (first) then
+    if (first) then
 
-        ! create a group for the coordinates data set
+      ! create a group for the coordinates data set
 #if defined(PARALLELIO_LIB_WRITE)
-        string = "Coordinates" // CHAR(0)
-        call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                                            option%iowrite_group_id, ierr)
-            ! set grp_id here
-            ! As we already created the group, we will use file_id as group_id
-        grp_id = file_id
-#else
-        string = "Coordinates"
-        call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-#endif
-
-        !GEH - Structured Grid Dependence - Begin
-        ! write out coordinates in x, y, and z directions
-        string = "X [m]"
-        allocate(array(grid%structured_grid%nx+1))
-        array(1) = grid%structured_grid%origin(X_DIRECTION)
-        do i=2,grid%structured_grid%nx+1
-          array(i) = array(i-1) + grid%structured_grid%dx_global(i-1)
-        enddo
-        call WriteHDF5Coordinates(string,option,grid%structured_grid%nx+1,array,grp_id)
-        deallocate(array)
-
-        string = "Y [m]"
-        allocate(array(grid%structured_grid%ny+1))
-        array(1) = grid%structured_grid%origin(Y_DIRECTION)
-        do i=2,grid%structured_grid%ny+1
-          array(i) = array(i-1) + grid%structured_grid%dy_global(i-1)
-        enddo
-        call WriteHDF5Coordinates(string,option,grid%structured_grid%ny+1,array,grp_id)
-        deallocate(array)
-
-        string = "Z [m]"
-        allocate(array(grid%structured_grid%nz+1))
-        array(1) = grid%structured_grid%origin(Z_DIRECTION)
-        do i=2,grid%structured_grid%nz+1
-          array(i) = array(i-1) + grid%structured_grid%dz_global(i-1)
-        enddo
-        call WriteHDF5Coordinates(string,option,grid%structured_grid%nz+1,array,grp_id)
-        deallocate(array)
-        !GEH - Structured Grid Dependence - End
-
-#if defined(PARALLELIO_LIB_WRITE)
-        call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
-                                            option%iowrite_group_id, ierr)
-#else
-        call h5gclose_f(grp_id,hdf5_err)
-#endif
-
-      endif
-
-#endif
-        
-     ! create a group for the data set
-      write(string,'(''Time:'',es13.5,x,a1)') &
-            option%time/output_option%tconv,output_option%tunit
-      if (len_trim(output_option%plot_name) > 2) then
-        string = trim(string) // ' ' // output_option%plot_name
-      endif
-#if defined(PARALLELIO_LIB_WRITE)
-      string = trim(string) //CHAR(0)
-        ! This opens existing dataset and creates it if needed
+      string = "Coordinates" // CHAR(0)
       call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                                           option%iowrite_group_id, ierr)
+                                          option%iowrite_group_id, ierr)
+          ! set grp_id here
+          ! As we already created the group, we will use file_id as group_id
       grp_id = file_id
 #else
-      call h5eset_auto_f(OFF,hdf5_err)
-      call h5gopen_f(file_id,string,grp_id,hdf5_err)
-      if (hdf5_err /= 0) then
-        call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-      endif
-      call h5eset_auto_f(ON,hdf5_err)
+      string = "Coordinates"
+      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+#endif
+
+      !GEH - Structured Grid Dependence - Begin
+      ! write out coordinates in x, y, and z directions
+      string = "X [m]"
+      allocate(array(grid%structured_grid%nx+1))
+      array(1) = grid%structured_grid%origin(X_DIRECTION)
+      do i=2,grid%structured_grid%nx+1
+        array(i) = array(i-1) + grid%structured_grid%dx_global(i-1)
+      enddo
+      call WriteHDF5Coordinates(string,option,grid%structured_grid%nx+1,array,grp_id)
+      deallocate(array)
+
+      string = "Y [m]"
+      allocate(array(grid%structured_grid%ny+1))
+      array(1) = grid%structured_grid%origin(Y_DIRECTION)
+      do i=2,grid%structured_grid%ny+1
+        array(i) = array(i-1) + grid%structured_grid%dy_global(i-1)
+      enddo
+      call WriteHDF5Coordinates(string,option,grid%structured_grid%ny+1,array,grp_id)
+      deallocate(array)
+
+      string = "Z [m]"
+      allocate(array(grid%structured_grid%nz+1))
+      array(1) = grid%structured_grid%origin(Z_DIRECTION)
+      do i=2,grid%structured_grid%nz+1
+        array(i) = array(i-1) + grid%structured_grid%dz_global(i-1)
+      enddo
+      call WriteHDF5Coordinates(string,option,grid%structured_grid%nz+1,array,grp_id)
+      deallocate(array)
+      !GEH - Structured Grid Dependence - End
+
+#if defined(PARALLELIO_LIB_WRITE)
+      call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+                                          option%iowrite_group_id, ierr)
+#else
+      call h5gclose_f(grp_id,hdf5_err)
+#endif
+
+    endif
+        
+    ! create a group for the data set
+    write(string,'(''Time:'',es13.5,x,a1)') &
+          option%time/output_option%tconv,output_option%tunit
+    if (len_trim(output_option%plot_name) > 2) then
+      string = trim(string) // ' ' // output_option%plot_name
+    endif
+#if defined(PARALLELIO_LIB_WRITE)
+    string = trim(string) //CHAR(0)
+      ! This opens existing dataset and creates it if needed
+    call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+                                          option%iowrite_group_id, ierr)
+    grp_id = file_id
+#else
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5gopen_f(file_id,string,grp_id,hdf5_err)
+    if (hdf5_err /= 0) then
+      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+    endif
+    call h5eset_auto_f(ON,hdf5_err)
 #endif ! PARALLELIO_LIB_WRITE
 
 #ifdef VAMSI_HDF5_WRITE
-    endif
+  endif
 #endif
   
-  else
-
-     app_ptr = discretization%amrgrid%p_application
-
-     select case(option%iflowmode)
-        case(RICHARDS_MODE)
-           nviz_flow = 2
-        case(FLASH2_MODE)
-!          nviz_flow = 7+2*option%nflowspec
-           nviz_flow = 9+2*option%nflowspec
-        case(MPH_MODE)
-!          nviz_flow = 7+2*option%nflowspec
-           nviz_flow = 9+2*option%nflowspec
-        case(IMS_MODE)
-           nviz_flow = 2+4*option%nphase
-        case(THC_MODE)
-           nviz_flow = 4+option%nflowspec
-        case(THMC_MODE)
-           nviz_flow = 4+option%nflowspec
-        case(MIS_MODE)
-           nviz_flow = 6+option%nflowspec
-        case(G_MODE)
-           nviz_flow = 7+2*option%nflowspec
-        case default
-           nviz_flow=0
-     end select
-
-     nviz_tran=0
-     
-     if (option%ntrandof > 0) then
-        if (associated(reaction)) then
-           if (reaction%print_pH .and. associated(reaction%species_idx)) then
-              if (reaction%species_idx%h_ion_id > 0) then
-                 nviz_tran=nviz_tran+1
-              endif
-           endif   
-           if (reaction%print_total_component) then
-             do i=1,reaction%naqcomp
-                if (reaction%primary_species_print(i)) then
-                   nviz_tran=nviz_tran+1
-                endif
-             end do
-           endif  
-           if (reaction%print_free_ion) then
-             do i=1,reaction%naqcomp
-                if (reaction%primary_species_print(i)) then
-                   nviz_tran=nviz_tran+1
-                endif
-             end do
-           endif
-           if (reaction%print_total_bulk) then
-             do i=1,reaction%naqcomp
-                if (reaction%primary_species_print(i)) then
-                   nviz_tran=nviz_tran+1
-                endif
-             end do
-           endif  
-          if (reaction%print_act_coefs) then
-            do i=1,reaction%naqcomp
-                if (reaction%primary_species_print(i)) then
-                   nviz_tran=nviz_tran+1
-                endif
-             end do
-          endif
-          do i=1,reaction%neqcplx
-            if (reaction%secondary_species_print(i)) then
-                nviz_tran=nviz_tran+1
-            endif
-          end do
- ! for the next one we add two because the rate and volume fraction are to be plotted         
-          do i=1,reaction%nkinmnrl
-              if (reaction%kinmnrl_print(i)) then
-                    nviz_tran=nviz_tran+2
-             endif
-          end do
-          do i=1,reaction%nmnrl
-              if (reaction%mnrl_print(i)) then
-                    nviz_tran=nviz_tran+1
-             endif
-          end do
-          do i=1,reaction%surface_complexation%nsrfcplxrxn
-               if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-                    nviz_tran=nviz_tran+1
-               endif
-          end do
-          do i=1,reaction%surface_complexation%nsrfcplxrxn
-               if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-                    nviz_tran=nviz_tran+1
-               endif
-          end do
-          do i=1,reaction%surface_complexation%nsrfcplx
-              if (reaction%surface_complexation%srfcplx_print(i)) then
-                   nviz_tran=nviz_tran+1
-              endif
-          end do
-          do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-              if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-                   nviz_tran=nviz_tran+1
-              endif
-          end do
-          do i=1,reaction%surface_complexation%nkinsrfcplx
-             if (reaction%surface_complexation%srfcplx_print(i)) then
-             !TODO(geh): fix
-                   nviz_tran=nviz_tran+1
-             endif
-          end do
-          if (associated(reaction%kd_print)) then
-            do i=1,reaction%naqcomp
-                if (reaction%kd_print(i)) then
-                   nviz_tran=nviz_tran+1
-                endif
-             end do
-          endif
-
-          if (associated(reaction%total_sorb_print)) then
-             do i=1,reaction%naqcomp
-                 if (reaction%total_sorb_print(i)) then
-                   nviz_tran=nviz_tran+1
-                 endif
-             end do
-          endif
-
-          if (reaction%nsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
-             do i=1,reaction%ncollcomp
-                if (reaction%total_sorb_mobile_print(i)) then
-                   nviz_tran=nviz_tran+1
-                endif
-             end do
-          endif
-          if (reaction%print_colloid) then
-            do i=1,reaction%ncoll
-               if (reaction%colloid_print(i)) then
-                   nviz_tran=nviz_tran+1
-               endif
-            end do
-          endif
-          
-          if (reaction%print_age) then
-            nviz_tran=nviz_tran+1
-          endif
-    
-!!           nviz_tran = nviz_tran+option%ntrandof
-        else
-           nviz_tran = reaction%nkinmnrl
-        endif
-     endif
-
-     nviz_dof = nviz_flow+nviz_tran
-
-     if (first) then
-        call AMRGridCreateVector(discretization%amrgrid, nviz_dof, field%samr_viz_vec, &
-             GLOBAL, PETSC_TRUE, option)
-     endif
-
-     current_component = 0
-  endif
-   
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
@@ -6385,15 +6192,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
       ! pressure
@@ -6401,15 +6200,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
       ! liquid saturation
@@ -6417,15 +6208,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
       end select
 
       ! gas saturation
@@ -6433,15 +6216,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
 #ifdef ICE
@@ -6450,15 +6225,7 @@ end subroutine SAMRWritePlotData
         case (THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
           string = "Ice Saturation"
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
       ! ice density
@@ -6466,15 +6233,7 @@ end subroutine SAMRWritePlotData
         case (THC_MODE,THMC_MODE)
           call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
           string = "Ice Density"
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 #endif
       
@@ -6483,15 +6242,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           string = "Liquid Density"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
       
       ! gas density
@@ -6499,15 +6250,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
           string = "Gas Density"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
       
       ! liquid viscosity
@@ -6515,15 +6258,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
           string = "Liquid Viscosity"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
       
       ! gas viscosity
@@ -6531,15 +6266,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
           string = "Gas Viscosity"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
       
       ! liquid mobility
@@ -6547,15 +6274,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
           string = "Liquid Mobility"
-          if (.not.(option%use_samr)) then
-             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-             if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-             endif
-             current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
       
       ! gas mobility
@@ -6563,15 +6282,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
           string = "Gas Mobility"
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
       
       ! liquid energy
@@ -6579,15 +6290,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
-          if (.not.(option%use_samr)) then
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
       end select
       
       ! gas energy
@@ -6595,15 +6298,7 @@ end subroutine SAMRWritePlotData
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)    
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           string = "Gas Energy"
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
     
       ! liquid mole fractions
@@ -6612,15 +6307,7 @@ end subroutine SAMRWritePlotData
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction-'',i1)') i
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
       end select
       
@@ -6630,39 +6317,16 @@ end subroutine SAMRWritePlotData
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
             write(string,'(''Gas Mole Fraction-'',i1)') i
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
       end select
-#if 0    
-      ! Volume Fraction
-      if (option%rk > 0.d0) then
-        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,ZERO_INTEGER)
-        string = "Volume Fraction"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      endif
-#endif    
+ 
       ! phase
       select case(option%iflowmode)
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           string = "Phase"
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
                 
       end select
   
@@ -6691,15 +6355,7 @@ end subroutine SAMRWritePlotData
         if (reaction%species_idx%h_ion_id > 0) then
           call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
           write(string,'(''pH'')')
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       endif
       if (reaction%print_total_component) then
@@ -6707,15 +6363,7 @@ end subroutine SAMRWritePlotData
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             write(string,'(a,''_tot_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -6724,15 +6372,7 @@ end subroutine SAMRWritePlotData
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             write(string,'(a,''_free_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif      
@@ -6741,15 +6381,7 @@ end subroutine SAMRWritePlotData
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
             write(string,'(a,''_total_bulk'')') trim(reaction%primary_species_names(i))
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -6758,15 +6390,7 @@ end subroutine SAMRWritePlotData
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
             write(string,'(a)') trim(reaction%primary_species_names(i)) // '_gam'
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -6774,105 +6398,49 @@ end subroutine SAMRWritePlotData
         if (reaction%secondary_species_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
           write(string,'(a,a)') trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
           write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_vf'
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%nkinmnrl
         if (reaction%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
           write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_rt'
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%nmnrl
         if (reaction%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%surface_complexation%nsrfcplxrxn
         if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
           write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i) // '_den'
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%surface_complexation%nsrfcplxrxn
         if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%surface_complexation%nsrfcplx
         if (reaction%surface_complexation%srfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
           write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       
@@ -6882,15 +6450,7 @@ end subroutine SAMRWritePlotData
         if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
           write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       do i=1,reaction%surface_complexation%nkinsrfcplx
@@ -6898,15 +6458,7 @@ end subroutine SAMRWritePlotData
         !TODO(geh): fix
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
           write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
       
@@ -6917,15 +6469,7 @@ end subroutine SAMRWritePlotData
           if (reaction%kd_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
             write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -6934,15 +6478,7 @@ end subroutine SAMRWritePlotData
           if (reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -6951,15 +6487,7 @@ end subroutine SAMRWritePlotData
           if (reaction%total_sorb_mobile_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
             write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -6968,30 +6496,14 @@ end subroutine SAMRWritePlotData
           if (reaction%colloid_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
             write(string,'(a,''_col_mob_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
         do i=1,reaction%ncoll
           if (reaction%colloid_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
             write(string,'(a,''_col_imb_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
-            if (.not.(option%use_samr)) then
-              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-            else
-              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-              endif
-              current_component=current_component+1
-            endif
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           endif
         enddo
       endif
@@ -7007,142 +6519,109 @@ end subroutine SAMRWritePlotData
             
           write(string,'(''Tracer_Age'')')
           
-          if (.not.(option%use_samr)) then
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if (first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-            endif
-            current_component=current_component+1
-          endif
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       endif
     endif
   endif
   
-#if !defined(SAMR_HAVE_HDF5)
   ! porosity
   if (output_option%print_porosity) then
     call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
-    if (.not.(option%use_samr)) then
-      string = "Porosity"
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                         grp_id,H5T_NATIVE_DOUBLE)
-    endif
+    string = "Porosity"
+    call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                       grp_id,H5T_NATIVE_DOUBLE)
   endif
-#endif
   
   ! material id
-  if (.not.(option%use_samr)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    string = "Material_ID"
-    if (.not.(option%use_samr)) then
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-    else
-      call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-      if (first) then
-        call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
-      endif
-      current_component=current_component+1
-    endif
+  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  string = "Material_ID"
+  call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
 
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        word = trim(output_option%plot_variables(i))
-        call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
-        call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-        string = PatchGetVarNameFromKeyword(word,option)
-        if (var_type == INT_VAR) then
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                             grp_id,HDF_NATIVE_INTEGER) 
-        else
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                             grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-    endif
-  
+  if (associated(output_option%plot_variables)) then
+    do i = 1, size(output_option%plot_variables)
+      word = trim(output_option%plot_variables(i))
+      call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
+      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+      string = PatchGetVarNameFromKeyword(word,option)
+      if (var_type == INT_VAR) then
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                            grp_id,HDF_NATIVE_INTEGER) 
+      else
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                            grp_id,H5T_NATIVE_DOUBLE) 
+      endif
+    enddo
   endif
   
-  if (.not.(option%use_samr)) then
-     if (output_option%print_hdf5_velocities) then
+  if (output_option%print_hdf5_velocities) then
 
-        ! velocities
-        call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
-        string = "Liquid X-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-             H5T_NATIVE_DOUBLE)
-        call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
-        string = "Liquid Y-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-             H5T_NATIVE_DOUBLE)
+    ! velocities
+    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    string = "Liquid X-Velocity"
+    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+          H5T_NATIVE_DOUBLE)
+    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    string = "Liquid Y-Velocity"
+    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+          H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
-        string = "Liquid Z-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-             H5T_NATIVE_DOUBLE)
+    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    string = "Liquid Z-Velocity"
+    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+          H5T_NATIVE_DOUBLE)
 
+    if (option%nphase > 1) then
+        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        string = "Gas X-Velocity"
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+            H5T_NATIVE_DOUBLE)
+
+        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        string = "Gas Y-Velocity"
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+            H5T_NATIVE_DOUBLE)
+
+        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        string = "Gas Z-Velocity"
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+            H5T_NATIVE_DOUBLE)
+    endif
+  endif
+
+  if (output_option%print_hdf5_flux_velocities) then
+
+    ! internal flux velocities
+    if (grid%structured_grid%nx > 1) then
+        string = "Liquid X-Flux Velocities"
+        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
         if (option%nphase > 1) then
-           call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
-           string = "Gas X-Velocity"
-           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-                H5T_NATIVE_DOUBLE)
-
-           call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
-           string = "Gas Y-Velocity"
-           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-                H5T_NATIVE_DOUBLE)
-
-           call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
-           string = "Gas Z-Velocity"
-           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-                H5T_NATIVE_DOUBLE)
+          string = "Gas X-Flux Velocities"
+          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
         endif
-     endif
+    endif
 
-#if !defined(SAMR_HAVE_HDF5)
-        
-     if (output_option%print_hdf5_flux_velocities) then
-
-        ! internal flux velocities
-        if (grid%structured_grid%nx > 1) then
-           string = "Liquid X-Flux Velocities"
-           call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
-           if (option%nphase > 1) then
-              string = "Gas X-Flux Velocities"
-              call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
-           endif
+    if (grid%structured_grid%ny > 1) then
+        string = "Liquid Y-Flux Velocities"
+        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
+        if (option%nphase > 1) then
+          string = "Gas Y-Flux Velocities"
+          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
         endif
+    endif
 
-        if (grid%structured_grid%ny > 1) then
-           string = "Liquid Y-Flux Velocities"
-           call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
-           if (option%nphase > 1) then
-              string = "Gas Y-Flux Velocities"
-              call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
-           endif
+    if (grid%structured_grid%nz > 1) then
+        string = "Liquid Z-Flux Velocities"
+        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
+        if (option%nphase > 1) then
+          string = "Gas Z-Flux Velocities"
+          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
         endif
-
-        if (grid%structured_grid%nz > 1) then
-           string = "Liquid Z-Flux Velocities"
-           call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
-           if (option%nphase > 1) then
-              string = "Gas Z-Flux Velocities"
-              call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
-           endif
-        endif
+    endif
    
-     endif
+  endif
 
-#endif
-
-  endif  
-
-                                ! call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
-
-  if (.not.(option%use_samr)) then
 
 #if defined(PARALLELIO_LIB_WRITE)
     call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
@@ -7159,10 +6638,6 @@ end subroutine SAMRWritePlotData
 #endif
      call h5close_f(hdf5_err)
 #endif !PARALLELIO_LIB_WRITE
-  else
-     call SAMRWritePlotData(app_ptr, option%time/output_option%tconv)
-!     call VecDestroy(field%samr_viz_vec,ierr)
-  endif
 #endif
 
   hdf5_first = PETSC_FALSE
@@ -7231,7 +6706,6 @@ subroutine OutputMAD(realization)
   type(output_option_type), pointer :: output_option
   
   Vec :: global_vec
-  Vec :: samr_vec
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   

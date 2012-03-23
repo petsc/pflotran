@@ -65,6 +65,7 @@ module Option_module
     PetscInt :: gas_phase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
+    PetscInt :: rt_idof
 
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
@@ -423,6 +424,7 @@ subroutine OptionInitRealization(option)
   option%itranmode = NULL_MODE
   option%ntrandof = 0
   option%tvd_flux_limiter = 1
+  option%rt_idof = -999
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
 

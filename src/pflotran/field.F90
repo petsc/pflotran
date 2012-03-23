@@ -27,9 +27,6 @@ module Field_module
     
     Vec :: work, work_loc
 
-    ! temporary Vec's for testing AMR  
-    Vec :: work_samr, work_samr_loc
-
     Vec :: volume 
     
     ! residual vectors
@@ -48,13 +45,6 @@ module Field_module
     
     Vec :: flow_ts_mass_balance, flow_total_mass_balance
     Vec :: tran_ts_mass_balance, tran_total_mass_balance
-
-    ! required by SAMR to ensure consistent fluxes at 
-    ! coarse-fine interfaces
-    Vec :: flow_face_fluxes
-    Vec :: tran_face_fluxes
-    ! viz vector
-    Vec :: samr_viz_vec
 
     ! residual vectors for face unknows
     Vec :: flow_r_faces, flow_r_loc_faces          
@@ -125,9 +115,6 @@ function FieldCreate()
   field%flow_dxx = 0
   field%flow_yy = 0
   field%flow_accum = 0
-  
-  field%flow_face_fluxes = 0
-  field%tran_face_fluxes = 0
 
   field%tran_r = 0
   field%tran_log_xx = 0
@@ -233,11 +220,6 @@ subroutine FieldDestroy(field)
     call VecDestroy(field%tran_ts_mass_balance,ierr)
   if (field%tran_total_mass_balance /= 0) &
     call VecDestroy(field%tran_total_mass_balance,ierr)
-    
-  if (field%flow_face_fluxes /= 0) &
-    call VecDestroy(field%flow_face_fluxes,ierr)
-  if (field%tran_face_fluxes /= 0) &
-    call VecDestroy(field%tran_face_fluxes,ierr)
     
   if (field%tvd_ghosts /= 0) &
     call VecDestroy(field%tvd_ghosts,ierr)

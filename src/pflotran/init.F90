@@ -104,18 +104,6 @@ subroutine Init(simulation)
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
 #endif
-      
-  interface
-
-subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscpc.h"
-       PC :: pc
-       PetscFortranAddr :: p_application
-       PetscInt :: which_pc
-     end subroutine SAMRInitializePreconditioner
-
-end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,ierr)
@@ -616,16 +604,6 @@ end interface
     ! ensure setting of SNES options since they set KSP and PC options too
     call SolverSetSNESOptions(tran_solver)
 
-    ! setup a shell preconditioner and initialize in the case of AMR
-    if (associated(discretization%amrgrid)) then
-!       flow_solver%pc_type = PCSHELL
-       pcside = PC_RIGHT
-       if (tran_solver%pc_type==PCSHELL) then
-          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
-          flowortranpc=1
-          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, tran_solver%pc)
-       endif
-    endif
     option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
     call printMsg(option)
     option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
@@ -2930,11 +2908,8 @@ subroutine readRegionFiles(realization)
         if (region%grid_type == STRUCTURED_GRID) then
           call HDF5ReadRegionFromFile(realization,region,region%filename)
         else
-#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if defined(PETSC_HAVE_HDF5)
           call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
-#else
-     !geh: No.  AMR is entirely structured.
-      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
 #endif      
         endif
       else if (index(region%filename,'.ss') > 0) then
@@ -4030,11 +4005,8 @@ subroutine readSurfaceRegionFiles(surf_realization)
         if (surf_region%grid_type == STRUCTURED_GRID) then
           !call HDF5ReadRegionFromFile(surf_realization,surf_region,surf_region%filename)
         else
-#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if defined(PETSC_HAVE_HDF5)
           !call HDF5ReadUnstructuredGridRegionFromFile(surf_realization,surf_region,surf_region%filename)
-#else
-     !geh: No.  AMR is entirely structured.
-      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
 #endif      
         endif
       else if (index(surf_region%filename,'.ss') > 0) then

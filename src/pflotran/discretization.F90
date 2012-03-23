@@ -117,7 +117,6 @@ function DiscretizationCreate()
   nullify(discretization%dm_ntrandof%ugdm)
   
   nullify(discretization%grid)
-  nullify(discretization%amrgrid)
   nullify(discretization%MFD)
 
   discretization%tvd_ghost_scatter = 0
@@ -148,7 +147,6 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   type(grid_type), pointer :: grid, grid2
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
-  type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
 
@@ -266,13 +264,9 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         case(UNSTRUCTURED_GRID)
           un_str_grid => UGridCreate()
           if (index(discretization%filename,'.h5') > 0) then
-#if !defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if !defined(PETSC_HAVE_HDF5)
             option%io_buffer = 'PFLOTRAN must be built with HDF5 ' // &
               'support to read unstructured grid .h5 files'
-            call printErrMsg(option)
-#elif defined SAMR_HAVE_HDF5
-            option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not ' // &
-              'incorporated yet'
             call printErrMsg(option)
 #else
 
@@ -282,7 +276,8 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call UGridReadHDF5(un_str_grid,discretization%filename,option)
 #endif ! #ifdef PARALLELIO_LIB
 
-#endif ! #ifndef SAMR_HAVE_HDF5
+#endif !#if !defined(PETSC_HAVE_HDF5)
+
           else
             call UGridRead(un_str_grid,discretization%filename,option)
           endif
@@ -330,7 +325,6 @@ subroutine DiscretizationRead(discretization,input,option)
   type(grid_type), pointer :: grid, grid2
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
-  type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
@@ -744,36 +738,6 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   
   implicit none
   
-interface
-
-subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       PetscFortranAddr :: p_application
-       PetscInt :: ndof
-       PetscInt :: stencilsize
-       PetscInt :: flowortransport
-       Mat :: p_matrix
-end subroutine SAMRCreateMatrix
-     
-     PetscInt function hierarchy_number_levels(p_hierarchy)
-       PetscFortranAddr, intent(inout) :: p_hierarchy
-     end function hierarchy_number_levels
-   
-     PetscInt function level_number_patches(p_hierarchy, ln)
-       PetscFortranAddr, intent(inout) :: p_hierarchy
-       PetscInt, intent(in) :: ln
-     end function level_number_patches
-
-     PetscInt function is_local_patch(p_hierarchy, ln, pn)
-       PetscFortranAddr, intent(inout) :: p_hierarchy
-       PetscInt, intent(in) :: ln
-       PetscInt, intent(in) :: pn
-     end function is_local_patch
-     
-end interface
-
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 
@@ -972,22 +936,6 @@ end subroutine DiscretizationCreateColoring
 subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_index)
 
   implicit none
-  
-interface
-subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: lvec
-       Vec :: gvec
-       PetscInt :: ndof
-       PetscErrorCode :: ierr
-       
-end subroutine SAMRGlobalToLocal
-
-end interface
 
   type(discretization_type) :: discretization
   Vec :: global_vec
@@ -1115,21 +1063,6 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
 
   implicit none
   
-interface
-subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: lvec
-       Vec :: gvec
-       PetscInt :: ndof
-       PetscErrorCode :: ierr
-       
-end subroutine SAMRLocalToLocal
-
-end interface
   type(discretization_type) :: discretization
   Vec :: local_vec1
   Vec :: local_vec2

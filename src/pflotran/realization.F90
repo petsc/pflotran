@@ -231,8 +231,6 @@ subroutine RealizationCreateDiscretization(realization)
   
   call DiscretizationCreateDMs(discretization,option)
 
-
-  option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
                                   GLOBAL,option)

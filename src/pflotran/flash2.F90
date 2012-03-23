@@ -43,7 +43,7 @@ module Flash2_module
 
 ! PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
   
-  public Flash2Residual,Flash2Jacobian, Flash2ResidualFluxContribPatch,&
+  public Flash2Residual,Flash2Jacobian, &
          Flash2UpdateFixedAccumulation,Flash2TimeCut,&
          Flash2Setup,Flash2UpdateReason,&
          Flash2MaxChange, Flash2UpdateSolution, &
@@ -303,6 +303,7 @@ end subroutine Flash2SetupPatch
 !
 ! ************************************************************************** !
 subroutine Flash2UpdateReasonPatch(reason,realization)
+
    use Realization_module
    use Patch_module
    use Field_module
@@ -1767,27 +1768,6 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
   implicit none
 
-interface
-subroutine samrpetscobjectstateincrease(vec)
-       implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec
-end subroutine samrpetscobjectstateincrease
-    
-subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: vec
-       PetscErrorCode :: ierr
-end subroutine SAMRCoarsenFaceFluxes
-       
-end interface
-
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -2407,89 +2387,6 @@ end subroutine Flash2ResidualPatch
 
 ! ************************************************************************** !
 !
-! RichardsResidualFluxContribsPatch: should be called only for SAMR
-! author: Bobby Philip
-! date: 02/17/09
-! not working for flash yet!!!!
-! ************************************************************************** !
-subroutine Flash2ResidualFluxContribPatch(r,realization,ierr)
-  use Realization_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  
-  implicit none
-
-  Vec, intent(out) :: r
-  type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
-
-  type :: flux_ptrs
-    PetscReal, dimension(:), pointer :: flux_p 
-  end type
-
-  type (flux_ptrs), dimension(0:2) :: fluxes
-  PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: face_fluxes_p(:)
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  PetscInt :: axis, nlx, nly, nlz
-  PetscInt :: iconn, i, j, k
-  PetscInt :: xup, xdn, yup, ydn, zup, zdn
-  PetscInt :: nd
-      
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  field => realization%field
-! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
-
-  do axis=0,2  
-     call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-  enddo
-
-  nlx = grid%structured_grid%nlx  
-  nly = grid%structured_grid%nly  
-  nlz = grid%structured_grid%nlz 
-  nd = option%nflowdof
-      
-  iconn=0
-  do k=1,nlz
-     do j=1,nly
-        do i=1,nlx
-           iconn=iconn+nd
-           xup = (((k-1)*nly+j-1)*(nlx+1)+i)*nd
-           xdn = xup+nd
-           yup = (((k-1)*(nly+1)+(j-1))*nlx+i)*nd
-           ydn = yup+nlx*nd
-           zup = (((k-1)*nly+(j-1))*nlx+i)*nd
-           zdn = zup+nlx*nly*nd
-
-           r_p(iconn:iconn+nd-1) = r_p(iconn:iconn+nd-1) &
-                                  +fluxes(0)%flux_p(xdn:xdn+nd-1)-fluxes(0)%flux_p(xup:xup+nd-1) &
-                                  +fluxes(1)%flux_p(ydn:ydn+nd-1)-fluxes(1)%flux_p(yup:yup+nd-1) &
-                                  +fluxes(2)%flux_p(zdn:zdn+nd-1)-fluxes(2)%flux_p(zup:zup+nd-1)
-
-        enddo
-     enddo
-  enddo
-
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-!!$
-!!$  do axis=0,2  
-!!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-!!$  enddo
-
-end subroutine Flash2ResidualFluxContribPatch
-
-! ************************************************************************** !
-!
 ! Flash2Jacobian: Computes the Residual by Flux
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -2508,17 +2405,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   
   implicit none
   
-  interface
-     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-     implicit none
-     
-#include "finclude/petscsysdef.h"
-     
-     PetscFortranAddr :: p_patch
-     PetscInt :: axis,dim
-   end function samr_patch_at_bc
-  end interface
-
   type :: flux_ptrs
     PetscReal, dimension(:), pointer :: flux_p 
   end type
@@ -3208,17 +3094,6 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-       Mat :: mat
-       PetscFortranAddr :: patch
-end subroutine SAMRSetCurrentJacobianPatch
-end interface
-
   SNES :: snes
   Vec :: xx
   Mat :: A, B, J
@@ -3254,13 +3129,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -3275,13 +3143,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -4302,26 +4163,6 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Debug_module
   
   implicit none
-
-interface
-subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
-#include "finclude/petscsysdef.h"
-
-       PetscInt :: which_pc
-       PetscInt :: index
-       PetscReal :: val
-       PetscFortranAddr :: p_application
-       PetscFortranAddr :: p_patch
-end subroutine SAMRSetJacobianSourceOnPatch
-
-subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petscsysdef.h"
-
-       PetscInt :: which_pc
-       PetscFortranAddr :: p_application
-       PetscFortranAddr :: p_patch
-end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-end interface
 
   SNES :: snes
   Vec :: xx

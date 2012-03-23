@@ -16,7 +16,7 @@ module HDF5_module
   include "piof.h"  
 #endif
 
-#if defined(PETSC_HAVE_HDF5) || defined (SAMR_HAVE_HDF5)
+#if defined(PETSC_HAVE_HDF5)
   PetscMPIInt :: hdf5_err
   PetscMPIInt :: io_rank
       
@@ -30,10 +30,6 @@ module HDF5_module
 #endif
       
 #if defined(PETSC_HAVE_HDF5)
-
-! SAMR and PETSC could both have hdf5 defined to point to the same library
-! in this case the defined functions are just stubs    
-      
   public :: HDF5MapLocalToNaturalIndices, &
             HDF5ReadIntegerArray, &
             HDF5ReadRealArray, &
@@ -43,58 +39,16 @@ module HDF5_module
             HDF5ReadUnstructuredGridRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, & 
             HDF5ReadCellIndexedRealArray
-            
-#else
-
-#if defined(SAMR_HAVE_HDF5)            
-  public :: HDF5ReadRegionFromFile, &
-            HDF5ReadCellIndexedIntegerArray, &
-            HDF5WriteStructDataSetFromVec, &
-            HDF5ReadCellIndexedRealArray
 #else
   public :: HDF5ReadRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, &
             HDF5ReadCellIndexedRealArray
-            
-#endif
-
 #endif            
+
 contains
 
 #if defined(PETSC_HAVE_HDF5)
 
-#if defined(SAMR_HAVE_HDF5)
-            
-! ************************************************************************** !
-!
-! HDF5MapLocalToNaturalIndices: AMR stub
-! author: Bobby Philip
-! date: 12/6/2010
-!
-! ************************************************************************** !
-subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
-                                        dataset_name,dataset_size, &
-                                        indices,num_indices)
-
-  use hdf5
-  
-  use Option_module
-  use Grid_module
-  
-  implicit none
-
-  type(grid_type) :: grid
-  type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: dataset_name
-  PetscInt :: dataset_size
-  integer(HID_T) :: file_id
-  PetscInt, pointer :: indices(:)
-  PetscInt :: num_indices
-
-end subroutine HDF5MapLocalToNaturalIndices
-
-#else
-         
 ! ************************************************************************** !
 !
 ! HDF5MapLocalToNaturalIndices: Set up indices array that maps local cells to 
@@ -583,37 +537,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #endif ! PARALLELIO_LIB
 
 end subroutine HDF5MapLocalToNaturalIndices
-
-#endif
-      
-#if defined(SAMR_HAVE_HDF5)
-! ************************************************************************** !
-!
-! HDF5ReadRealArray: Read in local real values from hdf5 global file
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
-subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
-                             indices,num_indices,real_array)
-
-  use hdf5
-  
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: dataset_name
-  PetscInt :: dataset_size
-  integer(HID_T) :: file_id
-  PetscInt :: indices(:)
-  PetscInt :: num_indices
-  PetscReal, pointer :: real_array(:)
-
-end subroutine HDF5ReadRealArray
-
-#else      
+   
 ! ************************************************************************** !
 !
 ! HDF5ReadRealArray: Read in local real values from hdf5 global file
@@ -909,30 +833,6 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   call PetscLogEventEnd(logging%event_read_real_array_hdf5,ierr)
                           
 end subroutine HDF5ReadRealArray
-#endif
-
-#if defined(SAMR_HAVE_HDF5)
-subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
-                                indices,num_indices,integer_array)
-
-  use hdf5
-  
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: dataset_name
-  PetscInt :: dataset_size
-  integer(HID_T) :: file_id
-  PetscInt :: indices(:)
-  PetscInt :: num_indices
-  PetscInt :: integer_array(:)
-
-end subroutine HDF5ReadIntegerArray
-      
-#else
       
 ! ************************************************************************** !
 !
@@ -1465,8 +1365,6 @@ endif
 
 end subroutine HDF5ReadIntegerArray
 
-#endif
-      
 ! ************************************************************************** !
 !
 ! HDF5WriteIntegerArray: Writes an integer array to an hdf5 global file
@@ -1693,39 +1591,6 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
                         
 end subroutine HDF5WriteIntegerArray
 
-#if defined(SAMR_HAVE_HDF5)
-     
-! ************************************************************************** !
-!
-! HDF5WriteStructuredDataSet: Writes data from an array into HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
-subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
-                                      nx_global,ny_global,nz_global, &
-                                      nx_local,ny_local,nz_local, &
-                                      istart_local,jstart_local,kstart_local)
-
-  use hdf5
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-
-  character(len=32) :: name
-  PetscReal :: array(:)
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  PetscInt :: nx_local, ny_local, nz_local
-  PetscInt :: nx_global, ny_global, nz_global
-  PetscInt :: istart_local, jstart_local, kstart_local
-
-end subroutine HDF5WriteStructuredDataSet
-
-#else
-      
 ! ************************************************************************** !
 !
 ! HDF5WriteStructuredDataSet: Writes data from an array into HDF5 file
@@ -2296,8 +2161,6 @@ end subroutine HDF5WriteStructuredDataSet
       
 ! End of Default HDF5 Write
 !GEH - Structured Grid Dependence - End
-
-#endif
       
 ! ************************************************************************** !
 !
@@ -3096,8 +2959,6 @@ end subroutine HDF5ReadArray
 
 #endif !PETSC_HAVE_HDF5
 
-#if !defined(SAMR_HAVE_HDF5)
-      
 ! ************************************************************************** !
 !
 ! HDF5ReadRegionFromFile: Reads a region from an hdf5 file
@@ -3570,41 +3431,6 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
 
 end subroutine HDF5ReadUnstructuredGridRegionFromFile
 
-
-#else
-! if !defined(SAMR_HAVE_HDF5)
-
-            
-! ************************************************************************** !
-!
-! HDF5ReadRegionFromFile: Stub for AMR
-! author: Bobby Philip
-! date: 12/6/2010
-!
-! ************************************************************************** !
-subroutine HDF5ReadRegionFromFile(realization,region,filename)
-  
-  use Realization_module
-  use Option_module
-  use Grid_module
-  use Region_module
-  use Patch_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(realization_type) :: realization
-  type(region_type) :: region
-  character(len=MAXSTRINGLENGTH) :: filename
-
-end subroutine HDF5ReadRegionFromFile
-
-#endif
-      
-#if !defined(SAMR_HAVE_HDF5)
-      
 ! ************************************************************************** !
 !
 ! HDF5ReadCellIndexedIntegerArray: Reads an array of integer values from an 
@@ -3951,46 +3777,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5,ierr)
                           
 end subroutine HDF5ReadCellIndexedIntegerArray
-#else
-      
-! ************************************************************************** !
-!
-! HDF5ReadCellIndexedIntegerArray: AMR stub
-! author: Bobby Philip
-! date: 12/6/2010
-!
-! ************************************************************************** !
-subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
-                                           group_name, &
-                                           dataset_name,append_realization_id)
-
-#if defined(PETSC_HAVE_HDF5)
-  use hdf5
-#endif
-  
-  use Realization_module
-  use Discretization_module
-  use Option_module
-  use Grid_module
-  use Field_module
-  use Patch_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(realization_type) :: realization
-  Vec :: global_vec
-  character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscBool :: append_realization_id
-                          
-end subroutine HDF5ReadCellIndexedIntegerArray
-#endif
-      
-#if !defined(SAMR_HAVE_HDF5)      
+    
 ! ************************************************************************** !
 !
 ! HDF5ReadCellIndexedRealArray: Reads an array of real values from an hdf5 file
@@ -4279,76 +4066,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
                           
 end subroutine HDF5ReadCellIndexedRealArray
 
-#else
-
-! ************************************************************************** !
-!
-! HDF5ReadCellIndexedRealArray: Stub for AMR
-! author: Bobby Philip
-! date: 12/6/2010
-!
-! ************************************************************************** !
-subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
-                                        group_name, &
-                                        dataset_name,append_realization_id)
-  
-  use Realization_module
-  use Discretization_module
-  use Option_module
-  use Grid_module
-  use Field_module
-  use Patch_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(realization_type) :: realization
-  Vec :: global_vec
-  character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscBool :: append_realization_id
-                          
-end subroutine HDF5ReadCellIndexedRealArray
-      
-#endif
-
-      
-#if defined(SAMR_HAVE_HDF5)
-
-! ************************************************************************** !
-!
-! HDF5WriteStructDataSetFromVec: stub for AMR
-! author: Bobby Philip
-! date: 10/04/10
-!
-! ************************************************************************** !
-subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
-
-  use hdf5
-  use Realization_module
-  use Grid_module
-  use Option_module
-  use Patch_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  character(len=32) :: name
-  type(realization_type) :: realization
-  Vec :: vec
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  
-end subroutine HDF5WriteStructDataSetFromVec
-
-#elif defined(PETSC_HAVE_HDF5)
-
-
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! HDF5WriteStructDataSetFromVec: Writes data from a PetscVec to HDF5 file
@@ -4403,40 +4121,6 @@ end subroutine HDF5WriteStructDataSetFromVec
 
 #endif
       
-! ************************************************************************** !
-!
-! HDF5ReadUnstructuredGridRegionFromFile: AMR stub
-! author: Gautam Bisht
-! date: 5/31/11
-!
-! ************************************************************************** !
-#if defined(SAMR_HAVE_HDF5)
-subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
-
-#if defined(PETSC_HAVE_HDF5)
-  use hdf5
-#endif
-
-  use Realization_module
-  use Option_module
-  use Grid_module
-  use Region_module
-  use Patch_module
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(realization_type)         :: realization
-  type(region_type)              :: region
-  character(len=MAXSTRINGLENGTH) :: filename
-
-
-end subroutine
-
-#endif
-
 end module HDF5_module
 
 

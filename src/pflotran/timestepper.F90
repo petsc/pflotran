@@ -1577,7 +1577,6 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
 
-    ! the grid pointer is null if we are working with SAMRAI
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
     else
@@ -1781,27 +1780,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 !       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
     endif
     if (realization%reaction%use_log_formulation) then
-      if (associated(realization%patch%grid%structured_grid) .and. &
-          (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
-        cur_level => realization%level_list%first
-        do 
-          if (.not.associated(cur_level)) exit
-          cur_patch => cur_level%patch_list%first
-          do
-            if (.not.associated(cur_patch)) exit
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            log_xx_p(:) = log(xx_p(:))
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            cur_patch => cur_patch%next
-          enddo
-          cur_level => cur_level%next
-        enddo
-      else
-        call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
-        call VecLog(field%tran_log_xx,ierr)
-      endif
+      call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
+      call VecLog(field%tran_log_xx,ierr)
 
       call PetscGetTime(log_start_time, ierr)
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
@@ -1809,27 +1789,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
         (log_end_time - log_start_time)          
         
-      if (associated(realization%patch%grid%structured_grid) .and. &
-          (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
-        cur_level => realization%level_list%first
-        do 
-          if (.not.associated(cur_level)) exit
-          cur_patch => cur_level%patch_list%first
-          do
-            if (.not.associated(cur_patch)) exit
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            xx_p(:) = exp(log_xx_p(:))
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            cur_patch => cur_patch%next
-          enddo
-          cur_level => cur_level%next
-        enddo
-      else
-        call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
-        call VecExp(field%tran_xx,ierr)
-      endif
+      call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
+      call VecExp(field%tran_xx,ierr)
     else
       call PetscGetTime(log_start_time, ierr)
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
@@ -1938,7 +1899,6 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
     endif
     
-    ! the grid pointer is null if we are working with SAMRAI
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax   
     else
@@ -2494,7 +2454,6 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
-    ! the grid pointer is null if we are working with SAMRAI
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
     else
@@ -2579,51 +2538,11 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   endif
 
   if (realization%reaction%use_log_formulation) then
-    if (associated(realization%patch%grid%structured_grid) .and. &
-        (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
-      cur_level => realization%level_list%first
-      do 
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-          if (.not.associated(cur_patch)) exit
-          call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-          call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-          log_xx_p(:) = log(xx_p(:))
-          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-          cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-      enddo
-    else
-      call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
-      call VecLog(field%tran_log_xx,ierr)
-    endif
-      
+    call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
+    call VecLog(field%tran_log_xx,ierr)
     call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
-      
-    if (associated(realization%patch%grid%structured_grid) .and. &
-        (.not.(realization%patch%grid%structured_grid%p_samr_patch == 0))) then
-      cur_level => realization%level_list%first
-      do 
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-          if (.not.associated(cur_patch)) exit
-          call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-          call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-          xx_p(:) = exp(log_xx_p(:))
-          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-          cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-      enddo
-    else
-      call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
-      call VecExp(field%tran_xx,ierr)
-    endif
+    call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
+    call VecExp(field%tran_xx,ierr)
   else
     call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
   endif
@@ -2648,7 +2567,6 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
-    ! the grid pointer is null if we are working with SAMRAI
     if (associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax   
     else

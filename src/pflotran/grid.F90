@@ -102,11 +102,6 @@ module Grid_module
     PetscInt :: id
   end type face_type
 
-  interface GridVecGetArrayF90
-     module procedure GridVecGetArrayCellF90
-     module procedure GridVecGetArraySideF90
-  end interface
-
   public :: GridCreate, &
             GridDestroy, &
             GridComputeInternalConnect, &
@@ -126,7 +121,6 @@ module Grid_module
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
-            GridVecGetMaskArrayCellF90, &
             GridVecGetArrayF90, &
             GridVecRestoreArrayF90, &
             GridIndexToCellID, &
@@ -1339,25 +1333,22 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
   end select
 
   if (associated(grid%structured_grid)) then
-    if (grid%structured_grid%p_samr_patch==0) then
-     ! compute global max/min from the local max/in
-     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-   endif
+    ! compute global max/min from the local max/in
+    call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
  endif
 
   if (associated(grid%unstructured_grid)) then
-    !if (grid%unstructured_grid%p_samr_patch==0) then
      ! compute global max/min from the local max/in
      call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
                         MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
@@ -3187,42 +3178,15 @@ subroutine GridDestroy(grid)
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
 end subroutine GridDestroy
-
-
-! ************************************************************************** !
-!
-! GridDestroy: Returns pointer to cell-centered vector values
-! author: Bobby Philip
-! date:  12/15/10
-!
-! ************************************************************************** !
-subroutine GridVecGetMaskArrayCellF90(grid, vec, f90ptr, ierr)
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(grid_type) :: grid
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  if (associated(grid%structured_grid)) then
-     call StructuredGridVecGetMaskArrayCellF90(grid%structured_grid, vec, f90ptr, ierr)
-  endif
-
-end subroutine GridVecGetMaskArrayCellF90
-
       
 ! ************************************************************************** !
 !
-! GridDestroy: Returns pointer to cell-centered vector values
+! GridVecGetArrayF90: Returns pointer to cell-centered vector values
 ! author: Bobby Philip
 ! date: 
 !
 ! ************************************************************************** !
-subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
+subroutine GridVecGetArrayF90(grid, vec, f90ptr, ierr)
 
   implicit none
 
@@ -3234,46 +3198,13 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
   PetscReal, pointer :: f90ptr(:)
   PetscErrorCode :: ierr
 
-  if (.not.associated(grid%structured_grid)) then
-     call VecGetArrayF90(vec, f90ptr, ierr)
-  else
-     call StructuredGridVecGetArrayF90(grid%structured_grid, vec, f90ptr, ierr)
-  endif
+  call VecGetArrayF90(vec, f90ptr, ierr)
 
-end subroutine GridVecGetArrayCellF90
-
+end subroutine GridVecGetArrayF90
       
 ! ************************************************************************** !
 !
-! GridDestroy: Returns pointer to edge-based vector values?
-! author: Bobby Philip
-! date: 
-!
-! ************************************************************************** !
-subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(grid_type) :: grid
-  PetscInt :: axis 
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  if (.not.associated(grid%structured_grid)) then
-     call VecGetArrayF90(vec, f90ptr, ierr)
-  else
-     call StructuredGridVecGetArrayF90(grid%structured_grid, axis, vec, f90ptr, ierr)
-  endif
-
-end subroutine GridVecGetArraySideF90
-
-! ************************************************************************** !
-!
-! GridDestroy: Restores pointer to vector values
+! GridVecRestoreArrayF90: Restores pointer to vector values
 ! author: Bobby Philip
 ! date: 
 !
@@ -3290,12 +3221,8 @@ subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
   PetscReal, pointer :: f90ptr(:)
   PetscErrorCode :: ierr
 
-  if (.not.associated(grid%structured_grid)) then
-     call VecRestoreArrayF90(vec, f90ptr, ierr)
-  else
-     call StructGridVecRestoreArrayF90(grid%structured_grid, vec, f90ptr, ierr)
-  endif
-
+  call VecRestoreArrayF90(vec, f90ptr, ierr)
+  
 end subroutine GridVecRestoreArrayF90
 
 ! ************************************************************************** !

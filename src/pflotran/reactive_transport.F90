@@ -1582,17 +1582,6 @@ subroutine RTCalculateTransportMatrix(realization,T)
   use Grid_module
 
   implicit none
-
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsysdef.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-       Mat :: mat
-       PetscFortranAddr :: patch
-end subroutine SAMRSetCurrentJacobianPatch
-end interface
       
   type(realization_type) :: realization
   Mat :: T
@@ -1819,17 +1808,6 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
 
   implicit none
  
-interface
-
-subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petscsysdef.h"
-
-       PetscInt :: which_pc
-       PetscFortranAddr :: p_application
-       PetscFortranAddr :: p_patch
-end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-end interface
- 
   type(realization_type) :: realization
   Mat :: T
   
@@ -1970,17 +1948,6 @@ subroutine RTReact(realization)
   use Logging_module
 
   implicit none
-      
-interface
-subroutine SAMRCoarsenVector(p_application, vec)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: vec
-end subroutine SAMRCoarsenVector
-end interface 
 
   type(realization_type) :: realization
   type(discretization_type), pointer :: discretization
@@ -2467,16 +2434,6 @@ subroutine RTTransportResidual(realization,solution_loc,residual,idof)
   use Patch_module
   use Discretization_module
   use Option_module
-      
-interface
-subroutine samrpetscobjectstateincrease(vec)
-  implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-  Vec :: vec
-end subroutine samrpetscobjectstateincrease
-end interface
 
   type(realization_type) :: realization
   Vec :: solution_loc
@@ -2545,17 +2502,6 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
 
   implicit none
 
-  interface
-     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-     implicit none
-     
-#include "finclude/petscsysdef.h"
-     
-     PetscFortranAddr :: p_patch
-     PetscInt :: axis,dim
-   end function samr_patch_at_bc
-  end interface
-
   type :: flux_ptrs
     PetscReal, dimension(:), pointer :: flux_p 
   end type
@@ -2592,8 +2538,6 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
   PetscReal :: coef_up(1), coef_dn(1)
   PetscErrorCode :: ierr
 
-  ! samr specific
-  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
     
   ! Get vectors
@@ -2674,13 +2618,8 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
 
       ! leave off the boundary contribution since it is already inclued in the
 ! rhs value
-      if (option%use_samr) then
-      ! bp, I only need this                  
-         res = coef_dn(iphase)*solution_loc_p(ghosted_id)
-      else                  
-        res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
-        coef_dn(iphase)*solution_loc_p(ghosted_id)
-      endif
+      res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
+      coef_dn(iphase)*solution_loc_p(ghosted_id)
       
 !geh - the below assumes that the boundary contribution was provided in the
 !      rhs vector above.
@@ -3120,27 +3059,6 @@ subroutine RTTransportMatVec(mat, x, y)
       
   implicit none
 
-#ifndef PC_BUG
-interface
-subroutine SAMRGetRealization(p_application, realization) 
-      use Realization_module
-#include "finclude/petscsys.h"
-      PetscFortranAddr :: p_application
-      type(realization_type), pointer :: realization
-end subroutine SAMRGetRealization
-
-subroutine SAMRGetPetscTransportMatrix(p_application, transportMat) 
-      use Realization_module
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-      
-      PetscFortranAddr :: p_application
-      Mat :: transportMat
-end subroutine SAMRGetPetscTransportMatrix      
-
-end interface
-#endif
-
   Mat, intent(in) :: mat    
   Vec, intent(in) :: x
   Vec, intent(out) :: y
@@ -3161,12 +3079,6 @@ end interface
   Mat :: vmat    
       
   call MatShellGetContext(mat, p_application, ierr)
-#ifndef PC_BUG  
-  call SAMRGetRealization(p_application, realization)
-#endif
-  ! the next call is for debugging purposes
-!  call SAMRGetPetscTransportMatrix(p_application, vmat)
-
   field => realization%field
   discretization => realization%discretization
   option => realization%option
@@ -3176,10 +3088,6 @@ end interface
   ! form for the residual calculation
   call DiscretizationGlobalToLocal(discretization,x, &
                                        field%work_loc,ONEDOF)
-
-   ! temporary for samr testing                                     
-  call DiscretizationGlobalToLocal(discretization,x, &
-                                       field%work_samr_loc,ONEDOF)
 
   cur_level => realization%level_list%first
   do
@@ -3207,91 +3115,9 @@ end interface
     enddo
     cur_level => cur_level%next
   enddo
-
-!  alpha=-1.0    
-!  call VecScale(y, alpha, ierr)
-!  call MatMult(vmat, x, field%work_samr, ierr)
-!  call VecAXPY(field%work_samr, alpha, y, ierr)
-!  call VecNorm(field%work_samr, NORM_2, diff, ierr)
-!  print *,'Difference in MatVec computations ', diff    
+ 
 end subroutine RTTransportMatVec
       
-! ************************************************************************** !
-!
-! RichardsResidualFluxContribsPatch: should be called only for SAMR
-! author: Bobby Philip
-! date: 02/17/09
-!
-! ************************************************************************** !
-subroutine RTTransportResidualFluxContribPatch(r,realization,ierr)
-  use Realization_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  
-  implicit none
-
-  Vec, intent(out) :: r
-  type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
-
-  type :: flux_ptrs
-    PetscReal, dimension(:), pointer :: flux_p 
-  end type
-
-  type (flux_ptrs), dimension(0:2) :: fluxes
-  PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: face_fluxes_p(:)
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  PetscInt :: axis, nlx, nly, nlz
-  PetscInt :: iconn, i, j, k
-  PetscInt :: xup_id, xdn_id, yup_id, ydn_id, zup_id, zdn_id
-
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  field => realization%field
-! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
-
-  do axis=0,2  
-     call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
-  enddo
-
-  nlx = grid%structured_grid%nlx  
-  nly = grid%structured_grid%nly  
-  nlz = grid%structured_grid%nlz 
-  
-  iconn=0
-  do k=1,nlz
-     do j=1,nly
-        do i=1,nlx
-           iconn=iconn+1
-           xup_id = ((k-1)*nly+j-1)*(nlx+1)+i
-           xdn_id = xup_id+1
-           yup_id = ((k-1)*(nly+1)+(j-1))*nlx+i
-           ydn_id = yup_id+nlx
-           zup_id = ((k-1)*nly+(j-1))*nlx+i
-           zdn_id = zup_id+nlx*nly
-
-           r_p(iconn) = r_p(iconn)+fluxes(0)%flux_p(xdn_id)-fluxes(0)%flux_p(xup_id) &
-                                  +fluxes(1)%flux_p(ydn_id)-fluxes(1)%flux_p(yup_id) &
-                                  +fluxes(2)%flux_p(zdn_id)-fluxes(2)%flux_p(zup_id)
-
-        enddo
-     enddo
-  enddo
-
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-
-end subroutine RTTransportResidualFluxContribPatch
-
 ! ************************************************************************** !
 !
 ! RTNumericalJacobianTest: Computes the a test numerical jacobian
@@ -3401,16 +3227,6 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Logging_module
 
   implicit none
-  
-interface
-subroutine samrpetscobjectstateincrease(vec)
-  implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-  Vec :: vec
-end subroutine samrpetscobjectstateincrease
-end interface
 
   SNES :: snes
   Vec :: xx
@@ -3502,112 +3318,6 @@ end subroutine RTResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualFluxContribsPatch: should be called only for SAMR
-! author: Bobby Philip
-! date: 02/17/09
-!
-! ************************************************************************** !
-subroutine RTResidualFluxContribPatch(r,realization,ierr)
-  use Realization_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  
-  implicit none
-
-  Vec, intent(out) :: r
-  type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
-
-  type :: flux_ptrs
-    PetscReal, dimension(:), pointer :: flux_p 
-  end type
-
-  type (flux_ptrs), dimension(0:2) :: fluxes
-
-  PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: face_fluxes_p(:)
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(reaction_type), pointer :: reaction
-  PetscInt :: axis, nlx, nly, nlz
-  PetscInt :: iconn, i, j, k
-  PetscInt :: xup_id, xdn_id, yup_id, ydn_id, zup_id, zdn_id
-  PetscInt :: su1, eu1, sd1, ed1
-  PetscInt :: su2, eu2, sd2, ed2
-  PetscInt :: su3, eu3, sd3, ed3
-  PetscInt :: istart, iend
-
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  field => realization%field
-  reaction => realization%reaction
-
-! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
-
-  do axis=0,2  
-    call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
-  enddo
-
-  nlx = grid%structured_grid%nlx  
-  nly = grid%structured_grid%nly  
-  nlz = grid%structured_grid%nlz 
-  
-  iconn=1
-  do k=1,nlz
-    do j=1,nly
-      do i=1,nlx
-        xup_id = ((k-1)*nly+j-1)*(nlx+1)+i
-        xdn_id = xup_id+1
-        yup_id = ((k-1)*(nly+1)+(j-1))*nlx+i
-        ydn_id = yup_id+nlx
-        zup_id = ((k-1)*nly+(j-1))*nlx+i
-        zdn_id = zup_id+nlx*nly
-
-        su1    = xup_id*reaction%ncomp
-        eu1    = su1+reaction%ncomp-1
-        sd1    = xdn_id*reaction%ncomp
-        ed1    = sd1+reaction%ncomp-1
-
-        su2    = yup_id*reaction%ncomp
-        eu2    = su1+reaction%ncomp-1
-        sd2    = ydn_id*reaction%ncomp
-        ed2    = sd1+reaction%ncomp-1
-
-        su3    = zup_id*reaction%ncomp
-        eu3    = su1+reaction%ncomp-1
-        sd3    = zdn_id*reaction%ncomp
-        ed3    = sd1+reaction%ncomp-1
-
-        istart=iconn
-        iend  = iconn+reaction%ncomp-1
-        r_p(istart:iend) = r_p(istart:iend) &
-          +fluxes(0)%flux_p(sd1:ed1)-fluxes(0)%flux_p(su1:eu1) &
-          +fluxes(1)%flux_p(sd2:ed2)-fluxes(1)%flux_p(su2:eu2) &
-          +fluxes(2)%flux_p(sd3:ed3)-fluxes(2)%flux_p(su3:eu3) 
-        iconn=iend+1
-      enddo
-    enddo
-  enddo
-
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-!!$
-!!$  do axis=0,2  
-!!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-!!$  enddo
-
-end subroutine RTResidualFluxContribPatch
-
-
-! ************************************************************************** !
-!
 ! RTResidualPatch1: Computes residual function for reactive transport
 ! author: Glenn Hammond
 ! date: 02/14/08
@@ -3626,17 +3336,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   use Debug_module
   
   implicit none
-
-  interface
-    PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-    implicit none
-     
-#include "finclude/petscsys.h"
-     
-    PetscFortranAddr :: p_patch
-    PetscInt :: axis,dim
-    end function samr_patch_at_bc
-  end interface
 
   type :: flux_ptrs
     PetscReal, dimension(:), pointer :: flux_p 
@@ -4249,15 +3948,6 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if (associated(grid%structured_grid)) then
-        if (.not.grid%structured_grid%p_samr_patch == 0) then
-          call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
-        endif
-      endif
-
       call RTJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -4276,15 +3966,6 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if (associated(grid%structured_grid)) then
-        if (.not.grid%structured_grid%p_samr_patch == 0) then
-          call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
-        endif
-      endif
-
       call RTJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -4584,15 +4265,6 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
-interface
-subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petscsys.h"
-
-       PetscInt :: which_pc
-       PetscFortranAddr :: p_application
-       PetscFortranAddr :: p_patch
-end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-end interface
   SNES :: snes
   Vec :: xx
   Mat :: A, B
