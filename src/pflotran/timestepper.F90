@@ -1951,8 +1951,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 
   use Reactive_Transport_module, only : RTUpdateRHSCoefs, RTUpdateAuxVars, &
         RTCalculateRHS_t0, RTUpdateTransportCoefs, RTCalculateRHS_t1, &
-        RTCalculateTransportMatrix, RTTransportResidual, RTReact, &
-        RTTransportMatVec, RTMaxChange, RTExplicitAdvection
+        RTCalculateTransportMatrix, RTReact, RTMaxChange, RTExplicitAdvection
   use Output_module, only : Output
   
   use Realization_module
@@ -2108,21 +2107,6 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
       call VecGetArrayF90(field%work,vec_ptr,ierr)
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 #endif      
-
-#if 0 
-      ! for testing residual calculation for Bobby
-      ! solution is stored in field%work vector, but we need it in ghosted
-      ! form for the residual calculation
-      call DiscretizationGlobalToLocal(discretization,field%work, &
-                                       field%work_loc,ONEDOF)
-      ! now we use field%work as the residual and field%work_loc as the
-      ! current solution
-      call RTTransportResidual(realization,field%work_loc,field%work,idof)
-      call VecNorm(field%work,NORM_2,euclid_norm,ierr)
-      call VecNorm(field%work,NORM_INFINITY,inf_norm,ierr)
-      print *, trim(realization%reaction%primary_species_names(idof))//': ', &
-        euclid_norm, inf_norm
-#endif
 
       call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
       call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)

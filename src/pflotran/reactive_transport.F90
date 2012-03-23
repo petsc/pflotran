@@ -42,8 +42,6 @@ module Reactive_Transport_module
             RTCalculateRHS_t1, &
             RTCalculateTransportMatrix, &
             RTReact, &
-            RTTransportResidual, &
-            RTTransportMatVec, &
             RTCheckUpdate, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorption, &
@@ -104,27 +102,11 @@ end subroutine RTTimeCut
 subroutine RTSetup(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      cur_patch%reaction => realization%reaction
-      call RTSetupPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  realization%patch%reaction => realization%reaction
+  call RTSetupPatch(realization)
 
 end subroutine RTSetup
 
@@ -256,8 +238,6 @@ end subroutine RTSetupPatch
 subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
  
   use Realization_module
-  use Level_module
-  use Patch_module
  
   implicit none
   
@@ -268,21 +248,7 @@ subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
   PetscBool :: changed
   PetscErrorCode :: ierr
 
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
 
 end subroutine RTCheckUpdate
 
@@ -371,30 +337,14 @@ end subroutine RTCheckUpdatePatch
 subroutine RTComputeMassBalance(realization,mass_balance)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-    
   mass_balance = 0.d0
   
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTComputeMassBalancePatch(realization,mass_balance)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTComputeMassBalancePatch(realization,mass_balance)
 
 end subroutine RTComputeMassBalance
 
@@ -612,26 +562,10 @@ end subroutine RTUpdateMassBalancePatch
 subroutine RTInitializeTimestep(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTInitializeTimestepPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTInitializeTimestepPatch(realization)
 
 end subroutine RTInitializeTimestep
 
@@ -669,15 +603,11 @@ subroutine RTUpdateSolution(realization)
   use Realization_module
   use Discretization_module
   use Field_module
-  use Level_module
-  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   
   call VecCopy(realization%field%tran_xx,realization%field%tran_yy,ierr)
@@ -686,19 +616,7 @@ subroutine RTUpdateSolution(realization)
                                    realization%field%tran_xx_loc,NTRANDOF)
   
   ! update mineral volume fractions
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTUpdateSolutionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTUpdateSolutionPatch(realization)
 
 end subroutine RTUpdateSolution
 
@@ -945,26 +863,10 @@ end subroutine RTUpdateFixedAccumulationPatch
 subroutine RTUpdateTransportCoefs(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTUpdateTransportCoefsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTUpdateTransportCoefsPatch(realization)
 
 end subroutine RTUpdateTransportCoefs
 
@@ -1122,26 +1024,10 @@ end subroutine RTUpdateTransportCoefsPatch
 subroutine RTUpdateRHSCoefs(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTUpdateRHSCoefsPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTUpdateRHSCoefsPatch(realization)
 
 end subroutine RTUpdateRHSCoefs
 
@@ -1218,26 +1104,10 @@ end subroutine RTUpdateRHSCoefsPatch
 subroutine RTCalculateRHS_t0(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTCalculateRHS_t0Patch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTCalculateRHS_t0Patch(realization)
 
 end subroutine RTCalculateRHS_t0
 
@@ -1315,26 +1185,10 @@ end subroutine RTCalculateRHS_t0Patch
 subroutine RTCalculateRHS_t1(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTCalculateRHS_t1Patch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTCalculateRHS_t1Patch(realization)
 
 end subroutine RTCalculateRHS_t1
 
@@ -1577,8 +1431,6 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
   use Realization_module
   use Option_module
-  use Level_module
-  use Patch_module
   use Grid_module
 
   implicit none
@@ -1587,8 +1439,6 @@ subroutine RTCalculateTransportMatrix(realization,T)
   Mat :: T
   
   type(grid_type), pointer :: grid
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option 
   PetscViewer :: viewer
   PetscErrorCode :: ierr
@@ -1597,35 +1447,8 @@ subroutine RTCalculateTransportMatrix(realization,T)
  
   call MatZeroEntries(T,ierr)
   
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      grid => cur_patch%grid
-      call RTCalculateTranMatrixPatch1(realization,T)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      call RTCalculateTranMatrixPatch2(realization,T)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTCalculateTranMatrixPatch1(realization,T)
+  call RTCalculateTranMatrixPatch2(realization,T)
 
   if (realization%debug%matview_Jacobian) then
 #if 1
@@ -1942,8 +1765,6 @@ subroutine RTReact(realization)
   use Realization_module
   use Field_module
   use Discretization_module    
-  use Level_module
-  use Patch_module
   use Option_module
   use Logging_module
 
@@ -1952,8 +1773,6 @@ subroutine RTReact(realization)
   type(realization_type) :: realization
   type(discretization_type), pointer :: discretization
   type(field_type), pointer ::field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
 
 #ifdef OS_STATISTICS
@@ -1983,35 +1802,23 @@ subroutine RTReact(realization)
   min_newton_iterations_on_a_core = 99999999
 #endif  
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTReactPatch(realization)
+  call RTReactPatch(realization)
 
 #ifdef OS_STATISTICS
-      call_count = call_count + cur_patch%aux%RT%rt_parameter%newton_call_count
-      sum_newton_iterations = sum_newton_iterations + &
-        cur_patch%aux%RT%rt_parameter%newton_iterations
-      if (cur_patch%aux%RT%rt_parameter%max_newton_iterations > &
-          max_newton_iterations_in_a_cell) then
-        max_newton_iterations_in_a_cell = &
-          cur_patch%aux%RT%rt_parameter%max_newton_iterations
-      endif
-      if (cur_patch%aux%RT%rt_parameter%max_newton_iterations > &
-          cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations) then
-        cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations = &
-          cur_patch%aux%RT%rt_parameter%max_newton_iterations
-      endif
+  call_count = call_count + cur_patch%aux%RT%rt_parameter%newton_call_count
+  sum_newton_iterations = sum_newton_iterations + &
+    cur_patch%aux%RT%rt_parameter%newton_iterations
+  if (cur_patch%aux%RT%rt_parameter%max_newton_iterations > &
+      max_newton_iterations_in_a_cell) then
+    max_newton_iterations_in_a_cell = &
+      cur_patch%aux%RT%rt_parameter%max_newton_iterations
+  endif
+  if (cur_patch%aux%RT%rt_parameter%max_newton_iterations > &
+      cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations) then
+    cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations = &
+      cur_patch%aux%RT%rt_parameter%max_newton_iterations
+  endif
 #endif 
-
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
 
   ! Logging must come before statistics since the global reductions
   ! will synchonize the cores
@@ -2420,706 +2227,6 @@ end subroutine RTComputeBCMassBalanceOSPatch
 
 ! ************************************************************************** !
 !
-! RTTransportResidual: Calculates the transport residual equation for a single 
-!                      chemical component (total component concentration)
-! author: Glenn Hammond
-! date: 05/24/10
-!
-! ************************************************************************** !
-subroutine RTTransportResidual(realization,solution_loc,residual,idof)
-
-  use Realization_module
-  use Field_module
-  use Level_module
-  use Patch_module
-  use Discretization_module
-  use Option_module
-
-  type(realization_type) :: realization
-  Vec :: solution_loc
-  Vec :: residual
-  PetscInt :: idof
-  
-  type(discretization_type), pointer :: discretization
-  type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  PetscViewer :: viewer
-  PetscErrorCode :: ierr
-  type(option_type), pointer :: option
-  
-  field => realization%field
-  discretization => realization%discretization
-  option => realization%option
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTTransportResidualPatch1(realization,solution_loc,residual,idof)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  ! pass #2 for everything else
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTTransportResidualPatch2(realization,solution_loc,residual,idof)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-      
-end subroutine RTTransportResidual
-
-! ************************************************************************** !
-!
-! RTTransportResidualPatch1: Calculates the transport residual equation for  
-!                           a single chemical component (total component 
-!                           concentration)
-! author: Glenn Hammond
-! date: 05/24/10
-!
-! ************************************************************************** !
-subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
-
-  use Realization_module
-  use Patch_module
-  use Connection_module
-  use Coupler_module
-  use Option_module
-  use Field_module  
-  use Grid_module  
-
-  implicit none
-
-  type :: flux_ptrs
-    PetscReal, dimension(:), pointer :: flux_p 
-  end type
-
-  type (flux_ptrs), dimension(0:2) :: fluxes
-  
-  type(realization_type) :: realization
-  Vec :: solution_loc
-  Vec :: residual
-  PetscInt :: idof
-  
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
-  PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: solution_loc_p(:)
-  PetscReal, pointer :: residual_p(:)
-  PetscReal, pointer :: rhs_coef_p(:)
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
-  PetscInt :: iphase
-  PetscReal :: res
-  
-  type(coupler_type), pointer :: boundary_condition
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
-  PetscInt :: sum_connection, iconn
-  PetscReal :: coef
-  PetscReal :: coef_up(1), coef_dn(1)
-  PetscErrorCode :: ierr
-
-  PetscInt :: direction, max_x_conn, max_y_conn
-    
-  ! Get vectors
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  global_aux_vars => patch%aux%Global%aux_vars
-  rt_aux_vars => patch%aux%RT%aux_vars
-  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
-  grid => patch%grid
-
-  ! Get vectors
-  call GridVecGetArrayF90(grid,solution_loc, solution_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,residual, residual_p, ierr)  
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
-
-  iphase = 1
-  
-  residual_p = 0.d0
-
-  ! Interior Flux Terms -----------------------------------
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-
-      if (patch%imat(ghosted_id_up) <= 0 .or.  &
-          patch%imat(ghosted_id_dn) <= 0) cycle
-
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
-                     patch%internal_velocities(:,sum_connection), &
-                     patch%internal_tran_coefs(:,sum_connection), &
-                     cur_connection_set%dist(-1,iconn), &
-                     coef_up,coef_dn)
-      res = coef_up(iphase)*solution_loc_p(ghosted_id_up) + &
-            coef_dn(iphase)*solution_loc_p(ghosted_id_dn)
-
-      residual_p(local_id_up) = residual_p(local_id_up) + res
-      residual_p(local_id_dn) = residual_p(local_id_dn) - res
-      
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo    
-  
-  ! add in outflowing boundary conditions
-  ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-  
-    cur_connection_set => boundary_condition%connection_set
-  
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-  
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (patch%imat(ghosted_id) <= 0) cycle
-
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
-                     patch%boundary_velocities(:,sum_connection), &
-                     patch%boundary_tran_coefs(:,sum_connection), &
-                     0.5d0, &
-                     coef_up,coef_dn)
-
-      ! leave off the boundary contribution since it is already inclued in the
-! rhs value
-      res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
-      coef_dn(iphase)*solution_loc_p(ghosted_id)
-      
-!geh - the below assumes that the boundary contribution was provided in the
-!      rhs vector above.
-!geh      res = coef_dn(iphase)*solution_loc_p(ghosted_id)
-
-      residual_p(local_id)= residual_p(local_id) - res
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
-  call GridVecRestoreArrayF90(grid,solution_loc, solution_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,residual, residual_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-
-end subroutine RTTransportResidualPatch1
-
-! ************************************************************************** !
-!
-! RTTransportResidualPatch2: Calculates the transport residual equation for  
-!                           a single chemical component (total component 
-!                           concentration)
-! author: Glenn Hammond
-! date: 05/24/10
-!
-! ************************************************************************** !
-subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
-
-  use Realization_module
-  use Patch_module
-  use Connection_module
-  use Coupler_module
-  use Option_module
-  use Field_module  
-  use Grid_module  
-
-  implicit none
-  
-  type(realization_type) :: realization
-  Vec :: solution_loc
-  Vec :: residual
-  PetscInt :: idof
-  
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
-  type(reaction_type), pointer :: reaction
-  PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: solution_loc_p(:)
-  PetscReal, pointer :: residual_p(:)
-  PetscReal, pointer :: rhs_coef_p(:)
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: iphase
-  PetscReal :: res
-  PetscInt :: flow_src_sink_type
-  PetscReal :: coef_in, coef_out, scale  
-  
-  type(coupler_type), pointer :: boundary_condition
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
-  type(coupler_type), pointer :: source_sink 
-  PetscInt :: sum_connection, iconn
-  PetscReal :: coef
-  PetscReal :: qsrc
-  PetscBool :: volumetric 
-  PetscErrorCode :: ierr
-  
-  PetscInt :: ieqgas, icomp
-  PetscReal :: msrc(2)
-    
-  ! Get vectors
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  global_aux_vars => patch%aux%Global%aux_vars
-  rt_aux_vars => patch%aux%RT%aux_vars
-  grid => patch%grid
-  reaction => realization%reaction
-
-  ! Get vectors
-  call GridVecGetArrayF90(grid,solution_loc, solution_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,residual, residual_p, ierr)  
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
-  
-  iphase = 1
-
-  ! Accumulation term
-  
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) cycle
-    coef = porosity_loc_p(ghosted_id)* &
-           global_aux_vars(ghosted_id)%sat(iphase)* &
-           1000.d0* &
-           volume_p(local_id)/option%tran_dt
-!geh need to separate out accumulation from boundary fluxes
-!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
-!geh ! RHS will not change, but is moved to lhs (thus, the -1.d0*)
-!geh                           rhs_p((local_id-1)*option%ntrandof+idof)
-
-!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
-
-    residual_p(local_id) = residual_p(local_id) + &
-                           coef*solution_loc_p(ghosted_id)- &
-                           rhs_coef_p(local_id)* &
-                           rt_aux_vars(ghosted_id)%total(idof,iphase)
-
-  enddo
-
-  ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
-  do 
-    if (.not.associated(source_sink)) exit
-    
-    cur_connection_set => source_sink%connection_set
-    
-    flow_src_sink_type = 0
-    if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-      flow_src_sink_type = source_sink%flow_condition%rate%itype
-    endif
-      
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (patch%imat(ghosted_id) <= 0) cycle
-
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
-      res = coef_in*solution_loc_p(ghosted_id) + &
-                             coef_out*source_sink%tran_condition%cur_constraint_coupler% &
-                                        rt_auxvar%total(idof,iphase)
-      if (reaction%ncoll > 0) then
-        res = coef_in*rt_aux_vars(ghosted_id)%colloid%conc_mob(idof) + &
-              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
-                                              rt_auxvar%colloid%conc_mob(idof)
-      endif
-      residual_p(local_id) = residual_p(local_id) + res
-    enddo
-    source_sink => source_sink%next
-  enddo
-
-#ifdef CHUAN_CO2
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-      
-      !geh: conditional moved outside the do loop to speed things up
-      ! first figure out if the current component (idof) is involved 
-      ! in the src sink
-      
-      do ieqgas = 1, reaction%ngas
-        if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
- 
-          icomp = reaction%eqgasspecid(1,ieqgas)
-          if (idof == icomp) then
-      
-            source_sink => patch%source_sinks%first 
-            do 
-              if (.not.associated(source_sink)) exit
-
-!geh begin change
-!geh              msrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
-              msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
-!geh end change
-              msrc(1) =  msrc(1) / FMWH2O*1D3
-              msrc(2) =  msrc(2) / FMWCO2*1D3
-              ! print *,'RT SC source'
-              do iconn = 1, cur_connection_set%num_connections      
-                local_id = cur_connection_set%id_dn(iconn)
-                ghosted_id = grid%nL2G(local_id)
-                Res=0D0
-                
-                if (patch%imat(ghosted_id) <= 0) cycle
-                
-                select case(source_sink%flow_condition%itype(1))
-                  case(MASS_RATE_SS)
-                    res = -msrc(2)
-                    residual_p(local_id) = residual_p(local_id) + res
-      !                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
-                end select 
-              enddo
-              source_sink => source_sink%next
-            enddo
-          endif ! idof == icomp
-        endif ! co2_gas_id == ieqgas
-      enddo
-  end select
-     
-#endif
-
-  ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
-  call GridVecRestoreArrayF90(grid,solution_loc, solution_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,residual, residual_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-
-end subroutine RTTransportResidualPatch2
-
-! ************************************************************************** !
-!
-! RTTransportMatVecPatch2: Calculates the transport residual equation for  
-!                           a single chemical component (total component 
-!                           concentration)
-! author: Bobby Philip
-! date: 06/11/2010
-!
-! ************************************************************************** !
-subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
-
-  use Realization_module
-  use Patch_module
-  use Transport_module
-  use Option_module
-  use Field_module
-  use Grid_module
-  use Connection_module
-  use Coupler_module  
-  use Debug_module
-  use Logging_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  Vec :: solution_loc
-  Vec :: residual
-  PetscInt :: idof
-  
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
-  type(reactive_transport_param_type), pointer :: rt_parameter
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(reaction_type), pointer :: reaction
-  type(field_type), pointer :: field
-  PetscReal, pointer :: porosity_loc_p(:)
-  PetscReal, pointer :: volume_p(:)
-  PetscReal, pointer :: solution_loc_p(:)
-  PetscReal, pointer :: residual_p(:)
-  PetscReal, pointer :: rhs_coef_p(:)
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
-  PetscInt :: iphase
-  PetscReal :: res
-  
-  type(coupler_type), pointer :: source_sink
-  type(coupler_type), pointer :: boundary_condition
-  type(connection_set_list_type), pointer :: connection_set_list
-  type(connection_set_type), pointer :: cur_connection_set
-  PetscInt :: sum_connection, iconn
-  PetscInt :: ieqgas, icomp
-  PetscReal :: msrc(realization%option%nphase)
-  PetscReal :: qsrc, molality
-  PetscInt :: flow_src_sink_type
-  PetscReal :: scale, coef_in, coef_out
-  PetscReal :: coef
-  PetscReal :: coef_up(1), coef_dn(1)
-  PetscErrorCode :: ierr
-    
-  ! Get vectors
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  reaction => realization%reaction
-  global_aux_vars => patch%aux%Global%aux_vars
-  rt_parameter => patch%aux%RT%rt_parameter
-  rt_aux_vars => patch%aux%RT%aux_vars
-  grid => patch%grid
-
-  ! Get vectors
-  call GridVecGetArrayF90(grid,solution_loc, solution_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,residual, residual_p, ierr)  
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
-  
-  iphase = 1
-
-  ! need to add source/sink
-
-  ! Accumulation term
-  
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) cycle
-    coef = porosity_loc_p(ghosted_id)* &
-           global_aux_vars(ghosted_id)%sat(iphase)* &
-           1000.d0* &
-           volume_p(local_id)/option%tran_dt
-!geh need to separate out accumulation from boundary fluxes
-!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
-!geh ! RHS will not change, but is moved to lhs (thus, the -1.d0*)
-!geh                           rhs_p((local_id-1)*option%ntrandof+idof)
-
-!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
-
-    residual_p(local_id) = residual_p(local_id) + &
-                           coef*solution_loc_p(ghosted_id)
-
-  enddo
-  ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
-  do 
-    if (.not.associated(source_sink)) exit
-    
-    cur_connection_set => source_sink%connection_set
-    
-    flow_src_sink_type = 0
-    if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-      flow_src_sink_type = source_sink%flow_condition%rate%itype
-    endif
-      
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (patch%imat(ghosted_id) <= 0) cycle
-
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
-      res = coef_in*solution_loc_p(ghosted_id) + &
-                             coef_out*source_sink%tran_condition%cur_constraint_coupler% &
-                                        rt_auxvar%total(idof,iphase)
-      if (reaction%ncoll > 0) then
-        res = coef_in*rt_aux_vars(ghosted_id)%colloid%conc_mob(idof) + &
-              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
-                                              rt_auxvar%colloid%conc_mob(idof)
-      endif
-
-      residual_p(local_id) = residual_p(local_id) + res
-    enddo
-    source_sink => source_sink%next
-  enddo
-
-#ifdef CHUAN_CO2
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-      
-      !geh: conditional moved outside the do loop to speed things up
-      ! first figure out if the current component (idof) is involved 
-      ! in the src sink
-      
-      do ieqgas = 1, reaction%ngas
-        if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
- 
-          icomp = reaction%eqgasspecid(1,ieqgas)
-          if (idof == icomp) then
-      
-            source_sink => patch%source_sinks%first 
-            do 
-              if (.not.associated(source_sink)) exit
-
-!geh begin change
-!geh              msrc(:) = source_sink%flow_condition%pressure%flow_dataset%time_series%cur_value(:)
-              msrc(:) = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(:)
-!geh end change
-              msrc(1) =  msrc(1) / FMWH2O*1D3
-              msrc(2) =  msrc(2) / FMWCO2*1D3
-              ! print *,'RT SC source'
-              do iconn = 1, cur_connection_set%num_connections      
-                local_id = cur_connection_set%id_dn(iconn)
-                ghosted_id = grid%nL2G(local_id)
-                Res=0D0
-                
-                if (patch%imat(ghosted_id) <= 0) cycle
-                
-                select case(source_sink%flow_condition%itype(1))
-                  case(MASS_RATE_SS)
-                    res = -msrc(2)
-                    residual_p(local_id) = residual_p(local_id) + res
-      !                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
-                end select 
-              enddo
-              source_sink => source_sink%next
-            enddo
-          endif ! idof == icomp
-        endif ! co2_gas_id == ieqgas
-      enddo
-  end select
-     
-#endif
-
-  ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
-  call GridVecRestoreArrayF90(grid,solution_loc, solution_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,residual, residual_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
-  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
-
-end subroutine RTTransportMatVecPatch2
-
-subroutine RTTransportMatVec(mat, x, y)
-
-  use Realization_module
-  use Discretization_module
-  use Level_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  use ISO_C_BINDING
-      
-  implicit none
-
-  Mat, intent(in) :: mat    
-  Vec, intent(in) :: x
-  Vec, intent(out) :: y
-
-!  type(simulation_type),pointer :: simulation
-  type(realization_type),pointer :: realization
-  type(option_type), pointer :: option
-  type(discretization_type), pointer :: discretization
-  type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  type(c_ptr) :: realization_cptr
-  PetscInt :: idof
-  PetscReal :: alpha    
-  PetscErrorCode :: ierr
-  PetscFortranAddr :: p_application
-  PetscReal :: diff
-  Mat :: vmat    
-      
-  call MatShellGetContext(mat, p_application, ierr)
-  field => realization%field
-  discretization => realization%discretization
-  option => realization%option
-  idof = option%rt_idof
-      
-  ! solution is stored in x vector, but we need it in ghosted
-  ! form for the residual calculation
-  call DiscretizationGlobalToLocal(discretization,x, &
-                                       field%work_loc,ONEDOF)
-
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTTransportResidualPatch1(realization,field%work_loc,y,idof)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTTransportMatVecPatch2(realization,field%work_loc,y,idof)
-!      call RTTransportResidualPatch2(realization,field%work_loc,y,idof)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
- 
-end subroutine RTTransportMatVec
-      
-! ************************************************************************** !
-!
 ! RTNumericalJacobianTest: Computes the a test numerical jacobian
 ! author: Glenn Hammond
 ! date: 02/20/08
@@ -3220,7 +2327,6 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Realization_module
   use Field_module
   use Patch_module
-  use Level_module
   use Discretization_module
   use Option_module
   use Grid_module
@@ -3237,13 +2343,13 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
   type(option_type), pointer :: option
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   PetscViewer :: viewer  
   
   call PetscLogEventBegin(logging%event_rt_residual,ierr)
 
+  patch => realization%patch
   field => realization%field
   discretization => realization%discretization
   option => realization%option
@@ -3251,53 +2357,21 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! Communication -----------------------------------------
   if (realization%reaction%use_log_formulation) then
     ! have to convert the log concentration to non-log form
-    cur_level => realization%level_list%first
-    do
-      if (.not.associated(cur_level)) exit
-      cur_patch => cur_level%patch_list%first
-      do
-        if (.not.associated(cur_patch)) exit
-        call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-        call GridVecGetArrayF90(cur_patch%grid,xx,log_xx_p,ierr)
-        xx_p(:) = exp(log_xx_p(:))
-        call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-        call GridVecRestoreArrayF90(cur_patch%grid,xx,log_xx_p,ierr)  
-        cur_patch => cur_patch%next
-      enddo
-      cur_level => cur_level%next
-    enddo
+    call GridVecGetArrayF90(patch%grid,field%tran_xx,xx_p,ierr)
+    call GridVecGetArrayF90(patch%grid,xx,log_xx_p,ierr)
+    xx_p(:) = exp(log_xx_p(:))
+    call GridVecRestoreArrayF90(patch%grid,field%tran_xx,xx_p,ierr)
+    call GridVecRestoreArrayF90(patch%grid,xx,log_xx_p,ierr)  
     call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)
   else
     call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
   endif
 
   ! pass #1 for internal and boundary flux terms
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTResidualPatch1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTResidualPatch1(snes,xx,r,realization,ierr)
 
   ! pass #2 for everything else
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTResidualPatch2(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTResidualPatch2(snes,xx,r,realization,ierr)
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &
@@ -3895,7 +2969,6 @@ end subroutine RTResidualPatch2
 subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
-  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -3914,8 +2987,6 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer  
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
 
   call PetscLogEventBegin(logging%event_rt_jacobian,ierr)
@@ -3941,36 +3012,13 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 
 
   ! pass #1 for internal and boundary flux terms  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
 
   call PetscLogEventEnd(logging%event_rt_jacobian1,ierr)
-
   call PetscLogEventBegin(logging%event_rt_jacobian2,ierr)
   
   ! pass #2 for everything else
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
 
   call PetscLogEventEnd(logging%event_rt_jacobian2,ierr)
     
@@ -4492,31 +3540,15 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
                            update_activity_coefs)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   PetscBool :: update_cells
   PetscBool :: update_bcs
   PetscBool :: update_activity_coefs
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      ! PETSC_TRUE to update cells
-      call RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
-                                update_activity_coefs)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  ! PETSC_TRUE to update cells
+  call RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
+                            update_activity_coefs)
   
 end subroutine RTUpdateAuxVars
 
@@ -5284,26 +4316,10 @@ end function RTGetTecplotHeader
 subroutine RTJumpStartKineticSorption(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RTJumpStartKineticSorptionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTJumpStartKineticSorptionPatch(realization)
                               
 end subroutine RTJumpStartKineticSorption
 
@@ -5371,7 +4387,6 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
 
   use Realization_module
   use Patch_module
-  use Level_module
   use Grid_module
   use Option_module
   use Field_module
@@ -5382,10 +4397,9 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscReal, pointer :: vec_p(:)
 
@@ -5397,6 +4411,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   option => realization%option
   reaction => realization%reaction
   field => realization%field
+  patch => realization%patch
   
   checkpoint_flag = PETSC_FALSE
 
@@ -5415,44 +4430,36 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
     enddo
   enddo
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      rt_auxvars => cur_patch%aux%RT%aux_vars
-      grid => cur_patch%grid
-      do icomp = 1, reaction%naqcomp
-        if (checkpoint_flag(icomp)) then
-          do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
-            do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
-              if (checkpoint) then
-                call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-                do local_id = 1, grid%nlmax
-                  vec_p(local_id) = &
-                    rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate,irxn)
-                enddo
-                call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
-                call VecView(field%work,viewer,ierr)
-              else
-                call VecLoad(field%work,viewer,ierr)
-                if (.not.option%no_restart_kinetic_sorption) then
-                  call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-                  do local_id = 1, grid%nlmax
-                    rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate,irxn) = &
-                       vec_p(local_id)
-                  enddo
-                  call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
-                endif
-              endif
+  rt_auxvars => patch%aux%RT%aux_vars
+  grid => patch%grid
+  do icomp = 1, reaction%naqcomp
+    if (checkpoint_flag(icomp)) then
+      do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+        do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+          if (checkpoint) then
+            call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+            do local_id = 1, grid%nlmax
+              vec_p(local_id) = &
+                rt_auxvars(grid%nL2G(local_id))% &
+                  kinmr_total_sorb(icomp,irate,irxn)
             enddo
-          enddo
-        endif
+            call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+            call VecView(field%work,viewer,ierr)
+          else
+            call VecLoad(field%work,viewer,ierr)
+            if (.not.option%no_restart_kinetic_sorption) then
+              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+              do local_id = 1, grid%nlmax
+                rt_auxvars(grid%nL2G(local_id))% &
+                  kinmr_total_sorb(icomp,irate,irxn) = &
+                    vec_p(local_id)
+              enddo
+              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+            endif
+          endif
+        enddo
       enddo
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
+    endif
   enddo
 
 end subroutine RTCheckpointKineticSorption
@@ -5467,27 +4474,10 @@ end subroutine RTCheckpointKineticSorption
 subroutine RTExplicitAdvection(realization)
 
   use Realization_module
-  use Level_module
-  use Patch_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      cur_patch%reaction => realization%reaction
-      call RTExplicitAdvectionPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTExplicitAdvectionPatch(realization)
 
 end subroutine RTExplicitAdvection
 
@@ -5913,15 +4903,11 @@ end subroutine RTAppendToHeader
 subroutine RTDestroy(realization)
 
   use Realization_module
-  use Level_module
   use Patch_module
   use Option_module
 
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
 #ifdef OS_STATISTICS
   type(option_type), pointer :: option
   PetscErrorCode :: ierr
@@ -5947,30 +4933,18 @@ subroutine RTDestroy(realization)
   
 #endif  
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-
 #ifdef OS_STATISTICS
-      call_count = call_count + &
-        cur_patch%aux%RT%rt_parameter%sum_newton_call_count
-      sum_newton_iterations = sum_newton_iterations + &
-        cur_patch%aux%RT%rt_parameter%sum_newton_iterations
-      if (cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations > &
-          max_newton_iterations_in_a_cell) then
-        max_newton_iterations_in_a_cell = &
-          cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations
-      endif
+  call_count = call_count + &
+    cur_patch%aux%RT%rt_parameter%sum_newton_call_count
+  sum_newton_iterations = sum_newton_iterations + &
+    cur_patch%aux%RT%rt_parameter%sum_newton_iterations
+  if (cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations > &
+      max_newton_iterations_in_a_cell) then
+    max_newton_iterations_in_a_cell = &
+      cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations
+  endif
 #endif
-      realization%patch => cur_patch
-      call RTDestroyPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RTDestroyPatch(realization)
 
 #ifdef OS_STATISTICS
   if (option%reactive_transport_coupling == OPERATOR_SPLIT) then
