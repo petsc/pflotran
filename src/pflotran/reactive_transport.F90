@@ -1241,7 +1241,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
   PetscInt :: offset, istartcoll, iendcoll, istartall, iendall, icomp, ieqgas
   PetscBool :: volumetric
   PetscInt :: flow_src_sink_type
-  PetscReal :: coef_in, coef_out, scale
+  PetscReal :: coef_in, coef_out
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -1326,7 +1326,6 @@ subroutine RTCalculateRHS_t1Patch(realization)
       cycle
     endif
     
-    scale = 1.d0  
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -1343,18 +1342,10 @@ subroutine RTCalculateRHS_t1Patch(realization)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
+      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
+                        coef_in,coef_out)      
+
       Res(istartaq:iendaq) = & !coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
@@ -1656,7 +1647,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   PetscErrorCode :: ierr
   PetscInt :: flow_pc
   PetscInt :: flow_src_sink_type
-  PetscReal :: coef_in, coef_out, scale
+  PetscReal :: coef_in, coef_out
     
   ! Get vectors
   option => realization%option
@@ -1710,18 +1701,9 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
+      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
+                        coef_in,coef_out)
 
       coef_dn(1) = coef_in
       !geh: do not remove this conditional as otherwise MatSetValuesLocal() 
@@ -2104,7 +2086,6 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
   PetscInt :: flow_src_sink_type
-  PetscReal :: scale
   PetscReal :: qsrc
   
   PetscReal :: coef_up(realization%option%nphase)
@@ -2193,18 +2174,10 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
+      qsrc = patch%ss_fluid_fluxes(1,sum_connection)
+      call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
+                        coef_in,coef_out)
+      
       Res = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
             coef_out*source_sink%tran_condition%cur_constraint_coupler% &
             rt_auxvar%total(:,iphase)
@@ -2806,15 +2779,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
 
-#ifdef SRC_SINK_OLD
-    flow_src_sink_type = 0
-    if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-      flow_src_sink_type = source_sink%flow_condition%rate%itype
-    endif
-#endif
-      
     do iconn = 1, cur_connection_set%num_connections 
       sum_connection = sum_connection + 1     
       local_id = cur_connection_set%id_dn(iconn)
@@ -2832,24 +2796,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
-#ifdef SRC_SINK_OLD
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
-#else
       qsrc = patch%ss_fluid_fluxes(1,sum_connection)
-      call TSrcSinkCoefNew(option,qsrc,source_sink%tran_condition%itype, &
-                           coef_in,coef_out)
-#endif
+      call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
+                        coef_in,coef_out)
+
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
@@ -3398,15 +3348,6 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
 
-#ifdef SRC_SINK_OLD
-    flow_src_sink_type = 0
-    if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-      flow_src_sink_type = source_sink%flow_condition%rate%itype
-    endif
-#endif
-      
     do iconn = 1, cur_connection_set%num_connections      
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -3422,23 +3363,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         iendcoll = reaction%offset_coll + reaction%ncoll
       endif
 
-#ifdef SRC_SINK_OLD
-      if (associated(source_sink%flow_aux_real_var)) then
-        scale = source_sink%flow_aux_real_var(1,iconn)
-      else
-        scale = 1.d0
-      endif
-      call TSrcSinkCoef(option,qsrc,flow_src_sink_type, &
-                        source_sink%tran_condition%itype, &
-                        porosity_loc_p(ghosted_id), &
-                        global_aux_vars(ghosted_id)%sat(option%liquid_phase), &
-                        volume_p(local_id), &
-                        global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
-                        scale,coef_in,coef_out)
-#else
       qsrc = patch%ss_fluid_fluxes(1,sum_connection)
-      call TSrcSinkCoefNew(option,qsrc,source_sink%tran_condition%itype,coef_in,coef_out)
-#endif
+      call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype,coef_in,coef_out)
+
       ! coef_in is non-zero
       if (dabs(coef_in-1.d20) > 0.d0) then
         Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)
@@ -4794,12 +4721,12 @@ subroutine RTExplicitAdvectionPatch(realization)
 
       do iphase = 1, option%nphase
         qsrc = patch%ss_fluid_fluxes(iphase,sum_connection)
-        call TSrcSinkCoefNew(option,qsrc,source_sink%tran_condition%itype, &
-                             coef_in,coef_out)
+        call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
+                          coef_in,coef_out)
         flux = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                           rt_auxvar%total(:,iphase)
-        !geh: TSrcSinkCoefNew() unit are in L/s.
+        !geh: TSrcSinkCoef() unit are in L/s.
          sum_flux(:,ghosted_id) = sum_flux(:,ghosted_id) + flux
       enddo
     enddo

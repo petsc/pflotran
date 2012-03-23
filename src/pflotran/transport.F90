@@ -27,7 +27,6 @@ module Transport_module
             TFluxDerivative, &
             TFluxCoef, &
             TSrcSinkCoef, &
-            TSrcSinkCoefNew, &
             TFlux_CD, &
             TFluxDerivative_CD, &
             TFluxCoef_CD, &
@@ -900,87 +899,12 @@ end subroutine TFluxCoef_CD
 ! ************************************************************************** !
 !
 ! TSrcSinkCoef: Computes src/sink coefficients for transport matrix
+!               Here qsrc [m^3/sec] provided by flow.
 ! author: Glenn Hammond
 ! date: 01/12/11
 !
 ! ************************************************************************** !
-subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
-                        por,sat,vol,den,scale,T_in,T_out)
-
-  use Option_module
-
-  implicit none
-
-  type(option_type) :: option
-  PetscReal :: qsrc
-  PetscInt :: flow_src_sink_type
-  PetscInt :: tran_src_sink_type
-  PetscReal :: por
-  PetscReal :: sat
-  PetscReal :: vol
-  PetscReal :: den
-  PetscReal :: scale
-  PetscReal :: T_in ! coefficient that scales concentration at cell
-  PetscReal :: T_out ! concentration that scales external concentration
-      
-  PetscReal :: rate
-  
-  T_in = 0.d0 
-  T_out = 0.d0
-     
-  select case(tran_src_sink_type)
-    case(EQUILIBRIUM_SS)
-      ! units should be mol/sec
-      rate = 1.d-6 ! units 1/sec
-      T_in = rate*por*sat*vol*1000.d0 ! units L water/sec
-      T_out = -1.d0*T_in
-    case(MASS_RATE_SS)
-      ! in this case, rt_auxvar_bc%total actually holds the mass rate
-      T_in = 0.d0
-      T_out = -1.d0
-    case default
-      if (qsrc > 0.d0) then ! injection
-        T_in = 0.d0
-        select case(flow_src_sink_type)
-          case(MASS_RATE_SS)
-            T_out = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
-          case(SCALED_MASS_RATE_SS)
-            T_out = -1.d0*qsrc/den*1000.d0*scale ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
-          case(VOLUMETRIC_RATE_SS)
-            T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
-          case(SCALED_VOLUMETRIC_RATE_SS)
-            T_out = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 L/m^3 -> L/s
-        end select
-      else
-        T_out = 0.d0
-        select case(flow_src_sink_type)
-          case(MASS_RATE_SS)
-            T_in = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
-          case(SCALED_MASS_RATE_SS)
-            T_in = -1.d0*qsrc/den*1000.d0*scale ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
-          case(VOLUMETRIC_RATE_SS)
-            T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
-          case(SCALED_VOLUMETRIC_RATE_SS)
-            T_in = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 L/m^3 -> L/s
-        end select
-      endif
-  end select
-
-  ! Units of Tin & Tout should be L/s.  When multiplied by Total (M) you get
-  ! moles/sec, the units of the residual.  To get the units of the Jacobian
-  ! kg/sec, one must either scale by dtotal or den/1000. (kg/L).
-
-end subroutine TSrcSinkCoef
-  
-! ************************************************************************** !
-!
-! TSrcSinkCoefNew: Computes src/sink coefficients for transport matrix
-!                  Here qsrc [m^3/sec] provided by flow.
-! author: Glenn Hammond
-! date: 01/12/11
-!
-! ************************************************************************** !
-subroutine TSrcSinkCoefNew(option,qsrc,tran_src_sink_type,T_in,T_out)
+subroutine TSrcSinkCoef(option,qsrc,tran_src_sink_type,T_in,T_out)
 
   use Option_module
 
@@ -1022,7 +946,7 @@ subroutine TSrcSinkCoefNew(option,qsrc,tran_src_sink_type,T_in,T_out)
   ! moles/sec, the units of the residual.  To get the units of the Jacobian
   ! kg/sec, one must either scale by dtotal or den/1000. (kg/L).
 
-end subroutine TSrcSinkCoefNew
+end subroutine TSrcSinkCoef
 
 ! ************************************************************************** !
 !
