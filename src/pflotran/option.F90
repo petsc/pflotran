@@ -60,17 +60,6 @@ module Option_module
     PetscInt :: itranmode
     PetscInt :: tvd_flux_limiter
 
-    ! vector centering, used by SAMR
-    ! 0 - CELL CENTERED
-    ! 1 - FACE CENTERED
-    PetscInt :: ivar_centering
-    PetscBool :: use_samr
-    ! the next variable is used by SAMR to determine
-    ! what dof the linear system in operator split mode   
-    ! needs to be formed for
-    PetscInt :: rt_idof
-    PetscInt :: samr_mode
-      
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
