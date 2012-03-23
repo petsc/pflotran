@@ -245,11 +245,6 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%work)
-  if (option%use_samr) then
-    ! temporary for samr testing
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                     field%work_samr)
-  endif
   
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
@@ -259,12 +254,6 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
-  
-  if (option%use_samr) then
-    ! temporary for samr testing
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%work_samr_loc)
-  endif
   
   if (option%nflowdof > 0) then
 
@@ -325,15 +314,6 @@ subroutine RealizationCreateDiscretization(realization)
     ! ndof degrees of freedom, local
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
-
-
-
-    if (option%use_samr) then
-       option%ivar_centering = SIDE_CENTERED
-       call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
-                                    GLOBAL,option)
-      option%ivar_centering = CELL_CENTERED
-    endif
   endif
 
   if (option%ntrandof > 0) then
@@ -360,13 +340,7 @@ subroutine RealizationCreateDiscretization(realization)
         call DiscretizationDuplicateVector(discretization,field%tran_xx_loc, &
                                            field%tran_work_loc)
       endif
-
-      if (option%use_samr) then
-         option%ivar_centering = SIDE_CENTERED
-         call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
-                                      GLOBAL,option)
-         option%ivar_centering = CELL_CENTERED
-      endif 
+ 
     else ! operator splitting
       ! ndof degrees of freedom, global
       ! create the 1 dof vector for solving the individual linear systems
@@ -386,12 +360,6 @@ subroutine RealizationCreateDiscretization(realization)
       ! again, just for storage of the current colution
       call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
                                       LOCAL,option)
-      if (option%use_samr) then
-         option%ivar_centering = SIDE_CENTERED
-         call DiscretizationCreateVector(discretization,ONEDOF,field%tran_face_fluxes, &
-                                      GLOBAL,option)
-         option%ivar_centering = CELL_CENTERED
-      endif 
 
     endif
     

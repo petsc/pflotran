@@ -425,8 +425,6 @@ subroutine OptionInitRealization(option)
   option%tvd_flux_limiter = 1
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
-  option%ivar_centering = CELL_CENTERED
-  option%use_samr = PETSC_FALSE
 
   option%nphase = 0
   option%liquid_phase = 0

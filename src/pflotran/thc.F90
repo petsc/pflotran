@@ -2616,28 +2616,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  ! now coarsen all face fluxes in case we are using SAMRAI to 
-  ! ensure consistent fluxes at coarse-fine interfaces
-  ! RTM: This may not be the correct way to do things.  I think the heat 
-  ! flux might need to be treated differently?  Ask Bobby.
-  if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-
-     cur_level => realization%level_list%first
-     do
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-           if (.not.associated(cur_patch)) exit
-           realization%patch => cur_patch
-           call THCResidualFluxContribPatch(r,realization,ierr)
-           ! IMPORTANT:  I need to write the above subroutine!  --RTM
-           cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-     enddo
-  endif
-
   ! Now make a second pass and compute everything that isn't an internal 
   ! or boundary flux term
   cur_level => realization%level_list%first

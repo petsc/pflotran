@@ -1603,27 +1603,24 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                     region%num_cells = 0
                   endif
   ! the next test as designed will only work on a uniform grid
-                  if (.not. (option%use_samr)) then
-                     call MPI_Allreduce(region%num_cells,count, &
-                                        ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
-                                        option%mycomm,ierr)   
-
-                     if (count == 0) then
-                      write(option%io_buffer,*) 'Region: (coord)', &
-                           region%coordinates(ONE_INTEGER)%x, &
-                           region%coordinates(ONE_INTEGER)%y, &
-                           region%coordinates(ONE_INTEGER)%z, &
-                            ' not found in global domain.', count
-                       call printErrMsg(option)
-                     else if (count > 1) then
-                       write(option%io_buffer,*) 'Region: (coord)', &
-                           region%coordinates(ONE_INTEGER)%x, &
-                           region%coordinates(ONE_INTEGER)%y, &
-                           region%coordinates(ONE_INTEGER)%z, &
-                           ' duplicated across ', count, &
-                           ' procs in global domain.'
-                       call printErrMsg(option)
-                     endif
+                  call MPI_Allreduce(region%num_cells,count, &
+                                      ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                                      option%mycomm,ierr)   
+                  if (count == 0) then
+                    write(option%io_buffer,*) 'Region: (coord)', &
+                          region%coordinates(ONE_INTEGER)%x, &
+                          region%coordinates(ONE_INTEGER)%y, &
+                          region%coordinates(ONE_INTEGER)%z, &
+                          ' not found in global domain.', count
+                    call printErrMsg(option)
+                  else if (count > 1) then
+                    write(option%io_buffer,*) 'Region: (coord)', &
+                          region%coordinates(ONE_INTEGER)%x, &
+                          region%coordinates(ONE_INTEGER)%y, &
+                          region%coordinates(ONE_INTEGER)%z, &
+                          ' duplicated across ', count, &
+                          ' procs in global domain.'
+                    call printErrMsg(option)
                   endif
                 case(UNSTRUCTURED_GRID)
                   !geh: must check each cell individually
@@ -1819,13 +1816,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               end select
             endif
 
-            if (.not. (option%use_samr)) then
-              call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                                 option%mycomm,ierr)
-            else
-              i = 0
-            endif
-
+            call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
+                               option%mycomm,ierr)
             iflag = i
             if (iflag > 0) then
               option%io_buffer = 'GridLocalizeRegions, between two points'

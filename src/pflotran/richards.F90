@@ -2721,26 +2721,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  ! now coarsen all face fluxes in case we are using SAMRAI to 
-  ! ensure consistent fluxes at coarse-fine interfaces
-  if (option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-
-     cur_level => realization%level_list%first
-     do
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-           if (.not.associated(cur_patch)) exit
-           realization%patch => cur_patch
-           call RichardsResidualFluxContribPatch(r,realization,ierr)
-           cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-     enddo
-  endif
-
-
   ! pass #2 for everything else
   cur_level => realization%level_list%first
   do
@@ -2754,10 +2734,6 @@ end interface
     enddo
     cur_level => cur_level%next
   enddo
-
-  if (discretization%itype==AMR_GRID) then
-     call samrpetscobjectstateincrease(r)
-  endif
    
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
@@ -2892,26 +2868,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
-
- ! ! now coarsen all face fluxes in case we are using SAMRAI to 
- ! ! ensure consistent fluxes at coarse-fine interfaces
- ! if (option%use_samr) then
- !    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-!
-!     cur_level => realization%level_list%first
-!     do
-!        if (.not.associated(cur_level)) exit
-!        cur_patch => cur_level%patch_list%first
-!        do
-!           if (.not.associated(cur_patch)) exit
-!           realization%patch => cur_patch
-!           call RichardsResidualFluxContribPatch(r,realization,ierr)
-!           cur_patch => cur_patch%next
-!        enddo
-!        cur_level => cur_level%next
-!     enddo
-!  endif
-
 
   ! pass #2 for boundary and source data
   cur_level => realization%level_list%first
@@ -3093,26 +3049,6 @@ use Logging_module
     enddo
     cur_level => cur_level%next
   enddo
-
- ! ! now coarsen all face fluxes in case we are using SAMRAI to 
- ! ! ensure consistent fluxes at coarse-fine interfaces
- ! if (option%use_samr) then
- !    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-!
-!     cur_level => realization%level_list%first
-!     do
-!        if (.not.associated(cur_level)) exit
-!        cur_patch => cur_level%patch_list%first
-!        do
-!           if (.not.associated(cur_patch)) exit
-!           realization%patch => cur_patch
-!           call RichardsResidualFluxContribPatch(r,realization,ierr)
-!           cur_patch => cur_patch%next
-!        enddo
-!        cur_level => cur_level%next
-!     enddo
-!  endif
-
 
   ! pass #2 for boundary and source data
   cur_level => realization%level_list%first
@@ -3353,41 +3289,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
 
-  if (option%use_samr) then
-     do axis=0,2  
-        call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-     enddo
-  endif
-
   r_p = 0.d0
-
-  if (option%use_samr) then
-    nlx = grid%structured_grid%nlx  
-    nly = grid%structured_grid%nly  
-    nlz = grid%structured_grid%nlz 
-
-    ngx = grid%structured_grid%ngx   
-    ngxy = grid%structured_grid%ngxy
-
-    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ZERO_INTEGER)==1) nlx = nlx-1
-    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ONE_INTEGER)==1) nlx = nlx-1
-    
-    max_x_conn = (nlx+1)*nly*nlz
-    ! reinitialize nlx
-    nlx = grid%structured_grid%nlx  
-
-    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ZERO_INTEGER)==1) nly = nly-1
-    if (samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ONE_INTEGER)==1) nly = nly-1
-    
-    max_y_conn = max_x_conn + nlx*(nly+1)*nlz
-
-    ! reinitialize nly
-    nly = grid%structured_grid%nly  
-  endif
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -3450,51 +3352,19 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-      if (option%use_samr) then
-        if (sum_connection <= max_x_conn) then
-          direction = 0
-          if (mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
-             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
-          else
-             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
-                       mod(mod(ghosted_id_dn,ngxy),ngx)-1
-          endif
-
-        else if (sum_connection <= max_y_conn) then
-          direction = 1
-          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
-                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
-                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
-        else
-          direction = 2
-          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
-                   +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
-                   +mod(mod(ghosted_id_dn,ngxy),ngx)-1
-        endif
-        fluxes(direction)%flux_p(flux_id) = Res(1)
-      endif
-      
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       global_aux_vars(local_id_up)%mass_balance_delta(1,1) = &
         global_aux_vars(local_id_up)%mass_balance_delta(1,1) - Res(1)
 #endif
 
-      if (.not.option%use_samr) then
-         
-        if (local_id_up>0) then
-          r_p(local_id_up) = r_p(local_id_up) + Res(1)
-        endif
-         
-        if (local_id_dn>0) then
-          r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
-        endif
-
-!          if (local_id_dn==77) write(*,*) "r_p(local_id) ", r_p(local_id_dn)
-!          if (local_id_up==77) write(*,*) "r_p(local_id) ", r_p(local_id_up)
-
+      if (local_id_up>0) then
+        r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
+         
+      if (local_id_dn>0) then
+        r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
+      endif
+
     enddo
 
     cur_connection_set => cur_connection_set%next
@@ -3552,53 +3422,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
 
-      if (option%use_samr) then
-         direction =  (boundary_condition%region%faces(iconn)-1)/2
-
-         ! the ghosted_id gives the id of the cell. Since the
-         ! flux_id is based on the ghosted_id of the downwind
-         ! cell this has to be adjusted in the case of the east, 
-         ! north and top faces before the flux_id is computed
-         select case(boundary_condition%region%faces(iconn)) 
-           case(WEST_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = Res(1)
-           case(EAST_FACE)
-              ghosted_id = ghosted_id+1
-              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
-              fluxes(direction)%flux_p(flux_id) = -Res(1)
-           case(SOUTH_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = Res(1)
-           case(NORTH_FACE)
-              ghosted_id = ghosted_id+ngx
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = -Res(1)
-           case(BOTTOM_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                       +mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = Res(1)
-           case(TOP_FACE)
-              ghosted_id = ghosted_id+ngxy
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                       +mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = -Res(1)
-         end select
-
-!         fluxes(direction)%flux_p(flux_id) = Res(1)
-
-      else
-         r_p(local_id)= r_p(local_id) - Res(1)
-      endif
+      r_p(local_id)= r_p(local_id) - Res(1)
 
     enddo
     boundary_condition => boundary_condition%next
@@ -5111,12 +4935,6 @@ end interface
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if (option%use_samr) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
-
       call RichardsJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -5132,12 +4950,6 @@ end interface
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if (option%use_samr) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
-
       call RichardsJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -5256,12 +5068,6 @@ end interface
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-!      if (option%use_samr) then
-!         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-!      endif
-
       call RichardsJacobianPatchMFD(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -5362,12 +5168,6 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-!      if (option%use_samr) then
-!         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-!      endif
-
       call RichardsJacobianPatchMFDLP(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -5805,11 +5605,6 @@ end interface
 #ifdef BUFFER_MATRIX
     endif
 #endif
-!!$    if (option%use_samr) then
-!!$       flow_pc = 0
-!!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-!!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-!!$    endif
   enddo
 #endif
   endif
@@ -5859,12 +5654,6 @@ end interface
 #ifdef BUFFER_MATRIX
       endif
 #endif
-
-!!$      if (option%use_samr) then
-!!$         flow_pc = 0
-!!$         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-!!$         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-!!$      endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -5910,12 +5699,6 @@ end interface
 #ifdef BUFFER_MATRIX
   endif
 #endif
-
-  if (option%use_samr) then
-     flow_pc = 0
-     call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
-          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-  endif
 
 end subroutine RichardsJacobianPatch2
 
@@ -6434,15 +6217,13 @@ subroutine RichardsCreateZeroArray(patch,option)
   patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
   patch%aux%Richards%n_zero_rows = n_zero_rows
   
-  if (.not. (option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                        MPI_MAX,option%mycomm,ierr)
-     if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
+  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                    MPI_MAX,option%mycomm,ierr)
+  if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
      
-     if (ncount /= n_zero_rows) then
-        print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-        stop
-     endif
+  if (ncount /= n_zero_rows) then
+    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
+    stop
   endif
 
 end subroutine RichardsCreateZeroArray

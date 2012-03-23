@@ -1399,25 +1399,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
- ! now coarsen all face fluxes in case we are using SAMRAI to 
-  ! ensure consistent fluxes at coarse-fine interfaces
-  if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-
-     cur_level => realization%level_list%first
-     do
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-           if (.not.associated(cur_patch)) exit
-           realization%patch => cur_patch
-           call MiscibleResidualFluxContribPatch(r,realization,ierr)
-           cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-     enddo
-  endif
-
 ! pass #2 for everything else
   cur_level => realization%level_list%first
   do
@@ -1658,39 +1639,6 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-  if (option%use_samr) then
-    do axis=0,2  
-      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-    enddo
-
-     nlx = grid%structured_grid%nlx  
-     nly = grid%structured_grid%nly  
-     nlz = grid%structured_grid%nlz 
-
-     ngx = grid%structured_grid%ngx   
-     ngxy = grid%structured_grid%ngxy
-
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ZERO_INTEGER)==1) nlx = nlx-1
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ONE_INTEGER)==1) nlx = nlx-1
-    
-     max_x_conn = (nlx+1)*nly*nlz
-     ! reinitialize nlx
-     nlx = grid%structured_grid%nlx  
-
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ZERO_INTEGER)==1) nly = nly-1
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ONE_INTEGER)==1) nly = nly-1
-    
-     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
-
-     ! reinitialize nly
-     nly = grid%structured_grid%nly  
-
-  endif
-
   r_p = 0.d0
  
   ! Boundary Flux Terms -----------------------------------
@@ -1776,74 +1724,16 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
     patch%aux%Miscible%Resold_BC(local_id,1:option%nflowdof) = &
     patch%aux%Miscible%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
 
-      if (option%compute_mass_balance_new) then
-        ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) &
-            - Res(:)/option%flow_dt 
-      endif
-   
-      if (option%use_samr) then
-         direction =  (boundary_condition%region%faces(iconn)-1)/2
-
-         ! the ghosted_id gives the id of the cell. Since the
-         ! flux_id is based on the ghosted_id of the downwind
-         ! cell this has to be adjusted in the case of the east, 
-         ! north and top faces before the flux_id is computed
-         select case(boundary_condition%region%faces(iconn)) 
-           case(WEST_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
-           case(EAST_FACE)
-              ghosted_id = ghosted_id+1
-              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
-           case(SOUTH_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
-           case(NORTH_FACE)
-              ghosted_id = ghosted_id+ngx
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
-           case(BOTTOM_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                       +mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
-           case(TOP_FACE)
-              ghosted_id = ghosted_id+ngxy
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                       +mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
-         end select
-
-!         fluxes(direction)%flux_p(flux_id) = Res(1)
-
-      else
-       iend = local_id*option%nflowdof
-       istart = iend-option%nflowdof+1
-       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-      endif 
+    if (option%compute_mass_balance_new) then
+      ! contribution to boundary
+      global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) &
+          - Res(:)/option%flow_dt 
+    endif
+  
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -1905,46 +1795,16 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Miscible%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
 
-      if (option%use_samr) then
-        if (sum_connection <= max_x_conn) then
-          direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
-             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
-          else
-             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
-                       mod(mod(ghosted_id_dn,ngxy),ngx)-1
-          endif
-
-        else if (sum_connection <= max_y_conn) then
-          direction = 1
-          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
-                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
-                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
-        else
-          direction = 2
-          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
-                   +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
-                   +mod(mod(ghosted_id_dn,ngxy),ngx)-1
-        endif
-        istart = flux_id*option%nflowdof
-        iend = istart+option%nflowdof-1
-        fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
+      if (local_id_up>0) then
+        iend = local_id_up*option%nflowdof
+        istart = iend-option%nflowdof+1
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
       endif
-      
-      if(.not.option%use_samr) then
-        if (local_id_up>0) then
-          iend = local_id_up*option%nflowdof
-          istart = iend-option%nflowdof+1
-          r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
-        endif
    
-        if (local_id_dn>0) then
-          iend = local_id_dn*option%nflowdof
-          istart = iend-option%nflowdof+1
-          r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
-        endif
+      if (local_id_dn>0) then
+        iend = local_id_dn*option%nflowdof
+        istart = iend-option%nflowdof+1
+        r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -3187,12 +3047,6 @@ end interface
 !    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
 !    call VecMax(debug_vec,i,norm,ierr)
 !    call VecDestroy(debug_vec,ierr)
-  endif
-
-  if (option%use_samr) then
-    flow_pc = 0
-    call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
-      realization%discretization%amrgrid%p_application,grid%structured_grid%p_samr_patch)
   endif
 
 end subroutine MiscibleJacobianPatch2

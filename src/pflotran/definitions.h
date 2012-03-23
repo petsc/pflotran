@@ -102,14 +102,13 @@ PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 PetscInt, parameter :: NULL_GRID = 0
 PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
-PetscInt, parameter :: AMR_GRID = 3
-PetscInt, parameter :: CARTESIAN_GRID = 4
-PetscInt, parameter :: CYLINDRICAL_GRID = 5
-PetscInt, parameter :: SPHERICAL_GRID = 6
-PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
-PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
-PetscInt, parameter :: TWO_DIM_GRID = 9
-PetscInt, parameter :: THREE_DIM_GRID = 10
+PetscInt, parameter :: CARTESIAN_GRID = 3
+PetscInt, parameter :: CYLINDRICAL_GRID = 4
+PetscInt, parameter :: SPHERICAL_GRID = 5
+PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 6
+PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 7
+PetscInt, parameter :: TWO_DIM_GRID = 8
+PetscInt, parameter :: THREE_DIM_GRID = 9
 
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0

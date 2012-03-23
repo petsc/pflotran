@@ -2109,26 +2109,11 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
       call PetscViewerDestroy(viewer,ierr)
     endif
 
-    if (option%use_samr) then
-      call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
-      call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
-      call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
-      call RTCalculateTransportMatrix(realization,solver%Jpre)
-  !  the next line was used to debug why an ludcmp error was showing up
-  !     call RTCalculateTransportMatrix(realization,solver%J)
-#ifndef PC_BUG       
-      call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
-#endif       
-      call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                                            DIFFERENT_NONZERO_PATTERN,ierr)
-    else     
-      ! RTCalculateTransportMatrix() calculates flux coefficients and the
-      ! t^(k+1) coefficient in accumulation term
-      call RTCalculateTransportMatrix(realization,solver%J) 
-      call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                           SAME_NONZERO_PATTERN,ierr)
-    endif
-    
+    ! RTCalculateTransportMatrix() calculates flux coefficients and the
+    ! t^(k+1) coefficient in accumulation term
+    call RTCalculateTransportMatrix(realization,solver%J) 
+    call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                         SAME_NONZERO_PATTERN,ierr)
 
   !  call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
   !  call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)

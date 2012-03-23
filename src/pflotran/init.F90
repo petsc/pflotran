@@ -333,10 +333,6 @@ end interface
       endif
     endif
 
-    if (option%use_samr) then
-       option%samr_mode=0
-    endif
-      
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
@@ -456,17 +452,6 @@ end interface
                    realization%discretization%dm_nflowdof,ierr);
     endif
 
-    ! setup a shell preconditioner and initialize in the case of AMR
-    if (option%use_samr) then
-!     flow_solver%pc_type = PCSHELL
-      pcside = PC_RIGHT
-      if (flow_solver%pc_type==PCSHELL) then
-        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
-        flowortranpc=0 
-        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, flow_solver%pc)
-      endif
-    endif
-
     option%io_buffer = 'Solver: ' // trim(flow_solver%ksp_type)
     call printMsg(option)
     option%io_buffer = 'Preconditioner: ' // trim(flow_solver%pc_type)
@@ -569,9 +554,6 @@ end interface
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
       
-     if (option%use_samr) then
-        option%samr_mode=1
-     endif
      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
@@ -663,7 +645,7 @@ end interface
       ! this update check must be in place, otherwise reactive transport is likely
       ! to fail
       if (associated(realization%reaction)) then
-        if (realization%reaction%check_update .and. .not.(option%use_samr)) then
+        if (realization%reaction%check_update) then
           call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
                                          realization,ierr)
         endif
