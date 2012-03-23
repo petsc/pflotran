@@ -364,6 +364,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   
   PetscInt :: irxn, ieqrxn
   PetscReal, pointer :: colloid_array_ptr(:)
+  PetscInt, parameter :: iphase = 1
   type(matrix_block_auxvar_type), pointer :: colloid_matrix_block_ptr
   type(surface_complexation_type), pointer :: surface_complexation
 
@@ -382,8 +383,10 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 #ifdef TEMP_DEPENDENT_LOGK
   !TODO(geh): move this outside so it is called only once per cell
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%srfcplx_logKcoef,reaction%srfcplx_logK, &
-                               global_auxvar%temp(iphase),reaction%nsrfcplx)
+    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
+                                 surface_complexation%srfcplx_logK, &
+                                 global_auxvar%temp(iphase), &
+                                 surface_complexation%nsrfcplx)
   endif
 ! surface reaction in hpt option not functional yet .Chuan 12/29/11 
 #endif  
@@ -431,6 +434,7 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
   
   PetscInt :: irxn, ikinmrrxn
+  PetscInt, parameter :: iphase = 1
   type(surface_complexation_type), pointer :: surface_complexation
   PetscReal :: total_sorb_eq(reaction%naqcomp)
   PetscReal :: dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp)
@@ -447,8 +451,10 @@ subroutine RTotalSorbMultiRateAsEQ(rt_auxvar,global_auxvar,reaction,option)
 !           coefficients/equilibrium constants are calculated only once
 !           instead of over and over.
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%srfcplx_logKcoef,reaction%srfcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%nsrfcplx)
+    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
+                                 surface_complexation%srfcplx_logK, &
+                                 global_auxvar%temp(iphase), &
+                                 surface_complexation%nsrfcplx)
 ! surface reaction in hpt option not functional yet .Chuan 12/29/11 
   endif
 #endif  
@@ -505,6 +511,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   type(surface_complexation_type), pointer :: surface_complexation
   
   PetscInt :: irate
+  PetscInt, parameter :: iphase = 1
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   PetscReal :: total_sorb_eq(reaction%naqcomp)
   PetscReal :: dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp)
@@ -523,8 +530,10 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%srfcplx_logKcoef,reaction%srfcplx_logK, &
-                               global_auxvar%temp(iphase),reaction%nsrfcplx)
+    call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
+                                 surface_complexation%srfcplx_logK, &
+                                 global_auxvar%temp(iphase), &
+                                 surface_complexation%nsrfcplx)
 ! surface reaction in hpt option not functional yet .Chuan 12/29/11 
   endif
 #endif  

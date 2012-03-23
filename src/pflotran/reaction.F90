@@ -442,209 +442,6 @@ subroutine ReactionRead(reaction,input,option)
             
             case('SURFACE_COMPLEXATION_RXN')
               call SurfaceComplexationRead(reaction,input,option)
-#if 0
-              ! initialization of temporary variables
-              temp_srfcplx_count = 0
-              srfcplx_rxn => SurfaceComplexationRxnCreate()
-              srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
-              do
-                call InputReadFlotranString(input,option)
-                if (InputError(input)) exit
-                if (InputCheckExit(input,option)) exit
-
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword', &
-                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN')
-                call StringToUpper(word)
-                
-                select case(trim(word))
-                  case('EQUILIBRIUM')
-                    srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
-                  case('MULTIRATE_KINETIC')
-                    srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
-                  case('KINETIC')
-                    srfcplx_rxn%itype = SRFCMPLX_RXN_KINETIC
-                  case('COMPLEX_KINETICS')
-                    nullify(prev_srfcplx)
-                    do
-                      call InputReadFlotranString(input,option)
-                      if (InputError(input)) exit
-                      if (InputCheckExit(input,option)) exit
-                      
-                      srfcplx => SurfaceComplexCreate()
-                      call InputReadWord(input,option,srfcplx%name,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'keyword', &
-                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
-                        
-                      do
-                        call InputReadFlotranString(input,option)
-                        call InputReadStringErrorMsg(input,option,card)
-                        if (InputCheckExit(input,option)) exit
-                        call InputReadWord(input,option,word,PETSC_TRUE)
-                        call InputErrorMsg(input,option,'word', &
-                               'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE') 
-                        select case(trim(word))
-                          case('FORWARD_RATE_CONSTANT')
-                            call InputReadDouble(input,option,srfcplx%forward_rate)
-                            call InputErrorMsg(input,option,'forward_rate', &
-                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
-                          case('BACKWARD_RATE_CONSTANT')
-                            call InputReadDouble(input,option,srfcplx%backward_rate)
-                            call InputErrorMsg(input,option,'backward_rate', &
-                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
-                          case default
-                            option%io_buffer = 'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE keyword: ' // &
-                                               trim(word) // ' not recognized'
-                            call printErrMsg(option)
-                        end select
-                      enddo
-                                      
-                      if (.not.associated(rate_list)) then
-                        rate_list => srfcplx
-                      endif
-                      if (associated(prev_srfcplx)) then
-                        prev_srfcplx%next => srfcplx
-                      endif
-                      prev_srfcplx => srfcplx
-                      nullify(srfcplx)
-                    enddo
-                    nullify(prev_srfcplx)
-                  case('RATE','RATES') 
-                    srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
-                    string = 'RATES inside SURFACE_COMPLEXATION_RXN'
-                    call UtilityReadArray(reaction%kinmr_rate,NEG_ONE_INTEGER,string,input, &
-                                          option) 
-                  case('SITE_FRACTION') 
-                    string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
-                    call UtilityReadArray(reaction%kinmr_frac,NEG_ONE_INTEGER,string,input, &
-                                          option) 
-                  case('MULTIRATE_SCALE_FACTOR')
-                    call InputReadDouble(input,option,reaction%kinmr_scale_factor)
-                    call InputErrorMsg(input,option,'keyword', &
-                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
-                  case('MINERAL')
-                    call InputReadWord(input,option,srfcplx_rxn%mineral_name, &
-                      PETSC_TRUE)
-                    call InputErrorMsg(input,option,'keyword', &
-                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
-                  case('COLLOID')
-                    call InputReadWord(input,option,srfcplx_rxn%colloid_name, &
-                      PETSC_TRUE)
-                    call InputErrorMsg(input,option,'keyword', &
-                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COLLOID_NAME')
-                  case('SITE')
-                    call InputReadWord(input,option,srfcplx_rxn%free_site_name, &
-                      PETSC_TRUE)
-                    call InputErrorMsg(input,option,'keyword', &
-                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
-                    ! site density in mol/m^3 bulk
-                    call InputReadDouble(input,option,srfcplx_rxn%site_density)
-                    call InputErrorMsg(input,option,'keyword', &
-                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY')                   
-                  case('COMPLEXES')
-                    nullify(prev_srfcplx)
-                    do
-                      call InputReadFlotranString(input,option)
-                      if (InputError(input)) exit
-                      if (InputCheckExit(input,option)) exit
-                      
-                      temp_srfcplx_count = temp_srfcplx_count + 1
-                      srfcplx_count = srfcplx_count + 1
-                      srfcplx => SurfaceComplexCreate()
-                      srfcplx%id = srfcplx_count
-                      call InputReadWord(input,option,srfcplx%name,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'keyword', &
-                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME')
-                
-                      if (.not.associated(srfcplx_rxn%complex_list)) then
-                        srfcplx_rxn%complex_list => srfcplx
-                      endif
-                      if (associated(prev_srfcplx)) then
-                        prev_srfcplx%next => srfcplx
-                      endif
-                      prev_srfcplx => srfcplx
-                      nullify(srfcplx)
-                    enddo
-                    nullify(prev_srfcplx)
-                  case default
-                    option%io_buffer = 'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
-                                     trim(word)//' not recognized'
-                    call printErrMsg(option)
-                end select
-
-              enddo
-              if (.not.associated(reaction%surface_complexation_rxn_list)) then
-                reaction%surface_complexation_rxn_list => srfcplx_rxn
-                srfcplx_rxn%id = 1
-              endif
-              if (associated(prev_srfcplx_rxn)) then
-                prev_srfcplx_rxn%next => srfcplx_rxn
-                srfcplx_rxn%id = prev_srfcplx_rxn%id + 1
-              endif
-              prev_srfcplx_rxn => srfcplx_rxn
-
-              select case(srfcplx_rxn%itype)
-                ! default (NULL) to EQUILIBRIUM
-                case(SRFCMPLX_RXN_NULL,SRFCMPLX_RXN_EQUILIBRIUM, &
-                     SRFCMPLX_RXN_MULTIRATE_KINETIC)
-                  reaction%neqsrfcplx = reaction%neqsrfcplx + &
-                    temp_srfcplx_count
-                  reaction%neqsrfcplxrxn = reaction%neqsrfcplxrxn + 1
-                case(SRFCMPLX_RXN_KINETIC)
-                  ! match up rates with their corresponding surface complex
-                  cur_srfcplx => srfcplx_rxn%complex_list
-                  do
-                    if (.not.associated(cur_srfcplx)) exit
-                    found = PETSC_FALSE
-                    nullify(prev_srfcplx_rate)
-                    cur_srfcplx_rate => rate_list
-                    do
-                      if (.not.associated(cur_srfcplx_rate)) exit
-                      ! check for same name
-                      if (StringCompare(cur_srfcplx_rate%name, &
-                                        cur_srfcplx%name, &
-                                        MAXWORDLENGTH)) then
-                        ! set rates
-                        cur_srfcplx%forward_rate = cur_srfcplx_rate%forward_rate
-                        cur_srfcplx%backward_rate = cur_srfcplx_rate%backward_rate
-                        ! remove srfcplx_rate from list of rates
-                        if (associated(prev_srfcplx_rate)) then
-                          prev_srfcplx_rate%next => cur_srfcplx_rate%next
-                        else
-                          rate_list => cur_srfcplx_rate%next
-                        endif
-                        ! destroy the object
-                        call SurfaceComplexDestroy(cur_srfcplx_rate)
-                        found = PETSC_TRUE
-                        exit
-                      endif
-                      prev_srfcplx_rate => cur_srfcplx_rate
-                      cur_srfcplx_rate => cur_srfcplx_rate%next
-                    enddo
-                    if (.not.found) then
-                      option%io_buffer = 'Rates for surface complex ' // &
-                        trim(cur_srfcplx%name) // ' not found in kinetic rate list'
-                      call printErrMsg(option)
-                    endif
-                    cur_srfcplx => cur_srfcplx%next
-                  enddo
-                  ! check to ensure that rates are matched
-                  if (associated(rate_list)) then
-                    option%io_buffer = '# of rates is greater than # of surface complexes'
-                    call printErrMsg(option)
-                  endif
-                  nullify(cur_srfcplx)
-                  nullify(prev_srfcplx)
-                  nullify(rate_list)
-                  nullify(cur_srfcplx_rate)
-                  nullify(prev_srfcplx_rate)                  
-                  reaction%nkinsrfcplx = reaction%nkinsrfcplx + temp_srfcplx_count
-                  reaction%nkinsrfcplxrxn = reaction%nkinsrfcplxrxn + 1
-              end select
-              srfcplx_rxn%free_site_id = srfcplx_rxn%id
-              
-              nullify(srfcplx_rxn)
-#endif
             case('ION_EXCHANGE_RXN')
             
               ionx_rxn => IonExchangeRxnCreate()
@@ -1105,16 +902,6 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
       call printErrMsg(option)
     endif
   enddo
-  
-#if 0
-  !geh: remove after 2/28/12
-  ! allocate kinetic mineral names
-  if (reaction%nkinmnrl > 0) then
-    if (associated(reaction%kinmnrl_names)) deallocate(reaction%kinmnrl_names)
-    allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
-    reaction%kinmnrl_names(reaction%nkinmnrl) = ''
-  endif
-#endif
  
   cur_mineral => reaction%mineral_list
   imnrl = 0
@@ -1547,6 +1334,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   iphase = 1
   
   xmass = 1.d0
+  print *,'ReactionEquilibrateConstraint: ', global_auxvar%pres(:)  
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   
   if (reaction%initialize_with_molality) then
@@ -1597,9 +1385,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                      global_auxvar%temp(iphase),reaction%ngas)
       endif
-      if (associated(reaction%eqsrfcplx_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                     global_auxvar%temp(iphase),reaction%neqsrfcplx)
+      if (associated(surface_complexation%srfcplx_logKcoef)) then
+        call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
+                                     surface_complexation%srfcplx_logK, &
+                                     global_auxvar%temp(iphase), &
+                                     surface_complexation%nsrfcplx)
       endif
       if (associated(reaction%kinmnrl_logKcoef)) then
         call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
@@ -1620,10 +1410,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                        global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                        reaction%ngas)
         endif
-        if (associated(reaction%eqsrfcplx_logKcoef)) then
-          call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                       global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
-                                       reaction%neqsrfcplx)
+        if (associated(surface_complexation%srfcplx_logKcoef)) then
+          call ReactionInterpolateLogK_hpt(surface_complexation%srfcplx_logKcoef, &
+                                           surface_complexation%srfcplx_logK, &
+                                           global_auxvar%temp(iphase), &
+                                           global_auxvar%pres(iphase), &
+                                           surface_complexation%nsrfcplx)
         endif
         if (associated(reaction%kinmnrl_logKcoef)) then
           call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
@@ -2299,9 +2091,11 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                      global_auxvar%temp(iphase),reaction%ngas)
       endif
-      if (associated(reaction%eqsrfcplx_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                     global_auxvar%temp(iphase),reaction%neqsrfcplx)
+      if (associated(surface_complexation%srfcplx_logKcoef)) then
+        call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
+                                     surface_complexation%srfcplx_logK, &
+                                     global_auxvar%temp(iphase), &
+                                     surface_complexation%nsrfcplx)
       endif
       if (associated(reaction%kinmnrl_logKcoef)) then
         call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
@@ -2322,10 +2116,12 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                      global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                      reaction%ngas)
       endif
-      if (associated(reaction%eqsrfcplx_logKcoef)) then
-        call ReactionInterpolateLogK_hpt(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                     global_auxvar%temp(iphase),global_auxvar%pres(iphase), &
-                                     reaction%neqsrfcplx)
+      if (associated(surface_complexation%srfcplx_logKcoef)) then
+        call ReactionInterpolateLogK_hpt(surface_complexation%srfcplx_logKcoef, &
+                                         surface_complexation%srfcplx_logK, &
+                                         global_auxvar%temp(iphase), &
+                                         global_auxvar%pres(iphase), &
+                                         surface_complexation%nsrfcplx)
       endif
       if (associated(reaction%kinmnrl_logKcoef)) then
         call ReactionInterpolateLogK_hpt(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
@@ -5149,236 +4945,6 @@ subroutine RSolve(Res,Jac,conc,update,ncomp,use_log_formulation)
   update = rhs
 
 end subroutine RSolve
-
-! ************************************************************************** !
-!
-! ReactionFitLogKCoef: Least squares fit to log K over database temperature range
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
-subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
-
-  use Option_module
-  use Utility_module
-
-  implicit none
-  
-  type(reaction_type) :: reaction
-  PetscReal :: coefs(FIVE_INTEGER)
-  character(len=MAXWORDLENGTH) :: name 
-  PetscReal :: logK(reaction%num_dbase_temperatures)
-  type(option_type) :: option
-
-  PetscInt :: temp_int(reaction%num_dbase_temperatures), &
-              indx(reaction%num_dbase_temperatures)
-  PetscReal :: a(FIVE_INTEGER,FIVE_INTEGER), &
-               vec(FIVE_INTEGER,reaction%num_dbase_temperatures), temperature_kelvin
-
-  PetscInt :: i, j, k, iflag
-  
-  ! need to fill in vec with equations for temperatures vs coefs.
-  
-  do i = 1, reaction%num_dbase_temperatures
-    temperature_kelvin = reaction%dbase_temperatures(i) + 273.15d0
-    vec(1,i) = log(temperature_kelvin)
-    vec(2,i) = 1.d0
-    vec(3,i) = temperature_kelvin
-    vec(4,i) = 1.d0/temperature_kelvin
-    vec(5,i) = 1.d0/(temperature_kelvin*temperature_kelvin)
-  enddo
-  
-  iflag = 0
-  do j = 1, FIVE_INTEGER
-    coefs(j) = 0.d0
-    do i = 1, reaction%num_dbase_temperatures
-      if (dabs(logK(i) - 500.) < 1.d-10) then
-        iflag = 1
-        temp_int(i) = ZERO_INTEGER
-        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-                           trim(name)
-        call printWrnMsg(option)
-      else
-        coefs(j) = coefs(j) + vec(j,i)*logK(i)
-        temp_int(i) = ONE_INTEGER
-      endif
-    enddo
-  enddo
-
-  do j = 1, FIVE_INTEGER
-    do k = j, FIVE_INTEGER
-      a(j,k) = 0.d0
-      do i = 1, reaction%num_dbase_temperatures
-        if (temp_int(i) == 1) then
-          a(j,k) = a(j,k) + vec(j,i)*vec(k,i)
-        endif
-      enddo
-      if (j .ne. k) a(k,j) = a(j,k)
-    enddo
-  enddo
-
-  call ludcmp(a,FIVE_INTEGER,indx,i)
-  call lubksb(a,FIVE_INTEGER,indx,coefs)
-
-end subroutine ReactionFitLogKCoef
-
-! ************************************************************************** !
-!
-! ReactionInitializeLogK: Least squares fit to log K over database temperature range
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
-subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
-
-  use Option_module
-
-  implicit none
-  
-  type(reaction_type) :: reaction
-  PetscReal :: logKcoef(FIVE_INTEGER)
-  PetscReal :: logKs(reaction%num_dbase_temperatures)
-  PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
-  type(option_type) :: option
-  
-  PetscReal :: coefs(FIVE_INTEGER,ONE_INTEGER)
-  PetscReal :: temperature
-  PetscInt :: itemperature
-  PetscInt :: i
-  
-  ! we always initialize on reference temperature
-  temperature = option%reference_temperature
-  
-  itemperature = 0
-  if (option%use_isothermal) then ! find database temperature if relevant
-    do i = 1, reaction%num_dbase_temperatures
-      if (dabs(option%reference_temperature - &
-               reaction%dbase_temperatures(i)) < 1.d-10) then
-        itemperature = i
-        exit
-      endif
-    enddo
-  endif
-  
-  if (itemperature > 0) then ! use database temperature
-    logK = logKs(itemperature)
-  else                       ! interpolate
-    coefs(:,ONE_INTEGER) = logKcoef(:)
-    call ReactionInterpolateLogK(coefs,logK_1D_Array,temperature,ONE_INTEGER)
-    logK = logK_1D_Array(ONE_INTEGER)
-  endif
-
-end subroutine ReactionInitializeLogK
-
-! ************************************************************************** !
-!
-! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
-!                             b - fit coefficients determined from fit(...)
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
-subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
-
-  implicit none
-  
-  PetscInt :: n
-  PetscReal :: coefs(5,n), logKs(n), temp
-
-  PetscInt :: i
-  PetscReal :: temp_kelvin
-  
-  temp_kelvin = temp + 273.15d0
-  
-  do i = 1, n
-    logKs(i) = coefs(1,i)*log(temp_kelvin) &
-             + coefs(2,i)           &
-             + coefs(3,i)*temp_kelvin      &
-             + coefs(4,i)/temp_kelvin      &
-             + coefs(5,i)/(temp_kelvin*temp_kelvin)
-  enddo
-  
-end subroutine ReactionInterpolateLogK
-
-! ************************************************************************** !
-!
-! ReactionInitializeLogK: Least squares fit to log K over database temperature range
-! author: Chuan Lu
-! date: 12/29/11
-!
-! ************************************************************************** !
-subroutine ReactionInitializeLogK_hpt(logKcoef,logK,option,reaction)
-
-  use Option_module
-
-  implicit none
-  
-  type(reaction_type) :: reaction
-  PetscReal :: logKcoef(17)
-  PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
-  type(option_type) :: option
-  
-  PetscReal :: coefs(17,ONE_INTEGER)
-  PetscReal :: temperature, pressure
-  PetscInt :: itemperature
-  PetscInt :: i
-  
-  ! we always initialize on reference temperature
-  temperature = option%reference_temperature
-  pressure = option%reference_pressure 
-  
-  
-  coefs(:,ONE_INTEGER) = logKcoef(:)
-  call ReactionInterpolateLogK_hpt(coefs,logK_1D_Array,temperature,pressure,ONE_INTEGER)
-  logK = logK_1D_Array(ONE_INTEGER)
-!   print *,'ReactionInitializeLogK_hpt: ', pressure,temperature, logK
-
-end subroutine ReactionInitializeLogK_hpt
-
-! ************************************************************************** !
-!
-! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
-!                             b - fit coefficients determined from fit(...)
-! author: P.C. Lichtner
-! date: 02/13/09
-!
-! ************************************************************************** !
-subroutine ReactionInterpolateLogK_hpt(coefs,logKs,temp,pres,n)
-
-  implicit none
-  
-  PetscInt :: n
-  PetscReal :: coefs(17,n), logKs(n), temp, pres
-
-  PetscInt :: i
-  PetscReal :: temp_kelvin, tr, pr, logtr
-  
-  temp_kelvin = temp + 273.15d0
-  tr = temp_kelvin/273.15d0
-  pr = pres/1.d7
-  logtr = log(tr)/log(10.d0) 
-  
-  do i = 1, n
-    logKs(i) = coefs(1,i)                 &
-             + coefs(2,i) * tr            &
-             + coefs(3,i) / tr            &
-             + coefs(4,i) * logtr         &
-             + coefs(5,i) * tr * tr       &
-             + coefs(6,i) / tr / tr       &
-             + coefs(7,i) * sqrt(tr)      &
-             + coefs(8,i) * pr            &
-             + coefs(9,i) * pr * tr       &
-             + coefs(10,i) * pr / tr      &
-             + coefs(11,i) * pr * logtr   &
-             + coefs(12,i) / pr           &
-             + coefs(13,i) / pr * tr      &
-             + coefs(14,i) / pr / tr      &
-             + coefs(15,i) * pr * pr      &
-             + coefs(16,i) * pr * pr * tr &
-             + coefs(17,i) * pr * pr / tr 
-  enddo
- ! print *,'ReactionInterpolateLogK_hpt: ', pres,temp, logKs, coefs
-end subroutine ReactionInterpolateLogK_hpt
 
 ! ************************************************************************** !
 !

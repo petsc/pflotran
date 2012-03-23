@@ -199,8 +199,8 @@ subroutine DatabaseRead(reaction,option)
             cur_aq_spec%dbaserxn => DatabaseRxnCreate()
           ! read the number of primary species in secondary rxn
           call InputReadInt(input,option,cur_aq_spec%dbaserxn%nspec)
-          call InputErrorMsg(input,option,'Number of species in aqueous complex', &
-                          'DATABASE')  
+          call InputErrorMsg(input,option,'Number of species in aqueous ', &
+                          'complex DATABASE')  
           ! allocate arrays for rxn
           allocate(cur_aq_spec%dbaserxn%spec_name(cur_aq_spec%dbaserxn%nspec))
           cur_aq_spec%dbaserxn%spec_name = ''
@@ -1296,8 +1296,8 @@ subroutine BasisInit(reaction,option)
                                              cur_gas_spec%dbaserxn, &
                                              cur_mineral%dbaserxn, &
                                              scale)
-             cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
-                                       + scale*cur_gas_spec%dbaserxn%logK
+!geh             cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
+!geh                                       + scale*cur_gas_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1364,8 +1364,8 @@ subroutine BasisInit(reaction,option)
                                              cur_sec_aq_spec%dbaserxn, &
                                              cur_mineral%dbaserxn, &
                                              scale)
-            cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
-                                      + scale*cur_sec_aq_spec%dbaserxn%logK
+!geh            cur_mineral%dbaserxn%logK = cur_mineral%dbaserxn%logK &
+!geh                                      + scale*cur_sec_aq_spec%dbaserxn%logK
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1583,14 +1583,20 @@ subroutine BasisInit(reaction,option)
       reaction%eqcplxspecid(0,isec_spec) = ispec
 
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
-                               cur_sec_aq_spec%dbaserxn%logK, &
-                               reaction%secondary_species_names(isec_spec), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%eqcplx_logKcoef(:,isec_spec), &
-                                  cur_sec_aq_spec%dbaserxn%logK, &
-                                  reaction%eqcplx_logK(isec_spec), &
-                                  option,reaction)
+      if (reaction%use_geothermal_hpt) then
+        call ReactionInitializeLogK_hpt(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                        reaction%eqcplx_logK(isec_spec), &
+                                        option,reaction)        
+      else
+        call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                 cur_sec_aq_spec%dbaserxn%logK, &
+                                 reaction%secondary_species_names(isec_spec), &
+                                 option,reaction)
+        call ReactionInitializeLogK(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                    cur_sec_aq_spec%dbaserxn%logK, &
+                                    reaction%eqcplx_logK(isec_spec), &
+                                    option,reaction)
+      endif
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
@@ -1675,13 +1681,20 @@ subroutine BasisInit(reaction,option)
       reaction%eqgasspecid(0,igas_spec) = ispec
       
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%dbaserxn%logK, &
-                               reaction%gas_species_names(igas_spec), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
-                                  cur_gas_spec%dbaserxn%logK, &
-                                  reaction%eqgas_logK(igas_spec), &
-                                  option,reaction)
+      if (reaction%use_geothermal_hpt) then
+        call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
+                                        reaction%eqgas_logK(igas_spec), &
+                                        option,reaction)  
+      else
+        call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec), &
+                                 cur_gas_spec%dbaserxn%logK, &
+                                 reaction%gas_species_names(igas_spec), &
+                                 option,reaction)
+        call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
+                                    cur_gas_spec%dbaserxn%logK, &
+                                    reaction%eqgas_logK(igas_spec), &
+                                    option,reaction)
+      endif
 #else
       reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
@@ -1870,14 +1883,20 @@ subroutine BasisInit(reaction,option)
       reaction%mnrlspecid(0,imnrl) = ispec
 
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl), &
-                               cur_mineral%dbaserxn%logK, &
-                               reaction%mineral_names(imnrl), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
-                                  cur_mineral%dbaserxn%logK, &
-                                  reaction%mnrl_logK(imnrl), &
-                                  option,reaction)
+      if (reaction%use_geothermal_hpt) then
+        call ReactionInitializeLogK_hpt(reaction%mnrl_logKcoef(:,imnrl), &
+                                        reaction%mnrl_logK(imnrl), &
+                                        option,reaction)      
+      else
+        call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl), &
+                                 cur_mineral%dbaserxn%logK, &
+                                 reaction%mineral_names(imnrl), &
+                                 option,reaction)
+        call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
+                                    cur_mineral%dbaserxn%logK, &
+                                    reaction%mnrl_logK(imnrl), &
+                                    option,reaction)
+      endif
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_mineral%dbaserxn%logK(itemp_high), &
@@ -1896,14 +1915,20 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
 #if TEMP_DEPENDENT_LOGK
-        call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                 cur_mineral%dbaserxn%logK, &
-                                 reaction%kinmnrl_names(ikinmnrl), &
-                                 option,reaction)
-        call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                    cur_mineral%dbaserxn%logK, &
-                                    reaction%kinmnrl_logK(ikinmnrl), &
-                                    option,reaction)
+        if (reaction%use_geothermal_hpt) then
+          call ReactionInitializeLogK_hpt(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+                                          reaction%kinmnrl_logK(ikinmnrl), &
+                                          option,reaction)        
+        else
+          call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+                                   cur_mineral%dbaserxn%logK, &
+                                   reaction%kinmnrl_names(ikinmnrl), &
+                                   option,reaction)
+          call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+                                      cur_mineral%dbaserxn%logK, &
+                                      reaction%kinmnrl_logK(ikinmnrl), &
+                                      option,reaction)
+        endif
 #else
         call Interpolate(temp_high,temp_low,option%reference_temperature, &
                          cur_mineral%dbaserxn%logK(itemp_high), &
@@ -2120,14 +2145,20 @@ subroutine BasisInit(reaction,option)
       enddo
       surface_complexation%srfcplxspecid(0,isrfcplx) = ispec
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(surface_complexation%srfcplx_logKcoef(:,isrfcplx),&
-                               cur_srfcplx%dbaserxn%logK, &
-                               surface_complexation%srfcplx_names(isrfcplx), &
-                               option,reaction)
-      call ReactionInitializeLogK(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
-                                  cur_srfcplx%dbaserxn%logK, &
-                                  surface_complexation%srfcplx_logK(isrfcplx), &
-                                  option,reaction)
+      if (reaction%use_geothermal_hpt) then
+        call ReactionInitializeLogK_hpt(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
+                                        surface_complexation%srfcplx_logK(isrfcplx), &
+                                        option,reaction)
+      else
+        call ReactionFitLogKCoef(surface_complexation%srfcplx_logKcoef(:,isrfcplx),&
+                                 cur_srfcplx%dbaserxn%logK, &
+                                 surface_complexation%srfcplx_names(isrfcplx), &
+                                 option,reaction)
+        call ReactionInitializeLogK(surface_complexation%srfcplx_logKcoef(:,isrfcplx), &
+                                    cur_srfcplx%dbaserxn%logK, &
+                                    surface_complexation%srfcplx_logK(isrfcplx), &
+                                    option,reaction)
+      endif
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                         cur_srfcplx%dbaserxn%logK(itemp_high), &
