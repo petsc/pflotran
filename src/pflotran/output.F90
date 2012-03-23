@@ -5960,9 +5960,7 @@ subroutine OutputHDF5(realization)
   use Patch_module
   use Reaction_Aux_module
   
-  use AMR_Grid_Module
- 
-#if ( !defined(PETSC_HAVE_HDF5) ) && ( !defined(SAMR_HAVE_HDF5))
+#if  !defined(PETSC_HAVE_HDF5)
   implicit none
   
   type(realization_type) :: realization
@@ -7187,8 +7185,6 @@ subroutine OutputMAD(realization)
   use Field_module
   use Patch_module
   use Reaction_Aux_module
-  
-  use AMR_Grid_Module
  
 #if !defined(PETSC_HAVE_HDF5)
   implicit none

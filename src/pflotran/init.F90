@@ -404,7 +404,6 @@ end interface
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobianMFDLP,realization,ierr)
-!sp          case(STRUCTURED_GRID,AMR_GRID)
           case default !sp 
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobian,realization,ierr)
@@ -1051,7 +1050,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use Patch_module
   use Level_module
   use Realization_module
-  use AMR_Grid_module
 
   use Reaction_module  
   use Reaction_Aux_module  
@@ -1121,9 +1119,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
       call LevelAddToList(level,realization%level_list)
       call PatchAddToList(patch,level%patch_list)
       realization%patch => patch
-    case(AMR_GRID)
-      realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)
-      realization%patch => realization%level_list%first%patch_list%first
   end select
 !.........................................................................
 
@@ -1200,7 +1195,6 @@ subroutine InitReadInput(simulation)
   use Field_module
   use Grid_module
   use Structured_Grid_module
-  use AMR_Grid_module
   use Solver_module
   use Material_module
 #ifdef SUBCONTINUUM_MODEL
@@ -3809,7 +3803,6 @@ subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
       call LevelAddToList(level,surf_realization%level_list)
       call PatchAddToList(patch,level%patch_list)
       surf_realization%patch => patch
-    case(AMR_GRID)
   end select
     
 end subroutine InitReadRequiredCardsFromInputSurf

@@ -2521,10 +2521,6 @@ end interface
     enddo
     cur_level => cur_level%next
   enddo
-
-  if (discretization%itype==AMR_GRID) then
-    call samrpetscobjectstateincrease(residual)
-  endif
       
 end subroutine RTTransportResidual
 
@@ -3486,10 +3482,6 @@ end interface
     enddo
     cur_level => cur_level%next
   enddo
-
-  if (discretization%itype==AMR_GRID) then
-    call samrpetscobjectstateincrease(r)
-  endif
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &

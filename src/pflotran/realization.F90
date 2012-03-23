@@ -202,7 +202,6 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Grid_module, only : UGridMapIndices, &
                                        UGridEnsureRightHandRule
   use Structured_Grid_module, only : StructGridCreateTVDGhosts
-  use AMR_Grid_module
   use MFD_module
   use Coupler_module
   use Discretization_module
@@ -399,10 +398,6 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
-    case(AMR_GRID)
-       call AMRGridComputeGeometryInformation(discretization%amrgrid, &
-                                              discretization%origin, &
-                                              field,option)
   end select 
  
   ! Vectors with face degrees of freedom
