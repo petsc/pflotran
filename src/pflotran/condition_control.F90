@@ -70,6 +70,9 @@ subroutine CondControlAssignFlowInitCond(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
+  PetscBool :: use_dataset
+  PetscBool :: dataset_flag(realization%option%nflowdof)
+  PetscInt :: ghosted_offset
 
   option => realization%option
   discretization => realization%discretization
@@ -252,11 +255,9 @@ subroutine CondControlAssignFlowInitCond(realization)
                  do icell=1,initial_condition%region%num_cells
                    local_id = initial_condition%region%cell_ids(icell)
                    ghosted_id = grid%nL2G(local_id)
-                   if (associated(cur_patch%imat)) then
-                     if (cur_patch%imat(ghosted_id) <= 0) then
-                       iphase_loc_p(ghosted_id) = 0
-                       cycle
-                     endif
+                   if (cur_patch%imat(ghosted_id) <= 0) then
+                     iphase_loc_p(ghosted_id) = 0
+                     cycle
                    endif
                    iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
                  enddo
@@ -275,74 +276,96 @@ subroutine CondControlAssignFlowInitCond(realization)
                     end do
 
                     do iconn=1,initial_condition%connection_set%num_connections
-                         local_id = initial_condition%region%cell_ids(iconn)
-                         ghosted_id = grid%nL2G(local_id)
-                         iend = local_id*option%nflowdof
-                         ibegin = iend-option%nflowdof+1
-                         if (associated(cur_patch%imat)) then
-                              if (cur_patch%imat(ghosted_id) <= 0) then
-                                    xx_p(ibegin:iend) = 0.d0
-                                    iphase_loc_p(ghosted_id) = 0
-                                    cycle
-                              endif
-                         endif
-                         xx_p(ibegin:iend) = &
-                         initial_condition%flow_aux_real_var(1:option%nflowdof,iconn + initial_condition%numfaces_set)
-                     xx_faces_p(grid%nlmax_faces + ibegin:grid%nlmax_faces + iend) = xx_p(ibegin:iend) ! for LP -formulation
-                         iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn  + initial_condition%numfaces_set)
+                      local_id = initial_condition%region%cell_ids(iconn)
+                      ghosted_id = grid%nL2G(local_id)
+                      iend = local_id*option%nflowdof
+                      ibegin = iend-option%nflowdof+1
+                      if (cur_patch%imat(ghosted_id) <= 0) then
+                        xx_p(ibegin:iend) = 0.d0
+                        iphase_loc_p(ghosted_id) = 0
+                        cycle
+                      endif
+                      xx_p(ibegin:iend) = &
+                        initial_condition%flow_aux_real_var(1:option%nflowdof, &
+                                                            iconn + &
+                                                            initial_condition%numfaces_set)
+                      xx_faces_p(grid%nlmax_faces + &
+                                 ibegin:grid%nlmax_faces + iend) = &
+                                 xx_p(ibegin:iend) ! for LP -formulation
+                      iphase_loc_p(ghosted_id) = &
+                        initial_condition%flow_aux_int_var(1,iconn + &
+                                                           initial_condition%numfaces_set)
                     enddo
                end if
 #endif
             else 
-               if (.not.associated(initial_condition%flow_aux_real_var)) then
-                   if (.not.associated(initial_condition%flow_condition)) then
-                        option%io_buffer = 'Flow condition is NULL in initial condition'
-                        call printErrMsg(option)
-                   endif
-                   do icell=1,initial_condition%region%num_cells
-                      local_id = initial_condition%region%cell_ids(icell)
-                      ghosted_id = grid%nL2G(local_id)
-                      iend = local_id*option%nflowdof
-                      ibegin = iend-option%nflowdof+1
-                      if (associated(cur_patch%imat)) then
-                         if (cur_patch%imat(ghosted_id) <= 0) then
-                            xx_p(ibegin:iend) = 0.d0
-                            iphase_loc_p(ghosted_id) = 0
-                            cycle
-                         endif
-                      endif
-                      do idof = 1, option%nflowdof
-                         xx_p(ibegin+idof-1) = &
-                             initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
-                      enddo
-                      iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-                      if (option%iflowmode == G_MODE) then
-                          cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                              iphase_loc_p(ghosted_id)
-                      endif
-                    enddo
-                else
-                    do iconn=1,initial_condition%connection_set%num_connections
-                        local_id = initial_condition%connection_set%id_dn(iconn)
-                        ghosted_id = grid%nL2G(local_id)
-                        iend = local_id*option%nflowdof
-                        ibegin = iend-option%nflowdof+1
-                        if (associated(cur_patch%imat)) then
-                            if (cur_patch%imat(ghosted_id) <= 0) then
-                                 xx_p(ibegin:iend) = 0.d0
-                                 iphase_loc_p(ghosted_id) = 0
-                                 cycle
-                            endif
-                        endif
-                        xx_p(ibegin:iend) = &
-                              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-                              iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
-                        if (option%iflowmode == G_MODE) then
-                              cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                              iphase_loc_p(ghosted_id)
-                        endif
-                     enddo
-                 endif
+              use_dataset = PETSC_FALSE
+              dataset_flag = PETSC_FALSE
+              do idof = 1, option%nflowdof
+                if (associated(initial_condition%flow_condition% &
+                                 sub_condition_ptr(idof)%ptr% &
+                                 flow_dataset%dataset)) then
+                  use_dataset = PETSC_TRUE
+                  dataset_flag(idof) = PETSC_TRUE
+                  call ConditionCouplerMapDatasetToVec(realization, &
+                         initial_condition%flow_condition% &
+                           sub_condition_ptr(idof)%ptr% &
+                           flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                endif
+              enddo            
+              if (.not.associated(initial_condition%flow_aux_real_var)) then
+                if (.not.associated(initial_condition%flow_condition)) then
+                  option%io_buffer = 'Flow condition is NULL in initial condition'
+                  call printErrMsg(option)
+                endif
+                do icell=1,initial_condition%region%num_cells
+                  local_id = initial_condition%region%cell_ids(icell)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  ghosted_offset = (ghosted_id-1)*option%nflowdof
+                  if (cur_patch%imat(ghosted_id) <= 0) then
+                    xx_p(ibegin:iend) = 0.d0
+                    iphase_loc_p(ghosted_id) = 0
+                    cycle
+                  endif
+                  do idof = 1, option%nflowdof
+                    if (.not.dataset_flag(idof)) then
+                      xx_p(ibegin+idof-1) = &
+                        initial_condition%flow_condition% &
+                          sub_condition_ptr(idof)%ptr%flow_dataset% &
+                          time_series%cur_value(1)
+                    endif
+                  enddo
+                  iphase_loc_p(ghosted_id) = &
+                    initial_condition%flow_condition%iphase
+                  if (option%iflowmode == G_MODE) then
+                    cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                      iphase_loc_p(ghosted_id)
+                  endif
+                enddo
+              else
+                do iconn=1,initial_condition%connection_set%num_connections
+                  local_id = initial_condition%connection_set%id_dn(iconn)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  if (cur_patch%imat(ghosted_id) <= 0) then
+                    xx_p(ibegin:iend) = 0.d0
+                    iphase_loc_p(ghosted_id) = 0
+                    cycle
+                  endif
+                  xx_p(ibegin:iend) = &
+                    initial_condition%flow_aux_real_var(1:option%nflowdof, &
+                                                        iconn)
+                  iphase_loc_p(ghosted_id) = &
+                    initial_condition%flow_aux_int_var(1,iconn)
+                  if (option%iflowmode == G_MODE) then
+                    cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                    iphase_loc_p(ghosted_id)
+                  endif
+                enddo
+              endif
             end if
             initial_condition => initial_condition%next
           enddo
@@ -506,15 +529,17 @@ subroutine CondControlAssignTranInitCond(realization)
             dataset => DatasetGetPointer(realization%datasets, &
                          constraint_coupler%aqueous_species%constraint_aux_string(idof), &
                          string,option)
-            string = '' ! group name
-            string2 = dataset%h5_dataset_name ! dataset name
-            call HDF5ReadCellIndexedRealArray(realization,field%work, &
-                                              dataset%filename, &
-                                              string,string2, &
-                                              dataset%realization_dependent)
-            call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc,ONEDOF)
-            call VecStrideScatter(field%work_loc,idof-1,field%tran_xx_loc, &
-                                  INSERT_VALUES,ierr)
+            call ConditionCouplerMapDatasetToVec(realization,dataset,idof, &
+                                                 field%tran_xx_loc,LOCAL)
+!            string = '' ! group name
+!            string2 = dataset%h5_dataset_name ! dataset name
+!            call HDF5ReadCellIndexedRealArray(realization,field%work, &
+!                                              dataset%filename, &
+!                                              string,string2, &
+!                                              dataset%realization_dependent)
+!            call DiscretizationGlobalToLocal(discretization,field%work,field%work_loc,ONEDOF)
+!            call VecStrideScatter(field%work_loc,idof-1,field%tran_xx_loc, &
+!                                  INSERT_VALUES,ierr)
           endif
         enddo
 
@@ -698,6 +723,65 @@ subroutine CondControlAssignTranInitCond(realization)
 
 
 end subroutine CondControlAssignTranInitCond
+
+
+! ************************************************************************** !
+!
+! ConditionCouplerMapDatasetToVec: maps an external dataset to a PETSc vec
+!                                  representing values at each grid cell
+! author: Glenn Hammond
+! date: 03/23/12
+!
+! ************************************************************************** !
+subroutine ConditionCouplerMapDatasetToVec(realization,dataset,idof, &
+                                           mdof_vec,vec_type)
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Dataset_Aux_module
+  use HDF5_module
+  use Discretization_module
+
+  implicit none
+  
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"  
+  
+  type(realization_type) :: realization
+  type(dataset_type), pointer :: dataset
+  PetscInt :: idof
+  Vec :: mdof_vec
+  PetscInt :: vec_type
+
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  PetscErrorCode :: ierr
+
+  field => realization%field
+  option => realization%option
+  
+  if (associated(dataset)) then
+    string = '' ! group name
+    ! have to copy to string2 due to mismatch in string size
+    string2 = dataset%h5_dataset_name
+    call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                      dataset%filename, &
+                                      string,string2, &
+                                      dataset%realization_dependent)
+    if (vec_type == GLOBAL) then
+      call VecStrideScatter(field%work,idof-1,mdof_vec, &
+                            INSERT_VALUES,ierr)    
+    else
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       field%work, &
+                                       field%work_loc,ONEDOF)
+      call VecStrideScatter(field%work_loc,idof-1,mdof_vec, &
+                            INSERT_VALUES,ierr)    
+    endif
+  endif
+
+end subroutine ConditionCouplerMapDatasetToVec
 
 ! ************************************************************************** !
 !
@@ -935,54 +1019,50 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
             if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
             else 
-               if (.not.associated(initial_condition%flow_aux_real_var)) then
-                   if (.not.associated(initial_condition%flow_condition)) then
-                        option%io_buffer = 'Flow condition is NULL in initial condition'
-                        call printErrMsg(option)
-                   endif
-                   do icell=1,initial_condition%region%num_cells
-                      local_id = initial_condition%region%cell_ids(icell)
-                      ghosted_id = grid%nL2G(local_id)
-                      iend = local_id*option%nflowdof
-                      ibegin = iend-option%nflowdof+1
-                      if (associated(cur_patch%imat)) then
-                         if (cur_patch%imat(ghosted_id) <= 0) then
-                            xx_p(ibegin:iend) = 0.d0
-                            iphase_loc_p(ghosted_id) = 0
-                            cycle
-                         endif
-                      endif
-                      do idof = 1, option%nflowdof
-                         xx_p(ibegin+idof-1) = &
-                             initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
-                      enddo
-                      iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-                      if (option%iflowmode == G_MODE) then
-                          cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                              iphase_loc_p(ghosted_id)
-                      endif
-                    enddo
-                else
-                    do iconn=1,initial_condition%connection_set%num_connections
-                        local_id = initial_condition%connection_set%id_dn(iconn)
-                        ghosted_id = grid%nL2G(local_id)
-                        iend = local_id*option%nflowdof
-                        ibegin = iend-option%nflowdof+1
-                        if (associated(cur_patch%imat)) then
-                            if (cur_patch%imat(ghosted_id) <= 0) then
-                                 xx_p(ibegin:iend) = 0.d0
-                                 iphase_loc_p(ghosted_id) = 0
-                                 cycle
-                            endif
-                        endif
-                        xx_p(ibegin:iend) = &
-                              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-                        if (option%iflowmode == G_MODE) then
-                              cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                              iphase_loc_p(ghosted_id)
-                        endif
-                     enddo
-                 endif
+              if (.not.associated(initial_condition%flow_aux_real_var)) then
+                if (.not.associated(initial_condition%flow_condition)) then
+                  option%io_buffer = 'Flow condition is NULL in initial condition'
+                  call printErrMsg(option)
+                endif
+                do icell=1,initial_condition%region%num_cells
+                  local_id = initial_condition%region%cell_ids(icell)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  if (cur_patch%imat(ghosted_id) <= 0) then
+                    xx_p(ibegin:iend) = 0.d0
+                    iphase_loc_p(ghosted_id) = 0
+                    cycle
+                  endif
+                  do idof = 1, option%nflowdof
+                    xx_p(ibegin+idof-1) = &
+                          initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%flow_dataset%time_series%cur_value(1)
+                  enddo
+                  iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+                  if (option%iflowmode == G_MODE) then
+                      cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                          iphase_loc_p(ghosted_id)
+                  endif
+                enddo
+              else
+                do iconn=1,initial_condition%connection_set%num_connections
+                  local_id = initial_condition%connection_set%id_dn(iconn)
+                  ghosted_id = grid%nL2G(local_id)
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  if (cur_patch%imat(ghosted_id) <= 0) then
+                    xx_p(ibegin:iend) = 0.d0
+                    iphase_loc_p(ghosted_id) = 0
+                   cycle
+                  endif
+                  xx_p(ibegin:iend) = &
+                        initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+                  if (option%iflowmode == G_MODE) then
+                    cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                        iphase_loc_p(ghosted_id)
+                  endif
+                enddo
+              endif
             end if
             initial_condition => initial_condition%next
           enddo

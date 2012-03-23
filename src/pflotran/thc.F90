@@ -3715,9 +3715,7 @@ subroutine THCResidualToMass(realization)
   
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
-        if (associated(cur_patch%imat)) then
-          if (cur_patch%imat(ghosted_id) <= 0) cycle
-        endif
+        if (cur_patch%imat(ghosted_id) <= 0) cycle
         
         istart = (ghosted_id-1)*option%nflowdof+1
         mass_balance_p(istart) = mass_balance_p(istart)/ &
