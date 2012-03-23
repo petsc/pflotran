@@ -72,10 +72,6 @@ ifdef have_hdf5
   HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DPETSC_HAVE_HDF5
 endif
 
-ifdef samr_hdf5
-  HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DSAMR_HAVE_HDF5
-endif
-
 ifdef gpu
    GPU_FLAGS += -DCHUNK
 endif
@@ -141,7 +137,7 @@ util_obj  = ${common_src}input.o \
 	${common_src}co2_sw.o \
 	${common_src}utility.o
 
-common_obj = ${common_src}option.o \
+pflotran_obj = ${common_src}option.o \
 	${common_src}geometry.o\
 	${common_src}units.o\
 	${common_src}logging.o \
@@ -191,7 +187,6 @@ common_obj = ${common_src}option.o \
 	${common_src}patch.o \
 	${common_src}mfd.o\
 	${common_src}level.o \
-	${common_src}amrgrid.o\
 	${common_src}discretization.o \
 	${common_src}database.o \
 	${common_src}database_hpt.o \
@@ -227,16 +222,8 @@ common_obj = ${common_src}option.o \
 	${common_src}init.o
 #	${common_src}reaction_chunk.o\
 
-pflotran_obj = ${common_obj}\
-	${common_src}amrstubs.o
-
-pflotranamr_obj = ${common_obj}
-
-pflotranamr: $(util_obj) $(pflotranamr_obj)
-	ar ru libpflotranamr.a $(util_obj) $(pflotranamr_obj)
-
-pflotran : $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o
-	${FLINKER} -o pflotran $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS} 
+pflotran : $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o
+	${FLINKER} -o pflotran $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS} 
 
 ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
@@ -252,7 +239,7 @@ test: functions.o test.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
-	mphase_aux.o flash2_aux.o global_aux.o
+	mphase_aux.o flash2_aux.o global_aux.o immis_aux.o miscible_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
 	stochastic_aux.o stochastic.o
 simulation.o : timestepper.o realization.o 
@@ -270,7 +257,7 @@ unstructured_cell.o : option.o utility.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-	input.o string.o mfd_aux.o mfd.o amrgrid.o
+	input.o string.o mfd_aux.o mfd.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	input.o mfd_aux.o
 input.o : string.o option.o
@@ -280,11 +267,12 @@ material.o : option.o input.o string.o dataset_aux.o material_aux.o surface_mate
 material_aux.o : option.o
 fluid.o : option.o input.o string.o
 saturation_function.o : option.o input.o string.o utility.o
-coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
+coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
+            auxilliary.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
-	string.o hdf5_aux.F90 dataset.o time_series.o
+	string.o hdf5_aux.F90 dataset.o time_series.o reactive_transport_aux.o
 condition_control.o : realization.o discretization.o region.o option.o grid.o \
 	field.o coupler.o condition.o connection.o reaction.o \
 	hdf5.o mfd.o dataset_aux.o surface_realization.o
@@ -304,17 +292,16 @@ saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
 	coupler.o connection.o hdf5.o observation.o \
-	reactive_transport.o \
+	reactive_transport.o immis.o miscible.o \
 	thc.o thmc.o richards.o mphase.o flash2.o general.o \
-	discretization.o logging.o amrgrid.o
+	discretization.o logging.o
 reaction.o : reactive_transport_aux.o reaction_aux.o surface_complexation.o \
              surface_complexation_aux.o option.o string.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o database_aux.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-	reactive_transport_aux.o fluid.o logging.o global_aux.o \
-	amrgrid.o
+	reactive_transport_aux.o fluid.o logging.o global.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 surface_complexation.o : surface_complexation_aux.o reaction_aux.o \
@@ -324,15 +311,14 @@ surface_complexation_aux.o : option.o string.o database_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 thmc.o : thmc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-	matrix_buffer.o logging.o amrgrid.o
+	matrix_buffer.o logging.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
 thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 	matrix_buffer.o global_aux.o
 general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
 	field.o coupler.o grid.o connection.o material.o material_aux.o \
-	discretization.o water_eos.o debug.o saturation_function.o \
-	amrgrid.o
+	discretization.o water_eos.o debug.o saturation_function.o
 general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
 	global_aux.o
 geometry.o : input.o option.o
