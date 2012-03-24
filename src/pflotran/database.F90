@@ -2262,7 +2262,7 @@ subroutine BasisInit(reaction,option)
       surface_complexation%kinsrfcplxrxn_to_srfcplxrxn = 0
       allocate(surface_complexation%kinsrfcplx_to_name(icount3, &
                   surface_complexation%nkinsrfcplxrxn))
-      surface_complexation%kinsrfcplx_to_name = ''
+      surface_complexation%kinsrfcplx_to_name = 0
       allocate(surface_complexation%kinsrfcplx_forward_rate(icount3, &
                   surface_complexation%nkinsrfcplxrxn))
       surface_complexation%kinsrfcplx_forward_rate = 0.d0
