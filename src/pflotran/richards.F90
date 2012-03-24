@@ -2789,8 +2789,6 @@ use Logging_module
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   type(connection_set_type), pointer :: conn
   
@@ -2863,34 +2861,11 @@ use Logging_module
 
   
   ! pass #1 for flux terms and accumulation term
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+   call RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
 
   ! pass #2 for boundary and source data
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
+   call RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
 !      call RichardsCheckMassBalancePatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
 
    call VecScatterBegin( discretization%MFD%scatter_gtol_LP, field%flow_r_loc_faces, r, &
                                 ADD_VALUES,SCATTER_REVERSE, ierr)
