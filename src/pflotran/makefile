@@ -28,6 +28,10 @@ ifdef matcreate_old
 GLENN_FLAGS += -DMATCREATE_OLD
 endif
 
+ifdef snes_update
+GLENN_FLAGS += -DSNES_UPDATE
+endif
+
 ifdef dbl
 DBL_FLAG = -DDOUBLE_LAYER
 endif

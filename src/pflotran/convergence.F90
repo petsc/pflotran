@@ -131,7 +131,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !typedef enum {/* converged */
 !              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */
 !              SNES_CONVERGED_FNORM_RELATIVE    =  3, /* F < F_mintol*F_initial */
-!              SNES_CONVERGED_PNORM_RELATIVE    =  4, /* step size small */
+!              SNES_CONVERGED_SNORM_RELATIVE    =  4, /* step size small */
 !              SNES_CONVERGED_ITS               =  5, /* maximum iterations reached */
 !              SNES_CONVERGED_TR_DELTA          =  7,
 !              /* diverged */
@@ -367,8 +367,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = "SNES_CONVERGED_FNORM_ABS"
         case(SNES_CONVERGED_FNORM_RELATIVE)
           string = "SNES_CONVERGED_FNORM_RELATIVE"
+#ifdef SNES_UPDATE
+        case(SNES_CONVERGED_SNORM_RELATIVE)
+#else
         case(SNES_CONVERGED_PNORM_RELATIVE)
-          string = "SNES_CONVERGED_PNORM_RELATIVE"
+#endif
+          string = "SNES_CONVERGED_SNORM_RELATIVE"
         case(SNES_CONVERGED_ITS)
           string = "SNES_CONVERGED_ITS"
         case(SNES_CONVERGED_TR_DELTA)
