@@ -480,6 +480,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscInt :: idataset, num_datasets
   PetscBool :: use_dataset
   PetscReal :: ave_num_iterations
+  PetscReal :: tempreal
   PetscLogDouble :: tstart, tend
   
   option => realization%option
@@ -715,14 +716,36 @@ subroutine CondControlAssignTranInitCond(realization)
     cur_level => cur_level%next
   enddo
   
+  ! check to ensure that minimum concentration is not less than or equal
+  ! to zero
+  call VecMin(field%tran_xx,PETSC_NULL_INTEGER,tempreal,ierr)
+  if (tempreal <= 0.d0) then
+    option%io_buffer = 'ERROR: Zero concentrations found in initial ' // &
+      'transport solution.'
+    call printMsg(option)
+    ! now figure out which species have zero concentrations
+    do idof = 1, option%ntrandof
+      call VecStrideMin(field%tran_xx,idof-1,offset,tempreal,ierr)
+      if (tempreal <= 0.d0) then
+        write(string,*) tempreal
+        option%io_buffer = '  Species "' // &
+          trim(reaction%primary_species_names(idof)) // &
+          '" has zero concentration (' // &
+          trim(adjustl(string)) // ').'
+        call printMsg(option)
+      endif
+    enddo
+    option%io_buffer = 'Free ion concentations must be positive.  Try ' // &
+      'using a small value such as 1.e-20 or 1.e-40 instead of zero.'
+    call printErrMsg(option)
+  endif
+  
   ! update dependent vectors
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)  
   call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
-
 end subroutine CondControlAssignTranInitCond
-
 
 ! ************************************************************************** !
 !

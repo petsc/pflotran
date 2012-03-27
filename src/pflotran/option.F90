@@ -242,6 +242,11 @@ module Option_module
     module procedure printMsgAnyRank2
   end interface
 
+  interface printMsgByRank
+    module procedure printMsgByRank1
+    module procedure printMsgByRank2
+  end interface
+
   interface printErrMsgByRank
     module procedure printErrMsgByRank1
     module procedure printErrMsgByRank2
@@ -265,6 +270,7 @@ module Option_module
             printWrnMsg, &
             printMsg, &
             printMsgAnyRank, &
+            printMsgByRank, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
@@ -860,6 +866,44 @@ subroutine printMsgAnyRank2(string)
   
 end subroutine printMsgAnyRank2
 
+! ************************************************************************** !
+!
+! printMsgByRank1: Prints a message from processor along with rank
+! author: Glenn Hammond
+! date: 03/27/12
+!
+! ************************************************************************** !
+subroutine printMsgByRank1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  call printMsgByRank2(option,option%io_buffer)
+  
+end subroutine printMsgByRank1
+
+! ************************************************************************** !
+!
+! printMsgByRank2: Prints a message from processor along with rank
+! author: Glenn Hammond
+! date: 03/27/12
+!
+! ************************************************************************** !
+subroutine printMsgByRank2(option,string)
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=*) :: string
+  
+  character(len=MAXWORDLENGTH) :: word
+  
+  write(word,*) option%myrank
+  print *, '(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  
+end subroutine printMsgByRank2
+ 
 ! ************************************************************************** !
 !
 ! OptionCheckTouch: Users can steer the code by touching files.

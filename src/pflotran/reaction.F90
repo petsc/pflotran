@@ -1854,6 +1854,29 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       ! could use:
       ! rt_auxvar%pri_molal = prev_molal - update * minval(abs(prev_molal/update))
     endif
+    
+    ! check to ensure that minimum concentration is not less than or equal
+    ! to zero
+    tempreal = minval(rt_auxvar%pri_molal)
+    if (tempreal <= 0.d0) then
+      option%io_buffer = 'ERROR: Zero concentrations found in ' // &
+        'constraint "' // trim(constraint_name) // '".'
+      call printMsgByRank(option)
+      ! now figure out which species have zero concentrations
+      do idof = 1, option%ntrandof
+        if (rt_auxvar%pri_molal(idof) <= 0.d0) then
+          write(string,*) rt_auxvar%pri_molal(idof)
+          option%io_buffer = '  Species "' // &
+            trim(reaction%primary_species_names(idof)) // &
+            '" has zero concentration (' // &
+            trim(adjustl(string)) // ').'
+          call printMsgByRank(option)
+        endif
+      enddo
+      option%io_buffer = 'Free ion concentations RESULTING from ' // &
+        'constraint concentrations must be positive.'
+      call printErrMsgByRank(option)
+    endif    
 
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
