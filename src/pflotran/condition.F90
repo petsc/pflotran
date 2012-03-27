@@ -2735,9 +2735,12 @@ subroutine FlowConditionUpdate(condition_list,option,time)
       sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
       
       if (associated(sub_condition)) then
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%flow_dataset)
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%datum)
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%gradient)
+        call FlowSubConditionUpdateDataset(option,time, &
+                                           sub_condition%flow_dataset)
+        call FlowSubConditionUpdateDataset(option,time, &
+                                           sub_condition%datum)
+        call FlowSubConditionUpdateDataset(option,time, &
+                                           sub_condition%gradient)
       endif
       
     enddo
@@ -2765,12 +2768,20 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
   type(option_type) :: option
   PetscReal :: time
   type(flow_condition_dataset_type) :: flow_condition_dataset
-  
+
   if (associated(flow_condition_dataset%time_series)) then
-    call TimeSeriesUpdate(option,time,flow_condition_dataset%time_series)
+    if (time < 1.d-40 .or. &
+        flow_condition_dataset%time_series%is_transient) then
+      call TimeSeriesUpdate(option,time,flow_condition_dataset%time_series)
+    endif
   endif
+  
   if (associated(flow_condition_dataset%dataset)) then
-    call DatasetLoad(flow_condition_dataset%dataset,option)
+    if ((time < 1.d-40 .or. &
+         flow_condition_dataset%dataset%is_transient) .and. &
+        .not.flow_condition_dataset%dataset%is_cell_indexed) then
+      call DatasetLoad(flow_condition_dataset%dataset,option)
+    endif
   endif
   
 end subroutine FlowSubConditionUpdateDataset
@@ -3139,7 +3150,7 @@ function FlowDatasetIsTransient(flow_dataset)
     endif
   endif
   if (associated(flow_dataset%dataset)) then
-    if (associated(flow_dataset%dataset%buffer)) then
+    if (flow_dataset%dataset%is_transient) then
       FlowDatasetIsTransient = PETSC_TRUE
     endif
   endif

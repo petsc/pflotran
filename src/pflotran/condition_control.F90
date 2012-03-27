@@ -38,6 +38,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Field_module
   use Coupler_module
   use Condition_module
+  use Dataset_Aux_module
   use Grid_module
   use Level_module
   use Patch_module
@@ -70,8 +71,11 @@ subroutine CondControlAssignFlowInitCond(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
+  type(dataset_type), pointer :: dataset
   PetscBool :: use_dataset
   PetscBool :: dataset_flag(realization%option%nflowdof)
+  PetscInt :: num_connections
+  PetscInt, pointer :: conn_id_ptr(:)
   PetscInt :: ghosted_offset
 
   option => realization%option
@@ -302,33 +306,51 @@ subroutine CondControlAssignFlowInitCond(realization)
               use_dataset = PETSC_FALSE
               dataset_flag = PETSC_FALSE
               do idof = 1, option%nflowdof
-                if (associated(initial_condition%flow_condition% &
+                dataset =>  initial_condition%flow_condition% &
                                  sub_condition_ptr(idof)%ptr% &
-                                 flow_dataset%dataset)) then
-                  use_dataset = PETSC_TRUE
-                  dataset_flag(idof) = PETSC_TRUE
-                  call ConditionCouplerMapDatasetToVec(realization, &
-                         initial_condition%flow_condition% &
-                           sub_condition_ptr(idof)%ptr% &
-                           flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                                 flow_dataset%dataset
+                if (associated(dataset)) then
+                  if (dataset%is_cell_indexed) then
+                    use_dataset = PETSC_TRUE
+                    dataset_flag(idof) = PETSC_TRUE
+                    call ConditionControlMapDatasetToVec(realization, &
+                           initial_condition%flow_condition% &
+                             sub_condition_ptr(idof)%ptr% &
+                             flow_dataset%dataset,idof,field%flow_xx,GLOBAL)
+                  endif
                 endif
               enddo            
-              if (.not.associated(initial_condition%flow_aux_real_var)) then
-                if (.not.associated(initial_condition%flow_condition)) then
-                  option%io_buffer = 'Flow condition is NULL in initial condition'
-                  call printErrMsg(option)
+              if (.not.associated(initial_condition%flow_aux_real_var) .and. &
+                  .not.associated(initial_condition%flow_condition)) then
+                option%io_buffer = 'Flow condition is NULL in initial condition'
+                call printErrMsg(option)
+              endif
+              if (associated(initial_condition%flow_aux_real_var)) then
+                num_connections = &
+                  initial_condition%connection_set%num_connections
+                conn_id_ptr => initial_condition%connection_set%id_dn
+              else
+                num_connections = initial_condition%region%num_cells
+                conn_id_ptr => initial_condition%region%cell_ids
+              endif
+              do iconn=1, num_connections
+                local_id = conn_id_ptr(iconn)
+                ghosted_id = grid%nL2G(local_id)
+                iend = local_id*option%nflowdof
+                ibegin = iend-option%nflowdof+1
+                if (cur_patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  iphase_loc_p(ghosted_id) = 0
+                  cycle
                 endif
-                do icell=1,initial_condition%region%num_cells
-                  local_id = initial_condition%region%cell_ids(icell)
-                  ghosted_id = grid%nL2G(local_id)
-                  iend = local_id*option%nflowdof
-                  ibegin = iend-option%nflowdof+1
-                  ghosted_offset = (ghosted_id-1)*option%nflowdof
-                  if (cur_patch%imat(ghosted_id) <= 0) then
-                    xx_p(ibegin:iend) = 0.d0
-                    iphase_loc_p(ghosted_id) = 0
-                    cycle
-                  endif
+                if (associated(initial_condition%flow_aux_real_var)) then
+                  do idof = 1, option%nflowdof
+                    if (.not.dataset_flag(idof)) then
+                      xx_p(ibegin+idof-1) =  &
+                        initial_condition%flow_aux_real_var(idof,iconn)
+                    endif
+                  enddo
+                else
                   do idof = 1, option%nflowdof
                     if (.not.dataset_flag(idof)) then
                       xx_p(ibegin+idof-1) = &
@@ -337,42 +359,19 @@ subroutine CondControlAssignFlowInitCond(realization)
                           time_series%cur_value(1)
                     endif
                   enddo
-                  iphase_loc_p(ghosted_id) = &
-                    initial_condition%flow_condition%iphase
-                  if (option%iflowmode == G_MODE) then
-                    cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
-                      iphase_loc_p(ghosted_id)
-                  endif
-                enddo
-              else
-                do iconn=1,initial_condition%connection_set%num_connections
-                  local_id = initial_condition%connection_set%id_dn(iconn)
-                  ghosted_id = grid%nL2G(local_id)
-                  iend = local_id*option%nflowdof
-                  ibegin = iend-option%nflowdof+1
-                  if (cur_patch%imat(ghosted_id) <= 0) then
-                    xx_p(ibegin:iend) = 0.d0
-                    iphase_loc_p(ghosted_id) = 0
-                    cycle
-                  endif
-                  xx_p(ibegin:iend) = &
-                    initial_condition%flow_aux_real_var(1:option%nflowdof, &
-                                                        iconn)
-                  iphase_loc_p(ghosted_id) = &
-                    initial_condition%flow_aux_int_var(1,iconn)
-                  if (option%iflowmode == G_MODE) then
-                    cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
+                endif
+                iphase_loc_p(ghosted_id) = &
+                  initial_condition%flow_condition%iphase
+                if (option%iflowmode == G_MODE) then
+                  cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
                     iphase_loc_p(ghosted_id)
-                  endif
-                enddo
-              endif
+                endif
+              enddo
             end if
             initial_condition => initial_condition%next
           enddo
      
           call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-      
-     
 
       end select 
    
@@ -529,7 +528,7 @@ subroutine CondControlAssignTranInitCond(realization)
             dataset => DatasetGetPointer(realization%datasets, &
                          constraint_coupler%aqueous_species%constraint_aux_string(idof), &
                          string,option)
-            call ConditionCouplerMapDatasetToVec(realization,dataset,idof, &
+            call ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                                  field%tran_xx_loc,LOCAL)
 !            string = '' ! group name
 !            string2 = dataset%h5_dataset_name ! dataset name
@@ -727,13 +726,13 @@ end subroutine CondControlAssignTranInitCond
 
 ! ************************************************************************** !
 !
-! ConditionCouplerMapDatasetToVec: maps an external dataset to a PETSc vec
+! ConditionControlMapDatasetToVec: maps an external dataset to a PETSc vec
 !                                  representing values at each grid cell
 ! author: Glenn Hammond
 ! date: 03/23/12
 !
 ! ************************************************************************** !
-subroutine ConditionCouplerMapDatasetToVec(realization,dataset,idof, &
+subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                            mdof_vec,vec_type)
   use Realization_module
   use Option_module
@@ -781,7 +780,7 @@ subroutine ConditionCouplerMapDatasetToVec(realization,dataset,idof, &
     endif
   endif
 
-end subroutine ConditionCouplerMapDatasetToVec
+end subroutine ConditionControlMapDatasetToVec
 
 ! ************************************************************************** !
 !

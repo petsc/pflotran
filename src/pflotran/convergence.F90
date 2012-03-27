@@ -183,8 +183,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 ! Checking if norm exceeds divergence tolerance
   select case(option%iflowmode)
     case(THC_MODE,MIS_MODE,MPH_MODE)
-      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
-        inorm_residual > solver%max_norm) then
+!geh: inorm_residual is being used without being calculated.
+!      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
+!        inorm_residual > solver%max_norm) then
+      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm) then
         reason = -2
       endif
   end select  

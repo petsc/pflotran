@@ -104,11 +104,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         endif
       endif
       if (associated(condition%concentration)) then
-        if (condition%concentration%itype == DIRICHLET_BC) then
-          concentration_at_datum = &
-            condition%concentration%flow_dataset%time_series%cur_value(1)
-          concentration_gradient(1:3) = &
-            condition%concentration%gradient%time_series%cur_value(1:3)
+        if (condition%concentration%itype == DIRICHLET_BC .and. &
+            associated(condition%concentration%flow_dataset%time_series)) then
+            concentration_at_datum = &
+              condition%concentration%flow_dataset%time_series%cur_value(1)
+            concentration_gradient(1:3) = &
+              condition%concentration%gradient%time_series%cur_value(1:3)
+        else
+          concentration_at_datum = -999.d0
+          concentration_gradient = 0.d0
         endif
       endif
 

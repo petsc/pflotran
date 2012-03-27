@@ -7,6 +7,7 @@ module Patch_module
   use Strata_module
   use Region_module
   use Reaction_Aux_module
+  use Dataset_Aux_module
   use Material_module
   use Field_module
   use Saturation_Function_module
@@ -65,13 +66,14 @@ module Patch_module
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
 
-    ! Pointer to field object in mother realization object
-    type(field_type), pointer :: field 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
 
-    ! Pointer to reaction object in mother realization object
+    ! Pointers to objects in mother realization object
+    type(field_type), pointer :: field 
     type(reaction_type), pointer :: reaction
+    type(dataset_type), pointer :: datasets
+    
     type(auxilliary_type) :: aux
     
     type(patch_type), pointer :: next
@@ -166,7 +168,6 @@ function PatchCreate()
   nullify(patch%saturation_functions)
   nullify(patch%saturation_function_array)
 
-  nullify(patch%field)
   allocate(patch%observation)
   call ObservationInitList(patch%observation)
 
@@ -175,7 +176,9 @@ function PatchCreate()
   
   call AuxInit(patch%aux)
   
+  nullify(patch%field)
   nullify(patch%reaction)
+  nullify(patch%datasets)
   
   nullify(patch%next)
   
@@ -697,24 +700,23 @@ end subroutine PatchProcessCouplers
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchInitAllCouplerAuxVars(patch,reaction,option)
+subroutine PatchInitAllCouplerAuxVars(patch,option)
 
   use Option_module
   use Reaction_Aux_module
   
   implicit none
   
-  type(patch_type) :: patch
-  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
   type(option_type) :: option
   
   PetscBool :: force_update_flag = PETSC_TRUE
   
-  call PatchInitCouplerAuxVars(patch%initial_conditions,reaction, &
+  call PatchInitCouplerAuxVars(patch%initial_conditions,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%boundary_conditions,reaction, &
+  call PatchInitCouplerAuxVars(patch%boundary_conditions,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%source_sinks,reaction, &
+  call PatchInitCouplerAuxVars(patch%source_sinks,patch, &
                                option)
 
   !geh: This should not be included in PatchUpdateAllCouplerAuxVars
@@ -734,7 +736,7 @@ end subroutine PatchInitAllCouplerAuxVars
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
+subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
 
   use Option_module
   use Connection_module
@@ -742,11 +744,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Condition_module
+  use Dataset_Aux_module
   
   implicit none
   
   type(coupler_list_type), pointer :: coupler_list
-  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
   type(option_type) :: option
   
   PetscInt :: num_connections
@@ -754,6 +757,9 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
   
   type(coupler_type), pointer :: coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+  type(dataset_type), pointer :: dataset
+  PetscInt :: idof
+  character(len=MAXSTRINGLENGTH) :: string
   
   if (.not.associated(coupler_list)) return
     
@@ -763,7 +769,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
     
     if (associated(coupler%connection_set)) then
       num_connections = coupler%connection_set%num_connections
-
+      
       ! FLOW
       if (associated(coupler%flow_condition) .and. &
           (coupler%itype == INITIAL_COUPLER_TYPE .or. &
@@ -858,7 +864,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
         endif
         if (.not.associated(cur_constraint_coupler%rt_auxvar)) then
           allocate(cur_constraint_coupler%rt_auxvar)
-          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
+          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,patch%reaction, &
+                            option)
         endif
         cur_constraint_coupler => cur_constraint_coupler%next
       enddo
@@ -3927,7 +3934,6 @@ subroutine PatchDestroy(patch)
   call CouplerDestroyList(patch%initial_conditions)
   call CouplerDestroyList(patch%source_sinks)
   
-  nullify(patch%field)
   
   call ObservationDestroyList(patch%observation)
   call StrataDestroyList(patch%strata)
@@ -3936,7 +3942,10 @@ subroutine PatchDestroy(patch)
   
   call ObservationDestroyList(patch%observation)
   
+  ! these are solely pointers, must not destroy.
   nullify(patch%reaction)
+  nullify(patch%datasets)
+  nullify(patch%field)
   
   deallocate(patch)
   nullify(patch)

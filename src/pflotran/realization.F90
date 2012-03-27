@@ -100,7 +100,7 @@ private
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
-            RealizatonPassFieldPtrToPatches, &
+            RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep
  
@@ -506,12 +506,12 @@ end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
 !
-! RealizatonPassFieldPtrToPatches: Sets patch%field => realization%field
+! RealizatonPassPtrsToPatches: Sets patch%field => realization%field
 ! author: Glenn Hammond
 ! date: 01/12/11
 !
 ! ************************************************************************** !
-subroutine RealizatonPassFieldPtrToPatches(realization)
+subroutine RealizatonPassPtrsToPatches(realization)
 
   use Option_module
 
@@ -520,8 +520,10 @@ subroutine RealizatonPassFieldPtrToPatches(realization)
   type(realization_type) :: realization
   
   realization%patch%field => realization%field
+  realization%patch%datasets => realization%datasets
+  realization%patch%reaction => realization%reaction
   
-end subroutine RealizatonPassFieldPtrToPatches
+end subroutine RealizatonPassPtrsToPatches
 
 ! ************************************************************************** !
 !
@@ -773,9 +775,13 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationProcessConditions(realization)
 
+  use Dataset_module
+  
   implicit none
   
   type(realization_type) :: realization
+
+  call DatasetProcessDatasets(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -1008,7 +1014,7 @@ subroutine RealProcessFlowConditions(realization)
     !TODO(geh): could destroy the time_series here if dataset allocated
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE)
+      case(RICHARDS_MODE,MIS_MODE)
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! check for dataset in flow_dataset
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
@@ -1024,7 +1030,7 @@ subroutine RealProcessFlowConditions(realization)
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            nullify(dataset)
           endif
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
                           datum%dataset)) then
@@ -1039,7 +1045,7 @@ subroutine RealProcessFlowConditions(realization)
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            nullify(dataset)
           endif
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
                           gradient%dataset)) then
@@ -1054,7 +1060,7 @@ subroutine RealProcessFlowConditions(realization)
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            nullify(dataset)
           endif
         enddo
     end select
@@ -1364,8 +1370,7 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
   
   type(realization_type) :: realization
   
-  call PatchInitAllCouplerAuxVars(realization%patch,realization%reaction, &
-                                  realization%option)
+  call PatchInitAllCouplerAuxVars(realization%patch,realization%option)
    
 end subroutine RealizationInitAllCouplerAuxVars
 

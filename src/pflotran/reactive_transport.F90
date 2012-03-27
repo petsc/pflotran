@@ -105,7 +105,6 @@ subroutine RTSetup(realization)
 
   type(realization_type) :: realization
   
-  realization%patch%reaction => realization%reaction
   call RTSetupPatch(realization)
 
 end subroutine RTSetup
