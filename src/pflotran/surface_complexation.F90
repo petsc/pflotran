@@ -204,6 +204,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
         srfcplx_rxn%id = cur_srfcplx_rxn%id + 1
         exit
       endif
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
     nullify(cur_srfcplx_rxn)
   endif
