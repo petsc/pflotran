@@ -3224,6 +3224,22 @@ subroutine BasisInit(reaction,option)
       enddo
     enddo
 
+    write(86,'(/,"<Isotherms")')
+    do irxn = 1, reaction%neqkdrxn
+       write(86,'(a," ; ")',advance='no') trim(reaction%primary_species_names(reaction%eqkdspecid(irxn)))
+      select case (reaction%eqkdtype(irxn))
+        case(SORPTION_LINEAR)
+           write(86,'("linear ; ",es13.5)',advance='no') reaction%eqkddistcoef(irxn)
+           write(86,'()')
+        case(SORPTION_LANGMUIR)
+           write(86,'("langmuir ; ",es13.5)',advance='no') reaction%eqkddistcoef(irxn)
+           write(86,'(es13.5)') reaction%eqkdlangmuirb(irxn)
+        case(SORPTION_FREUNDLICH)
+           write(86,'("freundlich ; ",es13.5)',advance='no') reaction%eqkddistcoef(irxn)
+           write(86,'(es13.5)') reaction%eqkdfreundlichn(irxn)
+      end select
+    enddo
+
     close(86)
   endif
 #endif ! AMANZI_BGD
