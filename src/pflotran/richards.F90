@@ -188,7 +188,11 @@ end subroutine RichardsSetupPatch
 ! date: 02/13/12
 !
 ! ************************************************************************** !
+#ifdef SNES_UPDATE
+subroutine RichardsCheckUpdatePre(snes_,P,dP,changed,realization,ierr)
+#else
 subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
+#endif
 
   use Realization_module
   use Grid_module
@@ -202,9 +206,9 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
   SNES :: snes_
   Vec :: P
   Vec :: dP
-  type(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: changed
+  type(realization_type) :: realization
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)

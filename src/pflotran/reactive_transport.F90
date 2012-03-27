@@ -234,7 +234,11 @@ end subroutine RTSetupPatch
 ! date: 03/16/09
 !
 ! ************************************************************************** !
+#ifdef SNES_UPDATE
+subroutine RTCheckUpdate(snes_,C,dC,changed,realization,ierr)
+#else
 subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
+#endif
  
   use Realization_module
  
@@ -243,8 +247,8 @@ subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
   SNES :: snes_
   Vec :: C
   Vec :: dC
-  type(realization_type) :: realization
   PetscBool :: changed
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
   call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
