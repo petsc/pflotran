@@ -642,6 +642,7 @@ end subroutine HDF5ReadDatasetReal2D
 ! ************************************************************************** !
 function HDF5GroupExists(filename,group_name,option)
 
+  use hdf5
   use Option_module
   
   implicit none
