@@ -595,7 +595,9 @@ subroutine RichardsCheckMassBalancePatch(realization)
          
      end do
 
+#ifdef DASVYAT_DEBUG
      write(*,*) "Mass conservation violation", max_violation
+#endif
  
      call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
      call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
@@ -2112,11 +2114,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
-   
-    if (Res(1) == -10.0) then
-      write(*,*) "v_darcy=",v_darcy
-      write(*,*) "fluxm", v_darcy * area * density_ave
-    end if
    
       q = v_darcy * area
 
