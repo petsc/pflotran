@@ -761,7 +761,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: ncomp_h2o, ncomp_secondary
   PetscInt :: icount_old, icount_new, icount, icount2, icount3
   PetscInt :: i, j, irow, icol
-  PetscInt :: icomp, icplx, irxn
+  PetscInt :: icomp, icplx, irxn, ieqrxn
   PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl, icoll
   PetscInt :: i_old, i_new
   PetscInt :: isrfcplx
@@ -3189,30 +3189,37 @@ subroutine BasisInit(reaction,option)
     enddo
 
     write(86,'(/,"<Surface Complex Sites")')
-    do irxn = 1, reaction%neqsrfcplxrxn
-      write(86,'(a, " ; ")',advance='no') trim(reaction%eqsrfcplx_site_names(irxn))
-      write(86,'(1es13.5)') reaction%eqsrfcplx_rxn_site_density(irxn)
+    do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
+      irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
+      write(86,'(a, " ; ")',advance='no') &
+        trim(surface_complexation%srfcplxrxn_site_names(irxn))
+      write(86,'(1es13.5)') surface_complexation%srfcplxrxn_site_density(irxn)
     enddo
 
     write(86,'(/,"<Surface Complexes")')
-    do irxn = 1, reaction%neqsrfcplxrxn
-      do i = 1, reaction%srfcplxrxn_to_complex(0,irxn)
-        icplx = reaction%srfcplxrxn_to_complex(i,irxn)
-        write(86,'(a, " = ")',advance='no') trim(reaction%eqsrfcplx_names(icplx))
-        idum = reaction%eqsrfcplx_free_site_id(icplx)
-        write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplx_free_site_stoich(icplx), &
-                                            trim(reaction%eqsrfcplx_site_names(idum))
+    do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
+      irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
+      do i = 1, surface_complexation%srfcplxrxn_to_complex(0,irxn)
+        icplx = surface_complexation%srfcplxrxn_to_complex(i,irxn)
+        write(86,'(a, " = ")',advance='no') &
+          trim(surface_complexation%srfcplx_names(icplx))
+        write(86,'(f6.2,x,a)',advance='no') &
+          surface_complexation%srfcplx_free_site_stoich(icplx), &
+          trim(surface_complexation%srfcplxrxn_site_names(irxn))
 
-        if (reaction%eqsrfcplxh2oid(icplx) > 0) then
-          write(86,'(f6.2," H2O ")',advance='no') reaction%eqsrfcplxh2ostoich(icplx)
+        if (surface_complexation%srfcplxh2oid(icplx) > 0) then
+          write(86,'(f6.2," H2O ")',advance='no') &
+            surface_complexation%srfcplxh2ostoich(icplx)
         endif
-        do j = 1, reaction%srfcplxspecid(0,icplx)
-          idum = reaction%srfcplxspecid(j,icplx)
-          write(86,'(f6.2,x,a)',advance='no') reaction%eqsrfcplxstoich(j,icplx), &
-                                   trim(reaction%primary_species_names(idum))
+        do j = 1, surface_complexation%srfcplxspecid(0,icplx)
+          idum = surface_complexation%srfcplxspecid(j,icplx)
+          write(86,'(f6.2,x,a)',advance='no') &
+            surface_complexation%srfcplxstoich(j,icplx), &
+            trim(reaction%primary_species_names(idum))
         enddo
-        write(86,'(" ; ",1es13.5," ; ",f6.2)') reaction%eqsrfcplx_logK(icplx), &
-                                               reaction%eqsrfcplx_Z(icplx)
+        write(86,'(" ; ",1es13.5," ; ",f6.2)') &
+          surface_complexation%srfcplx_logK(icplx), &
+          surface_complexation%srfcplx_Z(icplx)
 
       enddo
     enddo
