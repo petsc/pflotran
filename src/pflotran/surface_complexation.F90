@@ -258,6 +258,14 @@ subroutine SurfaceComplexationRead(reaction,input,option)
         surface_complexation%nkinmrsrfcplx + temp_srfcplx_count
       surface_complexation%nkinmrsrfcplxrxn = &
         surface_complexation%nkinmrsrfcplxrxn + 1
+      ! if site fractions is not specified, we can calculate this
+      ! based on a uniform distribution and the number of rates
+      if (.not.associated(srfcplx_rxn%site_fractions) .and. &
+          associated(srfcplx_rxn%rates)) then
+        allocate(srfcplx_rxn%site_fractions(size(srfcplx_rxn%rates)))
+        ! it is possible to specify the number of site fractions
+        srfcplx_rxn%site_fractions = 1.d0 / dble(size(srfcplx_rxn%rates))
+      endif
       ! check to ensure that rates for multirate surface complexation 
       ! are aligned with surface fractions
       if (size(srfcplx_rxn%rates) /= size(srfcplx_rxn%site_fractions)) then
@@ -278,7 +286,7 @@ subroutine SurfaceComplexationRead(reaction,input,option)
     
       if (dabs(1.d0 - tempreal) > 1.d-6) then
         write(string,*) tempreal
-        option%io_buffer = 'The sum of the surface fractions for ' // &
+        option%io_buffer = 'The sum of the surface site fractions for ' // &
           'multirate kinetic sorption does not add up to 1.d0 (' // &
           trim(adjustl(string)) // '.'
         call printErrMsg(option)
