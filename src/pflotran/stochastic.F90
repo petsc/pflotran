@@ -55,7 +55,7 @@ subroutine StochasticInit(stochastic,option)
   string = '-realization_ids_file'
   call InputGetCommandLineString(string,filename,option_found,option)
   if (option_found) then
-    input => InputCreate(IUNIT_TEMP,filename)
+    input => InputCreate(IUNIT_TEMP,filename,option)
     allocate(realization_ids_from_file(stochastic%num_realizations))
     realization_ids_from_file = 0
     string = &

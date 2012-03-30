@@ -253,7 +253,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
   PetscInt :: fileid
   
   fileid = 86
-  input => InputCreate(fileid,filename)
+  input => InputCreate(fileid,filename,option)
 
   ! initial guess is 8 vertices per cell
   unstructured_grid%max_nvert_per_cell = 8
@@ -483,7 +483,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   PetscInt :: fileid
   
   fileid = 86
-  input => InputCreate(fileid,filename)
+  input => InputCreate(fileid,filename,option)
 
   ! initial guess is 8 vertices per cell
   unstructured_grid%max_nvert_per_cell = 8
@@ -631,7 +631,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   if(option%myrank == option%io_rank) deallocate(temp_int_array)
 
 
-  input => InputCreate(fileid,surf_filename)
+  input => InputCreate(fileid,surf_filename,option)
   call InputReadFlotranString(input,option)
   string = 'unstructured sideset'
   call InputReadStringErrorMsg(input,option,card)  

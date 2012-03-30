@@ -469,7 +469,7 @@ subroutine RegionReadFromFilename(region,option,filename)
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: filename
   
-  input => InputCreate(IUNIT_TEMP,filename)
+  input => InputCreate(IUNIT_TEMP,filename,option)
   call RegionReadFromFileId(region,input,option)          
   call InputDestroy(input)         
 
@@ -820,7 +820,7 @@ subroutine RegionReadSideSet(sideset,filename,option)
   PetscInt :: fileid
   
   fileid = 86
-  input => InputCreate(fileid,filename)
+  input => InputCreate(fileid,filename,option)
 
 ! Format of sideset file
 ! type: T=triangle, Q=quadrilateral

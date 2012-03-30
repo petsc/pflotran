@@ -2231,7 +2231,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
       else
         filename = trim(filename) // trim(realization_word)
       endif
-      input2 => InputCreate(IUNIT_TEMP,filename)
+      input2 => InputCreate(IUNIT_TEMP,filename,option)
       if (flow_dataset%time_series%rank<=3) then
         call FlowConditionReadValuesFromFile(input2,flow_dataset,option)
       else

@@ -136,7 +136,7 @@ subroutine Init(simulation)
     call InitPrintPFLOTRANHeader(option,temp_int)
   endif
   
-  realization%input => InputCreate(IN_UNIT,option%input_filename)
+  realization%input => InputCreate(IN_UNIT,option%input_filename,option)
 
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
@@ -974,7 +974,7 @@ subroutine InitReadStochasticCardFromInput(stochastic,option)
   type(input_type), pointer :: input
   PetscBool :: print_warning
   
-  input => InputCreate(IN_UNIT,option%input_filename)
+  input => InputCreate(IN_UNIT,option%input_filename,option)
 
   ! MODE information
   string = "STOCHASTIC"
@@ -1012,7 +1012,7 @@ subroutine InitReadInputFilenames(option,filenames)
   PetscInt :: filename_count
   type(input_type), pointer :: input
 
-  input => InputCreate(IN_UNIT,option%input_filename)
+  input => InputCreate(IN_UNIT,option%input_filename,option)
 
   string = "FILENAMES"
   call InputFindStringInFile(input,option,string) 
@@ -3030,7 +3030,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   else
     call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP,filename)
+    input => InputCreate(IUNIT_TEMP,filename,option)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
@@ -3188,7 +3188,8 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP,material_property%permeability_dataset%filename)
+    input => InputCreate(IUNIT_TEMP, &
+                material_property%permeability_dataset%filename,option)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit

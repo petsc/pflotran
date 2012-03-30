@@ -6,7 +6,10 @@ PetscInt, parameter :: MAXWORDLENGTH = 32
 PetscInt, parameter :: OUT_UNIT = 15
 PetscInt, parameter :: OUTPUT_UNIT = 16
 PetscInt, parameter :: IN_UNIT = 17
-! units 17-25 are now reserved for embed file reads
+! If you increase MAX_IN_UNIT, you MUST ensure that no other units #
+! lie between IN_UNIT and MAX_IN_UNIT, as these units are reserved
+! for embedded input files.
+PetscInt, parameter :: MAX_IN_UNIT = 25
 PetscInt, parameter :: IUNIT_TEMP = 86
 PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing

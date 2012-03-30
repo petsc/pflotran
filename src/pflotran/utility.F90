@@ -823,7 +823,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
     input%err_buf = 'filename'
     input%err_buf2 = comment
     call InputErrorMsg(input,option)
-    input2 => InputCreate(input%fid + 1,string2)
+    input2 => InputCreate(input%fid + 1,string2,option)
   else
     input2 => input
     input%buf = string2
@@ -974,7 +974,7 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
     input%err_buf = 'filename'
     input%err_buf2 = comment
     call InputErrorMsg(input,option)
-    input2 => InputCreate(input%fid + 1,string2)
+    input2 => InputCreate(input%fid + 1,string2,option)
   else
     input2 => input
     input%buf = string2

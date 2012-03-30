@@ -206,7 +206,7 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
   
   if (read_from_file .or. read_multiple_values) then
     if (read_from_file) then
-      input2 => InputCreate(IUNIT_TEMP,filename)
+      input2 => InputCreate(IUNIT_TEMP,filename,option)
     else
       input2 => input
     endif

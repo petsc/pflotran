@@ -98,7 +98,7 @@ subroutine DatabaseRead(reaction,option)
     option%io_buffer = 'Database filename not included in input deck.'
     call printErrMsg(option)
   endif
-  input => InputCreate(IUNIT_TEMP,reaction%database_filename)
+  input => InputCreate(IUNIT_TEMP,reaction%database_filename,option)
 
   ! read temperatures
   call InputReadFlotranString(input,option)
