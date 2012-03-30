@@ -396,7 +396,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
         if (.not.associated(coupler%tran_condition)) then
            option%io_buffer = 'Transport condition "' // &
-                   trim(coupler%flow_condition_name) // &
+                   trim(coupler%tran_condition_name) // &
                    '" in boundary condition ' // &
                    trim(coupler%name) // &
                    ' not found in transport condition list'
