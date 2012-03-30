@@ -3,10 +3,10 @@
 PetscInt, parameter :: MAXHEADERLENGTH = 4096
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
 PetscInt, parameter :: MAXWORDLENGTH = 32
-PetscInt, parameter :: IUNIT1 = 15
-PetscInt, parameter :: IUNIT2 = 16
-PetscInt, parameter :: IUNIT3 = 17
-PetscInt, parameter :: IUNIT4 = 18
+PetscInt, parameter :: OUT_UNIT = 15
+PetscInt, parameter :: OUTPUT_UNIT = 16
+PetscInt, parameter :: IN_UNIT = 17
+! units 17-25 are now reserved for embed file reads
 PetscInt, parameter :: IUNIT_TEMP = 86
 PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing

@@ -136,7 +136,7 @@ subroutine Init(simulation)
     call InitPrintPFLOTRANHeader(option,temp_int)
   endif
   
-  realization%input => InputCreate(IUNIT1,option%input_filename)
+  realization%input => InputCreate(IN_UNIT,option%input_filename)
 
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
@@ -155,7 +155,7 @@ subroutine Init(simulation)
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
-  surf_realization%input => InputCreate(IUNIT1,option%input_filename)
+  surf_realization%input => InputCreate(IN_UNIT,option%input_filename)
   surf_realization%subsurf_filename = realization%discretization%filename
   call InitReadRequiredCardsFromInputSurf(simulation%surf_realization)
 #endif
@@ -974,7 +974,7 @@ subroutine InitReadStochasticCardFromInput(stochastic,option)
   type(input_type), pointer :: input
   PetscBool :: print_warning
   
-  input => InputCreate(IUNIT1,option%input_filename)
+  input => InputCreate(IN_UNIT,option%input_filename)
 
   ! MODE information
   string = "STOCHASTIC"
@@ -1012,7 +1012,7 @@ subroutine InitReadInputFilenames(option,filenames)
   PetscInt :: filename_count
   type(input_type), pointer :: input
 
-  input => InputCreate(IUNIT1,option%input_filename)
+  input => InputCreate(IN_UNIT,option%input_filename)
 
   string = "FILENAMES"
   call InputFindStringInFile(input,option,string) 

@@ -71,7 +71,7 @@
   
   nullify(stochastic)
   option => OptionCreate()
-  option%fid_out = IUNIT2
+  option%fid_out = OUT_UNIT
   single_inputfile = PETSC_TRUE
 
   call MPI_Init(ierr)
