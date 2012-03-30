@@ -1147,19 +1147,17 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     plot_flag = PETSC_TRUE
     nullify(cur_waypoint)
   endif
-    
+
+  ! update maximum time step size to current waypoint value
+  if (associated(cur_waypoint)) then
+    dt_max = cur_waypoint%dt_max
+  endif
+  
   ! target time will always be dictated by the flow solver, if present
   if (associated(flow_stepper)) then
     option%flow_dt = dt
     flow_stepper%target_time = target_time
-    !geh: if dt_max used here, the max time step from the previous waypoint
-    !     applies for an extra time step, which is not what we want.
-    ! cur_waypoint may be null
-    if (associated(cur_waypoint)) then
-      flow_stepper%dt_max = cur_waypoint%dt_max
-    else
-      flow_stepper%dt_max = dt_max
-    endif
+    flow_stepper%dt_max = dt_max
     flow_stepper%cur_waypoint => cur_waypoint
   endif
   if (associated(tran_stepper)) then
@@ -1176,13 +1174,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
       option%tran_dt = dt
     endif
     tran_stepper%target_time = target_time
-    !geh: if dt_max used here, the max time step from the previous waypoint
-    !     applies for an extra time step, which is not what we want.
-    if (associated(cur_waypoint)) then
-      tran_stepper%dt_max = cur_waypoint%dt_max
-    else
-      tran_stepper%dt_max = dt_max
-    endif
+    tran_stepper%dt_max = dt_max
     tran_stepper%cur_waypoint => cur_waypoint
   endif
   
