@@ -2398,28 +2398,29 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (surface_complexation%neqsrfcplxrxn > 0) then
     ! sort surface complex concentrations from largest to smallest
     ! note that we include free site concentrations; their ids negated
-#if 0
-    allocate(eqsrfcplxsort(reaction%neqsrfcplx+reaction%neqsrfcplxrxn))
-    do i = 1, reaction%neqsrfcplx
+    allocate(eqsrfcplxsort(surface_complexation%neqsrfcplx + &
+                           surface_complexation%neqsrfcplxrxn))
+    do i = 1, surface_complexation%neqsrfcplx
       eqsrfcplxsort(i) = i
     enddo
-    do i = 1, reaction%neqsrfcplxrxn
-      eqsrfcplxsort(reaction%neqsrfcplx+i) = -i
+    do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
+      irxn = surface_complexation%eqsrfcplxrxn_to_srfcplxrxn(ieqrxn)
+      eqsrfcplxsort(surface_complexation%neqsrfcplx+ieqrxn) = -irxn
     enddo
     do
       finished = PETSC_TRUE
-      do i = 1, reaction%neqsrfcplx+reaction%neqsrfcplxrxn-1
+      do i = 1, size(eqsrfcplxsort)-1
         icplx = eqsrfcplxsort(i)
         icplx2 = eqsrfcplxsort(i+1)
         if (icplx > 0) then
           conc = rt_auxvar%eqsrfcplx_conc(icplx)
         else
-          conc = rt_auxvar%eqsrfcplx_free_site_conc(-icplx)
+          conc = rt_auxvar%srfcplxrxn_free_site_conc(-icplx)
         endif
         if (icplx2 > 0) then
           conc2 = rt_auxvar%eqsrfcplx_conc(icplx2)
         else
-          conc2 = rt_auxvar%eqsrfcplx_free_site_conc(-icplx2)
+          conc2 = rt_auxvar%srfcplxrxn_free_site_conc(-icplx2)
         endif
         if (conc < conc2) then
           eqsrfcplxsort(i) = icplx2
@@ -2430,26 +2431,28 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
+    write(option%fid_out,'(//,''  NOTE: Only equilibrium surface complexa'', &
+      &''tion is considered below'')')
     write(option%fid_out,120)
     write(option%fid_out,90)
-    do i = 1, reaction%neqsrfcplxrxn + reaction%neqsrfcplx
+    do i = 1, size(eqsrfcplxsort)
       icplx = eqsrfcplxsort(i)
       if (icplx > 0) then
-        write(option%fid_out,121) reaction%eqsrfcplx_names(icplx), &
+        write(option%fid_out,121) surface_complexation%srfcplx_names(icplx), &
                                   rt_auxvar%eqsrfcplx_conc(icplx), &
-                                  reaction%eqsrfcplx_logK(icplx)
+                                  surface_complexation%srfcplx_logK(icplx)
       else
-        write(option%fid_out,122) reaction%eqsrfcplx_site_names(-icplx), &
-                                  rt_auxvar%eqsrfcplx_free_site_conc(-icplx)
+        write(option%fid_out,122) surface_complexation%srfcplxrxn_site_names(-icplx), &
+                                  rt_auxvar%srfcplxrxn_free_site_conc(-icplx)
       endif
     enddo
     deallocate(eqsrfcplxsort)
-#endif
 
     120 format(/,'  surf complex          mol/m^3 blk logK')  
     121 format(2x,a20,es12.4,es12.4)
     122 format(2x,a20,es12.4,'  free site')
 
+#if 0    
     write(option%fid_out,120)
     write(option%fid_out,90)
     do ieqrxn = 1, surface_complexation%neqsrfcplxrxn
@@ -2464,6 +2467,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                   surface_complexation%srfcplx_logK(icplx)
       enddo
     enddo
+#endif    
 
   ! retardation
     if (surface_complexation%neqsrfcplxrxn > 0) then
