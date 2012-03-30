@@ -618,7 +618,10 @@ subroutine ReactionRead(reaction,input,option)
         call InputErrorMsg(input,option,'maximum relative change tolerance','CHEMISTRY')
       case('MAX_RESIDUAL_TOLERANCE')
         call InputReadDouble(input,option,reaction%max_residual_tolerance)
-        call InputErrorMsg(input,option,'maximum residual  tolerance','CHEMISTRY')
+        call InputErrorMsg(input,option,'maximum residual tolerance','CHEMISTRY')
+      case('MINIMUM_POROSITY')
+        call InputReadDouble(input,option,reaction%minimum_porosity)
+        call InputErrorMsg(input,option,'minimim porosity','CHEMISTRY')
       case default
         option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
         call printErrMsg(option)
