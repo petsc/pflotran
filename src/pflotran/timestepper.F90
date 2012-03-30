@@ -1152,7 +1152,10 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   if (associated(flow_stepper)) then
     option%flow_dt = dt
     flow_stepper%target_time = target_time
-    flow_stepper%dt_max = dt_max
+    !geh: if dt_max used here, the max time step from the previous waypoint
+    !     applies for an extra time step, which is not what we want.
+!    flow_stepper%dt_max = dt_max
+    flow_stepper%dt_max = cur_waypoint%dt_max
     flow_stepper%cur_waypoint => cur_waypoint
   endif
   if (associated(tran_stepper)) then
@@ -1169,7 +1172,10 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
       option%tran_dt = dt
     endif
     tran_stepper%target_time = target_time
-    tran_stepper%dt_max = dt_max
+    !geh: if dt_max used here, the max time step from the previous waypoint
+    !     applies for an extra time step, which is not what we want.
+!    tran_stepper%dt_max = dt_max
+    tran_stepper%dt_max = cur_waypoint%dt_max
     tran_stepper%cur_waypoint => cur_waypoint
   endif
   
