@@ -591,11 +591,18 @@ subroutine DatabaseRead(reaction,option)
       ! the surface complex in the master list
       if (.not.StringCompare(cur_srfcplx%ptr%free_site_name, &
                             cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
-        option%io_buffer = 'Free site name: ' // &
-                           trim(cur_srfcplx_rxn%free_site_name) // &
-                           ' not found in surface complex:' // &
-                           trim(cur_srfcplx%name)
-        call printErrMsg(option)
+        ! It is possible that the surface complex may not be found in the 
+        ! database.  This is caught later.  In that case, we need to
+        ! bail out here as the site name will not have been set, but this
+        ! error message misrepresents the issue. If dbaserxn is unassociated,
+        ! the surface complex was not found.
+        if (associated(cur_srfcplx%ptr%dbaserxn)) then
+          option%io_buffer = 'Free site name: ' // &
+                             trim(cur_srfcplx_rxn%free_site_name) // &
+                             ' not found in surface complex:' // &
+                             trim(cur_srfcplx%name)
+          call printErrMsg(option)
+        endif
       endif
       ! ensure that duplicate surface complexes do not exist in reaction
       ! complex list
