@@ -420,7 +420,7 @@ subroutine Init(simulation)
     ! by default turn off line search
 #ifdef SNES_UPDATE
     call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
-    call SNESLineSearchSetType(linesearch, SNES_LINESEARCH_BASIC, ierr)
+    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 #else
     call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
@@ -535,7 +535,7 @@ subroutine Init(simulation)
     ! by default turn off line search
 #ifdef SNES_UPDATE
     call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
-    call SNESLineSearchSetType(linesearch, SNES_LINESEARCH_BASIC, ierr)
+    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 #else    
     call SNESLineSearchSet(surf_flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
@@ -618,7 +618,7 @@ subroutine Init(simulation)
       ! update does not perturb concentrations negative.
 #ifdef SNES_UPDATE
       call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
-      call SNESLineSearchSetType(linesearch, SNES_LINESEARCH_BASIC, ierr)
+      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 #else       
       call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
                              PETSC_NULL_OBJECT,ierr)
