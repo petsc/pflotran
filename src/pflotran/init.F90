@@ -2263,8 +2263,9 @@ subroutine setFlowMode(option)
       option%nphase = 1
       option%liquid_phase = 1      
       option%gas_phase = 2      
-      option%nflowdof = 3
+      option%nflowdof = 6
       option%nflowspec = 2
+      option%nmechdof = 3
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
