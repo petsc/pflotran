@@ -1866,13 +1866,19 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       ghosted_id = grid%nL2G(local_id)
       if (option%update_mnrl_surf_with_porosity) then
         porosity_scale = vec_p(local_id)** &
-          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
+             reaction%kinmnrl_surf_area_porosity_pwr(imnrl)
+!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!     solely material type.
+!          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
       endif
       do imnrl = 1, reaction%nkinmnrl
         if (rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) > 0.d0) then
           volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
                          rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl))** &
-            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
+             reaction%kinmnrl_surf_area_vol_frac_pwr(imnrl)
+!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!     solely material type.
+!            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
           rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
             rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
         else

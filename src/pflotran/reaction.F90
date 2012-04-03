@@ -751,7 +751,26 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
             case('AFFINITY_THRESHOLD')
 !             read affinity threshold for precipitation
               call InputReadDouble(input,option,tstrxn%affinity_threshold)
-              call InputErrorMsg(input,option,'threshold',error_string)
+              call InputErrorMsg(input,option,'affinity threshold', &
+                                 error_string)
+            case('AFFINITY_POWER')
+!             reads exponent on affinity term
+              call InputReadDouble(input,option,tstrxn%affinity_factor_sigma)
+              call InputErrorMsg(input,option,'affinity power',error_string)
+            case('TEMPKINS_CONSTANT')
+!             reads exponent on affinity term
+              call InputReadDouble(input,option,tstrxn%affinity_factor_beta)
+              call InputErrorMsg(input,option,"Tempkin's constant", &
+                                 error_string)
+            case('SURFACE_AREA_POROSITY_POWER')
+              call InputReadDouble(input,option,tstrxn%surf_area_porosity_pwr)
+              call InputErrorMsg(input,option,'surface area porosity power', &
+                                 error_string)
+            case('SURFACE_AREA_VOL_FRAC_POWER')
+              call InputReadDouble(input,option,tstrxn%surf_area_vol_frac_pwr)
+              call InputErrorMsg(input,option, &
+                                 'surface area voluem fraction power', &
+                                 error_string)
             case('RATE_LIMITER')
 !             read rate limiter for precipitation
               call InputReadDouble(input,option,tstrxn%rate_limiter)
@@ -4488,32 +4507,39 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       endif
 
       ! compute rate
-      ! rate = mol/cm^2 mnrl/sec
-      ! area = cm^2 mnrl/cm^3 bulk
-      ! volume = m^3 bulk
-      ! units = cm^2 mnrl/m^3 bulk
+      ! rate: mol/cm^2 mnrl/sec
+      ! area: cm^2 mnrl/cm^3 bulk
+      ! volume: m^3 bulk
       
-      Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 ! convert cm^3->m^3
-      ! units = mol/sec/m^3 bulk
+      ! convert cm^2 mnrl/cm^3 bulk -> cm^2 mnrl/m^3 bulk
+      Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 
 
+      ! units: mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
-        Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
+        ! Im_const: cm^2 mnrl/m^3 bulk
+        ! sum_prefactor_rate: mol/cm^2 mnrl/sec
+        Im = Im_const*sign_* &
+             abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)* &
+             sum_prefactor_rate
       else
         Im = Im_const*sign_*abs(affinity_factor)*sum_prefactor_rate
       endif
-      rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3
+      ! store volumetric rate to be used in updating mineral volume fractions
+      ! at end of time step
+      rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3 bulk
     else
       rt_auxvar%mnrl_rate(imnrl) = 0.d0
       cycle
     endif
     
-    ! units = cm^2 mnrl
+    ! scale Im_const by volume for calculating derivatives below
+    ! units: cm^2 mnrl
     Im_const = Im_const*volume
-    ! units = mol/sec
+
+    ! convert rate from volumetric (mol/sec/m^3 bulk) to mol/sec
+    ! units: mol/sec
     Im = Im*volume
     
-!   print *,'RKineticMineral: ',imnrl,Im,QK
-
     ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
       icomp = reaction%kinmnrlspecid(i,imnrl)

@@ -74,6 +74,8 @@ module Reaction_Aux_module
     PetscReal :: affinity_factor_beta
     PetscReal :: affinity_threshold
     PetscReal :: rate_limiter
+    PetscReal :: surf_area_vol_frac_pwr
+    PetscReal :: surf_area_porosity_pwr
     PetscInt :: irreversible
     PetscReal :: rate
     PetscReal :: activation_energy
@@ -332,6 +334,8 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
     PetscReal, pointer :: kinmnrl_rate_limiter(:)
+    PetscReal, pointer :: kinmnrl_surf_area_vol_frac_pwr(:)
+    PetscReal, pointer :: kinmnrl_surf_area_porosity_pwr(:)
     PetscInt, pointer :: kinmnrl_irreversible(:)
     
     ! general rxn
@@ -598,6 +602,8 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_irreversible)
   nullify(reaction%kinmnrl_rate_limiter)
+  nullify(reaction%kinmnrl_surf_area_vol_frac_pwr)
+  nullify(reaction%kinmnrl_surf_area_porosity_pwr)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -809,9 +815,11 @@ function TransitionStateTheoryRxnCreate()
   type(transition_state_rxn_type), pointer :: tstrxn
 
   allocate(tstrxn)
-  tstrxn%affinity_factor_sigma = 0.d0
-  tstrxn%affinity_factor_beta = 0.d0
+  tstrxn%affinity_factor_sigma = -999.d0
+  tstrxn%affinity_factor_beta = -999.d0
   tstrxn%affinity_threshold = 0.d0
+  tstrxn%surf_area_vol_frac_pwr = 0.d0
+  tstrxn%surf_area_porosity_pwr = 0.d0
   tstrxn%rate_limiter = 0.d0
   tstrxn%irreversible = 0
   tstrxn%activation_energy = 0.d0
@@ -2453,6 +2461,12 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_rate_limiter)) &
     deallocate(reaction%kinmnrl_rate_limiter)
   nullify(reaction%kinmnrl_rate_limiter)
+  if (associated(reaction%kinmnrl_surf_area_vol_frac_pwr)) &
+    deallocate(reaction%kinmnrl_surf_area_vol_frac_pwr)
+  nullify(reaction%kinmnrl_surf_area_vol_frac_pwr)
+  if (associated(reaction%kinmnrl_surf_area_porosity_pwr)) &
+    deallocate(reaction%kinmnrl_surf_area_porosity_pwr)
+  nullify(reaction%kinmnrl_surf_area_porosity_pwr)
   if (associated(reaction%kinmnrl_irreversible)) &
     deallocate(reaction%kinmnrl_irreversible)
   nullify(reaction%kinmnrl_irreversible)

@@ -1864,6 +1864,83 @@ subroutine BasisInit(reaction,option)
       endif
     endif
     
+    ! Determine whether Tempkins constant is used in any TST reactions
+    cur_mineral => reaction%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%affinity_factor_sigma, &
+                       -999.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(reaction%kinmnrl_Tempkin_const(reaction%nkinmnrl))
+      reaction%kinmnrl_Tempkin_const = 1.d0    
+    endif
+
+    ! Determine whether affinity factor has power
+    cur_mineral => reaction%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%affinity_factor_beta, &
+                       -999.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(reaction%kinmnrl_affinity_power(reaction%nkinmnrl))
+      reaction%kinmnrl_affinity_power = 1.d0    
+    endif
+
+
+    ! Determine whether surface area volume fraction power defined
+    cur_mineral => reaction%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%surf_area_vol_frac_pwr, &
+                       0.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(reaction%kinmnrl_surf_area_vol_frac_pwr(reaction%nkinmnrl))
+      reaction%kinmnrl_surf_area_vol_frac_pwr = 0.d0    
+    endif
+    
+    ! Determine whether surface area volume fraction power defined
+    cur_mineral => reaction%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (.not.Equal(cur_mineral%tstrxn%surf_area_porosity_pwr, &
+                       0.d0)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(reaction%kinmnrl_surf_area_porosity_pwr(reaction%nkinmnrl))
+      reaction%kinmnrl_surf_area_porosity_pwr = 0.d0    
+    endif
+    
     cur_mineral => reaction%mineral_list
     imnrl = 1
     ikinmnrl = 1
@@ -2009,6 +2086,26 @@ subroutine BasisInit(reaction,option)
             reaction%kinmnrl_rate(ikinmnrl) = tstrxn%rate
             reaction%kinmnrl_activation_energy(ikinmnrl) = &
               tstrxn%activation_energy
+          endif
+          if (.not.Equal(tstrxn%affinity_factor_sigma, &
+                         -999.d0)) then
+            reaction%kinmnrl_Tempkin_const(ikinmnrl) = &
+              tstrxn%affinity_factor_sigma
+          endif
+          if (.not.Equal(tstrxn%affinity_factor_beta, &
+                         -999.d0)) then
+            reaction%kinmnrl_affinity_power(ikinmnrl) = &
+              tstrxn%affinity_factor_beta
+          endif
+          if (.not.Equal(tstrxn%surf_area_vol_frac_pwr, &
+                         0.d0)) then
+            reaction%kinmnrl_surf_area_vol_frac_pwr(ikinmnrl) = &
+              tstrxn%surf_area_vol_frac_pwr
+          endif
+          if (.not.Equal(tstrxn%surf_area_porosity_pwr, &
+                         0.d0)) then
+            reaction%kinmnrl_surf_area_porosity_pwr(ikinmnrl) = &
+              tstrxn%surf_area_porosity_pwr
           endif
         endif ! associated(tstrxn)
 
