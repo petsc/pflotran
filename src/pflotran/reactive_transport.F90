@@ -235,7 +235,7 @@ end subroutine RTSetupPatch
 !
 ! ************************************************************************** !
 #ifdef SNES_UPDATE
-subroutine RTCheckUpdate(snes_,C,dC,changed,realization,ierr)
+subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
 #else
 subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
 #endif
@@ -244,14 +244,22 @@ subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
  
   implicit none
   
+#ifdef SNES_UPDATE
+  SNESLineSearch :: line_search
+#else
   SNES :: snes_
+#endif
   Vec :: C
   Vec :: dC
   PetscBool :: changed
   type(realization_type) :: realization
   PetscErrorCode :: ierr
 
+#ifdef SNES_UPDATE
+  call RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
+#else
   call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
+#endif
 
 end subroutine RTCheckUpdate
 
@@ -263,14 +271,22 @@ end subroutine RTCheckUpdate
 ! date: 03/16/09
 !
 ! ************************************************************************** !
+#ifdef SNES_UPDATE
+subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
+#else
 subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
+#endif
 
   use Realization_module
   use Grid_module
  
   implicit none
   
+#ifdef SNES_UPDATE
+  SNESLineSearch :: line_search
+#else
   SNES :: snes_
+#endif
   Vec :: C
   Vec :: dC
   type(realization_type) :: realization

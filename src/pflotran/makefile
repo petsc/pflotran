@@ -28,6 +28,10 @@ ifdef matcreate_old
 GLENN_FLAGS += -DMATCREATE_OLD
 endif
 
+ifdef mualem_spline
+GLENN_FLAGS += -DMUALEM_SPLINE
+endif
+
 ifdef snes_update
 GLENN_FLAGS += -DSNES_UPDATE
 endif
