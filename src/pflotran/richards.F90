@@ -189,7 +189,7 @@ end subroutine RichardsSetupPatch
 !
 ! ************************************************************************** !
 #ifdef SNES_UPDATE
-subroutine RichardsCheckUpdatePre(snes_,P,dP,changed,realization,ierr)
+subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
 #else
 subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
 #endif
@@ -203,7 +203,11 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
  
   implicit none
   
+#ifdef SNES_UPDATE
+  SNESLineSearch :: line_search
+#else
   SNES :: snes_
+#endif
   Vec :: P
   Vec :: dP
   ! ignore changed flag for now.
@@ -317,8 +321,13 @@ end subroutine RichardsCheckUpdatePre
 ! date: 02/13/12
 !
 ! ************************************************************************** !
+#ifdef SNES_UPDATE
+subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+                                   P1_changed,realization,ierr)
+#else
 subroutine RichardsCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
                                    P1_changed,ierr)
+#endif
 
   use Realization_module
   use Grid_module
@@ -327,7 +336,11 @@ subroutine RichardsCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
  
   implicit none
   
+#ifdef SNES_UPDATE
+  SNESLineSearch :: line_search
+#else
   SNES :: snes_
+#endif
   Vec :: P0
   Vec :: dP
   Vec :: P1
