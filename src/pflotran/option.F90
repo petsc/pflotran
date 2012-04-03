@@ -47,7 +47,7 @@ module Option_module
     MPI_Comm :: write_group, writers
     PetscMPIInt:: write_grp_size, write_grp_rank, writers_size, writers_rank
     PetscMPIInt :: wcolor, wkey, writer_color, writer_key
-#endif	
+#endif  
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
@@ -66,6 +66,7 @@ module Option_module
     PetscInt :: nflowdof
     PetscInt :: nflowspec
     PetscInt :: rt_idof
+    PetscInt :: nmechdof
 
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
@@ -425,6 +426,7 @@ subroutine OptionInitRealization(option)
   option%flowmode = ""
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
+  option%nmechdof = 0
 
   option%tranmode = ""
   option%itranmode = NULL_MODE

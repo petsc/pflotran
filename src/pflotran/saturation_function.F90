@@ -769,7 +769,7 @@ subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
                                         liquid_saturation, gas_saturation, &
                                         liquid_relative_perm, dsl_pl, & 
                                         dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
-                                        dsi_temp, dkr_pl, &
+                                        dsi_temp, dkr_pl, dkr_temp, &
                                         saturation_function, option)
 
   use Option_module
@@ -796,6 +796,7 @@ implicit none
   PetscReal :: one_plus_pc_il_alpha_n
   PetscReal :: dfunc_A_temp
   PetscReal :: dfunc_B_pl
+  PetscReal :: liq_sat_one_over_m, dkr_ds_liq, dkr_temp
   PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
   PetscReal, parameter :: heat_of_fusion = 3.34d5 !in J/kg at 273.15K
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
@@ -828,22 +829,7 @@ implicit none
         Se = one_plus_pc_alpha_n**(-m)
         dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         function_B = 1.d0/Se
-        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc
-        select case(saturation_function%permeability_function_itype)
-          case(MUALEM)
-            one_over_m = 1.d0/m
-            Se_one_over_m = Se**one_over_m
-            liquid_relative_perm = sqrt(Se)*(1.d0 - (1.d0 - Se_one_over_m)**m)** &
-                                   2.d0
-            dkr_Se = 0.5d0*liquid_relative_perm/Se + &
-                     2.d0*Se**(one_over_m - 0.5d0)* &
-                     (1.d0 - Se_one_over_m)**(m - 1.d0)* &
-                     (1.d0 - (1.d0 - Se_one_over_m)**m)
-            dkr_pc = dkr_Se*dSe_pc
-          case default
-            option%io_buffer = 'Ice module only supports Mualem' 
-            call printErrMsg(option)
-        end select
+        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc        
       endif
       if (temperature >= 0.d0) then
         function_A = 1.d0
@@ -871,9 +857,7 @@ implicit none
   liquid_saturation = 1.d0/(function_A + function_B - 1.d0)
   gas_saturation = liquid_saturation*(function_B - 1.d0)
   ice_saturation = liquid_saturation*(function_A - 1.d0)
-  
-! print *,'ice: ',liquid_saturation,gas_saturation,ice_saturation
-  
+
   dsl_pl = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_B_pl)
   dsl_temp = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_A_temp)
   
@@ -901,7 +885,25 @@ implicit none
     print *, option%myrank, 'vG Ice Saturation < 0:', ice_saturation
   endif
 
-  dkr_pl = - dkr_pc
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      one_over_m = 1.d0/m
+      liq_sat_one_over_m = liquid_saturation**one_over_m
+      liquid_relative_perm = sqrt(liquid_saturation)* &
+                             (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+      dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
+                   2.d0*Se**(one_over_m - 0.5d0)* &
+                   (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                   (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      dkr_pl = dkr_ds_liq*dsl_pl
+      dkr_temp = dkr_ds_liq*dsl_temp
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select
+  
+! print *,'ice: ',liquid_saturation,gas_saturation,ice_saturation
+ 
 
 
 end subroutine SaturationFunctionComputeIce

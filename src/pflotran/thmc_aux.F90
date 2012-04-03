@@ -24,6 +24,7 @@ module THMC_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
+    PetscReal :: gradient(3,3)
 #ifdef ICE
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -68,7 +69,7 @@ module THMC_Aux_module
 
   public :: THMCAuxCreate, THMCAuxDestroy, &
             THMCAuxVarCompute, THMCAuxVarInit, &
-            THMCAuxVarCopy, THMCComputeGradient
+            THMCAuxVarCopy, THMCComputeDisplacementGradient
 
 #ifdef ICE
   public :: THMCAuxVarComputeIce
@@ -152,6 +153,7 @@ subroutine THMCAuxVarInit(aux_var,option)
   aux_var%xmol = 0.d0
   allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 1.d-9
+  aux_var%gradient = 0.d0
 #ifdef ICE
   aux_var%sat_ice = 0.d0
   aux_var%sat_gas = 0.d0
@@ -202,6 +204,7 @@ subroutine THMCAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%du_dt = aux_var%du_dt  
   aux_var2%xmol = aux_var%xmol
   aux_var2%diff = aux_var%diff
+  aux_var2%gradient = aux_var%gradient
 #ifdef ICE
   aux_var2%sat_ice = aux_var%sat_ice 
   aux_var2%sat_gas = aux_var%sat_gas
@@ -351,7 +354,7 @@ end subroutine THMCAuxVarCompute
 
 ! ************************************************************************** !
 ! 
-! THMCComputeGradient: Computes the gradient of temperature (for now) using
+! THMCComputeDisplacementGradient: Computes the gradient of displacement using
 ! least square fit of values from neighboring cells
 ! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
 ! for incompressible linear elasticity, CMAME
@@ -361,8 +364,8 @@ end subroutine THMCAuxVarCompute
 ! ************************************************************************** !
 
 
-subroutine THMCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
-                              option) 
+subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
+                                           gradient, option) 
 
 
   use Grid_module
@@ -379,8 +382,11 @@ subroutine THMCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
   
   PetscInt :: ghosted_neighbors_size, ghosted_id
   PetscInt :: ghosted_neighbors(26)
-  PetscReal :: gradient(3), disp_vec(3,1), disp_mat(3,3)
-  PetscReal :: temp_weighted(3,1)
+  PetscReal :: gradient(3,3), disp_vec(3,1), disp_mat(3,3)
+  PetscReal :: ux_weighted(3,1)
+  PetscReal :: uy_weighted(3,1)
+  PetscReal :: uz_weighted(3,1)
+
   PetscInt :: i
   
   PetscInt :: INDX(3)
@@ -394,23 +400,38 @@ subroutine THMCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
 
   disp_vec = 0.d0
   disp_mat = 0.d0
-  temp_weighted = 0.d0
+  ux_weighted = 0.d0
+  uy_weighted = 0.d0
+  uz_weighted = 0.d0
+  
   do i = 1, ghosted_neighbors_size
     disp_vec(1,1) = grid%x(ghosted_neighbors(i)) - grid%x(ghosted_id)
     disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
     disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
     disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
-    temp_weighted = temp_weighted + disp_vec* &
+    ux_weighted = ux_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
                      global_aux_vars(ghosted_id)%temp(1))
+    uy_weighted = uy_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
+                     global_aux_vars(ghosted_id)%temp(1))
+    uz_weighted = uz_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
+                     global_aux_vars(ghosted_id)%temp(1))
+
   enddo
 
   call ludcmp(disp_mat,3,INDX,D)
-  call lubksb(disp_mat,3,INDX,temp_weighted)
+  call lubksb(disp_mat,3,INDX,ux_weighted)
+  call lubksb(disp_mat,3,INDX,uy_weighted)
+  call lubksb(disp_mat,3,INDX,uz_weighted)
+
+  gradient(:,1) = ux_weighted(:,1)
+  gradient(:,2) = uy_weighted(:,1)
+  gradient(:,3) = uz_weighted(:,1)
   
-  gradient(:) = temp_weighted(:,1)
   
-end subroutine THMCComputeGradient
+end subroutine THMCComputeDisplacementGradient
 
 ! ************************************************************************** !
 ! 
@@ -444,7 +465,7 @@ subroutine THMCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 
   PetscErrorCode :: ierr
   PetscReal :: pw, dw_kg, dw_mol, hw, sat_pressure, visl
-  PetscReal :: kr, ds_dp, dkr_dp
+  PetscReal :: kr, ds_dp, dkr_dp, dkr_dt
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: dpw_dp
@@ -494,7 +515,7 @@ subroutine THMCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     global_aux_var%temp(1), ice_saturation, &
                                     global_aux_var%sat(1), gas_saturation, &
                                     kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
-                                    dsi_pl, dsi_temp, dkr_dp, &
+                                    dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
                                     saturation_function, option)
 
 
@@ -532,7 +553,7 @@ subroutine THMCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dsat_dp = ds_dp
   aux_var%dden_dt = dw_dt
   aux_var%dden_dp = dw_dp
-  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt)
+  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt) + dkr_dt/visl
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   aux_var%dh_dp = hw_dp
   aux_var%du_dp = hw_dp - (dpw_dp/dw_mol - pw/(dw_mol*dw_mol)*dw_dp)* &
