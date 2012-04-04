@@ -25,6 +25,7 @@ module THMC_Aux_module
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
     PetscReal :: gradient(3,3)
+    PetscReal :: stress(3,3)
 #ifdef ICE
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -42,10 +43,13 @@ module THMC_Aux_module
   end type thmc_auxvar_type
 
   type, public :: thmc_parameter_type
+    PetscReal, pointer :: rock_den(:)
     PetscReal, pointer :: dencpr(:)
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Thermal conductivity (wet)
     PetscReal, pointer :: alpha(:)
+    PetscReal, pointer :: youngs_modulus(:) !Elasticity parameters
+    PetscReal, pointer :: poissons_ratio(:)
 #ifdef ICE
     PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
     PetscReal, pointer :: alpha_fr(:)
@@ -69,7 +73,8 @@ module THMC_Aux_module
 
   public :: THMCAuxCreate, THMCAuxDestroy, &
             THMCAuxVarCompute, THMCAuxVarInit, &
-            THMCAuxVarCopy, THMCComputeDisplacementGradient
+            THMCAuxVarCopy, THMCComputeDisplacementGradient, &
+            THMCComputeStressFromDispGrad
 
 #ifdef ICE
   public :: THMCAuxVarComputeIce
@@ -113,6 +118,8 @@ function THMCAuxCreate(option)
   allocate(aux%thmc_parameter%diffusion_activation_energy(option%nphase))
   aux%thmc_parameter%diffusion_coefficient = 1.d-9
   aux%thmc_parameter%diffusion_activation_energy = 0.d0
+ ! aux%thmc_parameter%youngs_modulus = 2.d11 ! in Pa (check this)
+ ! aux%thmc_parameter%poissons_ratio = 0.3
 
   THMCAuxCreate => aux
   
@@ -351,6 +358,46 @@ subroutine THMCAuxVarCompute(x,aux_var,global_aux_var, &
   
 end subroutine THMCAuxVarCompute
 
+! ************************************************************************** !
+! 
+! THMCComputeDisplacementGradient: Computes the gradient of displacement using
+! least square fit of values from neighboring cells
+! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
+! for incompressible linear elasticity, CMAME
+! Author: Satish Karra
+! Date: 2/20/12
+!
+! ************************************************************************** !
+
+
+subroutine THMCComputeStressFromDispGrad(disp_grad,youngs_modulus, &
+                                         poissons_ratio,stress,option) 
+
+
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: disp_grad(3,3)
+  PetscReal :: youngs_modulus, poissons_ratio
+  PetscReal :: lambda, mu
+  PetscReal :: stress(3,3)
+  PetscReal :: identity(3,3)
+  PetscReal :: trace_disp_grad
+  
+  lambda = youngs_modulus*poissons_ratio/((1.d0 + poissons_ratio)* &
+                                    (1.d0 - 2.d0*poissons_ratio))
+  mu = youngs_modulus/(2.d0*(1.d0 + poissons_ratio))
+  identity = reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
+  trace_disp_grad = DotProduct(identity(1,:),disp_grad(1,:)) + &
+                    DotProduct(identity(2,:),disp_grad(2,:)) + &
+                    DotProduct(identity(3,:),disp_grad(3,:))
+  stress = mu*(disp_grad + transpose(disp_grad)) + lambda*trace_disp_grad* &
+                                                          identity
+  
+end subroutine THMCComputeStressFromDispGrad
 
 ! ************************************************************************** !
 ! 
@@ -644,12 +691,18 @@ subroutine THMCAuxDestroy(aux)
     nullify(aux%thmc_parameter%diffusion_activation_energy)
     if (associated(aux%thmc_parameter%dencpr)) deallocate(aux%thmc_parameter%dencpr)
     nullify(aux%thmc_parameter%dencpr)
+    if (associated(aux%thmc_parameter%rock_den)) deallocate(aux%thmc_parameter%rock_den)
+    nullify(aux%thmc_parameter%rock_den)
     if (associated(aux%thmc_parameter%ckwet)) deallocate(aux%thmc_parameter%ckwet)
     nullify(aux%thmc_parameter%ckwet)
     if (associated(aux%thmc_parameter%ckdry)) deallocate(aux%thmc_parameter%ckdry)
     nullify(aux%thmc_parameter%ckdry)
     if (associated(aux%thmc_parameter%alpha)) deallocate(aux%thmc_parameter%alpha)
     nullify(aux%thmc_parameter%alpha)
+    if (associated(aux%thmc_parameter%youngs_modulus)) deallocate(aux%thmc_parameter%youngs_modulus)
+    nullify(aux%thmc_parameter%youngs_modulus)
+    if (associated(aux%thmc_parameter%poissons_ratio)) deallocate(aux%thmc_parameter%poissons_ratio)
+    nullify(aux%thmc_parameter%poissons_ratio)
 #ifdef ICE
     if (associated(aux%thmc_parameter%ckfrozen)) deallocate(aux%thmc_parameter%ckfrozen)
     nullify(aux%thmc_parameter%ckfrozen)
