@@ -192,7 +192,7 @@ subroutine SolverSetSNESOptions(solver)
 
   PetscMPIInt :: myrank
   
-#ifdef SNES_UPDATE  
+#ifndef HAVE_SNES_API_3_2  
   SNESLineSearch :: linesearch
 #else
   ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
@@ -249,7 +249,7 @@ subroutine SolverSetSNESOptions(solver)
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes,ierr) 
 
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
   call SNESGetSNESLineSearch(solver%snes, linesearch, ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
           PETSC_DEFAULT_DOUBLE_PRECISION,PETSC_DEFAULT_DOUBLE_PRECISION, &

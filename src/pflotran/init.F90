@@ -98,7 +98,7 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: linesearch
 #endif
 #ifdef SURFACE_FLOW
@@ -418,7 +418,7 @@ subroutine Init(simulation)
     end select
     
     ! by default turn off line search
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
     call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 #else
@@ -463,7 +463,7 @@ subroutine Init(simulation)
         dabs(option%saturation_change_limit) > 0.d0) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
                                          RichardsCheckUpdatePre, &
@@ -478,7 +478,7 @@ subroutine Init(simulation)
     if (option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPostCheck(linesearch, &
                                           RichardsCheckUpdatePost, &
@@ -533,7 +533,7 @@ subroutine Init(simulation)
                          SurfaceFlowJacobian,simulation%surf_realization,ierr)
 
     ! by default turn off line search
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
     call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
     call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 #else    
@@ -616,7 +616,7 @@ subroutine Init(simulation)
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
       call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
       call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
 #else       
@@ -654,7 +654,7 @@ subroutine Init(simulation)
       ! to fail
       if (associated(realization%reaction)) then
         if (realization%reaction%check_update) then
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
                                          realization,ierr)

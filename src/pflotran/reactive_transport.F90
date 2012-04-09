@@ -234,7 +234,7 @@ end subroutine RTSetupPatch
 ! date: 03/16/09
 !
 ! ************************************************************************** !
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
 subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
 #else
 subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
@@ -244,7 +244,7 @@ subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
  
   implicit none
   
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
 #else
   SNES :: snes_
@@ -255,7 +255,7 @@ subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
   type(realization_type) :: realization
   PetscErrorCode :: ierr
 
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
   call RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
 #else
   call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
@@ -271,7 +271,7 @@ end subroutine RTCheckUpdate
 ! date: 03/16/09
 !
 ! ************************************************************************** !
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
 subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
 #else
 subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
@@ -282,7 +282,7 @@ subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
  
   implicit none
   
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
   SNESLineSearch :: line_search
 #else
   SNES :: snes_

@@ -367,7 +367,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = "SNES_CONVERGED_FNORM_ABS"
         case(SNES_CONVERGED_FNORM_RELATIVE)
           string = "SNES_CONVERGED_FNORM_RELATIVE"
-#ifdef SNES_UPDATE
+#ifndef HAVE_SNES_API_3_2
         case(SNES_CONVERGED_SNORM_RELATIVE)
 #else
         case(SNES_CONVERGED_PNORM_RELATIVE)

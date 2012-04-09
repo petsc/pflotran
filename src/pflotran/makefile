@@ -32,8 +32,12 @@ ifdef mualem_spline
 GLENN_FLAGS += -DMUALEM_SPLINE
 endif
 
-ifdef snes_update
-GLENN_FLAGS += -DSNES_UPDATE
+ifdef snes_old
+GLENN_FLAGS += -DHAVE_SNES_API_3_2
+endif
+
+ifdef snes_api_3_2
+GLENN_FLAGS += -DHAVE_SNES_API_3_2
 endif
 
 ifdef dbl
