@@ -910,9 +910,9 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
   mol=0.d0
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
-      mol(ispec) = mol(ispec) + aux_var%sat(np) * &
-        aux_var%den(np) * &
-        aux_var%xmol(ispec + (np-1)*option%nflowspec)
+      mol(ispec) = mol(ispec) + &
+!aux_var%sat(np) * &
+        aux_var%den(np) * aux_var%xmol(ispec + (np-1)*option%nflowspec)
     enddo
   enddo
   mol = mol*porXvol
