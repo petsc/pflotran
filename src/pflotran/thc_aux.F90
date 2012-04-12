@@ -523,22 +523,16 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, option)
 
 
-!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-!              option%scale,ierr)
-              
-!  print *, 'wateos:', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
-
   call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
                          dw_dt, hw, hw_dp, hw_dt, ierr)
                          
-!  print *, 'wateos_simple', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
-
-   
-
   call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
   
-  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
-            dvis_dp, ierr)
+!  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
+!            dvis_dp, ierr)
+
+  call VISW_temp(global_aux_var%temp(1),visl,dvis_dt,ierr)
+  dvis_dp = 0.d0
   
   dvis_dpsat = -dvis_dp 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
