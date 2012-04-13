@@ -190,7 +190,6 @@ subroutine Water_glycol_density(y,p,dkg)
   PetscReal dkg
 
   dkg = (((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0) * 1.d3
-! dkg = 1.035d0
 ! dkg = (4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
 ! dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
 
@@ -233,7 +232,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: tk, visw 
-  PetscReal :: denw, yh2o
+  PetscReal :: denw, yh2o, yppg
   PetscReal :: tmp 
   PetscInt :: iflag  
   
@@ -264,7 +263,8 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   aux_var%den(1) = denw/aux_var%avgmw(1)
   
 ! Glycol-Water mixture viscosity (yh2o mass fraction water)
-  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-2 ! centipoise to Pa s.
+  yppg = 1.d0-yh2o
+  visw = 10.d0**(1.6743d0*yppg-0.0758d0) * 1.0d-3 ! centipoise to Pa s.
 
   aux_var%vis(1) = visw
   
