@@ -535,7 +535,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   
   if (realization%debug%print_couplers) then
     call OutputPrintCouplers(realization,ZERO_INTEGER)
-  endif  
+  endif
+
   do
 
     if (OptionPrintToScreen(option) .and. &
@@ -573,6 +574,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
+
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
@@ -659,7 +661,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     
     option%time = master_stepper%target_time
     call StepperUpdateSolution(realization)
-    
+
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
     if (master_stepper%time_step_cut_flag) then
@@ -1143,6 +1145,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   enddo
   ! subtract 1 from max_time_steps since we still have to complete the current
   ! time step
+
   if (cumulative_time_steps >= max_time_step-1) then
     plot_flag = PETSC_TRUE
     nullify(cur_waypoint)

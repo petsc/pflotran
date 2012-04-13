@@ -189,10 +189,12 @@ subroutine Water_glycol_density(y,p,dkg)
   PetscReal y, p ! water mass fraction
   PetscReal dkg
 
-  dkg = ((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0
+  dkg = (((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0) * 1.d3
 ! dkg = 1.035d0
-  dkg = (4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
-  dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
+! dkg = (4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
+! dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
+
+  dkg = dkg * (1+(4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5))
  
 end subroutine Water_glycol_density
 
