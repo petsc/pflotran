@@ -2044,7 +2044,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     case(1) 
       r_p(:) = r_p(:)/option%flow_dt
     case(-1)
-      if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+      if (option%flow_dt > 1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -2054,10 +2054,10 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 
 !    scale residual by grid cell volume
     istart = 1 + (local_id-1)*option%nflowdof
-!    if (volume_p(local_id) > 1.D0) r_p(istart:istart+2) = &
-!     r_p(istart:istart+2)/volume_p(local_id)
-    r_p(istart:istart+2) = r_p(istart:istart+2)/volume_p(local_id)
-    if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *, 'overflow in res: ', &
+    if (volume_p(local_id) > 1.D0) r_p(istart:istart+2) = &
+      r_p(istart:istart+2)/volume_p(local_id)
+!   r_p(istart:istart+2) = r_p(istart:istart+2)/volume_p(local_id)
+    if(r_p(istart) > 1.E20 .or. r_p(istart) < -1.E20) print *, 'overflow in res: ', &
       local_id,istart,r_p (istart:istart+2)
   enddo
 
@@ -2438,8 +2438,8 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     end select
 
     Jup = ra(1:option%nflowdof,1:option%nflowdof)
-!   if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
-    Jup = Jup / volume_p(local_id)
+    if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
+!   Jup = Jup / volume_p(local_id)
    
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
@@ -2536,12 +2536,10 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       end select
     
       if (local_id_up > 0) then
-!       voltemp = 1.D0
-!       if(volume_p(local_id_up) > 1.D0 then
-          voltemp = 1.D0/volume_p(local_id_up)
-!       endif
-        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-        jdn(:,1:option%nflowdof)= ra(:,1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+        voltemp = 1.D0
+        if (volume_p(local_id_up) > 1.D0) voltemp = 1.D0/volume_p(local_id_up)
+        Jup(:,1:option%nflowdof) = ra(:,1:option%nflowdof)*voltemp !11
+        jdn(:,1:option%nflowdof) = ra(:,1 + option%nflowdof:2*option%nflowdof)*voltemp !12
 
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
@@ -2549,13 +2547,10 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
             Jdn,ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
-!       voltemp = 1.D0
-!       if(volume_p(local_id_dn) > 1.D0) then
-          voltemp = 1.D0/volume_p(local_id_dn)
-!       endif
+        voltemp = 1.D0
+        if (volume_p(local_id_dn) > 1.D0) voltemp = 1.D0/volume_p(local_id_dn)
         Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
-        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
-
+        jdn(:,1:option%nflowdof)= -ra(:,1 + option%nflowdof:2*option%nflowdof)*voltemp !22
  
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
@@ -2819,14 +2814,16 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
    
     select case(option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:) / option%flow_dt
     end select
 
     Jup = ra(1:option%nflowdof,1:option%nflowdof)
-!   if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
-    Jup = Jup / volume_p(local_id)
+    if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
+!   Jup = Jup / volume_p(local_id)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
