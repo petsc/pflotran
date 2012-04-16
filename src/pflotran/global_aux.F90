@@ -27,6 +27,7 @@ module Global_Aux_module
     PetscReal, pointer :: reaction_rate(:)
     PetscReal, pointer :: reaction_rate_store(:)
 !   PetscReal, pointer :: reaction_rate_store(:,:)
+    PetscReal, pointer :: displacement(:)
   end type global_auxvar_type
   
   type, public :: global_type
@@ -109,6 +110,8 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
+  allocate(aux_var%displacement(THREE_INTEGER))
+  aux_var%displacement = 0.d0
 
   select case(option%iflowmode)
     case(IMS_MODE, MPH_MODE, FLASH2_MODE)
@@ -217,6 +220,7 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%den_kg = aux_var%den_kg
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
+  aux_var2%displacement = aux_var%displacement
   
   if (associated(aux_var%reaction_rate) .and. &
       associated(aux_var2%reaction_rate)) then
@@ -343,7 +347,9 @@ subroutine GlobalAuxVarStrip(aux_var)
   nullify(aux_var%xmass)
   if (associated(aux_var%reaction_rate)) deallocate(aux_var%reaction_rate)
   nullify(aux_var%reaction_rate)
-  
+  if (associated(aux_var%displacement)) deallocate(aux_var%displacement)
+  nullify(aux_var%displacement)
+
   if (associated(aux_var%pres_store)) deallocate(aux_var%pres_store)
   nullify(aux_var%pres_store)
   if (associated(aux_var%temp_store)) deallocate(aux_var%temp_store)

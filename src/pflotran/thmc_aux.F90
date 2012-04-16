@@ -24,7 +24,7 @@ module THMC_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-    PetscReal :: gradient(3,3)
+    PetscReal :: gradient(3,3)       ! displacement gradient
     PetscReal :: stress(3,3)
 #ifdef ICE
     PetscReal :: sat_ice
@@ -74,7 +74,8 @@ module THMC_Aux_module
   public :: THMCAuxCreate, THMCAuxDestroy, &
             THMCAuxVarCompute, THMCAuxVarInit, &
             THMCAuxVarCopy, THMCComputeDisplacementGradient, &
-            THMCComputeStressFromDispGrad
+            THMCComputeStressFromDispGrad, &
+            THMCComputeDisplacementGradientPert
 
 #ifdef ICE
   public :: THMCAuxVarComputeIce
@@ -360,26 +361,22 @@ end subroutine THMCAuxVarCompute
 
 ! ************************************************************************** !
 ! 
-! THMCComputeDisplacementGradient: Computes the gradient of displacement using
-! least square fit of values from neighboring cells
-! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
-! for incompressible linear elasticity, CMAME
+! THMCComputeStressFromDispGrad: Computes the stress from given displacement
+! gradient
 ! Author: Satish Karra
-! Date: 2/20/12
+! Date: 3/20/12
 !
 ! ************************************************************************** !
 
 
 subroutine THMCComputeStressFromDispGrad(disp_grad,youngs_modulus, &
-                                         poissons_ratio,stress,option) 
+                                         poissons_ratio,stress) 
 
 
-  use Option_module
   use Utility_module
 
   implicit none
 
-  type(option_type) :: option
   PetscReal :: disp_grad(3,3)
   PetscReal :: youngs_modulus, poissons_ratio
   PetscReal :: lambda, mu
@@ -457,14 +454,14 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
     disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
     disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
     ux_weighted = ux_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
-                     global_aux_vars(ghosted_id)%temp(1))
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
+                     global_aux_vars(ghosted_id)%displacement(1))
     uy_weighted = uy_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
-                     global_aux_vars(ghosted_id)%temp(1))
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
+                     global_aux_vars(ghosted_id)%displacement(2))
     uz_weighted = uz_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
-                     global_aux_vars(ghosted_id)%temp(1))
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
+                     global_aux_vars(ghosted_id)%displacement(3))
 
   enddo
 
@@ -479,6 +476,108 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
   
   
 end subroutine THMCComputeDisplacementGradient
+
+! ************************************************************************** !
+! 
+! THMCComputeDisplacementGradientPert: Computes the perturbation of the 
+! gradient of displacement
+! Author: Satish Karra
+! Date: 4/13/12
+!
+! ************************************************************************** !
+
+
+subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
+                                               ghosted_id, &
+                                               gradient_pert, direction_flag, &
+                                               perturbation_tolerance, option) 
+
+
+  use Grid_module
+  use Global_Aux_module
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+
+  
+  PetscInt :: ghosted_neighbors_size, ghosted_id
+  PetscInt :: ghosted_neighbors(26)
+  PetscReal :: gradient_pert(3,3), disp_vec(3,1), disp_mat(3,3)
+  PetscReal :: ux_weighted(3,1)
+  PetscReal :: uy_weighted(3,1)
+  PetscReal :: uz_weighted(3,1)
+  PetscReal :: perturbation_tolerance
+
+  PetscInt :: i, direction_flag, flag_x, flag_y, flag_z
+  PetscInt :: INDX(3)
+  PetscInt :: D
+   
+  call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
+                                         STAR_STENCIL, &
+                                         1,1,1,ghosted_neighbors_size, &
+                                         ghosted_neighbors, &
+                                         option)   
+ 
+  disp_vec = 0.d0
+  disp_mat = 0.d0
+  ux_weighted = 0.d0
+  uy_weighted = 0.d0
+  uz_weighted = 0.d0
+  
+  select case(direction_flag)
+    case (ONE_INTEGER)
+      flag_x = 1
+      flag_y = 0
+      flag_z = 0
+    case (TWO_INTEGER)
+      flag_x = 0
+      flag_y = 1
+      flag_z = 0
+    case (THREE_INTEGER)
+      flag_x = 0
+      flag_y = 0
+      flag_z = 1
+   end select
+ 
+ 
+  do i = 1, ghosted_neighbors_size
+    disp_vec(1,1) = grid%x(ghosted_neighbors(i)) - grid%x(ghosted_id)
+    disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
+    disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
+    disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
+    ux_weighted = ux_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
+                     global_aux_vars(ghosted_id)%displacement(1)* &
+                     (1.d0 + flag_x*perturbation_tolerance))
+    uy_weighted = uy_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
+                     global_aux_vars(ghosted_id)%displacement(2)* &
+                     (1.d0 + flag_y*perturbation_tolerance))
+    uz_weighted = uz_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
+                     global_aux_vars(ghosted_id)%displacement(3)* &
+                     (1.d0 + flag_z*perturbation_tolerance))
+
+  enddo
+
+  call ludcmp(disp_mat,3,INDX,D)
+  call lubksb(disp_mat,3,INDX,ux_weighted)
+  call lubksb(disp_mat,3,INDX,uy_weighted)
+  call lubksb(disp_mat,3,INDX,uz_weighted)
+
+  gradient_pert(:,1) = ux_weighted(:,1)
+  gradient_pert(:,2) = uy_weighted(:,1)
+  gradient_pert(:,3) = uz_weighted(:,1)
+  
+  
+end subroutine THMCComputeDisplacementGradientPert
+
+
 
 ! ************************************************************************** !
 ! 
