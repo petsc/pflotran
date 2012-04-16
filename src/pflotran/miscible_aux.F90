@@ -224,7 +224,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal ::  p, t, temp, p2, err
+  PetscReal :: p, t, temp, p2, err
   PetscReal :: henry,lngamco2
   PetscReal :: dg, dddp, dddt
   PetscReal :: fg, dfgdp, dfgdt, xphi
@@ -249,8 +249,18 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
  
   aux_var%pres = x(1)  
   aux_var%xmol(2:option%nflowspec) = x(2:option%nflowspec)
-  tmp = sum(aux_var%xmol)
-  aux_var%xmol(1) = 1.D0 - tmp
+! tmp = sum(aux_var%xmol)
+! aux_var%xmol(1) = 1.D0 - tmp
+
+#if 0
+  if (aux_var%xmol(2) > 1.d0) then
+!   print *,'Error in NINC: x2 > 1 ',aux_var%xmol(2)
+    aux_var%xmol(2) = 1.d0
+    x(2) = 1.d0
+  endif
+#endif
+
+  aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
 
 ! Glycol-Water mixture formula weight (kg/kmol)
   aux_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
@@ -283,7 +293,7 @@ end subroutine MiscibleAuxVarCompute_NINC
 
 
 
-subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
+subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar, &
                                     fluid_properties,option)
 
   use Option_module
@@ -301,8 +311,8 @@ subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
 
   PetscInt :: n 
   
-  do n=1, option%nflowdof
-     xx=x;  xx(n)=x(n)+ delx(n)
+  do n = 1, option%nflowdof
+    xx = x;  xx(n) = x(n) + delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
     call  MiscibleAuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &
       fluid_properties, option)
