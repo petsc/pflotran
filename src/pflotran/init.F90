@@ -2432,7 +2432,7 @@ subroutine assignMaterialPropToRegions(realization)
           call readMaterialsFromFile(realization,strata%realization_dependent, &
                                      strata%material_property_filename)
         ! Otherwise, set based on region
-        else if (strata%active) then
+        else
           update_ghosted_material_ids = PETSC_TRUE
           region => strata%region
           material_property => strata%material_property
@@ -2450,7 +2450,12 @@ subroutine assignMaterialPropToRegions(realization)
               local_id = icell
             endif
             ghosted_id = grid%nL2G(local_id)
-            cur_patch%imat(ghosted_id) = material_property%id
+            if (strata%active) then
+              cur_patch%imat(ghosted_id) = material_property%id
+            else
+              ! if not active, set material id to zero
+              cur_patch%imat(ghosted_id) = 0
+            endif
           enddo
         endif
         strata => strata%next
