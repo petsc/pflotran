@@ -4771,11 +4771,12 @@ function GetVelocityAtCell(fid,realization,local_id)
       if (local_id_up == local_id .or. local_id_dn == local_id) then
         do direction=1,3        
           area = cur_connection_set%area(iconn)* &
-                 dabs(cur_connection_set%dist(direction,iconn))
+                 !geh: no dabs() here
+                 cur_connection_set%dist(direction,iconn)
           sum_velocity(direction) = sum_velocity(direction) + &
                                     patch%internal_velocities(iphase,sum_connection)* &
                                     area
-          sum_area(direction) = sum_area(direction) + area
+          sum_area(direction) = sum_area(direction) + dabs(area)
         enddo
       endif
     enddo
@@ -4793,11 +4794,12 @@ function GetVelocityAtCell(fid,realization,local_id)
       if (cur_connection_set%id_dn(iconn) == local_id) then
         do direction=1,3        
           area = cur_connection_set%area(iconn)* &
-                 dabs(cur_connection_set%dist(direction,iconn))
+                 !geh: no dabs() here
+                 cur_connection_set%dist(direction,iconn)
           sum_velocity(direction) = sum_velocity(direction) + &
                                     patch%boundary_velocities(iphase,sum_connection)* &
                                     area
-          sum_area(direction) = sum_area(direction) + area
+          sum_area(direction) = sum_area(direction) + dabs(area)
         enddo
       endif
     enddo

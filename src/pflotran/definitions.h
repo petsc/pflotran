@@ -184,8 +184,11 @@ PetscInt, parameter :: THC_ENTHALPY_DOF = 5
 PetscInt, parameter :: THMC_PRESSURE_DOF = 1
 PetscInt, parameter :: THMC_TEMPERATURE_DOF = 2
 PetscInt, parameter :: THMC_CONCENTRATION_DOF = 3
-PetscInt, parameter :: THMC_MASS_RATE_DOF = 4
-PetscInt, parameter :: THMC_ENTHALPY_DOF = 5
+!PetscInt, parameter :: THMC_MASS_RATE_DOF = 4
+!PetscInt, parameter :: THMC_ENTHALPY_DOF = 5
+PetscInt, parameter :: THMC_DISP_X_DOF = 4
+PetscInt, parameter :: THMC_DISP_Y_DOF = 5
+PetscInt, parameter :: THMC_DISP_Z_DOF = 6
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1
 PetscInt, parameter :: MPH_TEMPERATURE_DOF = 2

@@ -24,7 +24,8 @@ module THMC_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-    PetscReal :: gradient(3,3)
+    PetscReal :: gradient(3,3)       ! displacement gradient
+    PetscReal :: stress(3,3)
 #ifdef ICE
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -42,10 +43,13 @@ module THMC_Aux_module
   end type thmc_auxvar_type
 
   type, public :: thmc_parameter_type
+    PetscReal, pointer :: rock_den(:)
     PetscReal, pointer :: dencpr(:)
     PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
     PetscReal, pointer :: ckwet(:) ! Thermal conductivity (wet)
     PetscReal, pointer :: alpha(:)
+    PetscReal, pointer :: youngs_modulus(:) !Elasticity parameters
+    PetscReal, pointer :: poissons_ratio(:)
 #ifdef ICE
     PetscReal, pointer :: ckfrozen(:) ! Thermal conductivity (frozen soil)
     PetscReal, pointer :: alpha_fr(:)
@@ -69,7 +73,9 @@ module THMC_Aux_module
 
   public :: THMCAuxCreate, THMCAuxDestroy, &
             THMCAuxVarCompute, THMCAuxVarInit, &
-            THMCAuxVarCopy, THMCComputeDisplacementGradient
+            THMCAuxVarCopy, THMCComputeDisplacementGradient, &
+            THMCComputeStressFromDispGrad, &
+            THMCComputeDisplacementGradientPert
 
 #ifdef ICE
   public :: THMCAuxVarComputeIce
@@ -113,6 +119,8 @@ function THMCAuxCreate(option)
   allocate(aux%thmc_parameter%diffusion_activation_energy(option%nphase))
   aux%thmc_parameter%diffusion_coefficient = 1.d-9
   aux%thmc_parameter%diffusion_activation_energy = 0.d0
+ ! aux%thmc_parameter%youngs_modulus = 2.d11 ! in Pa (check this)
+ ! aux%thmc_parameter%poissons_ratio = 0.3
 
   THMCAuxCreate => aux
   
@@ -351,6 +359,42 @@ subroutine THMCAuxVarCompute(x,aux_var,global_aux_var, &
   
 end subroutine THMCAuxVarCompute
 
+! ************************************************************************** !
+! 
+! THMCComputeStressFromDispGrad: Computes the stress from given displacement
+! gradient
+! Author: Satish Karra
+! Date: 3/20/12
+!
+! ************************************************************************** !
+
+
+subroutine THMCComputeStressFromDispGrad(disp_grad,youngs_modulus, &
+                                         poissons_ratio,stress) 
+
+
+  use Utility_module
+
+  implicit none
+
+  PetscReal :: disp_grad(3,3)
+  PetscReal :: youngs_modulus, poissons_ratio
+  PetscReal :: lambda, mu
+  PetscReal :: stress(3,3)
+  PetscReal :: identity(3,3)
+  PetscReal :: trace_disp_grad
+  
+  lambda = youngs_modulus*poissons_ratio/((1.d0 + poissons_ratio)* &
+                                    (1.d0 - 2.d0*poissons_ratio))
+  mu = youngs_modulus/(2.d0*(1.d0 + poissons_ratio))
+  identity = reshape((/1.d0,0.d0,0.d0,0.d0,1.d0,0.d0,0.d0,0.d0,1.d0/),(/3,3/))
+  trace_disp_grad = DotProduct(identity(1,:),disp_grad(1,:)) + &
+                    DotProduct(identity(2,:),disp_grad(2,:)) + &
+                    DotProduct(identity(3,:),disp_grad(3,:))
+  stress = mu*(disp_grad + transpose(disp_grad)) + lambda*trace_disp_grad* &
+                                                          identity
+  
+end subroutine THMCComputeStressFromDispGrad
 
 ! ************************************************************************** !
 ! 
@@ -410,14 +454,14 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
     disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
     disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
     ux_weighted = ux_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
-                     global_aux_vars(ghosted_id)%temp(1))
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
+                     global_aux_vars(ghosted_id)%displacement(1))
     uy_weighted = uy_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
-                     global_aux_vars(ghosted_id)%temp(1))
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
+                     global_aux_vars(ghosted_id)%displacement(2))
     uz_weighted = uz_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
-                     global_aux_vars(ghosted_id)%temp(1))
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
+                     global_aux_vars(ghosted_id)%displacement(3))
 
   enddo
 
@@ -432,6 +476,108 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
   
   
 end subroutine THMCComputeDisplacementGradient
+
+! ************************************************************************** !
+! 
+! THMCComputeDisplacementGradientPert: Computes the perturbation of the 
+! gradient of displacement
+! Author: Satish Karra
+! Date: 4/13/12
+!
+! ************************************************************************** !
+
+
+subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
+                                               ghosted_id, &
+                                               gradient_pert, direction_flag, &
+                                               perturbation_tolerance, option) 
+
+
+  use Grid_module
+  use Global_Aux_module
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+
+  
+  PetscInt :: ghosted_neighbors_size, ghosted_id
+  PetscInt :: ghosted_neighbors(26)
+  PetscReal :: gradient_pert(3,3), disp_vec(3,1), disp_mat(3,3)
+  PetscReal :: ux_weighted(3,1)
+  PetscReal :: uy_weighted(3,1)
+  PetscReal :: uz_weighted(3,1)
+  PetscReal :: perturbation_tolerance
+
+  PetscInt :: i, direction_flag, flag_x, flag_y, flag_z
+  PetscInt :: INDX(3)
+  PetscInt :: D
+   
+  call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
+                                         STAR_STENCIL, &
+                                         1,1,1,ghosted_neighbors_size, &
+                                         ghosted_neighbors, &
+                                         option)   
+ 
+  disp_vec = 0.d0
+  disp_mat = 0.d0
+  ux_weighted = 0.d0
+  uy_weighted = 0.d0
+  uz_weighted = 0.d0
+  
+  select case(direction_flag)
+    case (ONE_INTEGER)
+      flag_x = 1
+      flag_y = 0
+      flag_z = 0
+    case (TWO_INTEGER)
+      flag_x = 0
+      flag_y = 1
+      flag_z = 0
+    case (THREE_INTEGER)
+      flag_x = 0
+      flag_y = 0
+      flag_z = 1
+   end select
+ 
+ 
+  do i = 1, ghosted_neighbors_size
+    disp_vec(1,1) = grid%x(ghosted_neighbors(i)) - grid%x(ghosted_id)
+    disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
+    disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
+    disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
+    ux_weighted = ux_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
+                     global_aux_vars(ghosted_id)%displacement(1)* &
+                     (1.d0 + flag_x*perturbation_tolerance))
+    uy_weighted = uy_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
+                     global_aux_vars(ghosted_id)%displacement(2)* &
+                     (1.d0 + flag_y*perturbation_tolerance))
+    uz_weighted = uz_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
+                     global_aux_vars(ghosted_id)%displacement(3)* &
+                     (1.d0 + flag_z*perturbation_tolerance))
+
+  enddo
+
+  call ludcmp(disp_mat,3,INDX,D)
+  call lubksb(disp_mat,3,INDX,ux_weighted)
+  call lubksb(disp_mat,3,INDX,uy_weighted)
+  call lubksb(disp_mat,3,INDX,uz_weighted)
+
+  gradient_pert(:,1) = ux_weighted(:,1)
+  gradient_pert(:,2) = uy_weighted(:,1)
+  gradient_pert(:,3) = uz_weighted(:,1)
+  
+  
+end subroutine THMCComputeDisplacementGradientPert
+
+
 
 ! ************************************************************************** !
 ! 
@@ -644,12 +790,18 @@ subroutine THMCAuxDestroy(aux)
     nullify(aux%thmc_parameter%diffusion_activation_energy)
     if (associated(aux%thmc_parameter%dencpr)) deallocate(aux%thmc_parameter%dencpr)
     nullify(aux%thmc_parameter%dencpr)
+    if (associated(aux%thmc_parameter%rock_den)) deallocate(aux%thmc_parameter%rock_den)
+    nullify(aux%thmc_parameter%rock_den)
     if (associated(aux%thmc_parameter%ckwet)) deallocate(aux%thmc_parameter%ckwet)
     nullify(aux%thmc_parameter%ckwet)
     if (associated(aux%thmc_parameter%ckdry)) deallocate(aux%thmc_parameter%ckdry)
     nullify(aux%thmc_parameter%ckdry)
     if (associated(aux%thmc_parameter%alpha)) deallocate(aux%thmc_parameter%alpha)
     nullify(aux%thmc_parameter%alpha)
+    if (associated(aux%thmc_parameter%youngs_modulus)) deallocate(aux%thmc_parameter%youngs_modulus)
+    nullify(aux%thmc_parameter%youngs_modulus)
+    if (associated(aux%thmc_parameter%poissons_ratio)) deallocate(aux%thmc_parameter%poissons_ratio)
+    nullify(aux%thmc_parameter%poissons_ratio)
 #ifdef ICE
     if (associated(aux%thmc_parameter%ckfrozen)) deallocate(aux%thmc_parameter%ckfrozen)
     nullify(aux%thmc_parameter%ckfrozen)

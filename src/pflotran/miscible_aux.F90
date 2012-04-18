@@ -189,9 +189,11 @@ subroutine Water_glycol_density(y,p,dkg)
   PetscReal y, p ! water mass fraction
   PetscReal dkg
 
-  dkg = ((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0
-  dkg = (4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
-  dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
+  dkg = (((0.0806d0*y-0.203d0)*y + 0.0873d0)*y + 1.0341d0) * 1.d3
+! dkg = (4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5) + dkg
+! dkg = dkg * 1.d3  ! convert g/cm^3 to kg/m^3
+
+  dkg = dkg * (1+(4.49758d-10*y +(1.d0-y)*5.d-10)*(p-1.01325d5))
  
 end subroutine Water_glycol_density
 
@@ -222,7 +224,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal ::  p, t, temp, p2, err
+  PetscReal :: p, t, temp, p2, err
   PetscReal :: henry,lngamco2
   PetscReal :: dg, dddp, dddt
   PetscReal :: fg, dfgdp, dfgdt, xphi
@@ -230,7 +232,7 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: tk, visw 
-  PetscReal :: denw, yh2o
+  PetscReal :: denw, yh2o, yppg
   PetscReal :: tmp 
   PetscInt :: iflag  
   
@@ -247,8 +249,18 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
  
   aux_var%pres = x(1)  
   aux_var%xmol(2:option%nflowspec) = x(2:option%nflowspec)
-  tmp = sum(aux_var%xmol)
-  aux_var%xmol(1) = 1.D0 - tmp
+! tmp = sum(aux_var%xmol)
+! aux_var%xmol(1) = 1.D0 - tmp
+
+#if 0
+  if (aux_var%xmol(2) > 1.d0) then
+!   print *,'Error in NINC: x2 > 1 ',aux_var%xmol(2)
+    aux_var%xmol(2) = 1.d0
+    x(2) = 1.d0
+  endif
+#endif
+
+  aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
 
 ! Glycol-Water mixture formula weight (kg/kmol)
   aux_var%avgmw(1) = aux_var%xmol(1)*FMWH2O + aux_var%xmol(2)*FMWGLYC
@@ -261,7 +273,9 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   aux_var%den(1) = denw/aux_var%avgmw(1)
   
 ! Glycol-Water mixture viscosity (yh2o mass fraction water)
-  visw = 10.d0**(1.6743d0*yh2o-0.0758d0) * 1.0d-3 ! centipoise to Pa s.
+  yppg = 1.d0-yh2o
+  visw = 10.d0**(1.6743d0*yppg-0.0758d0) * 1.0d-3 ! centipoise to Pa s.
+
   aux_var%vis(1) = visw
   
   aux_var%sat(1) = 1.d0
@@ -279,7 +293,7 @@ end subroutine MiscibleAuxVarCompute_NINC
 
 
 
-subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
+subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar, &
                                     fluid_properties,option)
 
   use Option_module
@@ -297,8 +311,8 @@ subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar,&
 
   PetscInt :: n 
   
-  do n=1, option%nflowdof
-     xx=x;  xx(n)=x(n)+ delx(n)
+  do n = 1, option%nflowdof
+    xx = x;  xx(n) = x(n) + delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
     call  MiscibleAuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &
       fluid_properties, option)
