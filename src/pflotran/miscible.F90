@@ -1132,7 +1132,7 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
              *dist_gravity
 
     dphi = aux_var_up%pres - aux_var_dn%pres &
-             - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+!            - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
     v_darcy = 0.D0
@@ -1148,14 +1148,14 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
       uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     endif
 
-    if (ukvr > floweps) then
+!   if (ukvr > floweps) then
       v_darcy = Dq * ukvr * dphi
       vv_darcy(np) = v_darcy
       q = v_darcy * area
       do ispec = 1, option%nflowspec
         fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
       enddo  
-    endif
+!   endif
 
 !   Diffusion term   
 !   Note : use harmonic average rule for diffusion
@@ -1586,7 +1586,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       global_aux_vars_bc(sum_connection)%sat(:) = 1.D0
       global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
     endif
 
@@ -1791,12 +1791,12 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-    if(grid%nG2L(ng)<0)cycle
+    if (grid%nG2L(ng)<0) cycle
     if (associated(patch%imat)) then
       if (patch%imat(ng) <= 0) cycle
     endif
     ghosted_id = ng   
-    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    istart = (ng-1) * option%nflowdof + 1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
@@ -1815,26 +1815,34 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
     if (option%numerical_derivatives_flow) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+!     delx(1) = xx_loc_p((ng-1)*option%nflowdof+1) * 1.D-3
+
+!     print *,'mis_res: ',option%numerical_derivatives_flow,delx(1),dfac,xx_loc_p((ng-1)*option%nflowdof+1)
          
-     do idof = 2, option%nflowdof
-      if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
-         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-       else
+      do idof = 2, option%nflowdof
+        if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
+!         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+          delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1.d-5 
+        else
           delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-       endif
-       if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
-       if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
+!         delx(idof) = -xx_loc_p((ng-1)*option%nflowdof+idof)*1.d-3 
+        endif
+        if(delx(idof) <  1D-8 .and.  delx(idof) >= 0.D0) delx(idof) = 1D-8
+        if(delx(idof) > -1D-8 .and.  delx(idof) <  0.D0) delx(idof) =-1D-8
 
-         
-       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
+        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
           delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
-       endif
-       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
+        endif
+        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
           delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
-       endif
-     end do
+        endif
 
-      patch%aux%Miscible%delx(:,ng)=delx(:)
+!       print *,'mis_res: ',idof,option%nflowdof,delx(idof),dfac,xx_loc_p((ng-1)*option%nflowdof+idof)
+      end do
+
+!      store increments
+      patch%aux%Miscible%delx(:,ng) = delx(:)
+
       call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%fluid_properties,option)
@@ -2036,7 +2044,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     case(1) 
       r_p(:) = r_p(:)/option%flow_dt
     case(-1)
-      if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+      if (option%flow_dt > 1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -2044,9 +2052,13 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
     endif
 
+!    scale residual by grid cell volume
     istart = 1 + (local_id-1)*option%nflowdof
-    if (volume_p(local_id) > 1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
-    if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+    if (volume_p(local_id) > 1.D0) r_p(istart:istart+2) = &
+      r_p(istart:istart+2)/volume_p(local_id)
+!   r_p(istart:istart+2) = r_p(istart:istart+2)/volume_p(local_id)
+    if(r_p(istart) > 1.E20 .or. r_p(istart) < -1.E20) print *, 'overflow in res: ', &
+      local_id,istart,r_p (istart:istart+2)
   enddo
 
   if (option%use_isothermal) then
@@ -2410,20 +2422,24 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     ra=0.D0
     do neq=1, option%nflowdof
       do nvar=1, option%nflowdof
-        ra(neq,nvar) = (ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_BC(local_id,neq))&
+        ra(neq,nvar) = (ResInc(local_id,neq,nvar) - patch%aux%Miscible%ResOld_BC(local_id,neq))&
           /patch%aux%Miscible%delx(nvar,ghosted_id)
+
+!       print *,'jacobian: ',neq,nvar,local_id,ghosted_id,grid%nlmax,ra(neq,nvar),ResInc(local_id,neq,nvar), &
+!         patch%aux%Miscible%ResOld_BC(local_id,neq),patch%aux%Miscible%delx(nvar,ghosted_id)
       enddo
     enddo
    
     select case(option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
     end select
 
-    Jup=ra(1:option%nflowdof,1:option%nflowdof)
-    if (volume_p(local_id) > 1.D0) Jup=Jup / volume_p(local_id)
+    Jup = ra(1:option%nflowdof,1:option%nflowdof)
+    if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
+!   Jup = Jup / volume_p(local_id)
    
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
@@ -2516,16 +2532,14 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
         case(1)
           ra = ra / option%flow_dt
         case(-1)  
-          if(option%flow_dt>1) ra = ra / option%flow_dt
+          if(option%flow_dt > 1.d0) ra = ra / option%flow_dt
       end select
     
       if (local_id_up > 0) then
         voltemp = 1.D0
-        if(volume_p(local_id_up) > 1.D0)then
-          voltemp = 1.D0/volume_p(local_id_up)
-        endif
-        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+        if (volume_p(local_id_up) > 1.D0) voltemp = 1.D0/volume_p(local_id_up)
+        Jup(:,1:option%nflowdof) = ra(:,1:option%nflowdof)*voltemp !11
+        jdn(:,1:option%nflowdof) = ra(:,1 + option%nflowdof:2*option%nflowdof)*voltemp !12
 
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
@@ -2534,12 +2548,9 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       endif
       if (local_id_dn > 0) then
         voltemp = 1.D0
-        if(volume_p(local_id_dn) > 1.D0)then
-          voltemp = 1.D0/volume_p(local_id_dn)
-        endif
+        if (volume_p(local_id_dn) > 1.D0) voltemp = 1.D0/volume_p(local_id_dn)
         Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
-        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
-
+        jdn(:,1:option%nflowdof)= -ra(:,1 + option%nflowdof:2*option%nflowdof)*voltemp !22
  
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
@@ -2803,13 +2814,16 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
    
     select case(option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:) / option%flow_dt
     end select
 
-    Jup=ra(1:option%nflowdof,1:option%nflowdof)
-    if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+    Jup = ra(1:option%nflowdof,1:option%nflowdof)
+    if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
+!   Jup = Jup / volume_p(local_id)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
