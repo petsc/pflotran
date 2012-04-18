@@ -642,11 +642,13 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
   PetscReal :: ln_act(reaction%naqcomp)
   PetscBool :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
-  PetscReal :: free_site_conc
+  PetscReal :: free_site_conc, rel_change_in_free_site_conc
   PetscReal :: site_density(2)
   PetscReal :: mobile_fraction
   PetscInt :: num_types_of_sites
   PetscInt :: isite
+  PetscInt :: num_iterations
+  PetscReal :: damping_factor
   type(surface_complexation_type), pointer :: surface_complexation
 
   surface_complexation => reaction%surface_complexation
@@ -688,8 +690,11 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
     ! get a pointer to the first complex (there will always be at least 1)
     ! in order to grab free site conc
     one_more = PETSC_FALSE
+    num_iterations = 0
+    damping_factor = 1.d0
     do
 
+      num_iterations = num_iterations + 1
       total = free_site_conc
       ln_free_site = log(free_site_conc)
       do j = 1, ncplx
@@ -735,9 +740,15 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,reaction,option, &
         enddo
 
         dfree_site_conc = res / dres_dfree_site
-        free_site_conc = free_site_conc + dfree_site_conc
         
-        if (dabs(dfree_site_conc/free_site_conc) < tol) then
+        ! if number of Newton iterations is excessive, try damping the update
+        if (num_iterations > 1000) then
+          damping_factor = 0.5d0
+        endif
+        free_site_conc = free_site_conc + damping_factor*dfree_site_conc
+        rel_change_in_free_site_conc = dabs(dfree_site_conc/free_site_conc)
+        
+        if (rel_change_in_free_site_conc < tol) then
           one_more = PETSC_TRUE
         endif
         
