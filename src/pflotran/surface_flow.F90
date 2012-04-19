@@ -461,7 +461,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       !Res(1) = 1.0d0
 
       write(*,*),'r_p: ',r_p(local_id_up),r_p(local_id_dn)
-      if (.not.option%use_samr) then
          
         if (local_id_up>0) then
           r_p(local_id_up) = r_p(local_id_up) - Res(1)
@@ -470,7 +469,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
         if (local_id_dn>0) then
           r_p(local_id_dn) = r_p(local_id_dn) + Res(1)
         endif
-      endif
       
       write(*,*),'r_p: ',r_p(local_id_up),r_p(local_id_dn)
       

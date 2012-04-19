@@ -155,7 +155,7 @@ subroutine Init(simulation)
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
-  surf_realization%input => InputCreate(IN_UNIT,option%input_filename)
+  surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
   surf_realization%subsurf_filename = realization%discretization%filename
   call InitReadRequiredCardsFromInputSurf(simulation%surf_realization)
 #endif

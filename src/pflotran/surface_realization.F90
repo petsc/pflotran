@@ -633,7 +633,7 @@ subroutine SurfaceRealizationInitAllCouplerAuxVars(surf_realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call PatchInitAllCouplerAuxVars(cur_patch,surf_realization%surf_reaction, &
+      call PatchInitAllCouplerAuxVars(cur_patch, &
                                       surf_realization%option)
       cur_patch => cur_patch%next
     enddo
