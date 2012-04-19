@@ -7,6 +7,7 @@ module Patch_module
   use Strata_module
   use Region_module
   use Reaction_Aux_module
+  use Dataset_Aux_module
   use Material_module
   use Field_module
   use Saturation_Function_module
@@ -65,13 +66,14 @@ module Patch_module
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
 
-    ! Pointer to field object in mother realization object
-    type(field_type), pointer :: field 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
 
-    ! Pointer to reaction object in mother realization object
+    ! Pointers to objects in mother realization object
+    type(field_type), pointer :: field 
     type(reaction_type), pointer :: reaction
+    type(dataset_type), pointer :: datasets
+    
     type(auxilliary_type) :: aux
     
     type(patch_type), pointer :: next
@@ -166,7 +168,6 @@ function PatchCreate()
   nullify(patch%saturation_functions)
   nullify(patch%saturation_function_array)
 
-  nullify(patch%field)
   allocate(patch%observation)
   call ObservationInitList(patch%observation)
 
@@ -175,7 +176,9 @@ function PatchCreate()
   
   call AuxInit(patch%aux)
   
+  nullify(patch%field)
   nullify(patch%reaction)
+  nullify(patch%datasets)
   
   nullify(patch%next)
   
@@ -393,7 +396,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
         if (.not.associated(coupler%tran_condition)) then
            option%io_buffer = 'Transport condition "' // &
-                   trim(coupler%flow_condition_name) // &
+                   trim(coupler%tran_condition_name) // &
                    '" in boundary condition ' // &
                    trim(coupler%name) // &
                    ' not found in transport condition list'
@@ -697,24 +700,23 @@ end subroutine PatchProcessCouplers
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchInitAllCouplerAuxVars(patch,reaction,option)
+subroutine PatchInitAllCouplerAuxVars(patch,option)
 
   use Option_module
   use Reaction_Aux_module
   
   implicit none
   
-  type(patch_type) :: patch
-  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
   type(option_type) :: option
   
   PetscBool :: force_update_flag = PETSC_TRUE
   
-  call PatchInitCouplerAuxVars(patch%initial_conditions,reaction, &
+  call PatchInitCouplerAuxVars(patch%initial_conditions,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%boundary_conditions,reaction, &
+  call PatchInitCouplerAuxVars(patch%boundary_conditions,patch, &
                                option)
-  call PatchInitCouplerAuxVars(patch%source_sinks,reaction, &
+  call PatchInitCouplerAuxVars(patch%source_sinks,patch, &
                                option)
 
   !geh: This should not be included in PatchUpdateAllCouplerAuxVars
@@ -734,7 +736,7 @@ end subroutine PatchInitAllCouplerAuxVars
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
+subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
 
   use Option_module
   use Connection_module
@@ -742,11 +744,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Condition_module
+  use Dataset_Aux_module
   
   implicit none
   
   type(coupler_list_type), pointer :: coupler_list
-  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
   type(option_type) :: option
   
   PetscInt :: num_connections
@@ -754,6 +757,9 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
   
   type(coupler_type), pointer :: coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+  type(dataset_type), pointer :: dataset
+  PetscInt :: idof
+  character(len=MAXSTRINGLENGTH) :: string
   
   if (.not.associated(coupler_list)) return
     
@@ -763,7 +769,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
     
     if (associated(coupler%connection_set)) then
       num_connections = coupler%connection_set%num_connections
-
+      
       ! FLOW
       if (associated(coupler%flow_condition) .and. &
           (coupler%itype == INITIAL_COUPLER_TYPE .or. &
@@ -858,7 +864,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
         endif
         if (.not.associated(cur_constraint_coupler%rt_auxvar)) then
           allocate(cur_constraint_coupler%rt_auxvar)
-          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
+          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,patch%reaction, &
+                            option)
         endif
         cur_constraint_coupler => cur_constraint_coupler%next
       enddo
@@ -909,12 +916,12 @@ end subroutine PatchUpdateAllCouplerAuxVars
 ! ************************************************************************** !
 subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                                      option)
-
   use Option_module
   use Condition_module
   use Hydrostatic_module
   use Saturation_module
   use water_eos_module
+  use Dataset_Aux_module
 
   implicit none
   
@@ -927,13 +934,16 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
   type(flow_general_condition_type), pointer :: general
+  type(dataset_type), pointer :: dataset
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat
+  character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   
   PetscInt :: idof, num_connections
   
+
   if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
@@ -1047,7 +1057,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
             endif
             
-          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE,THMC_MODE) ! updated 10/17/11 
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE,THC_MODE) ! updated 10/17/11 
             if (associated(flow_condition%pressure)) then
               coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                           flow_condition%iphase
@@ -1116,9 +1126,12 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             if (associated(flow_condition%concentration)) then
               select case(flow_condition%concentration%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
-                  coupler%flow_aux_real_var(MIS_CONCENTRATION_DOF, &
-                                            1:num_connections) = &
-                    flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                  if (associated(flow_condition%concentration%flow_dataset% &
+                                   time_series)) then
+                    coupler%flow_aux_real_var(MIS_CONCENTRATION_DOF, &
+                                              1:num_connections) = &
+                      flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                  endif
                 case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
                   call HydrostaticUpdateCoupler(coupler,option,patch%grid)
              !  case(SATURATION_BC)
@@ -1130,8 +1143,95 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   call PatchScaleSourceSink(patch,coupler,option)
               end select
             endif
+
+          case(THMC_MODE) ! updated 10/17/11 
+            if (associated(flow_condition%pressure)) then
+              coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                          flow_condition%iphase
+              select case(flow_condition%pressure%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(MPH_PRESSURE_DOF,1:num_connections) = &
+                          flow_condition%pressure%flow_dataset%time_series%cur_value(1)
+                case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+                  call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+           !  case(SATURATION_BC)
+              end select
+              select case(flow_condition%temperature%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                     (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                     flow_condition%temperature%itype /= DIRICHLET_BC)) then
+                    coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+                  endif
+              end select
+              select case(flow_condition%concentration%itype)
+                case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                  if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                     (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                     flow_condition%concentration%itype /= DIRICHLET_BC)) then
+                    coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                            flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+                  endif
+              end select
+            else
+              select case(flow_condition%temperature%itype)
+                case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+                  coupler%flow_aux_real_var(MPH_TEMPERATURE_DOF,1:num_connections) = &
+                            flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+              end select
+              select case(flow_condition%concentration%itype)
+                case(DIRICHLET_BC,ZERO_GRADIENT_BC)
+                   coupler%flow_aux_real_var(MPH_CONCENTRATION_DOF,1:num_connections) = &
+                            flow_condition%concentration%flow_dataset%time_series%cur_value(1)
+              end select
+            endif
+            if (associated(flow_condition%displacement_x)) then
+              select case(flow_condition%displacement_x%itype) 
+                case(DIRICHLET_BC)
+                  coupler%flow_aux_real_var(THMC_DISP_X_DOF,1:num_connections) = &
+                           flow_condition%displacement_x%flow_dataset%time_series%cur_value(1)
+                case default
+                  option%io_buffer = 'bc for "' // &
+                  trim(flow_condition%name) // '" requires type dirichlet'
+                  call printErrMsg(option)
+              end select
+            endif
+            if (associated(flow_condition%displacement_y)) then
+              select case(flow_condition%displacement_y%itype) 
+                case(DIRICHLET_BC)
+                  coupler%flow_aux_real_var(THMC_DISP_Y_DOF,1:num_connections) = &
+                           flow_condition%displacement_y%flow_dataset%time_series%cur_value(1)
+                case default
+                  option%io_buffer = 'bc for "' // &
+                  trim(flow_condition%name) // '" requires type dirichlet'
+                  call printErrMsg(option)
+              end select
+            endif          
+            if (associated(flow_condition%displacement_z)) then
+              select case(flow_condition%displacement_z%itype) 
+                case(DIRICHLET_BC)
+                  coupler%flow_aux_real_var(THMC_DISP_Z_DOF,1:num_connections) = &
+                           flow_condition%displacement_z%flow_dataset%time_series%cur_value(1)
+                case default
+                  option%io_buffer = 'bc for "' // &
+                  trim(flow_condition%name) // '" requires type dirichlet'
+                  call printErrMsg(option)
+              end select
+            endif
+            if (associated(flow_condition%rate)) then
+              select case(flow_condition%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  call PatchScaleSourceSink(patch,coupler,option)
+              end select
+            endif
+            if (associated(flow_condition%saturation)) then
+              call SaturationUpdateCoupler(coupler,option,patch%grid, &
+                                           patch%saturation_function_array, &
+                                           patch%sat_func_id)
+            endif
   
-          case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
+           case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
             if (associated(flow_condition%pressure)) then
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -1597,7 +1697,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
   PetscReal :: xmass
   PetscReal :: tempreal
   PetscInt :: tempint
-  PetscInt :: irate, istate
+  PetscInt :: irate, istate, irxn
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -2126,17 +2226,23 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           enddo
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
           ! add in total sorbed.  already in mol/m^3 bulk
-          if (patch%reaction%neqsorb > 0) then
+          if (patch%reaction%nsorb > 0) then
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              if (patch%reaction%kinmr_nrate > 0) then
-                do irate = 1, patch%reaction%kinmr_nrate
-                  vec_ptr(local_id) = vec_ptr(local_id) + &
-                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
-                enddo            
-              else
+              if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
                 vec_ptr(local_id) = vec_ptr(local_id) + &
                   patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+              endif
+              if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+                do irxn = 1, &
+                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                  do irate = 1, &
+                     patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                    vec_ptr(local_id) = vec_ptr(local_id) + &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        kinmr_total_sorb(isubvar,irate,irxn)
+                  enddo 
+                enddo
               endif
             enddo
           endif
@@ -2157,14 +2263,19 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
                                                   reaction,option)
           enddo
         case(SURFACE_CMPLX)
-          do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_conc(isubvar)
-          enddo
+          if (associated(patch%aux%RT%aux_vars(1)%eqsrfcplx_conc)) then
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+                                    eqsrfcplx_conc(isubvar)
+            enddo
+          else
+            vec_ptr = -999.d0
+          endif
         case(SURFACE_SITE_DENSITY)
-          tempreal = reaction%eqsrfcplx_rxn_site_density(isubvar)
-          select case(reaction%eqsrfcplx_rxn_surf_type(isubvar))
+          tempreal = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)
+          select case(reaction%surface_complexation%srfcplxrxn_surf_type(isubvar))
             case(MINERAL_SURFACE)
-              tempint = reaction%eqsrfcplx_rxn_to_surf(isubvar)
+              tempint = reaction%surface_complexation%srfcplxrxn_to_surf(isubvar)
               do local_id=1,grid%nlmax
                 vec_ptr(local_id) = tempreal* &
                                     patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
@@ -2181,15 +2292,18 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           end select          
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_free_site_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+              srfcplxrxn_free_site_conc(isubvar)
           enddo
         case(KIN_SURFACE_CMPLX)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+              kinsrfcplx_conc(isubvar,1)
           enddo
         case(KIN_SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_free_site_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))% &
+              kinsrfcplx_free_site_conc(isubvar)
           enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
@@ -2214,22 +2328,29 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
           enddo
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
-          if (patch%reaction%neqsorb > 0) then
+          if (patch%reaction%nsorb > 0) then
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
-              if (patch%reaction%kinmr_nrate > 0) then
+              if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
+                vec_ptr(local_id) = &
+                  patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+              endif
+              if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
                 vec_ptr(local_id) = 0.d0
-                do irate = 1, patch%reaction%kinmr_nrate
-                  vec_ptr(local_id) = vec_ptr(local_id) + &
-                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+                do irxn = 1, &
+                  patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                  do irate = 1, &
+                    patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                    vec_ptr(local_id) = vec_ptr(local_id) + &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        kinmr_total_sorb(isubvar,irate,irxn)
+                  enddo            
                 enddo            
-              else
-                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
               endif
             enddo
           endif
         case(TOTAL_SORBED_MOBILE)
-          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+          if (patch%reaction%nsorb > 0 .and. patch%reaction%ncollcomp > 0) then
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%colloid% &
@@ -2356,7 +2477,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   PetscInt :: ghosted_id
 
   PetscReal :: value, xmass
-  PetscInt :: irate, istate
+  PetscInt :: irate, istate, irxn
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
   PetscErrorCode :: ierr
@@ -2659,15 +2780,20 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
               patch%aux%Global%aux_vars(ghosted_id)%sat(iphase) * 1.d-3 ! mol/L -> mol/m^3
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
           ! add in total sorbed.  already in mol/m^3 bulk
-          if (patch%reaction%neqsorb > 0) then
-            if (patch%reaction%kinmr_nrate > 0) then
-              do irate = 1, patch%reaction%kinmr_nrate
-                value = value + &
-                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
-              enddo            
-            else
+          if (patch%reaction%nsorb > 0) then
+            if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
               value = value + &
                 patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+            endif
+            if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+              do irxn = 1, patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                do irate = 1, &
+                  patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                  value = value + &
+                      patch%aux%RT%aux_vars(ghosted_id)% &
+                        kinmr_total_sorb(isubvar,irate,irxn)
+                enddo
+              enddo            
             endif
           endif          
         case(MINERAL_VOLUME_FRACTION)
@@ -2679,24 +2805,28 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                                           patch%aux%Global%aux_vars(ghosted_id), &
                                           reaction,option)
         case(SURFACE_CMPLX)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
+          if (associated(patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc)) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
+          else
+            value = -999.d0
+          endif
         case(SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_free_site_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%srfcplxrxn_free_site_conc(isubvar)
         case(SURFACE_SITE_DENSITY)
-          select case(reaction%eqsrfcplx_rxn_surf_type(isubvar))
+          select case(reaction%surface_complexation%srfcplxrxn_surf_type(isubvar))
             case(MINERAL_SURFACE)
-              value = reaction%eqsrfcplx_rxn_site_density(isubvar)* &
+              value = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)* &
                       patch%aux%RT%aux_vars(ghosted_id)% &
-                        mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(isubvar))
+                        mnrl_volfrac(reaction%surface_complexation%srfcplxrxn_to_surf(isubvar))
             case(COLLOID_SURFACE)
                 option%io_buffer = 'Printing of surface site density for colloidal surfaces ' // &
                   'not implemented.'
                 call printErrMsg(option)
             case(NULL_SURFACE)
-              value = reaction%eqsrfcplx_rxn_site_density(isubvar)
+              value = reaction%surface_complexation%srfcplxrxn_site_density(isubvar)
           end select
         case(KIN_SURFACE_CMPLX)
-          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar,1)
         case(KIN_SURFACE_CMPLX_FREE)
           value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
@@ -2711,20 +2841,26 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                                  vec_ptr2(ghosted_id),patch%reaction,option)
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
-          if (patch%reaction%neqsorb > 0) then
-            if (patch%reaction%kinmr_nrate > 0) then
-              value = 0.d0
-              do irate = 1, patch%reaction%kinmr_nrate
-                value = value + &
-                  patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
-              enddo            
-            else
+          if (patch%reaction%nsorb > 0) then
+            if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
               value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
+            endif
+            if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+              value = 0.d0
+              do irxn = 1, patch%reaction%surface_complexation%nkinmrsrfcplxrxn
+                do irate = 1, &
+                  patch%reaction%surface_complexation%kinmr_nrate(irxn)
+                  value = value + &
+                    patch%aux%RT%aux_vars(ghosted_id)% &
+                      kinmr_total_sorb(isubvar,irate,irxn)
+                enddo
+              enddo            
             endif
           endif
         case(TOTAL_SORBED_MOBILE)
-          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
-            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
+          if (patch%reaction%nsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+            value = &
+              patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
           endif
         case(COLLOID_MOBILE)
           if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
@@ -3643,7 +3779,7 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   PetscInt :: iconn
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
-  PetscReal :: porosity_ave, por_sat_ave, v_darcy, v_pore
+  PetscReal :: por_sat_ave, por_sat_min, v_darcy, v_pore_ave, v_pore_max
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
@@ -3675,17 +3811,23 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
           patch%imat(ghosted_id_dn) <= 0) cycle
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
-      !porosity_ave = fraction_upwind*porosity_loc_p(ghosted_id_up) + &
-      !               (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)
       do iphase = 1, option%nphase
+        por_sat_min = min(porosity_loc_p(ghosted_id_up)* &
+                          global_aux_vars(ghosted_id_up)%sat(iphase), &
+                          porosity_loc_p(ghosted_id_dn)* &
+                          global_aux_vars(ghosted_id_dn)%sat(iphase))
         por_sat_ave = (fraction_upwind*porosity_loc_p(ghosted_id_up)* &
                        global_aux_vars(ghosted_id_up)%sat(iphase) + &
                       (1.d0-fraction_upwind)*porosity_loc_p(ghosted_id_dn)* &
                       global_aux_vars(ghosted_id_dn)%sat(iphase))
         v_darcy = patch%internal_velocities(iphase,sum_connection)
-!        v_pore = v_darcy / porosity_ave
-        v_pore = v_darcy / por_sat_ave
-        dt_cfl_1 = distance / dabs(v_pore)
+        v_pore_max = v_darcy / por_sat_min
+        v_pore_ave = v_darcy / por_sat_ave
+        !geh: I use v_por_max to ensure that we limit the cfl based on the
+        !     highest velocity through the face.  If porosity*saturation
+        !     varies, the pore water velocity will be highest on the side
+        !     of the face with the smalled value of porosity*saturation.
+        dt_cfl_1 = distance / dabs(v_pore_max)
         max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
       enddo
     enddo
@@ -3704,14 +3846,12 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       if (patch%imat(ghosted_id_dn) <= 0) cycle
       !geh: since on boundary, dist must be scaled by 2.d0
       distance = 2.d0*cur_connection_set%dist(0,iconn)
- !     porosity_ave = porosity_loc_p(ghosted_id_dn)
       do iphase = 1, option%nphase
         por_sat_ave = porosity_loc_p(ghosted_id_dn)* &
                       global_aux_vars(ghosted_id_dn)%sat(iphase)
         v_darcy = patch%boundary_velocities(iphase,sum_connection)
-!        v_pore = v_darcy / porosity_ave
-        v_pore = v_darcy / por_sat_ave
-        dt_cfl_1 = distance / dabs(v_pore)
+        v_pore_ave = v_darcy / por_sat_ave
+        dt_cfl_1 = distance / dabs(v_pore_ave)
         max_dt_cfl_1 = min(dt_cfl_1,max_dt_cfl_1)
       enddo
     enddo
@@ -3881,7 +4021,6 @@ subroutine PatchDestroy(patch)
   call CouplerDestroyList(patch%initial_conditions)
   call CouplerDestroyList(patch%source_sinks)
   
-  nullify(patch%field)
   
   call ObservationDestroyList(patch%observation)
   call StrataDestroyList(patch%strata)
@@ -3890,7 +4029,10 @@ subroutine PatchDestroy(patch)
   
   call ObservationDestroyList(patch%observation)
   
+  ! these are solely pointers, must not destroy.
   nullify(patch%reaction)
+  nullify(patch%datasets)
+  nullify(patch%field)
   
   deallocate(patch)
   nullify(patch)

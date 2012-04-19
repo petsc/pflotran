@@ -16,6 +16,19 @@ module Utility_module
     module procedure UtilityReadIntArray
     module procedure UtilityReadRealArray
   end interface
+
+  interface DeallocateArray
+    module procedure DeallocateArray1DInteger
+    module procedure DeallocateArray2DInteger
+    module procedure DeallocateArray3DInteger
+    module procedure DeallocateArray1DReal
+    module procedure DeallocateArray2DReal
+    module procedure DeallocateArray3DReal
+    module procedure DeallocateArray1DLogical
+    module procedure DeallocateArray2DLogical
+    module procedure DeallocateArray3DLogical
+    module procedure DeallocateArray1DString
+  end interface
   
 contains
 
@@ -810,7 +823,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
     input%err_buf = 'filename'
     input%err_buf2 = comment
     call InputErrorMsg(input,option)
-    input2 => InputCreate(input%fid + 1,string2)
+    input2 => InputCreate(input%fid + 1,string2,option)
   else
     input2 => input
     input%buf = string2
@@ -961,7 +974,7 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
     input%err_buf = 'filename'
     input%err_buf2 = comment
     call InputErrorMsg(input,option)
-    input2 => InputCreate(input%fid + 1,string2)
+    input2 => InputCreate(input%fid + 1,string2,option)
   else
     input2 => input
     input%buf = string2
@@ -1200,5 +1213,266 @@ function BestFloat(float,upper_bound,lower_bound)
   BestFloat = adjustl(word)
   
 end function BestFloat
+
+! ************************************************************************** !
+!
+! CubicPolynomialSetup: Sets up a cubic polynomial for smoothing 
+!                       discontinuous functions
+! author: Glenn Hammond
+! date: 03/12/12
+!
+! ************************************************************************** !
+subroutine CubicPolynomialSetup(upper_value,lower_value,coefficients)
+
+  implicit none
+
+  PetscReal :: upper_value
+  PetscReal :: lower_value
+  PetscReal :: coefficients(4)
+  
+  PetscReal :: A(4,4)
+  PetscInt :: indx(4)
+  PetscInt :: d
+
+  A(1,1) = 1.d0
+  A(2,1) = 1.d0
+  A(3,1) = 0.d0
+  A(4,1) = 0.d0
+  
+  A(1,2) = upper_value
+  A(2,2) = lower_value
+  A(3,2) = 1.d0
+  A(4,2) = 1.d0
+  
+  A(1,3) = upper_value**2.d0
+  A(2,3) = lower_value**2.d0
+  A(3,3) = 2.d0*upper_value
+  A(4,3) = 2.d0*lower_value
+  
+  A(1,4) = upper_value**3.d0
+  A(2,4) = lower_value**3.d0
+  A(3,4) = 3.d0*upper_value**2.d0
+  A(4,4) = 3.d0*lower_value**2.d0
+  
+  ! coefficients(1): value at upper_value
+  ! coefficients(2): value at lower_value
+  ! coefficients(3): derivative at upper_value
+  ! coefficients(4): derivative at lower_value
+  
+  call ludcmp(A,FOUR_INTEGER,indx,d)
+  call lubksb(A,FOUR_INTEGER,indx,coefficients)
+
+end subroutine CubicPolynomialSetup
+
+! ************************************************************************** !
+!
+! CubicPolynomialEvaluate: Evaluates value in cubic polynomial
+! author: Glenn Hammond
+! date: 03/12/12
+!
+! ************************************************************************** !
+subroutine CubicPolynomialEvaluate(coefficients,x,f,df_dx)
+
+  implicit none
+
+  PetscReal :: coefficients(4)
+  PetscReal :: x
+  PetscReal :: f
+  PetscReal :: df_dx
+
+  PetscReal :: x_squared
+  
+  x_squared = x*x
+  
+  f = coefficients(1) + &
+      coefficients(2)*x + &
+      coefficients(3)*x_squared + &
+      coefficients(4)*x_squared*x
+  
+  df_dx = coefficients(2) + &
+          coefficients(3)*2.d0*x + &
+          coefficients(4)*3.d0*x_squared
+  
+end subroutine CubicPolynomialEvaluate
+
+! ************************************************************************** !
+!
+! DeallocateArray1DInteger: Deallocates a 1D integer array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray1DInteger(array)
+
+  implicit none
+  
+  PetscInt, pointer :: array(:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray1DInteger
+
+! ************************************************************************** !
+!
+! DeallocateArray2DInteger: Deallocates a 2D integer array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray2DInteger(array)
+
+  implicit none
+  
+  PetscInt, pointer :: array(:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray2DInteger
+
+! ************************************************************************** !
+!
+! DeallocateArray3DInteger: Deallocates a 3D integer array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray3DInteger(array)
+
+  implicit none
+  
+  PetscInt, pointer :: array(:,:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray3DInteger
+
+! ************************************************************************** !
+!
+! DeallocateArray1DReal: Deallocates a 1D real array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray1DReal(array)
+
+  implicit none
+  
+  PetscReal, pointer :: array(:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray1DReal
+
+! ************************************************************************** !
+!
+! DeallocateArray2DReal: Deallocates a 2D real array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray2DReal(array)
+
+  implicit none
+  
+  PetscReal, pointer :: array(:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray2DReal
+
+! ************************************************************************** !
+!
+! DeallocateArray3DReal: Deallocates a 3D real array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray3DReal(array)
+
+  implicit none
+  
+  PetscReal, pointer :: array(:,:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray3DReal
+
+! ************************************************************************** !
+!
+! DeallocateArray1DLogical: Deallocates a 1D logical array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray1DLogical(array)
+
+  implicit none
+  
+  PetscBool, pointer :: array(:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray1DLogical
+
+! ************************************************************************** !
+!
+! DeallocateArray2DLogical: Deallocates a 2D logical array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray2DLogical(array)
+
+  implicit none
+  
+  PetscBool, pointer :: array(:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray2DLogical
+
+! ************************************************************************** !
+!
+! DeallocateArray3DLogical: Deallocates a 3D logical array
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray3DLogical(array)
+
+  implicit none
+  
+  PetscBool, pointer :: array(:,:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray3DLogical
+
+! ************************************************************************** !
+!
+! DeallocateArray1DString: Deallocates a 1D array of character strings
+! author: Glenn Hammond
+! date: 03/13/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray1DString(array)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: array(:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray1DString
 
 end module Utility_module

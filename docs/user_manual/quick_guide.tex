@@ -645,11 +645,11 @@ Thus the number of equations is equal to number of phases plus one, which is equ
 
 \subsection{Mode: {\tt MISCIBLE}}
 
-The miscible mode applies to a mixture of water and proplyene glycol. In terms of molar density for the mixture $\eta$ and mole fractions $x_i$, $i$=1 (water), $i$=2 (proplyene glycol), the mass conservation equations have the form
+The miscible mode applies to a mixture of water and proplyene glycol (PPG). In terms of molar density for the mixture $\eta$ and mole fractions $x_i$, $i$=1 (water), $i$=2 (PPG), the mass conservation equations have the form
 \EQ
 \frac{\p}{\p t} \varphi \eta x_i + \bnabla\cdot\left[\bq\eta x_i - \varphi D \eta \bnabla x_i\right] \eq Q_i,
 \EN
-with source/sink term $Q_i$. It should be noted that the mass- and mole-fraction formulations of the conservation equations are not exactly equivalent. This is due to the diffusion term which gives an extra term when transformed from the mole-fraction  to mass-fraction gradient.
+with source/sink term $Q_i$. It should be noted that the mass- and mole-fraction formulations of the conservation equations are not exactly equivalent. This is due to the diffusion term which gives an extra term when transformed from the mole-fraction to mass-fraction gradient.
 
 The molar density $\eta$ is related to the mass density by
 \EQ
@@ -665,27 +665,39 @@ W_i \eta \bnabla x_i \eq \rho \bnabla y_i + \rho y_i \bnabla \ln W.
 \EN
 The second term on the right-hand side is ignored.
 
-Simple equations of state are provided for density [g/cm$^3$], viscosity [Pa s], and diffusivity [m$^2$/s] given by
+Simple equations of state are provided for density [g/cm$^3$], viscosity [Pa s], and diffusivity [m$^2$/s]. The density is a function of both composition are pressrue with the form
+\BA
+\rho(y_1,\,p) &\eq \rho(y_1,\,p_0) + \left.\frac{\p\rho}{\p p}\right|_{p=p_0} (p-p_0),\\
+&\eq  \rho(y_1,\,p_0) \big(1+\beta (p-p_0)\big),
+\EA
+with the compressibility $\beta(y_1)$ given by
+\BA
+\beta &\eq \left.\frac{1}{\rho}\frac{\p\rho}{\p p}\right|_{p=p_0},\\
+&\eq 4.49758\times 10^{-10} y_1 + 5\times 10^{-10}(1-y_1),
+\EA
+and the mixture density at the reference pressure $p_0$ taken as atmospheric pressure is given by
 \EQ
-\rho(y_1) \eq \Big(\big((0.0806 y_1 - 0.203) y_1 + 0.0873\big) y_1 + 1.0341\Big)10^3,
+\rho(y_1,\,p_0) \eq \Big(\big((0.0806 y_1 - 0.203) y_1 + 0.0873\big) y_1 + 1.0341\Big)10^3,
 \EN
+with mass fraction of water $y_1$. 
+The viscosity and diffusivity have the forms
 \EQ
-\mu(y_1) \eq 10^{(1.6743 y_1 - 0.0758)} 10^{-3},
+\mu(y_1) \eq 10^{\big(1.6743 (1-y_1) - 0.0758\big)} 10^{-3},
 \EN
 and
 \EQ
 D(y_1) \eq \Big(\big(((-4.021 y_1 + 9.1181) y_1 - 5.9703) y_1 
      + 0.4043\big) y_1 + 0.5687\Big) 10^{-9},
 \EN
-with mass fraction of water $y_1$. The mass fraction is related to mole fraction according to
+The mass fraction is related to mole fraction according to
 \EQ
 y_1 = \frac{x_1 W_{\rm H_2O}}{W},
 \EN
 where the mean formula weight $W$ is given by
 \EQ
-W = x_1 W_{\rm H_2O} + x_2 W_{\rm GLYC},
+W = x_1 W_{\rm H_2O} + x_2 W_{\rm PPG},
 \EN
-with formula weights for water and proplyene glycol equal to $W_{\rm H_2O}$ = 18.01534 and $W_{\rm GLYC}$ = 76.09 [kg/kmol].
+with formula weights for water and proplyene glycol equal to $W_{\rm H_2O}$ = 18.01534 and $W_{\rm PPG}$ = 76.09 [kg/kmol].
 
 Global mass conservation satisfies the relation
 \EQ
@@ -817,6 +829,15 @@ The quantity $Q_j$ denotes a source/sink term
 Q_j \eq \sum_n\frac{q_M}{\rho}\Psi_j \delta(\br-\br_{n}),
 \EN
 where $q_M$ denotes a mass rate in units of kg/s, $\rho$ denotes the fluid density in kg/m$^3$, and $\br_{n}$ refers to the location of the $n$th source/sink. The quantity $S_j$ represents the sorbed concentration of the $j$th primary species considered in more detail in the next section.
+
+Molality $m_i$ and molarity $C_i$ are related by the density of water $\rho_w$
+\EQ
+C_i \eq \rho_w m_i,
+\EN
+The activity of water is calculated from the approximate relation
+\EQ
+a_{\rm H_2O}^{} \eq 1 - 0.017 \sum_i m_i.
+\EN
 
 \subsubsection{Mineral Precipitation and Dissolution}
 

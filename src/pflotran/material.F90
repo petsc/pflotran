@@ -28,6 +28,8 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: alpha    ! conductivity saturation relation exponent
+    PetscReal :: youngs_modulus
+    PetscReal :: poissons_ratio
 #ifdef ICE
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
@@ -36,8 +38,10 @@ module Material_module
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
     PetscReal :: tortuosity_pwr
-    PetscReal :: mnrl_surf_area_volfrac_pwr
-    PetscReal :: mnrl_surf_area_porosity_pwr
+    !geh: minral surface area power functions must be defined on a per
+    !     mineral basis, look in reaction_aux.F90
+    !PetscReal :: mnrl_surf_area_volfrac_pwr
+    !PetscReal :: mnrl_surf_area_porosity_pwr
     PetscReal :: permeability_pwr
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
@@ -97,6 +101,8 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
   material_property%alpha = 0.45d0
+  material_property%youngs_modulus = 2.d11 ! in Pa
+  material_property%poissons_ratio = 0.3
 #ifdef ICE
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
@@ -105,8 +111,6 @@ function MaterialPropertyCreate()
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
   material_property%tortuosity_pwr = 0.d0
-  material_property%mnrl_surf_area_volfrac_pwr = 0.d0
-  material_property%mnrl_surf_area_porosity_pwr = 0.d0
   material_property%permeability_pwr = 0.d0
 #ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
@@ -317,6 +321,16 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
+      case('YOUNGS_MODULUS') 
+        call InputReadDouble(input,option, &
+                             material_property%youngs_modulus)
+        call InputErrorMsg(input,option,'youngs modulus', &
+                           'MATERIAL_PROPERTY')
+      case('POISSONS_RATIO') 
+        call InputReadDouble(input,option, &
+                             material_property%poissons_ratio)
+        call InputErrorMsg(input,option,'poissons_ratio', &
+                           'MATERIAL_PROPERTY')
       case('PERMEABILITY_POWER')
         call InputReadDouble(input,option, &
                              material_property%permeability_pwr)
@@ -326,24 +340,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%tortuosity_pwr)
         call InputErrorMsg(input,option,'tortuosity power','MATERIAL_PROPERTY')
       case('MINERAL_SURFACE_AREA_POWER')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'type', &
-                           'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
-        call StringToUpper(word)  
-        select case(word)
-          case('VOLUME_FRACTION')
-            call InputReadDouble(input,option, &
-                                 material_property%mnrl_surf_area_volfrac_pwr)
-            call InputErrorMsg(input,option,'volume fraction power', &
-                   'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
-          case('POROSITY')
-            option%update_mnrl_surf_with_porosity = PETSC_TRUE
-            call InputReadDouble(input,option, &
-                                 material_property%mnrl_surf_area_porosity_pwr)
-            call InputErrorMsg(input,option,'porosity power', &
-                   'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
-        end select
-
+        option%io_buffer = 'Adjustment of mineral surface area based on ' // &
+          'mineral volume fraction or porosity must be performed on a ' // &
+          'per mineral basis under the MINERAL_KINETICS card.  See ' // &
+          'reaction_aux.F90.'
+          call printErrMsg(option)
 #ifdef SUBCONTINUUM_MODEL
       case('SUBCONTINUUM')
         do

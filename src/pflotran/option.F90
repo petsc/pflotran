@@ -47,7 +47,7 @@ module Option_module
     MPI_Comm :: write_group, writers
     PetscMPIInt:: write_grp_size, write_grp_rank, writers_size, writers_rank
     PetscMPIInt :: wcolor, wkey, writer_color, writer_key
-#endif	
+#endif  
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
@@ -60,22 +60,13 @@ module Option_module
     PetscInt :: itranmode
     PetscInt :: tvd_flux_limiter
 
-    ! vector centering, used by SAMR
-    ! 0 - CELL CENTERED
-    ! 1 - FACE CENTERED
-    PetscInt :: ivar_centering
-    PetscBool :: use_samr
-    ! the next variable is used by SAMR to determine
-    ! what dof the linear system in operator split mode   
-    ! needs to be formed for
-    PetscInt :: rt_idof
-    PetscInt :: samr_mode
-      
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
+    PetscInt :: rt_idof
+    PetscInt :: nmechdof
 
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
@@ -190,7 +181,6 @@ module Option_module
 
     PetscInt :: chunk_size
     PetscInt :: num_threads
-    PetscInt :: test_res
 
   end type option_type
   
@@ -253,6 +243,11 @@ module Option_module
     module procedure printMsgAnyRank2
   end interface
 
+  interface printMsgByRank
+    module procedure printMsgByRank1
+    module procedure printMsgByRank2
+  end interface
+
   interface printErrMsgByRank
     module procedure printErrMsgByRank1
     module procedure printErrMsgByRank2
@@ -276,6 +271,7 @@ module Option_module
             printWrnMsg, &
             printMsg, &
             printMsgAnyRank, &
+            printMsgByRank, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
@@ -397,7 +393,6 @@ subroutine OptionInitAll(option)
 
   option%chunk_size = 8
   option%num_threads = 1
-  option%test_res = 0 
  
   call OptionInitRealization(option)
 
@@ -431,15 +426,15 @@ subroutine OptionInitRealization(option)
   option%flowmode = ""
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
+  option%nmechdof = 0
 
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
   option%tvd_flux_limiter = 1
+  option%rt_idof = -999
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
-  option%ivar_centering = CELL_CENTERED
-  option%use_samr = PETSC_FALSE
 
   option%nphase = 0
   option%liquid_phase = 0
@@ -562,7 +557,6 @@ subroutine OptionInitRealization(option)
   option%mimetic = PETSC_FALSE
  
   option%variables_swapped = PETSC_FALSE
-  option%test_res = 0
   
 end subroutine OptionInitRealization
 
@@ -874,6 +868,44 @@ subroutine printMsgAnyRank2(string)
   
 end subroutine printMsgAnyRank2
 
+! ************************************************************************** !
+!
+! printMsgByRank1: Prints a message from processor along with rank
+! author: Glenn Hammond
+! date: 03/27/12
+!
+! ************************************************************************** !
+subroutine printMsgByRank1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  call printMsgByRank2(option,option%io_buffer)
+  
+end subroutine printMsgByRank1
+
+! ************************************************************************** !
+!
+! printMsgByRank2: Prints a message from processor along with rank
+! author: Glenn Hammond
+! date: 03/27/12
+!
+! ************************************************************************** !
+subroutine printMsgByRank2(option,string)
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=*) :: string
+  
+  character(len=MAXWORDLENGTH) :: word
+  
+  write(word,*) option%myrank
+  print *, '(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  
+end subroutine printMsgByRank2
+ 
 ! ************************************************************************** !
 !
 ! OptionCheckTouch: Users can steer the code by touching files.

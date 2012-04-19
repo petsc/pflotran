@@ -96,7 +96,7 @@ module Unstructured_Grid_module
 
   public :: UGridCreate, &
             UGridRead, &
-#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if defined(PETSC_HAVE_HDF5)
             UGridReadHDF5, &
 #endif
 #if defined(PARALLELIO_LIB)
@@ -253,7 +253,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
   PetscInt :: fileid
   
   fileid = 86
-  input => InputCreate(fileid,filename)
+  input => InputCreate(fileid,filename,option)
 
   ! initial guess is 8 vertices per cell
   unstructured_grid%max_nvert_per_cell = 8
@@ -483,7 +483,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   PetscInt :: fileid
   
   fileid = 86
-  input => InputCreate(fileid,filename)
+  input => InputCreate(fileid,filename,option)
 
   ! initial guess is 8 vertices per cell
   unstructured_grid%max_nvert_per_cell = 8
@@ -631,7 +631,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   if(option%myrank == option%io_rank) deallocate(temp_int_array)
 
 
-  input => InputCreate(fileid,surf_filename)
+  input => InputCreate(fileid,surf_filename,option)
   call InputReadFlotranString(input,option)
   string = 'unstructured sideset'
   call InputReadStringErrorMsg(input,option,card)  
@@ -729,8 +729,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
 end subroutine UGridReadSurfGrid
 #endif !SURFACE_FLOW
 
-#if !defined(SAMR_HAVE_HDF5) && defined(PETSC_HAVE_HDF5)
-
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! UGridReadHDF5: Reads an unstructured grid from HDF5
@@ -1001,7 +1000,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 end subroutine UGridReadHDF5
 
 #endif
-! End SAMR_HAVE_HDF5
+! End PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
 !
@@ -1124,9 +1123,6 @@ subroutine UGridDecompose(unstructured_grid,option)
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
-
-  interface
-  end interface
   
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
@@ -2207,9 +2203,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
-
-  interface
-  end interface
   
   type(unstructured_grid_type) :: unstructured_grid
   type(ugdm_type), pointer :: ugdm

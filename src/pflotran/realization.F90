@@ -100,7 +100,7 @@ private
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
             RealizationSetUpBC4Faces, &
-            RealizatonPassFieldPtrToPatches, &
+            RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep
  
@@ -202,7 +202,6 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Grid_module, only : UGridMapIndices, &
                                        UGridEnsureRightHandRule
   use Structured_Grid_module, only : StructGridCreateTVDGhosts
-  use AMR_Grid_module
   use MFD_module
   use Coupler_module
   use Discretization_module
@@ -232,8 +231,6 @@ subroutine RealizationCreateDiscretization(realization)
   
   call DiscretizationCreateDMs(discretization,option)
 
-
-  option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
                                   GLOBAL,option)
@@ -245,11 +242,6 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%work)
-  if (option%use_samr) then
-    ! temporary for samr testing
-    call DiscretizationDuplicateVector(discretization,field%porosity0, &
-                                     field%work_samr)
-  endif
   
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
@@ -259,12 +251,6 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
-  
-  if (option%use_samr) then
-    ! temporary for samr testing
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%work_samr_loc)
-  endif
   
   if (option%nflowdof > 0) then
 
@@ -325,15 +311,6 @@ subroutine RealizationCreateDiscretization(realization)
     ! ndof degrees of freedom, local
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
-
-
-
-    if (option%use_samr) then
-       option%ivar_centering = SIDE_CENTERED
-       call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
-                                    GLOBAL,option)
-      option%ivar_centering = CELL_CENTERED
-    endif
   endif
 
   if (option%ntrandof > 0) then
@@ -360,13 +337,7 @@ subroutine RealizationCreateDiscretization(realization)
         call DiscretizationDuplicateVector(discretization,field%tran_xx_loc, &
                                            field%tran_work_loc)
       endif
-
-      if (option%use_samr) then
-         option%ivar_centering = SIDE_CENTERED
-         call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
-                                      GLOBAL,option)
-         option%ivar_centering = CELL_CENTERED
-      endif 
+ 
     else ! operator splitting
       ! ndof degrees of freedom, global
       ! create the 1 dof vector for solving the individual linear systems
@@ -386,12 +357,6 @@ subroutine RealizationCreateDiscretization(realization)
       ! again, just for storage of the current colution
       call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
                                       LOCAL,option)
-      if (option%use_samr) then
-         option%ivar_centering = SIDE_CENTERED
-         call DiscretizationCreateVector(discretization,ONEDOF,field%tran_face_fluxes, &
-                                      GLOBAL,option)
-         option%ivar_centering = CELL_CENTERED
-      endif 
 
     endif
     
@@ -431,10 +396,6 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
-    case(AMR_GRID)
-       call AMRGridComputeGeometryInformation(discretization%amrgrid, &
-                                              discretization%origin, &
-                                              field,option)
   end select 
  
   ! Vectors with face degrees of freedom
@@ -517,11 +478,8 @@ subroutine RealizationLocalizeRegions(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch, cur_patch2
   type (region_type), pointer :: cur_region, cur_region2
   type(option_type), pointer :: option
-  type(region_type), pointer :: patch_region
 
   option => realization%option
 
@@ -541,30 +499,19 @@ subroutine RealizationLocalizeRegions(realization)
     cur_region => cur_region%next
   enddo
 
-  ! localize the regions on each patch
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchLocalizeRegions(cur_patch,realization%regions, &
-                                realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
- 
+  call PatchLocalizeRegions(realization%patch,realization%regions, &
+                            realization%option)
+
 end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
 !
-! RealizatonPassFieldPtrToPatches: Sets patch%field => realization%field
+! RealizatonPassPtrsToPatches: Sets patch%field => realization%field
 ! author: Glenn Hammond
 ! date: 01/12/11
 !
 ! ************************************************************************** !
-subroutine RealizatonPassFieldPtrToPatches(realization)
+subroutine RealizatonPassPtrsToPatches(realization)
 
   use Option_module
 
@@ -572,22 +519,11 @@ subroutine RealizatonPassFieldPtrToPatches(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_patch%field => realization%field
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  realization%patch%field => realization%field
+  realization%patch%datasets => realization%datasets
+  realization%patch%reaction => realization%reaction
   
-end subroutine RealizatonPassFieldPtrToPatches
+end subroutine RealizatonPassPtrsToPatches
 
 ! ************************************************************************** !
 !
@@ -606,35 +542,27 @@ subroutine RealizationAddCoupler(realization,coupler)
   type(coupler_type), pointer :: coupler
   
   type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: patch
+  
   type(coupler_type), pointer :: new_coupler
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      ! only add to flow list for now, since they will be split out later
-      new_coupler => CouplerCreate(coupler)
-      select case(coupler%itype)
-        case(BOUNDARY_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
-        case(INITIAL_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
-        case(SRC_SINK_COUPLER_TYPE)
-          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
-      end select
-      nullify(new_coupler)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  patch => realization%patch
+  
+  ! only add to flow list for now, since they will be split out later
+  new_coupler => CouplerCreate(coupler)
+  select case(coupler%itype)
+    case(BOUNDARY_COUPLER_TYPE)
+      call CouplerAddToList(new_coupler,patch%boundary_conditions)
+    case(INITIAL_COUPLER_TYPE)
+      call CouplerAddToList(new_coupler,patch%initial_conditions)
+    case(SRC_SINK_COUPLER_TYPE)
+      call CouplerAddToList(new_coupler,patch%source_sinks)
+  end select
+  nullify(new_coupler)
 
   call CouplerDestroy(coupler)
  
 end subroutine RealizationAddCoupler
-
 
 subroutine RealizationCreatenG2LP(realization)
 
@@ -755,7 +683,9 @@ subroutine RealizationCreatenG2LP(realization)
 
     call VecDestroy(vec_LP_cell_id, ierr)
     call VecDestroy(vec_LP_cell_id_loc, ierr)
-
+    call VecScatterDestroy(VC_global2ghosted , ierr)
+    call ISDestroy(is_ghosted, ierr)
+    call ISDestroy(is_global, ierr)
 !    call MPI_Barrier(PETSC_COMM_WORLD, ierr)
 
 end subroutine
@@ -777,23 +707,11 @@ subroutine RealizationAddStrata(realization,strata)
   type(realization_type) :: realization
   type(strata_type), pointer :: strata
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(strata_type), pointer :: new_strata
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      new_strata => StrataCreate(strata)
-      call StrataAddToList(new_strata,cur_patch%strata)
-      nullify(new_strata)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  new_strata => StrataCreate(strata)
+  call StrataAddToList(new_strata,realization%patch%strata)
+  nullify(new_strata)
   
   call StrataDestroy(strata)
  
@@ -815,25 +733,13 @@ subroutine RealizationAddObservation(realization,observation)
   type(realization_type) :: realization
   type(observation_type), pointer :: observation
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   type(observation_type), pointer :: new_observation
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      new_observation => ObservationCreate(observation)
-      call ObservationAddToList(new_observation, &
-                                 cur_patch%observation)
-      nullify(new_observation)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-  
+  new_observation => ObservationCreate(observation)
+  call ObservationAddToList(new_observation, &
+                            realization%patch%observation)
+  nullify(new_observation)
+
   call ObservationDestroy(observation)
  
 end subroutine RealizationAddObservation
@@ -853,27 +759,9 @@ subroutine RealizationProcessCouplers(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
-                                realization%transport_conditions, &
-                                realization%option)
-!      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
-!                                realization%transport_conditions, &
-!                                realization%material_properties, &
-!                                realization%subcontinuum_properties, &
-!                                realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call PatchProcessCouplers( realization%patch,realization%flow_conditions, &
+                             realization%transport_conditions, &
+                             realization%option)
   
 end subroutine RealizationProcessCouplers
 
@@ -887,9 +775,13 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationProcessConditions(realization)
 
+  use Dataset_module
+  
   implicit none
   
   type(realization_type) :: realization
+
+  call DatasetProcessDatasets(realization%datasets,realization%option)
   
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
@@ -921,41 +813,30 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   PetscInt :: i
   type(option_type), pointer :: option
   type(material_property_type), pointer :: cur_material_property
+  type(patch_type), pointer :: patch
   character(len=MAXSTRINGLENGTH) :: string
 
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
   option => realization%option
+  patch => realization%patch
   
   ! organize lists
   call MaterialPropConvertListToArray(realization%material_properties, &
                                       realization%material_property_array, &
                                       option)
   call SaturatFuncConvertListToArray(realization%saturation_functions, &
-                                     realization%saturation_function_array, &
-                                     option)
+                                      realization%saturation_function_array, &
+                                      option)
 
   ! set up mirrored pointer arrays within patches to saturation functions
   ! and material properties
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      cur_patch%material_properties => realization%material_properties
-      call MaterialPropConvertListToArray(cur_patch%material_properties, &
-                                          cur_patch%material_property_array, &
-                                          option)
-      cur_patch%saturation_functions => realization%saturation_functions
-      call SaturatFuncConvertListToArray(cur_patch%saturation_functions, &
-                                         cur_patch%saturation_function_array, &
-                                         option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo 
+  patch%material_properties => realization%material_properties
+  call MaterialPropConvertListToArray(patch%material_properties, &
+                                      patch%material_property_array, &
+                                      option)
+  patch%saturation_functions => realization%saturation_functions
+  call SaturatFuncConvertListToArray(patch%saturation_functions, &
+                                      patch%saturation_function_array, &
+                                      option)
     
   cur_material_property => realization%material_properties                            
   do                                      
@@ -1133,7 +1014,7 @@ subroutine RealProcessFlowConditions(realization)
     !TODO(geh): could destroy the time_series here if dataset allocated
     select case(option%iflowmode)
       case(G_MODE)
-      case(RICHARDS_MODE)
+      case(RICHARDS_MODE,MIS_MODE)
         do i = 1, size(cur_flow_condition%sub_condition_ptr)
           ! check for dataset in flow_dataset
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
@@ -1149,7 +1030,7 @@ subroutine RealProcessFlowConditions(realization)
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%flow_dataset%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            nullify(dataset)
           endif
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
                           datum%dataset)) then
@@ -1164,7 +1045,7 @@ subroutine RealProcessFlowConditions(realization)
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%datum%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            nullify(dataset)
           endif
           if (associated(cur_flow_condition%sub_condition_ptr(i)%ptr% &
                           gradient%dataset)) then
@@ -1179,7 +1060,7 @@ subroutine RealProcessFlowConditions(realization)
               DatasetGetPointer(realization%datasets,dataset_name,string,option)
             cur_flow_condition%sub_condition_ptr(i)%ptr%gradient%dataset => &
               dataset
-            call DatasetLoad(dataset,option)
+            nullify(dataset)
           endif
         enddo
     end select
@@ -1489,21 +1370,7 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchInitAllCouplerAuxVars(cur_patch,realization%reaction, &
-                                      realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call PatchInitAllCouplerAuxVars(realization%patch,realization%option)
    
 end subroutine RealizationInitAllCouplerAuxVars
 
@@ -1524,22 +1391,9 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
   type(realization_type) :: realization
   PetscBool :: force_update_flag
 
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  call PatchUpdateAllCouplerAuxVars(realization%patch,force_update_flag, &
+                                    realization%option)
 
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchUpdateAllCouplerAuxVars(cur_patch,force_update_flag, &
-                                     realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-   
 end subroutine RealizUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
@@ -1629,22 +1483,9 @@ subroutine RealizUpdateUniformVelocity(realization)
   
   type(realization_type) :: realization
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchUpdateUniformVelocity(cur_patch, &
-                                      realization%velocity_dataset%cur_value, &
+  call PatchUpdateUniformVelocity(realization%patch, &
+                                  realization%velocity_dataset%cur_value, &
                                       realization%option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
  
 end subroutine RealizUpdateUniformVelocity
 
@@ -1817,34 +1658,22 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchGetDataset(cur_patch,realization%field, &
-         realization%reaction,realization%option, &
-         realization%output_option,vec,ivar,isubvar,isubvar1)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call PatchGetDataset(realization%patch,realization%field, &
+                       realization%reaction,realization%option, &
+                       realization%output_option,vec,ivar,isubvar,isubvar1)
 
 end subroutine RealizationGetDataset
 
 ! ************************************************************************** !
 !
-! RealizGetDatasetValueAtCell: Extracts variables indexed by ivar and isubvar from a 
-!                        realization
+! RealizGetDatasetValueAtCell: Extracts variables indexed by ivar and isubvar
+!                              from a realization
 ! author: Glenn Hammond
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id,isubvar1)
+function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
+                                     isubvar1)
 
   use Option_module
 
@@ -1858,24 +1687,12 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id,isubvar
   PetscInt :: ghosted_id
   
   PetscReal :: value
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
   
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      value = PatchGetDatasetValueAtCell(cur_patch,realization%field, &
-                realization%reaction, &
-                realization%option,realization%output_option, &
-                ivar,isubvar,ghosted_id,isubvar1)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-  
+  value = PatchGetDatasetValueAtCell(realization%patch,realization%field, &
+                                     realization%reaction, &
+                                     realization%option, &
+                                     realization%output_option, &
+                                     ivar,isubvar,ghosted_id,isubvar1)
   RealizGetDatasetValueAtCell = value
 
 end function RealizGetDatasetValueAtCell
@@ -1899,22 +1716,10 @@ subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
   PetscInt :: vec_format
   PetscInt :: ivar
   PetscInt :: isubvar
-  
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchSetDataset(cur_patch,realization%field,realization%option, &
-                           vec,vec_format,ivar,isubvar)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+
+  call PatchSetDataset(realization%patch,realization%field, &
+                       realization%option, &
+                       vec,vec_format,ivar,isubvar)
 
 end subroutine RealizationSetDataset
 
@@ -1940,18 +1745,7 @@ subroutine RealizationUpdateProperties(realization)
   
   option => realization%option
     
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      realization%patch => cur_patch
-      call RealizationUpdatePropertiesPatch(realization)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  call RealizationUpdatePropertiesPatch(realization)
   
   ! perform check to ensure that porosity is bounded between 0 and 1
   ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
@@ -2072,13 +1866,19 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       ghosted_id = grid%nL2G(local_id)
       if (option%update_mnrl_surf_with_porosity) then
         porosity_scale = vec_p(local_id)** &
-          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
+             reaction%kinmnrl_surf_area_porosity_pwr(imnrl)
+!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!     solely material type.
+!          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
       endif
       do imnrl = 1, reaction%nkinmnrl
         if (rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) > 0.d0) then
           volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
                          rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl))** &
-            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
+             reaction%kinmnrl_surf_area_vol_frac_pwr(imnrl)
+!geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
+!     solely material type.
+!            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
           rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
             rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
         else
@@ -2164,54 +1964,34 @@ subroutine RealLocalToLocalWithArray(realization,array_id)
   type(realization_type) :: realization
   PetscInt :: array_id
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
 
   field => realization%field
+  patch => realization%patch
 
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-      select case(array_id)
-        case(MATERIAL_ID_ARRAY)
-          call GridCopyIntegerArrayToVec(grid, cur_patch%imat,field%work_loc, &
-                                         grid%ngmax)
-        case(SATURATION_FUNCTION_ID_ARRAY)
-          call GridCopyIntegerArrayToVec(grid, cur_patch%sat_func_id, &
-                                         field%work_loc, grid%ngmax)
-      end select
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  grid => patch%grid
+  select case(array_id)
+    case(MATERIAL_ID_ARRAY)
+      call GridCopyIntegerArrayToVec(grid,patch%imat,field%work_loc, &
+                                     grid%ngmax)
+    case(SATURATION_FUNCTION_ID_ARRAY)
+      call GridCopyIntegerArrayToVec(grid,patch%sat_func_id, &
+                                     field%work_loc, grid%ngmax)
+  end select
+
   call DiscretizationLocalToLocal(realization%discretization,field%work_loc, &
                                   field%work_loc,ONEDOF)
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
 
-      select case(array_id)
-        case(MATERIAL_ID_ARRAY)
-          call GridCopyVecToIntegerArray(grid, cur_patch%imat,field%work_loc, &
-                                         grid%ngmax)
-        case(SATURATION_FUNCTION_ID_ARRAY)
-          call GridCopyVecToIntegerArray(grid, cur_patch%sat_func_id, &
-                                         field%work_loc, grid%ngmax)
-      end select
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  select case(array_id)
+    case(MATERIAL_ID_ARRAY)
+      call GridCopyVecToIntegerArray(grid,patch%imat,field%work_loc, &
+                                      grid%ngmax)
+    case(SATURATION_FUNCTION_ID_ARRAY)
+      call GridCopyVecToIntegerArray(grid,patch%sat_func_id, &
+                                      field%work_loc, grid%ngmax)
+  end select
 
 end subroutine RealLocalToLocalWithArray
 
@@ -2240,25 +2020,15 @@ subroutine RealizationCountCells(realization,global_total_count, &
   PetscInt :: temp_int_in(2), temp_int_out(2)
   PetscErrorCode :: ierr
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: patch
   
   total_count = 0
   active_count = 0
     
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchCountCells(cur_patch,patch_total_count,patch_active_count)
-      total_count = total_count + patch_total_count
-      active_count = active_count + patch_active_count
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
+  patch => realization%patch
+  call PatchCountCells(patch,patch_total_count,patch_active_count)
+  total_count = total_count + patch_total_count
+  active_count = active_count + patch_active_count
   
   temp_int_in(1) = total_count
   temp_int_in(2) = active_count
@@ -2268,8 +2038,6 @@ subroutine RealizationCountCells(realization,global_total_count, &
   global_active_count = temp_int_out(2)
 
 end subroutine RealizationCountCells
-
-
 
 subroutine RealizationSetUpBC4Faces(realization)
 
@@ -2586,26 +2354,16 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
   type(realization_type) realization
   PetscReal :: max_dt_cfl_1
   
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
+  type(patch_type), pointer :: patch
   PetscReal :: max_dt_cfl_1_patch
   PetscReal :: tempreal
   PetscErrorCode :: ierr
   
   max_dt_cfl_1 = 1.d20
-  cur_level => realization%level_list%first
-  do
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchCalculateCFL1Timestep(cur_patch,realization%option, &
-                                      max_dt_cfl_1_patch)
-      max_dt_cfl_1 = min(max_dt_cfl_1,max_dt_cfl_1_patch)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo  
+  patch => realization%patch
+  call PatchCalculateCFL1Timestep(patch,realization%option, &
+                                  max_dt_cfl_1_patch)
+  max_dt_cfl_1 = min(max_dt_cfl_1,max_dt_cfl_1_patch)
 
   ! get the minimum across all cores
   call MPI_Allreduce(max_dt_cfl_1,tempreal,ONE_INTEGER_MPI, &

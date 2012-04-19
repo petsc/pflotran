@@ -98,24 +98,15 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
+#ifndef HAVE_SNES_API_3_2
+  SNESLineSearch :: linesearch
+#endif
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer               :: surf_flow_stepper
   type(solver_type), pointer                :: surf_flow_solver
   type(surface_field_type), pointer         :: surf_field
   type(surface_realization_type), pointer   :: surf_realization
 #endif
-      
-  interface
-
-subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscpc.h"
-       PC :: pc
-       PetscFortranAddr :: p_application
-       PetscInt :: which_pc
-     end subroutine SAMRInitializePreconditioner
-
-end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,ierr)
@@ -145,7 +136,7 @@ end interface
     call InitPrintPFLOTRANHeader(option,temp_int)
   endif
   
-  realization%input => InputCreate(IUNIT1,option%input_filename)
+  realization%input => InputCreate(IN_UNIT,option%input_filename,option)
 
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
@@ -164,7 +155,7 @@ end interface
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
-  surf_realization%input => InputCreate(IUNIT1,option%input_filename)
+  surf_realization%input => InputCreate(IN_UNIT,option%input_filename)
   surf_realization%subsurf_filename = realization%discretization%filename
   call InitReadRequiredCardsFromInputSurf(simulation%surf_realization)
 #endif
@@ -237,13 +228,13 @@ end interface
   
   if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
-      if (realization%reaction%use_geothermal_hpt)then
-        call DatabaseRead_hpt(realization%reaction,option)
-        call BasisInit_hpt(realization%reaction,option)    
-      else
+!geh      if (realization%reaction%use_geothermal_hpt)then
+!geh        call DatabaseRead_hpt(realization%reaction,option)
+!geh        call BasisInit_hpt(realization%reaction,option)    
+!geh      else
         call DatabaseRead(realization%reaction,option)
         call BasisInit(realization%reaction,option)    
-      endif
+!geh      endif
     else
       ! turn off activity coefficients since the database has not been read
       realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
@@ -333,10 +324,6 @@ end interface
       endif
     endif
 
-    if (option%use_samr) then
-       option%samr_mode=0
-    endif
-      
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
@@ -408,7 +395,6 @@ end interface
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobianMFDLP,realization,ierr)
-!sp          case(STRUCTURED_GRID,AMR_GRID)
           case default !sp 
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobian,realization,ierr)
@@ -432,9 +418,13 @@ end interface
     end select
     
     ! by default turn off line search
+#ifndef HAVE_SNES_API_3_2
+    call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+#else
     call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
-
+#endif
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 1) then
       string = '-flow_snes_view'
@@ -456,17 +446,6 @@ end interface
                    realization%discretization%dm_nflowdof,ierr);
     endif
 
-    ! setup a shell preconditioner and initialize in the case of AMR
-    if (option%use_samr) then
-!     flow_solver%pc_type = PCSHELL
-      pcside = PC_RIGHT
-      if (flow_solver%pc_type==PCSHELL) then
-        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
-        flowortranpc=0 
-        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, flow_solver%pc)
-      endif
-    endif
-
     option%io_buffer = 'Solver: ' // trim(flow_solver%ksp_type)
     call printMsg(option)
     option%io_buffer = 'Preconditioner: ' // trim(flow_solver%pc_type)
@@ -484,17 +463,31 @@ end interface
         dabs(option%saturation_change_limit) > 0.d0) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
+#ifndef HAVE_SNES_API_3_2
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch, &
+                                         RichardsCheckUpdatePre, &
+                                         realization,ierr)
+#else        
           call SNESLineSearchSetPreCheck(flow_solver%snes, &
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
+#endif
       end select
     endif
     if (option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)
+#ifndef HAVE_SNES_API_3_2
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          RichardsCheckUpdatePost, &
+                                          realization,ierr)
+#else         
           call SNESLineSearchSetPostCheck(flow_solver%snes, &
                                           RichardsCheckUpdatePost, &
                                           realization,ierr)
+#endif
       end select
     endif
     
@@ -540,8 +533,13 @@ end interface
                          SurfaceFlowJacobian,simulation%surf_realization,ierr)
 
     ! by default turn off line search
+#ifndef HAVE_SNES_API_3_2
+    call SNESGetSNESLineSearch(surf_flow_solver%snes, linesearch, ierr)
+    call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+#else    
     call SNESLineSearchSet(surf_flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
+#endif
 
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 1) then
@@ -569,9 +567,6 @@ end interface
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
       
-     if (option%use_samr) then
-        option%samr_mode=1
-     endif
      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
@@ -621,8 +616,13 @@ end interface
 
       ! this could be changed in the future if there is a way to ensure that the linesearch
       ! update does not perturb concentrations negative.
+#ifndef HAVE_SNES_API_3_2
+      call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
+      call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC, ierr)
+#else       
       call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
                              PETSC_NULL_OBJECT,ierr)
+#endif      
     
       ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
       if (option%verbosity >= 1) then
@@ -635,16 +635,6 @@ end interface
     ! ensure setting of SNES options since they set KSP and PC options too
     call SolverSetSNESOptions(tran_solver)
 
-    ! setup a shell preconditioner and initialize in the case of AMR
-    if (associated(discretization%amrgrid)) then
-!       flow_solver%pc_type = PCSHELL
-       pcside = PC_RIGHT
-       if (tran_solver%pc_type==PCSHELL) then
-          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
-          flowortranpc=1
-          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, tran_solver%pc)
-       endif
-    endif
     option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
     call printMsg(option)
     option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
@@ -663,9 +653,15 @@ end interface
       ! this update check must be in place, otherwise reactive transport is likely
       ! to fail
       if (associated(realization%reaction)) then
-        if (realization%reaction%check_update .and. .not.(option%use_samr)) then
+        if (realization%reaction%check_update) then
+#ifndef HAVE_SNES_API_3_2
+          call SNESGetSNESLineSearch(tran_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch,RTCheckUpdate, &
+                                         realization,ierr)
+#else           
           call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
                                          realization,ierr)
+#endif          
         endif
       endif
     endif
@@ -682,7 +678,7 @@ end interface
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
-  call RealizatonPassFieldPtrToPatches(realization)
+  call RealizatonPassPtrsToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   call RealizationProcessCouplers(realization)
@@ -978,7 +974,7 @@ subroutine InitReadStochasticCardFromInput(stochastic,option)
   type(input_type), pointer :: input
   PetscBool :: print_warning
   
-  input => InputCreate(IUNIT1,option%input_filename)
+  input => InputCreate(IN_UNIT,option%input_filename,option)
 
   ! MODE information
   string = "STOCHASTIC"
@@ -1016,7 +1012,7 @@ subroutine InitReadInputFilenames(option,filenames)
   PetscInt :: filename_count
   type(input_type), pointer :: input
 
-  input => InputCreate(IUNIT1,option%input_filename)
+  input => InputCreate(IN_UNIT,option%input_filename,option)
 
   string = "FILENAMES"
   call InputFindStringInFile(input,option,string) 
@@ -1069,7 +1065,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use Patch_module
   use Level_module
   use Realization_module
-  use AMR_Grid_module
 
   use Reaction_module  
   use Reaction_Aux_module  
@@ -1139,9 +1134,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
       call LevelAddToList(level,realization%level_list)
       call PatchAddToList(patch,level%patch_list)
       realization%patch => patch
-    case(AMR_GRID)
-      realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)
-      realization%patch => realization%level_list%first%patch_list%first
   end select
 !.........................................................................
 
@@ -1218,7 +1210,6 @@ subroutine InitReadInput(simulation)
   use Field_module
   use Grid_module
   use Structured_Grid_module
-  use AMR_Grid_module
   use Solver_module
   use Material_module
 #ifdef SUBCONTINUUM_MODEL
@@ -2272,8 +2263,9 @@ subroutine setFlowMode(option)
       option%nphase = 1
       option%liquid_phase = 1      
       option%gas_phase = 2      
-      option%nflowdof = 3
+      option%nflowdof = 6
       option%nflowspec = 2
+      option%nmechdof = 3
     case('MIS','MISCIBLE')
       option%iflowmode = MIS_MODE
       option%nphase = 1
@@ -2440,7 +2432,7 @@ subroutine assignMaterialPropToRegions(realization)
           call readMaterialsFromFile(realization,strata%realization_dependent, &
                                      strata%material_property_filename)
         ! Otherwise, set based on region
-        else if (strata%active) then
+        else
           update_ghosted_material_ids = PETSC_TRUE
           region => strata%region
           material_property => strata%material_property
@@ -2458,7 +2450,12 @@ subroutine assignMaterialPropToRegions(realization)
               local_id = icell
             endif
             ghosted_id = grid%nL2G(local_id)
-            cur_patch%imat(ghosted_id) = material_property%id
+            if (strata%active) then
+              cur_patch%imat(ghosted_id) = material_property%id
+            else
+              ! if not active, set material id to zero
+              cur_patch%imat(ghosted_id) = 0
+            endif
           enddo
         endif
         strata => strata%next
@@ -2954,11 +2951,8 @@ subroutine readRegionFiles(realization)
         if (region%grid_type == STRUCTURED_GRID) then
           call HDF5ReadRegionFromFile(realization,region,region%filename)
         else
-#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if defined(PETSC_HAVE_HDF5)
           call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
-#else
-     !geh: No.  AMR is entirely structured.
-      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
 #endif      
         endif
       else if (index(region%filename,'.ss') > 0) then
@@ -3042,7 +3036,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   else
     call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP,filename)
+    input => InputCreate(IUNIT_TEMP,filename,option)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
@@ -3200,7 +3194,8 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP,material_property%permeability_dataset%filename)
+    input => InputCreate(IUNIT_TEMP, &
+                material_property%permeability_dataset%filename,option)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
@@ -3827,7 +3822,6 @@ subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
       call LevelAddToList(level,surf_realization%level_list)
       call PatchAddToList(patch,level%patch_list)
       surf_realization%patch => patch
-    case(AMR_GRID)
   end select
     
 end subroutine InitReadRequiredCardsFromInputSurf
@@ -4055,11 +4049,8 @@ subroutine readSurfaceRegionFiles(surf_realization)
         if (surf_region%grid_type == STRUCTURED_GRID) then
           !call HDF5ReadRegionFromFile(surf_realization,surf_region,surf_region%filename)
         else
-#if defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if defined(PETSC_HAVE_HDF5)
           !call HDF5ReadUnstructuredGridRegionFromFile(surf_realization,surf_region,surf_region%filename)
-#else
-     !geh: No.  AMR is entirely structured.
-      ! TO DO: Read region from HDF5 for Unstructured mesh with SAMRAI
 #endif      
         endif
       else if (index(surf_region%filename,'.ss') > 0) then

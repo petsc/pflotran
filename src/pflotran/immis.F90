@@ -1646,17 +1646,6 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-interface
-subroutine samrpetscobjectstateincrease(vec)
-       implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec
-end subroutine samrpetscobjectstateincrease
-     
-end interface
-
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -1710,10 +1699,6 @@ end interface
     enddo
     cur_level => cur_level%next
   enddo
-
-  if(discretization%itype==AMR_GRID) then
-     call samrpetscobjectstateincrease(r)
-  endif
 
 end subroutine ImmisResidual
 
@@ -2240,17 +2225,6 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-      Mat :: mat
-      PetscFortranAddr :: patch
-    end subroutine SAMRSetCurrentJacobianPatch
-  end interface
-
   SNES :: snes
   Vec :: xx
   Mat :: A, B, J
@@ -2269,13 +2243,6 @@ subroutine SAMRSetCurrentJacobianPatch(mat,patch)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo

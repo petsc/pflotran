@@ -883,8 +883,11 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                                   realization%fluid_properties,option, xphi)
 ! update global variables
     if(associated(global_aux_vars))then
-      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres - &
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+   !   print *,'UPdate mphase and gloable vars', ghosted_id, aux_vars(ghosted_id)%aux_var_elem(0)%pc(:), & 
+   !    global_aux_vars(ghosted_id)%pres(:)
+
       global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
       global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
@@ -905,9 +908,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
       global_aux_vars(ghosted_id)%reaction_rate_store(:) = global_aux_vars(ghosted_id)%reaction_rate(:)
       global_aux_vars(ghosted_id)%reaction_rate(:) = 0.D0
-!     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
-!       global_aux_vars(ghosted_id)%pres(:)
-!     global_aux_vars(ghosted_id)%mass_balance 
+     !     global_aux_vars(ghosted_id)%mass_balance 
 !     global_aux_vars(ghosted_id)%mass_balance_delta                   
     else
       print *,'Not associated global for mph'
@@ -1885,17 +1886,6 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-interface
-subroutine samrpetscobjectstateincrease(vec)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec
-     end subroutine samrpetscobjectstateincrease
-     
-end interface
-
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -1975,9 +1965,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  if(discretization%itype==AMR_GRID) then
-     call samrpetscobjectstateincrease(r)
-  endif
 end subroutine MphaseResidual
 
 
@@ -2898,17 +2885,6 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsysdef.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-       Mat :: mat
-       PetscFortranAddr :: patch
-end subroutine SAMRSetCurrentJacobianPatch
-end interface
-
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -2944,13 +2920,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call MphaseJacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo

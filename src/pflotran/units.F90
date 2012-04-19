@@ -116,11 +116,18 @@ function UnitsConvert(unit,option)
     
   select case(trim(unit))
     ! convert volumes to m^3
-    case('l')
-      UnitsConvert = 1.d-3
-    case('dm^3')
+    case('cm^3')
+      UnitsConvert = 1.d-6
+    case('l','dm^3')
       UnitsConvert = 1.d-3
     case('m^3')
+      UnitsConvert = 1.d0
+    ! convert areas to m^2
+    case('cm^2')
+      UnitsConvert = 1.d-4
+    case('dm^2')
+      UnitsConvert = 1.d-2
+    case('m^2')
       UnitsConvert = 1.d0
     ! convert times to seconds
     case('s','sec','second')

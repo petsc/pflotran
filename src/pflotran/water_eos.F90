@@ -18,7 +18,7 @@ module water_eos_module
 
   public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
             wateos, wateos_noderiv, density, duan_mix_den, nacl_den, nacl_vis, cowat, steameos, &
-            Tsat, DensityIce, InternalEnergyIce, wateos_simple
+            Tsat, DensityIce, InternalEnergyIce, wateos_simple, VISW_temp
 
 contains
 
@@ -93,6 +93,46 @@ contains
   end subroutine VISW_noderiv
 
 
+! ************************************************************************** !
+!
+! VISW_temp: Viscosity of water which is a function of temperature only
+! author: Satish Karra
+! date: 04/12/12
+! T in C, VW in Pa.s
+!
+! ************************************************************************** !
+  subroutine VISW_temp(T,VW,dVW_dT,ierr)
+    
+    implicit none
+    
+    PetscReal, intent(in) :: T
+    PetscReal, intent(out) :: VW, dVW_dT
+
+    PetscErrorCode, intent(out) :: ierr
+
+    PetscReal, parameter :: T1 = 293.15d0
+    PetscReal :: eta, D, a, b, c, T2, deta_dT2
+
+    T2 = T + 273.15d0  ! convert C to K
+    if (T2 >= T1) then
+      b = 1.3272d0
+      c = -0.001053
+      D = b*(T1 - T2) + c*(T1 - T2)**2
+      eta = D/(T2 - 168.15d0)
+      deta_dT2 = -A/(T2 - 168.15d0)**2 - (b + 2*c*(T1 - T2))/(T - 168.15d0)
+    else
+      a = 998.333d0
+      b = -8.1855d0
+      c = 0.00585d0
+      D = a + b*(T1 - T2) + c*(T1 - T2)**2
+      eta = 1301.d0*(1/D - 1/a)
+      deta_dT2 = 1301.d0/D**2*(b + 2*c*(T1 - T2))
+    end if
+  
+    VW = 0.001d0*(10.d0)**eta   
+    dVW_dT = 0.001d0*eta*((10.d0)**(eta - 1.d0))*deta_dT2
+    
+  end subroutine VISW_temp
 
 subroutine VISW_FLO (t,dw,vw)
        implicit none

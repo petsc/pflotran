@@ -10,6 +10,8 @@ module Dataset_Aux_module
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: h5_dataset_name
     character(len=MAXSTRINGLENGTH) :: filename
+    PetscBool :: is_transient
+    PetscBool :: is_cell_indexed
     PetscInt :: max_buffer_size
     PetscInt :: data_type
     PetscInt :: data_dim ! dimensions of data: XY, X, YXZ, etc.
@@ -91,6 +93,8 @@ function DatasetCreate()
   dataset%h5_dataset_name = ''
   dataset%filename = ''
   dataset%realization_dependent = PETSC_FALSE
+  dataset%is_transient = PETSC_FALSE
+  dataset%is_cell_indexed = PETSC_FALSE
   dataset%data_type = 0
   dataset%max_buffer_size = 0
 

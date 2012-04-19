@@ -102,11 +102,6 @@ module Grid_module
     PetscInt :: id
   end type face_type
 
-  interface GridVecGetArrayF90
-     module procedure GridVecGetArrayCellF90
-     module procedure GridVecGetArraySideF90
-  end interface
-
   public :: GridCreate, &
             GridDestroy, &
             GridComputeInternalConnect, &
@@ -126,7 +121,6 @@ module Grid_module
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
-            GridVecGetMaskArrayCellF90, &
             GridVecGetArrayF90, &
             GridVecRestoreArrayF90, &
             GridIndexToCellID, &
@@ -202,6 +196,9 @@ function GridCreate()
 #ifdef DASVYAT  
   nullify(grid%faces)
   nullify(grid%MFD)
+  grid%e2f = 0
+  grid%e2n = 0
+  grid%e2n_LP = 0
 #endif
 
   nullify(grid%hash)
@@ -857,6 +854,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, sgdm, DOF, opt
 
     call VecDestroy(ghosted_e2n, ierr)
     call VecDestroy(ghosted_e2f, ierr)
+    call VecScatterDestroy(VC_global2ghosted, ierr)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
@@ -1232,6 +1230,8 @@ subroutine GridMapIndices(grid, sgdm)
 
   PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
+! PetscInt, pointer :: int_tmp(:)
+  PetscInt :: n
   PetscOffset :: i_da
   
   select case(grid%itype)
@@ -1242,12 +1242,15 @@ subroutine GridMapIndices(grid, sgdm)
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
+!geh     call DMDAGetGlobalIndicesF90(sgdm, n, int_tmp, ierr)
          call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
          do icount = 1, grid%ngmax
-         !   write(*,*) icount, int_tmp(icount + i_da)
+!geh         write(*,*) icount,  int_tmp(icount + i_da)
             grid%nG2P(icount) = int_tmp(icount + i_da)
+!             write(*,*) icount,  int_tmp(icount)
+!geh        grid%nG2P(icount) = int_tmp(icount)
          end do
-        deallocate(int_tmp)
+       deallocate(int_tmp)
       end if
 #endif
     case(UNSTRUCTURED_GRID)
@@ -1330,25 +1333,22 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
   end select
 
   if (associated(grid%structured_grid)) then
-    if (grid%structured_grid%p_samr_patch==0) then
-     ! compute global max/min from the local max/in
-     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
-                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-   endif
+    ! compute global max/min from the local max/in
+    call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
  endif
 
   if (associated(grid%unstructured_grid)) then
-    !if (grid%unstructured_grid%p_samr_patch==0) then
      ! compute global max/min from the local max/in
      call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
                         MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
@@ -1594,27 +1594,24 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                     region%num_cells = 0
                   endif
   ! the next test as designed will only work on a uniform grid
-                  if (.not. (option%use_samr)) then
-                     call MPI_Allreduce(region%num_cells,count, &
-                                        ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
-                                        option%mycomm,ierr)   
-
-                     if (count == 0) then
-                      write(option%io_buffer,*) 'Region: (coord)', &
-                           region%coordinates(ONE_INTEGER)%x, &
-                           region%coordinates(ONE_INTEGER)%y, &
-                           region%coordinates(ONE_INTEGER)%z, &
-                            ' not found in global domain.', count
-                       call printErrMsg(option)
-                     else if (count > 1) then
-                       write(option%io_buffer,*) 'Region: (coord)', &
-                           region%coordinates(ONE_INTEGER)%x, &
-                           region%coordinates(ONE_INTEGER)%y, &
-                           region%coordinates(ONE_INTEGER)%z, &
-                           ' duplicated across ', count, &
-                           ' procs in global domain.'
-                       call printErrMsg(option)
-                     endif
+                  call MPI_Allreduce(region%num_cells,count, &
+                                      ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                                      option%mycomm,ierr)   
+                  if (count == 0) then
+                    write(option%io_buffer,*) 'Region: (coord)', &
+                          region%coordinates(ONE_INTEGER)%x, &
+                          region%coordinates(ONE_INTEGER)%y, &
+                          region%coordinates(ONE_INTEGER)%z, &
+                          ' not found in global domain.', count
+                    call printErrMsg(option)
+                  else if (count > 1) then
+                    write(option%io_buffer,*) 'Region: (coord)', &
+                          region%coordinates(ONE_INTEGER)%x, &
+                          region%coordinates(ONE_INTEGER)%y, &
+                          region%coordinates(ONE_INTEGER)%z, &
+                          ' duplicated across ', count, &
+                          ' procs in global domain.'
+                    call printErrMsg(option)
                   endif
                 case(UNSTRUCTURED_GRID)
                   !geh: must check each cell individually
@@ -1810,13 +1807,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               end select
             endif
 
-            if (.not. (option%use_samr)) then
-              call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                                 option%mycomm,ierr)
-            else
-              i = 0
-            endif
-
+            call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
+                               option%mycomm,ierr)
             iflag = i
             if (iflag > 0) then
               option%io_buffer = 'GridLocalizeRegions, between two points'
@@ -3139,6 +3131,7 @@ subroutine GridDestroy(grid)
   implicit none
   
   type(grid_type), pointer :: grid
+  PetscErrorCode :: ierr
     
   if (.not.associated(grid)) return
       
@@ -3163,6 +3156,10 @@ subroutine GridDestroy(grid)
   if (associated(grid%fL2B)) deallocate(grid%fL2B)
   nullify(grid%fL2B)
 
+  if (grid%e2f /= 0) Call VecDestroy(grid%e2f, ierr)
+  if (grid%e2n /= 0) Call VecDestroy(grid%e2n, ierr)
+  if (grid%e2n_LP /= 0) Call VecDestroy(grid%e2n_LP, ierr)
+
   call MFDAuxDestroy(grid%MFD)
 #endif
 
@@ -3181,42 +3178,15 @@ subroutine GridDestroy(grid)
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
 end subroutine GridDestroy
-
-
-! ************************************************************************** !
-!
-! GridDestroy: Returns pointer to cell-centered vector values
-! author: Bobby Philip
-! date:  12/15/10
-!
-! ************************************************************************** !
-subroutine GridVecGetMaskArrayCellF90(grid, vec, f90ptr, ierr)
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(grid_type) :: grid
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  if (associated(grid%structured_grid)) then
-     call StructuredGridVecGetMaskArrayCellF90(grid%structured_grid, vec, f90ptr, ierr)
-  endif
-
-end subroutine GridVecGetMaskArrayCellF90
-
       
 ! ************************************************************************** !
 !
-! GridDestroy: Returns pointer to cell-centered vector values
+! GridVecGetArrayF90: Returns pointer to cell-centered vector values
 ! author: Bobby Philip
 ! date: 
 !
 ! ************************************************************************** !
-subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
+subroutine GridVecGetArrayF90(grid, vec, f90ptr, ierr)
 
   implicit none
 
@@ -3228,46 +3198,13 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
   PetscReal, pointer :: f90ptr(:)
   PetscErrorCode :: ierr
 
-  if (.not.associated(grid%structured_grid)) then
-     call VecGetArrayF90(vec, f90ptr, ierr)
-  else
-     call StructuredGridVecGetArrayF90(grid%structured_grid, vec, f90ptr, ierr)
-  endif
+  call VecGetArrayF90(vec, f90ptr, ierr)
 
-end subroutine GridVecGetArrayCellF90
-
+end subroutine GridVecGetArrayF90
       
 ! ************************************************************************** !
 !
-! GridDestroy: Returns pointer to edge-based vector values?
-! author: Bobby Philip
-! date: 
-!
-! ************************************************************************** !
-subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
-
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  type(grid_type) :: grid
-  PetscInt :: axis 
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  PetscErrorCode :: ierr
-
-  if (.not.associated(grid%structured_grid)) then
-     call VecGetArrayF90(vec, f90ptr, ierr)
-  else
-     call StructuredGridVecGetArrayF90(grid%structured_grid, axis, vec, f90ptr, ierr)
-  endif
-
-end subroutine GridVecGetArraySideF90
-
-! ************************************************************************** !
-!
-! GridDestroy: Restores pointer to vector values
+! GridVecRestoreArrayF90: Restores pointer to vector values
 ! author: Bobby Philip
 ! date: 
 !
@@ -3284,12 +3221,8 @@ subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
   PetscReal, pointer :: f90ptr(:)
   PetscErrorCode :: ierr
 
-  if (.not.associated(grid%structured_grid)) then
-     call VecRestoreArrayF90(vec, f90ptr, ierr)
-  else
-     call StructGridVecRestoreArrayF90(grid%structured_grid, vec, f90ptr, ierr)
-  endif
-
+  call VecRestoreArrayF90(vec, f90ptr, ierr)
+  
 end subroutine GridVecRestoreArrayF90
 
 ! ************************************************************************** !

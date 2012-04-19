@@ -109,12 +109,15 @@ contains
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-function InputCreate(fid,filename)
+function InputCreate(fid,filename,option)
+
+  use Option_module
 
   implicit none
   
   PetscInt :: fid
   character(len=*) :: filename
+  type(option_type) :: option
   
   type(input_type), pointer :: InputCreate
   PetscInt :: status  
@@ -129,12 +132,18 @@ function InputCreate(fid,filename)
   input%err_buf = ''
   input%err_buf2 = ''
   input%broadcast_read = PETSC_FALSE
+  
+  if (fid == MAX_IN_UNIT) then
+    option%io_buffer = 'MAX_IN_UNIT in definitions.h must be increased to' // &
+      ' accommodate a larger number of embedded files.'
+    call printErrMsg(option)
+  endif
 
   open(unit=input%fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
     if (len_trim(filename) == 0) filename = '<blank>'
-    print *, 'file: ', trim(filename), ' not found'
-    stop
+    option%io_buffer = 'File: ' // trim(filename) // ' not found.'
+    call printErrMsg(option)
   endif
   
   InputCreate => input

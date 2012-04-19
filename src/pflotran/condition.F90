@@ -2,6 +2,7 @@ module Condition_module
  
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
+  use Surface_Complexation_Aux_module  
   use Global_Aux_module
   use Dataset_Aux_module
   use Time_Series_module
@@ -37,6 +38,9 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: temperature
     type(flow_sub_condition_type), pointer :: concentration
     type(flow_sub_condition_type), pointer :: enthalpy
+    type(flow_sub_condition_type), pointer :: displacement_x
+    type(flow_sub_condition_type), pointer :: displacement_y
+    type(flow_sub_condition_type), pointer :: displacement_z
     type(flow_general_condition_type), pointer :: general
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(flow_condition_type), pointer :: next ! pointer to next condition_type for linked-lists
@@ -179,6 +183,9 @@ function FlowConditionCreate(option)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
+  nullify(condition%displacement_x)
+  nullify(condition%displacement_y)
+  nullify(condition%displacement_z)
   nullify(condition%sub_condition_ptr)
   nullify(condition%general)
   nullify(condition%itype)
@@ -664,7 +671,9 @@ subroutine FlowConditionRead(condition,input,option)
   character(len=MAXWORDLENGTH) :: word
   type(flow_sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, rate, well,&
-                                       sub_condition_ptr, saturation
+                                       sub_condition_ptr, saturation, &
+                                       displacement_x, displacement_y, &
+                                       displacement_z
   PetscReal :: default_time
   PetscInt :: default_iphase
   type(flow_condition_dataset_type) :: default_flow_dataset
@@ -712,6 +721,13 @@ subroutine FlowConditionRead(condition,input,option)
   concentration%name = 'concentration'
   enthalpy => FlowSubConditionCreate(option%nphase)
   enthalpy%name = 'enthalpy'
+  displacement_x => FlowSubConditionCreate(ONE_INTEGER)
+  displacement_y => FlowSubConditionCreate(ONE_INTEGER)
+  displacement_z => FlowSubConditionCreate(ONE_INTEGER)
+  displacement_x%name = 'displacement_x'
+  displacement_y%name = 'displacement_y'
+  displacement_z%name = 'displacement_z'
+
 
   condition%time_units = 'yr'
   condition%length_units = 'm'
@@ -722,6 +738,10 @@ subroutine FlowConditionRead(condition,input,option)
   temperature%units = 'C'
   concentration%units = 'M'
   enthalpy%units = 'KJ/mol'
+  displacement_x%units = 'm'
+  displacement_y%units = 'm'
+  displacement_z%units = 'm'
+
   
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
@@ -805,6 +825,12 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr => concentration
             case('ENTHALPY')
               sub_condition_ptr => enthalpy
+            case('DISPLACEMENT_X')
+              sub_condition_ptr => displacement_x
+            case('DISPLACEMENT_Y')
+              sub_condition_ptr => displacement_y
+            case('DISPLACEMENT_Z')
+              sub_condition_ptr => displacement_z
             case default
               option%io_buffer = 'keyword (' // trim(word) // &
                                  ') not recognized in condition,type'
@@ -969,6 +995,18 @@ subroutine FlowConditionRead(condition,input,option)
         call FlowConditionReadValues(input,option,word,string, &
                                      saturation%flow_dataset, &
                                      saturation%units)
+      case('DISPLACEMENT_X')
+        call FlowConditionReadValues(input,option,word,string, &
+                                     displacement_x%flow_dataset, &
+                                     displacement_x%units)
+      case('DISPLACEMENT_Y')
+        call FlowConditionReadValues(input,option,word,string, &
+                                     displacement_y%flow_dataset, &
+                                     displacement_y%units) 
+      case('DISPLACEMENT_Z')
+        call FlowConditionReadValues(input,option,word,string, &
+                                     displacement_z%flow_dataset, &
+                                     displacement_z%units)
       case('CONDUCTANCE')
         call InputReadDouble(input,option,pressure%flow_dataset%time_series%lame_aux_variable_remove_me)
         call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
@@ -1061,12 +1099,27 @@ subroutine FlowConditionRead(condition,input,option)
                               default_ctype, default_itype, &
                               default_flow_dataset, &
                               default_datum, default_gradient,PETSC_TRUE)
+  word = 'displacement_x'
+  call FlowSubConditionVerify(option,condition,word,displacement_x,default_time, &
+                              default_ctype, default_itype, &
+                              default_flow_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
+  word = 'displacement_y'
+  call FlowSubConditionVerify(option,condition,word,displacement_y,default_time, &
+                              default_ctype, default_itype, &
+                              default_flow_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
+  word = 'displacement_z'
+  call FlowSubConditionVerify(option,condition,word,displacement_z,default_time, &
+                              default_ctype, default_itype, &
+                              default_flow_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
 
   select case(option%iflowmode)
     case(G_MODE)
       option%io_buffer = 'General mode not supported in original FlowConditionRead.'
       call printMsg(option)
-    case(THC_MODE,THMC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+    case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)&
            .and. .not.associated(well) .and. .not.associated(saturation)) then
         option%io_buffer = 'pressure, rate and saturation condition null in ' // &
@@ -1240,6 +1293,105 @@ subroutine FlowConditionRead(condition,input,option)
       ! these are not used with richards
       if (associated(temperature)) call FlowSubConditionDestroy(temperature)
       if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
+
+   case(THMC_MODE)
+      if (.not.associated(pressure) .and. .not.associated(rate)&
+           .and. .not.associated(well) .and. .not.associated(saturation)) then
+        option%io_buffer = 'pressure, rate and saturation condition null in ' // &
+                           'condition: ' // trim(condition%name)
+        call printErrMsg(option)
+      endif
+      
+      if (associated(pressure)) then
+        condition%pressure => pressure
+      endif
+      if (associated(rate)) then
+        condition%rate => rate
+      endif
+      if (associated(well)) then
+        condition%well => well
+      endif
+      if (associated(saturation)) then
+        condition%saturation => saturation
+      endif
+     
+      
+      if (.not.associated(temperature)) then
+        option%io_buffer = 'temperature condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%temperature => temperature
+      
+      if (.not.associated(concentration)) then
+        option%io_buffer = 'concentration condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%concentration => concentration
+      
+      if (.not.associated(enthalpy)) then
+        option%io_buffer = 'enthalpy condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%enthalpy => enthalpy
+      
+      if (.not.associated(displacement_x)) then
+        option%io_buffer = 'displacement_x condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%displacement_x => displacement_x
+
+      if (.not.associated(displacement_y)) then
+        option%io_buffer = 'displacement_y condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%displacement_y => displacement_y
+
+      if (.not.associated(displacement_z)) then
+        option%io_buffer = 'displacement_z condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
+      endif                         
+      condition%displacement_z => displacement_z
+
+      condition%num_sub_conditions = 7
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      do idof = 1, 7
+        nullify(condition%sub_condition_ptr(idof)%ptr)
+      enddo
+
+      ! must be in this order, which matches the dofs i problem
+      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      if (associated(rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      if (associated(well)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => well
+      if (associated(saturation)) condition%sub_condition_ptr(ONE_INTEGER)%ptr &
+                                  => saturation
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+      condition%sub_condition_ptr(FIVE_INTEGER)%ptr => displacement_x
+      condition%sub_condition_ptr(SIX_INTEGER)%ptr => displacement_y
+      condition%sub_condition_ptr(SEVEN_INTEGER)%ptr => displacement_z
+
+              
+      allocate(condition%itype(SEVEN_INTEGER))
+      condition%itype = 0
+      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
+      if (associated(well)) condition%itype(ONE_INTEGER) = well%itype
+      if (associated(saturation)) condition%itype(ONE_INTEGER) = &
+                                    saturation%itype
+      condition%itype(TWO_INTEGER) = temperature%itype
+      condition%itype(THREE_INTEGER) = concentration%itype
+      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = enthalpy%itype
+      condition%itype(FIVE_INTEGER) = displacement_x%itype
+      condition%itype(SIX_INTEGER) = displacement_y%itype
+      condition%itype(SEVEN_INTEGER) = displacement_z%itype
+
       
   end select
   
@@ -1743,7 +1895,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   use Input_module
   use String_module
   use Logging_module
-  
+ 
   implicit none
   
   type(tran_constraint_type) :: constraint
@@ -1975,8 +2127,9 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         constraint%minerals => mineral_constraint 
                             
       case('SURFACE_COMPLEXES')
-
-        srfcplx_constraint => SurfaceComplexConstraintCreate(reaction,option)
+      
+        srfcplx_constraint => &
+          SurfaceComplexConstraintCreate(reaction%surface_complexation,option)
 
         isrfcplx = 0
         do
@@ -1988,7 +2141,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           
           isrfcplx = isrfcplx + 1
 
-          if (isrfcplx > reaction%nkinsrfcplx) then
+          if (isrfcplx > reaction%surface_complexation%nkinsrfcplx) then
             option%io_buffer = &
                      'Number of surface complex constraints exceeds ' // &
                      'number of kinetic surface complexes in constraint: ' // &
@@ -2009,7 +2162,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                           'CONSTRAINT, SURFACE COMPLEX')          
         enddo  
         
-        if (isrfcplx < reaction%nkinsrfcplx) then
+        if (isrfcplx < reaction%surface_complexation%nkinsrfcplx) then
           option%io_buffer = &
                    'Number of surface complex constraints is less than ' // &
                    'number of kinetic surface complexes in surface ' // &
@@ -2229,7 +2382,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
       else
         filename = trim(filename) // trim(realization_word)
       endif
-      input2 => InputCreate(IUNIT_TEMP,filename)
+      input2 => InputCreate(IUNIT_TEMP,filename,option)
       if (flow_dataset%time_series%rank<=3) then
         call FlowConditionReadValuesFromFile(input2,flow_dataset,option)
       else
@@ -2733,9 +2886,12 @@ subroutine FlowConditionUpdate(condition_list,option,time)
       sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
       
       if (associated(sub_condition)) then
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%flow_dataset)
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%datum)
-        call FlowSubConditionUpdateDataset(option,time,sub_condition%gradient)
+        call FlowSubConditionUpdateDataset(option,time, &
+                                           sub_condition%flow_dataset)
+        call FlowSubConditionUpdateDataset(option,time, &
+                                           sub_condition%datum)
+        call FlowSubConditionUpdateDataset(option,time, &
+                                           sub_condition%gradient)
       endif
       
     enddo
@@ -2763,12 +2919,20 @@ subroutine FlowSubConditionUpdateDataset(option,time,flow_condition_dataset)
   type(option_type) :: option
   PetscReal :: time
   type(flow_condition_dataset_type) :: flow_condition_dataset
-  
+
   if (associated(flow_condition_dataset%time_series)) then
-    call TimeSeriesUpdate(option,time,flow_condition_dataset%time_series)
+    if (time < 1.d-40 .or. &
+        flow_condition_dataset%time_series%is_transient) then
+      call TimeSeriesUpdate(option,time,flow_condition_dataset%time_series)
+    endif
   endif
+  
   if (associated(flow_condition_dataset%dataset)) then
-    call DatasetLoad(flow_condition_dataset%dataset,option)
+    if ((time < 1.d-40 .or. &
+         flow_condition_dataset%dataset%is_transient) .and. &
+        .not.flow_condition_dataset%dataset%is_cell_indexed) then
+      call DatasetLoad(flow_condition_dataset%dataset,option)
+    endif
   endif
   
 end subroutine FlowSubConditionUpdateDataset
@@ -3137,7 +3301,7 @@ function FlowDatasetIsTransient(flow_dataset)
     endif
   endif
   if (associated(flow_dataset%dataset)) then
-    if (associated(flow_dataset%dataset%buffer)) then
+    if (flow_dataset%dataset%is_transient) then
       FlowDatasetIsTransient = PETSC_TRUE
     endif
   endif
@@ -3215,6 +3379,9 @@ subroutine FlowConditionDestroy(condition)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
+  nullify(condition%displacement_x)
+  nullify(condition%displacement_y)
+  nullify(condition%displacement_z)
 
   call FlowGeneralConditionDestroy(condition%general)
   

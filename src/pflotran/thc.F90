@@ -2554,27 +2554,6 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-interface
-subroutine samrpetscobjectstateincrease(vec)
-       implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec
-end subroutine samrpetscobjectstateincrease
-
-subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: vec
-       PetscErrorCode :: ierr
-end subroutine SAMRCoarsenFaceFluxes
-     
-end interface
-
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -2616,28 +2595,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  ! now coarsen all face fluxes in case we are using SAMRAI to 
-  ! ensure consistent fluxes at coarse-fine interfaces
-  ! RTM: This may not be the correct way to do things.  I think the heat 
-  ! flux might need to be treated differently?  Ask Bobby.
-  if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-
-     cur_level => realization%level_list%first
-     do
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-           if (.not.associated(cur_patch)) exit
-           realization%patch => cur_patch
-           call THCResidualFluxContribPatch(r,realization,ierr)
-           ! IMPORTANT:  I need to write the above subroutine!  --RTM
-           cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-     enddo
-  endif
-
   ! Now make a second pass and compute everything that isn't an internal 
   ! or boundary flux term
   cur_level => realization%level_list%first
@@ -2653,36 +2610,7 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  if(discretization%itype==AMR_GRID) then
-     call samrpetscobjectstateincrease(r)
-  endif
-
 end subroutine THCResidual
-
-! ************************************************************************** !
-!
-! THCResidualFluxContribPatch: should be called only for SAMR
-! author: Richard Mills
-! date: 05/??/10
-!
-! ************************************************************************** !
-subroutine THCResidualFluxContribPatch(r,realization,ierr)
-  use Realization_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  
-  implicit none
-  Vec, intent(out) :: r
-  type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
-
-  ! Need to put something here! --RTM
-end subroutine THCResidualFluxContribPatch
-
 
 ! ************************************************************************** !
 !
@@ -3103,17 +3031,6 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-       Mat :: mat
-       PetscFortranAddr :: patch
-end subroutine SAMRSetCurrentJacobianPatch
-end interface
-
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -3149,13 +3066,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call THCJacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -3805,9 +3715,7 @@ subroutine THCResidualToMass(realization)
   
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
-        if (associated(cur_patch%imat)) then
-          if (cur_patch%imat(ghosted_id) <= 0) cycle
-        endif
+        if (cur_patch%imat(ghosted_id) <= 0) cycle
         
         istart = (ghosted_id-1)*option%nflowdof+1
         mass_balance_p(istart) = mass_balance_p(istart)/ &

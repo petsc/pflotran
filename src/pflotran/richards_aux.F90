@@ -320,11 +320,13 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 ! aux_var%kvr_x =  1123.055414382469
 ! aux_var%kvr_y =  1123.055414382469
 ! aux_var%kvr_z =  1123.055414382469
+! aux_var%kvr =  1123.055414382469
 ! 
 ! aux_var%dden_dp = 0.
-! aux_var%dkvr_x_dp = 0!.01*2*x(1)
-! aux_var%dkvr_y_dp = 0!.01*2*x(1)
+ !aux_var%dkvr_x_dp = 0!.01*2*x(1)
+ !aux_var%dkvr_y_dp = 0!.01*2*x(1)
 ! aux_var%dkvr_z_dp = 0!.01*2*x(1)
+! aux_var%dkvr_dp = 0!.01*2*x(1)
 
 
 !aux_var%dsat_dp = 1e-2

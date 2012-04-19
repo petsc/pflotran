@@ -271,9 +271,7 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   
-  PetscReal :: A(4,4), x(4), b(4)
-  PetscInt :: indx(4)
-  PetscInt :: d
+  PetscReal :: b(4)
   PetscReal :: pressure_high, pressure_low
   
   PetscReal :: n
@@ -288,26 +286,6 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
       saturation_function%spline_low = pressure_low
       saturation_function%spline_high = pressure_high
   
-      A(1,1) = 1.d0
-      A(2,1) = 1.d0
-      A(3,1) = 0.d0
-      A(4,1) = 0.d0
-  
-      A(1,2) = pressure_high
-      A(2,2) = pressure_low
-      A(3,2) = 1.d0
-      A(4,2) = 1.d0
-  
-      A(1,3) = pressure_high**2.d0
-      A(2,3) = pressure_low**2.d0
-      A(3,3) = 2.d0*pressure_high
-      A(4,3) = 2.d0*pressure_low
-  
-      A(1,4) = pressure_high**3.d0
-      A(2,4) = pressure_low**3.d0
-      A(3,4) = 3.d0*pressure_high**2.d0
-      A(4,4) = 3.d0*pressure_low**2.d0
-  
       b(1) = (pressure_high*saturation_function%alpha)** &
                (-saturation_function%lambda)
       b(2) = 1.d0
@@ -315,10 +293,9 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
                (pressure_high*saturation_function%alpha)** &
                  (-saturation_function%lambda)
       b(4) = 0.d0
-  
-      call ludcmp(A,FOUR_INTEGER,indx,d)
-      call lubksb(A,FOUR_INTEGER,indx,b)
-  
+
+      call CubicPolynomialSetup(pressure_high,pressure_low,b)
+      
       saturation_function%spline_coefficients(1:4) = b(1:4)
       
   case(VAN_GENUCHTEN)
@@ -336,26 +313,6 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
       saturation_function%spline_low = pressure_low
       saturation_function%spline_high = pressure_high
     
-      A(1,1) = 1.d0
-      A(2,1) = 1.d0
-      A(3,1) = 0.d0
-      A(4,1) = 0.d0
-  
-      A(1,2) = pressure_high
-      A(2,2) = pressure_low
-      A(3,2) = 1.d0
-      A(4,2) = 1.d0
-  
-      A(1,3) = pressure_high**2.d0
-      A(2,3) = pressure_low**2.d0
-      A(3,3) = 2.d0*pressure_high
-      A(4,3) = 2.d0*pressure_low
-  
-      A(1,4) = pressure_high**3.d0
-      A(2,4) = pressure_low**3.d0
-      A(3,4) = 3.d0*pressure_high**2.d0
-      A(4,4) = 3.d0*pressure_low**2.d0
-  
       n = 1.d0/(1.d0 - saturation_function%m)
       b(1) = (1.d0+(pressure_high*saturation_function%alpha)**n)** &
                (-saturation_function%m)
@@ -366,9 +323,8 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
                (-saturation_function%m-1.d0)
       b(4) = 0.d0
   
-      call ludcmp(A,FOUR_INTEGER,indx,d)
-      call lubksb(A,FOUR_INTEGER,indx,b)
-  
+      call CubicPolynomialSetup(pressure_high,pressure_low,b)
+
       saturation_function%spline_coefficients(1:4) = b(1:4)
 #endif
 
@@ -394,9 +350,7 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   
-  PetscReal :: A(4,4), x(4), b(4)
-  PetscInt :: indx(4)
-  PetscInt :: d
+  PetscReal :: b(4)
   PetscReal :: Se_high, Se_low, one_over_m, Se_one_over_m, m
   
   select case(saturation_function%saturation_function_itype) 
@@ -413,26 +367,6 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
       saturation_function%spline_low = Se_low
       saturation_function%spline_high = Se_high
     
-      A(1,1) = 1.d0
-      A(2,1) = 1.d0
-      A(3,1) = 0.d0
-      A(4,1) = 0.d0
-  
-      A(1,2) = Se_high
-      A(2,2) = Se_low
-      A(3,2) = 1.d0
-      A(4,2) = 1.d0
-  
-      A(1,3) = Se_high**2.d0
-      A(2,3) = Se_low**2.d0
-      A(3,3) = 2.d0*Se_high
-      A(4,3) = 2.d0*Se_low
-  
-      A(1,4) = Se_high**3.d0
-      A(2,4) = Se_low**3.d0
-      A(3,4) = 3.d0*Se_high**2.d0
-      A(4,4) = 3.d0*Se_low**2.d0
-  
       m = saturation_function%m
       one_over_m = 1.d0/m
       Se_one_over_m = Se_low**one_over_m
@@ -444,8 +378,7 @@ subroutine PermFunctionComputeSpline(option,saturation_function)
              (1.d0-Se_one_over_m)**(m-1.d0)* &
              (1.d0-(1.d0-Se_one_over_m)**m)
   
-      call ludcmp(A,FOUR_INTEGER,indx,d)
-      call lubksb(A,FOUR_INTEGER,indx,b)
+      call CubicPolynomialSetup(Se_high,Se_low,b)
   
       saturation_function%spline_coefficients(1:4) = b(1:4)
 #endif
@@ -622,8 +555,8 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
                                       saturation_function, &
                                       auxvar1,auxvar2, &
                                       switch_to_saturated,option)
-
   use Option_module
+  use Utility_module, only:CubicPolynomialEvaluate
   
   implicit none
 
@@ -659,13 +592,8 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
         return
       else if (pc < saturation_function%spline_high) then
         Sr = saturation_function%Sr(iphase)
-        Se = saturation_function%spline_coefficients(1)+ &
-             saturation_function%spline_coefficients(2)*pc+ &
-             saturation_function%spline_coefficients(3)*pc**2.d0+ &
-             saturation_function%spline_coefficients(4)*pc**3.d0
-        dSe_pc = saturation_function%spline_coefficients(2)+ &
-                  saturation_function%spline_coefficients(3)*2.d0*pc+ &
-                  saturation_function%spline_coefficients(4)*3.d0*pc**2.d0
+        call CubicPolynomialEvaluate(saturation_function%spline_coefficients, &
+                                     pc,Se,dSe_pc)
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
 #else
@@ -716,13 +644,9 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
         case(MUALEM)
 #ifdef MUALEM_SPLINE
           if (Se > saturation_function%spline_low) then
-            relative_perm = saturation_function%spline_coefficients(1)+ &
-                            saturation_function%spline_coefficients(2)*Se+ &
-                            saturation_function%spline_coefficients(3)*Se**2.d0+ &
-                            saturation_function%spline_coefficients(4)*Se**3.d0
-            dkr_Se = saturation_function%spline_coefficients(2)+ &
-                     saturation_function%spline_coefficients(3)*2.d0*Se+ &
-                     saturation_function%spline_coefficients(4)*3.d0*Se**2.d0
+            call CubicPolynomialEvaluate( &
+              saturation_function%spline_coefficients, &
+              Se,relative_perm,dkr_Se)
           else
 #endif          
           one_over_m = 1.d0/m
@@ -744,21 +668,16 @@ subroutine SaturationFunctionCompute2(pressure,saturation,relative_perm, &
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
       pc = option%reference_pressure-pressure
-#if 0      
+#if 0
       if (pc < saturation_function%spline_low) then
         saturation = 1.d0
         relative_perm = 1.d0
         switch_to_saturated = PETSC_TRUE
         return
-      else if (pc < saturation_function%BC_high) then
+      else if (pc < saturation_function%spline_high) then
         Sr = saturation_function%Sr(iphase)
-        Se = saturation_function%BC_spline_coefficients(1)+ &
-             saturation_function%BC_spline_coefficients(2)*pc+ &
-             saturation_function%BC_spline_coefficients(3)*pc**2.d0+ &
-             saturation_function%BC_spline_coefficients(4)*pc**3.d0
-        dSe_pc = saturation_function%BC_spline_coefficients(2)+ &
-                  saturation_function%BC_spline_coefficients(3)*2.d0*pc+ &
-                  saturation_function%BC_spline_coefficients(4)*3.d0*pc**2.d0
+        call CublicPolynomialEvaluate(saturation_function%spline_coefficients, &
+                                      pc,Se,dSe_pc)
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
 #else
@@ -850,7 +769,7 @@ subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
                                         liquid_saturation, gas_saturation, &
                                         liquid_relative_perm, dsl_pl, & 
                                         dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
-                                        dsi_temp, dkr_pl, &
+                                        dsi_temp, dkr_pl, dkr_temp, &
                                         saturation_function, option)
 
   use Option_module
@@ -877,6 +796,7 @@ implicit none
   PetscReal :: one_plus_pc_il_alpha_n
   PetscReal :: dfunc_A_temp
   PetscReal :: dfunc_B_pl
+  PetscReal :: liq_sat_one_over_m, dkr_ds_liq, dkr_temp
   PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
   PetscReal, parameter :: heat_of_fusion = 3.34d5 !in J/kg at 273.15K
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
@@ -909,22 +829,7 @@ implicit none
         Se = one_plus_pc_alpha_n**(-m)
         dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         function_B = 1.d0/Se
-        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc
-        select case(saturation_function%permeability_function_itype)
-          case(MUALEM)
-            one_over_m = 1.d0/m
-            Se_one_over_m = Se**one_over_m
-            liquid_relative_perm = sqrt(Se)*(1.d0 - (1.d0 - Se_one_over_m)**m)** &
-                                   2.d0
-            dkr_Se = 0.5d0*liquid_relative_perm/Se + &
-                     2.d0*Se**(one_over_m - 0.5d0)* &
-                     (1.d0 - Se_one_over_m)**(m - 1.d0)* &
-                     (1.d0 - (1.d0 - Se_one_over_m)**m)
-            dkr_pc = dkr_Se*dSe_pc
-          case default
-            option%io_buffer = 'Ice module only supports Mualem' 
-            call printErrMsg(option)
-        end select
+        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc        
       endif
       if (temperature >= 0.d0) then
         function_A = 1.d0
@@ -952,9 +857,7 @@ implicit none
   liquid_saturation = 1.d0/(function_A + function_B - 1.d0)
   gas_saturation = liquid_saturation*(function_B - 1.d0)
   ice_saturation = liquid_saturation*(function_A - 1.d0)
-  
-! print *,'ice: ',liquid_saturation,gas_saturation,ice_saturation
-  
+
   dsl_pl = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_B_pl)
   dsl_temp = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_A_temp)
   
@@ -982,7 +885,25 @@ implicit none
     print *, option%myrank, 'vG Ice Saturation < 0:', ice_saturation
   endif
 
-  dkr_pl = - dkr_pc
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      one_over_m = 1.d0/m
+      liq_sat_one_over_m = liquid_saturation**one_over_m
+      liquid_relative_perm = sqrt(liquid_saturation)* &
+                             (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+      dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
+                   2.d0*Se**(one_over_m - 0.5d0)* &
+                   (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                   (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      dkr_pl = dkr_ds_liq*dsl_pl
+      dkr_temp = dkr_ds_liq*dsl_temp
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select
+  
+! print *,'ice: ',liquid_saturation,gas_saturation,ice_saturation
+ 
 
 
 end subroutine SaturationFunctionComputeIce

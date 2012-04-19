@@ -270,9 +270,6 @@ subroutine TimeSeriesUpdate(option,time,time_series)
   PetscInt :: next_time_index
   PetscReal :: time_fraction
 
- ! potentially for initial condition
-  if (time < 1.d-40 .or. .not.time_series%is_transient) return  
-
   ! cycle times if at max_time_index and cyclic
   if (time_series%cur_time_index == time_series%max_time_index .and. &
       time_series%is_cyclic .and. time_series%max_time_index > 1) then

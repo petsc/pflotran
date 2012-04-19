@@ -30,7 +30,8 @@ module HDF5_aux_module
             HDF5ReadDatasetReal2D
 #else
   public :: HDF5ReadNDimRealArray, &
-            HDF5ReadDataset
+            HDF5ReadDataset, &
+            HDF5GroupExists  
 #endif ! PARALLELIO_LIB
 
 contains
@@ -260,6 +261,7 @@ subroutine HDF5ReadDataset(dataset,option)
     endif  
 
     if (read_times) then
+      dataset%is_transient = PETSC_TRUE
       units_conversion = 1.d0
       attribute_name = "Time Units"
       call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
@@ -338,6 +340,10 @@ subroutine HDF5ReadDataset(dataset,option)
   
   ! open the "data" dataset
   dataset_name = 'data'
+  if (dataset%realization_dependent) then
+    write(word,'(i9)') option%id
+    dataset_name = trim(dataset_name) // trim(adjustl(word))
+  endif
   call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
   call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
 
@@ -469,7 +475,6 @@ end subroutine HDF5ReadDataset
 ! date: 05/13/2010
 !
 ! ************************************************************************** !
-
 subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
            data,data_dims,dataset_dims)
 
@@ -628,6 +633,68 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
 end subroutine HDF5ReadDatasetReal2D
 #endif ! PARALLELIO_LIB
 
+! ************************************************************************** !
+!
+! HDF5GroupExists: Returns true if a group exists
+! author: Glenn Hammond
+! date: 03/26/2012
+!
+! ************************************************************************** !
+function HDF5GroupExists(filename,group_name,option)
+
+  use hdf5
+  use Option_module
+  
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: group_name
+  type(option_type) :: option
+
+  integer(HID_T) :: file_id  
+  integer(HID_T) :: grp_id  
+  integer(HID_T) :: prop_id
+  PetscMPIInt, parameter :: ON=1, OFF=0 
+  PetscBool :: group_exists
+  
+  PetscBool :: HDF5GroupExists
+
+  ! open the file
+  call h5open_f(hdf5_err)
+  ! set read file access property
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  option%io_buffer = 'Testing group: ' // trim(group_name)
+  call printMsg(option)
+  ! I turn off error messaging since if the group does not exist, an error
+  ! will be printed, but the user does not need to see this.
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,group_name,grp_id,hdf5_err)
+  group_exists = .not.(hdf5_err < 0)
+  call h5eset_auto_f(ON,hdf5_err)  
+
+  if (group_exists) then
+    HDF5GroupExists = PETSC_TRUE
+    call h5gclose_f(grp_id,hdf5_err)  
+    option%io_buffer = 'Group "' // trim(group_name) // '" in HDF5 file "' // &
+      trim(filename) // '" found in file.'
+  else
+    HDF5GroupExists = PETSC_FALSE
+    option%io_buffer = 'Group "' // trim(group_name) // '" in HDF5 file "' // &
+      trim(filename) // '" not found in file.  Therefore, assuming a ' // &
+      'cell-indexed dataset.'
+  endif
+  call printMsg(option)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)  
+  
+end function HDF5GroupExists
 
 #endif ! defined(PETSC_HAVE_HDF5)
 

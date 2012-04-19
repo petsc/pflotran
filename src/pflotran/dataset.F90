@@ -8,7 +8,9 @@ module Dataset_module
   
 #include "definitions.h"
 
-  public :: DatasetLoad
+  public :: DatasetLoad, &
+            DatasetProcessDatasets, &
+            DatasetIsCellIndexed
 
 contains
 
@@ -99,5 +101,58 @@ subroutine DatasetLoad(dataset,option)
 #endif
 
 end subroutine DatasetLoad
+
+! *********************a***************************************************** !
+!
+! DatasetProcessDatasets: Determine whether a dataset is indexed by cell ids
+! author: Glenn Hammond
+! date: 03/26/12
+!
+! ************************************************************************** !
+subroutine DatasetProcessDatasets(datasets,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(dataset_type), pointer :: datasets
+  type(option_type) :: option
+  
+  type(dataset_type), pointer :: cur_dataset
+  
+  cur_dataset => datasets
+  do
+    if (.not.associated(cur_dataset)) exit
+    cur_dataset%is_cell_indexed = DatasetIsCellIndexed(cur_dataset,option)
+    cur_dataset => cur_dataset%next
+  enddo
+  
+end subroutine DatasetProcessDatasets
+
+! ************************************************************************** !
+!
+! DatasetIsCellIndexed: Determine whether a dataset is indexed by cell ids
+! author: Glenn Hammond
+! date: 03/26/12
+!
+! ************************************************************************** !
+function DatasetIsCellIndexed(dataset,option)
+
+  use Option_module
+  use HDF5_aux_module
+
+  implicit none
+  
+  type(dataset_type) :: dataset
+  type(option_type) :: option
+  
+  PetscBool :: DatasetIsCellIndexed
+  
+#if defined(PETSC_HAVE_HDF5)  
+  DatasetIsCellIndexed = &
+    .not.HDF5GroupExists(dataset%filename,dataset%h5_dataset_name,option)
+#endif
+ 
+end function DatasetIsCellIndexed
 
 end module Dataset_module

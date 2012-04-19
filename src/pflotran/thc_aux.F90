@@ -469,7 +469,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 
   PetscErrorCode :: ierr
   PetscReal :: pw, dw_kg, dw_mol, hw, sat_pressure, visl
-  PetscReal :: kr, ds_dp, dkr_dp
+  PetscReal :: kr, ds_dp, dkr_dp, dkr_dt
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: dpw_dp
@@ -519,26 +519,20 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     global_aux_var%temp(1), ice_saturation, &
                                     global_aux_var%sat(1), gas_saturation, &
                                     kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
-                                    dsi_pl, dsi_temp, dkr_dp, &
+                                    dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
                                     saturation_function, option)
 
-
-!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-!              option%scale,ierr)
-              
-!  print *, 'wateos:', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
 
   call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
                          dw_dt, hw, hw_dp, hw_dt, ierr)
                          
-!  print *, 'wateos_simple', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
-
-   
-
   call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
   
-  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
-            dvis_dp, ierr)
+!  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
+!            dvis_dp, ierr)
+
+  call VISW_temp(global_aux_var%temp(1),visl,dvis_dt,ierr)
+  dvis_dp = 0.d0
   
   dvis_dpsat = -dvis_dp 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
@@ -557,7 +551,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   aux_var%dsat_dp = ds_dp
   aux_var%dden_dt = dw_dt
   aux_var%dden_dp = dw_dp
-  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt)
+  aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt + dvis_dpsat*dpsat_dt) + dkr_dt/visl
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   aux_var%dh_dp = hw_dp
   aux_var%du_dp = hw_dp - (dpw_dp/dw_mol - pw/(dw_mol*dw_mol)*dw_dp)* &

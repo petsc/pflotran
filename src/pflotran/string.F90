@@ -14,6 +14,7 @@ module String_module
             StringToLower, &
             StringReadQuotedWord, &
             StringStartswithAlpha, &
+            StringStartsWith, &
             StringAdjustl, &
             StringNull
   
@@ -304,6 +305,39 @@ function StringStartsWithAlpha(string)
   endif
 
 end function StringStartsWithAlpha
+
+! ************************************************************************** !
+!
+! StringStartsWith: Determines whether a string starts with characters 
+!                   identical to another string
+! author: Glenn Hammond
+! date: 03/16/12
+!
+! ************************************************************************** !
+function StringStartsWith(string,string2)
+      
+  implicit none
+
+  character(len=*) :: string
+  character(len=*) :: string2
+
+  PetscBool :: StringStartsWith
+  
+  
+  PetscInt :: length, i
+
+  length = min(len_trim(string),len_trim(string2))
+  
+  do i = 1, length
+    if (string(i:i) /= string2(i:i)) then
+      StringStartsWith = PETSC_FALSE
+      return
+    endif
+  enddo
+  
+  StringStartsWith = PETSC_TRUE
+
+end function StringStartsWith
 
 ! ************************************************************************** !
 !

@@ -27,9 +27,6 @@ module Field_module
     
     Vec :: work, work_loc
 
-    ! temporary Vec's for testing AMR  
-    Vec :: work_samr, work_samr_loc
-
     Vec :: volume 
     
     ! residual vectors
@@ -48,13 +45,6 @@ module Field_module
     
     Vec :: flow_ts_mass_balance, flow_total_mass_balance
     Vec :: tran_ts_mass_balance, tran_total_mass_balance
-
-    ! required by SAMR to ensure consistent fluxes at 
-    ! coarse-fine interfaces
-    Vec :: flow_face_fluxes
-    Vec :: tran_face_fluxes
-    ! viz vector
-    Vec :: samr_viz_vec
 
     ! residual vectors for face unknows
     Vec :: flow_r_faces, flow_r_loc_faces          
@@ -125,9 +115,6 @@ function FieldCreate()
   field%flow_dxx = 0
   field%flow_yy = 0
   field%flow_accum = 0
-  
-  field%flow_face_fluxes = 0
-  field%tran_face_fluxes = 0
 
   field%tran_r = 0
   field%tran_log_xx = 0
@@ -147,6 +134,16 @@ function FieldCreate()
   field%flow_total_mass_balance = 0
   field%tran_ts_mass_balance = 0
   field%tran_total_mass_balance = 0
+
+  field%flow_r_faces = 0
+  field%flow_r_loc_faces = 0
+  field%flow_xx_faces = 0
+  field%flow_xx_loc_faces = 0
+  field%flow_dxx_faces = 0
+  field%flow_yy_faces = 0
+  field%flow_bc_loc_faces = 0
+  field%work_loc_faces = 0
+   
 
   FieldCreate => field
   
@@ -224,14 +221,33 @@ subroutine FieldDestroy(field)
   if (field%tran_total_mass_balance /= 0) &
     call VecDestroy(field%tran_total_mass_balance,ierr)
     
-  if (field%flow_face_fluxes /= 0) &
-    call VecDestroy(field%flow_face_fluxes,ierr)
-  if (field%tran_face_fluxes /= 0) &
-    call VecDestroy(field%tran_face_fluxes,ierr)
-    
   if (field%tvd_ghosts /= 0) &
     call VecDestroy(field%tvd_ghosts,ierr)
-  
+
+  if (field%flow_r_faces/= 0) &
+    call VecDestroy(field%flow_r_faces,ierr)
+
+  if (field%flow_r_loc_faces /= 0) &
+    call VecDestroy(field%flow_r_loc_faces ,ierr)
+
+  if (field%flow_xx_faces /= 0) &
+    call VecDestroy(field%flow_xx_faces ,ierr)
+
+  if (field%flow_xx_loc_faces /= 0) &
+    call VecDestroy(field%flow_xx_loc_faces ,ierr)
+
+  if (field%flow_dxx_faces /= 0) &
+    call VecDestroy(field%flow_dxx_faces ,ierr)
+
+  if (field%flow_yy_faces /= 0) &
+    call VecDestroy(field%flow_yy_faces ,ierr)
+
+  if (field%flow_bc_loc_faces /= 0) &
+    call VecDestroy(field%flow_bc_loc_faces ,ierr)
+
+  if (field%work_loc_faces /= 0) &
+    call VecDestroy(field%work_loc_faces ,ierr)
+
   deallocate(field)
   nullify(field)
   

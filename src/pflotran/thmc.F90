@@ -140,9 +140,13 @@ subroutine THMCSetupPatch(realization)
                                   size(realization%saturation_function_array)))
   
   allocate(patch%aux%THMC%thmc_parameter%dencpr(size(realization%material_property_array)))
+  allocate(patch%aux%THMC%thmc_parameter%rock_den(size(realization%material_property_array)))
   allocate(patch%aux%THMC%thmc_parameter%ckwet(size(realization%material_property_array)))
   allocate(patch%aux%THMC%thmc_parameter%ckdry(size(realization%material_property_array)))
   allocate(patch%aux%THMC%thmc_parameter%alpha(size(realization%material_property_array)))
+  allocate(patch%aux%THMC%thmc_parameter%youngs_modulus(size(realization%material_property_array)))
+  allocate(patch%aux%THMC%thmc_parameter%poissons_ratio(size(realization%material_property_array)))
+
 #ifdef ICE
   allocate(patch%aux%THMC%thmc_parameter%ckfrozen(size(realization%material_property_array)))
   allocate(patch%aux%THMC%thmc_parameter%alpha_fr(size(realization%material_property_array)))
@@ -152,13 +156,18 @@ subroutine THMCSetupPatch(realization)
     patch%aux%THMC%thmc_parameter%dencpr(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%rock_density*option%scale* &
         realization%material_property_array(i)%ptr%specific_heat
- 
+    patch%aux%THMC%thmc_parameter%rock_den(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%rock_density 
     patch%aux%THMC%thmc_parameter%ckwet(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
     patch%aux%THMC%thmc_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
     patch%aux%THMC%thmc_parameter%alpha(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%alpha
+    patch%aux%THMC%thmc_parameter%youngs_modulus(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%youngs_modulus 
+    patch%aux%THMC%thmc_parameter%poissons_ratio(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%poissons_ratio
 #ifdef ICE
     patch%aux%THMC%thmc_parameter%ckfrozen(realization%material_property_array(i)%ptr%id) = &
       realization%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
@@ -488,38 +497,40 @@ subroutine THMCUpdateAuxVarsPatch(realization)
   type(thmc_auxvar_type), pointer :: thmc_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(thmc_parameter_type), pointer :: thmc_parameter
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
+  PetscReal, pointer :: ithrm_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
-  !!
-!  PetscReal, allocatable :: gradient(:,:)
-  !!
+ !  PetscReal, allocatable :: gradient(:,:,:)
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
   
-  !!
-!  allocate(gradient(grid%ngmax,3))
-!  gradient = 0.d0
-  !!
   
+!  allocate(gradient(grid%ngmax,3,3))
+!  gradient = 0.d0
+  
+  thmc_parameter => patch%aux%THMC%thmc_parameter
   thmc_aux_vars => patch%aux%THMC%aux_vars
   thmc_aux_vars_bc => patch%aux%THMC%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-  
+   
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+    
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -549,9 +560,13 @@ subroutine THMCUpdateAuxVarsPatch(realization)
         option)
 #endif
 
-!    call THMCComputeGradient(grid, global_aux_vars, ghosted_id, &
-!                       gradient(ghosted_id,:), option) 
+    call THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
+                       thmc_aux_vars(ghosted_id)%gradient, option) 
 
+    call THMCComputeStressFromDispGrad(thmc_aux_vars(ghosted_id)%gradient, &
+              thmc_parameter%youngs_modulus(int(ithrm_loc_p(ghosted_id))), &
+              thmc_parameter%poissons_ratio(int(ithrm_loc_p(ghosted_id))), &
+              thmc_aux_vars(ghosted_id)%stress)
 
     iphase_loc_p(ghosted_id) = iphase
   enddo
@@ -615,7 +630,6 @@ subroutine THMCUpdateAuxVarsPatch(realization)
   patch%aux%THMC%aux_vars_up_to_date = PETSC_TRUE
     
 !  deallocate(gradient)
-
 end subroutine THMCUpdateAuxVarsPatch
 
 ! ************************************************************************** !
@@ -799,7 +813,7 @@ subroutine THMCUpdateFixedAccumPatch(realization)
     endif
 
     iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
+    istart = iend - option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
 
 #ifdef ICE
@@ -823,6 +837,7 @@ subroutine THMCUpdateFixedAccumPatch(realization)
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               thmc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id))), &
                               option,accum_p(istart:iend)) 
   enddo
 
@@ -891,7 +906,8 @@ subroutine THMCNumericalJacobianTest(xx,realization)
   call VecDuplicate(xx,res_pert,ierr)
   
   call MatCreate(option%mycomm,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof, &
+                   grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
@@ -901,7 +917,8 @@ subroutine THMCNumericalJacobianTest(xx,realization)
     if (associated(patch%imat)) then
       if (patch%imat(grid%nL2G(icell)) <= 0) cycle
     endif
-    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
+    do idof = (icell-1)*option%nflowdof+1, &
+              icell*option%nflowdof 
       call VecCopy(xx,xx_pert,ierr)
       call VecGetArrayF90(xx_pert,vec_p,ierr)
       perturbation = vec_p(idof)*perturbation_tolerance
@@ -943,7 +960,7 @@ end subroutine THMCNumericalJacobianTest
 !
 ! ************************************************************************** !
 subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
-                                     rock_dencpr,option,sat_func,J)
+                                     rock_dencpr,rock_den,option,sat_func,J)
 
   use Option_module
   use Saturation_Function_module
@@ -954,9 +971,9 @@ subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
   type(thmc_auxvar_type) :: thmc_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal :: vol,por,rock_dencpr
+  PetscReal :: vol,por,rock_dencpr,rock_den
   type(saturation_function_type) :: sat_func
-  PetscReal :: J(option%nflowdof,option%nflowdof)
+  PetscReal :: J(option%nflowdof, option%nflowdof)
      
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
@@ -1052,7 +1069,7 @@ subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
     
 
     call THMCAccumulation(thmc_aux_var,global_aux_var, &
-                          por,vol,rock_dencpr,option,res)
+                          por,vol,rock_dencpr,rock_den,option,res)
     do ideriv = 1,3
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
@@ -1123,7 +1140,7 @@ subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
       end select     
 #endif     
       call THMCAccumulation(thmc_aux_var_pert,global_aux_var_pert, &
-                          por,vol,rock_dencpr,option,res_pert)
+                          por,vol,rock_dencpr,rock_den,option,res_pert)
       J_pert(:,ideriv) = (res_pert(:)-res(:))/pert
     enddo
 
@@ -1142,7 +1159,8 @@ end subroutine THMCAccumDerivative
 ! date: 3/2/12
 !
 ! ************************************************************************** !  
-subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
+                            rock_den,option,Res)
 
   use Option_module
   use water_eos_module
@@ -1153,7 +1171,7 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Re
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
-  PetscReal :: vol,por,rock_dencpr
+  PetscReal :: vol,por,rock_dencpr,rock_den
      
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
@@ -1165,6 +1183,8 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Re
   PetscReal, parameter :: C_wv = 1.005d-3 ! in MJ/kg/K
   PetscErrorCode :: ierr
 #endif
+
+  Res = 0.d0
   
 ! TechNotes, thmc Mode: First term of Equation 8
   porXvol = por*vol
@@ -1193,20 +1213,24 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Re
   eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
 #endif
 
-  Res(1:option%nflowdof-1) = mol(:)
-  Res(option%nflowdof) = eng
+  Res(1:option%nflowspec) = mol(:)
+  Res(option%nflowdof-option%nmechdof) = eng
+  Res(option%nflowdof-option%nmechdof+1) = rock_den*option%gravity(1)*vol
+  Res(option%nflowdof-option%nmechdof+2) = rock_den*option%gravity(2)*vol
+  Res(option%nflowdof-option%nmechdof+3) = rock_den*option%gravity(3)*vol
+
 
 end subroutine THMCAccumulation
 
 ! ************************************************************************** !
 !
-! THMCFluxDerivative: Computes the derivatives of the internal flux terms
+! THMCFluxDerivative1: Computes the derivatives of the internal flux terms
 !                     for the Jacobian
-! author:
+! author: Satish Karra
 ! date: 3/2/12
 !
 ! ************************************************************************** ! 
-subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
+subroutine THMCFluxDerivative1(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              sir_up,dd_up,perm_up,Dk_up, &
                              aux_var_dn,global_aux_var_dn,por_dn,tor_dn, &
                              sir_dn,dd_dn,perm_dn,Dk_dn, &
@@ -1215,6 +1239,9 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                             disp_grad_up,disp_grad_dn,unit_normal, &
+                             youngs_modulus_up,poissons_ratio_up, &
+                             youngs_modulus_dn,poissons_ratio_dn, &
                              Jup,Jdn)
                              
   use Option_module 
@@ -1240,7 +1267,8 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: v_darcy, area
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
-  PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
+  PetscReal :: Jup(option%nflowdof,option%nflowdof)
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec
   PetscReal :: fluxm(option%nflowspec),fluxe,q
@@ -1267,8 +1295,19 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscInt :: iphase, ideriv
   type(thmc_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
-  PetscReal :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert_up, pert_dn, &
-            res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
+  PetscReal :: x_up(option%nflowdof-option%nmechdof), &
+               x_dn(option%nflowdof-option%nmechdof), &
+               x_pert_up(option%nflowdof-option%nmechdof), &
+               x_pert_dn(option%nflowdof-option%nmechdof), pert_up, pert_dn
+  PetscReal :: res(option%nflowdof), res_pert_up(option%nflowdof), &
+               res_pert_dn(option%nflowdof)
+  PetscReal :: J_pert_up(option%nflowdof,option%nflowdof), &
+               J_pert_dn(option%nflowdof,option%nflowdof)
+  PetscReal :: disp_grad_up(3,3), disp_grad_dn(3,3)
+  PetscReal :: unit_normal(3)  
+  PetscReal :: youngs_modulus_up, youngs_modulus_dn
+  PetscReal :: poissons_ratio_up, poissons_ratio_dn
+
 
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
@@ -1409,11 +1448,15 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       Jdn(2,3) = q*density_ave*duxmol_dxmol_dn
      
       ! based on flux = q*density_ave*uh
-      Jup(option%nflowdof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
-      Jup(option%nflowdof,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uh+q*density_ave*duh_dt_up
+      Jup(option%nflowdof-option%nmechdof,1) = (dq_dp_up*density_ave+ &
+                                   q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
+      Jup(option%nflowdof-option%nmechdof,2) = (dq_dt_up*density_ave+ &
+                                   q*dden_ave_dt_up)*uh+q*density_ave*duh_dt_up
 
-      Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
-      Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
+      Jdn(option%nflowdof-option%nmechdof,1) = (dq_dp_dn*density_ave+ &
+                                   q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
+      Jdn(option%nflowdof-option%nmechdof,2) = (dq_dt_dn*density_ave+ &
+                                   q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
 
     endif
   endif 
@@ -1612,19 +1655,22 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #endif  
     
   !  cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
-  Jup(option%nflowdof,1) = Jup(option%nflowdof,1) + &
+  Jup(option%nflowdof-option%nmechdof,1) = Jup(option%nflowdof-option%nmechdof,1) + &
                            area*(global_aux_var_up%temp(1) - &
                            global_aux_var_dn%temp(1))*dDk_dp_up
-  Jdn(option%nflowdof,1) = Jdn(option%nflowdof,1) + &
+  Jdn(option%nflowdof-option%nmechdof,1) = Jdn(option%nflowdof-option%nmechdof,1) + &
                            area*(global_aux_var_up%temp(1) - &
                            global_aux_var_dn%temp(1))*dDk_dp_dn
                            
-  Jup(option%nflowdof,2) = Jup(option%nflowdof,2) + Dk*area + &
+  Jup(option%nflowdof-option%nmechdof,2) = Jup(option%nflowdof-option%nmechdof,2) + &
+                           Dk*area + &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_up 
-  Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
+  Jdn(option%nflowdof-option%nmechdof,2) = Jdn(option%nflowdof-option%nmechdof,2) + &
+                           Dk*area*(-1.d0) + &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_dn 
+                           
   Jup = Jup*option%flow_dt
   Jdn = Jdn*option%flow_dt
  ! note: Res is the flux contribution, for node up J = J + Jup
@@ -1646,6 +1692,8 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     x_dn(2) = global_aux_var_dn%temp(1)
     x_dn(3) = aux_var_dn%xmol(2)
     
+    J_pert_up = 0.d0
+    J_pert_dn = 0.d0
 
     call THMCFlux( &
       aux_var_up,global_aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
@@ -1654,8 +1702,11 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
       Dk_ice_up,Dk_ice_dn, &
       alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+      disp_grad_up,disp_grad_dn,unit_normal, &
+      youngs_modulus_up,poissons_ratio_up, &
+      youngs_modulus_dn,poissons_ratio_dn, &
       res)
-    do ideriv = 1,3
+    do ideriv = 1,option%nflowdof-option%nmechdof
       pert_up = x_up(ideriv)*perturbation_tolerance
       pert_dn = x_dn(ideriv)*perturbation_tolerance
       x_pert_up = x_up
@@ -1729,6 +1780,9 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                    alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                   disp_grad_up,disp_grad_dn,unit_normal, &
+                   youngs_modulus_up,poissons_ratio_up, &
+                   youngs_modulus_dn,poissons_ratio_dn, &
                    res_pert_up)
       call THMCFlux(aux_var_up,global_aux_var_up, &
                    por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
@@ -1738,9 +1792,12 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                    alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                   disp_grad_up,disp_grad_dn,unit_normal, &
+                   youngs_modulus_up,poissons_ratio_up, &
+                   youngs_modulus_dn,poissons_ratio_dn, &
                    res_pert_dn)
-      J_pert_up(:,ideriv) = (res_pert_up(:)-res(:))/pert_up
-      J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
+      J_pert_up(:,ideriv) = (res_pert_up(:) - res(:))/pert_up
+      J_pert_dn(:,ideriv) = (res_pert_dn(:) - res(:))/pert_dn
     enddo
     deallocate(aux_var_pert_up%xmol,aux_var_pert_up%diff)
     deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
@@ -1750,7 +1807,146 @@ subroutine THMCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     call GlobalAuxVarStrip(global_aux_var_pert_dn)    
   endif
 
-end subroutine THMCFluxDerivative
+end subroutine THMCFluxDerivative1
+
+
+! ************************************************************************** !
+!
+! THMCFluxDerivative2: Computes the derivatives of the internal flux terms
+!                     for the Jacobian
+! author: Satish Karra
+! date: 4/13/12
+!
+! ************************************************************************** ! 
+subroutine THMCFluxDerivative2(aux_var_up,global_aux_var_up,por_up,tor_up, &
+                             sir_up,dd_up,perm_up,Dk_up, &
+                             aux_var_dn,global_aux_var_dn,por_dn,tor_dn, &
+                             sir_dn,dd_dn,perm_dn,Dk_dn, &
+                             area,dist_gravity,upweight, &
+                             option,sat_func_up,sat_func_dn, &
+                             Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
+                             Dk_ice_up,Dk_ice_dn, &
+                             alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                             disp_grad_up,disp_grad_dn,unit_normal, &
+                             youngs_modulus_up,poissons_ratio_up, &
+                             youngs_modulus_dn,poissons_ratio_dn, &
+                             disp_grad_pert_up,disp_grad_pert_dn, &
+                             pert_up,pert_dn, &
+                             Jup,Jdn)
+                             
+  use Option_module 
+  use Saturation_Function_module             
+  use water_eos_module       
+  
+  implicit none
+  
+  type(thmc_auxvar_type) :: aux_var_up, aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  type(option_type) :: option
+  PetscReal :: sir_up, sir_dn
+  PetscReal :: por_up, por_dn
+  PetscReal :: tor_up, tor_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: Dk_up, Dk_dn
+  PetscReal :: Dk_dry_up, Dk_dry_dn
+  PetscReal :: Dk_ice_up, Dk_ice_dn
+  PetscReal :: alpha_up, alpha_dn
+  PetscReal :: alpha_fr_up, alpha_fr_dn
+  PetscReal :: Diff_up, Diff_dn
+  PetscReal :: v_darcy, area
+  PetscReal :: dist_gravity  ! distance along gravity vector
+  type(saturation_function_type) :: sat_func_up, sat_func_dn
+  PetscReal :: Jup(option%nflowdof)
+  PetscReal :: Jdn(option%nflowdof)
+     
+  PetscInt :: ispec
+  PetscReal :: fluxm(option%nflowspec),fluxe,q
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: upweight,density_ave,cond,gravity,dphi
+    
+  PetscReal :: Dk_eff_up, Dk_eff_dn
+  PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
+  PetscReal, parameter :: epsilon = 1.d-6
+
+  PetscInt :: iphase, ideriv
+  type(thmc_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
+  type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
+  PetscReal :: res(option%nflowdof), res_pert_up(option%nflowdof), &
+               res_pert_dn(option%nflowdof)
+  PetscReal :: disp_grad_up(3,3), disp_grad_dn(3,3)
+  PetscReal :: disp_grad_pert_up(3,3), disp_grad_pert_dn(3,3)
+  PetscReal :: unit_normal(3)  
+  PetscReal :: youngs_modulus_up, youngs_modulus_dn
+  PetscReal :: poissons_ratio_up, poissons_ratio_dn
+  PetscReal :: pert_up, pert_dn
+
+
+#ifdef ICE  
+  PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
+  PetscReal :: p_g
+  PetscReal :: deng_up, deng_dn
+  PetscReal :: psat_up, psat_dn
+  PetscReal :: molg_up, molg_dn
+  PetscReal :: satg_up, satg_dn
+  PetscReal :: Diffg_up, Diffg_dn
+  PetscReal :: ddeng_dt_up, ddeng_dt_dn
+  PetscReal :: dpsat_dt_up, dpsat_dt_dn
+  PetscReal :: dmolg_dt_up, dmolg_dt_dn
+  PetscReal :: dDiffg_dt_up, dDiffg_dt_dn
+  PetscReal :: dDiffg_dp_up, dDiffg_dp_dn
+  PetscReal :: dsatg_dp_up, dsatg_dp_dn
+  PetscReal :: Diffg_ref, p_ref, T_ref
+  PetscErrorCode :: ierr
+  PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
+  PetscReal :: dKe_fr_dt_up, dKe_fr_dt_dn
+  PetscReal :: dKe_fr_dp_up, dKe_fr_dp_dn
+#endif
+  
+  Jup = 0.d0
+  Jdn = 0.d0 
+
+
+  call THMCFlux( &
+      aux_var_up,global_aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+      aux_var_dn,global_aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+      area,dist_gravity,upweight, &
+      option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
+      Dk_ice_up,Dk_ice_dn, &
+      alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+      disp_grad_up,disp_grad_dn,unit_normal, &
+      youngs_modulus_up,poissons_ratio_up, &
+      youngs_modulus_dn,poissons_ratio_dn, &
+      res)
+
+  call THMCFlux( &
+      aux_var_up,global_aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+      aux_var_dn,global_aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+      area,dist_gravity,upweight, &
+      option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
+      Dk_ice_up,Dk_ice_dn, &
+      alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+      disp_grad_pert_up,disp_grad_dn,unit_normal, &
+      youngs_modulus_up,poissons_ratio_up, &
+      youngs_modulus_dn,poissons_ratio_dn, &
+      res_pert_up)
+
+  call THMCFlux( &
+      aux_var_up,global_aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+      aux_var_dn,global_aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+      area,dist_gravity,upweight, &
+      option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
+      Dk_ice_up,Dk_ice_dn, &
+      alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+      disp_grad_up,disp_grad_pert_dn,unit_normal, &
+      youngs_modulus_up,poissons_ratio_up, &
+      youngs_modulus_dn,poissons_ratio_dn, &
+      res_pert_dn)
+
+  Jup = (res_pert_up - res)/pert_up
+  Jdn = (res_pert_dn - res)/pert_dn
+
+end subroutine THMCFluxDerivative2
 
 ! ************************************************************************** !
 !
@@ -1767,6 +1963,9 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
                   option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                  disp_grad_up,disp_grad_dn,unit_normal, &
+                  youngs_modulus_up,poissons_ratio_up, &
+                  youngs_modulus_dn,poissons_ratio_dn, &
                   Res)
                   
   use Option_module                              
@@ -1798,6 +1997,13 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   PetscReal, parameter :: epsilon = 1.d-6
+  PetscReal :: disp_grad_up(3,3), disp_grad_dn(3,3)
+  PetscReal :: unit_normal(3)
+  PetscReal :: disp_grad_face(3,3)
+  PetscReal :: stress(3,3)
+  PetscReal :: youngs_modulus_up, youngs_modulus_dn
+  PetscReal :: poissons_ratio_up, poissons_ratio_dn
+  PetscReal :: youngs_modulus_avg, poissons_ratio_avg
 
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
@@ -1924,10 +2130,39 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
   cond = Dk*area*(global_aux_var_up%temp(1) - global_aux_var_dn%temp(1)) 
   fluxe = fluxe + cond
 
-  Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-  Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
+  Res(option%nflowdof-option%nmechdof) = fluxe*option%flow_dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
+
+ ! Calculating the residual for the mechanical component
+
+  youngs_modulus_avg = (youngs_modulus_up*youngs_modulus_dn)/(dd_dn*youngs_modulus_up + &
+                                      dd_up*youngs_modulus_dn)
+  poissons_ratio_avg = (poissons_ratio_up*poissons_ratio_dn)/(dd_dn*poissons_ratio_up + &
+                                      dd_up*poissons_ratio_dn)
+
+  disp_grad_face = dd_up*disp_grad_up + dd_dn*disp_grad_dn
+
+
+  call THMCComputeStressFromDispGrad(disp_grad_face,youngs_modulus_avg, &
+                                poissons_ratio_avg,stress)
+  
+  Res(option%nflowdof-option%nmechdof+1) = (stress(1,1)*unit_normal(1) + &
+                                           stress(1,2)*unit_normal(2) + &
+                                           stress(1,3)*unit_normal(3))*area* &
+                                           option%flow_dt
+
+  Res(option%nflowdof-option%nmechdof+2) = (stress(2,1)*unit_normal(1) + &
+                                           stress(2,2)*unit_normal(2) + &
+                                           stress(2,3)*unit_normal(3))*area* &
+                                           option%flow_dt
+
+  Res(option%nflowdof-option%nmechdof+3) = (stress(3,1)*unit_normal(1) + &
+                                           stress(3,2)*unit_normal(2) + &
+                                           stress(3,3)*unit_normal(3))*area* &
+                                           option%flow_dt
+  
  
 end subroutine THMCFlux
 
@@ -2141,8 +2376,10 @@ subroutine THMCBCFluxDerivative(ibndtype,aux_vars, &
     Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
   enddo
       ! based on flux = q*density_ave*uh
-  Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
-  Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
+  Jdn(option%nflowdof-option%nmechdof,1) = (dq_dp_dn*density_ave+ &
+                                   q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
+  Jdn(option%nflowdof-option%nmechdof,2) = (dq_dt_dn*density_ave+ &
+                                   q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
 !  Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
   ! Diffusion term   
@@ -2167,7 +2404,8 @@ subroutine THMCBCFluxDerivative(ibndtype,aux_vars, &
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
-      Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
+      Jdn(option%nflowdof-option%nmechdof,2) = & 
+                         Jdn(option%nflowdof-option%nmechdof,2)+Dk*area*(-1.d0)
 #ifdef ICE
       ! Added by Satish Karra, 11/21/11
       satg_up = aux_var_up%sat_gas
@@ -2386,6 +2624,7 @@ subroutine THMCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
+  Res = 0.d0
 
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
@@ -2523,7 +2762,7 @@ subroutine THMCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   end select
 
   Res(1:option%nflowspec) = fluxm(:)*option%flow_dt
-  Res(option%nflowdof) = fluxe*option%flow_dt
+  Res(option%nflowdof-option%nmechdof) = fluxe*option%flow_dt
 
 end subroutine THMCBCFlux
 
@@ -2544,27 +2783,6 @@ subroutine THMCResidual(snes,xx,r,realization,ierr)
   use Option_module
 
   implicit none
-
-interface
-subroutine samrpetscobjectstateincrease(vec)
-       implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec
-end subroutine samrpetscobjectstateincrease
-
-subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: vec
-       PetscErrorCode :: ierr
-end subroutine SAMRCoarsenFaceFluxes
-     
-end interface
 
   SNES :: snes
   Vec :: xx
@@ -2607,28 +2825,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  ! now coarsen all face fluxes in case we are using SAMRAI to 
-  ! ensure consistent fluxes at coarse-fine interfaces
-  ! RTM: This may not be the correct way to do things.  I think the heat 
-  ! flux might need to be treated differently?  Ask Bobby.
-  if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-
-     cur_level => realization%level_list%first
-     do
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-           if (.not.associated(cur_patch)) exit
-           realization%patch => cur_patch
-           call THMCResidualFluxContribPatch(r,realization,ierr)
-           ! IMPORTANT:  I need to write the above subroutine!  --RTM
-           cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-     enddo
-  endif
-
   ! Now make a second pass and compute everything that isn't an internal 
   ! or boundary flux term
   cur_level => realization%level_list%first
@@ -2644,35 +2840,7 @@ end interface
     cur_level => cur_level%next
   enddo
 
-  if(discretization%itype==AMR_GRID) then
-     call samrpetscobjectstateincrease(r)
-  endif
-
 end subroutine THMCResidual
-
-! ************************************************************************** !
-!
-! THMCResidualFluxContribPatch: should be called only for SAMR
-! author: Richard Mills
-! date: 05/??/10
-!
-! ************************************************************************** !
-subroutine THMCResidualFluxContribPatch(r,realization,ierr)
-  use Realization_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  
-  implicit none
-  Vec, intent(out) :: r
-  type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
-
-  ! Need to put something here! --RTM
-end subroutine THMCResidualFluxContribPatch
 
 
 ! ************************************************************************** !
@@ -2694,7 +2862,8 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  
+  use Utility_module
+
   implicit none
 
   SNES, intent(in) :: snes
@@ -2750,6 +2919,10 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal :: normal(3), unit_normal(3)
+  PetscReal :: disp_grad_up(3,3), disp_grad_dn(3,3)
+  PetscReal :: youngs_modulus_up, youngs_modulus_dn
+  PetscReal :: poissons_ratio_up, poissons_ratio_dn
   
   patch => realization%patch
   grid => patch%grid
@@ -2804,6 +2977,7 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         thmc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                        thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id))), &
                         option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
   enddo 
@@ -2839,24 +3013,25 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+        r_p(local_id*(option%nflowdof-option%nmechdof)) = &
+                         r_p(local_id*(option%nflowdof-option%nmechdof)) - hsrc1 * option%flow_dt   
       endif         
 
-      if (qsrc1 > 0.d0) then ! injection
-        call wateos_noderiv(tsrc1,global_aux_vars(ghosted_id)%pres(1), &
-                            dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+!      if (qsrc1 > 0.d0) then ! injection
+!        call wateos_noderiv(tsrc1,global_aux_vars(ghosted_id)%pres(1), &
+!                            dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
-                                               - qsrc1 *option%flow_dt
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
-      endif  
-    
-      if (csrc1 > 0.d0) then ! injection
-        call printErrMsg(option,"concentration source not yet implemented in THMC")
-      endif
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
+!        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
+!                                               - qsrc1 *option%flow_dt
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
+!      endif  
+!    
+!      if (csrc1 > 0.d0) then ! injection
+!        call printErrMsg(option,"concentration source not yet implemented in THMC")
+!      endif
+!  !  else if (qsrc1 < 0.d0) then ! withdrawal
+!  !  endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -2896,6 +3071,15 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
       ! however, this introduces ever so slight error causing pflow-overhaul not
       ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
       upweight = dd_dn/(dd_up+dd_dn)
+
+      normal(1) = grid%x(ghosted_id_dn) - grid%x(ghosted_id_up)
+      normal(2) = grid%y(ghosted_id_dn) - grid%y(ghosted_id_up)
+      normal(3) = grid%z(ghosted_id_dn) - grid%z(ghosted_id_up)
+
+      unit_normal = normal/sqrt(DotProduct(normal,normal))
+
+      disp_grad_up = aux_vars(ghosted_id_up)%gradient
+      disp_grad_dn = aux_vars(ghosted_id_dn)%gradient
         
       ! for now, just assume diagonal tensor
       perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -2919,6 +3103,12 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
       
       alpha_up = thmc_parameter%alpha(ithrm_up)
       alpha_dn = thmc_parameter%alpha(ithrm_dn)
+
+      youngs_modulus_up = thmc_parameter%youngs_modulus(ithrm_up)
+      youngs_modulus_dn = thmc_parameter%youngs_modulus(ithrm_dn)
+
+      poissons_ratio_up = thmc_parameter%poissons_ratio(ithrm_up)
+      poissons_ratio_dn = thmc_parameter%poissons_ratio(ithrm_dn)
 
 #ifdef ICE
       Dk_ice_up = thmc_parameter%ckfrozen(ithrm_up)
@@ -2949,6 +3139,9 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
                   upweight,option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                  disp_grad_up,disp_grad_dn,unit_normal, &
+                  youngs_modulus_up,poissons_ratio_up, &
+                  youngs_modulus_dn,poissons_ratio_dn, &
                   Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
@@ -3094,17 +3287,6 @@ subroutine THMCJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-       Mat :: mat
-       PetscFortranAddr :: patch
-end subroutine SAMRSetCurrentJacobianPatch
-end interface
-
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -3140,13 +3322,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call THMCJacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -3193,6 +3368,7 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
+  use Utility_module
 
   SNES :: snes
   Vec :: xx
@@ -3249,6 +3425,13 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(thmc_parameter_type), pointer :: thmc_parameter
   type(thmc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+
+  PetscReal :: normal(3), unit_normal(3)
+  PetscReal :: disp_grad_up(3,3), disp_grad_dn(3,3)
+  PetscReal :: disp_grad_pert_up(3,3), disp_grad_pert_dn(3,3)
+  PetscReal :: youngs_modulus_up, youngs_modulus_dn
+  PetscReal :: poissons_ratio_up, poissons_ratio_dn
+  PetscReal :: pert_up, pert_dn
   
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -3280,6 +3463,10 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 
+  pert_up = perturbation_tolerance
+  pert_dn = perturbation_tolerance
+
+
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -3291,10 +3478,12 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     icap = int(icap_loc_p(ghosted_id))
+
     call THMCAccumDerivative(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               thmc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id))), &
                               option, &
                               realization%saturation_function_array(icap)%ptr, &
                               Jup) 
@@ -3407,8 +3596,17 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! however, this introduces ever so slight error causing pflow-overhaul not
       ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
       upweight = dd_dn/(dd_up+dd_dn)
-    
       ! for now, just assume diagonal tensor
+      
+      normal(1) = grid%x(ghosted_id_dn) - grid%x(ghosted_id_up)
+      normal(2) = grid%y(ghosted_id_dn) - grid%y(ghosted_id_up)
+      normal(3) = grid%z(ghosted_id_dn) - grid%z(ghosted_id_up)
+
+      unit_normal = normal/sqrt(DotProduct(normal,normal))
+
+      disp_grad_up = aux_vars(ghosted_id_up)%gradient
+      disp_grad_dn = aux_vars(ghosted_id_dn)%gradient
+
       perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
                 perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
@@ -3432,6 +3630,12 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       alpha_up = thmc_parameter%alpha(ithrm_up)
       alpha_dn = thmc_parameter%alpha(ithrm_dn)
 
+      youngs_modulus_up = thmc_parameter%youngs_modulus(ithrm_up)
+      youngs_modulus_dn = thmc_parameter%youngs_modulus(ithrm_dn)
+
+      poissons_ratio_up = thmc_parameter%poissons_ratio(ithrm_up)
+      poissons_ratio_dn = thmc_parameter%poissons_ratio(ithrm_dn)
+
 #ifdef ICE
       Dk_ice_up = thmc_parameter%ckfrozen(ithrm_up)
       DK_ice_dn = thmc_parameter%ckfrozen(ithrm_dn)
@@ -3452,7 +3656,7 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call THMCFluxDerivative(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
+      call THMCFluxDerivative1(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                              porosity_loc_p(ghosted_id_up), &
                              tor_loc_p(ghosted_id_up),thmc_parameter%sir(1,icap_up), &
                              dd_up,perm_up,D_up, &
@@ -3467,7 +3671,45 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                             disp_grad_up,disp_grad_dn,unit_normal, &
+                             youngs_modulus_up,poissons_ratio_up, &
+                             youngs_modulus_dn,poissons_ratio_dn, &
                              Jup,Jdn)
+
+      do i = 1,realization%option%nmechdof
+          call THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
+                                               ghosted_id_up, &
+                                               disp_grad_pert_up, i, &
+                                               perturbation_tolerance, option)
+          call THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
+                                               ghosted_id_dn, &
+                                               disp_grad_pert_dn, i, &
+                                               perturbation_tolerance, option)
+          call THMCFluxDerivative2(aux_vars(ghosted_id_up), &
+                             global_aux_vars(ghosted_id_up), &
+                             porosity_loc_p(ghosted_id_up), &
+                             tor_loc_p(ghosted_id_up),thmc_parameter%sir(1,icap_up), &
+                             dd_up,perm_up,D_up, &
+                             aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
+                             porosity_loc_p(ghosted_id_dn), &
+                             tor_loc_p(ghosted_id_dn),thmc_parameter%sir(1,icap_dn), &
+                             dd_dn,perm_dn,D_dn, &
+                             cur_connection_set%area(iconn),distance_gravity, &
+                             upweight,option, &
+                             realization%saturation_function_array(icap_up)%ptr, &
+                             realization%saturation_function_array(icap_dn)%ptr, &
+                             Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
+                             Dk_ice_up,Dk_ice_dn, &
+                             alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
+                             disp_grad_up,disp_grad_dn,unit_normal, &
+                             youngs_modulus_up,poissons_ratio_up, &
+                             youngs_modulus_dn,poissons_ratio_dn, &
+                             disp_grad_pert_up,disp_grad_pert_dn, &
+                             pert_up, pert_dn, &
+                             Jup(:,realization%option%nflowdof-realization%option%nmechdof+i), &
+                             Jdn(:,realization%option%nflowdof-realization%option%nmechdof+i)) 
+      enddo
+   
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
@@ -3796,10 +4038,8 @@ subroutine THMCResidualToMass(realization)
   
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
-        if (associated(cur_patch%imat)) then
-          if (cur_patch%imat(ghosted_id) <= 0) cycle
-        endif
-        
+        if (cur_patch%imat(ghosted_id) <= 0) cycle
+
         istart = (ghosted_id-1)*option%nflowdof+1
         mass_balance_p(istart) = mass_balance_p(istart)/ &
                                  global_aux_vars(ghosted_id)%den(1)* &

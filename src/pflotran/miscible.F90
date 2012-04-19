@@ -39,7 +39,7 @@ module Miscible_module
 
   PetscInt, parameter :: jh2o=1, jglyc=2
   
-  public MiscibleResidual,MiscibleJacobian, MiscibleResidualFluxContribPatch, &
+  public MiscibleResidual,MiscibleJacobian, &
          MiscibleUpdateFixedAccumulation,MiscibleTimeCut, &
          MiscibleSetup, &
          MiscibleMaxChange, MiscibleUpdateSolution, &
@@ -910,13 +910,13 @@ subroutine MiscibleAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,optio
   mol=0.d0
   do np = 1, option%nphase
     do ispec = 1, option%nflowspec  
-      mol(ispec) = mol(ispec) + aux_var%sat(np) * &
-        aux_var%den(np) * &
-        aux_var%xmol(ispec + (np-1)*option%nflowspec)
+      mol(ispec) = mol(ispec) + &
+        aux_var%den(np) * aux_var%xmol(ispec + (np-1)*option%nflowspec)
     enddo
   enddo
   mol = mol*porXvol
   Res(1:option%nflowspec) = mol(:)
+
 end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
@@ -1132,7 +1132,7 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
              *dist_gravity
 
     dphi = aux_var_up%pres - aux_var_dn%pres &
-             - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+!            - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
     v_darcy = 0.D0
@@ -1148,14 +1148,14 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
       uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     endif
 
-    if (ukvr > floweps) then
+!   if (ukvr > floweps) then
       v_darcy = Dq * ukvr * dphi
       vv_darcy(np) = v_darcy
       q = v_darcy * area
       do ispec = 1, option%nflowspec
         fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
       enddo  
-    endif
+!   endif
 
 !   Diffusion term   
 !   Note : use harmonic average rule for diffusion
@@ -1306,27 +1306,6 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
 
   implicit none
 
-interface
-subroutine samrpetscobjectstateincrease(vec)
-       implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       Vec :: vec
-end subroutine samrpetscobjectstateincrease
-    
-subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: vec
-       PetscErrorCode :: ierr
-end subroutine SAMRCoarsenFaceFluxes
-       
-end interface
-
   SNES :: snes
   Vec :: xx
   Vec :: r
@@ -1399,25 +1378,6 @@ end interface
     cur_level => cur_level%next
   enddo
 
- ! now coarsen all face fluxes in case we are using SAMRAI to 
-  ! ensure consistent fluxes at coarse-fine interfaces
-  if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-
-     cur_level => realization%level_list%first
-     do
-        if (.not.associated(cur_level)) exit
-        cur_patch => cur_level%patch_list%first
-        do
-           if (.not.associated(cur_patch)) exit
-           realization%patch => cur_patch
-           call MiscibleResidualFluxContribPatch(r,realization,ierr)
-           cur_patch => cur_patch%next
-        enddo
-        cur_level => cur_level%next
-     enddo
-  endif
-
 ! pass #2 for everything else
   cur_level => realization%level_list%first
   do
@@ -1431,10 +1391,6 @@ end interface
     enddo
     cur_level => cur_level%next
   enddo
-
-  if(discretization%itype==AMR_GRID) then
-     call samrpetscobjectstateincrease(r)
-  endif
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
@@ -1452,90 +1408,6 @@ end interface
   call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 end subroutine MiscibleResidual
-
-
-! ************************************************************************** !
-!
-! MiscibleResidualFluxContribPatch: should be called only for SAMR
-! author: Bobby Philip
-! date: 02/17/09
-! not working for flash yet!!!!
-! ************************************************************************** !
-subroutine MiscibleResidualFluxContribPatch(r,realization,ierr)
-  use Realization_module
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  use Debug_module
-  
-  implicit none
-
-  Vec, intent(out) :: r
-  type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
-
-  type :: flux_ptrs
-    PetscReal, dimension(:), pointer :: flux_p 
-  end type
-
-  type (flux_ptrs), dimension(0:2) :: fluxes
-  PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: face_fluxes_p(:)
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  PetscInt :: axis, nlx, nly, nlz
-  PetscInt :: iconn, i, j, k
-  PetscInt :: xup, xdn, yup, ydn, zup, zdn
-  PetscInt :: nd
-      
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  field => realization%field
-! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,r, r_p, ierr)
-
-  do axis=0,2  
-     call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-  enddo
-
-  nlx = grid%structured_grid%nlx  
-  nly = grid%structured_grid%nly  
-  nlz = grid%structured_grid%nlz 
-  nd = option%nflowdof
-      
-  iconn=0
-  do k=1,nlz
-     do j=1,nly
-        do i=1,nlx
-           iconn=iconn+nd
-           xup = (((k-1)*nly+j-1)*(nlx+1)+i)*nd
-           xdn = xup+nd
-           yup = (((k-1)*(nly+1)+(j-1))*nlx+i)*nd
-           ydn = yup+nlx*nd
-           zup = (((k-1)*nly+(j-1))*nlx+i)*nd
-           zdn = zup+nlx*nly*nd
-
-           r_p(iconn:iconn+nd-1) = r_p(iconn:iconn+nd-1) &
-              +fluxes(0)%flux_p(xdn:xdn+nd-1)-fluxes(0)%flux_p(xup:xup+nd-1) &
-              +fluxes(1)%flux_p(ydn:ydn+nd-1)-fluxes(1)%flux_p(yup:yup+nd-1) &
-              +fluxes(2)%flux_p(zdn:zdn+nd-1)-fluxes(2)%flux_p(zup:zup+nd-1)
-
-        enddo
-     enddo
-  enddo
-
-  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-!!$
-!!$  do axis=0,2  
-!!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-!!$  enddo
-
-end subroutine MiscibleResidualFluxContribPatch
 
 ! ************************************************************************** !
 !
@@ -1556,17 +1428,6 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   use Debug_module
   
   implicit none
-  
-  interface
-     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-     implicit none
-     
-#include "finclude/petscsysdef.h"
-     
-     PetscFortranAddr :: p_patch
-     PetscInt :: axis,dim
-     end function samr_patch_at_bc
-  end interface
 
   type :: flux_ptrs
     PetscReal, dimension(:), pointer :: flux_p 
@@ -1658,39 +1519,6 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-  if (option%use_samr) then
-    do axis=0,2  
-      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
-    enddo
-
-     nlx = grid%structured_grid%nlx  
-     nly = grid%structured_grid%nly  
-     nlz = grid%structured_grid%nlz 
-
-     ngx = grid%structured_grid%ngx   
-     ngxy = grid%structured_grid%ngxy
-
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ZERO_INTEGER)==1) nlx = nlx-1
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ONE_INTEGER)==1) nlx = nlx-1
-    
-     max_x_conn = (nlx+1)*nly*nlz
-     ! reinitialize nlx
-     nlx = grid%structured_grid%nlx  
-
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ZERO_INTEGER)==1) nly = nly-1
-     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ONE_INTEGER)==1) nly = nly-1
-    
-     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
-
-     ! reinitialize nly
-     nly = grid%structured_grid%nly  
-
-  endif
-
   r_p = 0.d0
  
   ! Boundary Flux Terms -----------------------------------
@@ -1758,7 +1586,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       global_aux_vars_bc(sum_connection)%sat(:) = 1.D0
       global_aux_vars_bc(sum_connection)%den(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
     endif
 
@@ -1776,74 +1604,16 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
     patch%aux%Miscible%Resold_BC(local_id,1:option%nflowdof) = &
     patch%aux%Miscible%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
 
-      if (option%compute_mass_balance_new) then
-        ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) &
-            - Res(:)/option%flow_dt 
-      endif
-   
-      if (option%use_samr) then
-         direction =  (boundary_condition%region%faces(iconn)-1)/2
-
-         ! the ghosted_id gives the id of the cell. Since the
-         ! flux_id is based on the ghosted_id of the downwind
-         ! cell this has to be adjusted in the case of the east, 
-         ! north and top faces before the flux_id is computed
-         select case(boundary_condition%region%faces(iconn)) 
-           case(WEST_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
-           case(EAST_FACE)
-              ghosted_id = ghosted_id+1
-              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
-           case(SOUTH_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
-           case(NORTH_FACE)
-              ghosted_id = ghosted_id+ngx
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                        mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
-           case(BOTTOM_FACE)
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                       +mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
-           case(TOP_FACE)
-              ghosted_id = ghosted_id+ngxy
-              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                       +mod(mod(ghosted_id,ngxy),ngx)-1
-              istart = flux_id*option%nflowdof
-              iend = istart+option%nflowdof-1
-              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
-         end select
-
-!         fluxes(direction)%flux_p(flux_id) = Res(1)
-
-      else
-       iend = local_id*option%nflowdof
-       istart = iend-option%nflowdof+1
-       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-      endif 
+    if (option%compute_mass_balance_new) then
+      ! contribution to boundary
+      global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) = &
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,1) &
+          - Res(:)/option%flow_dt 
+    endif
+  
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -1905,46 +1675,16 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Miscible%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
 
-      if (option%use_samr) then
-        if (sum_connection <= max_x_conn) then
-          direction = 0
-          if(mod(mod(ghosted_id_dn,ngxy),ngx) == 0) then
-             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
-          else
-             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
-                       mod(mod(ghosted_id_dn,ngxy),ngx)-1
-          endif
-
-        else if (sum_connection <= max_y_conn) then
-          direction = 1
-          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
-                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
-                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
-        else
-          direction = 2
-          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
-                   +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
-                   +mod(mod(ghosted_id_dn,ngxy),ngx)-1
-        endif
-        istart = flux_id*option%nflowdof
-        iend = istart+option%nflowdof-1
-        fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
+      if (local_id_up>0) then
+        iend = local_id_up*option%nflowdof
+        istart = iend-option%nflowdof+1
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
       endif
-      
-      if(.not.option%use_samr) then
-        if (local_id_up>0) then
-          iend = local_id_up*option%nflowdof
-          istart = iend-option%nflowdof+1
-          r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
-        endif
    
-        if (local_id_dn>0) then
-          iend = local_id_dn*option%nflowdof
-          istart = iend-option%nflowdof+1
-          r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
-        endif
+      if (local_id_dn>0) then
+        iend = local_id_dn*option%nflowdof
+        istart = iend-option%nflowdof+1
+        r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1970,7 +1710,6 @@ end subroutine MiscibleResidualPatch1
 ! date: 10/10/08
 !
 ! ************************************************************************** !
-
 subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
   use Connection_module
@@ -2052,12 +1791,12 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-    if(grid%nG2L(ng)<0)cycle
+    if (grid%nG2L(ng)<0) cycle
     if (associated(patch%imat)) then
       if (patch%imat(ng) <= 0) cycle
     endif
     ghosted_id = ng   
-    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    istart = (ng-1) * option%nflowdof + 1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
@@ -2076,26 +1815,34 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
     if (option%numerical_derivatives_flow) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+!     delx(1) = xx_loc_p((ng-1)*option%nflowdof+1) * 1.D-3
+
+!     print *,'mis_res: ',option%numerical_derivatives_flow,delx(1),dfac,xx_loc_p((ng-1)*option%nflowdof+1)
          
-     do idof = 2, option%nflowdof
-      if(xx_loc_p((ng-1)*option%nflowdof+idof) <=0.9)then
-         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-       else
+      do idof = 2, option%nflowdof
+        if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
+!         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
+          delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1.d-5 
+        else
           delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-       endif
-       if( delx(idof) < 1D-8 .and.  delx(idof)>=0.D0) delx(idof) = 1D-8
-       if( delx(idof) >-1D-8 .and.  delx(idof)<0.D0) delx(idof) =-1D-8
+!         delx(idof) = -xx_loc_p((ng-1)*option%nflowdof+idof)*1.d-3 
+        endif
+        if(delx(idof) <  1D-8 .and.  delx(idof) >= 0.D0) delx(idof) = 1D-8
+        if(delx(idof) > -1D-8 .and.  delx(idof) <  0.D0) delx(idof) =-1D-8
 
-         
-       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))>1.D0)then
+        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
           delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
-       endif
-       if(( delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof))<0.D0)then
+        endif
+        if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) < 0.D0) then
           delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
-       endif
-     end do
+        endif
 
-      patch%aux%Miscible%delx(:,ng)=delx(:)
+!       print *,'mis_res: ',idof,option%nflowdof,delx(idof),dfac,xx_loc_p((ng-1)*option%nflowdof+idof)
+      end do
+
+!      store increments
+      patch%aux%Miscible%delx(:,ng) = delx(:)
+
       call MiscibleAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%fluid_properties,option)
@@ -2297,7 +2044,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
     case(1) 
       r_p(:) = r_p(:)/option%flow_dt
     case(-1)
-      if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+      if (option%flow_dt > 1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select
   
   do local_id = 1, grid%nlmax
@@ -2305,9 +2052,13 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
     endif
 
+!    scale residual by grid cell volume
     istart = 1 + (local_id-1)*option%nflowdof
-    if (volume_p(local_id) > 1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
-    if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+    if (volume_p(local_id) > 1.D0) r_p(istart:istart+2) = &
+      r_p(istart:istart+2)/volume_p(local_id)
+!   r_p(istart:istart+2) = r_p(istart:istart+2)/volume_p(local_id)
+    if(r_p(istart) > 1.E20 .or. r_p(istart) < -1.E20) print *, 'overflow in res: ', &
+      local_id,istart,r_p (istart:istart+2)
   enddo
 
   if (option%use_isothermal) then
@@ -2354,17 +2105,6 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
-interface
-subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       
-       Mat :: mat
-       PetscFortranAddr :: patch
-end subroutine SAMRSetCurrentJacobianPatch
-end interface
-
   SNES :: snes
   Vec :: xx
   Mat :: A, B, J
@@ -2400,13 +2140,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call MiscibleJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -2421,13 +2154,6 @@ end interface
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      grid => cur_patch%grid
-      ! need to set the current patch in the Jacobian operator
-      ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch == 0))) then
-         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
-      endif
       call MiscibleJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -2696,20 +2422,24 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     ra=0.D0
     do neq=1, option%nflowdof
       do nvar=1, option%nflowdof
-        ra(neq,nvar) = (ResInc(local_id,neq,nvar)-patch%aux%Miscible%ResOld_BC(local_id,neq))&
+        ra(neq,nvar) = (ResInc(local_id,neq,nvar) - patch%aux%Miscible%ResOld_BC(local_id,neq))&
           /patch%aux%Miscible%delx(nvar,ghosted_id)
+
+!       print *,'jacobian: ',neq,nvar,local_id,ghosted_id,grid%nlmax,ra(neq,nvar),ResInc(local_id,neq,nvar), &
+!         patch%aux%Miscible%ResOld_BC(local_id,neq),patch%aux%Miscible%delx(nvar,ghosted_id)
       enddo
     enddo
    
     select case(option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
     end select
 
-    Jup=ra(1:option%nflowdof,1:option%nflowdof)
-    if (volume_p(local_id) > 1.D0) Jup=Jup / volume_p(local_id)
+    Jup = ra(1:option%nflowdof,1:option%nflowdof)
+    if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
+!   Jup = Jup / volume_p(local_id)
    
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
@@ -2802,16 +2532,14 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
         case(1)
           ra = ra / option%flow_dt
         case(-1)  
-          if(option%flow_dt>1) ra = ra / option%flow_dt
+          if(option%flow_dt > 1.d0) ra = ra / option%flow_dt
       end select
     
       if (local_id_up > 0) then
         voltemp = 1.D0
-        if(volume_p(local_id_up) > 1.D0)then
-          voltemp = 1.D0/volume_p(local_id_up)
-        endif
-        Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
-        jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+        if (volume_p(local_id_up) > 1.D0) voltemp = 1.D0/volume_p(local_id_up)
+        Jup(:,1:option%nflowdof) = ra(:,1:option%nflowdof)*voltemp !11
+        jdn(:,1:option%nflowdof) = ra(:,1 + option%nflowdof:2*option%nflowdof)*voltemp !12
 
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
             Jup,ADD_VALUES,ierr)
@@ -2820,12 +2548,9 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       endif
       if (local_id_dn > 0) then
         voltemp = 1.D0
-        if(volume_p(local_id_dn) > 1.D0)then
-          voltemp = 1.D0/volume_p(local_id_dn)
-        endif
+        if (volume_p(local_id_dn) > 1.D0) voltemp = 1.D0/volume_p(local_id_dn)
         Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
-        jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
-
+        jdn(:,1:option%nflowdof)= -ra(:,1 + option%nflowdof:2*option%nflowdof)*voltemp !22
  
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
             Jdn,ADD_VALUES,ierr)
@@ -2877,26 +2602,6 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Debug_module
   
   implicit none
-
-interface
-subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
-#include "finclude/petscsysdef.h"
-
-       PetscInt :: which_pc
-       PetscInt :: index
-       PetscReal :: val
-       PetscFortranAddr :: p_application
-       PetscFortranAddr :: p_patch
-end subroutine SAMRSetJacobianSourceOnPatch
-
-subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petscsysdef.h"
-
-       PetscInt :: which_pc
-       PetscFortranAddr :: p_application
-       PetscFortranAddr :: p_patch
-end subroutine SAMRSetJacobianSrcCoeffsOnPatch
-end interface
 
   SNES :: snes
   Vec :: xx
@@ -3109,13 +2814,16 @@ end interface
    
     select case(option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if(option%flow_dt > 1.d0) ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:) / option%flow_dt
     end select
 
-    Jup=ra(1:option%nflowdof,1:option%nflowdof)
-    if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+    Jup = ra(1:option%nflowdof,1:option%nflowdof)
+    if (volume_p(local_id) > 1.D0) Jup = Jup / volume_p(local_id)
+!   Jup = Jup / volume_p(local_id)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
@@ -3187,12 +2895,6 @@ end interface
 !    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
 !    call VecMax(debug_vec,i,norm,ierr)
 !    call VecDestroy(debug_vec,ierr)
-  endif
-
-  if (option%use_samr) then
-    flow_pc = 0
-    call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
-      realization%discretization%amrgrid%p_application,grid%structured_grid%p_samr_patch)
   endif
 
 end subroutine MiscibleJacobianPatch2

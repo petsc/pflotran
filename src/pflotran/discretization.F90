@@ -3,7 +3,6 @@ module Discretization_module
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
-  use AMR_Grid_Module
   use MFD_Aux_module
   use MFD_Module
 
@@ -31,7 +30,6 @@ module Discretization_module
     character(len=MAXWORDLENGTH) :: ctype
     PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
-    type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     character(len=MAXSTRINGLENGTH) :: filename
 
     type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
@@ -119,7 +117,6 @@ function DiscretizationCreate()
   nullify(discretization%dm_ntrandof%ugdm)
   
   nullify(discretization%grid)
-  nullify(discretization%amrgrid)
   nullify(discretization%MFD)
 
   discretization%tvd_ghost_scatter = 0
@@ -140,7 +137,6 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   use Option_module
   use Input_module
   use String_module
-  use AMR_Grid_module
 
   implicit none
 
@@ -151,7 +147,6 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   type(grid_type), pointer :: grid, grid2
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
-  type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
 
@@ -207,8 +202,6 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
                                  PETSC_TRUE)
             call InputErrorMsg(input,option,'unstructured filename','GRID')
-          case('amr')
-            discretization%itype = AMR_GRID
           case('structured_mimetic')
             discretization%itype = STRUCTURED_GRID_MIMETIC
             option%mimetic = PETSC_TRUE
@@ -271,13 +264,9 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         case(UNSTRUCTURED_GRID)
           un_str_grid => UGridCreate()
           if (index(discretization%filename,'.h5') > 0) then
-#if !defined(PETSC_HAVE_HDF5) && !defined(SAMR_HAVE_HDF5)
+#if !defined(PETSC_HAVE_HDF5)
             option%io_buffer = 'PFLOTRAN must be built with HDF5 ' // &
               'support to read unstructured grid .h5 files'
-            call printErrMsg(option)
-#elif defined SAMR_HAVE_HDF5
-            option%io_buffer = 'HDF5 read for Unstructured mesh with SAMRAI not ' // &
-              'incorporated yet'
             call printErrMsg(option)
 #else
 
@@ -287,7 +276,8 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call UGridReadHDF5(un_str_grid,discretization%filename,option)
 #endif ! #ifdef PARALLELIO_LIB
 
-#endif ! #ifndef SAMR_HAVE_HDF5
+#endif !#if !defined(PETSC_HAVE_HDF5)
+
           else
             call UGridRead(un_str_grid,discretization%filename,option)
           endif
@@ -309,9 +299,6 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
       discretization%grid => grid
       grid%itype = discretization%itype
       grid%ctype = discretization%ctype
-    case(AMR_GRID)
-       amrgrid=>discretization%amrgrid
-       call AMRGridInitialize(amrgrid)
   end select
 
 end subroutine DiscretizationReadRequiredCards
@@ -328,7 +315,6 @@ subroutine DiscretizationRead(discretization,input,option)
   use Option_module
   use Input_module
   use String_module
-  use AMR_Grid_module
 
   implicit none
 
@@ -339,7 +325,6 @@ subroutine DiscretizationRead(discretization,input,option)
   type(grid_type), pointer :: grid, grid2
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
-  type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
@@ -373,8 +358,6 @@ subroutine DiscretizationRead(discretization,input,option)
         select case(discretization%itype)
           case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
             call StructuredGridReadDXYZ(discretization%grid%structured_grid,input,option)
-          case(AMR_GRID)
-            call AMRGridReadDXYZ(discretization%amrgrid,input,option)
           case default
             call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
         end select
@@ -497,8 +480,6 @@ subroutine DiscretizationRead(discretization,input,option)
             discretization%origin(X_DIRECTION) = grid%structured_grid%bounds(X_DIRECTION,LOWER)
             discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
             discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-         case(AMR_GRID)
-            call InputSkipToEND(input,option,word) 
         end select
       case ('GRAVITY')
         call InputReadDouble(input,option,option%gravity(X_DIRECTION))
@@ -566,7 +547,6 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(UNSTRUCTURED_GRID)
       call UGridDecompose(discretization%grid%unstructured_grid, &
                           option)
-    case(AMR_GRID)
   end select
 
 
@@ -600,8 +580,6 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(UNSTRUCTURED_GRID)
       discretization%grid%nlmax = discretization%grid%unstructured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%unstructured_grid%ngmax
-    case(AMR_GRID)
-      call AMRGridComputeLocalBounds(discretization%amrgrid)
   end select
 
 end subroutine DiscretizationCreateDMs
@@ -676,17 +654,6 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
       call UGridDMCreateVector(discretization%grid%unstructured_grid, &
                                dm_ptr%ugdm,vector, &
                                vector_type,option)
-    case(AMR_GRID)
-      select case(dm_index)
-        case(ONEDOF)
-           ndof = 1
-        case(NFLOWDOF)
-           ndof = option%nflowdof
-        case(NTRANDOF)
-           ndof = option%ntrandof
-      end select
-      call AMRGridCreateVector(discretization%amrgrid, ndof, vector, &
-                               vector_type, PETSC_FALSE, option)
   end select
   call VecSet(vector,0.d0,ierr)
   
@@ -771,36 +738,6 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   
   implicit none
   
-interface
-
-subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-       PetscFortranAddr :: p_application
-       PetscInt :: ndof
-       PetscInt :: stencilsize
-       PetscInt :: flowortransport
-       Mat :: p_matrix
-end subroutine SAMRCreateMatrix
-     
-     PetscInt function hierarchy_number_levels(p_hierarchy)
-       PetscFortranAddr, intent(inout) :: p_hierarchy
-     end function hierarchy_number_levels
-   
-     PetscInt function level_number_patches(p_hierarchy, ln)
-       PetscFortranAddr, intent(inout) :: p_hierarchy
-       PetscInt, intent(in) :: ln
-     end function level_number_patches
-
-     PetscInt function is_local_patch(p_hierarchy, ln, pn)
-       PetscFortranAddr, intent(inout) :: p_hierarchy
-       PetscInt, intent(in) :: ln
-       PetscInt, intent(in) :: pn
-     end function is_local_patch
-     
-end interface
-
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 
@@ -853,46 +790,6 @@ end interface
           call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
       end select
 #endif
-    case(AMR_GRID)
-       select case(dm_index)
-       case(ONEDOF)
-          ndof = 1
-       case(NFLOWDOF)
-          ndof = option%nflowdof
-       case(NTRANDOF)
-          ndof = option%ntrandof
-       end select
-
-       stencilsize=7;
-       call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
-       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, option%samr_mode, Jacobian)
-
-! for now we assume that if there are multiple dof's they are contiguous in mem, ie petsc block form       
-       if (ndof>1) then
-! we create a dummy mapping to satisfy the PETSc mapping requirements   
-          imax=0
-          nlevels =  hierarchy_number_levels(discretization%amrgrid%p_application)
-          do ln=0,nlevels-1
-             npatches = level_number_patches(discretization%amrgrid%p_application, ln )
-             do pn=0,npatches-1
-                islocal = is_local_patch(discretization%amrgrid%p_application, ln, pn);
-                if (islocal == 1) then
-                   ngmax =  discretization%amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax
-                   imax = max(ngmax,imax) 
-                endif
-             enddo
-          enddo
-       
-          allocate(indices(imax))
-          do i=1,imax
-             indices(i:i)=i-1
-          enddo
-          call ISLocalToGlobalMappingCreate(option%mycomm, imax, indices, ptmap, ierr)          
-!          call ISSetIdentity(ptmap, ierr)
-!          call ISLocalToGlobalMappingBlock(ptmap, ndof, bmap, ierr)
-          call MatSetLocalToGlobalMappingBlock(Jacobian, ptmap, ierr)
-       endif
-
   end select
 
 
@@ -1039,22 +936,6 @@ end subroutine DiscretizationCreateColoring
 subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_index)
 
   implicit none
-  
-interface
-subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: lvec
-       Vec :: gvec
-       PetscInt :: ndof
-       PetscErrorCode :: ierr
-       
-end subroutine SAMRGlobalToLocal
-
-end interface
 
   type(discretization_type) :: discretization
   Vec :: global_vec
@@ -1074,8 +955,6 @@ end interface
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
       call VecScatterEnd(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)
-    case(AMR_GRID)
-         call SAMRGlobalToLocal(discretization%amrgrid%p_application, global_vec, local_vec, ierr);
   end select
   
 end subroutine DiscretizationGlobalToLocal
@@ -1169,8 +1048,6 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
       call VecScatterEnd(dm_ptr%ugdm%scatter_ltog,local_vec,global_vec, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)
-      case(AMR_GRID)
-         call VecCopy(local_vec, global_vec, ierr);
   end select
   
 end subroutine DiscretizationLocalToGlobal
@@ -1186,21 +1063,6 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
 
   implicit none
   
-interface
-subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
-       implicit none
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: p_application
-       Vec :: lvec
-       Vec :: gvec
-       PetscInt :: ndof
-       PetscErrorCode :: ierr
-       
-end subroutine SAMRLocalToLocal
-
-end interface
   type(discretization_type) :: discretization
   Vec :: local_vec1
   Vec :: local_vec2
@@ -1219,8 +1081,6 @@ end interface
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
       call VecScatterEnd(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)    
-    case(AMR_GRID)
-       call SAMRLocalToLocal(discretization%amrgrid%p_application, local_vec1, local_vec2, ierr);
   end select
   
 end subroutine DiscretizationLocalToLocal
@@ -1248,7 +1108,6 @@ subroutine DiscretizationLocalToLocalFaces(discretization,local_vec1,local_vec2,
       call DiscretizLocalToLocalFacesBegin(discretization,local_vec1,local_vec2,dm_index)
       call DiscretizLocalToLocalFacesEnd(discretization,local_vec1,local_vec2,dm_index)
     case(UNSTRUCTURED_GRID)
-    case(AMR_GRID)
   end select
   
 end subroutine DiscretizationLocalToLocalFaces
@@ -1276,7 +1135,6 @@ subroutine DiscretizationLocalToLocalLP(discretization,local_vec1,local_vec2,dm_
       call DiscretizLocalToLocalLPBegin(discretization,local_vec1,local_vec2,dm_index)
       call DiscretizLocalToLocalLPEnd(discretization,local_vec1,local_vec2,dm_index)
     case(UNSTRUCTURED_GRID)
-    case(AMR_GRID)
   end select
   
 end subroutine DiscretizationLocalToLocalLP

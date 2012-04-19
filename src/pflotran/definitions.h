@@ -3,10 +3,13 @@
 PetscInt, parameter :: MAXHEADERLENGTH = 4096
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
 PetscInt, parameter :: MAXWORDLENGTH = 32
-PetscInt, parameter :: IUNIT1 = 15
-PetscInt, parameter :: IUNIT2 = 16
-PetscInt, parameter :: IUNIT3 = 17
-PetscInt, parameter :: IUNIT4 = 18
+PetscInt, parameter :: OUT_UNIT = 15
+PetscInt, parameter :: OUTPUT_UNIT = 16
+PetscInt, parameter :: IN_UNIT = 17
+! If you increase MAX_IN_UNIT, you MUST ensure that no other units #
+! lie between IN_UNIT and MAX_IN_UNIT, as these units are reserved
+! for embedded input files.
+PetscInt, parameter :: MAX_IN_UNIT = 25
 PetscInt, parameter :: IUNIT_TEMP = 86
 PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
@@ -102,14 +105,13 @@ PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 PetscInt, parameter :: NULL_GRID = 0
 PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
-PetscInt, parameter :: AMR_GRID = 3
-PetscInt, parameter :: CARTESIAN_GRID = 4
-PetscInt, parameter :: CYLINDRICAL_GRID = 5
-PetscInt, parameter :: SPHERICAL_GRID = 6
-PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
-PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
-PetscInt, parameter :: TWO_DIM_GRID = 9
-PetscInt, parameter :: THREE_DIM_GRID = 10
+PetscInt, parameter :: CARTESIAN_GRID = 3
+PetscInt, parameter :: CYLINDRICAL_GRID = 4
+PetscInt, parameter :: SPHERICAL_GRID = 5
+PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 6
+PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 7
+PetscInt, parameter :: TWO_DIM_GRID = 8
+PetscInt, parameter :: THREE_DIM_GRID = 9
 
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0
@@ -182,8 +184,11 @@ PetscInt, parameter :: THC_ENTHALPY_DOF = 5
 PetscInt, parameter :: THMC_PRESSURE_DOF = 1
 PetscInt, parameter :: THMC_TEMPERATURE_DOF = 2
 PetscInt, parameter :: THMC_CONCENTRATION_DOF = 3
-PetscInt, parameter :: THMC_MASS_RATE_DOF = 4
-PetscInt, parameter :: THMC_ENTHALPY_DOF = 5
+!PetscInt, parameter :: THMC_MASS_RATE_DOF = 4
+!PetscInt, parameter :: THMC_ENTHALPY_DOF = 5
+PetscInt, parameter :: THMC_DISP_X_DOF = 4
+PetscInt, parameter :: THMC_DISP_Y_DOF = 5
+PetscInt, parameter :: THMC_DISP_Z_DOF = 6
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1
 PetscInt, parameter :: MPH_TEMPERATURE_DOF = 2

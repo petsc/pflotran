@@ -126,6 +126,8 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
         call MatCreateBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
 #endif
                              PETSC_DETERMINE,PETSC_DETERMINE, &
+!                             10, PETSC_NULL_INTEGER, &
+!                             10, PETSC_NULL_INTEGER,J,ierr)
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,mfd_aux%mapping_ltog_faces,ierr)
@@ -197,7 +199,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
   type(mfd_auxvar_type), pointer :: aux_var
   PetscInt, allocatable :: d_nnz(:), o_nnz(:)
   type(connection_set_type), pointer :: conn
-  PetscInt :: icell, iface
+  PetscInt :: icell, iface, i
   PetscInt :: ghost_face_id, local_face_id, ghost_face_id_n, local_face_id_n
   PetscInt :: icount, jcount, jface, loc_id_up, loc_id_dn
   PetscInt :: ndof_local
@@ -237,6 +239,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
                d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
            else
                o_nnz(grid%nlmax_faces + icell) = o_nnz(grid%nlmax_faces + icell) + 1
+               if (local_face_id > 0) o_nnz(local_face_id) = o_nnz(local_face_id) + 6 
            end if
        else
            d_nnz(grid%nlmax_faces + icell) = d_nnz(grid%nlmax_faces + icell) + 1
@@ -251,9 +254,6 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
     end do
   end do
 
-!  do iface = 1, grid%nlmax_faces
-!    write(*,*) iface, d_nnz(iface), o_nnz(iface)
-!  end do 
 
   ndof_local = mfd_aux%ndof * (grid%nlmax_faces + grid%nlmax)
 
@@ -275,6 +275,7 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
 
 
       case(MATBAIJ)
+
 #ifdef MATCREATE_OLD      
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
 #else
@@ -286,13 +287,10 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP,mfd_aux%mapping_ltog_LP,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP, ierr)
         
-!       if (option%myrank==0) then
-!       write(*,*) "myrank", option%myrank
-!       call MatSetValuesLocal(J, 1, 100, 1, 100, &
-!                                        5.0, INSERT_VALUES,ierr)
-!       end if
+
+
       case default
-        option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
+        option%io_buffer = 'MatType not recognized in MFDCreateJacobianLP'
         call printErrMsg(option)
     end select
   else
@@ -309,11 +307,10 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_LP, mfd_aux%mapping_ltog_LP,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_LP, mfd_aux%mapping_ltogb_LP, ierr)
       case default
-        option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
+        option%io_buffer = 'MatType not recognized in MFDCreateJacobianLP'
         call printErrMsg(option)
     end select
   endif
-
 
 
   deallocate(d_nnz)
