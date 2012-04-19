@@ -366,9 +366,13 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%flow_r)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%flow_accum)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%work)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%mannings0)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%area)
 
   ! Create ghosted-local vectors
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%flow_xx_loc, &
@@ -390,7 +394,7 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
 
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option,discretization%dm_1dof%ugdm) 
-  !call GridComputeVolumes(grid,surf_field%volume,option)
+  call GridComputeAreas(grid,surf_field%area,option)
 
 end subroutine SurfaceRealizationCreateDiscretization
 
@@ -744,7 +748,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
     call printErrMsg(option)
   endif
 
-  call MatCreateMPIAIJ(option%mycomm, &
+  call MatCreateAIJ(option%mycomm, &
                        top_region%num_cells, &
                        PETSC_DETERMINE, &
                        PETSC_DETERMINE, &
@@ -817,7 +821,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  call MatCreateMPIAIJ(option%mycomm, &
+  call MatCreateAIJ(option%mycomm, &
                        surf_grid%nlmax, &
                        PETSC_DETERMINE, &
                        PETSC_DETERMINE, &
