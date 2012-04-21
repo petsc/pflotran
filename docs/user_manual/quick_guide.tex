@@ -1277,7 +1277,7 @@ Define environment variables $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving t
 \paragraph{MacOSX}
 To install ParMetis/Metis on MacOSX it is necessary to first install CMAKE from e.g. MacPorts or Fink.
 
-Configure PETSc using:
+To install PETSc, MPI using openmpi, HDF5, and ParMetis/Metis with debugging turned off configure PETSc using:
 
 \begin{verbatim}
 ./config/configure.py --with-debugging=0 --with-shared-libraries=0 --with-x=0 
@@ -1294,6 +1294,7 @@ and
 
 $\verb|make test|$
 
+Note that ParMetis/Metis is only needed for using the unstructured grid capability in PFLOTRAN. HDF5 is recommended for large problems for use with Visit for (parallel) visualization.
 
 \paragraph{Windows}
 To install PETSc and PFLOTRAN on Windows see instructions on the PFLOTRAN wiki (https://software.lanl.gov/pflotran/trac).
