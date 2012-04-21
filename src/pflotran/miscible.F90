@@ -1662,7 +1662,6 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
 
-
       call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
         tortuosity_loc_p(ghosted_id_up), &
         dd_up,perm_up, &

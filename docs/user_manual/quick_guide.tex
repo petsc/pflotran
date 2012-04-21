@@ -1206,7 +1206,7 @@ A flow diagram of the PFLOTRAN code structure is shown in Figure~\ref{fdiag}.
 \end{figure}
 
 Flow diagram definitions:
-\begin{itemize}
+\begin{enumerate}
 \item {\bf Multi-Realization Simulation} object: Highest level data structure providing all information for running simulations composed of multiple realizations
 \item {\bf Simulation} object: Data structure providing all information for running a single simulation
 \item {\bf Timestepper} object: Pointer to Newton-Krylov solver and tolerances associated with time stepping
@@ -1215,7 +1215,7 @@ Flow diagram definitions:
 \item {\bf Level} object: Pointer to discretization and field variables associated with a single level of grid refinement within a realization
 \item {\bf Patch} object: Pointer to discretization and field variables associated with a subset of grid cells within a level
 \item {\bf Auxiliary Data} object: Pointer to auxiliary data within a realization/patch
-\end{itemize}
+\end{enumerate}
 
 
 In order to facilitate code development and better preserve the extensibility and modularity of the code, an object-oriented coding paradigm is employed within PFLOTRAN.  In comparison to traditional procedural paradigms, the object-oriented programming paradigm facilitates code modification and reuse.  Within the context of PFLOTRAN, the utilization of this paradigm greatly accelerates the incorporation of new flow and transport modes through the extension of existing algorithms.  The compartmentalization of methods, processes and data enables the spawning of multi-realization simulations, each of which can be simultaneously run in parallel (i.e. each realization of the multi-realization simulation can be run in parallel utilizing multiple processor cores).
@@ -1224,9 +1224,11 @@ In order to facilitate code development and better preserve the extensibility an
 
 \subsection{MacOSX}
 
-This installation requires compiler versions 4.4.2 for gfortran, gcc, and g++. The compiler g++ is needed for installing SAMRAI.
-Define environment variables: {\tt MPI\_HOME}, {\tt PKGS}, \linebreak {\tt HYPRE\_INSTALL\_DIR}
+The installation of PFLOTRAN on MacOSX requires compiler versions 4.4 or later for gfortran and gcc. 
+%The compiler g++ is needed for installing SAMRAI.
+%Define environment variables: {\tt MPI\_HOME}, {\tt PKGS}, \linebreak {\tt HYPRE\_INSTALL\_DIR}
 
+\begin{comment}
 \subsubsection{OpenMPI}
 
 \begin{verbatim}
@@ -1264,14 +1266,40 @@ F77=mpif90
 make
 make install
 \end{verbatim}
+\end{comment}
 
 \subsubsection{PETSc}
 
-The PETSc {\tt ./configure} script can be used not only to install PETSc but also HDF5, Parmetis, and various direct solvers such as Mumps and Trilinos solvers. To use PETSc with PFLOTRAN the PETSc developer version petsc-dev is necessary which can be downloaded from the PETSc web page (http://www.mcs.anl.gov/petsc/petsc-as/developers/index.html). The recommended way to do this is to use the version control program Mercurial \linebreak (http://mercurial.selenic.com/wiki).
+The PETSc {\tt ./configure} script can be used not only to install PETSc but also MPI, HDF5, ParMetis/Metis, and various solvers such as the sparse direct solver Mumps and the Trilinos multilevel solver ML. PFLOTRAN requires the PETSc developer version petsc-dev which can be either downloaded from the PETSc web page \linebreak (http://www.mcs.anl.gov/petsc/developers/index.html), or installed using Mercurial following instructions on the PETSc developer web page. It is recommended to install PETSc using the version control system Mercurial (http://mercurial.selenic.com/wiki).
 
-Define environment variables: $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the architecture.
+Define environment variables $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the directory where the libraries for the particular architecture are stored after compiling and installing PETSc.
 
-\paragraph{MacOSX 10.6.6 (SnowLeopard)}
+\paragraph{MacOSX}
+To install ParMetis/Metis on MacOSX it is necessary to first install CMAKE from e.g. MacPorts or Fink.
+
+Configure PETSc using:
+
+\begin{verbatim}
+./config/configure.py --with-debugging=0 --with-shared-libraries=0 --with-x=0 
+--download-openmpi --download-hdf5=1 --download-metis=1 --download-parmetis=1
+\end{verbatim}
+
+\noindent
+followed by
+
+$\verb|make all|$
+
+\noindent
+and
+
+$\verb|make test|$
+
+
+\paragraph{Windows}
+To install PETSc and PFLOTRAN on Windows see instructions on the PFLOTRAN wiki (https://software.lanl.gov/pflotran/trac).
+
+\begin{comment}
+\subsubsection{MacOSX}
 
 \begin{verbatim}
 ./config/configure.py \
@@ -1289,8 +1317,6 @@ Define environment variables: $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving 
 make all
 make test
 \end{verbatim}
-
-\paragraph{MacOSX 10.6.4 (Snow Leopard)}
 
 \begin{enumerate}
 \item Obtain C compiler gcc4.5 or later for snow leopard (e.g. from http://hpc.sourceforge.net). 
@@ -1320,8 +1346,9 @@ then compile with \verb|make all|.
 
 \verb|make pflotran|
 \end{enumerate}
+\end{comment}
 
-\subsubsection{ORNL's Jaguar XT4/5}
+\paragraph{ORNL's Jaguar XT4/5}
 
 \footnotesize
 \begin{verbatim}
@@ -1372,10 +1399,10 @@ The user will need to load the following HDF5 module beforehand: \ \verb|module 
 
 The source code for PFLOTRAN can be downloaded from the LANL web site using Mercurial: \verb|hg clone https://software.lanl.gov/pflotran/hg/pflotran|. PFLOTRAN is compiled with the command:
 
-\verb|make [chuan_co2=1 coll=1 temp=1 dasvyat=1] pflotran|
+\verb|make [options] pflotran|
 
 \noindent
-Options [] are: 
+where several possible options are: 
 
 \begin{tabular}{ll}
 \verb|chuan_co2|: & --enable two-phase supercritical CO$_2$ mode\\
@@ -1384,6 +1411,9 @@ Options [] are:
 \verb|temp|: & --enable temperature dependent log $K$ capability\\
 \verb|dasvyat|: & --enable MFD full permeability tensor capability
 \end{tabular}
+
+\noindent
+See the PFLOTRAN \verb|makefile| for additional options.
 
 \subsection{Running PFLOTRAN}
 
@@ -1405,29 +1435,34 @@ A number of command line options are available:
 
 \subsection*{Updating PFLOTRAN}
 
-Instructions to update PFLOTRAN
+To update the PFLOTRAN source code
+type: {\tt hg pull -u} from within the PFLOTRAN source repository.
 
 \noindent
-From within the PFLOTRAN repository, type: {\tt hg pull -u}
-
-\noindent
-Within {\tt \$PFLOTRAN\_DIR/src/pflotran} recompile PFLOTRAN using:\\
+Recompile PFLOTRAN using:\\
+\indent
 {\tt make clean}\\
+\indent
 {\tt make [options] pflotran}
 
 \subsection*{Multi-Realization Simulation Mode}
 
 To launch 1000 realizations on 100 processor groups using 10,000 processor cores:
 
+\noindent
 {\tt mpirun -np 10000 pflotran -stochastic -num\_realizations 1000 -num\_groups 100}
 
-Each processor group will utilized 100 processor cores and run 10 realizations apiece \linebreak ({\tt num\_realizations/num\_groups}), one after another. Thus, only 100 realizations may be executed simultaneously as each processor group may only simulate a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 has completed.
+Each processor group will utilize 100 processor cores and run 10 realizations apiece \linebreak ({\tt num\_realizations/num\_groups}), one after another. Thus, 100 realizations are executed simultaneously with each processor group simulating a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 is completed.
 
 \noindent
-To simulate a specific realization without running in multi-realization stochastic mode:
+To simulate a specific realization without running in multi-realization stochastic mode use:
 
-{\tt mpirun -np 10000 pflotran -realization\_id 5}
+{\tt mpirun -np 10000 pflotran -realization\_id <integer>}
 
+\noindent
+where <integer> specifies the realization id.
+
+\begin{comment}
 \subsection{Building SAMRAI Version 2.4.4}
 
 \noindent
@@ -1621,6 +1656,8 @@ At this point you should have an executable \verb|SAMRAIDriver|.
  
 %\noindent
 %This should run the coupled flow (richards) and transport (15 species).
+
+\end{comment}
 
 \begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
@@ -5536,7 +5573,7 @@ make sure that you don't link with the iobuf library.
 
 \end{comment}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+\begin{comment}
 \section{Adaptive Mesh Refinement: SAMRAI}
 
 \subsection{Creating the SAMRAI input file}
@@ -5747,6 +5784,8 @@ TimerManager{
    "RD2T::*::*", "LevelSolver::*::*"
 }
 \end{verbatim}
+\end{comment}
+
 \normalsize
 
 \section{Visualization}
@@ -6008,7 +6047,7 @@ California Regional Meeting of the Society of Petroleum Engineers. Richardson, T
 \item Andreas Voegelin, Vijay M. Vulava, Florian Kuhnen, Ruben Kretzschmar (2000) Multicomponent transport of major cations predicted from binary adsorption experiments, Journal of Contaminant Hydrology, 46, 319--338.
 \end{description}
 
-
+\begin{comment}
 \newpage
 
 \section{Appendix: List of Subroutines in PFLOTRAN}
@@ -7108,7 +7147,7 @@ waypoint.F90:subroutine WaypointListPrint(list,option,output_option)
 waypoint.F90:subroutine WaypointPrint(waypoint,option,output_option)
 waypoint.F90:subroutine WaypointDestroy(waypoint)
 \end{verbatim} 
-
+\end{comment}
 
 \end{document}
 
