@@ -88,6 +88,10 @@ function MiscibleAuxCreate()
   nullify(aux%Miscible_parameter%dencpr)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+  nullify(aux%Resold_AR)
+  nullify(aux%Resold_BC)
+  nullify(aux%Resold_FL)
+  nullify(aux%delx)
 
   MiscibleAuxCreate => aux
   
@@ -246,20 +250,22 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
   aux_var%xmol = 0.d0
 ! aux_var%diff = 0.d0
   kr = 0.d0
- 
-  aux_var%pres = x(1)  
-  aux_var%xmol(2:option%nflowspec) = x(2:option%nflowspec)
+
+! if (x(1) < 0.0d0) x(1) = 1.d5
+  aux_var%pres = x(1)
+
 ! tmp = sum(aux_var%xmol)
 ! aux_var%xmol(1) = 1.D0 - tmp
 
 #if 0
-  if (aux_var%xmol(2) > 1.d0) then
+  if (x(2) > 1.d0) then
 !   print *,'Error in NINC: x2 > 1 ',aux_var%xmol(2)
-    aux_var%xmol(2) = 1.d0
-    x(2) = 1.d0
+    x(2) = 0.99d0
+  else if (x(2) < 0.d0) then
+    x(2) = 0.01d0
   endif
 #endif
-
+  aux_var%xmol(2) = x(2)
   aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
 
 ! Glycol-Water mixture formula weight (kg/kmol)
@@ -293,7 +299,7 @@ end subroutine MiscibleAuxVarCompute_NINC
 
 
 
-subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar, &
+subroutine MiscibleAuxVarCompute_WINC(x,delx,aux_var,global_auxvar, &
                                     fluid_properties,option)
 
   use Option_module
@@ -305,17 +311,20 @@ subroutine MiscibleAuxVarCompute_WINC(x, delx, aux_var,global_auxvar, &
 
   type(option_type) :: option
   type(fluid_property_type) :: fluid_properties
-  PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
   type(Miscible_auxvar_elem_type) :: aux_var(1:option%nflowdof)
   type(global_auxvar_type) :: global_auxvar
 
-  PetscInt :: n 
+  PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
+  PetscInt :: idof 
   
-  do n = 1, option%nflowdof
-    xx = x;  xx(n) = x(n) + delx(n)
+  do idof = 1, option%nflowdof
+    xx = x; xx(idof) = x(idof) + delx(idof)
+
+!   print *,'Winc: ',idof,x(idof),xx(idof),delx(idof)
+
 ! ***   note: var_node here starts from 1 to option%flowdof ***
-    call  MiscibleAuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &
-      fluid_properties, option)
+    call  MiscibleAuxVarCompute_NINC(xx,aux_var(idof),global_auxvar, &
+      fluid_properties,option)
   enddo
 
 end subroutine MiscibleAuxVarCompute_WINC
