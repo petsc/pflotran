@@ -282,6 +282,8 @@ subroutine THMCAuxVarCompute(x,aux_var,global_aux_var, &
   aux_var%xmol(1) = 1.d0
   if (option%nflowspec > 1) aux_var%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
+  global_aux_var%displacement(:) = x(option%nflowdof-option%nmechdof+1:option%nflowdof)
+
 !***************  Liquid phase properties **************************
   aux_var%avgmw = FMWH2O
 
@@ -393,6 +395,7 @@ subroutine THMCComputeStressFromDispGrad(disp_grad,youngs_modulus, &
                     DotProduct(identity(3,:),disp_grad(3,:))
   stress = mu*(disp_grad + transpose(disp_grad)) + lambda*trace_disp_grad* &
                                                           identity
+  stress = stress*1.d-6 ! convert to MPa
   
 end subroutine THMCComputeStressFromDispGrad
 
