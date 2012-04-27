@@ -220,11 +220,11 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 
   type(option_type) :: option
   type(fluid_property_type) :: fluid_properties
-  PetscReal :: x(option%nflowdof)
   type(Miscible_auxvar_elem_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
+  
+  PetscReal :: x(option%nflowdof)
   PetscInt :: iphase
- 
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
@@ -251,21 +251,11 @@ subroutine MiscibleAuxVarCompute_NINC(x,aux_var,global_aux_var, &
 ! aux_var%diff = 0.d0
   kr = 0.d0
 
-! if (x(1) < 0.0d0) x(1) = 1.d5
   aux_var%pres = x(1)
 
-! tmp = sum(aux_var%xmol)
-! aux_var%xmol(1) = 1.D0 - tmp
-
-#if 0
-  if (x(2) > 1.d0) then
-!   print *,'Error in NINC: x2 > 1 ',aux_var%xmol(2)
-    x(2) = 0.99d0
-  else if (x(2) < 0.d0) then
-    x(2) = 0.01d0
-  endif
-#endif
-  aux_var%xmol(2) = x(2)
+! aux_var%xmol(2) = x(2)
+  aux_var%xmol(2) = exp(x(2))
+! aux_var%xmol(2) = (atan(x(2))/3.1416*2+1)/2
   aux_var%xmol(1) = 1.D0 - aux_var%xmol(2)
 
 ! Glycol-Water mixture formula weight (kg/kmol)
