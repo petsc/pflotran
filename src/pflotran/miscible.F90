@@ -1850,12 +1850,13 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       print *,'Not associated global for Miscible'
     endif
 
-#if 0
     if (option%numerical_derivatives_flow) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
 
 !     print *,'mis_res_p: ',delx(1),xx_loc_p((ng-1)*option%nflowdof+1)
 
+!      linear formulation
+#if 0
       do idof = 2, option%nflowdof
         if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
           delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1.d1 
@@ -1877,34 +1878,20 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       enddo
 #endif
 
-if (option%numerical_derivatives_flow) then
-delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-
-!     print *,'mis_res_p: ',delx(1),xx_loc_p((ng-1)*option%nflowdof+1)
-
+!      log formulation
 !#if 0
-do idof = 2, option%nflowdof
-logx2 = xx_loc_p((ng-1)*option%nflowdof+idof)
-!x2 = exp(logx2)
-if (logx2 <= 0.d0) then
-delx(idof) = 1.d-6 
-else
-delx(idof) = -1.d-6 
-endif
-
-!if(delx(idof) <  1D-8 .and. delx(idof) >= 0.D0) delx(idof) = 1D-8
-!if(delx(idof) > -1D-8 .and. delx(idof) <  0.D0) delx(idof) =-1D-8
-
-!if((delx(idof)+x2) > 1.D0) then
-!delx(idof) = (1.D0-x2)*1D-4
-!endif
-!if((delx(idof)+x2) < 0.D0) then
-!delx(idof) = x2*1D-4
-!endif
-!#endif
+      do idof = 2, option%nflowdof
+        logx2 = xx_loc_p((ng-1)*option%nflowdof+idof)
+!         x2 = exp(logx2)
+        if (logx2 <= 0.d0) then
+          delx(idof) = 1.d-6 
+        else
+          delx(idof) = -1.d-6 
+        endif
 
 !       print *,'mis_res_x: ',delx(idof),xx_loc_p((ng-1)*option%nflowdof+idof)
-enddo
+      enddo
+!#endif
 
 !      store increments
       patch%aux%Miscible%delx(:,ng) = delx(:)
