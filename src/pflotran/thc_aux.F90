@@ -528,11 +528,11 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                          
   call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
   
-!  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
-!            dvis_dp, ierr)
+  call VISW(global_aux_var%temp(1), pw, sat_pressure, visl, dvis_dt, &
+            dvis_dp, ierr)
 
-  call VISW_temp(global_aux_var%temp(1),visl,dvis_dt,ierr)
-  dvis_dp = 0.d0
+!  call VISW_temp(global_aux_var%temp(1),visl,dvis_dt,ierr)
+!  dvis_dp = 0.d0
   
   dvis_dpsat = -dvis_dp 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
