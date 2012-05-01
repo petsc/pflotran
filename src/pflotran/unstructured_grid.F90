@@ -2506,7 +2506,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax*ndof, &
   !                  PETSC_DETERMINE,vec_tmp,ierr)
   call VecCreate(option%mycomm,vec_tmp,ierr)
-  call VecSetSizes(vec_tmp,PETSC_DECIDE,unstructured_grid%ngmax*ndof,ierr)
+  call VecSetSizes(vec_tmp,unstructured_grid%nlmax*ndof,PETSC_DECIDE,ierr)
   call VecSetBlockSize(vec_tmp,ndof,ierr)
   call VecSetFromOptions(vec_tmp,ierr)
   call VecScatterCreate(ugdm%global_vec,ugdm%is_local_petsc,vec_tmp, &
@@ -3748,7 +3748,7 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
       !                  ugdm%ndof, &
       !                  vec,ierr)
       call VecCreate(PETSC_COMM_SELF,vec,ierr)
-      call VecSetSizes(vec,unstructured_grid%nlmax*ugdm%ndof, &
+      call VecSetSizes(vec,unstructured_grid%ngmax*ugdm%ndof, &
                   PETSC_DECIDE,ierr)  
       call VecSetBlockSize(vec,ugdm%ndof,ierr)
       call VecSetFromOptions(vec,ierr)
