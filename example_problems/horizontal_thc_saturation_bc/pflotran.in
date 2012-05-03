@@ -2,16 +2,11 @@
 :saturation input test
 :1/30/12
 :Satish Karra
+:need to compile with ice=1 in options
 :partially saturated problem
 :===================== THC mode ===============================
 MODE THC 
 
-DEBUG
-  PRINT_SOLUTION
-  PRINT_RESIDUAL
-  PRINT_JACOBIAN_DETAILED
- /
-  
 :===================== Discretization =========================
 GRID
 TYPE structured
@@ -146,7 +141,7 @@ TEMPERATURE dirichlet
 CONCENTRATION dirichlet
 ENTHALPY dirichlet
 /
-SATURATION 8.d-1
+SATURATION 0.8d0
 TEMPERATURE 1.D0
 CONCENTRATION 1.d-3
 ENTHALPY 0.D0
