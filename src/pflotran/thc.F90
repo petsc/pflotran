@@ -3786,6 +3786,7 @@ function THCGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
 
+#ifdef ICE
   if (icolumn > -1) then
     icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-Sg"'')') icolumn
@@ -3794,7 +3795,6 @@ function THCGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
 
-#ifdef ICE
   if (icolumn > -1) then
     icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-Si"'')') icolumn

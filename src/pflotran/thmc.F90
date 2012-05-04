@@ -4112,6 +4112,30 @@ function THMCGetTecplotHeader(realization,icolumn)
     write(string2,'('',"P [Pa]"'')')
   endif
   string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-disp_x"'')') icolumn
+  else
+    write(string2,'('',"disp_x"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-disp_y"'')') icolumn
+  else
+    write(string2,'('',"disp_y"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-disp_z"'')') icolumn
+  else
+    write(string2,'('',"disp_z"'')')
+  endif
+  string = trim(string) // trim(string2)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4135,6 +4159,14 @@ function THMCGetTecplotHeader(realization,icolumn)
     write(string2,'('',"'',i2,''-Si"'')') icolumn
   else
     write(string2,'('',"Si"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-deni"'')') icolumn
+  else
+    write(string2,'('',"deni"'')')
   endif
   string = trim(string) // trim(string2)
 #endif
