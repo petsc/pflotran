@@ -44,7 +44,7 @@
 \cfoot{\rm - \thepage\ -}
 %\cfoot{}
 %\footrulewidth 0.4pt
-\newcommand\keyend{{(.,\,/,\,END)}}
+\newcommand\keyend{{(., \, /, \, END)}}
 \newcommand{\negsp}{\vspace{-4mm}}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
@@ -1343,8 +1343,9 @@ To install ParMetis/Metis on MacOSX it is necessary to first install CMAKE from 
 To install PETSc, MPI using openmpi, HDF5, and ParMetis/Metis with debugging turned off configure PETSc using:
 
 \begin{verbatim}
-./config/configure.py --with-debugging=0 --with-shared-libraries=0 --with-x=0 
---download-openmpi --download-hdf5=1 --download-metis=1 --download-parmetis=1
+./config/configure.py --with-debugging=0 --with-shared-libraries=0 
+--with-x=0 --download-openmpi --download-hdf5=1 
+--download-metis=1 --download-parmetis=1
 \end{verbatim}
 
 \noindent
@@ -1514,7 +1515,9 @@ Recompile PFLOTRAN using:\\
 To launch 1000 realizations on 100 processor groups using 10,000 processor cores:
 
 \noindent
-{\tt mpirun -np 10000 pflotran -stochastic -num\_realizations 1000 -num\_groups 100}
+{\tt mpirun -np 10000 pflotran -stochastic -num\_realizations 1000 
+
+-num\_groups 100}
 
 Each processor group will utilize 100 processor cores and run 10 realizations apiece \linebreak ({\tt num\_realizations/num\_groups}), one after another. Thus, 100 realizations are executed simultaneously with each processor group simulating a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 is completed.
 
@@ -2842,7 +2845,7 @@ Metatorbernite 0.    1.
 \item[PRINT\_JACOBIAN\_DETAILED] [MATVIEW\_JACOBIAN\_DETAILED, VIEW\_JACOBIAN\_DETAILED]
 \item  PRINT\_NUMERICAL\_DERIVATIVES] [VIEW\_NUMERICAL\_DERIVATIVES]
 \end{deflist}
-\item[(.,/,END)]
+\item[\keyend]
 \end{deflist}
 
 {\noindent\bf Explanation:}
@@ -3092,7 +3095,16 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 \item[<y\_min, y\_max>]~
 \item[<z\_min, z\_max>]~
 \end{description}
-\item[(.,/,END)] ~
+\item[\keyend] ~
+
+\noindent
+\item[\em Equivalently:] ~
+\item[BOUNDS:] ~
+\begin{description}
+\item[<x\_min, y\_min, z\_min>]~
+\item[<x\_max, y\_max, z\_max>]~
+\end{description}
+\item[\keyend] ~
 
 \item[DXYZ:] Specifies grid spacing of structured cartesian grid (see examples below)
 \begin{description}
@@ -3100,7 +3112,7 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 \item[<{\bf dy}>] ~
 \item[<{\bf dz}>] ~
 \end{description}
-\item[(.,/,END)] ~
+\item[\keyend] ~
 \end{description}
 
 \item[Optional Input Parameters:] ~
