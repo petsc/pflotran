@@ -1437,8 +1437,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 !   3. bottomhole pressure:  [Pa]
 !   4. max pressure: [Pa]
 !   5. min pressure: [Pa]   
-!   6. preferred mass flux of water [kg/s]
-!   7. preferred mass flux of Co2 [kg/s]
+!   6. conc. of water 
+!   7. conc. of Co2 (1 - conc. of water)
 !   8. well diameter, not used now
 !   9. skin factor, not used now
 
@@ -1500,10 +1500,10 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
                 qsrc_phase(1) = v_darcy
                 Res(1) = Res(1) + v_darcy* aux_var%den(np)* &
 !                 aux_var%xmol((np-1)*option%nflowspec+1) * option%flow_dt
-                  (1.d0-csrc) * option%flow_dt
+                  well_inj_water * option%flow_dt
                 Res(2) = Res(2) + v_darcy* aux_var%den(np)* &
 !                 aux_var%xmol((np-1)*option%nflowspec+2) * option%flow_dt
-                  csrc * option%flow_dt
+                  well_inj_co2 * option%flow_dt
 !               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
                 if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
                   enth_src_h2o*option%flow_dt
