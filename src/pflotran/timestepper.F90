@@ -322,7 +322,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscBool :: transport_read
   PetscBool :: step_to_steady_state
   PetscBool :: run_flow_as_steady_state
-  PetscBool :: failure
+  PetscBool :: failure, surf_failure
   PetscLogDouble :: start_time, end_time
   PetscReal :: tran_dt_save, flow_t0
   PetscReal :: dt_cfl_1, flow_to_tran_ts_ratio
@@ -559,6 +559,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
                                transient_plot_flag)
+#ifdef SURFACE_FLOW
+    write(*,*),'After StepperSetTargetTimes: ',option%flow_dt, flow_stepper%target_time, flow_stepper%dt_max
+    !call StepperSetTargetTimesSurfaceFlow(surf_flow_stepper,surf_realization%option)
+    surf_flow_stepper%target_time   = flow_stepper%target_time
+    surf_realization%option%flow_dt = option%flow_dt
+    write(*,*),'After StepperSetTargetTimesSurfaceFlow: ',surf_realization%option%flow_dt, &
+      surf_flow_stepper%target_time, surf_flow_stepper%dt_max
+#endif
 
     ! flow solution
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
@@ -567,14 +575,27 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
                               failure)
 #ifdef SURFACE_FLOW
-      call SNESSolve(surf_flow_stepper%solver%snes, PETSC_NULL_OBJECT, &
-                     surf_realization%surf_field%flow_xx, ierr)
+      !call SNESSolve(surf_flow_stepper%solver%snes, PETSC_NULL_OBJECT, &
+      !               surf_realization%surf_field%flow_xx, ierr)
 #endif
       call PetscLogStagePop(ierr)
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
     endif
-
+    
+#ifdef SURFACE_FLOW
+    ! surface-flow solution
+    if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
+      !flow_t0 = option%flow_time
+      !call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
+      call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
+                              surf_failure)
+      !call PetscLogStagePop(ierr)
+      !if (failure) return ! if flow solve fails, exit
+      !option%flow_time = flow_stepper%target_time
+    endif
+#endif
+    
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
@@ -1672,6 +1693,77 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   ! option%flow_time is updated outside this subroutine
 
 end subroutine StepperStepFlowDT
+
+! ************************************************************************** !
+!
+! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
+  
+  use Surface_Realization_module
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Surface_Field_module
+  
+  implicit none
+  
+#include "finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsnes.h"
+
+  type(surface_realization_type) :: surf_realization
+  type(stepper_type)     :: stepper
+  PetscBool              :: failure
+  
+  PetscInt :: icut ! Tracks the number of time step reductions applied
+  PetscInt :: update_reason, tmp_int
+  PetscInt :: sum_newton_iterations, sum_linear_iterations
+  PetscInt :: num_newton_iterations, num_linear_iterations
+  PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
+  SNESConvergedReason :: snes_reason 
+  PetscErrorCode :: ierr
+
+  PetscViewer :: viewer
+
+  type(option_type), pointer          :: option
+  type(surface_field_type), pointer   :: surf_field 
+  type(discretization_type), pointer  :: discretization 
+  type(solver_type), pointer          :: solver
+
+  option         => surf_realization%option
+  discretization => surf_realization%discretization
+  surf_field     => surf_realization%surf_field
+  solver         => stepper%solver
+
+  icut = 0
+  sum_newton_iterations = 0
+  sum_linear_iterations = 0
+  prev_norm = 1.d20
+
+  !do
+
+    !call DiscretizationLocalToLocal()
+    if (option%print_screen_flag) then
+      write(*,'(/,2("=")," SURFACE_FLOW ",52("="))')
+    endif
+    
+    select case(option%iflowmode)
+      case (RICHARDS_MODE)
+        write(*,*),'call SurfaceFlowInitializeTimestep'
+        call SurfaceFlowInitializeTimestep(surf_realization)
+      case default
+        option%io_buffer = 'ERROR: Incorrect iflowmode in SurfaceFlow'
+        call printErrMsgByRank(option)
+    end select
+
+  !enddo
+  
+end subroutine StepperStepSurfaceFlowDT
+#endif
 
 ! ************************************************************************** !
 !

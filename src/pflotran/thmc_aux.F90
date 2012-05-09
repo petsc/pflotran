@@ -282,6 +282,8 @@ subroutine THMCAuxVarCompute(x,aux_var,global_aux_var, &
   aux_var%xmol(1) = 1.d0
   if (option%nflowspec > 1) aux_var%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
+  global_aux_var%displacement(:) = x(option%nflowdof-option%nmechdof+1:option%nflowdof)
+
 !***************  Liquid phase properties **************************
   aux_var%avgmw = FMWH2O
 
@@ -365,6 +367,7 @@ end subroutine THMCAuxVarCompute
 ! gradient
 ! Author: Satish Karra
 ! Date: 3/20/12
+! Stress is in MPa
 !
 ! ************************************************************************** !
 
@@ -393,6 +396,7 @@ subroutine THMCComputeStressFromDispGrad(disp_grad,youngs_modulus, &
                     DotProduct(identity(3,:),disp_grad(3,:))
   stress = mu*(disp_grad + transpose(disp_grad)) + lambda*trace_disp_grad* &
                                                           identity
+  stress = stress*1.d-6 ! convert to MPa
   
 end subroutine THMCComputeStressFromDispGrad
 
@@ -512,6 +516,7 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
   PetscReal :: uy_weighted(3,1)
   PetscReal :: uz_weighted(3,1)
   PetscReal :: perturbation_tolerance
+  PetscReal, parameter :: epsilon = 1.d-8
 
   PetscInt :: i, direction_flag, flag_x, flag_y, flag_z
   PetscInt :: INDX(3)
@@ -550,19 +555,39 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
     disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
     disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
     disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
-    ux_weighted = ux_weighted + disp_vec* &
+    if (abs(global_aux_vars(ghosted_id)%displacement(1)) < epsilon) then
+      ux_weighted = ux_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
+                     global_aux_vars(ghosted_id)%displacement(1) + &
+                     epsilon)
+    else
+      ux_weighted = ux_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
                      global_aux_vars(ghosted_id)%displacement(1)* &
                      (1.d0 + flag_x*perturbation_tolerance))
-    uy_weighted = uy_weighted + disp_vec* &
+    endif
+    if (abs(global_aux_vars(ghosted_id)%displacement(2)) < epsilon) then
+      uy_weighted = uy_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
+                     global_aux_vars(ghosted_id)%displacement(2) + &
+                     epsilon)
+    else
+      uy_weighted = uy_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
                      global_aux_vars(ghosted_id)%displacement(2)* &
                      (1.d0 + flag_y*perturbation_tolerance))
-    uz_weighted = uz_weighted + disp_vec* &
+    endif
+    if (abs(global_aux_vars(ghosted_id)%displacement(3)) < epsilon) then
+      uz_weighted = uz_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
+                     global_aux_vars(ghosted_id)%displacement(3) + &
+                     epsilon)
+    else
+      uz_weighted = uz_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
                      global_aux_vars(ghosted_id)%displacement(3)* &
                      (1.d0 + flag_z*perturbation_tolerance))
-
+    endif
   enddo
 
   call ludcmp(disp_mat,3,INDX,D)

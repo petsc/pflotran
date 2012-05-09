@@ -548,6 +548,8 @@ subroutine OptionInitRealization(option)
   
   option%itable=0
   option%co2eos=EOS_SPAN_WAGNER
+
+! option%idt_switch = 1
   option%idt_switch = -1
 
   option%use_matrix_buffer = PETSC_FALSE

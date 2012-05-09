@@ -1879,9 +1879,12 @@ subroutine UGridDecompose(unstructured_grid,option)
 
   ! need to create a local ghosted vector in which we can collect element info
   ! including ghost cells
-  call VecCreateSeq(PETSC_COMM_SELF,stride*unstructured_grid%ngmax, &
-                    elements_local,ierr)
+  !call VecCreateSeq(PETSC_COMM_SELF,stride*unstructured_grid%ngmax, &
+  !                  elements_local,ierr)
+  call VecCreate(PETSC_COMM_SELF,elements_local,ierr)
+  call VecSetSizes(elements_local,stride*unstructured_grid%ngmax,PETSC_DECIDE,ierr)
   call VecSetBlockSize(elements_local,stride,ierr)
+  call VecSetFromOptions(elements_local,ierr)
   allocate(int_array(unstructured_grid%ngmax))
   int_array(1:unstructured_grid%nlmax) = &
     unstructured_grid%cell_ids_petsc(:)
@@ -2039,13 +2042,20 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array)
 
   ! create a parallel petsc vector with a stride of 3.
-  call VecCreateMPI(option%mycomm,unstructured_grid%num_vertices_local*3, &
-                    PETSC_DETERMINE,vertices_old,ierr)
+  !call VecCreateMPI(option%mycomm,unstructured_grid%num_vertices_local*3, &
+  !                  PETSC_DETERMINE,vertices_old,ierr)
+  call VecCreate(option%mycomm,vertices_old,ierr)
+  call VecSetSizes(vertices_old,unstructured_grid%num_vertices_local*3, &
+                  PETSC_DECIDE,ierr)  
   call VecSetBlockSize(vertices_old,3,ierr)
+  call VecSetFromOptions(vertices_old,ierr)
 
   ! create serial petsc vector with a stride of 3
-  call VecCreateSeq(PETSC_COMM_SELF,vertex_count*3,vertices_new,ierr)
+  !call VecCreateSeq(PETSC_COMM_SELF,vertex_count*3,vertices_new,ierr)
+  call VecCreate(PETSC_COMM_SELF,vertices_new,ierr)
+  call VecSetSizes(vertices_new,vertex_count*3,PETSC_DECIDE,ierr)
   call VecSetBlockSize(vertices_new,3,ierr)
+  call VecSetFromOptions(vertices_new,ierr)
 
 !  call VecCreate(option%mycomm,vertices_new,ierr)
 !  call VecSetSizes(vertices_new, &
@@ -2234,13 +2244,21 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 #endif
 
   ! create global vec
-  call VecCreateMPI(option%mycomm,unstructured_grid%nlmax*ndof, &
-                    PETSC_DETERMINE,ugdm%global_vec,ierr)
+  !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax*ndof, &
+  !                  PETSC_DETERMINE,ugdm%global_vec,ierr)
+  call VecCreate(option%mycomm,ugdm%global_vec,ierr)
+  call VecSetSizes(ugdm%global_vec,unstructured_grid%nlmax*ndof, &
+                  PETSC_DECIDE,ierr)  
   call VecSetBlockSize(ugdm%global_vec,ndof,ierr)
+  call VecSetFromOptions(ugdm%global_vec,ierr)
+
   ! create local vec
-  call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%ngmax*ndof, &
-                    ugdm%local_vec,ierr)
+  !call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%ngmax*ndof, &
+  !                  ugdm%local_vec,ierr)
+  call VecCreate(PETSC_COMM_SELF,ugdm%local_vec,ierr)
+  call VecSetSizes(ugdm%local_vec,unstructured_grid%ngmax*ndof,PETSC_DECIDE,ierr)
   call VecSetBlockSize(ugdm%local_vec,ndof,ierr)
+  call VecSetFromOptions(ugdm%local_vec,ierr)
   
   ! IS for global numbering of local, non-ghosted cells
 !geh  call VecGetOwnershipRange(ugdm%global_vec,istart,iend,ierr)
@@ -2485,9 +2503,12 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  call VecCreateMPI(option%mycomm,unstructured_grid%nlmax*ndof, &
-                    PETSC_DETERMINE,vec_tmp,ierr)
+  !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax*ndof, &
+  !                  PETSC_DETERMINE,vec_tmp,ierr)
+  call VecCreate(option%mycomm,vec_tmp,ierr)
+  call VecSetSizes(vec_tmp,unstructured_grid%nlmax*ndof,PETSC_DECIDE,ierr)
   call VecSetBlockSize(vec_tmp,ndof,ierr)
+  call VecSetFromOptions(vec_tmp,ierr)
   call VecScatterCreate(ugdm%global_vec,ugdm%is_local_petsc,vec_tmp, &
                         ugdm%is_local_natural,ugdm%scatter_gton,ierr)
   call VecScatterCreate(ugdm%global_vec,ugdm%is_local_natural,vec_tmp, &
@@ -3712,22 +3733,34 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
   
   select case(vec_type)
     case(GLOBAL)
-      call VecCreateMPI(option%mycomm,unstructured_grid%nlmax* &
-                        ugdm%ndof, &
-                        PETSC_DETERMINE,vec,ierr)
+      !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax* &
+      !                  ugdm%ndof, &
+      !                  PETSC_DETERMINE,vec,ierr)
+      call VecCreate(option%mycomm,vec,ierr)
+      call VecSetSizes(vec,unstructured_grid%nlmax*ugdm%ndof, &
+                       PETSC_DECIDE,ierr)  
       call VecSetLocalToGlobalMapping(vec,ugdm%mapping_ltog,ierr)
       call VecSetLocalToGlobalMappingBlock(vec,ugdm%mapping_ltogb,ierr)
       call VecSetBlockSize(vec,ugdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
     case(LOCAL)
-      call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%ngmax* &
-                        ugdm%ndof, &
-                        vec,ierr)
+      !call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%ngmax* &
+      !                  ugdm%ndof, &
+      !                  vec,ierr)
+      call VecCreate(PETSC_COMM_SELF,vec,ierr)
+      call VecSetSizes(vec,unstructured_grid%ngmax*ugdm%ndof, &
+                  PETSC_DECIDE,ierr)  
       call VecSetBlockSize(vec,ugdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
     case(NATURAL)
-      call VecCreateMPI(option%mycomm,unstructured_grid%nlmax* &
-                        ugdm%ndof, &
-                        PETSC_DETERMINE,vec,ierr)
+      !call VecCreateMPI(option%mycomm,unstructured_grid%nlmax* &
+      !                  ugdm%ndof, &
+      !                  PETSC_DETERMINE,vec,ierr)
+      call VecCreate(option%mycomm,vec,ierr)
+      call VecSetSizes(vec,unstructured_grid%nlmax*ugdm%ndof, &
+                       PETSC_DECIDE,ierr)  
       call VecSetBlockSize(vec,ugdm%ndof,ierr)
+      call VecSetFromOptions(vec,ierr)
   end select
     
 end subroutine UGridDMCreateVector

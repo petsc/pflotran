@@ -2,6 +2,12 @@
 :===================== THC mode ===============================
 MODE THC 
 
+NUMERICAL_JACOBIAN_FLOW
+
+DEBUG
+  PRINT_JACOBIAN_DETAILED
+  PRINT_SOLUTION
+ /
 :===================== Discretization =========================
 GRID
 TYPE structured
@@ -15,7 +21,6 @@ BOUNDS
 END
 
 :===================== Solver options ========================
-
 NEWTON_SOLVER FLOW
 ATOL 1D-12
 RTOL 1D-12
@@ -76,8 +81,8 @@ ALPHA 1.d-3
 :========================= output options =========================
 OUTPUT
 :TIMES y 0.25d0 0.5d0 0.75d0 2.d0
-SCREEN PERIODIC 10
-PERIODIC_OBSERVATION TIMESTEP 1
+SCREEN PERIODIC 1
+PERIODIC_OBSERVATION TIMESTEP 1 
 :FORMAT TECPLOT POINT
 FORMAT HDF5
 :VELOCITIES

@@ -1330,12 +1330,12 @@ subroutine FlowConditionRead(condition,input,option)
       endif                         
       condition%concentration => concentration
       
-      if (.not.associated(enthalpy)) then
-        option%io_buffer = 'enthalpy condition null in condition: ' // &
-                            trim(condition%name)      
-        call printErrMsg(option)
-      endif                         
-      condition%enthalpy => enthalpy
+!       if (.not.associated(enthalpy)) then
+!         option%io_buffer = 'enthalpy condition null in condition: ' // &
+!                             trim(condition%name)      
+!         call printErrMsg(option)
+!       endif                         
+!       condition%enthalpy => enthalpy
       
       if (.not.associated(displacement_x)) then
         option%io_buffer = 'displacement_x condition null in condition: ' // &
@@ -1358,9 +1358,9 @@ subroutine FlowConditionRead(condition,input,option)
       endif                         
       condition%displacement_z => displacement_z
 
-      condition%num_sub_conditions = 7
+      condition%num_sub_conditions = 6
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      do idof = 1, 7
+      do idof = 1, 6
         nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
 
@@ -1372,13 +1372,13 @@ subroutine FlowConditionRead(condition,input,option)
                                   => saturation
       condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
       condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-      condition%sub_condition_ptr(FIVE_INTEGER)%ptr => displacement_x
-      condition%sub_condition_ptr(SIX_INTEGER)%ptr => displacement_y
-      condition%sub_condition_ptr(SEVEN_INTEGER)%ptr => displacement_z
+!      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+      condition%sub_condition_ptr(FOUR_INTEGER)%ptr => displacement_x
+      condition%sub_condition_ptr(FIVE_INTEGER)%ptr => displacement_y
+      condition%sub_condition_ptr(SIX_INTEGER)%ptr => displacement_z
 
               
-      allocate(condition%itype(SEVEN_INTEGER))
+      allocate(condition%itype(SIX_INTEGER))
       condition%itype = 0
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
       if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype
@@ -1387,10 +1387,10 @@ subroutine FlowConditionRead(condition,input,option)
                                     saturation%itype
       condition%itype(TWO_INTEGER) = temperature%itype
       condition%itype(THREE_INTEGER) = concentration%itype
-      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = enthalpy%itype
-      condition%itype(FIVE_INTEGER) = displacement_x%itype
-      condition%itype(SIX_INTEGER) = displacement_y%itype
-      condition%itype(SEVEN_INTEGER) = displacement_z%itype
+!      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = enthalpy%itype
+      condition%itype(FOUR_INTEGER) = displacement_x%itype
+      condition%itype(FIVE_INTEGER) = displacement_y%itype
+      condition%itype(SIX_INTEGER) = displacement_z%itype
 
       
   end select

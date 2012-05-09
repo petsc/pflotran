@@ -584,7 +584,7 @@ subroutine THMCUpdateAuxVarsPatch(realization)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      do idof=1,option%nflowdof
+      do idof=1,option%nflowdof-option%nmechdof
         select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
@@ -599,6 +599,13 @@ subroutine THMCUpdateAuxVarsPatch(realization)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
+
+      do idof = option%nflowdof-option%nmechdof+1,option%nflowdof
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+        end select
+      enddo
 
 #ifdef ICE
       call THMCAuxVarComputeIce(xxbc,thmc_aux_vars_bc(sum_connection), &
@@ -998,6 +1005,7 @@ subroutine THMCAccumDerivative(thmc_aux_var,global_aux_var,por,vol, &
   porXvol = por*vol
   
   ! X = {p, T, x_2}; R = {R_x1, R_x2, R_T} = {R_p, R_x2, R_T}
+  J = 0.d0
 
   J(1,1) = (global_aux_var%sat(1)*thmc_aux_var%dden_dp + &
            thmc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol !*thmc_aux_var%xmol(1)
@@ -1215,9 +1223,9 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
 
   Res(1:option%nflowspec) = mol(:)
   Res(option%nflowdof-option%nmechdof) = eng
-  Res(option%nflowdof-option%nmechdof+1) = rock_den*option%gravity(1)*vol
-  Res(option%nflowdof-option%nmechdof+2) = rock_den*option%gravity(2)*vol
-  Res(option%nflowdof-option%nmechdof+3) = rock_den*option%gravity(3)*vol
+  Res(option%nflowdof-option%nmechdof+1) = rock_den*option%gravity(1)*vol*option%flow_dt
+  Res(option%nflowdof-option%nmechdof+2) = rock_den*option%gravity(2)*vol*option%flow_dt
+  Res(option%nflowdof-option%nmechdof+3) = rock_den*option%gravity(3)*vol*option%flow_dt
 
 
 end subroutine THMCAccumulation
@@ -2584,7 +2592,11 @@ end subroutine THMCBCFluxDerivative
 subroutine THMCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     aux_var_dn,global_aux_var_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                    area,dist_gravity,option,v_darcy,Diff_dn,Res)
+                    area,dist_gravity,option,v_darcy,Diff_dn, & 
+                    Res)
+!                  disp_grad_dn,unit_normal,
+!                  youngs_modulus_up,poissons_ratio_up, &
+!                  youngs_modulus_dn,poissons_ratio_dn, &Res)
   use Option_module
   use water_eos_module 
  
@@ -4100,6 +4112,30 @@ function THMCGetTecplotHeader(realization,icolumn)
     write(string2,'('',"P [Pa]"'')')
   endif
   string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-disp_x"'')') icolumn
+  else
+    write(string2,'('',"disp_x"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-disp_y"'')') icolumn
+  else
+    write(string2,'('',"disp_y"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-disp_z"'')') icolumn
+  else
+    write(string2,'('',"disp_z"'')')
+  endif
+  string = trim(string) // trim(string2)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -4123,6 +4159,14 @@ function THMCGetTecplotHeader(realization,icolumn)
     write(string2,'('',"'',i2,''-Si"'')') icolumn
   else
     write(string2,'('',"Si"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-deni"'')') icolumn
+  else
+    write(string2,'('',"deni"'')')
   endif
   string = trim(string) // trim(string2)
 #endif

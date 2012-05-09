@@ -624,7 +624,6 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
                       
 !   update global variables
     if( associated(global_aux_vars))then
-    
       global_aux_vars(ghosted_id)%pres = aux_vars(ghosted_id)%aux_var_elem(0)%pres
       global_aux_vars(ghosted_id)%sat(:) = 1D0
       global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
@@ -851,7 +850,6 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
   call GridVecGetArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
-
   call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
 
   do local_id = 1, grid%nlmax
@@ -921,6 +919,47 @@ end subroutine MiscibleAccumulation
 
 ! ************************************************************************** !
 !
+! MiscibleAccumulation: Computes the non-fixed portion of the accumulation
+!                       term for the residual
+! author: Chuan Lu
+! date: 10/12/08
+!
+! ************************************************************************** !  
+subroutine MiscibleAccumulation_Xp(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+
+use Option_module
+
+implicit none
+
+type(Miscible_auxvar_elem_type) :: aux_var
+type(option_type) :: option
+type(global_auxvar_type) :: global_aux_var
+PetscReal :: Res(1:option%nflowdof) 
+PetscReal :: vol,por,rock_dencpr
+
+PetscInt :: ispec, np
+PetscReal :: porXvol, mol(option%nflowspec)
+
+porXvol = por*vol
+mol = 0.d0
+np = 1
+
+! pressure equation
+ispec = 1
+mol(ispec) = mol(ispec) + aux_var%den(np)
+
+!PPG
+ispec = 2
+mol(ispec) = mol(ispec) + &
+aux_var%den(np) * aux_var%xmol(ispec + (np-1)*option%nflowspec)
+
+mol = mol*porXvol
+Res(1:option%nflowspec) = mol(:)
+
+end subroutine MiscibleAccumulation_Xp
+
+! ************************************************************************** !
+!
 ! MiscibleSourceSink: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Chuan Lu
@@ -972,8 +1011,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
  
   select case(isrctype)
     case(MASS_RATE_SS)
-      msrc(1) =  msrc(1) / FMWH2O
-      msrc(2) =  msrc(2) / FMWGLYC
+      msrc(1) = msrc(1) / FMWH2O
+      msrc(2) = msrc(2) / FMWGLYC
       if (msrc(1) /= 0.d0 .or. msrc(2) /= 0.d0) then ! H2O injection
 !        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -1011,8 +1050,8 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
 !     if(pressure_min < 0D0) pressure_min = 0D0 !not limited by pressure lower bound   
 
     ! production well (well status = -1)
-      if( dabs(well_status + 1D0) < 1D-1) then 
-        if(aux_var%pres > pressure_min) then
+      if (dabs(well_status + 1D0) < 1D-1) then 
+        if (aux_var%pres > pressure_min) then
           Dq = well_factor 
           do np = 1, option%nphase
             dphi = aux_var%pres - aux_var%pc(np) - pressure_bh
@@ -1038,7 +1077,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
       endif 
      !print *,'well-prod: ',  aux_var%pres,psrc(1), res
     ! injection well (well status = 2)
-      if( dabs(well_status - 2D0) < 1D-1) then 
+      if (dabs(well_status - 2D0) < 1D-1) then 
 
         call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
           option%scale,ierr)
@@ -1046,7 +1085,7 @@ subroutine MiscibleSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctyp
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
-        if( aux_var%pres < pressure_max)then  
+        if (aux_var%pres < pressure_max) then  
           do np = 1, option%nphase
             dphi = pressure_bh - aux_var%pres + aux_var%pc(np)
             if (dphi>=0.D0) then ! outflow only
@@ -1111,7 +1150,7 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
   PetscReal :: uxmol(1:option%nflowspec),ukvr,Dq
   PetscReal :: upweight,density_ave,gravity,dphi
   PetscReal :: portor_up,portor_dn,dendif_up,dendif_dn,dif_harmonic
-     
+
   Dq = (perm_up*perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   
 ! harmonic average porosity and tortuosity
@@ -1131,9 +1170,7 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
              (1.D0-upweight)*aux_var_dn%den(np)*aux_var_dn%avgmw(np)) &
              *dist_gravity
 
-    dphi = aux_var_up%pres - aux_var_dn%pres &
-!            - aux_var_up%pc(np) + aux_var_dn%pc(np) &
-             + gravity
+    dphi = aux_var_up%pres - aux_var_dn%pres + gravity
 
     v_darcy = 0.D0
     ukvr = 0.D0
@@ -1148,14 +1185,12 @@ subroutine MiscibleFlux(aux_var_up,por_up,tor_up,dd_up,perm_up, &
       uxmol(:) = aux_var_dn%xmol((np-1)*option%nflowspec+1:np*option%nflowspec)
     endif
 
-!   if (ukvr > floweps) then
-      v_darcy = Dq * ukvr * dphi
-      vv_darcy(np) = v_darcy
-      q = v_darcy * area
-      do ispec = 1, option%nflowspec
-        fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
-      enddo  
-!   endif
+    v_darcy = Dq * ukvr * dphi
+    vv_darcy(np) = v_darcy
+    q = v_darcy * area
+    do ispec = 1, option%nflowspec
+      fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
+    enddo  
 
 !   Diffusion term   
 !   Note : use harmonic average rule for diffusion
@@ -1349,6 +1384,9 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+
+!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+
 
 ! pass #0 prepare numerical increment  
   cur_level => realization%level_list%first
@@ -1662,7 +1700,6 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
 
-
       call MiscibleFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
         tortuosity_loc_p(ghosted_id_up), &
         dd_up,perm_up, &
@@ -1675,13 +1712,13 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       patch%aux%Miscible%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
 
-      if (local_id_up>0) then
+      if (local_id_up > 0) then
         iend = local_id_up*option%nflowdof
         istart = iend-option%nflowdof+1
         r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
       endif
    
-      if (local_id_dn>0) then
+      if (local_id_dn > 0) then
         iend = local_id_dn*option%nflowdof
         istart = iend-option%nflowdof+1
         r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
@@ -1760,7 +1797,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
   PetscReal, pointer :: delx(:)
-  
+  PetscReal :: logx2
   
   patch => realization%patch
   grid => patch%grid
@@ -1796,7 +1833,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
       if (patch%imat(ng) <= 0) cycle
     endif
     ghosted_id = ng   
-    istart = (ng-1) * option%nflowdof + 1 ; iend = istart -1 + option%nflowdof
+    istart = (ng-1) * option%nflowdof + 1; iend = istart - 1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
     call MiscibleAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
@@ -1804,9 +1841,9 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 !    print *,'mis: Respatch0 ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 
     if(associated(global_aux_vars)) then
-      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres
-      global_aux_vars(ghosted_id)%sat(:)=1D0
-      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres
+      global_aux_vars(ghosted_id)%sat(:) = 1D0
+      global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
             * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
     else
@@ -1815,20 +1852,20 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
 
     if (option%numerical_derivatives_flow) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-!     delx(1) = xx_loc_p((ng-1)*option%nflowdof+1) * 1.D-3
 
-!     print *,'mis_res: ',option%numerical_derivatives_flow,delx(1),dfac,xx_loc_p((ng-1)*option%nflowdof+1)
-         
+!     print *,'mis_res_p: ',delx(1),xx_loc_p((ng-1)*option%nflowdof+1)
+
+!      linear formulation
+#if 0
       do idof = 2, option%nflowdof
         if(xx_loc_p((ng-1)*option%nflowdof+idof) <= 0.9) then
-!         delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-          delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1.d-5 
+          delx(idof) = dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1.d1 
         else
           delx(idof) = -dfac*xx_loc_p((ng-1)*option%nflowdof+idof)*1D1 
-!         delx(idof) = -xx_loc_p((ng-1)*option%nflowdof+idof)*1.d-3 
         endif
-        if(delx(idof) <  1D-8 .and.  delx(idof) >= 0.D0) delx(idof) = 1D-8
-        if(delx(idof) > -1D-8 .and.  delx(idof) <  0.D0) delx(idof) =-1D-8
+
+        if(delx(idof) <  1D-8 .and. delx(idof) >= 0.D0) delx(idof) = 1D-8
+        if(delx(idof) > -1D-8 .and. delx(idof) <  0.D0) delx(idof) =-1D-8
 
         if((delx(idof)+xx_loc_p((ng-1)*option%nflowdof+idof)) > 1.D0) then
           delx(idof) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+idof))*1D-4
@@ -1837,8 +1874,24 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
           delx(idof) = xx_loc_p((ng-1)*option%nflowdof+idof)*1D-4
         endif
 
-!       print *,'mis_res: ',idof,option%nflowdof,delx(idof),dfac,xx_loc_p((ng-1)*option%nflowdof+idof)
-      end do
+!       print *,'mis_res_x: ',delx(idof),xx_loc_p((ng-1)*option%nflowdof+idof)
+      enddo
+#endif
+
+!      log formulation
+!#if 0
+      do idof = 2, option%nflowdof
+        logx2 = xx_loc_p((ng-1)*option%nflowdof+idof)
+!         x2 = exp(logx2)
+        if (logx2 <= 0.d0) then
+          delx(idof) = 1.d-6 
+        else
+          delx(idof) = -1.d-6 
+        endif
+
+!       print *,'mis_res_x: ',delx(idof),xx_loc_p((ng-1)*option%nflowdof+idof)
+      enddo
+!#endif
 
 !      store increments
       patch%aux%Miscible%delx(:,ng) = delx(:)
@@ -1920,7 +1973,9 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
-  
+
+! PetscReal, pointer :: iphase_loc_p(:) 
+
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -1943,13 +1998,16 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
- 
+
+! call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
+
   ! Accumulation terms (include reaction------------------------------------
   if (.not.option%steady_state) then
 
     r_p = r_p - accum_p
 
     do local_id = 1, grid%nlmax  ! For each local node do...
+
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
       if (associated(patch%imat)) then
@@ -1957,6 +2015,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
       endif
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
+
       call MiscibleAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
                             global_aux_vars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
@@ -1964,10 +2023,13 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
                             Miscible_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option,Res) 
       r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
+
       patch%aux%Miscible%Resold_AR(local_id, :) = &
       patch%aux%Miscible%Resold_AR(local_id, :)+ Res(1:option%nflowdof)
     enddo
   endif
+
+! call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
@@ -2015,7 +2077,8 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1,aux_vars(ghosted_id)%aux_var_elem(0), &
+      call MiscibleSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
+                            aux_vars(ghosted_id)%aux_var_elem(0), &
                             source_sink%flow_condition%itype(1),Res, &
                             patch%ss_fluid_fluxes(:,sum_connection), &
                             enthalpy_flag,option)
@@ -2024,10 +2087,10 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
           global_aux_vars_ss(sum_connection)%mass_balance_delta(:,1) - &
           Res(:)/option%flow_dt
       endif
-      r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
-      r_p((local_id-1)*option%nflowdof + jglyc) = r_p((local_id-1)*option%nflowdof + jglyc)-Res(jglyc)
-      patch%aux%Miscible%Resold_AR(local_id,jh2o)= patch%aux%Miscible%Resold_AR(local_id,jh2o) - Res(jh2o)    
-      patch%aux%Miscible%Resold_AR(local_id,jglyc)= patch%aux%Miscible%Resold_AR(local_id,jglyc) - Res(jglyc)    
+      r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) - Res(jh2o)
+      r_p((local_id-1)*option%nflowdof + jglyc) = r_p((local_id-1)*option%nflowdof + jglyc) - Res(jglyc)
+      patch%aux%Miscible%Resold_AR(local_id,jh2o) = patch%aux%Miscible%Resold_AR(local_id,jh2o) - Res(jh2o)    
+      patch%aux%Miscible%Resold_AR(local_id,jglyc) = patch%aux%Miscible%Resold_AR(local_id,jglyc) - Res(jglyc)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
         patch%aux%Miscible%Resold_AR(local_id,option%nflowdof)=&
@@ -2054,23 +2117,31 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
 
 !    scale residual by grid cell volume
     istart = 1 + (local_id-1)*option%nflowdof
-    if (volume_p(local_id) > 1.D0) r_p(istart:istart+2) = &
-      r_p(istart:istart+2)/volume_p(local_id)
-!   r_p(istart:istart+2) = r_p(istart:istart+2)/volume_p(local_id)
-    if(r_p(istart) > 1.E20 .or. r_p(istart) < -1.E20) print *, 'overflow in res: ', &
-      local_id,istart,r_p (istart:istart+2)
+!   if (volume_p(local_id) > 1.D0) r_p(istart:istart+2) = &
+!     r_p(istart:istart+2)/volume_p(local_id)
+    if (volume_p(local_id) > 1.D0) r_p(istart:istart+1) = &
+      r_p(istart:istart+1)/volume_p(local_id)
+!   r_p(istart:istart+1) = r_p(istart:istart+1)/volume_p(local_id)
+    if(r_p(istart) > 1.E10 .or. r_p(istart) < -1.E10) then
+      ghosted_id = grid%nL2G(local_id)
+      print *, 'overflow in res: ', &
+      local_id,ghosted_id,istart,r_p (istart:istart+1), &
+      aux_vars(ghosted_id)%aux_var_elem(0)%pres, &
+      aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1), &
+      aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2)
+    endif
   enddo
 
-  if (option%use_isothermal) then
-    do local_id = 1, grid%nlmax  ! For each local node do...
-      ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      istart = 3 + (local_id-1)*option%nflowdof
-      r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-    enddo
-  endif
+! if (option%use_isothermal) then
+!   do local_id = 1, grid%nlmax  ! For each local node do...
+!     ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+!     if (associated(patch%imat)) then
+!       if (patch%imat(ghosted_id) <= 0) cycle
+!     endif
+!     istart = 3 + (local_id-1)*option%nflowdof
+!     r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
+!   enddo
+! endif
  
   if (patch%aux%Miscible%inactive_cells_exist) then
     do i=1,patch%aux%Miscible%n_zero_rows
@@ -2434,7 +2505,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
       case(-1)
-        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
+        if (option%flow_dt > 1) ra(1:option%nflowdof,1:option%nflowdof) = ra(1:option%nflowdof,1:option%nflowdof) / option%flow_dt
     end select
 
     Jup = ra(1:option%nflowdof,1:option%nflowdof)
@@ -3010,7 +3081,7 @@ subroutine MiscibleMaxChange(realization)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscReal :: dsmax
+  PetscReal :: dcmax
   PetscInt :: idof
   PetscErrorCode :: ierr 
 
@@ -3022,15 +3093,15 @@ subroutine MiscibleMaxChange(realization)
   option%dtmpmax=0.D0 
   option%dcmax=0.D0
   option%dsmax=0.D0
-  dsmax=0.D0
+  dcmax=0.D0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
   do idof = 1,option%nflowdof-1 
-    dsmax = 0.D0
-    call VecStrideNorm(field%flow_dxx,idof,NORM_INFINITY,dsmax,ierr)
-    if (dsmax > option%dcmax) option%dcmax = dsmax
+    dcmax = 0.D0
+    call VecStrideNorm(field%flow_dxx,idof,NORM_INFINITY,dcmax,ierr)
+    if (dcmax > option%dcmax) option%dcmax = dcmax
   enddo
   
 end subroutine MiscibleMaxChange
