@@ -3326,9 +3326,15 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
     ! allocate array to store vertices for each cell
     allocate(region%cell_ids(region%num_cells))
     region%cell_ids = 0
-  
+
+    ! It is assumed that cell ids in the HDF5 are 1-based. Converting them to
+    ! 0-based
     do ii = 1,region%num_cells
-      region%cell_ids(ii) = int_buffer(ii,1)
+      if(int_buffer(ii,1) < 1 ) then
+        write(option%io_buffer,'("Cell ids in the HDF5 for region less than 1")')
+        call printErrMsg(option)
+      endif
+      region%cell_ids(ii) = int_buffer(ii,1) - 1
     enddo
     
   case(2)

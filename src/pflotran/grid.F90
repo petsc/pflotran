@@ -1837,6 +1837,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       select case(grid%itype) 
         case(UNSTRUCTURED_GRID)
           allocate(temp_int_array(region%num_cells))
+!gb The algo commented out does not work when region is read from a HDF5
+!   file with multiple procs, instead call GridLocalizeRegionsForUGrid()
+#if 0
           temp_int_array = 0
           local_count=0
           do count=1,region%num_cells
@@ -1853,6 +1856,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           endif
           region%cell_ids(1:local_count) = temp_int_array(1:local_count)
           deallocate(temp_int_array)
+#endif
+          call GridLocalizeRegionsForUGrid(grid, region, option)
+
         case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
 !sp following was commented out 
 !sp remove? 
@@ -2102,8 +2108,6 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
             region%faces = NULL_FACE
         end select
       endif
-    else
-      nullify(region%cell_ids)
     endif
     
     call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr)
