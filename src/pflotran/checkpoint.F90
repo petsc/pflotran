@@ -188,8 +188,17 @@ subroutine Checkpoint(realization, &
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
                '.chk' // trim(adjustl(id_string))
   endif
-  call PetscViewerBinaryOpen(option%mycomm, filename, FILE_MODE_WRITE, &
-                             viewer, ierr)
+  !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
+  !     into the routines it calls so that PetscViewerBinarySkipInfo()
+  !     can be called after PetscViewerSetType(), but before
+  !     PetscViewerFileSetName().  See note in PETSc docs.
+  !call PetscViewerBinaryOpen(option%mycomm, filename, FILE_MODE_WRITE, &
+  !                           viewer, ierr)
+  call PetscViewerCreate(option%mycomm,viewer,ierr)
+  call PetscViewerSetType(viewer,PETSCVIEWERBINARY,ierr)
+  call PetscViewerFileSetMode(viewer,FILE_MODE_WRITE,ierr)
+  call PetscViewerBinarySkipInfo(viewer,ierr)
+  call PetscViewerFileSetName(viewer,filename,ierr)
 
   !--------------------------------------------------------------------
   ! Dump some important information such as simulation time, 
