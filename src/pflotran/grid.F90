@@ -2111,7 +2111,9 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     endif
     
     call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr)
-      
+    
+    call VecDestroy(vec_cell_ids,ierr)
+    call VecDestroy(vec_cell_ids_loc,ierr)
 
   endif
 
