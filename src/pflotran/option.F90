@@ -67,6 +67,9 @@ module Option_module
     PetscInt :: nflowspec
     PetscInt :: rt_idof
     PetscInt :: nmechdof
+#ifdef SURFACE_FLOW
+    PetscInt :: nsurfflowdof
+#endif
 
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
@@ -427,6 +430,9 @@ subroutine OptionInitRealization(option)
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
   option%nmechdof = 0
+#ifdef SURFACE_FLOW
+   option%nsurfflowdof = 0
+#endif
 
   option%tranmode = ""
   option%itranmode = NULL_MODE

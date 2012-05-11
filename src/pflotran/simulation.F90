@@ -196,18 +196,15 @@ subroutine SimulationResetTimeSteppers(simulation)
     simulation%surf_flow_stepper%cur_waypoint => &
       simulation%realization%waypoints%first
     call TimestepperReset(simulation%surf_flow_stepper,dt_min)
-  endif
-#endif
-#ifdef SURFACE_FLOW
-  simulation%surf_realization%option%flow_time = 0.d0
-  simulation%surf_realization%option%flow_dt = dt_min
-  simulation%surf_realization%option%tran_time = 0.d0
-  simulation%surf_realization%option%tran_dt = dt_min
-  simulation%surf_realization%option%match_waypoint = PETSC_FALSE
 
-  simulation%surf_realization%output_option%plot_number = 0
+    simulation%surf_realization%option%flow_time = 0.d0
+    simulation%surf_realization%option%flow_dt = dt_min
+    simulation%surf_realization%option%tran_time = 0.d0
+    simulation%surf_realization%option%tran_dt = dt_min
+    simulation%surf_realization%option%match_waypoint = PETSC_FALSE
 
-  if (associated(simulation%flow_stepper)) then
+    simulation%surf_realization%output_option%plot_number = 0
+
     simulation%surf_flow_stepper%cur_waypoint => &
       simulation%surf_realization%waypoints%first
     call TimestepperReset(simulation%surf_flow_stepper,dt_min)

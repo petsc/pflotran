@@ -560,12 +560,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
                                transient_plot_flag)
 #ifdef SURFACE_FLOW
-    write(*,*),'After StepperSetTargetTimes: ',option%flow_dt, flow_stepper%target_time, flow_stepper%dt_max
-    !call StepperSetTargetTimesSurfaceFlow(surf_flow_stepper,surf_realization%option)
-    surf_flow_stepper%target_time   = flow_stepper%target_time
-    surf_realization%option%flow_dt = option%flow_dt
-    write(*,*),'After StepperSetTargetTimesSurfaceFlow: ',surf_realization%option%flow_dt, &
+    if(associated(surf_flow_stepper)) then
+      write(*,*),'After StepperSetTargetTimes: ',option%flow_dt, flow_stepper%target_time, flow_stepper%dt_max
+      !call StepperSetTargetTimesSurfaceFlow(surf_flow_stepper,surf_realization%option)
+      surf_flow_stepper%target_time   = flow_stepper%target_time
+      surf_realization%option%flow_dt = option%flow_dt
+      write(*,*),'After StepperSetTargetTimesSurfaceFlow: ',surf_realization%option%flow_dt, &
       surf_flow_stepper%target_time, surf_flow_stepper%dt_max
+    endif
 #endif
 
     ! flow solution
