@@ -106,6 +106,10 @@ ifdef gautam
   MYFLAGS += -w -g -DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
 endif
 
+ifdef surface_flow
+  MYFLAGS += -DSURFACE_FLOW
+endif
+
 CFLAGS		 = 
 FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
