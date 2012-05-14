@@ -188,6 +188,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}solver.o \
 	${common_src}cf90bridge.o\
 	${common_src}unstructured_cell.o \
+	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
 	${common_src}condition.o \
@@ -264,14 +265,15 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o condition_control.o surface_flow.o \
         database_hpt.o
-unstructured_grid.o : option.o connection.o unstructured_cell.o geometry.o
+unstructured_grid.o : option.o connection.o unstructured_cell.o unstructured_grid_aux.o \
+                      geometry.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-	input.o string.o mfd_aux.o mfd.o
+	input.o string.o mfd_aux.o mfd.o unstructured_grid_aux.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-	input.o mfd_aux.o
+	input.o mfd_aux.o unstructured_grid_aux.o
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
 region.o : input.o utility.o logging.o string.o geometry.o
@@ -306,7 +308,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 	coupler.o connection.o hdf5.o observation.o \
 	reactive_transport.o immis.o miscible.o \
 	thc.o thmc.o richards.o mphase.o flash2.o general.o \
-	discretization.o logging.o
+	discretization.o logging.o unstructured_grid_aux.o
 reaction.o : reactive_transport_aux.o reaction_aux.o surface_complexation.o \
              surface_complexation_aux.o option.o string.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
@@ -374,7 +376,7 @@ surface_material.o : string.o option.o input.o
 surface_realization.o : condition.o debug.o discretization.o input.o level.o \
 	option.o patch.o region.o surface_field.o surface_material.o \
         waypoint.o dataset_aux.o coupler.o string.o grid.o strata.o \
-        unstructured_grid.o dataset.o
+        unstructured_grid.o dataset.o unstructured_grid_aux.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd.o     : option.o mfd_aux.o grid.o
