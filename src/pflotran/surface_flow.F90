@@ -63,6 +63,7 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Discretization_module
   use Region_module
   use Condition_module
@@ -163,6 +164,7 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Discretization_module
   use Region_module
   use Condition_module

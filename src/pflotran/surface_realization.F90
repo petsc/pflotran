@@ -338,8 +338,8 @@ end subroutine SurfaceRealizationAddStrata
 subroutine SurfaceRealizationCreateDiscretization(surf_realization)
 
   use Grid_module
-  use Unstructured_Grid_module, only : UGridMapIndices, &
-                                       UGridEnsureRightHandRule
+  use Unstructured_Grid_Aux_module, only : UGridMapIndices
+  use Unstructured_Grid_module, only     : UGridEnsureRightHandRule
   use Coupler_module
   use Discretization_module
   
@@ -661,6 +661,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   use Grid_module
   use String_module
   use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
   use Realization_module
   use Option_module
