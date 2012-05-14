@@ -344,7 +344,7 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
   use Realization_module
   use Grid_module
   use Structured_Grid_module
-  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
 
@@ -1047,7 +1047,7 @@ subroutine OutputTecplotFEBrick(realization)
   use Realization_module
   use Discretization_module
   use Grid_module
-  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -2682,7 +2682,7 @@ subroutine WriteTecplotUGridVertices(fid,realization)
 
   use Realization_module
   use Grid_module
-  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
 
@@ -2740,7 +2740,7 @@ subroutine WriteTecplotUGridElements(fid,realization)
 
   use Realization_module
   use Grid_module
-  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
   
@@ -7191,7 +7191,7 @@ end subroutine GetVertexCoordinates
 subroutine GetCellConnections(grid, vec)
 
   use Grid_module
-  use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
 
   implicit none
   

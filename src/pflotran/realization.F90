@@ -199,8 +199,8 @@ end function RealizationCreate2
 subroutine RealizationCreateDiscretization(realization)
 
   use Grid_module
-  use Unstructured_Grid_module, only : UGridMapIndices, &
-                                       UGridEnsureRightHandRule
+  use Unstructured_Grid_Aux_module, only : UGridMapIndices
+  use Unstructured_Grid_module, only : UGridEnsureRightHandRule
   use Structured_Grid_module, only : StructGridCreateTVDGhosts
   use MFD_module
   use Coupler_module

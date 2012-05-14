@@ -2,6 +2,7 @@ module Grid_module
 
   use Structured_Grid_module
   use Unstructured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Connection_module
   use MFD_Aux_module
  
