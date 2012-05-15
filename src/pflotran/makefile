@@ -110,6 +110,10 @@ ifdef surface_flow
   MYFLAGS += -DSURFACE_FLOW
 endif
 
+ifdef amanzi_bgd
+  MYFLAGS += -DAMANZI_BGD
+endif
+
 CFLAGS		 = 
 FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
