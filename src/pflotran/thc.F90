@@ -3859,6 +3859,70 @@ function THCGetTecplotHeader(realization,icolumn)
 end function THCGetTecplotHeader
 
 ! ************************************************************************** !
+! 
+! THCComputeGradient: Computes the gradient of temperature (for now) using
+! least square fit of values from neighboring cells
+! See:I. Bijelonja, I. Demirdzic, S. Muzaferija -- A finite volume method 
+! for incompressible linear elasticity, CMAME
+! Author: Satish Karra
+! Date: 2/20/12
+!
+! ************************************************************************** !
+
+
+subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
+                              option) 
+
+
+  use Grid_module
+  use Global_Aux_module
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+
+  
+  PetscInt :: ghosted_neighbors_size, ghosted_id
+  PetscInt :: ghosted_neighbors(26)
+  PetscReal :: gradient(3), disp_vec(3,1), disp_mat(3,3)
+  PetscReal :: temp_weighted(3,1)
+  PetscInt :: i
+  
+  PetscInt :: INDX(3)
+  PetscInt :: D
+   
+  call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
+                                         STAR_STENCIL, &
+                                         1,1,1,ghosted_neighbors_size, &
+                                         ghosted_neighbors, &
+                                         option)   
+
+  disp_vec = 0.d0
+  disp_mat = 0.d0
+  temp_weighted = 0.d0
+  do i = 1, ghosted_neighbors_size
+    disp_vec(1,1) = grid%x(ghosted_neighbors(i)) - grid%x(ghosted_id)
+    disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
+    disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
+    disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
+    temp_weighted = temp_weighted + disp_vec* &
+                    (global_aux_vars(ghosted_neighbors(i))%temp(1) - &
+                     global_aux_vars(ghosted_id)%temp(1))
+  enddo
+
+  call ludcmp(disp_mat,3,INDX,D)
+  call lubksb(disp_mat,3,INDX,temp_weighted)
+  
+  gradient(:) = temp_weighted(:,1)
+  
+end subroutine THCComputeGradient
+
+
+! ************************************************************************** !
 !
 ! THCDestroy: Deallocates variables associated with Richard
 ! author: ???
