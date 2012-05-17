@@ -2375,7 +2375,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   enddo
 
 
-  connections => ConnectionCreate(nconn,option%nphase,INTERNAL_CONNECTION_TYPE)
+  connections => ConnectionCreate(nconn,INTERNAL_CONNECTION_TYPE)
   
   allocate(unstructured_grid%face_area(face_count))
   allocate(unstructured_grid%connection_to_face(nconn))

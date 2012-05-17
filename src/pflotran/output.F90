@@ -560,6 +560,7 @@ subroutine OutputTecplotBlock(realization)
   use Discretization_module
   use Grid_module
   use Structured_Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -993,7 +994,9 @@ subroutine OutputTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (realization%discretization%itype == UNSTRUCTURED_GRID) then
+  if (realization%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization%discretization%grid%itype == &
+      IMPLICIT_UNSTRUCTURED_GRID)  then
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization)
   endif
   
@@ -1496,6 +1499,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   use Realization_module
   use Discretization_module
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Option_module
   use Field_module
   use Patch_module
@@ -1614,7 +1618,9 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (realization%discretization%itype == UNSTRUCTURED_GRID) then
+  if (realization%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization%discretization%grid%itype == &
+      IMPLICIT_UNSTRUCTURED_GRID)  then
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization)
   endif
 
@@ -2556,6 +2562,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   use Option_module
   use Field_module
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Patch_module
   
   implicit none
@@ -2634,7 +2641,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (realization%discretization%itype == UNSTRUCTURED_GRID)  then
+  if (realization%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization%discretization%grid%itype == &
+      IMPLICIT_UNSTRUCTURED_GRID)  then
     call WriteTecplotUGridElements(fid,realization)
   endif    
 

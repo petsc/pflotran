@@ -2,6 +2,7 @@ module Unstructured_Grid_Aux_module
 
 !  use Connection_module
   use Unstructured_Cell_module
+  use Unstructured_Explicit_module
   
   implicit none
 
@@ -18,18 +19,30 @@ module Unstructured_Grid_Aux_module
 
   PetscInt, parameter, public :: TWO_DIM_GRID = 1
   PetscInt, parameter, public :: THREE_DIM_GRID = 2 
+  
+  !geh: for debugging purposes make these large
+  !TODO(geh): change values to 1, 2 respectively.
+  PetscInt, parameter, public :: IMPLICIT_UNSTRUCTURED_GRID = 98
+  PetscInt, parameter, public :: EXPLICIT_UNSTRUCTURED_GRID = 99
 
   type, public :: unstructured_grid_type
-    PetscInt :: grid_type         ! 3D subsurface (default) or 2D surface grid
+    ! variables for all unstructured grids
     PetscInt :: num_ghost_cells   ! number of ghost cells (only) on processor
-    PetscInt :: num_vertices_global ! number of vertices in entire problem domain
-    PetscInt :: num_vertices_local  ! number of vertices in local grid cells
     PetscInt :: global_offset ! offset in petsc ordering for the first cell on a processor???
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash
+    PetscInt, pointer :: cell_ids_natural(:) ! natural 1d right-hand i,j,k ordering
+    PetscInt, pointer :: cell_ids_petsc(:) ! petsc ordering of cell ids
+    PetscInt, pointer :: ghost_cell_ids_petsc(:) ! petsc ordering of ghost cells ids
+    AO :: ao_natural_to_petsc ! mapping of natural to petsc ordering
+    type(unstructured_explicit_type), pointer :: explicit_grid
+    ! variables for implicit unstructured grids
+    PetscInt :: grid_type         ! 3D subsurface (default) or 2D surface grid
+    PetscInt :: num_vertices_global ! number of vertices in entire problem domain
+    PetscInt :: num_vertices_local  ! number of vertices in local grid cells
     PetscInt :: max_ndual_per_cell
     PetscInt :: max_nvert_per_cell
     PetscInt :: max_cells_sharing_a_vertex
@@ -50,14 +63,10 @@ module Unstructured_Grid_Aux_module
     PetscInt, pointer :: face_to_vertex(:,:)
     PetscInt, pointer :: cell_to_face_ghosted(:,:)
     PetscInt, pointer :: vertex_ids_natural(:)
-    PetscInt, pointer :: cell_ids_natural(:) ! natural 1d right-hand i,j,k ordering
-    PetscInt, pointer :: cell_ids_petsc(:) ! petsc ordering of cell ids
-    PetscInt, pointer :: ghost_cell_ids_petsc(:) ! petsc ordering of ghost cells ids
     PetscInt, pointer :: cell_neighbors_local_ghosted(:,:) ! local neighbors
     type(point_type), pointer :: vertices(:)
     type(point_type), pointer :: face_centroid(:)
     PetscReal, pointer :: face_area(:)
-    AO :: ao_natural_to_petsc ! mapping of natural to petsc ordering
   end type unstructured_grid_type
 
   type, public :: ugdm_type
@@ -163,14 +172,24 @@ function UGridCreate()
 
   allocate(unstructured_grid)
 
-  unstructured_grid%grid_type = THREE_DIM_GRID
-  unstructured_grid%num_vertices_global = 0
-  unstructured_grid%num_vertices_local = 0
+  ! variables for all unstructured grids
   unstructured_grid%num_ghost_cells = 0
   unstructured_grid%global_offset = 0
   unstructured_grid%nmax = 0
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
+  nullify(unstructured_grid%hash)
+  unstructured_grid%num_hash = 100
+  nullify(unstructured_grid%cell_ids_natural)
+  nullify(unstructured_grid%cell_ids_petsc)
+  nullify(unstructured_grid%ghost_cell_ids_petsc)
+  unstructured_grid%ao_natural_to_petsc = 0
+  nullify(unstructured_grid%explicit_grid)
+
+  ! variables for implicit unstructured grids
+  unstructured_grid%grid_type = THREE_DIM_GRID
+  unstructured_grid%num_vertices_global = 0
+  unstructured_grid%num_vertices_local = 0
   unstructured_grid%max_ndual_per_cell = 0
   unstructured_grid%max_nvert_per_cell = 0
   unstructured_grid%max_cells_sharing_a_vertex = 24
@@ -182,14 +201,10 @@ function UGridCreate()
   nullify(unstructured_grid%cell_to_face_ghosted)
   nullify(unstructured_grid%vertex_ids_natural)
   nullify(unstructured_grid%vertices)
-  nullify(unstructured_grid%hash)
-  nullify(unstructured_grid%cell_ids_natural)
-  nullify(unstructured_grid%cell_ids_petsc)
-  nullify(unstructured_grid%ghost_cell_ids_petsc)
   nullify(unstructured_grid%cell_neighbors_local_ghosted)
   nullify(unstructured_grid%connection_to_face)
-  unstructured_grid%num_hash = 100
-  unstructured_grid%ao_natural_to_petsc = 0
+  nullify(unstructured_grid%face_centroid)
+  nullify(unstructured_grid%face_area)
 
   UGridCreate => unstructured_grid
   
@@ -746,6 +761,8 @@ end subroutine UGridMapIndices
 ! ************************************************************************** !
 subroutine UGridDestroy(unstructured_grid)
 
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   type(unstructured_grid_type), pointer :: unstructured_grid
@@ -754,45 +771,32 @@ subroutine UGridDestroy(unstructured_grid)
     
   if (.not.associated(unstructured_grid)) return
 
-  if (associated(unstructured_grid%cell_type)) &
-    deallocate(unstructured_grid%cell_type)
-  nullify(unstructured_grid%cell_type)
-  if (associated(unstructured_grid%cell_vertices)) &
-    deallocate(unstructured_grid%cell_vertices)
-  nullify(unstructured_grid%cell_vertices)
-  if (associated(unstructured_grid%vertices)) &
-    deallocate(unstructured_grid%vertices)
-  nullify(unstructured_grid%vertices)
-  if (associated(unstructured_grid%hash)) &
-    deallocate(unstructured_grid%hash)
-  nullify(unstructured_grid%hash)
-  if (associated(unstructured_grid%cell_ids_petsc)) &
-    deallocate(unstructured_grid%cell_ids_petsc)
-  nullify(unstructured_grid%cell_ids_petsc)
-  if (associated(unstructured_grid%ghost_cell_ids_petsc)) &
-    deallocate(unstructured_grid%ghost_cell_ids_petsc)
-  nullify(unstructured_grid%ghost_cell_ids_petsc)
-  if (associated(unstructured_grid%cell_ids_natural)) &
-    deallocate(unstructured_grid%cell_ids_natural)
-  nullify(unstructured_grid%cell_ids_natural)
-  if (associated(unstructured_grid%cell_neighbors_local_ghosted)) &
-    deallocate(unstructured_grid%cell_neighbors_local_ghosted)
-  nullify(unstructured_grid%cell_neighbors_local_ghosted)
-  if (associated(unstructured_grid%face_to_cell_ghosted))&
-    deallocate(unstructured_grid%face_to_cell_ghosted)
-  nullify(unstructured_grid%face_to_cell_ghosted)
-  if (associated(unstructured_grid%face_to_vertex_natural))&
-    deallocate(unstructured_grid%face_to_vertex_natural)
-  nullify(unstructured_grid%face_to_vertex_natural)
-  if (associated(unstructured_grid%face_to_vertex))&
-    deallocate(unstructured_grid%face_to_vertex)
-  nullify(unstructured_grid%face_to_vertex)
-  if (associated(unstructured_grid%connection_to_face)) &
-    deallocate(unstructured_grid%connection_to_face)
-  nullify(unstructured_grid%connection_to_face)
-
+  ! variables for all unstructured grids
+  call DeallocateArray(unstructured_grid%hash)
+  call DeallocateArray(unstructured_grid%cell_ids_natural)
+  call DeallocateArray(unstructured_grid%cell_ids_petsc)
+  call DeallocateArray(unstructured_grid%ghost_cell_ids_petsc)
+  call UGridExplicitDestroy(unstructured_grid%explicit_grid)
   if (unstructured_grid%ao_natural_to_petsc /= 0) &
     call AODestroy(unstructured_grid%ao_natural_to_petsc,ierr)
+  
+  ! variables for implicit unstructured grids
+  call DeallocateArray(unstructured_grid%cell_type)
+  call DeallocateArray(unstructured_grid%cell_vertices)
+  call DeallocateArray(unstructured_grid%face_to_cell_ghosted)
+  call DeallocateArray(unstructured_grid%connection_to_face)
+  call DeallocateArray(unstructured_grid%face_to_vertex_natural)
+  call DeallocateArray(unstructured_grid%face_to_vertex)
+  call DeallocateArray(unstructured_grid%cell_to_face_ghosted)
+  call DeallocateArray(unstructured_grid%vertex_ids_natural)
+  call DeallocateArray(unstructured_grid%cell_neighbors_local_ghosted)
+  if (associated(unstructured_grid%vertices)) &
+    deallocate(unstructured_grid%vertices)
+  nullify(unstructured_grid%vertices)  
+  if (associated(unstructured_grid%face_centroid)) &
+    deallocate(unstructured_grid%face_centroid)
+  nullify(unstructured_grid%face_centroid)  
+  call DeallocateArray(unstructured_grid%face_area)
 
   deallocate(unstructured_grid)
   nullify(unstructured_grid)

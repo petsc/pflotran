@@ -373,8 +373,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   
   region => coupler%region
 
-  connection_set => ConnectionCreate(region%num_cells,option%nphase, &
-                                     connection_itype)
+  connection_set => ConnectionCreate(region%num_cells,connection_itype)
     
   ! if using higher order advection, allocate associated arrays
   if (option%itranmode == EXPLICIT_ADVECTION .and. &
@@ -503,11 +502,11 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 
  allocate(coupler%faces_set(coupler%numfaces_set))
 
-!    connection_set => ConnectionCreate(coupler%numfaces_set,option%nphase, &
+!    connection_set => ConnectionCreate(coupler%numfaces_set, &
 !                                     connection_itype)
 !	stop
 ! else
-    connection_set => ConnectionCreate(ZERO_INTEGER, option%nphase, &
+    connection_set => ConnectionCreate(ZERO_INTEGER, &
                                       connection_itype)
 ! end if
  local_faces = 0

@@ -1123,7 +1123,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+  case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -1208,6 +1208,7 @@ subroutine InitReadInput(simulation)
   use Option_module
   use Field_module
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Structured_Grid_module
   use Solver_module
   use Material_module
@@ -2094,7 +2095,7 @@ subroutine InitReadInput(simulation)
                       .and. option%mycommsize > 1) then
                     output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
                   endif
-                  if (grid%itype == UNSTRUCTURED_GRID) then
+                  if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
                     output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
                   endif
                 case ('VTK')
