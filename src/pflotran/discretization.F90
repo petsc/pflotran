@@ -198,8 +198,12 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
                 structured_grid_itype = CARTESIAN_GRID
                 structured_grid_ctype = 'cartesian'
             end select
-          case('unstructured')
-            discretization%itype = UNSTRUCTURED_GRID
+          case('unstructured','unstructured_explicit')
+            select case(word)
+              case('unstructured')
+                discretization%itype = UNSTRUCTURED_GRID
+              case('unstructured_explicit')
+            end select
             call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
                                  PETSC_TRUE)
             call InputErrorMsg(input,option,'unstructured filename','GRID')

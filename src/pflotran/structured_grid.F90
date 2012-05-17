@@ -6,6 +6,10 @@ module Structured_Grid_module
  
 #include "definitions.h"
 
+  PetscInt, parameter, public :: CARTESIAN_GRID = 3
+  PetscInt, parameter, public :: CYLINDRICAL_GRID = 4
+  PetscInt, parameter, public :: SPHERICAL_GRID = 5
+
   type, public :: structured_grid_type
 
     character(len=MAXWORDLENGTH) :: ctype

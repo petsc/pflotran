@@ -2947,12 +2947,15 @@ subroutine readRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-        if (region%grid_type == STRUCTURED_GRID) then
+        if (region%grid_type == STRUCTURED_GRID_REGION) then
           call HDF5ReadRegionFromFile(realization,region,region%filename)
         else
-#if defined(PETSC_HAVE_HDF5)
+          !geh: Do not skip this subouroutine if PETSC_HAVE_HDF5 is not 
+          !     defined.  The subroutine prints an error message if not defined
+          !     informing the user of the error.  If you skip the subroutine,
+          !     no error message is printed and the user is unaware of the
+          !     region not being read.
           call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
-#endif      
         endif
       else if (index(region%filename,'.ss') > 0) then
         region%sideset => RegionCreateSideset()

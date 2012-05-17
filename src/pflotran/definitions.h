@@ -102,16 +102,20 @@ PetscInt, parameter :: THMC_MODE = 9
 PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 
 ! grid types
-PetscInt, parameter :: NULL_GRID = 0
-PetscInt, parameter :: STRUCTURED_GRID = 1
-PetscInt, parameter :: UNSTRUCTURED_GRID = 2
-PetscInt, parameter :: CARTESIAN_GRID = 3
-PetscInt, parameter :: CYLINDRICAL_GRID = 4
-PetscInt, parameter :: SPHERICAL_GRID = 5
-PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 6
-PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 7
-PetscInt, parameter :: TWO_DIM_GRID = 8
-PetscInt, parameter :: THREE_DIM_GRID = 9
+!geh: moved to grid.F90
+!PetscInt, parameter :: NULL_GRID = 0
+!PetscInt, parameter :: STRUCTURED_GRID = 1
+!PetscInt, parameter :: UNSTRUCTURED_GRID = 2
+!geh: moved to structured_grid.F90 and renumbered
+!PetscInt, parameter :: CARTESIAN_GRID = 3
+!PetscInt, parameter :: CYLINDRICAL_GRID = 4
+!PetscInt, parameter :: SPHERICAL_GRID = 5
+!geh: moved to grid.F90 and renumbered
+!PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 6
+!PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 7
+!geh: moved to unstructured_grid.F90 and renumbered
+!PetscInt, parameter :: TWO_DIM_GRID = 8
+!PetscInt, parameter :: THREE_DIM_GRID = 9
 
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0

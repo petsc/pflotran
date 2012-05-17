@@ -18,6 +18,12 @@ module Grid_module
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 
+  PetscInt, parameter, public :: NULL_GRID = 0
+  PetscInt, parameter, public :: STRUCTURED_GRID = 1
+  PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
+  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
+  PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 4
+
   type, public :: grid_type 
   
     character(len=MAXWORDLENGTH) :: ctype
@@ -97,7 +103,7 @@ module Grid_module
 #endif
 
   end type grid_type
-
+  
   type, public :: face_type
     type(connection_set_type), pointer :: conn_set_ptr
     PetscInt :: id

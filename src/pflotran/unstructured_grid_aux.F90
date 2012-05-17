@@ -16,6 +16,9 @@ module Unstructured_Grid_Aux_module
   include "piof.h"
 #endif
 
+  PetscInt, parameter, public :: TWO_DIM_GRID = 1
+  PetscInt, parameter, public :: THREE_DIM_GRID = 2 
+
   type, public :: unstructured_grid_type
     PetscInt :: grid_type         ! 3D subsurface (default) or 2D surface grid
     PetscInt :: num_ghost_cells   ! number of ghost cells (only) on processor

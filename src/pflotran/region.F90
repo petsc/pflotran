@@ -7,7 +7,10 @@ module Region_module
   private
 
 #include "definitions.h"
- 
+
+  PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
+  PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2
+
   type, public :: block_type
     PetscInt :: i1,i2,j1,j2,k1,k2    
     type(block_type), pointer :: next
@@ -95,9 +98,9 @@ function RegionCreateWithNothing()
   region%k2 = 0
   region%iface = 0
   region%num_cells = 0
-  region%grid_type = STRUCTURED_GRID ! By default it is assumed that the region 
-                   ! is applicable to strucutred grid, unless
-                   ! explicitly stated in pflotran input file
+  ! By default it is assumed that the region is applicable to strucutred grid,
+  ! unless explicitly stated in pflotran input file
+  region%grid_type = STRUCTURED_GRID_REGION
   region%num_verts = 0
   nullify(region%coordinates)
   nullify(region%cell_ids)
@@ -434,9 +437,9 @@ subroutine RegionRead(region,input,option)
         call StringToUpper(word)
         select case(trim(word))
           case('STRUCTURED')
-            region%grid_type = STRUCTURED_GRID
+            region%grid_type = STRUCTURED_GRID_REGION
           case('UNSTRUCTURED')
-            region%grid_type = UNSTRUCTURED_GRID
+            region%grid_type = UNSTRUCTURED_GRID_REGION
           case default
             option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
           call printErrMsg(option)
