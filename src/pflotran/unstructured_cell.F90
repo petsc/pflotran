@@ -28,7 +28,7 @@ module Unstructured_Cell_module
             UCellGetPlaneIntercept, &
             UCellProjectPointOntoPlane, &
             UCellComputeDistanceFromPlane, &
-            UcellGetLineIntercept, &
+            UCellGetLineIntercept, &
             UCellGetNVertices, &
             UCellGetNFaces, &
             UCellGetNFaceVertices, &
@@ -1137,7 +1137,7 @@ end function UCellQuality
 ! date: 02/26/12
 !
 ! ************************************************************************** !
-subroutine UcellGetLineIntercept(line_start,line_end,point,intercept)
+subroutine UCellGetLineIntercept(line_start,line_end,point,intercept)
 
   implicit none
   type(point_type) :: line_start
