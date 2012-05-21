@@ -561,6 +561,14 @@ subroutine Init(simulation)
       option%io_buffer = 'Preconditioner: ' // trim(surf_flow_solver%pc_type)
       call printMsg(option)
 
+      ! shell for custom convergence test.  The default SNES convergence test  
+      ! is call within this function. 
+      surf_flow_stepper%convergence_context => &
+        ConvergenceContextCreate(surf_flow_solver,option,grid)
+      call SNESSetConvergenceTest(surf_flow_solver%snes,ConvergenceTest, &
+                                  surf_flow_stepper%convergence_context, &
+                                  PETSC_NULL_FUNCTION,ierr) 
+
     endif
 #endif
   endif
