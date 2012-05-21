@@ -572,6 +572,7 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 
   PetscInt, allocatable :: d_nnz(:), o_nnz(:)
   PetscInt :: local_id, ineighbor, neighbor_id
+  PetscInt :: iconn, id_up, id_dn
   PetscInt :: ndof_local
   PetscErrorCode :: ierr
   
@@ -579,16 +580,37 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
   allocate(o_nnz(unstructured_grid%nlmax))
   d_nnz = 1 ! start 1 since diagonal connection to self
   o_nnz = 0
-  do local_id = 1, unstructured_grid%nlmax
-    do ineighbor = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-      neighbor_id = unstructured_grid%cell_neighbors_local_ghosted(ineighbor,local_id)
-      if (neighbor_id > 0) then
-        d_nnz(local_id) = d_nnz(local_id) + 1
-      else
-        o_nnz(local_id) = o_nnz(local_id) + 1
+  if (associated(unstructured_grid%explicit_grid)) then
+    do iconn = 1, size(unstructured_grid%explicit_grid%connections,2)
+      id_up = unstructured_grid%explicit_grid%connections(1,iconn)
+      id_dn = unstructured_grid%explicit_grid%connections(2,iconn)
+      if (id_up > 0) then
+        if (id_dn > 0) then
+          d_nnz(id_up) = d_nnz(id_up) + 1
+        else
+          o_nnz(id_up) = o_nnz(id_up) + 1
+        endif
+      endif
+      if (id_dn > 0) then
+        if (id_up > 0) then
+          d_nnz(id_dn) = d_nnz(id_dn) + 1
+        else
+          o_nnz(id_dn) = o_nnz(id_dn) + 1
+        endif
       endif
     enddo
-  enddo
+  else
+    do local_id = 1, unstructured_grid%nlmax
+      do ineighbor = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
+        neighbor_id = unstructured_grid%cell_neighbors_local_ghosted(ineighbor,local_id)
+        if (neighbor_id > 0) then
+          d_nnz(local_id) = d_nnz(local_id) + 1
+        else
+          o_nnz(local_id) = o_nnz(local_id) + 1
+        endif
+      enddo
+    enddo
+  endif
 
   ndof_local = unstructured_grid%nlmax*ugdm%ndof
 !  if (option%mycommsize > 1) then
@@ -776,7 +798,7 @@ subroutine UGridDestroy(unstructured_grid)
   call DeallocateArray(unstructured_grid%cell_ids_natural)
   call DeallocateArray(unstructured_grid%cell_ids_petsc)
   call DeallocateArray(unstructured_grid%ghost_cell_ids_petsc)
-  call UGridExplicitDestroy(unstructured_grid%explicit_grid)
+  call ExplicitUGridDestroy(unstructured_grid%explicit_grid)
   if (unstructured_grid%ao_natural_to_petsc /= 0) &
     call AODestroy(unstructured_grid%ao_natural_to_petsc,ierr)
   

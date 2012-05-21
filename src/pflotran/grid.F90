@@ -251,8 +251,9 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
                                   grid%z,ugdm%scatter_ltol,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      connection_set => ExplicitUGridSetConnections(grid%unstructured_grid% &
-                                                      explicit_grid,option)
+      connection_set => &
+        ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
+                                        option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -1772,7 +1773,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   else
                     iflag = 1
                   endif
-                case(IMPLICIT_UNSTRUCTURED_GRID)
+                case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
                   del_x = x_max-x_min
                   del_y = y_max-y_min
                   del_z = z_max-z_min
@@ -1903,6 +1904,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             endif
           enddo
 #endif
+        case(EXPLICIT_UNSTRUCTURED_GRID)
         case default
           option%io_buffer = 'GridLocalizeRegions: define region by list ' // &
             'of cells not implemented: ' // trim(region%name)
