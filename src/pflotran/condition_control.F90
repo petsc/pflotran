@@ -1081,6 +1081,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
                         initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
                   !TODO(gb): Correct the initialization of surface flow condition
                   xx_p(ibegin:iend) = 101325.d0
+                  xx_p(ibegin:iend) = 0.d0
                   if (option%iflowmode == G_MODE) then
                     cur_patch%aux%Global%aux_vars(ghosted_id)%istate = &
                         iphase_loc_p(ghosted_id)

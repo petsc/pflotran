@@ -1720,6 +1720,7 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   use Option_module
   use Solver_module
   use Surface_Field_module
+  use Grid_module
   
   implicit none
   
@@ -1750,6 +1751,7 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   type(surface_field_type), pointer   :: surf_field 
   type(discretization_type), pointer  :: discretization 
   type(solver_type), pointer          :: solver
+  character(len=MAXSTRINGLENGTH)      :: string
 
   option         => surf_realization%option
   discretization => surf_realization%discretization
@@ -1827,6 +1829,13 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   stepper%num_newton_iterations_surf_flow = num_newton_iterations
   stepper%num_linear_iterations_surf_flow = num_linear_iterations
 
+  write(string,*)stepper%steps_surf_flow
+  string = 'Surf_Rxx_' // trim(adjustl(string)) // '.bin'
+  call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
+                             FILE_MODE_WRITE,viewer,ierr)
+  call VecView(surf_field%flow_xx,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
 ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(surf_field%flow_r,NORM_INFINITY,inorm,ierr)
@@ -1857,7 +1866,6 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
     call SurfaceFlowMaxChange(surf_realization)
     if (option%print_screen_flag) then
       write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-      !write(*,'("  --> max chng: dpmx= Needs to be computed")')
     endif
   end select
 
@@ -2798,6 +2806,7 @@ subroutine StepperUpdateSolution(realization)
     call StepperUpdateTransportSolution(realization)
 
 #ifdef SURFACE_FLOW
+  call SurfaceRealizationUpdate(surf_realization)
   if (surf_realization%option%nsurfflowdof > 0) &
     call StepperUpdateSurfaceFlowSolution(surf_realization)
 #endif

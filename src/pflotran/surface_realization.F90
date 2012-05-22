@@ -63,7 +63,8 @@ private
             SurfaceRealizationProcessFlowConditions, &
             SurfaceRealizationMapSurfSubsurfaceGrids, &
             SurfaceRealizationInitAllCouplerAuxVars, &
-            SurfaceRealizationProcessMatProp
+            SurfaceRealizationProcessMatProp, &
+            SurfaceRealizationUpdate
 
 contains
 
@@ -1167,5 +1168,27 @@ subroutine SurfaceRealizationDestroy(surf_realization)
 end subroutine SurfaceRealizationDestroy
 
 
+! ************************************************************************** !
+!> This routine updates parameters in realization (eg. conditions, bcs, srcs)
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/22/12
+! ************************************************************************** !
+subroutine SurfaceRealizationUpdate(surf_realization)
+
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+
+  ! must update conditions first
+  call FlowConditionUpdate(surf_realization%surf_flow_conditions,surf_realization%option, &
+                           surf_realization%option%time)
+
+end subroutine SurfaceRealizationUpdate
+
+
 end module Surface_Realization_module
+
 #endif

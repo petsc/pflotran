@@ -95,7 +95,7 @@ END
 
 :=========================== times ============================================
 TIME
-  FINAL_TIME 2.d0 s
+  FINAL_TIME 3600.d0 s
   INITIAL_TIMESTEP_SIZE 1.0 s
   MAXIMUM_TIMESTEP_SIZE 1.0 s        ! produces CFL ~<= 1.
 END
@@ -118,7 +118,12 @@ FLOW_CONDITION well
   TYPE
     RATE volumetric_rate
   /
-  RATE 1 
+  RATE LIST
+:    TIME_UNITS sec
+:    DATA_UNITS m/sec
+    0.d0 1.4111d-5
+    5.d0 0.d0
+  /
 END
 
 FLOW_CONDITION initial
@@ -145,10 +150,10 @@ INITIAL_CONDITION initial_copuler
   REGION all
 END
 
-:SOURCE_SINK well_source
-:  FLOW_CONDITION well
-:  REGION all
-:END
+SOURCE_SINK well_source
+  FLOW_CONDITION well
+  REGION all
+END
 
 skip
 BOUNDARY_CONDITION subsurf_recharge
@@ -203,7 +208,12 @@ SURF_FLOW_CONDITION rain
   TYPE
     RATE volumetric_rate
   /
-  RATE 2.4111d-5  ! m/sec
+  RATE LIST
+:    TIME_UNITS sec
+:    DATA_UNITS m/sec
+    0.d0 1.4111d-5
+    1800.d0 0.d0
+  /
 END
 
 SURF_FLOW_CONDITION surf_initial
@@ -246,10 +256,10 @@ STRATA
   MATERIAL surf1
 END
 
-:SURF_DEBUG
-:VECVIEW_SOLUTION
-:VECVIEW_RESIDUAL
-:MATVIEW_JACOBIAN
-:END
+SURF_DEBUG
+VECVIEW_SOLUTION
+VECVIEW_RESIDUAL
+MATVIEW_JACOBIAN
+END
 
 END

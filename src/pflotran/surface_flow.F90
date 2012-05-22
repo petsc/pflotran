@@ -285,9 +285,6 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
       !.........................................................................
       case ('SURF_DEBUG')
         call DebugRead(surf_realization%debug,input,option)
-        write(*,*),surf_realization%debug%vecview_solution, &
-          surf_realization%debug%vecview_residual, &
-          surf_realization%debug%matview_Jacobian
 
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
@@ -339,6 +336,8 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
   discretization => surf_realization%discretization
   option => surf_realization%option
 
+  call DiscretizationGlobalToLocal(discretization,xx,surf_field%flow_xx_loc,NFLOWDOF)
+
   ! pass #1 for internal and boundary flux terms
   cur_level => surf_realization%level_list%first
   do
@@ -372,6 +371,7 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rresidual.bin', &
                               FILE_MODE_WRITE,viewer,ierr)
     call VecView(r,viewer,ierr)
@@ -437,6 +437,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   PetscReal :: perm_up, perm_dn
   PetscReal :: upweight
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
+  PetscReal :: dP
 
 
   type(grid_type), pointer :: grid
@@ -499,17 +500,23 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
       slope = dz/sqrt(dx*dx + dy*dy * dz*dz)
       
-      hw_up = (xx_loc_p(ghosted_id_up)-option%reference_pressure)/abs(option%gravity(3))/rho
-      hw_dn = (xx_loc_p(ghosted_id_dn)-option%reference_pressure)/abs(option%gravity(3))/rho
+#if 0
+      dP = xx_loc_p(ghosted_id_up)-option%reference_pressure
+      if (dP<eps) dP = 0.0d0
+      hw_up = dP/abs(option%gravity(3))/rho
       
-      if(hw_up < eps) hw_up = 0.d0
-      if(hw_dn < eps) hw_dn = 0.d0
-
+      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
+      if (dP<eps) dP = 0.0d0
+      hw_dn = dP/abs(option%gravity(3))/rho
+#endif
+      hw_up = xx_loc_p(ghosted_id_up)
+      hw_dn = xx_loc_p(ghosted_id_dn)
+      
       call SurfaceFluxKinematic(hw_up,mannings_loc_p(ghosted_id_up), &
                                 hw_dn,mannings_loc_p(ghosted_id_dn), &
                                 slope, cur_connection_set%area(iconn),option,Res)
 
-      !write(*,*),sum_connection,Res(1)
+      !write(*,*),sum_connection,hw_up,xx_loc_p(ghosted_id_up)
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
@@ -541,10 +548,14 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
+#if 0
+      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
+      if (dP<eps) dP = 0.0d0
+      hw_dn = dP/abs(option%gravity(3))/rho
+#endif
+      hw_dn = xx_loc_p(ghosted_id_dn)
 
-      hw_dn = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
-      if(hw_dn < eps) hw_dn = 0.d0
-
+      !write(*,*),'in BCflux:',hw_dn,xx_loc_p(ghosted_id)
       call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
                           hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
                           cur_connection_set%area(iconn), option,Res)
@@ -653,9 +664,11 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
 
+#if 0
     head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
     if(head < 1.D-8) head = 0.d0
-    
+#endif    
+    head = xx_loc_p(ghosted_id)
     !write(*,*),'head = ',ghosted_id,head
     call SurfaceFlowAccumulation(head,area_p(local_id),option,Res)
     
@@ -846,7 +859,8 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   PetscReal :: distance_gravity 
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
-  type(option_type), pointer :: option 
+  type(option_type), pointer :: option
+  PetscReal :: dP
   
   PetscViewer :: viewer
 
@@ -887,11 +901,17 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
       slope = dz/sqrt(dx*dx + dy*dy * dz*dz)
 
-      hw_up = (xx_loc_p(ghosted_id_up)-option%reference_pressure)/abs(option%gravity(3))/rho
-      hw_dn = (xx_loc_p(ghosted_id_dn)-option%reference_pressure)/abs(option%gravity(3))/rho
-
-      if(hw_up < eps) hw_up = 0.d0
-      if(hw_dn < eps) hw_dn = 0.d0
+#if 0
+      dP = xx_loc_p(ghosted_id_up)-option%reference_pressure
+      if (dP<eps) dP = 0.0d0
+      hw_up = dP/abs(option%gravity(3))/rho
+      
+      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
+      if (dP<eps) dP = 0.0d0
+      hw_dn = dP/abs(option%gravity(3))/rho
+#endif
+      hw_up = xx_loc_p(ghosted_id_up)
+      hw_dn = xx_loc_p(ghosted_id_dn)
 
       call SurfaceFluxKinematicDerivative(hw_up, mannings_loc_p(ghosted_id_up), &
                                           hw_dn, mannings_loc_p(ghosted_id_dn), &
@@ -935,14 +955,17 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       !write(*,*),sum_connection,ghosted_id,local_id
   
-      dx = cur_connection_set%intercp(1,iconn) - xc(ghosted_id_dn)
-      dy = cur_connection_set%intercp(2,iconn) - yc(ghosted_id_dn)
-      dz = cur_connection_set%intercp(3,iconn) - zc(ghosted_id_dn)
+      dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
+      dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
+      dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
 
-      hw_dn = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
-      if(hw_dn < eps) hw_dn = 0.d0
-
+#if 0
+      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
+      if (dP<eps) dP = 0.0d0
+      hw_dn = dP/abs(option%gravity(3))/rho
+#endif
+      hw_dn = xx_loc_p(ghosted_id_dn)
       call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
                           hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
                           cur_connection_set%area(iconn),option,Jdn)
@@ -1051,9 +1074,11 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
 
+#if 0
     head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
     if(head < 1.D-8) head = 0.d0
-    
+#endif
+    head = xx_loc_p(ghosted_id)
     call SurfaceFlowAccumulationDerivative(head,area_p(local_id),option,Jup(1,1))
     !write(*,*),ghosted_id,Jup(1,1)
     
@@ -1079,7 +1104,7 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      write(*,*),sum_connection,ghosted_id,local_id,qsrc,area_p(local_id)
+      !write(*,*),sum_connection,ghosted_id,local_id,qsrc,area_p(local_id)
       select case(source_sink%flow_condition%rate%itype)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc = m^3/sec
@@ -1287,9 +1312,11 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
     ghosted_id = grid%nL2G(local_id)
     
+#if 0
     head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
     if(head < 1.D-8) head = 0.d0
-    
+#endif    
+    head = xx_loc_p(ghosted_id)
     call SurfaceFlowAccumulation(head,area_p(local_id),option, &
                                  accum_p(local_id:local_id))
 
@@ -1388,6 +1415,7 @@ subroutine SurfaceBCFlux(ibndtype,head,slope,mannings, &
   end select
   
   Res(1) = flux*length
+  !write(*,*),'SurfaceBCFlux: ',head,Res(1)
 
 end subroutine SurfaceBCFlux
 
