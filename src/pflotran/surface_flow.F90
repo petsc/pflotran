@@ -8,7 +8,7 @@ module Surface_Flow_module
   
   private
   
-#include "definitions.h"  
+#include "definitions.h"
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -23,12 +23,15 @@ module Surface_Flow_module
   PetscReal, parameter :: eps       = 1.D-8
 
   public SurfaceFlowSetup, &
+         SurfaceFlowInitializeTimestep, &
          SurfaceFlowReadRequiredCardsFromInput, &
          SurfaceFlowRead, &
          SurfaceFluxKinematic, &
          SurfaceFluxKinematicDerivative, &
          SurfaceFlowResidual, &
-         SurfaceFlowJacobian
+         SurfaceFlowJacobian, &
+         SurfaceFlowMaxChange, &
+         SurfaceFlowUpdateSolution
   
 contains
 
@@ -170,6 +173,7 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   use Condition_module
   use Coupler_module
   use Strata_module
+  use Debug_module
 
   implicit none
 
@@ -269,6 +273,22 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
         call SurfaceRealizationAddCoupler(surf_realization,coupler)
         nullify(coupler)        
 
+      !.........................................................................
+      case ('SURF_SOURCE_SINK')
+        coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
+        call InputReadWord(input,option,coupler%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Source Sink name') 
+        call CouplerRead(coupler,input,option)
+        call SurfaceRealizationAddCoupler(surf_realization,coupler)
+        nullify(coupler)        
+
+      !.........................................................................
+      case ('SURF_DEBUG')
+        call DebugRead(surf_realization%debug,input,option)
+        write(*,*),surf_realization%debug%vecview_solution, &
+          surf_realization%debug%vecview_residual, &
+          surf_realization%debug%matview_Jacobian
+
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -281,8 +301,12 @@ end subroutine SurfaceFlowRead
 
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the residual equation.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
 
@@ -293,7 +317,7 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
   use Discretization_module
   use Option_module
   use Logging_module
-
+  
   implicit none
 
   SNES :: snes
@@ -324,17 +348,57 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
       if (.not.associated(cur_patch)) exit
       surf_realization%patch => cur_patch
       call SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
-      !call SurfaceFlowResidualPatch1(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
+  ! pass #1 for internal and boundary flux terms
+  cur_level => surf_realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      surf_realization%patch => cur_patch
+      call SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  if (surf_realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rresidual.out', &
+                              viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rresidual.bin', &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
+  if (surf_realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rxx.bin', &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
 end subroutine SurfaceFlowResidual
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the interior flux and boundary flux terms of the 
+!! residual equation.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
 
@@ -386,7 +450,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
-  PetscReal :: slope_up, slope_dn
+  PetscReal :: slope, slope_dn
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   PetscViewer :: viewer
@@ -415,7 +479,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   zc => surf_realization%discretization%grid%z
 
   ! Interior Flux Terms -----------------------------------
-  !write(*,*),'Interior fluxes:'
+  !write(*,*),'Interior fluxes: Residual'
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -430,56 +494,36 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up)
       local_id_dn = grid%nG2L(ghosted_id_dn)
       
-      dx = cur_connection_set%intercp(1,iconn) - xc(ghosted_id_up)
-      dy = cur_connection_set%intercp(2,iconn) - yc(ghosted_id_up)
-      dz = cur_connection_set%intercp(3,iconn) - zc(ghosted_id_up)
-      slope_up = dz/sqrt(dx*dx + dy*dy * dz*dz)
+      dx = xc(ghosted_id_dn) - xc(ghosted_id_up)
+      dy = yc(ghosted_id_dn) - yc(ghosted_id_up)
+      dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
+      slope = dz/sqrt(dx*dx + dy*dy * dz*dz)
       
-      dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
-      dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
-      dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
-      slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
-
-      hw_up = (xx_loc_p(ghosted_id_up)-option%reference_pressure)/option%gravity(3)/rho
-      hw_dn = (xx_loc_p(ghosted_id_dn)-option%reference_pressure)/option%gravity(3)/rho
+      hw_up = (xx_loc_p(ghosted_id_up)-option%reference_pressure)/abs(option%gravity(3))/rho
+      hw_dn = (xx_loc_p(ghosted_id_dn)-option%reference_pressure)/abs(option%gravity(3))/rho
       
       if(hw_up < eps) hw_up = 0.d0
       if(hw_dn < eps) hw_dn = 0.d0
 
-      write(*,*),''
-      write(*,*),'dist: ',cur_connection_set%dist(1:3,iconn)
-      write(*,*),'intp: ',cur_connection_set%intercp(1:3,iconn)
-      write(*,'(3I5,5es10.2)'),sum_connection,ghosted_id_up,ghosted_id_dn, &
-        slope_up,slope_dn,mannings_loc_p(ghosted_id_up),&
-        hw_up,hw_dn
-      write(*,*),'hw: ',hw_up,hw_dn
-      write(*,*),'slope: ',slope_up,slope_dn
-      write(*,*),'mannings: ',mannings_loc_p(ghosted_id_up),mannings_loc_p(ghosted_id_dn)
-      call SurfaceFluxKinematic(hw_up,slope_up,mannings_loc_p(ghosted_id_up), &
-                                hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
-                                cur_connection_set%area(iconn),option,Res)
-      write(*,*),'Res = ',Res(1)
+      call SurfaceFluxKinematic(hw_up,mannings_loc_p(ghosted_id_up), &
+                                hw_dn,mannings_loc_p(ghosted_id_dn), &
+                                slope, cur_connection_set%area(iconn),option,Res)
 
-      !Res(1) = 1.0d0
+      !write(*,*),sum_connection,Res(1)
+      if (local_id_up>0) then
+        r_p(local_id_up) = r_p(local_id_up) + Res(1)
+      endif
+         
+      if (local_id_dn>0) then
+        r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
+      endif
 
-      write(*,*),'r_p: ',r_p(local_id_up),r_p(local_id_dn)
-         
-        if (local_id_up>0) then
-          r_p(local_id_up) = r_p(local_id_up) - Res(1)
-        endif
-         
-        if (local_id_dn>0) then
-          r_p(local_id_dn) = r_p(local_id_dn) + Res(1)
-        endif
-      
-      write(*,*),'r_p: ',r_p(local_id_up),r_p(local_id_dn)
-      
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
 
   ! Boundary Flux Terms -----------------------------------
-  !write(*,*),'Boundary fluxes:'
+  !write(*,*),'Boundary fluxes: Residual'
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -492,8 +536,21 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
     
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      !write(*,'(3I5)'),sum_connection,ghosted_id,local_id
   
+      dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
+      dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
+      dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
+      slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
+
+      hw_dn = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
+      if(hw_dn < eps) hw_dn = 0.d0
+
+      call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
+                          hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
+                          cur_connection_set%area(iconn), option,Res)
+      !write(*,*),sum_connection,local_id,Res(1)
+
+      r_p(local_id) = r_p(local_id) - Res(1)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -502,18 +559,156 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   call GridVecRestoreArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
 
-  call PetscViewerASCIIOpen(option%mycomm,'r_surfflow.out',viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
-  !option%io_buffer = 'stopping for debugging'
-  !call printErrMsgByRank(option)
-
 end subroutine SurfaceFlowResidualPatch1  
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the accumulation and source/sink terms of the 
+!! residual equation.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
+! ************************************************************************** !
+subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
+
+  use water_eos_module
+
+  use Connection_module
+  use Surface_Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Surface_Field_module
+  use Debug_module
+  
+  implicit none
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(surface_realization_type) :: surf_realization
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+
+  PetscReal, pointer :: r_p(:), mannings_loc_p(:)
+  PetscReal, pointer :: accum_p(:),area_p(:),xx_loc_p(:)
+
+  PetscReal, pointer :: face_fluxes_p(:)
+  PetscInt :: icap_up, icap_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: upweight
+  PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
+
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer :: surf_field
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
+  PetscReal :: slope_dn
+  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
+  PetscInt :: direction, max_x_conn, max_y_conn
+  PetscViewer :: viewer
+  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: head         ! water height [m]
+  PetscReal, pointer :: xc(:),yc(:),zc(:)
+  PetscReal :: dx, dy, dz
+  PetscReal :: qsrc, qsrc_flow
+  
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+  surf_field => surf_realization%surf_field
+  
+  call GridVecGetArrayF90(grid,r,r_p,ierr)
+  call GridVecGetArrayF90(grid,surf_field%flow_accum,accum_p,ierr)
+  call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
+  
+  call density(option%reference_temperature,option%reference_pressure,rho)
+
+  ! Accumulation terms ------------------------------------
+  !write(*,*),'Accumulation terms: Residual '
+  r_p = r_p - accum_p
+
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+
+    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
+    if(head < 1.D-8) head = 0.d0
+    
+    !write(*,*),'head = ',ghosted_id,head
+    call SurfaceFlowAccumulation(head,area_p(local_id),option,Res)
+    
+    r_p(local_id) = r_p(local_id) + Res(1)
+  enddo
+
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
+  !write(*,*),'Source/Sink: Residual '
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      
+    cur_connection_set => source_sink%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1     
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      select case(source_sink%flow_condition%rate%itype)
+        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc = m^3/sec
+          qsrc = qsrc_flow/1.d0*area_p(local_id)
+        case default
+          option%io_buffer = 'Source/Sink flow condition type not recognized'
+          call printErrMsg(option)
+      end select
+
+      !write(*,*),sum_connection,local_id,qsrc,area_p(local_id)
+      r_p(local_id) = r_p(local_id) - qsrc
+
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,r,r_p,ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%flow_accum,accum_p,ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+
+  end subroutine SurfaceFlowResidualPatch2
+
+! ************************************************************************** !
+!> This routine computes the Jacbian.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
 
@@ -542,7 +737,6 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
 
-
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
   option => surf_realization%option
@@ -569,17 +763,35 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
       surf_realization%patch => cur_patch
 
       call SurfaceFlowJacobianPatch1(snes,xx,J,J,flag,surf_realization,ierr)
+      call SurfaceFlowJacobianPatch2(snes,xx,J,J,flag,surf_realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
+  if (surf_realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rjacobian.out', &
+                              viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rjacobian.bin', &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
 end subroutine SurfaceFlowJacobian
 
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the interior flux and boundary flux terms of the
+!! jacobian.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 
 subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
@@ -622,7 +834,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
   PetscReal, pointer :: mannings_loc_p(:),xx_loc_p(:)
   PetscReal :: dx, dy, dz
-  PetscReal :: slope_up, slope_dn
+  PetscReal :: slope_dn, slope
   
   type(surface_field_type), pointer :: surf_field
   type(coupler_type), pointer :: boundary_condition, source_sink
@@ -635,10 +847,6 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
-  !type(field_type), pointer :: field 
-  !type(SurfaceFlow_parameter_type), pointer :: SurfaceFlow_parameter
-  !type(SurfaceFlow_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
-  !type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
   PetscViewer :: viewer
 
@@ -661,10 +869,10 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0    
+  !write(*,*),'Interior fluxes: - Jac'
   do 
     if (.not.associated(cur_connection_set)) exit
     
-    !write(*,*),'cur_connection_set%num_connections : ',cur_connection_set%num_connections
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
@@ -674,43 +882,36 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      dx = cur_connection_set%intercp(1,iconn) - xc(ghosted_id_up)
-      dy = cur_connection_set%intercp(2,iconn) - yc(ghosted_id_up)
-      dz = cur_connection_set%intercp(3,iconn) - zc(ghosted_id_up)
-      slope_up = dz/sqrt(dx*dx + dy*dy * dz*dz)
-      
-      dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
-      dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
-      dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
-      slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
+      dx = xc(ghosted_id_dn) - xc(ghosted_id_up)
+      dy = yc(ghosted_id_dn) - yc(ghosted_id_up)
+      dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
+      slope = dz/sqrt(dx*dx + dy*dy * dz*dz)
 
-      hw_up = (xx_loc_p(ghosted_id_up)-option%reference_pressure)/option%gravity(3)/rho
-      hw_dn = (xx_loc_p(ghosted_id_dn)-option%reference_pressure)/option%gravity(3)/rho
-      
+      hw_up = (xx_loc_p(ghosted_id_up)-option%reference_pressure)/abs(option%gravity(3))/rho
+      hw_dn = (xx_loc_p(ghosted_id_dn)-option%reference_pressure)/abs(option%gravity(3))/rho
+
       if(hw_up < eps) hw_up = 0.d0
       if(hw_dn < eps) hw_dn = 0.d0
 
-      write(*,*),'hw : ',hw_up,hw_dn
-      call SurfaceFluxKinematicDerivative(hw_up,slope_up, mannings_loc_p(ghosted_id_up), &
-                                          hw_dn,slope_dn, mannings_loc_p(ghosted_id_dn), &
+      call SurfaceFluxKinematicDerivative(hw_up, mannings_loc_p(ghosted_id_up), &
+                                          hw_dn, mannings_loc_p(ghosted_id_dn), &
+                                          slope, &
                                           cur_connection_set%area(iconn), &
                                           option,Jup,Jdn)
-      !Jup = 1.0d0
-      !Jdn = 1.0d0
-
-      if (local_id_dn > 0) then
-        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                              Jdn,ADD_VALUES,ierr)
-        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                               Jup,ADD_VALUES,ierr)
-      endif
       if (local_id_up > 0) then
-        Jup = -Jup
-        Jdn = -Jdn
         call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                Jup,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
                                Jdn,ADD_VALUES,ierr)
+      endif
+
+      if (local_id_dn > 0) then
+        Jup = -Jup
+        Jdn = -Jdn
+        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+                              Jdn,ADD_VALUES,ierr)
+        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+                               Jup,ADD_VALUES,ierr)
       endif
       
     enddo
@@ -718,29 +919,207 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
 
   enddo
    
+  ! Boundary Flux Terms -----------------------------------  
+  !write(*,*),'Boundary fluxes: - Jac'
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      !write(*,*),sum_connection,ghosted_id,local_id
+  
+      dx = cur_connection_set%intercp(1,iconn) - xc(ghosted_id_dn)
+      dy = cur_connection_set%intercp(2,iconn) - yc(ghosted_id_dn)
+      dz = cur_connection_set%intercp(3,iconn) - zc(ghosted_id_dn)
+      slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
+
+      hw_dn = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
+      if(hw_dn < eps) hw_dn = 0.d0
+
+      call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
+                          hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
+                          cur_connection_set%area(iconn),option,Jdn)
+
+      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
+                             ADD_VALUES,ierr)
+
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+
   call GridVecRestoreArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
 
-  !realization%option%io_buffer = 'stopping '
-  !call printErrMsg(realization%option)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-
-  call PetscViewerASCIIOpen(option%mycomm,'jacobian_surfflow.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
-  option%io_buffer = 'stopping for debugging'
-  call printErrMsgByRank(option)
 
 end subroutine SurfaceFlowJacobianPatch1
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the accumulation and source/sink terms of the 
+!! jacobian.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
-subroutine SurfaceFluxKinematic(hw_up,slope_up,mannings_up, &
-                                hw_dn,slope_dn,mannings_dn,length,option,Res)
+
+subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
+       
+  use water_eos_module
+
+  use Connection_module
+  use Surface_Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+  use Coupler_module
+  use Surface_Field_module
+  use Debug_module
+    
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: xx
+  Mat, intent(out) :: A, B
+  type(surface_realization_type) :: surf_realization
+  MatStructure flag
+
+  PetscErrorCode :: ierr
+
+  PetscReal, pointer :: porosity_loc_p(:), &
+                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscInt :: icap_up,icap_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: upweight
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  
+  PetscReal :: Jup(surf_realization%option%nflowdof,surf_realization%option%nflowdof), &
+               Jdn(surf_realization%option%nflowdof,surf_realization%option%nflowdof)
+  PetscReal :: rho          ! density      [kg/m^3]
+  PetscReal :: head, hw_dn ! water height [m]
+  PetscReal, pointer :: xc(:),yc(:),zc(:)
+  PetscReal, pointer :: mannings_loc_p(:),xx_loc_p(:),area_p(:)
+  PetscReal :: dx, dy, dz
+  PetscReal :: slope_dn, slope
+  
+  type(surface_field_type), pointer :: surf_field
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity 
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option 
+  
+  PetscViewer :: viewer
+
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+
+  surf_field => surf_realization%surf_field
+
+  call GridVecGetArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
+  call GridVecGetArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
+
+  call density(option%reference_temperature,option%reference_pressure,rho)
+
+  xc => surf_realization%discretization%grid%x
+  yc => surf_realization%discretization%grid%y
+  zc => surf_realization%discretization%grid%z
+
+  ! Accumulation terms ------------------------------------
+  !write(*,*),'Accumulation terms: Jac'
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+
+    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
+    if(head < 1.D-8) head = 0.d0
+    
+    call SurfaceFlowAccumulationDerivative(head,area_p(local_id),option,Jup(1,1))
+    !write(*,*),ghosted_id,Jup(1,1)
+    
+    call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                           ADD_VALUES,ierr)
+  enddo
+
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
+  !write(*,*),'Source/Sink'
+#if 0
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+      
+    cur_connection_set => source_sink%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1     
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      write(*,*),sum_connection,ghosted_id,local_id,qsrc,area_p(local_id)
+      select case(source_sink%flow_condition%rate%itype)
+        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc = m^3/sec
+          qsrc = qsrc/1.d0*area_p(local_id)
+        case default
+          option%io_buffer = 'Source/Sink flow condition type not recognized'
+          call printErrMsg(option)
+      end select
+
+    enddo
+    source_sink => source_sink%next
+  enddo
+#endif
+
+  call GridVecRestoreArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+
+end subroutine SurfaceFlowJacobianPatch2
+
+! ************************************************************************** !
+!> This routine computes the internal flux term for the residual under
+!! kinematic-wave assumption.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
+! ************************************************************************** !
+subroutine SurfaceFluxKinematic(hw_up, &
+                                mannings_up, &
+                                hw_dn, &
+                                mannings_dn, &
+                                slope, &
+                                length, &
+                                option, &
+                                Res)
 
   use Option_module
   
@@ -748,28 +1127,38 @@ subroutine SurfaceFluxKinematic(hw_up,slope_up,mannings_up, &
   
   type(option_type) :: option
   PetscReal :: hw_up, hw_dn
-  PetscReal :: slope_up, slope_dn
+  PetscReal :: slope
   PetscReal :: mannings_up, mannings_dn
-  PetscReal :: Res(1:option%nflowdof)
+  PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
   PetscReal :: length
   
-  PetscReal :: flux_up, flux_dn
+  PetscReal :: flux       ! units: m^2/s
   
-  flux_up = max(0.d0, dsign(1.d0,-slope_up)*sqrt(dabs(slope_up))/mannings_up*(hw_up)**(5.d0/3.d0) )
-  flux_dn = max(0.d0, dsign(1.d0,-slope_dn)*sqrt(dabs(slope_dn))/mannings_dn*(hw_dn)**(5.d0/3.d0) )
+  ! initialize
+  flux = 0.d0
   
-  Res(1) = (flux_up - flux_dn)*length
-  write(*,*),'flux: ',flux_up,flux_dn,length,Res(1)
+  if (slope<0.d0) then
+    flux =  sqrt(dabs(slope))/mannings_up*((hw_up)**(5.d0/3.d0))
+  else
+    flux = -sqrt(dabs(slope))/mannings_dn*((hw_dn)**(5.d0/3.d0))
+  endif
+
+  Res(1) = flux*length
 
 end subroutine SurfaceFluxKinematic
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the derivative of the internal flux term for the
+!! Jacobian under kinematic-wave assumption.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
-subroutine SurfaceFluxKinematicDerivative(hw_up,slope_up,mannings_up, &
-                                          hw_dn,slope_dn,mannings_dn, &
-                                          length,option,Jup,Jdn)
+subroutine SurfaceFluxKinematicDerivative(hw_up,mannings_up, &
+                                          hw_dn,mannings_dn, &
+                                          slope,length,option,Jup,Jdn)
 
   use Option_module
   
@@ -777,25 +1166,27 @@ subroutine SurfaceFluxKinematicDerivative(hw_up,slope_up,mannings_up, &
   
   type(option_type) :: option
   PetscReal :: hw_up, hw_dn
-  PetscReal :: slope_up, slope_dn
+  PetscReal :: slope_up, slope_dn,slope
   PetscReal :: mannings_up, mannings_dn
   PetscReal :: length
   PetscReal :: Jup(option%nflowdof,option%nflowdof), &
                Jdn(option%nflowdof,option%nflowdof)
   
-  PetscReal :: flux_up_dh_up, flux_dn_dh_dn
+  PetscReal :: flux_dh_up, flux_dh_dn
+
+  flux_dh_up = 0.d0
+  flux_dh_dn = 0.d0
   
-  flux_up_dh_up = 5.d0/3.d0 * max(0.d0, dsign(1.d0,-slope_up)*sqrt(dabs(slope_up)) &
-                                        /mannings_up*(hw_up)**(2.d0/3.d0) )
-  flux_dn_dh_dn = 5.d0/3.d0 * max(0.d0, dsign(1.d0,-slope_dn)*sqrt(dabs(slope_dn)) &
-                                        /mannings_dn*(hw_dn)**(5.d0/3.d0) )
+  if (slope < 0.d0) then
+    flux_dh_up =  5.d0/3.d0 * sqrt(dabs(slope))/mannings_up*((hw_up)**(2.d0/3.d0))
+  else
+    flux_dh_dn = -5.d0/3.d0 * sqrt(dabs(slope))/mannings_dn*((hw_dn)**(2.d0/3.d0))
+  endif
   
-  Jup = flux_up_dh_up * length
-  Jdn = flux_dn_dh_dn * length
+  Jup = flux_dh_up*length
+  Jdn = flux_dh_dn*length
 
 end subroutine SurfaceFluxKinematicDerivative
-
-end module Surface_Flow_module
 
 ! ************************************************************************** !
 !
@@ -815,8 +1206,12 @@ subroutine SurfaceFlowInitializeTimestep(surf_realization)
 end subroutine SurfaceFlowInitializeTimestep
 
 ! ************************************************************************** !
-!
-!
+!> This routine updates the fixed portion of the accumulation term
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowUpdateFixedAccum(surf_realization)
 
@@ -845,8 +1240,13 @@ subroutine SurfaceFlowUpdateFixedAccum(surf_realization)
 end subroutine SurfaceFlowUpdateFixedAccum
 
 ! ************************************************************************** !
-!
-!
+!> This routine updates the fixed portion of the accumulation term over a 
+!! single patch
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
@@ -887,7 +1287,8 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
     ghosted_id = grid%nL2G(local_id)
     
-    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/option%gravity(3)/rho
+    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
+    if(head < 1.D-8) head = 0.d0
     
     call SurfaceFlowAccumulation(head,area_p(local_id),option, &
                                  accum_p(local_id:local_id))
@@ -901,8 +1302,12 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 end subroutine SurfaceFlowUpdateFixedAccumPatch
 
 ! ************************************************************************** !
-!
-!
+!> This routine computes the non-fixed portion of the accumulation term
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowAccumulation(head, area, option, Res)
 
@@ -915,8 +1320,181 @@ subroutine SurfaceFlowAccumulation(head, area, option, Res)
   PetscReal         :: head, area
 
   Res(1) = head * area / option%flow_dt
-  write(*,*), 'Res: ',Res(1)
 
 end subroutine SurfaceFlowAccumulation
-#endif
 
+! ************************************************************************** !
+!> This routine computes the derivative of the non-fixed portion of the 
+!! accumulation term for the Jacobian
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
+! ************************************************************************** !
+subroutine SurfaceFlowAccumulationDerivative(head, area, option, J)
+
+  use Option_module
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal         :: J(option%nflowdof,option%nflowdof)
+  PetscReal         :: head, area
+
+  J(1,1) = area / option%flow_dt
+
+end subroutine SurfaceFlowAccumulationDerivative
+
+
+! ************************************************************************** !
+!> This routine computes the boundary flux term for the residual
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
+! ************************************************************************** !
+subroutine SurfaceBCFlux(ibndtype,head,slope,mannings, &
+                         length,option,Res)
+
+  use Option_module
+  
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: head
+  PetscReal :: slope
+  PetscReal :: mannings
+  PetscReal :: length
+  PetscReal :: flux
+  PetscInt  :: ibndtype(:)
+
+  PetscInt :: pressure_bc_type
+
+  ! Flow  
+  pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
+  
+  select case(pressure_bc_type)
+    case (ZERO_GRADIENT_BC)
+      if (slope<0.d0) then
+        flux =  0.d0
+      else
+        flux = -sqrt(dabs(slope))/mannings*((head)**(5.d0/3.d0))
+      endif
+    case default
+      option%io_buffer = 'Uknown pressure_bc_type for surface flow '
+  end select
+  
+  Res(1) = flux*length
+
+end subroutine SurfaceBCFlux
+
+! ************************************************************************** !
+!> This routine computes the derivative of the boundary flux term for the 
+!! Jacobian
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
+! ************************************************************************** !
+subroutine SurfaceBCFluxDerivative(ibndtype,head,slope,mannings, &
+                                   length,option,J)
+
+  use Option_module
+  
+  implicit none
+
+!#include "definitions.h"
+
+  type(option_type) :: option
+  PetscReal :: J
+  PetscReal :: head
+  PetscReal :: slope
+  PetscReal :: mannings
+  PetscReal :: length
+  PetscInt :: ibndtype(:)
+
+  PetscInt :: pressure_bc_type
+  PetscReal :: flux_dh
+
+  ! Flow  
+  pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
+  
+  select case(pressure_bc_type)
+    case (ZERO_GRADIENT_BC)
+      if (slope<0.d0) then
+        flux_dh = 0.d0
+      else
+        flux_dh = -5.d0/3.d0*sqrt(dabs(slope))/mannings*((head)**(2.d0/3.d0))*length
+      endif
+    case default
+      option%io_buffer = 'Uknown pressure_bc_type for surface flow '
+  end select
+
+  J = flux_dh*length
+
+end subroutine SurfaceBCFluxDerivative
+
+! ************************************************************************** !
+!> This routine computes the maximum change in the solution vector
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
+! ************************************************************************** !
+subroutine SurfaceFlowMaxChange(surf_realization)
+
+  use Surface_Realization_module
+  use Option_module
+  use Surface_Field_module
+  
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer  :: surf_field  
+  
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  
+  option => surf_realization%option
+  surf_field => surf_realization%surf_field
+
+  call VecWAXPY(surf_field%flow_dxx,-1.d0,surf_field%flow_xx,surf_field%flow_yy,ierr)
+  call VecStrideNorm(surf_field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+
+end subroutine SurfaceFlowMaxChange
+
+! ************************************************************************** !
+!> This routine updates data in module after a successful time step
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/22/12
+! ************************************************************************** !
+subroutine SurfaceFlowUpdateSolution(surf_realization)
+
+  use Surface_Realization_module
+  use Surface_Field_module
+
+  implicit none
+
+  type(surface_realization_type)   :: surf_realization
+
+  type(surface_field_type),pointer :: surf_field
+  PetscErrorCode                   :: ierr
+
+  surf_field => surf_realization%surf_field
+  call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
+
+end subroutine SurfaceFlowUpdateSolution
+
+end module Surface_Flow_module
+
+#endif

@@ -28,7 +28,7 @@ module Unstructured_Cell_module
             UCellGetPlaneIntercept, &
             UCellProjectPointOntoPlane, &
             UCellComputeDistanceFromPlane, &
-            UcellGetLineIntercept, &
+            UCellGetLineIntercept, &
             UCellGetNVertices, &
             UCellGetNFaces, &
             UCellGetNFaceVertices, &
@@ -254,7 +254,7 @@ function UCellComputeArea(cell_type,vertices,option)
       v2(2) = vertices(1)%y-vertices(4)%y
       v2(3) = vertices(1)%z-vertices(4)%z
       n2 = CrossProduct(v1,v2)
-      area1 = 0.5d0*sqrt(DotProduct(n2,n2))
+      area2 = 0.5d0*sqrt(DotProduct(n2,n2))
       
       UCellComputeArea = (area1 + area2)
     case(TRI_TYPE)
@@ -1137,7 +1137,7 @@ end function UCellQuality
 ! date: 02/26/12
 !
 ! ************************************************************************** !
-subroutine UcellGetLineIntercept(line_start,line_end,point,intercept)
+subroutine UCellGetLineIntercept(line_start,line_end,point,intercept)
 
   implicit none
   type(point_type) :: line_start

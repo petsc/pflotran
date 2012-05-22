@@ -914,6 +914,10 @@ subroutine RegionReadSideSet(sideset,filename,option)
             num_vertices = 4
           case('T')
             num_vertices = 3
+          case('L')
+            num_vertices = 2
+          case default
+            option%io_buffer = 'Unknown face type: ' // trim(word)
         end select
         do ivertex = 1, num_vertices
           call InputReadInt(input,option,temp_int_array(ivertex,iface))

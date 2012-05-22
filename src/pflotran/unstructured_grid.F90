@@ -2454,9 +2454,12 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           intercept%y = 0.5d0*(intercept1%y + intercept2%y)
           intercept%z = 0.5d0*(intercept1%z + intercept2%z)
 
-          v1(1) = point_dn%x-point_up%x
-          v1(2) = point_dn%y-point_up%y
-          v1(3) = point_dn%z-point_up%z
+          !v1(1) = point_dn%x-point_up%x
+          !v1(2) = point_dn%y-point_up%y
+          !v1(3) = point_dn%z-point_up%z
+          v1(1) = point1%x-point2%x
+          v1(2) = point1%y-point2%y
+          v1(3) = point1%z-point2%z
 
           area1 = sqrt(DotProduct(v1,v1))
           area2 = 0.d0
@@ -2568,36 +2571,57 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         unstructured_grid%face_centroid(face_id)%x = 0.d0
         unstructured_grid%face_centroid(face_id)%y = 0.d0
         unstructured_grid%face_centroid(face_id)%z = 0.d0
-        if (unstructured_grid%face_to_vertex(4,face_id) == 0) then
-          face_type = TRI_FACE_TYPE
+
+        if (unstructured_grid%face_to_vertex(3,face_id) == 0) then
+          face_type = LINE_FACE_TYPE
         else
-          face_type = QUAD_FACE_TYPE
+          if (unstructured_grid%face_to_vertex(4,face_id) == 0) then
+            face_type = TRI_FACE_TYPE
+          else
+            face_type = QUAD_FACE_TYPE
+          endif
         endif
-        point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
-        point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
-        point3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
-        if (face_type == QUAD_FACE_TYPE) then
-          point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(4,face_id))
+
+        if(face_type == LINE_FACE_TYPE) then
+
+          point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
+          point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
+
+          v1(1) = point1%x-point2%x
+          v1(2) = point1%y-point2%y
+          v1(3) = point1%z-point2%z
+
+          area1 = sqrt(DotProduct(v1,v1))
+          area2 = 0.d0
         else
-          point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
-        endif
-        v1(1) = point3%x-point2%x
-        v1(2) = point3%y-point2%y
-        v1(3) = point3%z-point2%z
-        v2(1) = point1%x-point2%x
-        v2(2) = point1%y-point2%y
-        v2(3) = point1%z-point2%z
-        n1 = CrossProduct(v1,v2)
-        area1 = 0.5d0*sqrt(DotProduct(n1,n1))
+
+          point1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
+          point2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
+          point3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
+          if (face_type == QUAD_FACE_TYPE) then
+            point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(4,face_id))
+          else
+            point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
+          endif
+          v1(1) = point3%x-point2%x
+          v1(2) = point3%y-point2%y
+          v1(3) = point3%z-point2%z
+          v2(1) = point1%x-point2%x
+          v2(2) = point1%y-point2%y
+          v2(3) = point1%z-point2%z
+          n1 = CrossProduct(v1,v2)
+          area1 = 0.5d0*sqrt(DotProduct(n1,n1))
         
-        v1(1) = point1%x-point4%x
-        v1(2) = point1%y-point4%y
-        v1(3) = point1%z-point4%z
-        v2(1) = point3%x-point4%x
-        v2(2) = point3%y-point4%y
-        v2(3) = point3%z-point4%z
-        n2 = CrossProduct(v1,v2)
-        area2 = 0.5d0*sqrt(DotProduct(n2,n2))
+          v1(1) = point1%x-point4%x
+          v1(2) = point1%y-point4%y
+          v1(3) = point1%z-point4%z
+          v2(1) = point3%x-point4%x
+          v2(2) = point3%y-point4%y
+          v2(3) = point3%z-point4%z
+          n2 = CrossProduct(v1,v2)
+          area2 = 0.5d0*sqrt(DotProduct(n2,n2))
+        endif
+        
         unstructured_grid%face_area(face_id) = area1 + area2
         
         do ivert = 1,MAX_VERT_PER_FACE
@@ -2654,6 +2678,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   use Connection_module
   use Utility_module, only : DotProduct
   use Option_module
+  use Unstructured_Cell_module
   
   implicit none
   
@@ -2668,6 +2693,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   
   PetscInt  :: face_id
   PetscInt  :: ivert,vert_id
+  PetscInt  :: face_type
   PetscReal :: v1(3),v2(3),n_dist(3), dist
   type(point_type) :: vertex_8(8)
   type(plane_type) :: plane
@@ -2707,15 +2733,20 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
       !TODO(geh): add support for a quad face
       !TODO(geh): replace %face_to_vertex array with function that returns vertices
       !           based on cell type and iface
-      face_id = unstructured_grid%cell_to_face_ghosted(iface_cell, ghosted_id)
-      vertex1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
-      vertex2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
-      vertex3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
-      call UCellComputePlane(plane,vertex1,vertex2,vertex3)
       point%x = v2(1)
       point%y = v2(2)
       point%z = v2(3)
-      call UCellProjectPointOntoPlane(plane,point,intercept)
+      face_id = unstructured_grid%cell_to_face_ghosted(iface_cell, ghosted_id)
+      face_type = UCellGetFaceType(unstructured_grid%cell_type(ghosted_id),face_id,option)
+      vertex1 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(1,face_id))
+      vertex2 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(2,face_id))
+      if (face_type == LINE_FACE_TYPE) then
+        call UCellGetLineIntercept(vertex1,vertex2,point,intercept)
+      else
+        vertex3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
+        call UCellComputePlane(plane,vertex1,vertex2,vertex3)
+        call UCellProjectPointOntoPlane(plane,point,intercept)
+      endif
       
       ! Compute distance vector: cell_center - face_centroid
       v1(1) = v2(1) - intercept%x
@@ -2729,6 +2760,9 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
       connection%dist(2, iconn) = n_dist(2)
       connection%dist(3, iconn) = n_dist(3)
       connection%area(iconn)    = unstructured_grid%face_area(face_id)
+      connection%intercp(1,iconn)= intercept%x
+      connection%intercp(2,iconn)= intercept%y
+      connection%intercp(3,iconn)= intercept%z
       
   end select
   

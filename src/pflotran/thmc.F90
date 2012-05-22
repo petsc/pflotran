@@ -1226,10 +1226,7 @@ subroutine THMCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
 
   Res(1:option%nflowspec) = mol(:)
   Res(option%nflowdof-option%nmechdof) = eng
-  Res(option%nflowdof-option%nmechdof+1) = rock_den*option%gravity(1)*vol*option%flow_dt
-  Res(option%nflowdof-option%nmechdof+2) = rock_den*option%gravity(2)*vol*option%flow_dt
-  Res(option%nflowdof-option%nmechdof+3) = rock_den*option%gravity(3)*vol*option%flow_dt
-
+ 
 
 end subroutine THMCAccumulation
 
@@ -1891,28 +1888,6 @@ subroutine THMCFluxDerivative2(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: youngs_modulus_up, youngs_modulus_dn
   PetscReal :: poissons_ratio_up, poissons_ratio_dn
   PetscReal :: pert_up, pert_dn
-
-
-#ifdef ICE  
-  PetscReal :: Ddiffgas_avg, Ddiffgas_up, Ddiffgas_dn
-  PetscReal :: p_g
-  PetscReal :: deng_up, deng_dn
-  PetscReal :: psat_up, psat_dn
-  PetscReal :: molg_up, molg_dn
-  PetscReal :: satg_up, satg_dn
-  PetscReal :: Diffg_up, Diffg_dn
-  PetscReal :: ddeng_dt_up, ddeng_dt_dn
-  PetscReal :: dpsat_dt_up, dpsat_dt_dn
-  PetscReal :: dmolg_dt_up, dmolg_dt_dn
-  PetscReal :: dDiffg_dt_up, dDiffg_dt_dn
-  PetscReal :: dDiffg_dp_up, dDiffg_dp_dn
-  PetscReal :: dsatg_dp_up, dsatg_dp_dn
-  PetscReal :: Diffg_ref, p_ref, T_ref
-  PetscErrorCode :: ierr
-  PetscReal :: Ke_fr_up,Ke_fr_dn   ! frozen soil Kersten numbers
-  PetscReal :: dKe_fr_dt_up, dKe_fr_dt_dn
-  PetscReal :: dKe_fr_dp_up, dKe_fr_dp_dn
-#endif
   
   Jup = 0.d0
   Jdn = 0.d0 
@@ -1949,7 +1924,7 @@ subroutine THMCFluxDerivative2(aux_var_up,global_aux_var_up,por_up,tor_up, &
       option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
       Dk_ice_up,Dk_ice_dn, &
       alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-      disp_grad_up,disp_grad_pert_dn,unit_normal, &
+      disp_grad_up,disp_grad_pert_dn,-unit_normal, &
       youngs_modulus_up,poissons_ratio_up, &
       youngs_modulus_dn,poissons_ratio_dn, &
       res_pert_dn)
@@ -2149,9 +2124,9 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
  ! Calculating the residual for the mechanical component
 
   youngs_modulus_avg = (youngs_modulus_up*youngs_modulus_dn)/(dd_dn*youngs_modulus_up + &
-                                      dd_up*youngs_modulus_dn)
+                        dd_up*youngs_modulus_dn)*(dd_up + dd_dn)
   poissons_ratio_avg = (poissons_ratio_up*poissons_ratio_dn)/(dd_dn*poissons_ratio_up + &
-                                      dd_up*poissons_ratio_dn)
+                        dd_up*poissons_ratio_dn)*(dd_up + dd_dn)
 
   disp_grad_face = dd_up*disp_grad_up + dd_dn*disp_grad_dn
 
@@ -2161,18 +2136,15 @@ subroutine THMCFlux(aux_var_up,global_aux_var_up, &
   
   Res(option%nflowdof-option%nmechdof+1) = (stress(1,1)*unit_normal(1) + &
                                            stress(1,2)*unit_normal(2) + &
-                                           stress(1,3)*unit_normal(3))*area* &
-                                           option%flow_dt
+                                           stress(1,3)*unit_normal(3))*area
 
   Res(option%nflowdof-option%nmechdof+2) = (stress(2,1)*unit_normal(1) + &
                                            stress(2,2)*unit_normal(2) + &
-                                           stress(2,3)*unit_normal(3))*area* &
-                                           option%flow_dt
+                                           stress(2,3)*unit_normal(3))*area
 
   Res(option%nflowdof-option%nmechdof+3) = (stress(3,1)*unit_normal(1) + &
                                            stress(3,2)*unit_normal(2) + &
-                                           stress(3,3)*unit_normal(3))*area* &
-                                           option%flow_dt
+                                           stress(3,3)*unit_normal(3))*area
   
  
 end subroutine THMCFlux
@@ -2978,7 +2950,8 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
   r_p = 0.d0
 #if 1
   ! Accumulation terms ------------------------------------
-  r_p = - accum_p
+
+  r_p = -accum_p
 
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -2995,6 +2968,15 @@ subroutine THMCResidualPatch(snes,xx,r,realization,ierr)
                         thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id))), &
                         option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
+    r_p(iend-2) =  r_p(iend-2) + &
+         thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id)))* &
+         option%gravity(1)*volume_p(local_id)*1.d-6 !convert to MN
+    r_p(iend-1) =  r_p(iend-2) + &
+         thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id)))* &
+         option%gravity(2)*volume_p(local_id)*1.d-6 !convert to MN
+    r_p(iend) =  r_p(iend) + &
+         thmc_parameter%rock_den(int(ithrm_loc_p(ghosted_id)))* &
+         option%gravity(3)*volume_p(local_id)*1.d-6 !convert to MN
   enddo 
 #endif
 #if 1
@@ -3502,6 +3484,7 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               realization%saturation_function_array(icap)%ptr, &
                               Jup) 
+    
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
 #endif
@@ -3695,11 +3678,11 @@ subroutine THMCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
           call THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
                                                ghosted_id_up, &
                                                disp_grad_pert_up, i, &
-                                               perturbation_tolerance, option)
+                                               pert_up, option)
           call THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
                                                ghosted_id_dn, &
                                                disp_grad_pert_dn, i, &
-                                               perturbation_tolerance, option)
+                                               pert_dn, option)
           call THMCFluxDerivative2(aux_vars(ghosted_id_up), &
                              global_aux_vars(ghosted_id_up), &
                              porosity_loc_p(ghosted_id_up), &
@@ -4225,7 +4208,6 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
   PetscReal :: uy_weighted(3,1)
   PetscReal :: uz_weighted(3,1)
   PetscReal :: perturbation_tolerance
-  PetscReal, parameter :: epsilon = 1.d-8
 
   PetscInt :: i, direction_flag, flag_x, flag_y, flag_z
   PetscInt :: INDX(3)
@@ -4264,39 +4246,18 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
     disp_vec(2,1) = grid%y(ghosted_neighbors(i)) - grid%y(ghosted_id)
     disp_vec(3,1) = grid%z(ghosted_neighbors(i)) - grid%z(ghosted_id)
     disp_mat = disp_mat + matmul(disp_vec,transpose(disp_vec))
-    if (abs(global_aux_vars(ghosted_id)%displacement(1)) < epsilon) then
-      ux_weighted = ux_weighted + disp_vec* &
+    ux_weighted = ux_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
-                     global_aux_vars(ghosted_id)%displacement(1) + &
-                     epsilon)
-    else
-      ux_weighted = ux_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%displacement(1) - &
-                     global_aux_vars(ghosted_id)%displacement(1)* &
-                     (1.d0 + flag_x*perturbation_tolerance))
-    endif
-    if (abs(global_aux_vars(ghosted_id)%displacement(2)) < epsilon) then
-      uy_weighted = uy_weighted + disp_vec* &
+                     (global_aux_vars(ghosted_id)%displacement(1) &
+                      + flag_x*perturbation_tolerance))
+    uy_weighted = uy_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
-                     global_aux_vars(ghosted_id)%displacement(2) + &
-                     epsilon)
-    else
-      uy_weighted = uy_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%displacement(2) - &
-                     global_aux_vars(ghosted_id)%displacement(2)* &
-                     (1.d0 + flag_y*perturbation_tolerance))
-    endif
-    if (abs(global_aux_vars(ghosted_id)%displacement(3)) < epsilon) then
-      uz_weighted = uz_weighted + disp_vec* &
+                     (global_aux_vars(ghosted_id)%displacement(2) &
+                      + flag_y*perturbation_tolerance))
+    uz_weighted = uz_weighted + disp_vec* &
                     (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
-                     global_aux_vars(ghosted_id)%displacement(3) + &
-                     epsilon)
-    else
-      uz_weighted = uz_weighted + disp_vec* &
-                    (global_aux_vars(ghosted_neighbors(i))%displacement(3) - &
-                     global_aux_vars(ghosted_id)%displacement(3)* &
-                     (1.d0 + flag_z*perturbation_tolerance))
-    endif
+                     (global_aux_vars(ghosted_id)%displacement(3) &
+                      + flag_z*perturbation_tolerance))
   enddo
 
   call ludcmp(disp_mat,3,INDX,D)

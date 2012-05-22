@@ -364,6 +364,10 @@ subroutine SurfaceRealizationCreateDiscretization(surf_realization)
   call DiscretizationCreateVector(discretization,ONEDOF,surf_field%flow_xx, &
                                   GLOBAL,option)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%flow_yy)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
+                                     surf_field%flow_dxx)
+  call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%flow_r)
   call DiscretizationDuplicateVector(discretization,surf_field%flow_xx, &
                                      surf_field%flow_accum)
