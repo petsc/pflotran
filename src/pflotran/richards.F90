@@ -747,6 +747,7 @@ end subroutine RichardsUpdateMassBalancePatch
 subroutine RichardsUpdateAuxVars(realization)
 
   use Realization_module
+  use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
   type(realization_type) :: realization
   

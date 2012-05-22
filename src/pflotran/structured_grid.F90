@@ -6,6 +6,10 @@ module Structured_Grid_module
  
 #include "definitions.h"
 
+  PetscInt, parameter, public :: CARTESIAN_GRID = 3
+  PetscInt, parameter, public :: CYLINDRICAL_GRID = 4
+  PetscInt, parameter, public :: SPHERICAL_GRID = 5
+
   type, public :: structured_grid_type
 
     character(len=MAXWORDLENGTH) :: ctype
@@ -916,8 +920,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   leny = structured_grid%ngy - 1
   lenz = structured_grid%ngz - 1
 
-  connections => ConnectionCreate(nconn, &
-                                  option%nphase,INTERNAL_CONNECTION_TYPE)
+  connections => ConnectionCreate(nconn,INTERNAL_CONNECTION_TYPE)
   
   ! if using higher order advection, allocate associated arrays
   if (option%itranmode == EXPLICIT_ADVECTION .and. &
@@ -1280,8 +1283,7 @@ function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 !  stop
 
 
-  connections => ConnectionCreate(nconn, &
-                                  option%nphase,BOUNDARY_CONNECTION_TYPE)
+  connections => ConnectionCreate(nconn,BOUNDARY_CONNECTION_TYPE)
 
 !  StructGridComputeBoundConnect => connections
 

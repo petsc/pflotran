@@ -18,6 +18,12 @@ module Grid_module
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
 
+  PetscInt, parameter, public :: NULL_GRID = 0
+  PetscInt, parameter, public :: STRUCTURED_GRID = 1
+  PetscInt, parameter, public :: UNSTRUCTURED_GRID = 2
+  PetscInt, parameter, public :: STRUCTURED_GRID_MIMETIC = 3
+  PetscInt, parameter, public :: UNSTRUCTURED_GRID_MIMETIC = 4
+
   type, public :: grid_type 
   
     character(len=MAXWORDLENGTH) :: ctype
@@ -97,7 +103,7 @@ module Grid_module
 #endif
 
   end type grid_type
-
+  
   type, public :: face_type
     type(connection_set_type), pointer :: conn_set_ptr
     PetscInt :: id
@@ -220,7 +226,8 @@ end function GridCreate
 subroutine GridComputeInternalConnect(grid,option,ugdm)
 
   use Connection_module
-  use Option_module    
+  use Option_module
+  use Unstructured_Explicit_module
     
   implicit none
   
@@ -239,10 +246,14 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
       connection_set => &
         StructGridComputeInternConnect( grid%structured_grid, grid%x, grid%y, &
                                     grid%z, option)
-    case(UNSTRUCTURED_GRID) 
+    case(IMPLICIT_UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
                                   grid%z,ugdm%scatter_ltol,option)
+    case(EXPLICIT_UNSTRUCTURED_GRID)
+      connection_set => &
+        ExplicitUGridSetInternConnect(grid%unstructured_grid%explicit_grid, &
+                                        option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -258,7 +269,7 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
         grid%nlmax_faces = grid%structured_grid%nlmax_faces;
         grid%ngmax_faces = grid%structured_grid%ngmax_faces;
 #endif
-    case(UNSTRUCTURED_GRID) 
+    case(IMPLICIT_UNSTRUCTURED_GRID) 
 !      connection_bound_set => &
 !        UGridComputeBoundConnect(grid%unstructured_grid,option)
   end select
@@ -315,7 +326,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local, &
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructGridPopulateConnection(grid%x,grid%structured_grid,connection, &
                                         iface,iconn,cell_id_ghosted,option)
-    case(UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridPopulateConnection(grid%unstructured_grid,connection,iface,&
                                    iconn,cell_id_ghosted,option)
   end select
@@ -1254,7 +1265,7 @@ subroutine GridMapIndices(grid, sgdm)
        deallocate(int_tmp)
       end if
 #endif
-    case(UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID)
   end select
  
  
@@ -1279,7 +1290,7 @@ subroutine GridComputeSpacing(grid,option)
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridComputeSpacing(grid%structured_grid,option)
-    case(UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridComputeSpacing
@@ -1294,40 +1305,44 @@ end subroutine GridComputeSpacing
 subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
 
   use Option_module
+  use Unstructured_Explicit_module
   
   implicit none
 
   type(grid_type) :: grid
   PetscReal :: origin_global(3)
   type(option_type) :: option
-  type(ugdm_type), optional :: ugdm ! sp  
+  type(ugdm_type), optional :: ugdm ! sp 
+  PetscInt :: icell
   
   PetscErrorCode :: ierr  
+
+  allocate(grid%x(grid%ngmax))
+  grid%x = 0.d0
+  allocate(grid%y(grid%ngmax))
+  grid%y = 0.d0
+  allocate(grid%z(grid%ngmax))
+  grid%z = 0.d0
   
   select case(grid%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      allocate(grid%x(grid%ngmax))
-      grid%x = 0.d0
-      allocate(grid%y(grid%ngmax))
-      grid%y = 0.d0
-      allocate(grid%z(grid%ngmax))
-      grid%z = 0.d0
       call StructuredGridComputeCoord(grid%structured_grid,option, &
                                       origin_global, &
                                       grid%x,grid%y,grid%z, &
                                       grid%x_min_local,grid%x_max_local, &
                                       grid%y_min_local,grid%y_max_local, &
                                       grid%z_min_local,grid%z_max_local)
-    case(UNSTRUCTURED_GRID)
-      allocate(grid%x(grid%ngmax))
-      grid%x = 0.d0
-      allocate(grid%y(grid%ngmax))
-      grid%y = 0.d0
-      allocate(grid%z(grid%ngmax))
-      grid%z = 0.d0
+    case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeCoord(grid%unstructured_grid,option, &
                              ugdm%scatter_ltol, & !sp 
                              grid%x,grid%y,grid%z, &
+                             grid%x_min_local,grid%x_max_local, &
+                             grid%y_min_local,grid%y_max_local, &
+                             grid%z_min_local,grid%z_max_local)
+    case(EXPLICIT_UNSTRUCTURED_GRID)
+      call ExplicitUGridSetCellCentroids(grid%unstructured_grid% &
+                                         explicit_grid, &
+                                         grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
                              grid%z_min_local,grid%z_max_local)
@@ -1378,6 +1393,7 @@ end subroutine GridComputeCoordinates
 subroutine GridComputeVolumes(grid,volume,option)
 
   use Option_module
+  use Unstructured_Explicit_module
   
   implicit none
 
@@ -1392,9 +1408,12 @@ subroutine GridComputeVolumes(grid,volume,option)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
-    case(UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
       call UGridComputeQuality(grid%unstructured_grid,option)
+    case(EXPLICIT_UNSTRUCTURED_GRID)
+      call ExplicitUGridComputeVolumes(grid%unstructured_grid%explicit_grid, &
+                                       option,volume)
   end select
 
 end subroutine GridComputeVolumes
@@ -1423,7 +1442,7 @@ subroutine GridComputeAreas(grid,area,option)
     !case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       !call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
       !                                  grid%nL2G,volume)
-    case(UNSTRUCTURED_GRID)
+    case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeAreas(grid%unstructured_grid,option,area)
       call UGridComputeQuality(grid%unstructured_grid,option)
     case default
@@ -1614,7 +1633,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                           ' procs in global domain.'
                     call printErrMsg(option)
                   endif
-                case(UNSTRUCTURED_GRID)
+                case(IMPLICIT_UNSTRUCTURED_GRID)
                   !geh: must check each cell individually
                   call UGridGetCellFromPoint(region%coordinates(ONE_INTEGER)%x, &
                                              region%coordinates(ONE_INTEGER)%y, &
@@ -1754,7 +1773,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   else
                     iflag = 1
                   endif
-                case(UNSTRUCTURED_GRID)
+                case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
                   del_x = x_max-x_min
                   del_y = y_max-y_min
                   del_z = z_max-z_min
@@ -1836,7 +1855,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       region%num_cells = size(region%cell_ids)
     else if (associated(region%cell_ids)) then
       select case(grid%itype) 
-        case(UNSTRUCTURED_GRID)
+        case(IMPLICIT_UNSTRUCTURED_GRID)
           allocate(temp_int_array(region%num_cells))
 !gb The algo commented out does not work when region is read from a HDF5
 !   file with multiple procs, instead call GridLocalizeRegionsForUGrid()
@@ -1885,6 +1904,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             endif
           enddo
 #endif
+        case(EXPLICIT_UNSTRUCTURED_GRID)
         case default
           option%io_buffer = 'GridLocalizeRegions: define region by list ' // &
             'of cells not implemented: ' // trim(region%name)
@@ -3073,7 +3093,7 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
                                          stencil_width_j,stencil_width_k, &
                                          x_count,y_count,z_count, &
                                          ghosted_neighbors,option)
-    case(UNSTRUCTURED_GRID) 
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID) 
       option%io_buffer = 'GridGetNeighbors not currently supported for ' // &
         'unstructured grids.'
       call printErrMsg(option)
@@ -3117,7 +3137,7 @@ subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
                                          stencil_width_k, &
                                          icount, &
                                          ghosted_neighbors,option)
-    case(UNSTRUCTURED_GRID) 
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID) 
       option%io_buffer = 'GridGetNeighbors not currently supported for ' // &
         'unstructured grids.'
       call printErrMsg(option)

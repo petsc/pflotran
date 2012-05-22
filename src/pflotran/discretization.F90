@@ -4,6 +4,7 @@ module Discretization_module
   use Structured_Grid_module
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
+  use Unstructured_Explicit_module
   use MFD_Aux_module
   use MFD_Module
 
@@ -28,6 +29,8 @@ module Discretization_module
 
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
+    !geh: note that differentiating between implicit and explicit unstructured 
+    !     grids is handled within the grid%itype variable, not discritization%itype
     character(len=MAXWORDLENGTH) :: ctype
     PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
@@ -149,11 +152,12 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   type(structured_grid_type), pointer :: str_grid
   type(unstructured_grid_type), pointer :: un_str_grid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
-  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: unstructured_grid_ctype
 
   character(len=MAXSTRINGLENGTH) :: string
 
   PetscInt :: structured_grid_itype
+  PetscInt :: unstructured_grid_itype
   PetscInt :: nx, ny, nz
   PetscInt :: i
   PetscReal :: tempreal
@@ -198,8 +202,18 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
                 structured_grid_itype = CARTESIAN_GRID
                 structured_grid_ctype = 'cartesian'
             end select
-          case('unstructured')
+          case('unstructured','unstructured_explicit')
             discretization%itype = UNSTRUCTURED_GRID
+            word = discretization%ctype
+            discretization%ctype = 'unstructured'
+            select case(word)
+              case('unstructured')
+                unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
+                unstructured_grid_ctype = 'implicit unstructured'
+              case('unstructured_explicit')
+                unstructured_grid_itype = EXPLICIT_UNSTRUCTURED_GRID
+                unstructured_grid_ctype = 'explicit unstructured'
+            end select
             call InputReadNChars(input,option,discretization%filename,MAXSTRINGLENGTH, &
                                  PETSC_TRUE)
             call InputErrorMsg(input,option,'unstructured filename','GRID')
@@ -254,16 +268,18 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
     end select 
   enddo  
 
+  if (discretization%itype == NULL_GRID) then
+    option%io_buffer = 'Discretization type not defined under ' // &
+                       'keyword GRID.' 
+    call printErrMsg(option)
+  endif
+  
+  grid => GridCreate()
   select case(discretization%itype)
-    case(NULL_GRID)
-      option%io_buffer = 'Discretization type not defined under ' // &
-                         'keyword GRID.' 
-      call printErrMsg(option)
-    case(UNSTRUCTURED_GRID,STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      grid => GridCreate()
-      select case(discretization%itype)
-        case(UNSTRUCTURED_GRID)
-          un_str_grid => UGridCreate()
+    case(UNSTRUCTURED_GRID)
+      un_str_grid => UGridCreate()
+      select case(unstructured_grid_itype)
+        case(IMPLICIT_UNSTRUCTURED_GRID)
           if (index(discretization%filename,'.h5') > 0) then
 #if !defined(PETSC_HAVE_HDF5)
             option%io_buffer = 'PFLOTRAN must be built with HDF5 ' // &
@@ -283,24 +299,31 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
             call UGridRead(un_str_grid,discretization%filename,option)
           endif
           grid%unstructured_grid => un_str_grid
-        case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
-          if (nx*ny*nz <= 0) &
-            call printErrMsg(option,'NXYZ not set correctly for structured grid.')
-          str_grid => StructuredGridCreate()
-          str_grid%nx = nx
-          str_grid%ny = ny
-          str_grid%nz = nz
-          str_grid%nxy = str_grid%nx*str_grid%ny
-          str_grid%nmax = str_grid%nxy*str_grid%nz
-          grid%structured_grid => str_grid
-          grid%nmax = str_grid%nmax
-          grid%structured_grid%itype = structured_grid_itype
-          grid%structured_grid%ctype = structured_grid_ctype
+        case(EXPLICIT_UNSTRUCTURED_GRID)
+          un_str_grid%explicit_grid => ExplicitUGridCreate()
+          call ExplicitUGridRead(un_str_grid%explicit_grid, &
+                                 discretization%filename,option)
+          grid%unstructured_grid => un_str_grid
       end select
-      discretization%grid => grid
+      grid%itype = unstructured_grid_itype
+      grid%ctype = unstructured_grid_ctype
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
+      if (nx*ny*nz <= 0) &
+        call printErrMsg(option,'NXYZ not set correctly for structured grid.')
+      str_grid => StructuredGridCreate()
+      str_grid%nx = nx
+      str_grid%ny = ny
+      str_grid%nz = nz
+      str_grid%nxy = str_grid%nx*str_grid%ny
+      str_grid%nmax = str_grid%nxy*str_grid%nz
+      grid%structured_grid => str_grid
+      grid%nmax = str_grid%nmax
+      grid%structured_grid%itype = structured_grid_itype
+      grid%structured_grid%ctype = structured_grid_ctype
       grid%itype = discretization%itype
       grid%ctype = discretization%ctype
   end select
+  discretization%grid => grid
 
 end subroutine DiscretizationReadRequiredCards
 
@@ -538,6 +561,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
   PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
   PetscInt :: i
+  type(unstructured_grid_type), pointer :: ugrid
 
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
@@ -546,8 +570,24 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
       discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
     case(UNSTRUCTURED_GRID)
-      call UGridDecompose(discretization%grid%unstructured_grid, &
-                          option)
+      select case(discretization%grid%itype)
+        case(IMPLICIT_UNSTRUCTURED_GRID)
+          call UGridDecompose(discretization%grid%unstructured_grid, &
+                              option)
+        case(EXPLICIT_UNSTRUCTURED_GRID)
+          ugrid => discretization%grid%unstructured_grid
+          call ExplicitUGridDecompose(ugrid%explicit_grid, &
+                                      ugrid%num_ghost_cells, &
+                                      ugrid%global_offset, &
+                                      ugrid%nmax, &
+                                      ugrid%nlmax, &
+                                      ugrid%ngmax, &
+                                      ugrid%cell_ids_natural, &
+                                      ugrid%cell_ids_petsc, &
+                                      ugrid%ghost_cell_ids_petsc, &
+                                      ugrid%ao_natural_to_petsc, &
+                                      option)
+      end select
   end select
 
 

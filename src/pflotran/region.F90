@@ -7,7 +7,10 @@ module Region_module
   private
 
 #include "definitions.h"
- 
+
+  PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
+  PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2
+
   type, public :: block_type
     PetscInt :: i1,i2,j1,j2,k1,k2    
     type(block_type), pointer :: next
@@ -29,6 +32,7 @@ module Region_module
     PetscInt :: num_verts              ! For Unstructured mesh
     PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
     type(region_sideset_type), pointer :: sideset
+    type(region_explicit_face_type), pointer :: explicit_faceset
     type(polygonal_volume_type), pointer :: polygonal_volume
     type(region_type), pointer :: next
   end type region_type
@@ -49,6 +53,11 @@ module Region_module
     PetscInt, pointer :: face_vertices(:,:)
   end type region_sideset_type
   
+  type, public :: region_explicit_face_type
+    type(point3d_type), pointer :: face_centroids(:)
+    PetscReal, pointer :: face_areas(:)
+  end type region_explicit_face_type
+  
   interface RegionCreate
     module procedure RegionCreateWithBlock
     module procedure RegionCreateWithList
@@ -60,6 +69,7 @@ module Region_module
     module procedure RegionReadFromFileId
     module procedure RegionReadFromFilename
     module procedure RegionReadSideset
+    module procedure RegionReadExplicitFaceSet
   end interface RegionReadFromFile
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
@@ -95,15 +105,16 @@ function RegionCreateWithNothing()
   region%k2 = 0
   region%iface = 0
   region%num_cells = 0
-  region%grid_type = STRUCTURED_GRID ! By default it is assumed that the region 
-                   ! is applicable to strucutred grid, unless
-                   ! explicitly stated in pflotran input file
+  ! By default it is assumed that the region is applicable to strucutred grid,
+  ! unless explicitly stated in pflotran input file
+  region%grid_type = STRUCTURED_GRID_REGION
   region%num_verts = 0
   nullify(region%coordinates)
   nullify(region%cell_ids)
   nullify(region%faces)
   nullify(region%vertex_ids)
   nullify(region%sideset)
+  nullify(region%explicit_faceset)
   nullify(region%polygonal_volume)
   nullify(region%next)
   
@@ -133,6 +144,29 @@ function RegionCreateSideset()
   RegionCreateSideset => sideset
 
 end function RegionCreateSideset
+
+! ************************************************************************** !
+!
+! RegionCreateExplicitFaceSet: Creates a sideset
+! author: Glenn Hammond
+! date: 12/19/11
+!
+! ************************************************************************** !
+function RegionCreateExplicitFaceSet()
+
+  implicit none
+  
+  type(region_explicit_face_type), pointer :: RegionCreateExplicitFaceSet
+  
+  type(region_explicit_face_type), pointer :: explicit_faceset
+  
+  allocate(explicit_faceset)
+  nullify(explicit_faceset%face_centroids)
+  nullify(explicit_faceset%face_areas)
+  
+  RegionCreateExplicitFaceSet => explicit_faceset
+
+end function RegionCreateExplicitFaceSet
 
 ! ************************************************************************** !
 !
@@ -434,9 +468,9 @@ subroutine RegionRead(region,input,option)
         call StringToUpper(word)
         select case(trim(word))
           case('STRUCTURED')
-            region%grid_type = STRUCTURED_GRID
+            region%grid_type = STRUCTURED_GRID_REGION
           case('UNSTRUCTURED')
-            region%grid_type = UNSTRUCTURED_GRID
+            region%grid_type = UNSTRUCTURED_GRID_REGION
           case default
             option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
           call printErrMsg(option)
@@ -940,6 +974,105 @@ end subroutine RegionReadSideSet
 
 ! ************************************************************************** !
 !
+! RegionReadExplicitFaceSet: Reads an unstructured grid explicit region
+! author: Glenn Hammond
+! date: 05/18/12
+!
+! ************************************************************************** !
+subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
+
+  use Input_module
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  type(region_explicit_face_type), pointer :: explicit_faceset
+  PetscInt, pointer :: cell_ids(:)
+  character(len=MAXSTRINGLENGTH) :: filename
+  type(option_type) :: option
+  
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: card, word
+  PetscInt :: fileid
+  
+  PetscInt :: num_connections
+  PetscInt :: iconn
+  
+  explicit_faceset => RegionCreateExplicitFaceSet()
+  
+  fileid = 86
+  input => InputCreate(fileid,filename,option)
+  
+! Format of explicit unstructured grid file
+! id_ = integer
+! x_, y_, z_, area_ = real
+! -----------------------------------------------------------------
+! CONNECTIONS <integer>   integer = # connections (M)
+! id_1 x_1 y_1 z_1 area_1
+! id_2 x_2 y_2 z_2 area_2
+! ...
+! ...
+! id_M x_M y_M z_M area_M
+! -----------------------------------------------------------------
+
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    card = trim(word)
+  
+    select case(word)
+      case('CONNECTIONS')
+        card = 'Explicit Unstructured Grid CONNECTIONS'
+        call InputReadInt(input,option,num_connections)
+        call InputErrorMsg(input,option,'number of connections',card)
+        
+        allocate(cell_ids(num_connections))
+        cell_ids = 0
+        allocate(explicit_faceset%face_areas(num_connections))
+        explicit_faceset%face_areas = 0    
+        allocate(explicit_faceset%face_centroids(num_connections))
+        do iconn = 1, num_connections
+          explicit_faceset%face_centroids(iconn)%x = 0.d0
+          explicit_faceset%face_centroids(iconn)%y = 0.d0
+          explicit_faceset%face_centroids(iconn)%z = 0.d0
+        enddo
+        do iconn = 1, num_connections
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadInt(input,option,cell_ids(iconn))
+          call InputErrorMsg(input,option,'cell id',card)
+          call InputReadDouble(input,option, &
+                               explicit_faceset%face_centroids(iconn)%x)
+          call InputErrorMsg(input,option,'face x coordinate',card)
+          call InputReadDouble(input,option, &
+                               explicit_faceset%face_centroids(iconn)%y)
+          call InputErrorMsg(input,option,'face y coordinate',card)
+          call InputReadDouble(input,option, &
+                               explicit_faceset%face_centroids(iconn)%z)
+          call InputErrorMsg(input,option,'face z coordinate',card)
+          call InputReadDouble(input,option, &
+                               explicit_faceset%face_areas(iconn))
+          call InputErrorMsg(input,option,'face area',card)
+        enddo
+      case default
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                           ' not recognized while reading explicit ' // &
+                           'unstructured grid REGION.'
+        call printErrMsg(option)
+    end select
+  enddo
+
+  call InputDestroy(input)
+
+end subroutine RegionReadExplicitFaceSet
+
+! ************************************************************************** !
+!
 ! RegionGetPtrFromList: Returns a pointer to the region matching region_name
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -999,6 +1132,33 @@ end subroutine RegionDestroySideset
 
 ! ************************************************************************** !
 !
+! RegionDestroyExplicitFaceSet: Deallocates a unstructured grid explicit grid
+! author: Glenn Hammond
+! date: 05/18/12
+!
+! ************************************************************************** !
+subroutine RegionDestroyExplicitFaceSet(explicit_faceset)
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  type(region_explicit_face_type), pointer :: explicit_faceset
+  
+  if (.not.associated(explicit_faceset)) return
+  
+  if (associated(explicit_faceset%face_centroids)) &
+    deallocate(explicit_faceset%face_centroids)
+  nullify(explicit_faceset%face_centroids)
+  call DeallocateArray(explicit_faceset%face_areas)
+  
+  deallocate(explicit_faceset)
+  nullify(explicit_faceset)
+  
+end subroutine RegionDestroyExplicitFaceSet
+
+! ************************************************************************** !
+!
 ! RegionDestroyList: Deallocates a list of regions
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1055,6 +1215,7 @@ subroutine RegionDestroy(region)
   if (associated(region%coordinates)) deallocate(region%coordinates)
   nullify(region%coordinates)
   call RegionDestroySideset(region%sideset)
+  call RegionDestroyExplicitFaceSet(region%explicit_faceset)
   call GeometryDestroyPolygonalVolume(region%polygonal_volume)
   
   if (associated(region%vertex_ids)) deallocate(region%vertex_ids)

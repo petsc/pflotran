@@ -324,6 +324,9 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   use Option_module
   use Region_module
   use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Unstructured_Explicit_module, only : ExplicitUGridSetBoundaryConnect, &
+                                           ExplicitUGridSetConnections
   
   implicit none
  
@@ -373,29 +376,47 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   
   region => coupler%region
 
-  connection_set => ConnectionCreate(region%num_cells,option%nphase, &
-                                     connection_itype)
+  select case(grid%itype)
+    case(EXPLICIT_UNSTRUCTURED_GRID)
+      if (associated(region%explicit_faceset)) then
+        connection_set => &
+          ExplicitUGridSetBoundaryConnect(grid%unstructured_grid% &
+                                            explicit_grid, &
+                                          region%cell_ids, &
+                                     region%explicit_faceset%face_centroids, &
+                                     region%explicit_faceset%face_areas, &
+                                     option)
+      else
+        connection_set => &
+          ExplicitUGridSetConnections(grid%unstructured_grid% &
+                                        explicit_grid, &
+                                      region%cell_ids, &
+                                      connection_itype,option)
+      endif
+    case default
+      connection_set => ConnectionCreate(region%num_cells,connection_itype)
     
-  ! if using higher order advection, allocate associated arrays
-  if (option%itranmode == EXPLICIT_ADVECTION .and. &
-      option%tvd_flux_limiter /= 1 .and. &  ! 1 = upwind
-      connection_set%itype == BOUNDARY_CONNECTION_TYPE) then
-    ! connections%id_up2 should remain null as it will not be used
-    allocate(connection_set%id_dn2(size(connection_set%id_dn)))
-    connection_set%id_dn2 = 0
-  endif  
+      ! if using higher order advection, allocate associated arrays
+      if (option%itranmode == EXPLICIT_ADVECTION .and. &
+          option%tvd_flux_limiter /= 1 .and. &  ! 1 = upwind
+          connection_set%itype == BOUNDARY_CONNECTION_TYPE) then
+        ! connections%id_up2 should remain null as it will not be used
+        allocate(connection_set%id_dn2(size(connection_set%id_dn)))
+        connection_set%id_dn2 = 0
+      endif  
 
-  iface = coupler%iface
-  do iconn = 1,region%num_cells
+      iface = coupler%iface
+      do iconn = 1,region%num_cells
     
-    cell_id_local = region%cell_ids(iconn)
-    if (associated(region%faces)) iface = region%faces(iconn)
+        cell_id_local = region%cell_ids(iconn)
+        if (associated(region%faces)) iface = region%faces(iconn)
     
-    connection_set%id_dn(iconn) = cell_id_local
+        connection_set%id_dn(iconn) = cell_id_local
 
-    call GridPopulateConnection(grid,connection_set,iface,iconn, &
-                                cell_id_local,option)
-  enddo
+        call GridPopulateConnection(grid,connection_set,iface,iconn, &
+                                    cell_id_local,option)
+      enddo
+  end select
 
   coupler%connection_set => connection_set
   nullify(connection_set)
@@ -503,11 +524,11 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 
  allocate(coupler%faces_set(coupler%numfaces_set))
 
-!    connection_set => ConnectionCreate(coupler%numfaces_set,option%nphase, &
+!    connection_set => ConnectionCreate(coupler%numfaces_set, &
 !                                     connection_itype)
 !	stop
 ! else
-    connection_set => ConnectionCreate(ZERO_INTEGER, option%nphase, &
+    connection_set => ConnectionCreate(ZERO_INTEGER, &
                                       connection_itype)
 ! end if
  local_faces = 0

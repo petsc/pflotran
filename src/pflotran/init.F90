@@ -1131,7 +1131,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+  case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -1216,6 +1216,7 @@ subroutine InitReadInput(simulation)
   use Option_module
   use Field_module
   use Grid_module
+  use Unstructured_Grid_Aux_module
   use Structured_Grid_module
   use Solver_module
   use Material_module
@@ -2102,7 +2103,7 @@ subroutine InitReadInput(simulation)
                       .and. option%mycommsize > 1) then
                     output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
                   endif
-                  if (grid%itype == UNSTRUCTURED_GRID) then
+                  if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
                     output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
                   endif
                 case ('VTK')
@@ -2955,17 +2956,25 @@ subroutine readRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-        if (region%grid_type == STRUCTURED_GRID) then
+        if (region%grid_type == STRUCTURED_GRID_REGION) then
           call HDF5ReadRegionFromFile(realization,region,region%filename)
         else
-#if defined(PETSC_HAVE_HDF5)
-          call HDF5ReadUnstructuredGridRegionFromFile(realization,region,region%filename)
-#endif      
+          !geh: Do not skip this subouroutine if PETSC_HAVE_HDF5 is not 
+          !     defined.  The subroutine prints an error message if not defined
+          !     informing the user of the error.  If you skip the subroutine,
+          !     no error message is printed and the user is unaware of the
+          !     region not being read.
+          call HDF5ReadUnstructuredGridRegionFromFile(realization,region, &
+                                                      region%filename)
         endif
       else if (index(region%filename,'.ss') > 0) then
         region%sideset => RegionCreateSideset()
         call RegionReadFromFile(region%sideset,region%filename, &
                                 realization%option)
+      else if (index(region%filename,'.ex') > 0) then
+        call RegionReadFromFile(region%explicit_faceset,region%cell_ids, &
+                                region%filename,realization%option)
+        region%num_cells = size(region%cell_ids)
       else
         call RegionReadFromFile(region,realization%option, &
                                 region%filename)

@@ -53,7 +53,7 @@ contains
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function ConnectionCreate(num_connections,num_dof,connection_itype)
+function ConnectionCreate(num_connections,connection_itype)
 
   implicit none
   
@@ -79,7 +79,6 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   nullify(connection%intercp)
   nullify(connection%area)
   nullify(connection%cntr)
-!  nullify(connection%velocity)
   select case(connection_itype)
     case(INTERNAL_CONNECTION_TYPE)
       allocate(connection%id_up(num_connections))
@@ -90,7 +89,6 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
 #ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
       allocate(connection%local(num_connections))
-!      allocate(connection%velocity(num_dof,num_connections))
       connection%local = 0
 #endif
       connection%id_up = 0
@@ -98,7 +96,6 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
       connection%dist = 0.d0
       connection%intercp = 0.d0
       connection%area = 0.d0
-!      connection%velocity = 0.d0
     case(BOUNDARY_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
@@ -106,13 +103,11 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
       allocate(connection%area(num_connections))
 #ifdef DASVYAT
       allocate(connection%cntr(1:3, num_connections))
-!      allocate(connection%velocity(num_dof,num_connections))
 #endif
       connection%id_dn = 0
       connection%dist = 0.d0
       connection%intercp = 0.d0
       connection%area = 0.d0
-!      connection%velocity = 0.d0
     case(SRC_SINK_CONNECTION_TYPE,INITIAL_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
 #ifdef DASVYAT
@@ -258,8 +253,6 @@ subroutine ConnectionDestroy(connection)
   nullify(connection%area)
   if (associated(connection%cntr)) deallocate(connection%cntr)
   nullify(connection%cntr)
-!  if (associated(connection%velocity)) deallocate(connection%velocity)
-!  nullify(connection%velocity)
   nullify(connection%next)
   
   deallocate(connection)

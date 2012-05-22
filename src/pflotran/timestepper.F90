@@ -1251,6 +1251,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   use Option_module
   use Solver_module
   use Field_module
+  use Grid_module, only : STRUCTURED_GRID_MIMETIC
   
   implicit none
 
@@ -2789,7 +2790,9 @@ subroutine StepperUpdateSolution(realization)
 
   use Realization_module
   use Option_module
+#ifdef SURFACE_FLOW
   use Surface_Realization_module
+#endif
 
   implicit none
   
