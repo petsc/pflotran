@@ -188,6 +188,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}solver.o \
 	${common_src}cf90bridge.o\
 	${common_src}unstructured_cell.o \
+	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
@@ -265,8 +266,10 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o dataset.o condition_control.o surface_flow.o \
         database_hpt.o
-unstructured_grid.o : option.o connection.o unstructured_cell.o unstructured_grid_aux.o \
-                      geometry.o
+unstructured_grid.o : option.o connection.o unstructured_cell.o \
+                      unstructured_grid_aux.o geometry.o
+unstructured_grid_aux.o : unstructured_cell.o unstructured_explicit.o
+unstructured_explicit.o : geometry.o
 unstructured_cell.o : option.o utility.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o

@@ -70,6 +70,7 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   use Discretization_module
   use Region_module
   use Condition_module
+  use Unstructured_Grid_Aux_module
 
   implicit none
 
