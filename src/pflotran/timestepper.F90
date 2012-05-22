@@ -2781,7 +2781,9 @@ subroutine StepperUpdateSolution(realization)
 
   use Realization_module
   use Option_module
+#ifdef SURFACE_FLOW
   use Surface_Realization_module
+#endif
 
   implicit none
   
