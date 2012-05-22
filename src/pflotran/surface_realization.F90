@@ -957,6 +957,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   use Surface_Field_module
   use Unstructured_Grid_module
   use Discretization_module
+  use Unstructured_Grid_Aux_module
 
   implicit none
   
