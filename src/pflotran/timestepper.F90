@@ -442,7 +442,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
+#ifdef SURFACE_FLOW
+  call StepperUpdateSolution(realization,surf_realization)
+#else
   call StepperUpdateSolution(realization)
+#endif
 
   if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
     ! only user jumpstart for a restarted simulation
@@ -687,7 +691,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! update solution variables
     
     option%time = master_stepper%target_time
+#ifdef SURFACE_FLOW
+    call StepperUpdateSolution(realization,surf_realization)
+#else
     call StepperUpdateSolution(realization)
+#endif
 
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
@@ -1778,6 +1786,7 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
 
     call PetscGetTime(log_end_time,ierr)
 
+
     stepper%cumulative_solver_time_surf_flow =  &
                                   stepper%cumulative_solver_time_surf_flow + &
                                   (log_end_time - log_start_time)
@@ -1845,10 +1854,10 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   
   select case(option%iflowmode)
     case(RICHARDS_MODE)
-    !call SurfaceFlowMaxChange(surf_realization)
+    call SurfaceFlowMaxChange(surf_realization)
     if (option%print_screen_flag) then
-      !write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-      write(*,'("  --> max chng: dpmx= Needs to be computed")')
+      write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+      !write(*,'("  --> max chng: dpmx= Needs to be computed")')
     endif
   end select
 
@@ -2764,14 +2773,22 @@ end subroutine StepperSolveTranSteadyState
 ! date: 02/19/08 
 !
 ! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine StepperUpdateSolution(realization,surf_realization)
+#else
 subroutine StepperUpdateSolution(realization)
+#endif
 
   use Realization_module
   use Option_module
+  use Surface_Realization_module
 
   implicit none
   
   type(realization_type) :: realization
+#ifdef SURFACE_FLOW
+  type(surface_realization_type) :: surf_realization
+#endif
   
   ! update solution variables
   call RealizationUpdate(realization)
@@ -2779,6 +2796,11 @@ subroutine StepperUpdateSolution(realization)
     call StepperUpdateFlowSolution(realization)
   if (realization%option%ntrandof > 0) &
     call StepperUpdateTransportSolution(realization)
+
+#ifdef SURFACE_FLOW
+  if (surf_realization%option%nsurfflowdof > 0) &
+    call StepperUpdateSurfaceFlowSolution(surf_realization)
+#endif
     
 end subroutine StepperUpdateSolution
 
@@ -2833,6 +2855,41 @@ subroutine StepperUpdateFlowSolution(realization)
   end select    
 
 end subroutine StepperUpdateFlowSolution
+
+#ifdef SURFACE_FLOW
+! ************************************************************************** !
+!> This subroutine updates the surface flow solution variables
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/22/12
+! ************************************************************************** !
+subroutine StepperUpdateSurfaceFlowSolution(surf_realization)
+
+  use Surface_Flow_module
+
+  use Surface_Realization_module
+  use Option_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+
+  type(option_type), pointer :: option
+
+  PetscErrorCode :: ierr
+
+  option => surf_realization%option
+
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      call SurfaceFlowUpdateSolution(surf_realization)
+  end select
+
+end subroutine StepperUpdateSurfaceFlowSolution
+#endif
+
 
 ! ************************************************************************** !
 !

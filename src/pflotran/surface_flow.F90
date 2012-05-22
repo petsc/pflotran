@@ -30,7 +30,8 @@ module Surface_Flow_module
          SurfaceFluxKinematicDerivative, &
          SurfaceFlowResidual, &
          SurfaceFlowJacobian, &
-         SurfaceFlowMaxChange
+         SurfaceFlowMaxChange, &
+         SurfaceFlowUpdateSolution
   
 contains
 
@@ -172,6 +173,7 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   use Condition_module
   use Coupler_module
   use Strata_module
+  use Debug_module
 
   implicit none
 
@@ -280,6 +282,13 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
         call SurfaceRealizationAddCoupler(surf_realization,coupler)
         nullify(coupler)        
 
+      !.........................................................................
+      case ('SURF_DEBUG')
+        call DebugRead(surf_realization%debug,input,option)
+        write(*,*),surf_realization%debug%vecview_solution, &
+          surf_realization%debug%vecview_residual, &
+          surf_realization%debug%matview_Jacobian
+
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -308,7 +317,7 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
   use Discretization_module
   use Option_module
   use Logging_module
-
+  
   implicit none
 
   SNES :: snes
@@ -357,6 +366,28 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+
+  if (surf_realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rresidual.out', &
+                              viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rresidual.bin', &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
+  if (surf_realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rxx.bin', &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
 end subroutine SurfaceFlowResidual
 
@@ -528,10 +559,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   call GridVecRestoreArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
 
-  call PetscViewerASCIIOpen(option%mycomm,'r_surfflow_p1.out',viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
 end subroutine SurfaceFlowResidualPatch1  
 
 ! ************************************************************************** !
@@ -673,10 +700,6 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
 
-  call PetscViewerASCIIOpen(option%mycomm,'r_surfflow_p2.out',viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
   end subroutine SurfaceFlowResidualPatch2
 
 ! ************************************************************************** !
@@ -714,7 +737,6 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
 
-
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
   option => surf_realization%option
@@ -746,6 +768,18 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+
+  if (surf_realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rjacobian.out', &
+                              viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rjacobian.bin', &
+                              FILE_MODE_WRITE,viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
 end subroutine SurfaceFlowJacobian
 
@@ -927,13 +961,6 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
-  call PetscViewerASCIIOpen(option%mycomm,'jacobian_surfflow.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
-  !option%io_buffer = 'stopping for debugging'
-  !call printErrMsgByRank(option)
-
 end subroutine SurfaceFlowJacobianPatch1
 
 ! ************************************************************************** !
@@ -1073,10 +1100,6 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-
-  call PetscViewerASCIIOpen(option%mycomm,'jacobian_surfflow.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
 
 end subroutine SurfaceFlowJacobianPatch2
 
@@ -1442,14 +1465,36 @@ subroutine SurfaceFlowMaxChange(surf_realization)
   option => surf_realization%option
   surf_field => surf_realization%surf_field
 
-  !TODO(gb): Add flow_yy
-  !call VecWAXPY(surf_field%flow_dxx,-1.d0,surf_field%flow_xx,surf_field%flow_yy,ierr)
-  !call VecStrideNorm(surf_field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+  call VecWAXPY(surf_field%flow_dxx,-1.d0,surf_field%flow_xx,surf_field%flow_yy,ierr)
+  call VecStrideNorm(surf_field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
 end subroutine SurfaceFlowMaxChange
+
+! ************************************************************************** !
+!> This routine updates data in module after a successful time step
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/22/12
+! ************************************************************************** !
+subroutine SurfaceFlowUpdateSolution(surf_realization)
+
+  use Surface_Realization_module
+  use Surface_Field_module
+
+  implicit none
+
+  type(surface_realization_type)   :: surf_realization
+
+  type(surface_field_type),pointer :: surf_field
+  PetscErrorCode                   :: ierr
+
+  surf_field => surf_realization%surf_field
+  call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
+
+end subroutine SurfaceFlowUpdateSolution
 
 end module Surface_Flow_module
 
 #endif
-
-

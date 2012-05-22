@@ -24,7 +24,7 @@ module Surface_Field_module
     Vec :: flow_r
 
     ! Solution vectors (yy = previous solution, xx = current iterate)
-    Vec :: flow_xx, flow_xx_loc, flow_accum
+    Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
 
   end type surface_field_type
 
@@ -62,6 +62,8 @@ function SurfaceFieldCreate()
   surface_field%flow_r = 0
   surface_field%flow_xx = 0
   surface_field%flow_xx_loc = 0
+  surface_field%flow_dxx = 0
+  surface_field%flow_yy = 0
   surface_field%flow_accum = 0
 
   SurfaceFieldCreate => surface_field
@@ -95,6 +97,8 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%flow_r /= 0) call VecDestroy(surface_field%flow_r,ierr)
   if (surface_field%flow_xx /= 0) call VecDestroy(surface_field%flow_xx,ierr)
   if (surface_field%flow_xx_loc /= 0) call VecDestroy(surface_field%flow_xx_loc,ierr)
+  if (surface_field%flow_dxx /= 0) call VecDestroy(surface_field%flow_dxx,ierr)
+  if (surface_field%flow_yy /= 0) call VecDestroy(surface_field%flow_yy,ierr)
   if (surface_field%flow_accum /= 0) call VecDestroy(surface_field%flow_accum,ierr)
 
 end subroutine SurfaceFieldDestroy
