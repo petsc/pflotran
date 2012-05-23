@@ -719,7 +719,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 !                             tran_stepper%solver)
 !    endif
     call Output(realization,plot_flag,transient_plot_flag)
-  
+    
+    call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
 
     ! if a simulation wallclock duration time is set, check to see that the
@@ -1064,6 +1065,62 @@ end subroutine StepperUpdateDT
 
 ! ************************************************************************** !
 !
+! StepperUpdateDTMax: Updates maximum time step specified by the current
+!                     waypoint after the completion of a time step
+! author: Glenn Hammond
+! date: 05/23/12
+!
+! ************************************************************************** !
+subroutine StepperUpdateDTMax(flow_stepper,tran_stepper,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+  type(option_type) :: option
+  
+  PetscReal :: dt_max
+  PetscBool :: flag
+  type(waypoint_type), pointer :: cur_waypoint
+
+  ! this just works through the logic of whether the flow stepper should
+  ! be used to set dt_max.  If flow is not present, or is to
+  ! be run as steady state, use the transport parameters
+  flag = PETSC_TRUE
+  if (associated(flow_stepper)) then
+    if (flow_stepper%run_as_steady_state) then
+      flag = PETSC_FALSE
+    endif
+  else
+    flag = PETSC_FALSE
+  endif
+
+  if (flag) then ! flow stepper will govern the target time
+    cur_waypoint => flow_stepper%cur_waypoint
+  else
+    cur_waypoint => tran_stepper%cur_waypoint
+  endif
+  
+  ! update maximum time step size to current waypoint value
+  if (associated(cur_waypoint)) then
+    dt_max = cur_waypoint%dt_max
+    
+    ! target time will always be dictated by the flow solver, if present
+    if (associated(flow_stepper)) then
+      flow_stepper%dt_max = dt_max
+    endif
+    if (associated(tran_stepper)) then
+      tran_stepper%dt_max = dt_max
+    endif
+
+  endif
+  
+end subroutine StepperUpdateDTMax
+
+! ************************************************************************** !
+!
 ! StepperSetTargetTimes: Sets target time for flow and transport solvers
 ! author: Glenn Hammond
 ! date: 02/19/08
@@ -1195,7 +1252,10 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   if (associated(flow_stepper)) then
     option%flow_dt = dt
     flow_stepper%target_time = target_time
-    flow_stepper%dt_max = dt_max
+    !geh: dt_max now updated in StepperUpdateDTMax() at the end of 
+    !     a time step to avoid premature update if cuts or sub-stepping
+    !     for transport occur during the time step.
+    !flow_stepper%dt_max = dt_max
     flow_stepper%cur_waypoint => cur_waypoint
   endif
   if (associated(tran_stepper)) then
@@ -1212,7 +1272,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
       option%tran_dt = dt
     endif
     tran_stepper%target_time = target_time
-    tran_stepper%dt_max = dt_max
+    !geh: see note on flow_stepper%dt_max above.
+    !tran_stepper%dt_max = dt_max
     tran_stepper%cur_waypoint => cur_waypoint
   endif
   
