@@ -43,3 +43,5 @@ shortcourse/exercises/sx-115/doc/sx115.pdf
 *.synctex.gz
 docs/tecnotes/chemistry/chemistry_implementation.pdf
 docs/user_manual/quick_guide.pdf
+*.bin
+*.bin.info

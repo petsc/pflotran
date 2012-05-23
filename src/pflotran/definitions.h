@@ -113,7 +113,7 @@ PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 !geh: moved to grid.F90 and renumbered
 !PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 6
 !PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 7
-!geh: moved to unstructured_grid.F90 and renumbered
+!geh: moved to unstructured_grid_aux.F90 and renumbered
 !PetscInt, parameter :: TWO_DIM_GRID = 8
 !PetscInt, parameter :: THREE_DIM_GRID = 9
 

@@ -4053,6 +4053,7 @@ subroutine readSurfaceRegionFiles(surf_realization)
   use Surface_Realization_module
   use Region_module
   use HDF5_module
+  use Grid_module
 
   implicit none
 

@@ -27,7 +27,7 @@ module Grid_module
   type, public :: grid_type 
   
     character(len=MAXWORDLENGTH) :: ctype
-    PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
+    PetscInt :: itype  ! type of grid (e.g. structured_grid, implicit_unstructured_grid, etc.)
     
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
