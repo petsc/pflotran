@@ -667,6 +667,8 @@ subroutine RTUpdateSolutionPatch(realization)
   PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
   PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscReal :: conc, max_conc, min_conc
+  PetscErrorCode :: ierr
   
   option => realization%option
   patch => realization%patch
@@ -678,6 +680,28 @@ subroutine RTUpdateSolutionPatch(realization)
 
   ! update:                             cells      bcs         act. coefs.
   call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
+
+!geh: for debugging max/min concentrations
+#if 0
+  max_conc = -1.d20
+  min_conc = 1.d20
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    conc = rt_aux_vars(ghosted_id)%total(1,1)
+    max_conc = max(conc,max_conc)
+    min_conc = min(conc,min_conc)
+  enddo
+  call MPI_Allreduce(max_conc,conc,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+  max_conc = conc
+  call MPI_Allreduce(min_conc,conc,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+  min_conc = conc
+  if (option%print_screen_flag) then
+    write(*,'("Time: ",1pe12.5," Max: ",1pe12.5," Min: ",1pe12.5)') &
+      option%tran_time/realization%output_option%tconv,max_conc, min_conc
+  endif
+#endif
 
   if (.not.option%init_stage) then
     ! update mineral volume fractions
