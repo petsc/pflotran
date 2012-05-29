@@ -84,18 +84,19 @@ SATURATION_FUNCTION sf1
 END
 
 :=========================== output options ===================================
-:OUTPUT
+OUTPUT
 :  TIMES y 1.25 1.5 1.75
-:  PERIODIC TIME 1. y
+  PERIODIC TIME 1. s
 :  PERIODIC_OBSERVATION TIMESTEP 1
-:  FORMAT TECPLOT BLOCK
+  FORMAT TECPLOT BLOCK
 :  FORMAT HDF5
 :  VELOCITIES
-:END
+END
 
 :=========================== times ============================================
 TIME
-  FINAL_TIME 3600.d0 s
+  :FINAL_TIME 3600.d0 s
+  FINAL_TIME 1.d0 s
   INITIAL_TIMESTEP_SIZE 1.0 s
   MAXIMUM_TIMESTEP_SIZE 1.0 s        ! produces CFL ~<= 1.
 END

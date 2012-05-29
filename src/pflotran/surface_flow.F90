@@ -81,6 +81,8 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   type(option_type)                            :: option
   type(unstructured_grid_type), pointer        :: un_str_sfgrid
   character(len=MAXWORDLENGTH)                 :: word
+  character(len=MAXWORDLENGTH)                 :: unstructured_grid_ctype
+  PetscInt :: unstructured_grid_itype
 
   discretization => surf_realization%discretization
 
@@ -114,6 +116,8 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
 
             select case(trim(word))
               case ('UNSTRUCTURED')
+                unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
+                unstructured_grid_ctype = 'implicit unstructured'
                 discretization%itype = UNSTRUCTURED_GRID
                 call InputReadNChars(input,option, &
                                      discretization%filename, &
@@ -130,8 +134,8 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
                                        option)
                 grid%unstructured_grid => un_str_sfgrid
                 discretization%grid => grid
-                grid%itype = discretization%itype
-                grid%ctype = discretization%ctype
+                grid%itype = unstructured_grid_itype
+                grid%ctype = unstructured_grid_ctype
 
               case default
               option%io_buffer = 'Surface-flow supports only unstructured grid'
