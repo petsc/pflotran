@@ -36,6 +36,69 @@ module Output_module
   PetscBool :: hdf5_first
   PetscBool :: mass_balance_first
 
+  interface Output
+    module procedure Output1
+#ifdef SURFACE_FLOW
+    module procedure Output2
+#endif
+  end interface
+
+  interface OutputTecplotHeader
+    module procedure OutputTecplotHeader1
+#ifdef SURFACE_FLOW
+    module procedure OutputTecplotHeader2
+#endif
+  end interface
+
+  interface OutputTecplotZoneHeader
+    module procedure OutputTecplotZoneHeader1
+#ifdef SURFACE_FLOW
+    module procedure OutputTecplotZoneHeader2
+#endif
+  end interface
+
+  interface OutputGetVarFromArray
+    module procedure OutputGetVarFromArray1
+#ifdef SURFACE_FLOW
+    module procedure OutputGetVarFromArray2
+#endif
+  end interface
+
+  interface WriteTecplotDataSet
+    module procedure WriteTecplotDataSet1
+#ifdef SURFACE_FLOW
+    module procedure WriteTecplotDataSet2
+#endif
+  end interface
+
+  interface WriteTecplotDataSetNumPerLine
+    module procedure WriteTecplotDataSetNumPerLine1
+#ifdef SURFACE_FLOW
+    module procedure WriteTecplotDataSetNumPerLine2
+#endif
+  end interface
+
+  interface WriteTecplotDataSetFromVec
+    module procedure WriteTecplotDataSetFromVec1
+#ifdef SURFACE_FLOW
+    module procedure WriteTecplotDataSetFromVec2
+#endif
+  end interface
+
+  interface WriteTecplotUGridElements
+    module procedure WriteTecplotUGridElements1
+#ifdef SURFACE_FLOW
+    module procedure WriteTecplotUGridElements2
+#endif
+  end interface
+
+  interface WriteTecplotUGridVertices
+    module procedure WriteTecplotUGridVertices1
+#ifdef SURFACE_FLOW
+    module procedure WriteTecplotUGridVertices2
+#endif
+  end interface
+
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
             OutputPermeability, OutputPrintCouplers
@@ -85,7 +148,7 @@ end subroutine OutputInit
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(realization,plot_flag,transient_plot_flag)
+subroutine Output1(realization,plot_flag,transient_plot_flag)
 
   use Realization_module, only : realization_type
   use Option_module, only : OptionCheckTouch, option_type, &
@@ -221,7 +284,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
   call PetscLogStagePop(ierr)
   
-end subroutine Output
+end subroutine Output1
 
 ! ************************************************************************** !
 !
@@ -339,7 +402,7 @@ end function OutputFilename
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-subroutine OutputTecplotHeader(fid,realization,icolumn)
+subroutine OutputTecplotHeader1(fid,realization,icolumn)
 
   use Realization_module
   use Grid_module
@@ -465,7 +528,7 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
                                    output_option%tecplot_format)
   write(fid,'(a)') trim(string)
 
-end subroutine OutputTecplotHeader
+end subroutine OutputTecplotHeader1
 
 ! ************************************************************************** !
 !
@@ -474,7 +537,7 @@ end subroutine OutputTecplotHeader
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
+function OutputTecplotZoneHeader1(realization,variable_count,tecplot_format)
 
   use Realization_module
   use Grid_module
@@ -486,7 +549,7 @@ function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
-  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader
+  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader1
 
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   type(grid_type), pointer :: grid
@@ -543,9 +606,9 @@ function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
   end select
   
-  OutputTecplotZoneHeader = trim(string) // string2  
+  OutputTecplotZoneHeader1 = trim(string) // string2  
 
-end function OutputTecplotZoneHeader
+end function OutputTecplotZoneHeader1
 
 ! ************************************************************************** !
 !
@@ -2661,7 +2724,7 @@ end subroutine OutputVectorTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
+subroutine WriteTecplotDataSetFromVec1(fid,realization,vec,datatype)
 
   use Realization_module
   
@@ -2678,7 +2741,7 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   call WriteTecplotDataSet(fid,realization,vec_ptr,datatype,ZERO_INTEGER) ! 0 implies grid%nlmax
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
-end subroutine WriteTecplotDataSetFromVec
+end subroutine WriteTecplotDataSetFromVec1
 
 ! ************************************************************************** !
 !
@@ -2687,7 +2750,7 @@ end subroutine WriteTecplotDataSetFromVec
 ! date: 01/12/12
 !
 ! ************************************************************************** !
-subroutine WriteTecplotUGridVertices(fid,realization)
+subroutine WriteTecplotUGridVertices1(fid,realization)
 
   use Realization_module
   use Grid_module
@@ -2736,7 +2799,7 @@ subroutine WriteTecplotUGridVertices(fid,realization)
 
   call VecDestroy(global_vertex_vec, ierr)
 
-end subroutine WriteTecplotUGridVertices
+end subroutine WriteTecplotUGridVertices1
 
 ! ************************************************************************** !
 !
@@ -2745,7 +2808,7 @@ end subroutine WriteTecplotUGridVertices
 ! date: 01/12/12
 !
 ! ************************************************************************** !
-subroutine WriteTecplotUGridElements(fid,realization)
+subroutine WriteTecplotUGridElements1(fid,realization)
 
   use Realization_module
   use Grid_module
@@ -2793,7 +2856,7 @@ subroutine WriteTecplotUGridElements(fid,realization)
   call VecDestroy(natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
 
-end subroutine WriteTecplotUGridElements
+end subroutine WriteTecplotUGridElements1
 
 ! ************************************************************************** !
 !
@@ -2922,7 +2985,7 @@ end subroutine WriteTecplotStructuredGrid
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
+subroutine WriteTecplotDataSet1(fid,realization,array,datatype,size_flag)
 
   use Realization_module
   use Grid_module
@@ -2942,7 +3005,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   call WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
                                      size_flag,num_per_line) 
   
-end subroutine WriteTecplotDataSet
+end subroutine WriteTecplotDataSet1
 
 ! ************************************************************************** !
 !
@@ -2953,7 +3016,7 @@ end subroutine WriteTecplotDataSet
 ! date: 10/25/07, 12/02/11
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
+subroutine WriteTecplotDataSetNumPerLine1(fid,realization,array,datatype, &
                                          size_flag,num_per_line)
 
   use Realization_module
@@ -3209,7 +3272,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
 
   call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
-end subroutine WriteTecplotDataSetNumPerLine
+end subroutine WriteTecplotDataSetNumPerLine1
 
 ! ************************************************************************** !
 !
@@ -7192,7 +7255,8 @@ end subroutine GetVertexCoordinates
 
 ! ************************************************************************** !
 !
-! GetCellConnections: 
+! GetCellConnections: This routine returns a vector containing vertex ids
+! in natural order of local cells.
 ! author: Gautam Bisht
 ! date: 11/01/2011
 !
@@ -7221,14 +7285,15 @@ subroutine GetCellConnections(grid, vec)
   vec_ptr = -999.d0
   do local_id=1, ugrid%nlmax
     ghosted_id = local_id
-    offset = (local_id-1)*8
     select case(ugrid%cell_type(ghosted_id))
       case(HEX_TYPE)
+        offset = (local_id-1)*8
         do ivertex = 1, 8
           vec_ptr(offset + ivertex) = &
             ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
         enddo
       case(WEDGE_TYPE)
+        offset = (local_id-1)*8
         vec_ptr(offset + 1) = &
           ugrid%vertex_ids_natural(ugrid%cell_vertices(1,local_id))
         vec_ptr(offset + 2) = &
@@ -7246,6 +7311,7 @@ subroutine GetCellConnections(grid, vec)
         vec_ptr(offset + 8) = &
           ugrid%vertex_ids_natural(ugrid%cell_vertices(6,local_id))
       case (PYR_TYPE)
+        offset = (local_id-1)*8
         ! from Tecplot 360 Data Format Guide
         ! n1=vert1,n2=vert2,n3=vert3,n4=vert4,n5=n6=n7=n8=vert5
         do ivertex = 1, 4
@@ -7257,6 +7323,7 @@ subroutine GetCellConnections(grid, vec)
             ugrid%vertex_ids_natural(ugrid%cell_vertices(5,local_id))
         enddo
       case (TET_TYPE)
+        offset = (local_id-1)*8
         ! from Tecplot 360 Data Format Guide
         ! n1=vert1,n2=vert2,n3=n4=vert3,n5=vert5=n6=n7=n8=vert4
         do ivertex = 1, 3
@@ -7269,6 +7336,21 @@ subroutine GetCellConnections(grid, vec)
           vec_ptr(offset + ivertex) = &
             ugrid%vertex_ids_natural(ugrid%cell_vertices(4,local_id))
         enddo
+      case (QUAD_TYPE)
+        offset = (local_id-1)*4
+        do ivertex = 1, 4
+          vec_ptr(offset + ivertex) = &
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
+        enddo
+      case (TRI_TYPE)
+        offset = (local_id-1)*4
+        do ivertex = 1, 3
+          vec_ptr(offset + ivertex) = &
+            ugrid%vertex_ids_natural(ugrid%cell_vertices(ivertex,local_id))
+        enddo
+        ivertex = 4
+        vec_ptr(offset + ivertex) = &
+          ugrid%vertex_ids_natural(ugrid%cell_vertices(3,local_id))
     end select
   enddo
 
@@ -7389,7 +7471,7 @@ end function OutputGetVarFromArrayAtCoord
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
+subroutine OutputGetVarFromArray1(realization,vec,ivar,isubvar,isubvar1)
 
   use Realization_module
   use Grid_module
@@ -7410,7 +7492,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   
-end subroutine OutputGetVarFromArray
+end subroutine OutputGetVarFromArray1
 
 ! ************************************************************************** !
 !
@@ -9028,5 +9110,909 @@ subroutine OutputPrintCouplers(realization,istep)
   enddo
 
 end subroutine OutputPrintCouplers
+
+#ifdef SURFACE_FLOW
+! ************************************************************************** !
+!> This subroutine is main driver for all output subroutines related to
+!! surface flows.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/29/12
+! ************************************************************************** !
+subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
+
+  use Surface_Realization_module, only : surface_realization_type
+  use Realization_module, only : realization_type
+  use Option_module, only : OptionCheckTouch, option_type, &
+                            output_option_type, printMsg, printErrMsg
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  type(realization_type)         :: realization
+  PetscBool                      :: plot_flag
+  PetscBool                      :: transient_plot_flag
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode                 :: ierr
+  PetscLogDouble                 :: tstart, tend
+  type(option_type), pointer     :: option
+
+  option => surf_realization%option
+
+  call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
+
+  ! check for plot request from active directory
+  if (.not.plot_flag) then
+
+    if (option%use_touch_options) then
+      string = 'plot'
+      if (OptionCheckTouch(option,string)) then
+        surf_realization%output_option%plot_name = 'plot'
+        plot_flag = PETSC_TRUE
+      endif
+    endif
+  endif
+
+  if (plot_flag) then
+    if (surf_realization%output_option%print_hdf5) then
+      option%io_buffer = 'HDF5 output not supported for surface flow'
+      !call printErrMsg(option)
+    endif
+  
+    if (surf_realization%output_option%print_tecplot) then
+      call PetscGetTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
+      select case(surf_realization%output_option%tecplot_format)
+        case (TECPLOT_FEQUADRILATERAL_FORMAT)
+          call OutputTecplotFEQUAD(surf_realization,realization)
+      end select
+    endif
+
+    surf_realization%output_option%plot_number = surf_realization%output_option%plot_number + 1
+  endif
+
+  call PetscLogStagePop(ierr)
+
+end subroutine Output2
+
+! ************************************************************************** !
+!> This subroutine print to Tecplot file in FEQUADRILATERAL format for surface
+!! flows.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/29/12
+! ************************************************************************** !
+subroutine OutputTecplotFEQUAD(surf_realization,realization)
+
+  use Surface_Realization_module, only : surface_realization_type
+  use Realization_module, only : realization_type
+  use Discretization_module
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Surface_Field_module
+  use Patch_module
+  
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+ 
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  type(realization_type) :: realization
+  
+  PetscInt :: i, comma_count, quote_count
+  PetscInt, parameter :: icolumn = -1
+  character(len=MAXSTRINGLENGTH) :: filename, string, string2
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXWORDLENGTH) :: tmp_global_prefix
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(surface_field_type), pointer :: surf_field
+  type(patch_type), pointer :: patch 
+  type(reaction_type), pointer :: reaction 
+  type(output_option_type), pointer :: output_option
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vertex_vec
+  Vec :: global_cconn_vec
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: ivar, isubvar, var_type
+  
+  type(ugdm_type), pointer :: ugdm_element
+  
+  discretization => surf_realization%discretization
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+  surf_field => surf_realization%surf_field
+  output_option => surf_realization%output_option
+
+  tmp_global_prefix = option%global_prefix 
+  option%global_prefix = 'pflotran-surf'
+  filename = OutputFilename(output_option,option,'tec','')
+  option%global_prefix = tmp_global_prefix
+    
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot output file: ' // trim(filename)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=filename,action="write")
+    call OutputTecplotHeader(OUTPUT_UNIT,surf_realization,icolumn)
+  endif
+
+  ! write blocks
+  ! write out data sets
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)
+
+  ! write out coordinates
+  !call WriteTecplotUGridVertices(OUTPUT_UNIT,surf_realization)
+  call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
+
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      !pressure
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          call OutputGetVarFromArray(surf_realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,surf_realization,natural_vec,TECPLOT_REAL)
+      end select
+  end select
+
+  ! material id
+  call OutputGetVarFromArray(surf_realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,surf_realization,natural_vec,TECPLOT_INTEGER)
+
+  if (associated(output_option%plot_variables)) then
+    !do i = 1, size(output_option%plot_variables)
+    !  call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
+    !                                isubvar,var_type,option)
+    !  call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+    !  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    !  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
+    !enddo
+  endif
+
+  call VecDestroy(natural_vec,ierr)
+  call VecDestroy(global_vec,ierr)
+  
+  ! write vertices
+  call WriteTecplotUGridElements(OUTPUT_UNIT,surf_realization)
+
+  if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
+
+end subroutine OutputTecplotFEQUAD
+
+! ************************************************************************** !
+!> This subroutine prints header to Tecplot file for surface grid.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine OutputTecplotHeader2(fid,surf_realization,icolumn)
+
+  use Surface_Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  use Surface_Flow_Module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(surface_realization_type) :: surf_realization
+  PetscInt :: icolumn
+  
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+  output_option => surf_realization%output_option
+
+  ! write header
+  ! write title
+  write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
+                option%time/output_option%tconv,output_option%tunit
+
+  ! initial portion of header
+  header = 'VARIABLES=' // &
+            '"X [m]",' // &
+            '"Y [m]",' // &
+            '"Z [m]"'
+
+  ! write flow variables
+  header2 = ''
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      header2 = SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
+  end select
+  header = trim(header) // trim(header2)
+
+  ! write transport variables
+  if (option%ntrandof > 0) then
+    string = ''
+    !header2 = RTGetTecplotHeader(surf_realization,string,icolumn)
+    header = trim(header) // trim(header2)
+  endif
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    header = trim(header) // ',"Porosity"'
+  endif
+
+  ! write material ids
+  header = trim(header) // ',"Material_ID"'
+
+  if (associated(output_option%plot_variables)) then
+    do i = 1, size(output_option%plot_variables)
+      header = trim(header) // ',"' // &
+        trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
+                                        option)) // &
+        '"'
+    enddo
+  endif
+
+  write(fid,'(a)') trim(header)
+
+#ifdef GLENN_NEW_IO
+  !call OutputOptionPlotVarFinalize(output_option)
+#endif
+
+  ! count vars in header
+  quote_count = 0
+  comma_count = 0
+  do i=1,len_trim(header)
+    ! 34 = '"'
+    if (iachar(header(i:i)) == 34) then
+      quote_count = quote_count + 1
+    ! 44 = ','
+    else if (iachar(header(i:i)) == 44 .and. mod(quote_count,2) == 0) then
+      comma_count = comma_count + 1
+    endif
+  enddo
+  
+  variable_count = comma_count + 1
+
+  !geh: due to pgi bug, cannot embed functions with calls to write() within
+  !     write statement
+  string = OutputTecplotZoneHeader(surf_realization,variable_count, &
+                                   output_option%tecplot_format)
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputTecplotHeader2
+
+! ************************************************************************** !
+!> This subroutine prints zone header to Tecplot file.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+function OutputTecplotZoneHeader2(surf_realization,variable_count,tecplot_format)
+
+  use Surface_Realization_module
+  use Grid_module
+  use Option_module
+  
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  PetscInt :: variable_count
+  PetscInt :: tecplot_format
+  
+  character(len=MAXSTRINGLENGTH) :: OutputTecplotZoneHeader2
+
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  
+  grid => surf_realization%patch%grid
+  option => surf_realization%option
+  output_option => surf_realization%output_option
+  
+  
+  string = 'ZONE T="' // &
+           trim(OutputFormatDouble(option%time/output_option%tconv)) // &
+           '"'
+  string2 = ''
+  select case(tecplot_format)
+    case (TECPLOT_POINT_FORMAT)
+      if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
+          (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+        string2 = ', I=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nx)) // &
+                  ', J=' // &
+                  trim(OutputFormatInt(grid%structured_grid%ny)) // &
+                  ', K=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nz))
+      else
+        string2 = 'POINT format currently not supported for unstructured'
+      endif
+      string2 = trim(string2) // &
+              ', DATAPACKING=POINT'
+    case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
+      if ((surf_realization%discretization%itype == STRUCTURED_GRID).or. &
+          (surf_realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+        string2 = ', I=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nx+1)) // &
+                  ', J=' // &
+                  trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
+                  ', K=' // &
+                  trim(OutputFormatInt(grid%structured_grid%nz+1))
+      else
+        string2 = ', N=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
+                  ', ELEMENTS=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%nmax))
+        string2 = trim(string2) // ', ZONETYPE=FEQUADRILATERAL'
+      endif
+  
+      if (variable_count > 4) then
+        string3 = ', VARLOCATION=([4-' // &
+                  trim(OutputFormatInt(variable_count)) // &
+                  ']=CELLCENTERED)'
+      else
+        string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+      endif
+      string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
+  end select
+  
+  OutputTecplotZoneHeader2 = trim(string) // string2
+
+end function OutputTecplotZoneHeader2
+
+! ************************************************************************** !
+!> This subroutine writes unstructure grid vertices for surface grid.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine WriteTecplotUGridVertices2(fid,surf_realization)
+
+  use Surface_Realization_module
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+
+  PetscInt :: fid
+  type(surface_realization_type) :: surf_realization 
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vertex_vec
+  PetscInt :: local_size
+  PetscErrorCode :: ierr
+  
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_vertex_vec,ierr)
+  call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+  call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,surf_realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,surf_realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,surf_realization,vec_ptr,TECPLOT_REAL, &
+                           local_size)
+  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+  call VecDestroy(global_vertex_vec, ierr)
+
+end subroutine WriteTecplotUGridVertices2
+
+
+! ************************************************************************** !
+!> This subroutine writes data from an array within a block of a Tecplot file.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine WriteTecplotDataSet2(fid, &
+                                surf_realization, &
+                                array, &
+                                datatype, &
+                                size_flag &
+                               )
+
+  use Surface_Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(surface_realization_type) :: surf_realization
+  PetscReal :: array(:)
+  PetscInt :: datatype
+  PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
+
+  PetscInt, parameter :: num_per_line = 10
+
+  call WriteTecplotDataSetNumPerLine(fid,surf_realization,array,datatype, &
+                                     size_flag,num_per_line)
+  
+end subroutine WriteTecplotDataSet2
+
+! ************************************************************************** !
+!> This subroutine writes data from an array within a block of a Tecplot file
+!! with a specified number of values per line.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine WriteTecplotDataSetNumPerLine2(fid, &
+                                          surf_realization, &
+                                          array, &
+                                          datatype, &
+                                          size_flag, &
+                                          num_per_line &
+                                         )
+
+  use Surface_Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(surface_realization_type) :: surf_realization
+  PetscReal :: array(:)
+  PetscInt :: datatype
+  PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
+  PetscInt :: num_per_line
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  PetscInt :: i
+  PetscInt :: max_proc, max_proc_prefetch
+  PetscMPIInt :: iproc_mpi, recv_size_mpi
+  PetscInt :: max_local_size
+  PetscMPIInt :: local_size_mpi
+  PetscInt :: istart, iend, num_in_array
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
+  PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
+  PetscReal, allocatable :: real_data(:), real_data_recv(:)
+
+  
+1000 format(100(i2,1x))
+1001 format(100(i4,1x))
+1002 format(100(i6,1x))
+1003 format(100(i8,1x))
+1004 format(100(i10,1x))
+1010 format(100(es13.6,1x))
+
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+
+  call PetscLogEventBegin(logging%event_output_write_tecplot,ierr)
+
+  ! if num_per_line exceeds 100, need to change the format statement below
+  if (num_per_line > 100) then
+    option%io_buffer = 'Number of values to be written to line in ' // &
+      'WriteTecplotDataSetNumPerLine() exceeds 100.  ' // &
+      'Must fix format statements.'
+    call printErrMsg(option)
+  endif
+
+  ! maximum number of initial messages
+#define HANDSHAKE
+  max_proc = option%io_handshake_buffer_size
+  max_proc_prefetch = option%io_handshake_buffer_size / 10
+
+  if (size_flag /= 0) then
+    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                       MPI_MAX,option%mycomm,ierr)
+    local_size_mpi = size_flag
+  else
+  ! if first time, determine the maximum size of any local array across
+  ! all procs
+    if (max_local_size_saved < 0) then
+      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER_MPI, &
+                         MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
+      max_local_size_saved = max_local_size
+      write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
+      call printMsg(option)
+    endif
+    max_local_size = max_local_size_saved
+    local_size_mpi = grid%nlmax
+  endif
+  
+  ! transfer the data to an integer or real array
+  if (datatype == TECPLOT_INTEGER) then
+    allocate(integer_data(max_local_size+10))
+    allocate(integer_data_recv(max_local_size))
+    do i=1,local_size_mpi
+      integer_data(i) = int(array(i))
+    enddo
+  else
+    allocate(real_data(max_local_size+10))
+    allocate(real_data_recv(max_local_size))
+    do i=1,local_size_mpi
+      real_data(i) = array(i)
+    enddo
+  endif
+  
+  ! communicate data to processor 0, round robin style
+  if (option%myrank == option%io_rank) then
+    if (datatype == TECPLOT_INTEGER) then
+      ! This approach makes output files identical, regardless of processor
+      ! distribution.  It is necessary when diffing files.
+      iend = 0
+      do
+        istart = iend+1
+        if (iend+num_per_line > local_size_mpi) exit
+        iend = istart+(num_per_line-1)
+        i = abs(maxval(integer_data(istart:iend)))
+        if (i < 10) then
+          write(fid,1000) integer_data(istart:iend)
+        else if (i < 1000) then
+          write(fid,1001) integer_data(istart:iend)
+        else if (i < 100000) then
+          write(fid,1002) integer_data(istart:iend)
+        else if (i < 10000000) then
+          write(fid,1003) integer_data(istart:iend)
+        else
+          write(fid,1004) integer_data(istart:iend)
+        endif
+      enddo
+      ! shift remaining data to front of array
+      integer_data(1:local_size_mpi-iend) = integer_data(iend+1:local_size_mpi)
+      num_in_array = local_size_mpi-iend
+    else
+      iend = 0
+      do
+        istart = iend+1
+        if (iend+num_per_line > local_size_mpi) exit
+        iend = istart+(num_per_line-1)
+        ! if num_per_line exceeds 100, need to change the format statement below
+        write(fid,1010) real_data(istart:iend)
+      enddo
+      ! shift remaining data to front of array
+      real_data(1:local_size_mpi-iend) = real_data(iend+1:local_size_mpi)
+      num_in_array = local_size_mpi-iend
+    endif
+    do iproc_mpi=1,option%mycommsize-1
+#ifdef HANDSHAKE
+      if (option%io_handshake_buffer_size > 0 .and. &
+          iproc_mpi+max_proc_prefetch >= max_proc) then
+        max_proc = max_proc + option%io_handshake_buffer_size
+        call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
+      endif
+#endif
+      call MPI_Probe(iproc_mpi,MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+      recv_size_mpi = status_mpi(MPI_TAG)
+      if (datatype == TECPLOT_INTEGER) then
+        call MPI_Recv(integer_data_recv,recv_size_mpi,MPIU_INTEGER,iproc_mpi, &
+                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+        if (recv_size_mpi > 0) then
+          integer_data(num_in_array+1:num_in_array+recv_size_mpi) = &
+                                             integer_data_recv(1:recv_size_mpi)
+          num_in_array = num_in_array+recv_size_mpi
+        endif
+        iend = 0
+        do
+          istart = iend+1
+          if (iend+num_per_line > num_in_array) exit
+          iend = istart+(num_per_line-1)
+          i = abs(maxval(integer_data(istart:iend)))
+          if (i < 10) then
+            write(fid,1000) integer_data(istart:iend)
+          else if (i < 1000) then
+            write(fid,1001) integer_data(istart:iend)
+          else if (i < 100000) then
+            write(fid,1002) integer_data(istart:iend)
+          else if (i < 10000000) then
+            write(fid,1003) integer_data(istart:iend)
+          else
+            write(fid,1004) integer_data(istart:iend)
+          endif
+        enddo
+        if (iend > 0) then
+          integer_data(1:num_in_array-iend) = integer_data(iend+1:num_in_array)
+          num_in_array = num_in_array-iend
+        endif
+      else
+        call MPI_Recv(real_data_recv,recv_size_mpi,MPI_DOUBLE_PRECISION,iproc_mpi, &
+                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+        if (recv_size_mpi > 0) then
+          real_data(num_in_array+1:num_in_array+recv_size_mpi) = &
+                                             real_data_recv(1:recv_size_mpi)
+          num_in_array = num_in_array+recv_size_mpi
+        endif
+        iend = 0
+        do
+          istart = iend+1
+          if (iend+num_per_line > num_in_array) exit
+          iend = istart+(num_per_line-1)
+          ! if num_per_line exceeds 100, need to change the format statement below
+          write(fid,1010) real_data(istart:iend)
+        enddo
+        if (iend > 0) then
+          real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
+          num_in_array = num_in_array-iend
+        endif
+      endif
+    enddo
+#ifdef HANDSHAKE
+    if (option%io_handshake_buffer_size > 0) then
+      max_proc = -1
+      call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)
+    endif
+#endif
+    ! Print the remaining values, if they exist
+    if (datatype == TECPLOT_INTEGER) then
+      if (num_in_array > 0) then
+        i = abs(maxval(integer_data(1:num_in_array)))
+        if (i < 10) then
+          write(fid,1000) integer_data(1:num_in_array)
+        else if (i < 1000) then
+          write(fid,1001) integer_data(1:num_in_array)
+        else if (i < 100000) then
+          write(fid,1002) integer_data(1:num_in_array)
+        else if (i < 10000000) then
+          write(fid,1003) integer_data(1:num_in_array)
+        else
+          write(fid,1004) integer_data(1:num_in_array)
+        endif
+      endif
+    else
+      if (num_in_array > 0) &
+        write(fid,1010) real_data(1:num_in_array)
+    endif
+  else
+#ifdef HANDSHAKE
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        if (option%myrank < max_proc) exit
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
+                       ierr)
+      enddo
+    endif
+#endif
+    if (datatype == TECPLOT_INTEGER) then
+      call MPI_Send(integer_data,local_size_mpi,MPIU_INTEGER,option%io_rank, &
+                    local_size_mpi,option%mycomm,ierr)
+    else
+      call MPI_Send(real_data,local_size_mpi,MPI_DOUBLE_PRECISION,option%io_rank, &
+                    local_size_mpi,option%mycomm,ierr)
+    endif
+#ifdef HANDSHAKE
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
+                       ierr)
+        if (max_proc < 0) exit
+      enddo
+    endif
+#endif
+#undef HANDSHAKE
+  endif
+      
+  if (datatype == TECPLOT_INTEGER) then
+    deallocate(integer_data)
+  else
+    deallocate(real_data)
+  endif
+
+  call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)
+
+end subroutine WriteTecplotDataSetNumPerLine2
+
+! ************************************************************************** !
+!
+! WriteTecplotDataSetFromVec: Writes data from a Petsc Vec within a block
+!                             of a Tecplot file
+! author: Glenn Hammond
+! date: 10/25/07
+!
+!> This subroutine writes data from a PETSc Vec within a block of a Tecplot
+!! file for surface grid.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine WriteTecplotDataSetFromVec2( fid, &
+                                        surf_realization, &
+                                        vec, &
+                                        datatype &
+                                      )
+
+  use Surface_Realization_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(surface_realization_type) :: surf_realization
+  Vec :: vec
+  PetscInt :: datatype
+  
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  call WriteTecplotDataSet(fid,surf_realization,vec_ptr,datatype,ZERO_INTEGER) ! 0 implies grid%nlmax
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+end subroutine WriteTecplotDataSetFromVec2
+
+! ************************************************************************** !
+!> This subroutine writes unstructured grid elements for surface grid.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine WriteTecplotUGridElements2(fid, &
+                                      surf_realization)
+
+  use Surface_Realization_module
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(surface_realization_type) :: surf_realization
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  Vec :: global_cconn_vec
+  type(ugdm_type), pointer :: ugdm_element
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: local_size
+
+  patch => surf_realization%patch
+  grid => patch%grid
+  option => surf_realization%option
+  
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option)
+  call GetCellConnections(grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+
+  local_size = grid%unstructured_grid%nmax * 4
+  call WriteTecplotDataSetNumPerLine(fid,surf_realization,vec_ptr, &
+                                     TECPLOT_INTEGER, &
+                                     local_size, &
+                                     FOUR_INTEGER)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine WriteTecplotUGridElements2
+
+! ************************************************************************** !
+!> This subroutine extracts variables indexed by ivar from a multivar array.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/30/12
+! ************************************************************************** !
+subroutine OutputGetVarFromArray2(surf_realization, &
+                                  vec, &
+                                  ivar, &
+                                  isubvar, &
+                                  isubvar1 &
+                                  )
+
+  use Surface_Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+
+  call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr)
+
+  call SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+
+  call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr)
+
+end subroutine OutputGetVarFromArray2
+
+
+#endif SURFACE_FLOW
 
 end module Output_module

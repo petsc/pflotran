@@ -1134,7 +1134,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! do not free local_vertex_offset; MatAdjDestroy will do it
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'Adj.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'Adj_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'Adj_surf.out',viewer,ierr)
+  endif
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1155,7 +1159,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   if (allocated(local_vertex_offset)) deallocate(local_vertex_offset)
   
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'Dual.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'Dual_surf.out',viewer,ierr)
+  endif
   call MatView(Dual_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1177,7 +1185,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   call MatPartitioningDestroy(Part,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'is_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'is_surf.out',viewer,ierr)
+  endif
   call ISView(is_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)  
 #endif
@@ -1281,8 +1293,13 @@ subroutine UGridDecompose(unstructured_grid,option)
   call ISDestroy(is_num,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_scatter_elem_old_to_new.out', &
-                            viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_elem_old_to_new_subsurf.out', &
+                              viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_elem_old_to_new_surf.out', &
+                              viewer,ierr)
+  endif
   call ISView(is_scatter,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1367,7 +1384,11 @@ subroutine UGridDecompose(unstructured_grid,option)
 
 #if UGRID_DEBUG
   call printMsg(option,'After element scatter')
-  call PetscViewerASCIIOpen(option%mycomm,'elements_old.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'elements_old_suburf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'elements_old_surf.out',viewer,ierr)
+  endif
   call VecView(elements_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1375,7 +1396,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecDestroy(elements_old,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'elements_natural.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'elements_natural_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'elements_natural_surf.out',viewer,ierr)
+  endif
   call VecView(elements_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1428,7 +1453,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   unstructured_grid%cell_ids_natural = unstructured_grid%cell_ids_natural + 1
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'ao.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'ao_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'ao_surf.out',viewer,ierr)
+  endif
   call AOView(unstructured_grid%ao_natural_to_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1505,7 +1534,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'elements_petsc.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_surf.out',viewer,ierr)
+  endif
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1553,8 +1586,13 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm, &
-                            'elements_local_dual_unsorted.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'elements_local_dual_unsorted_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'elements_local_dual_unsorted_surf.out',viewer,ierr)
+  endif
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1645,8 +1683,13 @@ subroutine UGridDecompose(unstructured_grid,option)
 
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'elements_local_dual.out', &
-                            viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'elements_local_dual_subsurf.out', &
+                              viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'elements_local_dual_surf.out', &
+                              viewer,ierr)
+  endif
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1739,10 +1782,18 @@ subroutine UGridDecompose(unstructured_grid,option)
   deallocate(int_array)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_scatter_elem_local_to_ghost.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_elem_local_to_ghost_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_elem_local_to_ghost_surf.out',viewer,ierr)
+  endif
   call ISView(is_scatter,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'is_gather_elem_local_to_ghost.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_elem_local_to_ghost_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_elem_local_to_ghost_surf.out',viewer,ierr)
+  endif
   call ISView(is_gather,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1855,7 +1906,11 @@ subroutine UGridDecompose(unstructured_grid,option)
 
 #if UGRID_DEBUG
   write(string,*) option%myrank
-  string = 'elements_vert_local' // trim(adjustl(string)) // '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'elements_vert_local' // trim(adjustl(string)) // '_subsurf.out'
+  else
+    string = 'elements_vert_local' // trim(adjustl(string)) // '_surf.out'
+  endif
   call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
   call VecView(elements_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1933,10 +1988,18 @@ subroutine UGridDecompose(unstructured_grid,option)
   enddo
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'is_scatter_vert_old_to_new_surf.out',viewer,ierr)
+  endif
   call ISView(is_scatter,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'is_gather_vert_old_to_new_surf.out',viewer,ierr)
+  endif
   call ISView(is_gather,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1952,7 +2015,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecScatterDestroy(vec_scatter,ierr)
 
 #if UGRID_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old.out',viewer,ierr)
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_subsurf.out',viewer,ierr)
+  else
+    call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old_surf.out',viewer,ierr)
+  endif
   call VecView(vertices_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1971,7 +2038,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   
 #if UGRID_DEBUG
   write(string,*) option%myrank
-  string = 'vertex_coord_new' // trim(adjustl(string)) // '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'vertex_coord_new' // trim(adjustl(string)) // '_subsurf.out'
+  else
+    string = 'vertex_coord_new' // trim(adjustl(string)) // '_surf.out'
+  endif
   call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
   call VecView(vertices_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -2020,7 +2091,6 @@ subroutine UGridDecompose(unstructured_grid,option)
       call printErrMsg(option)
   end select
         
-  
   unstructured_grid%global_offset = global_offset_new  
 
 end subroutine UGridDecompose
@@ -3447,8 +3517,13 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #if UGRID_DEBUG
   write(string,*) option%myrank
   string = adjustl(string)
-  string = 'Mat_vert_to_face_' // trim(region_name) // '_global' // &
-           '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'Mat_vert_to_face_' // trim(region_name) // '_global' // &
+            '_subsurf.out'
+  else
+    string = 'Mat_vert_to_face_' // trim(region_name) // '_global' // &
+            '_surf.out'
+  endif
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call MatView(Mat_vert_to_face,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -3486,7 +3561,11 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #if UGRID_DEBUG
   write(string,*) option%myrank
   string = adjustl(string)
-  string = 'is_tmp1_' // trim(region_name) // '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'is_tmp1_' // trim(region_name) // '_subsurf.out'
+  else
+    string = 'is_tmp1_' // trim(region_name) // '_surf.out'
+  endif
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call ISView(is_tmp1,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -3494,7 +3573,6 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
   nvertices = 0
   do iface = 1, n_ss_faces
-    !if(option%myrank == 0) write(*,*),iface,face_vertices(:,iface)
     do ivertex = 1, size(face_vertices,1)
       if (face_vertices(ivertex,iface) > 0) then
         nvertices = nvertices + 1
@@ -3510,7 +3588,11 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #if UGRID_DEBUG
   write(string,*) option%myrank
   string = adjustl(string)
-  string = 'is_tmp2_' // trim(region_name) // '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'is_tmp2_' // trim(region_name) // '_subsurf.out'
+  else
+    string = 'is_tmp2_' // trim(region_name) // '_surf.out'
+  endif
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call ISView(is_tmp2,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -3526,7 +3608,11 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   call ISDestroy(is_tmp2,ierr)
   
 #if UGRID_DEBUG
-  string = 'scatter_gton_' // trim(region_name) // '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'scatter_gton_' // trim(region_name) // '_subsurf.out'
+  else
+    string = 'scatter_gton_' // trim(region_name) // '_surf.out'
+  endif
   call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecScatterView(scatter_gton,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -3541,8 +3627,13 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #if UGRID_DEBUG
   write(string,*) option%myrank
   string = adjustl(string)
-  string = 'Vertex_vec_' // trim(region_name) // '_global' // &
-            '.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'Vertex_vec_' // trim(region_name) // '_global' // &
+              '_subsurf.out'
+  else
+    string = 'Vertex_vec_' // trim(region_name) // '_global' // &
+              '_surf.out'
+  endif
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call VecView(Vertex_vec,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -3553,7 +3644,11 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   
 #if UGRID_DEBUG
   write(string,*) option%myrank
-  string = 'Face_vec_' // trim(region_name) // '_global.out'
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'Face_vec_' // trim(region_name) // '_global_subsurf.out'
+  else
+    string = 'Face_vec_' // trim(region_name) // '_global_surf.out'
+  endif
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call VecView(Face_vec,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)

@@ -31,7 +31,8 @@ module Surface_Flow_module
          SurfaceFlowResidual, &
          SurfaceFlowJacobian, &
          SurfaceFlowMaxChange, &
-         SurfaceFlowUpdateSolution
+         SurfaceFlowUpdateSolution, &
+         SurfaceFlowGetTecplotHeader
   
 contains
 
@@ -81,6 +82,8 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   type(option_type)                            :: option
   type(unstructured_grid_type), pointer        :: un_str_sfgrid
   character(len=MAXWORDLENGTH)                 :: word
+  character(len=MAXWORDLENGTH)                 :: unstructured_grid_ctype
+  PetscInt :: unstructured_grid_itype
 
   discretization => surf_realization%discretization
 
@@ -114,6 +117,8 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
 
             select case(trim(word))
               case ('UNSTRUCTURED')
+                unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
+                unstructured_grid_ctype = 'implicit unstructured'
                 discretization%itype = UNSTRUCTURED_GRID
                 call InputReadNChars(input,option, &
                                      discretization%filename, &
@@ -130,8 +135,8 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
                                        option)
                 grid%unstructured_grid => un_str_sfgrid
                 discretization%grid => grid
-                grid%itype = discretization%itype
-                grid%ctype = discretization%ctype
+                grid%itype = unstructured_grid_itype
+                grid%ctype = unstructured_grid_ctype
 
               case default
               option%io_buffer = 'Surface-flow supports only unstructured grid'
@@ -175,6 +180,9 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   use Coupler_module
   use Strata_module
   use Debug_module
+  use Units_module
+  use Waypoint_module
+  use Patch_module
 
   implicit none
 
@@ -189,13 +197,39 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   type(flow_condition_type), pointer           :: flow_condition
   type(coupler_type), pointer                  :: coupler
   type(strata_type), pointer                   :: strata
-  character(len=MAXWORDLENGTH)                 :: word
 
-  discretization => surf_realization%discretization
+  type(patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
+  PetscReal :: units_conversion
+
+  character(len=MAXWORDLENGTH)                 :: word
+  character(len=MAXWORDLENGTH)                 :: card
+  character(len=1) :: backslash
+
+  PetscBool :: velocities
+  PetscBool :: fluxes
+  PetscBool :: continuation_flag
+  type(waypoint_type), pointer :: waypoint
+  PetscReal :: temp_real, temp_real2
+
+  character(len=MAXWORDLENGTH) :: plot_variables(100)
+  PetscInt :: num_plot_variables
+
+  num_plot_variables = 0
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
 
   input%ierr = 0
 ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
+
+  discretization => surf_realization%discretization
+  output_option => surf_realization%output_option
+
+  patch => surf_realization%patch
+
+  if (associated(patch)) grid => patch%grid
 
   do
     call InputReadFlotranString(input,option)
@@ -286,6 +320,277 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
       !.........................................................................
       case ('SURF_DEBUG')
         call DebugRead(surf_realization%debug,input,option)
+
+      !.........................................................................
+      case ('SURF_OUTPUT')
+        velocities = PETSC_FALSE
+        fluxes = PETSC_FALSE
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','SURF_OUTPUT')
+          call StringToUpper(word)
+          select case(trim(word))
+            case('NO_FINAL','NO_PRINT_FINAL')
+              output_option%print_final = PETSC_FALSE
+            case('NO_INITIAL','NO_PRINT_INITIAL')
+              output_option%print_initial = PETSC_FALSE
+            case('PERMEABILITY')
+              output_option%print_permeability = PETSC_TRUE
+            case('POROSITY')
+              output_option%print_porosity = PETSC_TRUE
+            case('MASS_BALANCE')
+              option%compute_mass_balance_new = PETSC_TRUE
+            case('PRINT_COLUMN_IDS')
+              output_option%print_column_ids = PETSC_TRUE
+            case('TIMES')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'units','SURF_OUTPUT')
+              units_conversion = UnitsConvertToInternal(word,option)
+              continuation_flag = PETSC_TRUE
+              do
+                continuation_flag = PETSC_FALSE
+                if (index(input%buf,backslash) > 0) &
+                  continuation_flag = PETSC_TRUE
+                input%ierr = 0
+                do
+                  if (InputError(input)) exit
+                  call InputReadDouble(input,option,temp_real)
+                  if (.not.InputError(input)) then
+                    waypoint => WaypointCreate()
+                    waypoint%time = temp_real*units_conversion
+                    waypoint%print_output = PETSC_TRUE
+                    call WaypointInsertInList(waypoint,surf_realization%waypoints)
+                  endif
+                enddo
+                if (.not.continuation_flag) exit
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+              enddo
+            case('OUTPUT_FILE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                                 'SURF_OUTPUT,OUTPUT_FILE')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('OFF')
+                  option%print_to_file = PETSC_FALSE
+                case('PERIODIC')
+                  call InputReadInt(input,option,output_option%output_file_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'SURF_OUTPUT,PERIODIC,OUTPUT_FILE')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,OUTPUT_FILE.'
+                  call printErrMsg(option)
+              end select
+            case('SCREEN')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment','OUTPUT,SCREEN')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('OFF')
+                  option%print_to_screen = PETSC_FALSE
+                case('PERIODIC')
+                  call InputReadInt(input,option,output_option%screen_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'SURF_OUTPUT,PERIODIC,SCREEN')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,SCREEN.'
+                  call printErrMsg(option)
+              end select
+            case('PERIODIC')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                                 'SURF_OUTPUT,PERIODIC')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('TIME')
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'time increment', &
+                                     'SURF_OUTPUT,PERIODIC,TIME')
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'time increment units', &
+                                     'SURF_OUTPUT,PERIODIC,TIME')
+                  units_conversion = UnitsConvertToInternal(word,option)
+                  output_option%periodic_output_time_incr = temp_real* &
+                                                            units_conversion
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  if (input%ierr == 0) then
+                    if (StringCompareIgnoreCase(word,'between')) then
+
+                      call InputReadDouble(input,option,temp_real)
+                      call InputErrorMsg(input,option,'start time', &
+                                         'SURF_OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'start time units', &
+                                         'SURF_OUTPUT,PERIODIC,TIME')
+                      units_conversion = UnitsConvertToInternal(word,option)
+                      temp_real = temp_real * units_conversion
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (.not.StringCompareIgnoreCase(word,'and')) then
+                        input%ierr = 1
+                      endif
+                      call InputErrorMsg(input,option,'and', &
+                                          'SURF_OUTPUT,PERIODIC,TIME"')
+                      call InputReadDouble(input,option,temp_real2)
+                      call InputErrorMsg(input,option,'end time', &
+                                         'SURF_OUTPUT,PERIODIC,TIME')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'end time units', &
+                                         'SURF_OUTPUT,PERIODIC,TIME')
+                      temp_real2 = temp_real2 * units_conversion
+                      do
+                        waypoint => WaypointCreate()
+                        waypoint%time = temp_real
+                        waypoint%print_output = PETSC_TRUE
+                        call WaypointInsertInList(waypoint,surf_realization%waypoints)
+                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        if (temp_real > temp_real2) exit
+                      enddo
+                      output_option%periodic_output_time_incr = 0.d0
+                    else
+                      input%ierr = 1
+                      call InputErrorMsg(input,option,'between', &
+                                          'SURF_OUTPUT,PERIODIC,TIME')
+                    endif
+                  endif
+                case('TIMESTEP')
+                  call InputReadInt(input,option, &
+                                    output_option%periodic_output_ts_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'SURF_OUTPUT,PERIODIC,TIMESTEP')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,PERIODIC,'// &
+                                     'TIMESTEP.'
+                  call printErrMsg(option)
+              end select
+            case('PERIODIC_OBSERVATION')
+              output_option%print_observation = PETSC_TRUE
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment', &
+                'OUTPUT, PERIODIC_OBSERVATION')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('TIME')
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'time increment', &
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'time increment units', &
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
+                  units_conversion = UnitsConvertToInternal(word,option) 
+                  output_option%periodic_tr_output_time_incr = temp_real* &
+                                                               units_conversion
+                case('TIMESTEP')
+                  call InputReadInt(input,option, &
+                                    output_option%periodic_tr_output_ts_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,'// &
+                                     'PERIODIC_OBSERVATION,TIMESTEP.'
+                  call printErrMsg(option)
+              end select
+            case('FORMAT')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'keyword','OUTPUT,FORMAT') 
+              call StringToUpper(word)
+              select case(trim(word))
+                case ('HDF5')
+                  output_option%print_hdf5 = PETSC_TRUE
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputDefaultMsg(input,option, &
+                                       'OUTPUT,FORMAT,HDF5,# FILES')
+                  if (len_trim(word) > 1) then 
+                    call StringToUpper(word)
+                    select case(trim(word))
+                      case('SINGLE_FILE')
+                        output_option%print_single_h5_file = PETSC_TRUE
+                      case('MULTIPLE_FILES')
+                        output_option%print_single_h5_file = PETSC_FALSE
+                      case default
+                        option%io_buffer = 'HDF5 keyword (' // trim(word) // &
+                          ') not recongnized.  Use "SINGLE_FILE" or ' // &
+                          '"MULTIPLE_FILES".'
+                        call printErrMsg(option)
+                    end select
+                  endif
+                case ('MAD')
+                  output_option%print_mad = PETSC_TRUE
+                case ('TECPLOT')
+                  output_option%print_tecplot = PETSC_TRUE
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'TECPLOT','OUTPUT,FORMAT') 
+                  call StringToUpper(word)
+                  select case(trim(word))
+                    case('POINT')
+                      output_option%tecplot_format = TECPLOT_POINT_FORMAT
+                    case('BLOCK')
+                      output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+                    case('FEQUADRILATERAL')
+                      output_option%tecplot_format = TECPLOT_FEQUADRILATERAL_FORMAT
+                    case default
+                      option%io_buffer = 'TECPLOT format (' // trim(word) // &
+                                         ') not recongnized.'
+                      call printErrMsg(option)
+                  end select
+                  if (output_option%tecplot_format == TECPLOT_POINT_FORMAT &
+                      .and. option%mycommsize > 1) then
+                    output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+                  endif
+                  if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
+                    output_option%tecplot_format = TECPLOT_FEQUADRILATERAL_FORMAT
+                  endif
+                case ('VTK')
+                  output_option%print_vtk = PETSC_TRUE
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,FORMAT.'
+                  call printErrMsg(option)
+              end select
+
+            case('VELOCITIES')
+              velocities = PETSC_TRUE
+            case('FLUXES')
+              fluxes = PETSC_TRUE
+            case ('HDF5_WRITE_GROUP_SIZE')
+              call InputReadInt(input,option,option%hdf5_write_group_size)
+              call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+            case('PROCESSOR_ID')
+              num_plot_variables = num_plot_variables + 1
+              plot_variables(num_plot_variables) = trim(word)
+            case default
+              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in OUTPUT.'
+              call printErrMsg(option)
+          end select
+        enddo
+
+        if (num_plot_variables > 0) then
+          allocate(output_option%plot_variables(num_plot_variables))
+          output_option%plot_variables(1:num_plot_variables) = &
+                                           plot_variables(1:num_plot_variables)
+        endif
+        if (velocities) then
+          if (output_option%print_tecplot) &
+            output_option%print_tecplot_velocities = PETSC_TRUE
+          if (output_option%print_hdf5) &
+            output_option%print_hdf5_velocities = PETSC_TRUE
+          if (output_option%print_vtk) &
+            output_option%print_vtk_velocities = PETSC_TRUE
+        endif
+        if (fluxes) then
+          if (output_option%print_tecplot) &
+            output_option%print_tecplot_flux_velocities = PETSC_TRUE
+          if (output_option%print_hdf5) &
+           output_option%print_hdf5_flux_velocities = PETSC_TRUE
+        endif
 
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
@@ -1523,6 +1828,45 @@ subroutine SurfaceFlowUpdateSolution(surf_realization)
   call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr)
 
 end subroutine SurfaceFlowUpdateSolution
+
+! ************************************************************************** !
+!> This routine surface flow tecplot file header
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/29/12
+! ************************************************************************** !
+function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
+
+  use Surface_Realization_module
+  use Option_module
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: SurfaceFlowGetTecplotHeader
+  type(surface_realization_type) :: surf_realization
+  PetscInt :: icolumn
+
+  character(len=MAXSTRINGLENGTH) :: string, string2
+
+  string = ''
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
+  else
+    write(string2,'('',"P [m]"'')')
+  endif
+  string = trim(string) // trim(string2)
+#ifdef GLENN_NEW_IO
+  !call OutputOptionAddPlotVariable(realization%output_option,PRESSURE, &
+  !                           ZERO_INTEGER,ZERO_INTEGER)
+#endif
+
+  SurfaceFlowGetTecplotHeader = string
+
+end function SurfaceFlowGetTecplotHeader
 
 end module Surface_Flow_module
 

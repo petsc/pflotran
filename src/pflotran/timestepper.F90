@@ -318,6 +318,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #ifdef SURFACE_FLOW
   type(stepper_type), pointer :: surf_flow_stepper
   type(surface_realization_type), pointer :: surf_realization
+  PetscBool :: plot_flag_surf, transient_plot_flag_surf
 #endif
   
   type(stepper_type), pointer :: master_stepper
@@ -485,6 +486,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
+#ifdef SURFACE_FLOW
+    plot_flag_surf = PETSC_TRUE
+    transient_plot_flag_surf = PETSC_TRUE
+    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+#endif
     if (output_option%print_permeability) then
       call OutputPermeability(realization)
     endif
@@ -589,20 +595,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #ifdef SURFACE_FLOW
     ! surface-flow solution
     if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
-      !write(*,*),'After StepperSetTargetTimes: ',option%flow_dt, flow_stepper%target_time, flow_stepper%dt_max
-      !call StepperSetTargetTimesSurfaceFlow(surf_flow_stepper,surf_realization%option)
       surf_flow_stepper%target_time   = flow_stepper%target_time
       surf_realization%option%flow_dt = option%flow_dt
-      !write(*,*),'After StepperSetTargetTimesSurfaceFlow: ',surf_realization%option%flow_dt, &
-      !surf_flow_stepper%target_time, surf_flow_stepper%dt_max
-
-      !flow_t0 = option%flow_time
-      !call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
       call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
                               surf_failure)
-      !call PetscLogStagePop(ierr)
-      !if (failure) return ! if flow solve fails, exit
-      !option%flow_time = flow_stepper%target_time
     endif
 #endif
     
@@ -718,7 +714,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 !      call MassBalanceUpdate(realization,flow_stepper%solver, &
 !                             tran_stepper%solver)
 !    endif
+#ifdef SURFACE_FLOW
+    plot_flag_surf = plot_flag
+    transient_plot_flag_surf = transient_plot_flag
+#endif
     call Output(realization,plot_flag,transient_plot_flag)
+#ifdef SURFACE_FLOW
+    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+#endif
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
