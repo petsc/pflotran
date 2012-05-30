@@ -64,7 +64,8 @@ private
             SurfaceRealizationMapSurfSubsurfaceGrids, &
             SurfaceRealizationInitAllCouplerAuxVars, &
             SurfaceRealizationProcessMatProp, &
-            SurfaceRealizationUpdate
+            SurfaceRealizationUpdate, &
+            SurfaceRealizationGetDataset
 
 contains
 
@@ -1189,6 +1190,35 @@ subroutine SurfaceRealizationUpdate(surf_realization)
 
 end subroutine SurfaceRealizationUpdate
 
+! ************************************************************************** !
+!
+! RealizationGetDataset: Extracts variables indexed by ivar and isubvar from a
+!                        realization
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubvar1)
+
+  use Option_module
+  use Surface_Field_module
+
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+
+  call PatchGetDataset(surf_realization%patch, &
+                       surf_realization%surf_field, &
+                       !surf_realization%reaction, &
+                       surf_realization%option, &
+                       surf_realization%output_option, &
+                       vec,ivar,isubvar,isubvar1)
+
+end subroutine SurfaceRealizationGetDataset
 
 end module Surface_Realization_module
 

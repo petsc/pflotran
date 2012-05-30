@@ -311,7 +311,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 	coupler.o connection.o hdf5.o observation.o \
 	reactive_transport.o immis.o miscible.o \
 	thc.o thmc.o richards.o mphase.o flash2.o general.o \
-	discretization.o logging.o unstructured_grid_aux.o
+	discretization.o logging.o unstructured_grid_aux.o surface_realization.o surface_flow.o
 reaction.o : reactive_transport_aux.o reaction_aux.o surface_complexation.o \
              surface_complexation_aux.o option.o string.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o

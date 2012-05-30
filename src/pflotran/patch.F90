@@ -103,6 +103,13 @@ module Patch_module
   PetscInt, parameter, public :: INT_VAR = 0
   PetscInt, parameter, public :: REAL_VAR = 1
     
+  interface PatchGetDataset
+    module procedure PatchGetDataset1
+#ifdef SURFACE_FLOW
+    module procedure PatchGetDataset2
+#endif
+  end interface
+
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
@@ -1659,7 +1666,7 @@ end function PatchAuxVarsUpToDate
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
+subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, &
                            isubvar,isubvar1)
 
   use Grid_module
@@ -2433,7 +2440,7 @@ subroutine PatchGetDataset(patch,field,reaction,option,output_option,vec,ivar, &
 
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
   
-end subroutine PatchGetDataset
+end subroutine PatchGetDataset1
 
 ! ************************************************************************** !
 !
@@ -4038,5 +4045,82 @@ subroutine PatchDestroy(patch)
   nullify(patch)
   
 end subroutine PatchDestroy
+
+#ifdef SURFACE_FLOW
+! ************************************************************************** !
+!
+! PatchGetDataset: Extracts variables indexed by ivar and isubvar from a patch
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
+                           isubvar,isubvar1)
+
+  use Grid_module
+  use Option_module
+  use Surface_Field_module
+  
+  use Immis_Aux_module
+  use Miscible_Aux_module
+  use Mphase_Aux_module
+  use THC_Aux_module
+  use THMC_Aux_module
+  use Richards_Aux_module
+  use Reactive_Transport_Aux_module  
+  use Reaction_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(option_type), pointer :: option
+  !type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
+  type(surface_field_type), pointer :: surf_field
+  type(patch_type), pointer :: patch  
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
+  PetscInt :: iphase
+
+  PetscInt :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscReal :: xmass
+  PetscReal :: tempreal
+  PetscInt :: tempint
+  PetscInt :: irate, istate, irxn
+  PetscErrorCode :: ierr
+
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+  
+  iphase = 1
+  
+  select case(ivar)
+    case(PRESSURE)
+      call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        ! gb: grid%nL2G(local_id)
+        vec_ptr(local_id) = vec_ptr2(local_id)
+      enddo
+      call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+      enddo
+    case default
+    write(option%io_buffer, &
+            '(''IVAR ('',i3,'') not found in PatchGetDataset'')') ivar
+      call printErrMsg(option)
+  end select
+
+end subroutine PatchGetDataset2
+
+#endif ! SURFACE_FLOW
 
 end module Patch_module
