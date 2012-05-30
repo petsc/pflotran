@@ -3897,7 +3897,8 @@ subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
    
   call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
                                          STAR_STENCIL, &
-                                         1,1,1,ghosted_neighbors_size, &
+                                         ONE_INTEGER,ONE_INTEGER,ONE_INTEGER, &
+                                         ghosted_neighbors_size, &
                                          ghosted_neighbors, &
                                          option)   
 
@@ -3914,8 +3915,8 @@ subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
                      global_aux_vars(ghosted_id)%temp(1))
   enddo
 
-  call ludcmp(disp_mat,3,INDX,D)
-  call lubksb(disp_mat,3,INDX,temp_weighted)
+  call ludcmp(disp_mat,THREE_INTEGER,INDX,D)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,temp_weighted)
   
   gradient(:) = temp_weighted(:,1)
   
