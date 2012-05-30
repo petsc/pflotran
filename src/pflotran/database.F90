@@ -3249,15 +3249,16 @@ subroutine BasisInit(reaction,option)
         write(86,'(f6.2,x,a,x)',advance='no') reaction%kinmnrlstoich(i,imnrl), &
                                               trim(reaction%primary_species_names(idum))
       enddo
+      !molar volume has been converted to m^3/mol!
       write(86,'(4(" ; ",1es13.5))') reaction%kinmnrl_logK(imnrl), &
                                      reaction%kinmnrl_molar_wt(imnrl), &
-                                     reaction%kinmnrl_molar_vol(imnrl), 1.0
+                                     reaction%kinmnrl_molar_vol(imnrl)*1.d6, 1.0
     enddo
 
     write(86,'(/,"<Mineral Kinetics")')
     do imnrl = 1, reaction%nkinmnrl
       write(86,'(a," ; TST ; log10_rate_constant ")',advance='no') trim(reaction%kinmnrl_names(imnrl))
-      write(86,'(1es13.5," moles_m2_sec ")',advance='no') log10(reaction%kinmnrl_rate(imnrl))
+      write(86,'(1es13.5," moles/cm^2/sec ")',advance='no') log10(reaction%kinmnrl_rate(imnrl))
       if (reaction%kinmnrl_num_prefactors(imnrl) /= 0) then
         write(86,'(" ; ")',advance='no')
         do i = 1, reaction%kinmnrl_num_prefactors(imnrl)
