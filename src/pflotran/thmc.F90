@@ -4134,7 +4134,8 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
    
   call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
                                          STAR_STENCIL, &
-                                         1,1,1,ghosted_neighbors_size, &
+                                         ONE_INTEGER,ONE_INTEGER,ONE_INTEGER, &
+                                         ghosted_neighbors_size, &
                                          ghosted_neighbors, &
                                          option)   
 
@@ -4161,10 +4162,10 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
 
   enddo
 
-  call ludcmp(disp_mat,3,INDX,D)
-  call lubksb(disp_mat,3,INDX,ux_weighted)
-  call lubksb(disp_mat,3,INDX,uy_weighted)
-  call lubksb(disp_mat,3,INDX,uz_weighted)
+  call ludcmp(disp_mat,THREE_INTEGER,INDX,D)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,ux_weighted)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,uy_weighted)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,uz_weighted)
 
   gradient(:,1) = ux_weighted(:,1)
   gradient(:,2) = uy_weighted(:,1)
@@ -4215,7 +4216,8 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
    
   call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
                                          STAR_STENCIL, &
-                                         1,1,1,ghosted_neighbors_size, &
+                                         ONE_INTEGER,ONE_INTEGER,ONE_INTEGER, &
+                                         ghosted_neighbors_size, &
                                          ghosted_neighbors, &
                                          option)   
  
@@ -4260,10 +4262,10 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
                       + flag_z*perturbation_tolerance))
   enddo
 
-  call ludcmp(disp_mat,3,INDX,D)
-  call lubksb(disp_mat,3,INDX,ux_weighted)
-  call lubksb(disp_mat,3,INDX,uy_weighted)
-  call lubksb(disp_mat,3,INDX,uz_weighted)
+  call ludcmp(disp_mat,THREE_INTEGER,INDX,D)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,ux_weighted)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,uy_weighted)
+  call lubksb(disp_mat,THREE_INTEGER,INDX,uz_weighted)
 
   gradient_pert(:,1) = ux_weighted(:,1)
   gradient_pert(:,2) = uy_weighted(:,1)
