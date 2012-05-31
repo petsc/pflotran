@@ -1018,13 +1018,13 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
     ! From the MPI-Matrix get the local-matrix
     call MatMPIAIJGetLocalMat(prod_mat,MAT_INITIAL_MATRIX,prod_loc_mat,ierr)
     ! Get i and j indices of the local-matrix
-    call MatGetRowIJF90(prod_loc_mat, 1, PETSC_FALSE, PETSC_FALSE, &
+    call MatGetRowIJF90(prod_loc_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
     ! Get values stored in the local-matrix
     call MatGetArray(prod_loc_mat, aa, aaa, ierr)
   else
     ! Get i and j indices of the local-matrix
-    call MatGetRowIJF90(prod_mat, 1, PETSC_FALSE, PETSC_FALSE, &
+    call MatGetRowIJF90(prod_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr)
     ! Get values stored in the local-matrix
     call MatGetArray(prod_mat, aa, aaa, ierr)
