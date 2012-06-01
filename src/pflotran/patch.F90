@@ -2336,13 +2336,15 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
           if (patch%reaction%nsorb > 0) then
-            do local_id=1,grid%nlmax
-              ghosted_id = grid%nL2G(local_id)
-              if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
+            if (patch%reaction%neqsorb > 0) then
+              do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = &
                   patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
-              endif
-              if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+              enddo
+            endif
+            if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
+              do local_id=1,grid%nlmax
                 vec_ptr(local_id) = 0.d0
                 do irxn = 1, &
                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn
@@ -2353,8 +2355,8 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
                         kinmr_total_sorb(isubvar,irate,irxn)
                   enddo            
                 enddo            
-              endif
-            enddo
+              enddo
+            endif
           endif
         case(TOTAL_SORBED_MOBILE)
           if (patch%reaction%nsorb > 0 .and. patch%reaction%ncollcomp > 0) then
@@ -2849,7 +2851,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
         case(TOTAL_SORBED)
           if (patch%reaction%nsorb > 0) then
-            if (patch%reaction%surface_complexation%neqsrfcplxrxn > 0) then
+            if (patch%reaction%neqsorb > 0) then
               value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
             endif
             if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
@@ -2863,7 +2865,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
                 enddo
               enddo            
             endif
-          endif
+          endif          
         case(TOTAL_SORBED_MOBILE)
           if (patch%reaction%nsorb > 0 .and. patch%reaction%ncollcomp > 0) then
             value = &
