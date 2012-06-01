@@ -4254,7 +4254,7 @@ subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data
     call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
-    call h5dwrite_f(data_set_id,data_type,double_array,dims, &
+    call h5dwrite_f(data_set_id,data_type,int_array,dims, &
                     hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
 
