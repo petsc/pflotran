@@ -1894,12 +1894,14 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   stepper%num_newton_iterations_surf_flow = num_newton_iterations
   stepper%num_linear_iterations_surf_flow = num_linear_iterations
 
+#if 0
   write(string,*)stepper%steps_surf_flow
   string = 'Surf_Rxx_' // trim(adjustl(string)) // '.bin'
   call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                              FILE_MODE_WRITE,viewer,ierr)
   call VecView(surf_field%flow_xx,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
 ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)

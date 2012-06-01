@@ -34,6 +34,7 @@ module Unstructured_Grid_module
 #endif
 #ifdef SURFACE_FLOW
             UGridReadSurfGrid, &
+            UGridReadHDF5SurfGrid, &
 #endif
             UGridDecompose, &
             UGridComputeInternConnect, &
@@ -517,6 +518,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
           call InputErrorMsg(input,option,'vertex id',card)
         enddo
+        write(*,*),temp_int_array(:,icell)
       enddo
 
       ! if the faces reside on io_rank
@@ -563,6 +565,283 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   call InputDestroy(input)
 
 end subroutine UGridReadSurfGrid
+
+#if defined(PETSC_HAVE_HDF5)
+! ************************************************************************** !
+!> This routine reads unstructured grid from HDF5 for surface mesh.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 06/01/12
+! ************************************************************************** !
+subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
+
+#if defined(PETSC_HAVE_HDF5)
+  use hdf5
+#endif
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use Input_module
+  use Option_module
+
+  implicit none
+
+  type(unstructured_grid_type)   :: unstructured_grid
+  type(option_type)              :: option
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+
+  PetscMPIInt       :: hdf5_err
+  PetscMPIInt       :: rank_mpi
+  PetscInt          :: ndims
+  PetscInt          :: istart, iend, ii, jj
+  PetscInt          :: num_cells_local
+  PetscInt          :: num_cells_local_save
+  PetscInt          :: num_vertices_local
+  PetscInt          :: num_vertices_local_save
+  PetscInt          :: remainder
+  PetscInt,pointer  :: int_buffer(:,:)
+  PetscReal,pointer :: double_buffer(:,:)
+  PetscInt, parameter :: max_nvert_per_cell = 8  
+  PetscErrorCode    :: ierr
+
+#if defined(PETSC_HAVE_HDF5)
+  integer(HID_T) :: file_id
+  integer(HID_T) :: grp_id, grp_id2
+  integer(HID_T) :: prop_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: data_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HSIZE_T) :: num_data_in_file
+  integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
+  integer(HSIZE_T) :: offset(2), length(2), stride(2), block(2), dims(2)
+#endif
+
+  ! Initialize FOTRAN predefined datatypes
+  call h5open_f(hdf5_err)
+
+  ! Setup file access property with parallel I/O access
+  call h5pcreate_f(H5P_FILE_ACCESS_F, prop_id, hdf5_err)
+
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm, MPI_INFO_NULL, hdf5_err)
+#endif
+
+  ! Open the file collectively
+  call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, hdf5_err, prop_id)
+  call h5pclose_f(prop_id, hdf5_err)
+  
+  !
+  ! Domain/Cells
+  !
+  
+  ! Open group
+  group_name = "Domain"
+  option%io_buffer = 'Opening group: ' // trim(group_name)
+  call printMsg(option)
+
+  ! Open dataset
+  call h5dopen_f(file_id, "Region/top", data_set_id, hdf5_err)
+
+  ! Get dataset's dataspace
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
+  
+  ! Get number of dimensions and check
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
+  if (ndims /= 2) then
+    option%io_buffer='Dimension of Domain/Cells dataset in ' // filename // &
+          ' is not equal to 2.'
+    call printErrMsg(option)
+  endif
+  
+  ! Allocate memory
+  allocate(dims_h5(ndims))
+  allocate(max_dims_h5(ndims))
+  
+  ! Get dimensions of dataset
+  call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
+                                   hdf5_err)
+  
+  ! Determine the number of cells each that will be saved on each processor
+  unstructured_grid%nmax = dims_h5(2)
+  num_cells_local = unstructured_grid%nmax/option%mycommsize 
+  num_cells_local_save = num_cells_local
+  remainder = unstructured_grid%nmax - &
+              num_cells_local*option%mycommsize
+  if (option%myrank < remainder) num_cells_local = &
+                                  num_cells_local + 1
+  
+  ! Find istart and iend
+  istart = 0
+  iend   = 0
+  call MPI_Exscan(num_cells_local, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  call MPI_Scan(num_cells_local, iend, ONE_INTEGER_MPI, &
+                MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  
+  ! Determine the length and offset of data to be read by each processor
+  length(1) = dims_h5(1)
+  length(2) = iend-istart
+  offset(1) = 0
+  offset(2) = istart
+  
+  !
+  rank_mpi = 2
+  memory_space_id = -1
+  
+  ! Create data space for dataset
+  call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
+  
+  ! Select hyperslab
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
+  call h5sselect_hyperslab_f(data_space_id, H5S_SELECT_SET_F, offset, length, &
+                             hdf5_err)
+  
+  ! Initialize data buffer
+  allocate(int_buffer(length(1), length(2)))
+  
+  ! Create property list
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+#endif
+  
+  ! Read the dataset collectively
+  call h5dread_f(data_set_id, H5T_NATIVE_INTEGER, int_buffer, &
+                 dims_h5, hdf5_err, memory_space_id, data_space_id)
+  
+  ! allocate array to store vertices for each cell
+  allocate(unstructured_grid%cell_vertices(max_nvert_per_cell, &
+                                             num_cells_local))
+  unstructured_grid%cell_vertices = -1
+  
+  do ii = 1, num_cells_local
+    do jj = 2, int_buffer(1,ii) + 1
+      unstructured_grid%cell_vertices(jj-1, ii) = int_buffer(jj, ii)
+    enddo
+    write(*,*),unstructured_grid%cell_vertices(:, ii)
+  enddo
+  
+  call h5dclose_f(data_set_id, hdf5_err)
+  
+  deallocate(dims_h5)
+  deallocate(max_dims_h5)
+
+  !
+  ! Domain/Vertices
+  !
+  
+  ! Open dataset
+  call h5dopen_f(file_id, "Domain/Vertices", data_set_id, hdf5_err)
+  
+  ! Get dataset's dataspace
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
+  
+  ! Get number of dimensions and check
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
+  if (ndims /= 2) then
+    option%io_buffer='Dimension of Domain/Vertices dataset in ' // filename // &
+          ' is not equal to 2.'
+    call printErrMsg(option)
+  endif
+  
+  ! Allocate memory
+  allocate(dims_h5(ndims))
+  allocate(max_dims_h5(ndims))
+  
+  ! Get dimensions of dataset
+  call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
+                                   hdf5_err)
+  
+  ! Determine the number of cells each that will be saved on each processor
+  unstructured_grid%num_vertices_global = dims_h5(2)
+  num_vertices_local  = &
+                                       unstructured_grid%num_vertices_global/ &
+                                       option%mycommsize 
+  num_cells_local_save = num_vertices_local
+  remainder = unstructured_grid%num_vertices_global - &
+              num_vertices_local*option%mycommsize
+  if (option%myrank < remainder) num_vertices_local = &
+                                  num_vertices_local + 1
+  
+  ! Find istart and iend
+  istart = 0
+  iend   = 0
+  call MPI_Exscan(num_vertices_local, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  call MPI_Scan(num_vertices_local, iend, ONE_INTEGER_MPI, &
+                MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  
+  ! Determine the length and offset of data to be read by each processor
+  length(1) = dims_h5(1)
+  length(2) = iend-istart
+  offset(1) = 0
+  offset(2) = istart
+  
+  ! 
+  rank_mpi = 2
+  memory_space_id = -1
+  
+  ! Create data space for dataset
+  call h5screate_simple_f(rank_mpi, length, memory_space_id, hdf5_err)
+  
+  ! Select hyperslab
+  call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
+  call h5sselect_hyperslab_f(data_space_id, H5S_SELECT_SET_F, offset, length, &
+                             hdf5_err)
+  
+  ! Initialize data buffer
+  allocate(double_buffer(length(1), length(2)))
+  
+  ! Create property list
+  call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+#endif
+  
+  ! Read the dataset collectively
+  call h5dread_f(data_set_id, H5T_NATIVE_DOUBLE, double_buffer, &
+                 dims_h5, hdf5_err, memory_space_id, data_space_id)
+  
+  call h5dclose_f(data_set_id, hdf5_err)
+  !call h5gclose_f(grp_id, hdf5_err)
+  call h5fclose_f(file_id, hdf5_err)
+  call h5close_f(hdf5_err)
+
+  
+  ! fill the vertices data structure
+  allocate(unstructured_grid%vertices(num_vertices_local))
+  do ii = 1, num_vertices_local
+    unstructured_grid%vertices(ii)%id = 0
+    unstructured_grid%vertices(ii)%x = double_buffer(1, ii)
+    unstructured_grid%vertices(ii)%y = double_buffer(2, ii)
+    unstructured_grid%vertices(ii)%z = double_buffer(3, ii)
+  enddo
+  
+  
+  deallocate(double_buffer)
+  deallocate(dims_h5)
+  deallocate(max_dims_h5)
+  
+  unstructured_grid%max_nvert_per_cell = max_nvert_per_cell
+  unstructured_grid%nlmax = num_cells_local
+  unstructured_grid%num_vertices_local = num_vertices_local
+  
+end subroutine UGridReadHDF5SurfGrid
+
+#endif
+! End PETSC_HAVE_HDF5
+
+
 #endif !SURFACE_FLOW
 
 #if defined(PETSC_HAVE_HDF5)

@@ -129,10 +129,17 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
                 grid => GridCreate()
                 un_str_sfgrid => UGridCreate()
                 un_str_sfgrid%grid_type = TWO_DIM_GRID
-                call UGridReadSurfGrid(un_str_sfgrid, &
-                                       surf_realization%subsurf_filename, &
-                                       discretization%filename, &
-                                       option)
+                if (index(discretization%filename,'.h5') > 0) then
+                  call UGridReadHDF5SurfGrid( un_str_sfgrid, &
+                                              !surf_realization%subsurf_filename, &
+                                              discretization%filename, &
+                                              option)
+                else
+                  call UGridReadSurfGrid(un_str_sfgrid, &
+                                        surf_realization%subsurf_filename, &
+                                        discretization%filename, &
+                                        option)
+                endif
                 grid%unstructured_grid => un_str_sfgrid
                 discretization%grid => grid
                 grid%itype = unstructured_grid_itype
@@ -804,7 +811,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       dx = xc(ghosted_id_dn) - xc(ghosted_id_up)
       dy = yc(ghosted_id_dn) - yc(ghosted_id_up)
       dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
-      slope = dz/sqrt(dx*dx + dy*dy * dz*dz)
+      slope = dz/sqrt(dx*dx + dy*dy + dz*dz)
       
 #if 0
       dP = xx_loc_p(ghosted_id_up)-option%reference_pressure
@@ -853,7 +860,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
-      slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
+      slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 #if 0
       dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
       if (dP<eps) dP = 0.0d0
@@ -1205,7 +1212,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       dx = xc(ghosted_id_dn) - xc(ghosted_id_up)
       dy = yc(ghosted_id_dn) - yc(ghosted_id_up)
       dz = zc(ghosted_id_dn) - zc(ghosted_id_up)
-      slope = dz/sqrt(dx*dx + dy*dy * dz*dz)
+      slope = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
 #if 0
       dP = xx_loc_p(ghosted_id_up)-option%reference_pressure
@@ -1264,7 +1271,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
-      slope_dn = dz/sqrt(dx*dx + dy*dy * dz*dz)
+      slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
 #if 0
       dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
