@@ -181,15 +181,13 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
                             PETSC_NULL_OBJECT,ierr)
 
 ! Checking if norm exceeds divergence tolerance
-  select case(option%iflowmode)
-    case(THC_MODE,MIS_MODE,MPH_MODE)
 !geh: inorm_residual is being used without being calculated.
 !      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
-      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm) then
-        reason = -2
-      endif
-  end select  
+  if (fnorm > solver%max_norm .or. pnorm > solver%max_norm) then
+    reason = -2
+  endif
+
   
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
