@@ -34,6 +34,7 @@ module HDF5_module
             HDF5ReadIntegerArray, &
             HDF5ReadRealArray, &
             HDF5WriteStructDataSetFromVec, &
+            HDF5WriteUnstructuredDataSetFromVec, &
             HDF5WriteStructuredDataSet, &
             HDF5ReadRegionFromFile, &       
             HDF5ReadUnstructuredGridRegionFromFile, &
@@ -4124,6 +4125,147 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine HDF5WriteStructDataSetFromVec
+
+! ************************************************************************** !
+!> This routine writes data from a PETSc Vec to HDF5 file for unstructured
+!! grids.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/31/12
+! ************************************************************************** !
+subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data_type)
+
+  use hdf5
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  character(len=32) :: name
+  type(realization_type) :: realization
+  Vec :: vec
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  PetscReal, pointer :: vec_ptr(:)
+  
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscInt :: local_size,global_size,i
+  PetscInt, pointer :: int_array(:)
+  PetscReal, pointer :: double_array(:)
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  call VecGetLocalSize(vec,local_size,ierr)
+  call VecGetSize(vec,global_size,ierr)
+  
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 3D block
+  rank_mpi = 1
+  dims = 0
+  dims(1) = global_size
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,name,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,name,data_type,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(1) = istart
+  length(1) = local_size
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+  ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+#endif
+
+
+  if (data_type == H5T_NATIVE_DOUBLE) then
+    allocate(double_array(local_size))  
+    call VecGetArrayF90(vec,vec_ptr,ierr)
+    do i=1,local_size
+      double_array(i) = vec_ptr(i)
+    enddo
+    call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+    call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+    call h5dwrite_f(data_set_id,data_type,double_array,dims, &
+                    hdf5_err,memory_space_id,file_space_id,prop_id)
+    call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+    deallocate(double_array)
+    call h5pclose_f(prop_id,hdf5_err)
+  endif
+
+  if (data_type == H5T_NATIVE_INTEGER) then
+    allocate(int_array(local_size))
+    call VecGetArrayF90(vec,vec_ptr,ierr)
+    do i=1,local_size
+      int_array(i) = vec_ptr(i)
+    enddo
+    call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+    call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+    call h5dwrite_f(data_set_id,data_type,double_array,dims, &
+                    hdf5_err,memory_space_id,file_space_id,prop_id)
+    call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+    deallocate(int_array)
+    call h5pclose_f(prop_id,hdf5_err)
+  endif
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  
+end subroutine HDF5WriteUnstructuredDataSetFromVec
 
 #endif
       
