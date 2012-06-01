@@ -19,7 +19,7 @@ END
 
 :=========================== discretization ===================================
 GRID
-  TYPE unstructured ./mixed.mesh
+  TYPE unstructured mixed.h5
 END
 
 :=========================== fluid properties =================================
