@@ -42,6 +42,7 @@ module HDF5_module
             HDF5ReadCellIndexedRealArray
 #else
   public :: HDF5ReadRegionFromFile, &
+            HDF5ReadUnstructuredGridRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, &
             HDF5ReadCellIndexedRealArray
 #endif            
