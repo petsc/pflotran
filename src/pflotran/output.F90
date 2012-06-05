@@ -6025,7 +6025,6 @@ end subroutine WriteVTKDataSet
 ! ************************************************************************** !
 subroutine OutputHDF5(realization)
 
-  use ISO_C_BINDING
   use Realization_module
   use Discretization_module
   use Option_module
@@ -9212,7 +9211,6 @@ end subroutine OutputPrintCouplers
 ! ************************************************************************** !
 subroutine OutputHDF5UGrid(realization)
 
-  use ISO_C_BINDING
   use Realization_module
   use Discretization_module
   use Option_module
