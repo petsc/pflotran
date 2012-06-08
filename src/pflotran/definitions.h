@@ -357,4 +357,8 @@ PetscInt, parameter :: INTERPOLATION_LINEAR = 2
 PetscInt, parameter :: SUBSURFACE = 0
 PetscInt, parameter :: SURFACE    = 1
 
+PetscInt, parameter :: DECOUPLED     = 0
+PetscInt, parameter :: SEQ_COUPLED   = 1
+PetscInt, parameter :: FULLY_COUPLED = 2
+
 #define HASH

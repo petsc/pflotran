@@ -958,6 +958,7 @@ subroutine Init(simulation)
         option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
         call printErrMsgByRank(option)
     end select
+    !call SurfaceRealizationMapSurfSubsurfaceGrids2(realization,simulation%surf_realization)
   endif ! option%nsurfflowdof > 0
 #endif
 
@@ -2964,7 +2965,7 @@ subroutine readRegionFiles(realization)
           !     informing the user of the error.  If you skip the subroutine,
           !     no error message is printed and the user is unaware of the
           !     region not being read.
-          call HDF5ReadUnstructuredGridRegionFromFile(realization,region, &
+          call HDF5ReadUnstructuredGridRegionFromFile(realization%option,region, &
                                                       region%filename)
         endif
       else if (index(region%filename,'.ss') > 0) then
@@ -4070,7 +4071,9 @@ subroutine readSurfaceRegionFiles(surf_realization)
           !call HDF5ReadRegionFromFile(surf_realization,surf_region,surf_region%filename)
         else
 #if defined(PETSC_HAVE_HDF5)
-          !call HDF5ReadUnstructuredGridRegionFromFile(surf_realization,surf_region,surf_region%filename)
+          call HDF5ReadUnstructuredGridRegionFromFile(surf_realization%option, &
+                                                      surf_region, &
+                                                      surf_region%filename)
 #endif      
         endif
       else if (index(surf_region%filename,'.ss') > 0) then

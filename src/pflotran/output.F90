@@ -9886,6 +9886,7 @@ subroutine OutputHDF5UGrid(realization)
 
 end subroutine OutputHDF5UGrid
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !> This subroutine writes structured coordinates to HDF5 file
 !!
@@ -10190,7 +10191,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 
 
 end subroutine WriteHDF5CoordinatesUGrid
-
+#endif
 
 #ifdef SURFACE_FLOW
 ! ************************************************************************** !
@@ -10326,7 +10327,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   output_option => surf_realization%output_option
 
   tmp_global_prefix = option%global_prefix 
-  option%global_prefix = 'pflotran-surf'
+  option%global_prefix = trim(tmp_global_prefix) // '-surf'
   filename = OutputFilename(output_option,option,'tec','')
   option%global_prefix = tmp_global_prefix
     

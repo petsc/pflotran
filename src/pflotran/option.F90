@@ -69,6 +69,7 @@ module Option_module
     PetscInt :: nmechdof
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
+    PetscInt :: subsurf_surf_coupling
 #endif
 
     PetscInt :: air_pressure_id
@@ -432,6 +433,7 @@ subroutine OptionInitRealization(option)
   option%nmechdof = 0
 #ifdef SURFACE_FLOW
    option%nsurfflowdof = 0
+   option%subsurf_surf_coupling = DECOUPLED
 #endif
 
   option%tranmode = ""
