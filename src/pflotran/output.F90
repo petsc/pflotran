@@ -6025,7 +6025,6 @@ end subroutine WriteVTKDataSet
 ! ************************************************************************** !
 subroutine OutputHDF5(realization)
 
-  use ISO_C_BINDING
   use Realization_module
   use Discretization_module
   use Option_module
@@ -9212,7 +9211,6 @@ end subroutine OutputPrintCouplers
 ! ************************************************************************** !
 subroutine OutputHDF5UGrid(realization)
 
-  use ISO_C_BINDING
   use Realization_module
   use Discretization_module
   use Option_module
@@ -9888,6 +9886,7 @@ subroutine OutputHDF5UGrid(realization)
 
 end subroutine OutputHDF5UGrid
 
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !> This subroutine writes structured coordinates to HDF5 file
 !!
@@ -10192,7 +10191,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 
 
 end subroutine WriteHDF5CoordinatesUGrid
-
+#endif
 
 #ifdef SURFACE_FLOW
 ! ************************************************************************** !
