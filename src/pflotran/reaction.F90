@@ -1868,7 +1868,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           if (ratio < min_ratio) min_ratio = ratio
         endif
       enddo
-      if (min_ratio < 1.d0) then
+      if (min_ratio <= 1.d0) then
         ! scale by 0.99 to make the update slightly smaller than the min_ratio
         update = update*min_ratio*0.99d0
       endif
