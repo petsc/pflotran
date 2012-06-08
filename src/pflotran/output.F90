@@ -10328,7 +10328,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   output_option => surf_realization%output_option
 
   tmp_global_prefix = option%global_prefix 
-  option%global_prefix = 'pflotran-surf'
+  option%global_prefix = trim(tmp_global_prefix) // '-surf'
   filename = OutputFilename(output_option,option,'tec','')
   option%global_prefix = tmp_global_prefix
     

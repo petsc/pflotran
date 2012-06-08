@@ -18,7 +18,9 @@ module Surface_Field_module
 
     Vec :: work, work_loc
 
-    Vec :: area 
+    Vec :: area
+    
+    Vec :: qsrc_from_subsurface_loc
 
     ! residual vectors
     Vec :: flow_r
@@ -58,6 +60,8 @@ function SurfaceFieldCreate()
   surface_field%work_loc = 0
 
   surface_field%area = 0
+  
+  surface_field%qsrc_from_subsurface_loc = 0
 
   surface_field%flow_r = 0
   surface_field%flow_xx = 0
@@ -93,6 +97,9 @@ subroutine SurfaceFieldDestroy(surface_field)
   if (surface_field%work_loc  /= 0) call VecDestroy(surface_field%work_loc,ierr)
 
   if (surface_field%area  /= 0) call VecDestroy(surface_field%area,ierr)
+  
+  if (surface_field%qsrc_from_subsurface_loc /= 0) &
+    call VecDestroy(surface_field%qsrc_from_subsurface_loc,ierr)
 
   if (surface_field%flow_r /= 0) call VecDestroy(surface_field%flow_r,ierr)
   if (surface_field%flow_xx /= 0) call VecDestroy(surface_field%flow_xx,ierr)

@@ -3193,7 +3193,10 @@ end subroutine HDF5ReadRegionFromFile
 ! date: 5/31/11
 !
 ! ************************************************************************** !
-subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+! gb: modified the input argument, so it works for realization (subsurface)
+!     and surface_realization (surface-flow)
+!subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
+subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -3210,13 +3213,14 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type)         :: realization
+  !type(realization_type)         :: realization
+  type(option_type), pointer :: option
   type(region_type)              :: region
   type(region_sideset_type),pointer:: sideset
   character(len=MAXSTRINGLENGTH) :: filename
 
   ! local
-  type(option_type), pointer :: option
+  !type(option_type), pointer :: option
   PetscMPIInt       :: hdf5_err
   PetscMPIInt       :: rank_mpi
   PetscInt          :: ndims
@@ -3235,7 +3239,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(realization,region,filename)
   integer(HSIZE_T) :: length(2), offset(2)
 #endif
 
-  option => realization%option
+  !option => realization%option
 
 #if !defined(PETSC_HAVE_HDF5)
   call printMsg(option,'')

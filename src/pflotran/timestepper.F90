@@ -597,6 +597,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
       surf_flow_stepper%target_time   = flow_stepper%target_time
       surf_realization%option%flow_dt = option%flow_dt
+      if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+        call SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
+      endif
       call StepperStepSurfaceFlowDT(surf_realization,surf_flow_stepper, &
                               surf_failure)
     endif
@@ -2878,6 +2881,9 @@ subroutine StepperUpdateSolution(realization)
   call SurfaceRealizationUpdate(surf_realization)
   if (surf_realization%option%nsurfflowdof > 0) &
     call StepperUpdateSurfaceFlowSolution(surf_realization)
+  if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+    call SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization)
+  endif
 #endif
     
 end subroutine StepperUpdateSolution

@@ -518,7 +518,6 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
           call InputReadInt(input,option,temp_int_array(ivertex,icell))
           call InputErrorMsg(input,option,'vertex id',card)
         enddo
-        write(*,*),temp_int_array(:,icell)
       enddo
 
       ! if the faces reside on io_rank
@@ -728,7 +727,6 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
     do jj = 2, int_buffer(1,ii) + 1
       unstructured_grid%cell_vertices(jj-1, ii) = int_buffer(jj, ii)
     enddo
-    write(*,*),unstructured_grid%cell_vertices(:, ii)
   enddo
   
   call h5dclose_f(data_set_id, hdf5_err)

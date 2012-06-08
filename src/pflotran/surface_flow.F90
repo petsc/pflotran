@@ -325,6 +325,25 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
         nullify(coupler)        
 
       !.........................................................................
+      case ('SURF_SUBSURFACE_COUPLING')
+        call InputReadFlotranString(input,option)
+        if (InputCheckExit(input,option)) exit
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call StringToUpper(word)
+        select case(trim(word))
+          case('DECOUPLED')
+            option%subsurf_surf_coupling = DECOUPLED
+          case('SEQ_COUPLED')
+            option%subsurf_surf_coupling = SEQ_COUPLED
+          case('FULLY_COUPLED')
+            option%subsurf_surf_coupling = FULLY_COUPLED
+          case default
+            option%io_buffer = 'Invalid value for SURF_SUBSURFACE_COUPLING'
+            call printErrMsg(option)
+        end select
+        call InputSkipToEND(input,option,trim(word))
+
+      !.........................................................................
       case ('SURF_DEBUG')
         call DebugRead(surf_realization%debug,input,option)
 
@@ -599,6 +618,7 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
         endif
 
+      !.........................................................................
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -825,6 +845,22 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       hw_up = xx_loc_p(ghosted_id_up)
       hw_dn = xx_loc_p(ghosted_id_dn)
       
+      if(hw_up<0) then
+        hw_up = 0.d0
+        xx_loc_p(ghosted_id_up) = 0.d0
+        !write(*,*),'setting pressure values to zero for ',ghosted_id_up
+      endif
+      if(hw_dn<0) then
+        hw_dn = 0.d0
+        xx_loc_p(ghosted_id_dn) = 0.d0
+        !write(*,*),'setting pressure values to zero for ',ghosted_id_dn
+      endif
+      
+      !write(*,*),'hw: ',iconn,hw_up,hw_dn
+      if (hw_up<0 .or. hw_dn<0) then
+        option%io_buffer = 'Surface water head negative'
+        call printErrMsg(option)        
+      endif
       call SurfaceFluxKinematic(hw_up,mannings_loc_p(ghosted_id_up), &
                                 hw_dn,mannings_loc_p(ghosted_id_dn), &
                                 slope, cur_connection_set%area(iconn),option,Res)
@@ -867,6 +903,11 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       hw_dn = dP/abs(option%gravity(3))/rho
 #endif
       hw_dn = xx_loc_p(ghosted_id_dn)
+      if(hw_dn<0) then
+        hw_dn = 0.d0
+        xx_loc_p(ghosted_id_dn) = 0.d0
+        write(*,*),'setting pressure values to zero for >> ',ghosted_id_dn
+      endif
 
       !write(*,*),'in BCflux:',hw_dn,xx_loc_p(ghosted_id)
       call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
@@ -906,6 +947,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   use Coupler_module  
   use Surface_Field_module
   use Debug_module
+  use String_module
   
   implicit none
 
@@ -924,7 +966,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
   PetscReal, pointer :: r_p(:), mannings_loc_p(:)
-  PetscReal, pointer :: accum_p(:),area_p(:),xx_loc_p(:)
+  PetscReal, pointer :: accum_p(:),area_p(:),xx_loc_p(:),qsrc_loc_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:)
   PetscInt :: icap_up, icap_dn
@@ -966,6 +1008,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   call GridVecGetArrayF90(grid,surf_field%flow_accum,accum_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
+  call GridVecGetArrayF90(grid,surf_field%qsrc_from_subsurface_loc,qsrc_loc_p,ierr)
   
   call density(option%reference_temperature,option%reference_pressure,rho)
 
@@ -982,11 +1025,13 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
     if(head < 1.D-8) head = 0.d0
 #endif    
     head = xx_loc_p(ghosted_id)
+    if(head<0) head = 0.d0
     !write(*,*),'head = ',ghosted_id,head
     call SurfaceFlowAccumulation(head,area_p(local_id),option,Res)
     
     r_p(local_id) = r_p(local_id) + Res(1)
   enddo
+  !write(*,*),''
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
@@ -995,6 +1040,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
+    !write(*,*),'surface source/sink: ',source_sink%name
     qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       
     cur_connection_set => source_sink%connection_set
@@ -1005,6 +1051,10 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
+      if(StringCompare(source_sink%name,'from_subsurface_ss')) then
+        qsrc_flow = qsrc_loc_p(iconn)
+      endif
+
       select case(source_sink%flow_condition%rate%itype)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc = m^3/sec
@@ -1013,8 +1063,9 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
           option%io_buffer = 'Source/Sink flow condition type not recognized'
           call printErrMsg(option)
       end select
+      
 
-      !write(*,*),sum_connection,local_id,qsrc,area_p(local_id)
+      !if(iconn == 1) write(*,*),local_id,qsrc_flow,qsrc!,area_p(local_id)
       r_p(local_id) = r_p(local_id) - qsrc
 
     enddo
@@ -1025,6 +1076,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%flow_accum,accum_p,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
+  call GridVecRestoreArrayF90(grid,surf_field%qsrc_from_subsurface_loc,qsrc_loc_p,ierr)
 
   end subroutine SurfaceFlowResidualPatch2
 
@@ -1225,6 +1277,8 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
 #endif
       hw_up = xx_loc_p(ghosted_id_up)
       hw_dn = xx_loc_p(ghosted_id_dn)
+      if(hw_up<0) hw_up = 0.d0
+      if(hw_dn<0) hw_dn = 0.d0
 
       call SurfaceFluxKinematicDerivative(hw_up, mannings_loc_p(ghosted_id_up), &
                                           hw_dn, mannings_loc_p(ghosted_id_dn), &
