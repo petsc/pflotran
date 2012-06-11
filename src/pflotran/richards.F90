@@ -2405,6 +2405,9 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
                           por_dn, sir_dn, perm_dn, &
                           area, dist, option,v_darcy,Res)
   use Option_module
+#ifdef SURFACE_FLOW
+  use water_eos_module
+#endif
  
   implicit none
   
@@ -2429,6 +2432,9 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   PetscReal :: ukvr,diffdp,Dq
   PetscReal :: upweight,cond,gravity,dphi
   PetscInt :: pressure_bc_type
+#ifdef SURFACE_FLOW
+  PetscReal :: rho, v_darcy_allowable
+#endif
   
   fluxm = 0.d0
   v_darcy = 0.d0
@@ -2502,13 +2508,15 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
 #endif
        endif
         
-    !   if ( v_darcy== -10.0) 
-    !         write(*,*) "gr", gravity, "up", global_aux_var_up%pres(1), &
-    !                      "dn", global_aux_var_dn%pres(1), "dphi", dphi, "ukvr", ukvr
-     
-        if (ukvr*Dq>floweps) then
-          v_darcy = Dq * ukvr * dphi
-        endif
+       if (ukvr*Dq>floweps) then
+        v_darcy = Dq * ukvr * dphi
+#ifdef SURFACE_FLOW
+        call density(option%reference_temperature,option%reference_pressure,rho)
+        v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
+                            /option%flow_dt/(-option%gravity(3))/rho
+        v_darcy = min(v_darcy,v_darcy_allowable)
+#endif
+       endif
       endif 
 
     case(NEUMANN_BC)
