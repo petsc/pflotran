@@ -1152,7 +1152,7 @@ subroutine UCellGetLineIntercept(line_start,line_end,point,intercept)
   dy = (line_end%y - line_start%y)
   dz = (line_end%z - line_start%z)
   
-  line_mag = sqrt(dx*dx + dy*dy + dz*dz)
+  line_mag = (dx*dx + dy*dy + dz*dz)
   
   u = ((point%x - line_start%x)*(line_end%x - line_start%x) + &
        (point%y - line_start%y)*(line_end%y - line_start%y) + &
