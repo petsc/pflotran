@@ -2,7 +2,7 @@
 :===================== THC mode ===============================
 MODE THC 
 
-NUMERICAL_JACOBIAN_FLOW
+:NUMERICAL_JACOBIAN_FLOW
 
 DEBUG
   PRINT_JACOBIAN_DETAILED
@@ -12,9 +12,9 @@ DEBUG
 GRID
 TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
-NXYZ 1000 1 1
+NXYZ 100 1 1
 BOUNDS
-0.d0 1.d0
+0.d0 100.d0
 0.d0 1.d0
 0.d0 1.d0
 /
@@ -81,7 +81,7 @@ ALPHA 1.d-3
 :========================= output options =========================
 OUTPUT
 :TIMES y 0.25d0 0.5d0 0.75d0 2.d0
-SCREEN PERIODIC 1
+SCREEN PERIODIC 10
 PERIODIC_OBSERVATION TIMESTEP 1 
 :FORMAT TECPLOT POINT
 FORMAT HDF5
@@ -90,16 +90,16 @@ FORMAT HDF5
 
 :======================== times ====================================
 TIME
-FINAL_TIME 1.d0 y
+FINAL_TIME 2.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-6 y
-MAXIMUM_TIMESTEP_SIZE 1.d-2 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /
 
 :=========================== regions ===============================
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
-1.d0 1.d0 1.d0
+100.d0 1.d0 1.d0
 /
 END
 
@@ -114,8 +114,8 @@ END
 REGION east
 FACE EAST
 COORDINATES
-1.d0 0.d0 0.d0
-1.d0 1.d0 1.d0
+100.d0 0.d0 0.d0
+100.d0 1.d0 1.d0
 /
 END
 
@@ -133,7 +133,7 @@ TEMPERATURE dirichlet
 CONCENTRATION dirichlet
 ENTHALPY dirichlet
 /
-PRESSURE 1.1215D5
+PRESSURE 1.5D5
 TEMPERATURE 100.D0
 CONCENTRATION 1.D-6
 ENTHALPY 0.D0
@@ -142,7 +142,7 @@ END
 FLOW_CONDITION west
 TYPE 
 PRESSURE zero_gradient
-TEMPERATURE zero_gradient
+TEMPERATURE dirichlet
 CONCENTRATION zero_gradient
 ENTHALPY dirichlet
 /

@@ -72,6 +72,10 @@ module Option_module
     PetscInt :: subsurf_surf_coupling
 #endif
 
+#ifdef MC_HEAT
+    PetscBool :: sec_vars_update
+#endif
+
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
     PetscInt :: vapor_pressure_id 

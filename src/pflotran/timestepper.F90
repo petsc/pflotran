@@ -1353,12 +1353,12 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   type(field_type), pointer :: field 
   type(discretization_type), pointer :: discretization 
   type(solver_type), pointer :: solver
+  
 
   option => realization%option
   discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
-
 
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
@@ -1501,6 +1501,9 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 !           call Flash2UpdateReason(update_reason,realization)
           case(THC_MODE)
             update_reason=1
+#ifdef MC_HEAT
+            option%sec_vars_update = PETSC_TRUE
+#endif
           case(THMC_MODE)
             update_reason=1
           case (MIS_MODE)

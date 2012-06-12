@@ -29,8 +29,9 @@ module THC_module
          THCMaxChange, THCUpdateSolution, &
          THCGetTecplotHeader, THCInitializeTimestep, &
          THCComputeMassBalance, THCResidualToMass, &
-         THCUpdateAuxVars, THCDestroy
-
+         THCUpdateAuxVars, THCDestroy, &
+         THCSecondaryHeat, THCSecondaryHeatJacobian 
+         
   PetscInt, parameter :: jh2o = 1
 
 contains
@@ -126,6 +127,9 @@ subroutine THCSetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(thc_auxvar_type), pointer :: thc_aux_vars(:), thc_aux_vars_bc(:)
   type(fluid_property_type), pointer :: cur_fluid_property
+#ifdef MC_HEAT
+  type(sec_heat_type), pointer :: thc_sec_heat_vars(:)
+#endif
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, iphase
@@ -188,6 +192,25 @@ subroutine THCSetupPatch(realization)
       realization%fluid_properties%diffusion_coefficient
   enddo
 
+#ifdef MC_HEAT
+  allocate(thc_sec_heat_vars(grid%ngmax))
+  do ghosted_id = 1, grid%ngmax
+    thc_sec_heat_vars(ghosted_id)%ncells = 10
+    thc_sec_heat_vars(ghosted_id)%length = 1.d0
+    thc_sec_heat_vars(ghosted_id)%area = 1.d0
+    thc_sec_heat_vars(ghosted_id)%grid_size = &
+        thc_sec_heat_vars(ghosted_id)%length/thc_sec_heat_vars(ghosted_id)%ncells
+    thc_sec_heat_vars(ghosted_id)%vol = thc_sec_heat_vars(ghosted_id)%grid_size* &
+        thc_sec_heat_vars(ghosted_id)%area
+    allocate(thc_sec_heat_vars(ghosted_id)%sec_temp(thc_sec_heat_vars(ghosted_id)%ncells))
+    thc_sec_heat_vars(ghosted_id)%sec_temp = 100.d0 ! Need to read from input file SK
+    thc_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
+  enddo
+      
+  patch%aux%THC%sec_heat_vars => thc_sec_heat_vars    
+#endif
+
+  
   patch%aux%THC%aux_vars => thc_aux_vars
   patch%aux%THC%num_aux = grid%ngmax
   
@@ -2682,11 +2705,31 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  
+#ifdef MC_HEAT
+  type(sec_heat_type), pointer :: thc_sec_heat_vars(:)
+#endif
+
   PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+
+#ifdef MC_HEAT
+  ! secondary continuum variables
+  PetscReal :: sec_area, sec_vol
+  PetscReal :: sec_conductivity
+  PetscReal :: sec_density
+  PetscReal :: sec_dencpr
+  PetscReal :: sec_length, sec_grid_size
+  PetscInt :: sec_ncells
+  PetscReal :: area_prim_sec
+  PetscReal :: res_sec_heat
+  PetscReal :: total_vol
+  PetscReal :: vol_frac_prim
+  PetscInt :: ngcells
+#endif
   
   patch => realization%patch
   grid => patch%grid
@@ -2699,9 +2742,15 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
+#ifdef MC_HEAT
+  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+#endif
+  
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
   patch%aux%THC%aux_vars_up_to_date = PETSC_FALSE
+
+  
   if (option%compute_mass_balance_new) then
     call THCZeroMassBalDeltaPatch(realization)
   endif
@@ -2723,6 +2772,9 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
+  
+  
+  ! Calculating volume fractions for primary and secondary continua
 
   r_p = 0.d0
 #if 1
@@ -2737,6 +2789,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
+
     call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
@@ -2745,6 +2798,46 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
   enddo 
 #endif
+
+#if 1
+#ifdef MC_HEAT
+  ! Secondary continuum contribution (Added by SK 06/02/2012)
+  ! only one secondary continuum for now for each primary continuum node
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    
+    ngcells = thc_sec_heat_vars(ghosted_id)%ncells
+    sec_area = thc_sec_heat_vars(ghosted_id)%area
+    sec_vol = thc_sec_heat_vars(ghosted_id)%vol  ! volume of each sec. cont. cell
+    total_vol = sec_vol*ngcells + volume_p(local_id)
+    vol_frac_prim = volume_p(local_id)/total_vol
+    area_prim_sec = sec_area/total_vol ! area between primary and secondary continuum
+    sec_dencpr = thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
+
+    if (option%sec_vars_update) then
+      call THCSecHeatAuxVarCompute(thc_sec_heat_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id), &
+                                  thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+                                  sec_dencpr, &
+                                  area_prim_sec,option)
+    endif       
+    
+    call THCSecondaryHeat(thc_sec_heat_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                          thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+                          sec_dencpr, &
+                          area_prim_sec,option,res_sec_heat) 
+    r_p(iend) = r_p(iend) - res_sec_heat/vol_frac_prim*option%flow_dt
+  enddo   
+    option%sec_vars_update = PETSC_FALSE
+#endif
+#endif
+
 #if 1
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
@@ -3168,9 +3261,24 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(thc_parameter_type), pointer :: thc_parameter
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
-  
+
+#ifdef MC_HEAT
+  type(sec_heat_type), pointer :: sec_heat_vars(:)
+#endif  
+
   PetscViewer :: viewer
   Vec :: debug_vec
+  
+#ifdef MC_HEAT
+  ! secondary continuum variables
+  PetscReal :: sec_area
+  PetscReal :: sec_vol
+  PetscReal :: area_prim_sec
+  PetscReal :: total_vol
+  PetscReal :: jac_sec_heat
+  PetscReal :: vol_frac_prim
+  PetscInt :: ngcells
+#endif
 
   patch => realization%patch
   grid => patch%grid
@@ -3182,6 +3290,10 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   aux_vars_bc => patch%aux%THC%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+#ifdef MC_HEAT  
+  sec_heat_vars => patch%aux%THC%sec_heat_vars
+#endif 
   
 #if 0
    call THCNumericalJacobianTest(xx,realization)
@@ -3210,13 +3322,31 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     icap = int(icap_loc_p(ghosted_id))
+    
+#ifdef MC_HEAT    
+    ngcells = sec_heat_vars(ghosted_id)%ncells
+    sec_area = sec_heat_vars(ghosted_id)%area
+    sec_vol = sec_heat_vars(ghosted_id)%vol  ! volume of each sec. cont. cell
+    total_vol = sec_vol*ngcells + volume_p(local_id) ! total volume
+    area_prim_sec = sec_area/total_vol ! area between primary and secondary continuum 
+    vol_frac_prim = volume_p(local_id)/total_vol
+#endif
     call THCAccumDerivative(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
-                              thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option, &
-                              realization%saturation_function_array(icap)%ptr, &
-                              Jup) 
+                            porosity_loc_p(ghosted_id), &
+                            volume_p(local_id), &
+                            thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                            option, &
+                            realization%saturation_function_array(icap)%ptr, &
+                            Jup) 
+#ifdef MC_HEAT
+     call THCSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
+                                   thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+                                   thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                                   area_prim_sec,option,jac_sec_heat)
+     Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
+                                   jac_sec_heat*option%flow_dt/vol_frac_prim
+#endif
+                            
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
 #endif
@@ -3921,6 +4051,126 @@ subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
   gradient(:) = temp_weighted(:,1)
   
 end subroutine THCComputeGradient
+
+
+! ************************************************************************** !
+!
+! THCSecondaryHeat: Calculates the source term contribution due to secondary
+! continuum in the primary continuum residual 
+! author: Satish Karra
+! date: 06/2/12
+!
+! ************************************************************************** !
+subroutine THCSecondaryHeat(thc_sec_aux_vars,global_aux_vars, &
+                          therm_conductivity, &
+                          dencpr, &
+                          area_fm,option,res_heat)
+                            
+  use Global_Aux_module
+  use Option_module
+  
+  implicit none
+  
+  PetscReal :: area, vol, grid_size
+  PetscReal :: dencpr, therm_conductivity
+  PetscReal :: res_heat
+  PetscReal :: temp_primary_node
+  PetscReal :: alpha
+  PetscReal :: coeff_l_N, coeff_d_N, coeff_r_N, coeff_rhs_N
+  PetscReal :: temp_prev_N, temp_current_N, temp_prev_N_minus_one
+  PetscReal :: coeff_l_N_minus_one, coeff_d_N_minus_one, coeff_r_N_minus_one
+  PetscReal :: coeff_rhs_N_minus_one
+  PetscReal :: area_fm
+  PetscInt :: ngcells
+  
+  type(sec_heat_type) :: thc_sec_aux_vars
+  type(global_auxvar_type) :: global_aux_vars
+  type(option_type) :: option
+  
+  temp_primary_node = global_aux_vars%temp(1)
+  ngcells = thc_sec_aux_vars%ncells
+  area = thc_sec_aux_vars%area
+  vol = thc_sec_aux_vars%vol
+  grid_size = thc_sec_aux_vars%grid_size
+  temp_prev_N = thc_sec_aux_vars%sec_temp(ngcells)
+  temp_prev_N_minus_one = thc_sec_aux_vars%sec_temp(ngcells-1)
+  
+  alpha = option%flow_dt*therm_conductivity/dencpr
+  
+  coeff_l_N = -alpha*area/(grid_size*vol)
+  coeff_d_N = alpha*area/(grid_size*vol) + alpha*area/(grid_size*vol/2.d0) + 1.d0
+  coeff_r_N = 0.d0
+  coeff_rhs_N = alpha*area/(grid_size*vol/2.d0)*temp_primary_node + temp_prev_N !temp_prev_N needs to be calculated
+  
+  coeff_l_N_minus_one = -alpha*area/(grid_size*vol)
+  coeff_d_N_minus_one = 1.d0 + alpha*area/(grid_size*vol) + &
+                        alpha*area/(grid_size*vol)
+  coeff_r_N_minus_one = -alpha*area/(grid_size*vol)
+  coeff_rhs_N_minus_one = temp_prev_N_minus_one  ! temp_prev_N_minus_one needs to be calculated
+  
+  coeff_d_N = coeff_d_N - (coeff_l_N/coeff_d_N_minus_one)*coeff_r_N_minus_one
+  coeff_rhs_N = coeff_rhs_N - (coeff_l_N/coeff_d_N_minus_one)*coeff_rhs_N_minus_one
+  
+  temp_current_N = coeff_rhs_N/coeff_d_N
+  
+  res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
+             (grid_size/2.d0)
+             
+             
+end subroutine THCSecondaryHeat
+
+! ************************************************************************** !
+!
+! THCSecondaryHeatJacobian: Calculates the source term jacobian contribution 
+! due to secondary continuum in the primary continuum residual 
+! author: Satish Karra
+! date: 06/6/12
+!
+! ************************************************************************** !
+subroutine THCSecondaryHeatJacobian(thc_sec_aux_vars, &
+                                    therm_conductivity, &
+                                    dencpr, &
+                                    area_fm,option,jac_heat)
+                            
+  use Global_Aux_module
+  use Option_module
+  
+  implicit none
+  
+  PetscReal :: area, vol, grid_size
+  PetscReal :: dencpr, therm_conductivity
+  PetscReal :: jac_heat
+  PetscReal :: alpha
+  PetscReal :: coeff_l_N, coeff_d_N
+  PetscReal :: coeff_d_N_minus_one, coeff_r_N_minus_one
+  PetscReal :: area_fm
+  
+  type(sec_heat_type) :: thc_sec_aux_vars
+  type(global_auxvar_type) :: global_aux_vars
+  type(option_type) :: option
+  
+  area = thc_sec_aux_vars%area
+  vol = thc_sec_aux_vars%vol
+  grid_size = thc_sec_aux_vars%grid_size
+  
+  alpha = option%flow_dt*therm_conductivity/dencpr
+  
+  
+  coeff_l_N = -alpha*area/(grid_size*vol)
+  coeff_d_N = alpha*area/(grid_size*vol) + alpha*area/(grid_size*vol/2.d0) + 1.d0
+  
+  coeff_d_N_minus_one = 1.d0 + alpha*area/(grid_size*vol) + &
+                        alpha*area/(grid_size*vol)
+  coeff_r_N_minus_one = -alpha*area/(grid_size*vol)
+  
+  coeff_d_N = coeff_d_N - (coeff_l_N/coeff_d_N_minus_one)*coeff_r_N_minus_one
+
+    
+  jac_heat = area_fm*therm_conductivity*(1/coeff_d_N*(alpha*area/(grid_size*vol/2.d0)) - 1.d0)/ &
+             (grid_size/2.d0)
+        
+             
+end subroutine THCSecondaryHeatJacobian
 
 
 ! ************************************************************************** !
