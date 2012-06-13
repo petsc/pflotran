@@ -4061,60 +4061,80 @@ end subroutine THCComputeGradient
 ! date: 06/2/12
 !
 ! ************************************************************************** !
-subroutine THCSecondaryHeat(thc_sec_aux_vars,global_aux_vars, &
-                          therm_conductivity, &
-                          dencpr, &
-                          area_fm,option,res_heat)
+subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
+                            therm_conductivity,dencpr,area_fm, &
+                            option,res_heat)
                             
+  use Option_module 
   use Global_Aux_module
-  use Option_module
   
   implicit none
   
-  PetscReal :: area, vol, grid_size
-  PetscReal :: dencpr, therm_conductivity
-  PetscReal :: res_heat
-  PetscReal :: temp_primary_node
-  PetscReal :: alpha
-  PetscReal :: coeff_l_N, coeff_d_N, coeff_r_N, coeff_rhs_N
-  PetscReal :: temp_prev_N, temp_current_N, temp_prev_N_minus_one
-  PetscReal :: coeff_l_N_minus_one, coeff_d_N_minus_one, coeff_r_N_minus_one
-  PetscReal :: coeff_rhs_N_minus_one
-  PetscReal :: area_fm
-  PetscInt :: ngcells
-  
-  type(sec_heat_type) :: thc_sec_aux_vars
-  type(global_auxvar_type) :: global_aux_vars
+  type(sec_heat_type) :: sec_heat_vars
+  type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
+  PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
+  PetscReal, allocatable :: rhs(:)
+  PetscInt :: i, ngcells
+  PetscReal :: area, vol, gsize, area_fm
+  PetscReal :: alpha, therm_conductivity, dencpr
+  PetscReal :: temp_primary_node
+  PetscReal :: m
+  PetscReal :: temp_current_N
+  PetscReal :: res_heat
   
-  temp_primary_node = global_aux_vars%temp(1)
-  ngcells = thc_sec_aux_vars%ncells
-  area = thc_sec_aux_vars%area
-  vol = thc_sec_aux_vars%vol
-  grid_size = thc_sec_aux_vars%grid_size
-  temp_prev_N = thc_sec_aux_vars%sec_temp(ngcells)
-  temp_prev_N_minus_one = thc_sec_aux_vars%sec_temp(ngcells-1)
+  ngcells = sec_heat_vars%ncells
+  area = sec_heat_vars%area
+  vol = sec_heat_vars%vol
+  gsize = sec_heat_vars%grid_size
+  temp_primary_node = global_aux_var%temp(1)
+
+  allocate(coeff_left(ngcells))
+  allocate(coeff_diag(ngcells))
+  allocate(coeff_right(ngcells))
+  allocate(rhs(ngcells))
+  
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
   
   alpha = option%flow_dt*therm_conductivity/dencpr
+
   
-  coeff_l_N = -alpha*area/(grid_size*vol)
-  coeff_d_N = alpha*area/(grid_size*vol) + alpha*area/(grid_size*vol/2.d0) + 1.d0
-  coeff_r_N = 0.d0
-  coeff_rhs_N = alpha*area/(grid_size*vol/2.d0)*temp_primary_node + temp_prev_N !temp_prev_N needs to be calculated
+  ! Setting the coefficients
+  do i = 2, ngcells-1
+    coeff_left(i) = -alpha*area/(gsize*vol)
+    coeff_diag(i) = 2.d0*alpha*area/(gsize*vol) + 1.d0
+    coeff_right(i) = -alpha*area/(gsize*vol)
+  enddo
   
-  coeff_l_N_minus_one = -alpha*area/(grid_size*vol)
-  coeff_d_N_minus_one = 1.d0 + alpha*area/(grid_size*vol) + &
-                        alpha*area/(grid_size*vol)
-  coeff_r_N_minus_one = -alpha*area/(grid_size*vol)
-  coeff_rhs_N_minus_one = temp_prev_N_minus_one  ! temp_prev_N_minus_one needs to be calculated
+  coeff_diag(1) = alpha*area/(gsize*vol) + 1.d0
+  coeff_right(1) = -alpha*area/(gsize*vol)
   
-  coeff_d_N = coeff_d_N - (coeff_l_N/coeff_d_N_minus_one)*coeff_r_N_minus_one
-  coeff_rhs_N = coeff_rhs_N - (coeff_l_N/coeff_d_N_minus_one)*coeff_rhs_N_minus_one
+  coeff_left(ngcells) = -alpha*area/(gsize*vol)
+  coeff_diag(ngcells) = alpha*area/(gsize*vol) + &
+                        alpha*area/(gsize*vol/2.d0) + 1.d0
+                        
+  rhs = sec_heat_vars%sec_temp  ! secondary continuum values from previous time step
+  rhs(ngcells) = rhs(ngcells) + & 
+                 alpha*area/(gsize*vol/2.d0)*temp_primary_node
+                
+  ! Thomas algorithm for tridiagonal system
+  ! Forward elimination
+  do i = 2, ngcells
+    m = coeff_left(i)/coeff_diag(i-1)
+    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
+    rhs(i) = rhs(i) - m*rhs(i-1)
+  enddo
+
+  ! Back substitution
+  ! We only need the temperature at the outer-most node (closest to primary node)
+  temp_current_N = rhs(ngcells)/coeff_diag(ngcells)
   
-  temp_current_N = coeff_rhs_N/coeff_d_N
-  
+  ! Calculate the coupling term
   res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
-             (grid_size/2.d0)
+             (gsize/2.d0)
              
              
 end subroutine THCSecondaryHeat
@@ -4127,49 +4147,75 @@ end subroutine THCSecondaryHeat
 ! date: 06/6/12
 !
 ! ************************************************************************** !
-subroutine THCSecondaryHeatJacobian(thc_sec_aux_vars, &
+subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                                     therm_conductivity, &
                                     dencpr, &
                                     area_fm,option,jac_heat)
-                            
+                                    
+  use Option_module 
   use Global_Aux_module
-  use Option_module
   
   implicit none
   
-  PetscReal :: area, vol, grid_size
-  PetscReal :: dencpr, therm_conductivity
-  PetscReal :: jac_heat
-  PetscReal :: alpha
-  PetscReal :: coeff_l_N, coeff_d_N
-  PetscReal :: coeff_d_N_minus_one, coeff_r_N_minus_one
-  PetscReal :: area_fm
-  
-  type(sec_heat_type) :: thc_sec_aux_vars
-  type(global_auxvar_type) :: global_aux_vars
+  type(sec_heat_type) :: sec_heat_vars
   type(option_type) :: option
+  PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
+  PetscReal, allocatable :: rhs(:)
+  PetscInt :: i, ngcells
+  PetscReal :: area, vol, gsize, area_fm
+  PetscReal :: alpha, therm_conductivity, dencpr
+  PetscReal :: m
+  PetscReal :: Dtemp_N_Dtemp_prim
+  PetscReal :: jac_heat
   
-  area = thc_sec_aux_vars%area
-  vol = thc_sec_aux_vars%vol
-  grid_size = thc_sec_aux_vars%grid_size
+  ngcells = sec_heat_vars%ncells
+  area = sec_heat_vars%area
+  vol = sec_heat_vars%vol
+  gsize = sec_heat_vars%grid_size
+
+  allocate(coeff_left(ngcells))
+  allocate(coeff_diag(ngcells))
+  allocate(coeff_right(ngcells))
+  allocate(rhs(ngcells))
+  
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
   
   alpha = option%flow_dt*therm_conductivity/dencpr
-  
-  
-  coeff_l_N = -alpha*area/(grid_size*vol)
-  coeff_d_N = alpha*area/(grid_size*vol) + alpha*area/(grid_size*vol/2.d0) + 1.d0
-  
-  coeff_d_N_minus_one = 1.d0 + alpha*area/(grid_size*vol) + &
-                        alpha*area/(grid_size*vol)
-  coeff_r_N_minus_one = -alpha*area/(grid_size*vol)
-  
-  coeff_d_N = coeff_d_N - (coeff_l_N/coeff_d_N_minus_one)*coeff_r_N_minus_one
 
-    
-  jac_heat = area_fm*therm_conductivity*(1/coeff_d_N*(alpha*area/(grid_size*vol/2.d0)) - 1.d0)/ &
-             (grid_size/2.d0)
-        
-             
+  
+  ! Setting the coefficients
+  do i = 2, ngcells-1
+    coeff_left(i) = -alpha*area/(gsize*vol)
+    coeff_diag(i) = 2.d0*alpha*area/(gsize*vol) + 1.d0
+    coeff_right(i) = -alpha*area/(gsize*vol)
+  enddo
+  
+  coeff_diag(1) = alpha*area/(gsize*vol) + 1.d0
+  coeff_right(1) = -alpha*area/(gsize*vol)
+  
+  coeff_left(ngcells) = -alpha*area/(gsize*vol)
+  coeff_diag(ngcells) = alpha*area/(gsize*vol) + &
+                        alpha*area/(gsize*vol/2.d0) + 1.d0
+                
+  ! Thomas algorithm for tridiagonal system
+  ! Forward elimination
+  do i = 2, ngcells
+    m = coeff_left(i)/coeff_diag(i-1)
+    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
+    ! We do not have to calculate rhs terms
+  enddo
+
+  ! We need the temperature derivative at the outer-most node (closest to primary node)
+  Dtemp_N_Dtemp_prim = 1.d0/coeff_diag(ngcells)*(alpha*area/(gsize*vol/2.d0))
+  
+  ! Calculate the jacobian term
+  jac_heat = area_fm*therm_conductivity*(Dtemp_N_Dtemp_prim - 1.d0)/ &
+             (gsize/2.d0)
+                            
+              
 end subroutine THCSecondaryHeatJacobian
 
 

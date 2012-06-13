@@ -468,6 +468,7 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   enddo
 
   ! Back substitution
+  ! Calculate temperature in the secondary continuum
   sec_temp(ngcells) = rhs(ngcells)/coeff_diag(ngcells)
   do i = ngcells-1, 1, -1
     sec_temp(i) = (rhs(i) - coeff_right(i)*sec_temp(i+1))/coeff_diag(i)
