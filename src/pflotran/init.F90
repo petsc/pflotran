@@ -958,7 +958,6 @@ subroutine Init(simulation)
         option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
         call printErrMsgByRank(option)
     end select
-    !call SurfaceRealizationMapSurfSubsurfaceGrids2(realization,simulation%surf_realization)
   endif ! option%nsurfflowdof > 0
 #endif
 

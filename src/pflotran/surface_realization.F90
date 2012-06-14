@@ -62,7 +62,6 @@ private
             SurfaceRealizationProcessConditions, &
             SurfaceRealizationProcessFlowConditions, &
             SurfaceRealizationMapSurfSubsurfaceGrids, &
-            SurfaceRealizationMapSurfSubsurfaceGrids2, &
             SurfaceRealizationInitAllCouplerAuxVars, &
             SurfaceRealizationProcessMatProp, &
             SurfaceRealizationUpdate, &
@@ -908,8 +907,6 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call SurfaceRealizationMapSurfSubsurfaceGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
                                         surf_petsc_ids)
   call MatDestroy(prod,ierr)
-  !option%io_buffer = 'stopping for debugging'
-  !call printErrMsg(option)
 
   call MatMatMult(Mat_vert_to_face_surf,Mat_vert_to_face_subsurf_transp, &
                   MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,prod,ierr)
@@ -933,7 +930,6 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   call VecDestroy(subsurf_petsc_ids,ierr)
   call VecDestroy(surf_petsc_ids,ierr)
   
-
 end subroutine SurfaceRealizationMapSurfSubsurfaceGrids
 
 ! ************************************************************************** !
@@ -1072,7 +1068,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   
   call VecCreateMPI(option%mycomm,nrow,PETSC_DETERMINE, &
                     corr_dest_ids_vec,ierr)
-  call VecScatterCreate(source_petsc_ids,is_tmp1,corr_dest_ids_vec,is_tmp2, &
+  call VecScatterCreate(source_petsc_ids,is_tmp2,corr_dest_ids_vec,is_tmp1, &
                         scatter,ierr)
   call ISDestroy(is_tmp1,ierr)
   call ISDestroy(is_tmp2,ierr)
@@ -1081,6 +1077,14 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(scatter,source_petsc_ids,corr_dest_ids_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  select case(source_grid_flag)
+    case(TWO_DIM_GRID)
+      dm_ptr => DiscretizationGetDMPtrFromIndex(surf_realization%discretization,ONEDOF)
+      call VecScatterCopy(scatter,dm_ptr%ugdm%scatter_bet_grids,ierr)
+    case(THREE_DIM_GRID)
+      dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,ONEDOF)
+      call VecScatterCopy(scatter,dm_ptr%ugdm%scatter_bet_grids,ierr)
+  end select
   call VecScatterDestroy(scatter,ierr)
 
 #if UGRID_DEBUG
@@ -1093,6 +1097,10 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerDestroy(viewer,ierr)
 #endif  
 
+  call VecDestroy(corr_dest_ids_vec,ierr)
+  if(option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
+
+#if 0
   call VecCreateSeq(PETSC_COMM_SELF,nrow,source_loc_vec,ierr)
   
   allocate(int_array(nrow))
@@ -1137,124 +1145,9 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call VecScatterView(dm_ptr%ugdm%scatter_bet_grids,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
+#endif 0
 
 end subroutine SurfaceRealizationMapSurfSubsurfaceGrid
-
-! ************************************************************************** !
-!> This routine creates vector scatter contexts between surface and subsurface 
-!! grids.
-!!
-!> @author
-!! Gautam Bisht, ORNL
-!!
-!! Algorithm:
-!!  - It uses a similar logic of Matrix-Vector multiplication used in 
-!!    UGridMapSideSet() subroutine. The algorithm here is extended to use 
-!!    Matrix-Matrix mulitplication
-!!
-!! date: //12
-! ************************************************************************** !
-subroutine SurfaceRealizationMapSurfSubsurfaceGrids2(realization,surf_realization)
-
-  use Grid_module
-  use String_module
-  use Unstructured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Unstructured_Cell_module
-  use Realization_module
-  use Option_module
-  use Level_module
-  use Patch_module
-  use Region_module
-  use Condition_module
-  use Coupler_module
-
-  implicit none
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-
-  type(realization_type), pointer         :: realization
-  type(surface_realization_type), pointer :: surf_realization
-
-  type(option_type), pointer           :: option
-  type(grid_type),pointer :: grid
-  type(grid_type),pointer :: surf_grid
-  type(patch_type), pointer            :: patch, surf_patch
-  type(region_type), pointer           :: cur_region, top_region
-  type(region_type), pointer           :: patch_region
-
-  type(coupler_list_type), pointer    :: surface_boundary_condition_list
-  type(coupler_type), pointer         :: boundary_condition
-  type(flow_condition_type), pointer  :: flow_condition
-
-  PetscViewer :: viewer
-  character(len=MAXSTRINGLENGTH) :: string
-  PetscInt,pointer::int_array(:)
-  PetscInt :: offset
-  PetscInt :: int_array4(4)
-  PetscInt :: int_array4_0(4,1)
-  PetscInt :: nvertices
-  PetscInt :: iface
-  PetscInt :: local_id, ii, jj,iconn,nat_id
-  PetscInt :: cell_type
-  PetscInt :: ivertex, vertex_id_local
-  PetscReal :: real_array4(4)
-  PetscReal, pointer :: vec_ptr(:)
-
-  PetscErrorCode :: ierr
-  PetscBool :: found
-  
-  found = PETSC_FALSE
-  
-  option => realization%option
-  patch      => realization%patch
-  surf_patch => surf_realization%patch
-  option     => realization%option
-  grid       => realization%discretization%grid
-  surf_grid  => surf_realization%discretization%grid
-  !surf_field => surf_realization%surf_field
-
-  if (.not.associated(realization)) return
-
-  ! Update the surface BC
-  surface_boundary_condition_list => patch%boundary_conditions
-  boundary_condition => surface_boundary_condition_list%first
-  do
-    if (.not.associated(boundary_condition)) exit
-    
-    ! FLOW
-    if (associated(boundary_condition%flow_aux_real_var)) then
-
-      ! Find the BC from the list of BCs
-      write(*,*),boundary_condition%name
-      if(StringCompare(boundary_condition%name,'from_surface_bc')) then
-      
-        found = PETSC_TRUE
-        flow_condition => boundary_condition%flow_condition
-        
-        write(*,*),'num_connections = ',boundary_condition%connection_set%num_connections
-        do iconn = 1,boundary_condition%connection_set%num_connections
-          local_id = boundary_condition%connection_set%id_dn(iconn)
-          nat_id   = grid%nG2A(grid%nL2G(local_id))
-          write(*,*),iconn,nat_id,option%myrank
-        enddo
-
-      endif
-      
-    endif
-
-    boundary_condition => boundary_condition%next
-
-  enddo
-
-  call MPI_Barrier(option%mycomm,ierr)
-  !option%io_buffer = 'stopping for debugging'
-  !call printErrMsg(option)
-
-end subroutine SurfaceRealizationMapSurfSubsurfaceGrids2
 
 ! ************************************************************************** !
 !> This routine destroys SurfaceRealization object
@@ -1390,7 +1283,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization)
   type(surface_field_type),pointer    :: surf_field
   type(dm_ptr_type), pointer          :: dm_ptr
   
-  Vec            :: dest_loc_vec, source_mpi_vec
+  Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal, pointer :: xx_loc_p(:),vec_p(:)
   PetscReal :: rho          ! density      [kg/m^3]
@@ -1418,7 +1311,6 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization)
   do local_id=1,surf_grid%nlmax
     vec_p(local_id) = xx_loc_p(local_id)*(-option%gravity(3))*rho + &
       option%reference_pressure
-    !if(local_id == 1 ) write(*,*),'BC P:',local_id,xx_loc_p(local_id),vec_p(local_id)
   enddo
   call GridVecRestoreArrayF90(surf_grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(source_mpi_vec,vec_p,ierr)
@@ -1439,20 +1331,22 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization)
         flow_condition => coupler%flow_condition
 
         ! Scatter the data
-        call VecCreateSeq(PETSC_COMM_SELF,coupler%connection_set%num_connections,dest_loc_vec,ierr)
-        !write(*,*),'coupler%connection_set%num_connections =',coupler%connection_set%num_connections
-        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,dest_loc_vec, &
+        call VecCreate(option%mycomm,destin_mpi_vec,ierr)
+        call VecSetSizes(destin_mpi_vec,coupler%connection_set%num_connections,PETSC_DECIDE,ierr)
+        call VecSetFromOptions(destin_mpi_vec,ierr)
+
+        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,destin_mpi_vec, &
                             INSERT_VALUES,SCATTER_FORWARD,ierr)
-        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,dest_loc_vec, &
+        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,destin_mpi_vec, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecRestoreArrayF90(destin_mpi_vec,vec_p,ierr)
 
         ! Update the pressure values
-        call VecGetArrayF90(dest_loc_vec,vec_p,ierr)
+        call VecGetArrayF90(destin_mpi_vec,vec_p,ierr)
         do i=1,coupler%connection_set%num_connections
           coupler%flow_aux_real_var(RICHARDS_PRESSURE_DOF,i) = vec_p(i)
-          !write(*,*),i,vec_p(i)
         enddo
-        call VecRestoreArrayF90(dest_loc_vec,vec_p,ierr)
+        call VecRestoreArrayF90(destin_mpi_vec,vec_p,ierr)
       endif
     endif
 
@@ -1466,7 +1360,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization)
     call printErrMsg(option)
   endif
   
-  call VecDestroy(dest_loc_vec,ierr)
+  call VecDestroy(destin_mpi_vec,ierr)
   call VecDestroy(source_mpi_vec,ierr)
 
 end subroutine SurfaceRealizationUpdateSubsurfaceBC
@@ -1519,7 +1413,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   type(dm_ptr_type), pointer          :: dm_ptr
   type(connection_set_type), pointer  :: cur_connection_set
   
-  Vec            :: dest_loc_vec, source_mpi_vec
+  Vec            :: destin_mpi_vec, source_mpi_vec
   PetscErrorCode :: ierr
   PetscReal, pointer :: qsrc_p(:),vec_p(:)
   PetscReal :: rho          ! density      [kg/m^3]
@@ -1537,11 +1431,6 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   dm_ptr => DiscretizationGetDMPtrFromIndex(realization%discretization,ONEDOF)
   call density(option%reference_temperature,option%reference_pressure,rho)
   
-  !write(*,*),'In SurfaceRealizationUpdateSurfaceBC'
-  !call VecCreate(option%mycomm,source_mpi_vec,ierr)
-  !call VecSetSizes(source_mpi_vec,surf_grid%nlmax,PETSC_DECIDE,ierr)
-  !call VecSetFromOptions(source_mpi_vec,ierr)
-
   ! Update the surface BC
   coupler_list => patch%boundary_conditions
   coupler => coupler_list%first
@@ -1562,32 +1451,32 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
         call VecCreate(option%mycomm,source_mpi_vec,ierr)
         call VecSetSizes(source_mpi_vec,cur_connection_set%num_connections,PETSC_DECIDE,ierr)
         call VecSetFromOptions(source_mpi_vec,ierr)
-        !write(*,*),'cur_connection_set%num_connections =',cur_connection_set%num_connections
 
         call VecGetArrayF90(source_mpi_vec,vec_p,ierr)
         do i = 1, cur_connection_set%num_connections
           sum_connection = sum_connection + 1
           vec_p(i) = patch%boundary_velocities(1,sum_connection)
-          !write(*,*),'v :',sum_connection,patch%boundary_velocities(1,sum_connection)
         enddo
         call VecRestoreArrayF90(source_mpi_vec,vec_p,ierr)
         
         ! Scatter the data
-        call VecCreateSeq(PETSC_COMM_SELF,surf_grid%nlmax,dest_loc_vec,ierr)
-        !call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,dest_loc_vec, &
-        !                    INSERT_VALUES,SCATTER_FORWARD,ierr)
-        !call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,dest_loc_vec, &
-        !                 INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecCreate(option%mycomm,destin_mpi_vec,ierr)
+        call VecSetSizes(destin_mpi_vec,surf_grid%nlmax,PETSC_DECIDE,ierr)
+        call VecSetFromOptions(destin_mpi_vec,ierr)
+
+        call VecScatterBegin(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,destin_mpi_vec, &
+                            INSERT_VALUES,SCATTER_FORWARD,ierr)
+        call VecScatterEnd(dm_ptr%ugdm%scatter_bet_grids,source_mpi_vec,destin_mpi_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
 
         ! Update the pressure values
-        !call VecGetArrayF90(dest_loc_vec,vec_p,ierr)
+        call VecGetArrayF90(destin_mpi_vec,vec_p,ierr)
         call GridVecGetArrayF90(surf_grid,surf_field%qsrc_from_subsurface_loc,qsrc_p,ierr)
-        call VecGetArrayF90(source_mpi_vec,vec_p,ierr)
         do i=1,surf_grid%nlmax
           qsrc_p(i) = -vec_p(i)
         enddo
+        call VecRestoreArrayF90(destin_mpi_vec,vec_p,ierr)
         call GridVecRestoreArrayF90(surf_grid,surf_field%qsrc_from_subsurface_loc,qsrc_p,ierr)
-        call VecRestoreArrayF90(source_mpi_vec,vec_p,ierr)
       endif
       
       sum_connection = sum_connection + cur_connection_set%num_connections
@@ -1598,7 +1487,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
 
   enddo
 
-  call VecDestroy(dest_loc_vec,ierr)
+  call VecDestroy(destin_mpi_vec,ierr)
   call VecDestroy(source_mpi_vec,ierr)
 
 end subroutine SurfaceRealizationUpdateSurfaceBC
