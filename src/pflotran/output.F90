@@ -11023,12 +11023,14 @@ subroutine WriteTecplotUGridElements2(fid, &
   type(patch_type), pointer :: patch
   Vec :: global_cconn_vec
   type(ugdm_type), pointer :: ugdm_element
-  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:),vec_ptr2(:)
+  PetscInt :: ii
   PetscErrorCode :: ierr
   
   Vec :: global_vec
   Vec :: natural_vec
-  PetscInt :: local_size
+  Vec :: surface_natural_vec
+  PetscInt :: natural_vec_local_size, surface_natural_vec_local_size
 
   patch => surf_realization%patch
   grid => patch%grid
@@ -11044,16 +11046,34 @@ subroutine WriteTecplotUGridElements2(fid, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
 
-  local_size = grid%unstructured_grid%nmax * 4
-  call WriteTecplotDataSetNumPerLine(fid,surf_realization,vec_ptr, &
-                                     TECPLOT_INTEGER, &
-                                     local_size, &
-                                     FOUR_INTEGER)
+  surface_natural_vec_local_size = 0
+  call VecGetLocalSize(natural_vec,natural_vec_local_size,ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  do ii = 1,natural_vec_local_size
+    if(vec_ptr(ii) /= -999) & 
+      surface_natural_vec_local_size = surface_natural_vec_local_size + 1
+  enddo
   call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  
+  call VecCreateMPI(option%mycomm,surface_natural_vec_local_size,PETSC_DETERMINE,surface_natural_vec,ierr)
+  call VecGetArrayF90(surface_natural_vec,vec_ptr2,ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+  do ii = 1,surface_natural_vec_local_size
+    vec_ptr2(ii) = vec_ptr(ii)
+  enddo
+  call VecRestoreArrayF90(surface_natural_vec,vec_ptr2,ierr)
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  
+  call VecGetArrayF90(surface_natural_vec,vec_ptr2,ierr)
+  call WriteTecplotDataSetNumPerLine(fid,surf_realization,vec_ptr2, &
+                                     TECPLOT_INTEGER, &
+                                     surface_natural_vec_local_size, &
+                                     FOUR_INTEGER)
+  call VecRestoreArrayF90(surface_natural_vec,vec_ptr2,ierr)
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
+  call VecDestroy(surface_natural_vec,ierr)
   call UGridDMDestroy(ugdm_element)
 
 end subroutine WriteTecplotUGridElements2
