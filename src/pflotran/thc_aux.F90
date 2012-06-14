@@ -86,7 +86,10 @@ module THC_Aux_module
 
   public :: THCAuxCreate, THCAuxDestroy, &
             THCAuxVarCompute, THCAuxVarInit, &
-            THCAuxVarCopy, THCSecHeatAuxVarCompute
+#ifdef MC_HEAT
+            THCSecHeatAuxVarCompute, &
+#endif
+            THCAuxVarCopy
 
 #ifdef ICE
   public :: THCAuxVarComputeIce

@@ -29,8 +29,10 @@ module THC_module
          THCMaxChange, THCUpdateSolution, &
          THCGetTecplotHeader, THCInitializeTimestep, &
          THCComputeMassBalance, THCResidualToMass, &
-         THCUpdateAuxVars, THCDestroy, &
-         THCSecondaryHeat, THCSecondaryHeatJacobian 
+#ifdef MC_HEAT
+         THCSecondaryHeat, THCSecondaryHeatJacobian, &
+#endif
+         THCUpdateAuxVars, THCDestroy
          
   PetscInt, parameter :: jh2o = 1
 
@@ -4061,6 +4063,7 @@ end subroutine THCComputeGradient
 ! date: 06/2/12
 !
 ! ************************************************************************** !
+#ifdef MC_HEAT
 subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
                             therm_conductivity,dencpr,area_fm, &
                             option,res_heat)
@@ -4217,7 +4220,7 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                             
               
 end subroutine THCSecondaryHeatJacobian
-
+#endif !MC_HEAT
 
 ! ************************************************************************** !
 !
