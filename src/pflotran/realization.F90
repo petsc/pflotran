@@ -1375,6 +1375,14 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
   
   type(realization_type) :: realization
   
+  !geh: Must update conditions prior to initializing the aux vars.  
+  !     Otherwise, datasets will not have been read for routines such as
+  !     hydrostatic and auxvars will be initialized to garbage.
+  call FlowConditionUpdate(realization%flow_conditions,realization%option, &
+                           realization%option%time)
+  call TranConditionUpdate(realization%transport_conditions, &
+                           realization%option, &
+                           realization%option%time)  
   call PatchInitAllCouplerAuxVars(realization%patch,realization%option)
    
 end subroutine RealizationInitAllCouplerAuxVars
