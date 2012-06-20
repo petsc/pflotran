@@ -828,7 +828,9 @@ with bulk permeability of the porous medium $k$ and relative permeability $k_\a$
 \tau D_m + a_T \bI + \big(a_L-a_T\big)\frac{\bv\bv}{v},
 %\Big),
 \EN
-with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. The temperature dependence of the diffusion coefficient is defined through the relation
+with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. Currently, only longitudinal dispersion is implemented in PFLOTRAN.
+
+The temperature dependence of the diffusion coefficient is defined through the relation
 \EQ
 D_m(T) \eq D_m^\circ\exp\left[\frac{A_D}{R}\left(\frac{1}{T_0}-\frac{1}{T}\right)\right],
 \EN
