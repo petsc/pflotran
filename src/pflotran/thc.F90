@@ -30,7 +30,7 @@ module THC_module
          THCGetTecplotHeader, THCInitializeTimestep, &
          THCComputeMassBalance, THCResidualToMass, &
 #ifdef MC_HEAT
-         THCSecondaryHeat, THCSecondaryHeatJacobian, &
+         THCSecondaryHeat, THCSecondaryHeatJacobian, & 
 #endif
          THCUpdateAuxVars, THCDestroy
          
@@ -131,10 +131,12 @@ subroutine THCSetupPatch(realization)
   type(fluid_property_type), pointer :: cur_fluid_property
 #ifdef MC_HEAT
   type(sec_heat_type), pointer :: thc_sec_heat_vars(:)
+  type(coupler_type), pointer :: initial_condition
 #endif
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, iphase
+  
   
   option => realization%option
   patch => realization%patch
@@ -195,8 +197,12 @@ subroutine THCSetupPatch(realization)
   enddo
 
 #ifdef MC_HEAT
+
+  initial_condition => patch%initial_conditions%first
   allocate(thc_sec_heat_vars(grid%ngmax))
+  
   do ghosted_id = 1, grid%ngmax
+    ! The following values need to be read from an input file -- sk 06/26/12
     thc_sec_heat_vars(ghosted_id)%ncells = 10
     thc_sec_heat_vars(ghosted_id)%length = 1.d0
     thc_sec_heat_vars(ghosted_id)%area = 1.d0
@@ -205,11 +211,15 @@ subroutine THCSetupPatch(realization)
     thc_sec_heat_vars(ghosted_id)%vol = thc_sec_heat_vars(ghosted_id)%grid_size* &
         thc_sec_heat_vars(ghosted_id)%area
     allocate(thc_sec_heat_vars(ghosted_id)%sec_temp(thc_sec_heat_vars(ghosted_id)%ncells))
-    thc_sec_heat_vars(ghosted_id)%sec_temp = 100.d0 ! Need to read from input file SK
+    ! Setting the initial values of all secondary node temperatures same as primary node 
+    ! temperatures (with initial dirichlet BC only) -- sk 06/26/12
+    thc_sec_heat_vars(ghosted_id)%sec_temp = &
+        initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     thc_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
   enddo
       
   patch%aux%THC%sec_heat_vars => thc_sec_heat_vars    
+
 #endif
 
   
