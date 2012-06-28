@@ -158,9 +158,7 @@ subroutine THCAuxVarInit(aux_var,option)
   type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
   
-  PetscInt :: sec_ncells ! need to remove
-  
-  sec_ncells = 10
+
   aux_var%avgmw = 0.d0
   aux_var%h = 0.d0
   aux_var%u = 0.d0

@@ -2817,7 +2817,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   ! only one secondary continuum for now for each primary continuum node
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif

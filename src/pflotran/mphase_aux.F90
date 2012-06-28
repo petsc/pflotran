@@ -71,12 +71,28 @@ type, public :: mphase_auxvar_elem_type
      type(mphase_auxvar_type), pointer :: aux_vars(:)
      type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
      type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
+#ifdef MC_HEAT
+     type(sec_heat_type), pointer :: sec_heat_vars(:)
+#endif
   end type mphase_type
 
-  
+#ifdef MC_HEAT  
+  type, public :: sec_heat_type  ! now assuming only 1D secondary continuum
+    PetscBool :: sec_temp_update
+    PetscInt :: ncells
+    PetscReal :: length
+    PetscReal :: area
+    PetscReal :: vol
+    PetscReal :: grid_size
+    PetscReal, pointer :: sec_temp(:)
+  end type sec_heat_type  
+#endif
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
             MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC, &
+#ifdef MC_HEAT
+            MphaseSecHeatAuxVarCompute, &
+#endif            
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
@@ -119,6 +135,10 @@ function MphaseAuxCreate()
   nullify(aux%res_old_AR)
   nullify(aux%res_old_FL)
   nullify(aux%delx)
+  
+#ifdef MC_HEAT  
+  nullify(aux%sec_heat_vars)
+#endif
 
   MphaseAuxCreate => aux
   
@@ -556,6 +576,96 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var, global_auxvar,iphase,satur
   enddo
 
 end subroutine MphaseAuxVarCompute_WINC
+
+! ************************************************************************** !
+! 
+! MphaesSecHeatAuxVarCompute: Computes secondary auxillary variables in each
+!                             grid cell for heat transfer only
+! author: Satish Karra
+! Date: 06/28/12
+!
+! ************************************************************************** !
+
+#ifdef MC_HEAT
+subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
+                                   therm_conductivity,dencpr,area_fm, &
+                                   option)
+
+  use Option_module 
+  use Global_Aux_module
+  
+  implicit none
+  
+  type(sec_heat_type) :: sec_heat_vars
+  type(global_auxvar_type) :: global_aux_var
+  type(option_type) :: option
+  PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
+  PetscReal, allocatable :: rhs(:), sec_temp(:)
+  PetscInt :: i, ngcells
+  PetscReal :: area, vol, gsize, area_fm
+  PetscReal :: alpha, therm_conductivity, dencpr
+  PetscReal :: temp_primary_node
+  PetscReal :: m
+  
+  ngcells = sec_heat_vars%ncells
+  area = sec_heat_vars%area
+  vol = sec_heat_vars%vol
+  gsize = sec_heat_vars%grid_size
+  temp_primary_node = global_aux_var%temp(1)
+
+  allocate(coeff_left(ngcells))
+  allocate(coeff_diag(ngcells))
+  allocate(coeff_right(ngcells))
+  allocate(rhs(ngcells))
+  allocate(sec_temp(ngcells))
+  
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
+  sec_temp = 0.d0
+  
+  alpha = option%flow_dt*therm_conductivity/dencpr
+
+  
+  ! Setting the coefficients
+  do i = 2, ngcells-1
+    coeff_left(i) = -alpha*area/(gsize*vol)
+    coeff_diag(i) = 2.d0*alpha*area/(gsize*vol) + 1.d0
+    coeff_right(i) = -alpha*area/(gsize*vol)
+  enddo
+  
+  coeff_diag(1) = alpha*area/(gsize*vol) + 1.d0
+  coeff_right(1) = -alpha*area/(gsize*vol)
+  
+  coeff_left(ngcells) = -alpha*area/(gsize*vol)
+  coeff_diag(ngcells) = alpha*area/(gsize*vol) + &
+                        alpha*area/(gsize*vol/2.d0) + 1.d0
+                        
+  rhs = sec_heat_vars%sec_temp  ! secondary continuum values from previous time step
+  rhs(ngcells) = rhs(ngcells) + & 
+                 alpha*area/(gsize*vol/2.d0)*temp_primary_node
+                
+  ! Thomas algorithm for tridiagonal system
+  ! Forward elimination
+  do i = 2, ngcells
+    m = coeff_left(i)/coeff_diag(i-1)
+    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
+    rhs(i) = rhs(i) - m*rhs(i-1)
+  enddo
+
+  ! Back substitution
+  ! Calculate temperature in the secondary continuum
+  sec_temp(ngcells) = rhs(ngcells)/coeff_diag(ngcells)
+  do i = ngcells-1, 1, -1
+    sec_temp(i) = (rhs(i) - coeff_right(i)*sec_temp(i+1))/coeff_diag(i)
+  enddo
+  
+  sec_heat_vars%sec_temp = sec_temp
+  
+      
+end subroutine MphaseSecHeatAuxVarCompute
+#endif
 
 ! ************************************************************************** !
 !
