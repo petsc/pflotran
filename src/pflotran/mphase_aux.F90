@@ -662,8 +662,7 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   enddo
   
   sec_heat_vars%sec_temp = sec_temp
-  
-      
+    
 end subroutine MphaseSecHeatAuxVarCompute
 #endif
 

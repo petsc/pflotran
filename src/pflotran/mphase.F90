@@ -3417,6 +3417,16 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
      
+
+#ifdef MC_HEAT    
+    ngcells = sec_heat_vars(ghosted_id)%ncells
+    sec_area = sec_heat_vars(ghosted_id)%area
+    sec_vol = sec_heat_vars(ghosted_id)%vol  ! volume of each sec. cont. cell
+    total_vol = sec_vol*ngcells + volume_p(local_id) ! total volume
+    area_prim_sec = sec_area/total_vol ! area between primary and secondary continuum 
+    vol_frac_prim = volume_p(local_id)/total_vol
+#endif
+
 #ifdef MC_HEAT
      call MphaseSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
                                       mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
@@ -4111,8 +4121,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
   ! Calculate the coupling term
   res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
              (gsize/2.d0)
-             
-             
+                     
 end subroutine MphaseSecondaryHeat
 
 ! ************************************************************************** !
@@ -4191,10 +4200,8 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
   jac_heat = area_fm*therm_conductivity*(Dtemp_N_Dtemp_prim - 1.d0)/ &
              (gsize/2.d0)
                             
-              
 end subroutine MphaseSecondaryHeatJacobian
 #endif !MC_HEAT
-
 
 #if 0
 ! ************************************************************************** !
