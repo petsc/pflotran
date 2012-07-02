@@ -78,8 +78,10 @@ module THC_Aux_module
     PetscInt :: ncells
     PetscReal :: length
     PetscReal :: area
-    PetscReal :: vol
+    PetscReal :: vol ! volume of each grid cell
+    PetscReal :: interfacial_area
     PetscReal :: grid_size
+    PetscReal :: epsilon
     PetscReal, pointer :: sec_temp(:)
   end type sec_heat_type  
 #endif
