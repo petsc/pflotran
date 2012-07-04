@@ -206,7 +206,7 @@ subroutine THCSetupPatch(realization)
     thc_sec_heat_vars(ghosted_id)%ncells = 10
     thc_sec_heat_vars(ghosted_id)%length = 1.d0
     thc_sec_heat_vars(ghosted_id)%area = 1.d0
-    thc_sec_heat_vars(ghosted_id)%epsilon = 0.02d0
+    thc_sec_heat_vars(ghosted_id)%epsilon = 0.5d0
     thc_sec_heat_vars(ghosted_id)%grid_size = &
         thc_sec_heat_vars(ghosted_id)%length/thc_sec_heat_vars(ghosted_id)%ncells
     thc_sec_heat_vars(ghosted_id)%vol = thc_sec_heat_vars(ghosted_id)%grid_size* &
@@ -2978,7 +2978,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       Diff_up = thc_parameter%diffusion_coefficient(1)
       Diff_dn = thc_parameter%diffusion_coefficient(1)
       
-        vol_frac_prim = 1.d0
 
       call THCFlux(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                   porosity_loc_p(ghosted_id_up), &
