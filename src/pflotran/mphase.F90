@@ -239,12 +239,16 @@ subroutine MphaseSetupPatch(realization)
   do ghosted_id = 1, grid%ngmax
     ! The following values need to be read from an input file -- sk 06/28/12
     mphase_sec_heat_vars(ghosted_id)%ncells = 10
-    mphase_sec_heat_vars(ghosted_id)%length = 1.d0
-    mphase_sec_heat_vars(ghosted_id)%area = 1.d0
+    mphase_sec_heat_vars(ghosted_id)%length = 50.d0
+    mphase_sec_heat_vars(ghosted_id)%area = 2500.d0
+    mphase_sec_heat_vars(ghosted_id)%epsilon = 0.5d0
     mphase_sec_heat_vars(ghosted_id)%grid_size = &
         mphase_sec_heat_vars(ghosted_id)%length/mphase_sec_heat_vars(ghosted_id)%ncells
     mphase_sec_heat_vars(ghosted_id)%vol = mphase_sec_heat_vars(ghosted_id)%grid_size* &
         mphase_sec_heat_vars(ghosted_id)%area
+    mphase_sec_heat_vars(ghosted_id)%interfacial_area = & 
+        1.d0/mphase_sec_heat_vars(ghosted_id)%length*(1.d0 - &
+        mphase_sec_heat_vars(ghosted_id)%epsilon)
     allocate(mphase_sec_heat_vars(ghosted_id)%sec_temp(mphase_sec_heat_vars(ghosted_id)%ncells))
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/28/12
@@ -1570,7 +1574,7 @@ end subroutine MphaseSourceSink
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
-                        option,vv_darcy,Res)
+                        option,vv_darcy,vol_frac_prim,Res)
   use Option_module                              
   
   implicit none
@@ -1591,6 +1595,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q, v_darcy
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
+  PetscReal :: vol_frac_prim
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up*tor_up * por_dn*tor_dn) / &
@@ -1719,14 +1724,14 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   !if(option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
   cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-  fluxe = fluxe + cond
+  fluxe = fluxe + vol_frac_prim*cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
   Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-  Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt/vol_frac_prim
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -2405,20 +2410,15 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal :: vol_frac_prim
   
 #ifdef MC_HEAT
   ! secondary continuum variables
-  PetscReal :: sec_area, sec_vol
   PetscReal :: sec_conductivity
   PetscReal :: sec_density
   PetscReal :: sec_dencpr
-  PetscReal :: sec_length, sec_grid_size
-  PetscInt :: sec_ncells
   PetscReal :: area_prim_sec
   PetscReal :: res_sec_heat
-  PetscReal :: total_vol
-  PetscReal :: vol_frac_prim
-  PetscInt :: ngcells
 #endif
   
   patch => realization%patch
@@ -2466,6 +2466,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
  
 ! Multiphase flash calculation is more expensive, so calculate once per iteration
 ! print *, 'Mphase residual patch 1' 
+
+  vol_frac_prim = 1.d0
+  
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -2589,12 +2592,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     
-    ngcells = mphase_sec_heat_vars(ghosted_id)%ncells
-    sec_area = mphase_sec_heat_vars(ghosted_id)%area
-    sec_vol = mphase_sec_heat_vars(ghosted_id)%vol  ! volume of each sec. cont. cell
-    total_vol = sec_vol*ngcells + volume_p(local_id)
-    vol_frac_prim = volume_p(local_id)/total_vol
-    area_prim_sec = sec_area/total_vol ! area between primary and secondary continuum
+    vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+    area_prim_sec = mphase_sec_heat_vars(ghosted_id)%interfacial_area ! area between primary and secondary continuum
     sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
 
     if (option%sec_vars_update) then
@@ -2881,7 +2880,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
           tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
           dd_dn,perm_dn,D_dn, &
           cur_connection_set%area(iconn),distance_gravity, &
-          upweight,option,v_darcy,Res)
+          upweight,option,v_darcy,vol_frac_prim,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       mphase%res_old_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
@@ -3140,15 +3139,13 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
    
   PetscViewer :: viewer
   Vec :: debug_vec
+  PetscReal :: vol_frac_prim
+
   
 #ifdef MC_HEAT
   ! secondary continuum variables
-  PetscReal :: sec_area
-  PetscReal :: sec_vol
   PetscReal :: area_prim_sec
-  PetscReal :: total_vol
   PetscReal :: jac_sec_heat
-  PetscReal :: vol_frac_prim
   PetscInt :: ngcells
 #endif  
   
@@ -3198,6 +3195,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 
  ResInc = 0.D0
+ vol_frac_prim = 1.d0
+ 
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -3420,11 +3419,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
 #ifdef MC_HEAT    
     ngcells = sec_heat_vars(ghosted_id)%ncells
-    sec_area = sec_heat_vars(ghosted_id)%area
-    sec_vol = sec_heat_vars(ghosted_id)%vol  ! volume of each sec. cont. cell
-    total_vol = sec_vol*ngcells + volume_p(local_id) ! total volume
-    area_prim_sec = sec_area/total_vol ! area between primary and secondary continuum 
-    vol_frac_prim = volume_p(local_id)/total_vol
+    area_prim_sec = sec_heat_vars(ghosted_id)%interfacial_area ! area between primary and secondary continuum 
+    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
 #endif
 
 #ifdef MC_HEAT
@@ -3519,7 +3515,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, Res)
+                          upweight, option, vv_darcy, vol_frac_prim, Res)
             ra(:,nvar)= (Res(:)-mphase%res_old_FL(iconn,:))/mphase%delx(nvar,ghosted_id_up)
 
          call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
@@ -3529,7 +3525,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, Res)
+                          upweight, option, vv_darcy, vol_frac_prim, Res)
          ra(:,nvar+option%nflowdof)= (Res(:)-mphase%res_old_FL(iconn,:)) &
               /mphase%delx(nvar,ghosted_id_dn)
     enddo
@@ -4121,7 +4117,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
   ! Calculate the coupling term
   res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
              (gsize/2.d0)
-                     
+                                          
 end subroutine MphaseSecondaryHeat
 
 ! ************************************************************************** !

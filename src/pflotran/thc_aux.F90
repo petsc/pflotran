@@ -404,7 +404,7 @@ end subroutine THCAuxVarCompute
 
 #ifdef MC_HEAT
 subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
-                                   therm_conductivity,dencpr,area_fm, &
+                                   therm_conductivity,dencpr, &
                                    option)
 
   use Option_module 
@@ -427,6 +427,7 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
   gsize = sec_heat_vars%grid_size
+  area_fm = sec_heat_vars%interfacial_area
   temp_primary_node = global_aux_var%temp(1)
 
   allocate(coeff_left(ngcells))
@@ -478,8 +479,7 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   enddo
   
   sec_heat_vars%sec_temp = sec_temp
-  
-      
+            
 end subroutine THCSecHeatAuxVarCompute
 #endif
 

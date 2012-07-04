@@ -1982,6 +1982,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
  
+  
 end subroutine THCFlux
 
 ! ************************************************************************** !
@@ -2741,11 +2742,9 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
 #ifdef MC_HEAT
   ! secondary continuum variables
-  PetscReal :: sec_area
   PetscReal :: sec_conductivity
   PetscReal :: sec_density
   PetscReal :: sec_dencpr
-  PetscReal :: area_prim_sec
   PetscReal :: res_sec_heat
 #endif
   
@@ -2794,7 +2793,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   
   ! Calculating volume fractions for primary and secondary continua
 
-  vol_frac_prim = 1.d0
   r_p = 0.d0
 #if 1
   ! Accumulation terms ------------------------------------
@@ -2830,9 +2828,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     
-    sec_area = thc_sec_heat_vars(ghosted_id)%area
     vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon 
-    area_prim_sec = thc_sec_heat_vars(ghosted_id)%interfacial_area ! area between primary and secondary continuum
     sec_dencpr = thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
 
     if (option%sec_vars_update) then
@@ -2840,13 +2836,13 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                                   global_aux_vars(ghosted_id), &
                                   thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
                                   sec_dencpr, &
-                                  area_prim_sec,option)
+                                  option)
     endif       
     
     call THCSecondaryHeat(thc_sec_heat_vars(ghosted_id),global_aux_vars(ghosted_id), &
                           thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
                           sec_dencpr, &
-                          area_prim_sec,option,res_sec_heat) 
+                          option,res_sec_heat) 
     r_p(iend) = r_p(iend) - res_sec_heat/vol_frac_prim*option%flow_dt
   enddo   
     option%sec_vars_update = PETSC_FALSE
@@ -2982,7 +2978,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       Diff_up = thc_parameter%diffusion_coefficient(1)
       Diff_dn = thc_parameter%diffusion_coefficient(1)
       
-      
+        vol_frac_prim = 1.d0
+
       call THCFlux(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                   porosity_loc_p(ghosted_id_up), &
                   tor_loc_p(ghosted_id_up),thc_parameter%sir(1,icap_up), &
@@ -3514,7 +3511,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
-                              
+                 
+                                           
       call THCFluxDerivative(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                              porosity_loc_p(ghosted_id_up), &
                              tor_loc_p(ghosted_id_up),thc_parameter%sir(1,icap_up), &
@@ -4078,7 +4076,7 @@ end subroutine THCComputeGradient
 ! ************************************************************************** !
 #ifdef MC_HEAT
 subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
-                            therm_conductivity,dencpr,area_fm, &
+                            therm_conductivity,dencpr, &
                             option,res_heat)
                             
   use Option_module 
@@ -4103,6 +4101,7 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
   gsize = sec_heat_vars%grid_size
+  area_fm = sec_heat_vars%interfacial_area
   temp_primary_node = global_aux_var%temp(1)
 
   allocate(coeff_left(ngcells))
@@ -4151,8 +4150,7 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
   ! Calculate the coupling term
   res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
              (gsize/2.d0)
-             
-             
+                          
 end subroutine THCSecondaryHeat
 
 ! ************************************************************************** !

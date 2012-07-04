@@ -83,7 +83,9 @@ type, public :: mphase_auxvar_elem_type
     PetscReal :: length
     PetscReal :: area
     PetscReal :: vol
+    PetscReal :: interfacial_area
     PetscReal :: grid_size
+    PetscReal :: epsilon
     PetscReal, pointer :: sec_temp(:)
   end type sec_heat_type  
 #endif
@@ -662,7 +664,7 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   enddo
   
   sec_heat_vars%sec_temp = sec_temp
-    
+      
 end subroutine MphaseSecHeatAuxVarCompute
 #endif
 
