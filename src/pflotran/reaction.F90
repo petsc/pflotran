@@ -1336,6 +1336,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: istartaq, iendaq
   PetscInt :: irate
 
+  PetscInt :: num_it_act_coef_turned_on
+  
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,pco2,sat_pressure,lngamco2
@@ -1516,6 +1518,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   rt_auxvar%pri_molal = free_conc
 
   num_iterations = 0
+  num_it_act_coef_turned_on = 0
 
   ! if previous solution is provided as a guess, it should be close enough
   ! to use activity coefficients right away. - geh
@@ -1928,8 +1931,15 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     ! check for convergence
     if (maximum_residual < reaction%max_residual_tolerance .and. &
         maximum_relative_change < reaction%max_relative_change_tolerance) then
-      ! need some sort of convergence before we kick in activities
-      if (compute_activity_coefs) exit
+      ! Need some sort of convergence before we kick in activities
+      if (compute_activity_coefs .and. &
+          ! With some constraints (e.g. pH), the total component concentration
+          ! is not updated immediately after activity coefficients are turned
+          ! on.  Therefore, we need at least two iterations to declare 
+          ! convergence. - geh
+          num_iterations - num_it_act_coef_turned_on > 1) exit
+      if (.not. compute_activity_coefs) &
+        num_it_act_coef_turned_on = num_iterations
       compute_activity_coefs = PETSC_TRUE
     endif
 

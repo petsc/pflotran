@@ -2172,6 +2172,7 @@ subroutine BasisInit(reaction,option)
     
     ! get maximum # of aqueous species in a surface complexation reaction
     cur_srfcplx => surface_complexation%complex_list
+    max_aq_species = 0
     do
       if (.not.associated(cur_srfcplx)) exit
       max_aq_species = max(cur_srfcplx%dbaserxn%nspec,max_aq_species)
