@@ -1998,7 +1998,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                               aux_var_dn,global_aux_var_dn, &
                               por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                               area,dist_gravity,option, &
-                              sat_func_dn,Jdn)
+                              sat_func_dn,vol_frac_prim,Jdn)
   use Option_module
   use Saturation_Function_module
   use water_eos_module
@@ -2032,6 +2032,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: duh_dp_dn, duh_dt_dn
   PetscReal :: dq_dp_dn, dq_dt_dn
   PetscReal :: duxmol_dxmol_dn
+  PetscReal :: vol_frac_prim
 
   PetscInt :: iphase, ideriv
   type(thc_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
@@ -2195,8 +2196,10 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
   enddo
       ! based on flux = q*density_ave*uh
-  Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
-  Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
+  Jdn(option%nflowdof,1) = 1.d0/vol_frac_prim* &
+     ((dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn)
+  Jdn(option%nflowdof,2) = 1.d0/vol_frac_prim* &
+     ((dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn)
 !  Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
   ! Diffusion term   
@@ -2317,7 +2320,8 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     call THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                   aux_var_dn,global_aux_var_dn, &
                   por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                  area,dist_gravity,option,v_darcy,Diff_dn,res)
+                  area,dist_gravity,option,v_darcy,Diff_dn, &
+                  vol_frac_prim,res)
     if (ibndtype(THC_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
         ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
         ibndtype(THC_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
@@ -2379,7 +2383,8 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
       call THCBCFlux(ibndtype,aux_vars,aux_var_pert_up,global_aux_var_pert_up, &
                     aux_var_pert_dn,global_aux_var_pert_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                    area,dist_gravity,option,v_darcy,Diff_dn,res_pert_dn)
+                    area,dist_gravity,option,v_darcy,Diff_dn, &
+                    vol_frac_prim,res_pert_dn)
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
     enddo
     deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
@@ -2400,7 +2405,8 @@ end subroutine THCBCFluxDerivative
 subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     aux_var_dn,global_aux_var_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                    area,dist_gravity,option,v_darcy,Diff_dn,Res)
+                    area,dist_gravity,option,v_darcy,Diff_dn, &
+                    vol_frac_prim,Res)
   use Option_module
   use water_eos_module 
  
@@ -2422,6 +2428,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
+  PetscReal :: vol_frac_prim
   
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_dn, Ddiffgas_up
@@ -2506,7 +2513,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   do ispec=1, option%nflowspec 
     fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
   enddo
-  fluxe = fluxe + q*density_ave*uh
+  fluxe = fluxe + 1.d0/vol_frac_prim*q*density_ave*uh
 
   ! Diffusion term   
   select case(ibndtype(THC_CONCENTRATION_DOF))
@@ -3063,7 +3070,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                                 cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
-                                v_darcy,Diff_dn,Res)
+                                v_darcy,Diff_dn,vol_frac_prim,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
 
       iend = local_id*option%nflowdof
@@ -3606,7 +3613,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
-                                Jdn)
+                                vol_frac_prim,Jdn)
       Jdn = -Jdn
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
