@@ -239,8 +239,8 @@ subroutine MphaseSetupPatch(realization)
   do ghosted_id = 1, grid%ngmax
     ! The following values need to be read from an input file -- sk 06/28/12
     mphase_sec_heat_vars(ghosted_id)%ncells = 10
-    mphase_sec_heat_vars(ghosted_id)%length = 50.d0
-    mphase_sec_heat_vars(ghosted_id)%area = 2500.d0
+    mphase_sec_heat_vars(ghosted_id)%length = 1.d0
+    mphase_sec_heat_vars(ghosted_id)%area = 1.d0
     mphase_sec_heat_vars(ghosted_id)%epsilon = 0.5d0
     mphase_sec_heat_vars(ghosted_id)%grid_size = &
         mphase_sec_heat_vars(ghosted_id)%length/mphase_sec_heat_vars(ghosted_id)%ncells
@@ -1655,7 +1655,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
           fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
         enddo
       ! if(option%use_isothermal == PETSC_FALSE) &
-        fluxe = fluxe + q*density_ave*uh 
+        fluxe = fluxe + 1.d0/vol_frac_prim*q*density_ave*uh 
       endif
     endif
 
@@ -1724,14 +1724,14 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   !if(option%use_isothermal == PETSC_FALSE) then     
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
   cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-  fluxe = fluxe + vol_frac_prim*cond
+  fluxe = fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
   Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-  Res(option%nflowdof) = fluxe * option%flow_dt/vol_frac_prim
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1747,7 +1747,7 @@ end subroutine MphaseFlux
 ! ************************************************************************** !
 subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-     area,dist_gravity,option,vv_darcy,Res)
+     area,dist_gravity,option,vv_darcy,vol_frac_prim,Res)
   use Option_module
   
   implicit none
@@ -1769,6 +1769,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: upweight,cond,gravity,dphi
   PetscReal :: Neuman_total_mass_flux, Neuman_mass_flux_spec(option%nflowspec)
   PetscReal :: mol_total_flux(option%nphase)
+  PetscReal :: vol_frac_prim
   
   fluxm = 0.d0
   fluxe = 0.d0
@@ -1860,7 +1861,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       fluxm(ispec) = fluxm(ispec) + mol_total_flux(np)*uxmol(ispec)
     enddo
       !if(option%use_isothermal == PETSC_FALSE) &
-    fluxe = fluxe + mol_total_flux(np)*uh
+    fluxe = fluxe + 1.d0/vol_frac_prim*mol_total_flux(np)*uh
 !   print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
   enddo
   
@@ -1900,7 +1901,6 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     end select
 !   print *, fluxe, aux_vars
 ! end if
-  
   
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
@@ -2414,8 +2414,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   
 #ifdef MC_HEAT
   ! secondary continuum variables
-  PetscReal :: sec_conductivity
-  PetscReal :: sec_density
   PetscReal :: sec_dencpr
   PetscReal :: area_prim_sec
   PetscReal :: res_sec_heat
@@ -2609,6 +2607,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                              sec_dencpr, &
                              area_prim_sec,option,res_sec_heat) 
     r_p(iend) = r_p(iend) - res_sec_heat/vol_frac_prim*option%flow_dt
+
   enddo   
     option%sec_vars_update = PETSC_FALSE
 #endif
@@ -2800,7 +2799,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
-         v_darcy,Res)
+         v_darcy,vol_frac_prim,Res)
       patch%boundary_velocities(:,sum_connection) = v_darcy(:)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
@@ -3146,7 +3145,6 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   ! secondary continuum variables
   PetscReal :: area_prim_sec
   PetscReal :: jac_sec_heat
-  PetscInt :: ngcells
 #endif  
   
 !-----------------------------------------------------------------------
@@ -3316,6 +3314,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
       D_dn = mphase_parameter%ckwet(ithrm_dn)
+      
+#ifdef MC_HEAT
+    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+#endif      
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -3380,7 +3382,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
            cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
            cur_connection_set%area(iconn), &
            distance_gravity,option, &
-           vv_darcy,Res)
+           vv_darcy,vol_frac_prim,Res)
          ResInc(local_id,1:option%nflowdof,nvar) = &
               ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
         enddo
@@ -3418,9 +3420,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
      
 
 #ifdef MC_HEAT    
-    ngcells = sec_heat_vars(ghosted_id)%ncells
     area_prim_sec = sec_heat_vars(ghosted_id)%interfacial_area ! area between primary and secondary continuum 
-    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
 #endif
 
 #ifdef MC_HEAT
@@ -4117,7 +4117,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
   ! Calculate the coupling term
   res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
              (gsize/2.d0)
-                                          
+                                                  
 end subroutine MphaseSecondaryHeat
 
 ! ************************************************************************** !
