@@ -239,9 +239,9 @@ subroutine MphaseSetupPatch(realization)
   do ghosted_id = 1, grid%ngmax
     ! The following values need to be read from an input file -- sk 06/28/12
     mphase_sec_heat_vars(ghosted_id)%ncells = 10
-    mphase_sec_heat_vars(ghosted_id)%length = 1.d0
-    mphase_sec_heat_vars(ghosted_id)%area = 1.d0
-    mphase_sec_heat_vars(ghosted_id)%epsilon = 0.5d0
+    mphase_sec_heat_vars(ghosted_id)%length = 50.d0
+    mphase_sec_heat_vars(ghosted_id)%area = 2500.d0
+    mphase_sec_heat_vars(ghosted_id)%epsilon = 0.02d0
     mphase_sec_heat_vars(ghosted_id)%grid_size = &
         mphase_sec_heat_vars(ghosted_id)%length/mphase_sec_heat_vars(ghosted_id)%ncells
     mphase_sec_heat_vars(ghosted_id)%vol = mphase_sec_heat_vars(ghosted_id)%grid_size* &
@@ -1356,7 +1356,7 @@ end subroutine MphaseAccumulation
 !
 ! ************************************************************************** !  
 subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,Res, &
-                            qsrc_phase,energy_flag,option)
+                            qsrc_phase,energy_flag,vol_frac_prim,option)
 
   use Option_module
   use water_eos_module
@@ -1389,6 +1389,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
   PetscInt  :: np
   PetscInt :: iflag
   PetscErrorCode :: ierr
+  PetscReal :: vol_frac_prim
   
   Res = 0.D0
   allocate(msrc(nsrcpara))
@@ -1400,7 +1401,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
 ! endif         
 
   qsrc_phase = 0.d0
- 
+  
   select case(isrctype)
     case(MASS_RATE_SS)
       msrc(1) =  msrc(1) / FMWH2O
@@ -1413,7 +1414,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
         Res(jh2o) = Res(jh2o) + msrc(1)*(1.d0-csrc)*option%flow_dt
         Res(jco2) = Res(jco2) + msrc(1)*csrc*option%flow_dt
         if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + &
-          msrc(1)*enth_src_h2o*option%flow_dt
+          1.d0/vol_frac_prim*msrc(1)*enth_src_h2o*option%flow_dt
           
 !       print *,'soure/sink: ',msrc,csrc,enth_src_h2o,option%flow_dt,option%nflowdof
 
@@ -1461,7 +1462,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
               
         Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
         if (energy_flag) Res(option%nflowdof) = Res(option%nflowdof) + msrc(2) * &
-          enth_src_co2 *option%flow_dt
+          enth_src_co2 *option%flow_dt*1.d0/vol_frac_prim
         endif
 
     case(WELL_SS) ! production well
@@ -1510,7 +1511,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
                 Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
                   aux_var%xmol((np-1)*option%nflowspec+2)*option%flow_dt
                 if(energy_flag) Res(3) = Res(3) - v_darcy * aux_var%den(np)* &
-                  aux_var%h(np)*option%flow_dt
+                  aux_var%h(np)*option%flow_dt*1.d0/vol_frac_prim
               ! print *,'produce: ',np,v_darcy
               endif
             endif
@@ -1545,7 +1546,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,aux_var,isrctype,
                   well_inj_co2 * option%flow_dt
 !               if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)*aux_var%h(np)*option%flow_dt
                 if(energy_flag) Res(3) = Res(3) + v_darcy*aux_var%den(np)* &
-                  enth_src_h2o*option%flow_dt
+                  enth_src_h2o*option%flow_dt*1.d0/vol_frac_prim
                 
 !               print *,'inject: ',np,v_darcy
               endif
@@ -2671,12 +2672,16 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
+#ifdef MC_HEAT
+      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+#endif
+      
       call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1, &
                             aux_vars(ghosted_id)%aux_var_elem(0),&
                             source_sink%flow_condition%itype(1),Res, &
                     ! fluid flux [m^3/sec] = Res [kmol/mol] / den [kmol/m^3]
                             patch%ss_fluid_fluxes(:,sum_connection), &
-                            enthalpy_flag,option)
+                            enthalpy_flag,vol_frac_prim,option)
 
   ! included by SK, 08/23/11 to print mass fluxes at source/sink						
       if (option%compute_mass_balance_new) then
@@ -2789,6 +2794,11 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   !     global_aux_vars(ghosted_id)%mass_balance_delta                   
       endif
 #endif
+
+#ifdef MC_HEAT
+      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+#endif
+
       call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
@@ -2871,6 +2881,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
    
       D_up = mphase_parameter%ckwet(ithrm_up)
       D_dn = mphase_parameter%ckwet(ithrm_dn)
+
+#ifdef MC_HEAT
+      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+#endif
 
       call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
           tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
@@ -3214,7 +3228,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              volume_p(local_id), &
              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,ONE_INTEGER, res) 
-        ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
+        ResInc(local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      
   enddo
@@ -3270,11 +3284,14 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !      if (enthalpy_flag) then
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
+#ifdef MC_HEAT
+       vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+#endif
        do nvar =1, option%nflowdof
          call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
                                aux_vars(ghosted_id)%aux_var_elem(nvar),&
                                source_sink%flow_condition%itype(1),Res, &
-                               dummy_real_array,enthalpy_flag,option)
+                               dummy_real_array,enthalpy_flag,vol_frac_prim,option)
       
          ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
          ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
@@ -3506,7 +3523,10 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
-      
+
+#ifdef MC_HEAT
+    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+#endif 
       do nvar = 1, option%nflowdof 
          call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
                           tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
