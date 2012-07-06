@@ -508,7 +508,7 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
   tmp = (t - t0_tab) / dt_tab; j1 = floor(tmp); j2 = ceiling(tmp); jindex=tmp 
 
   if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
-    print  *,' Out of Table Bounds (Span-Wagner): ', 'p=',p,' t=',t,' i=',iindex,' j=',jindex
+    print  *,' Out of Table Bounds (Span-Wagner): ', 'p (in Mpa) =',p,' t (in K) =',t,' i=',iindex,' j=',jindex
 !geh    isucc=0
     iflag = -1
     return
