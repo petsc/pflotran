@@ -1746,31 +1746,31 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec 
-  PetscReal :: porXvol
-  PetscReal :: dpor_dp
+  PetscReal :: vol_over_dt
+  PetscReal :: tempreal 
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
-  porXvol = por*vol/option%flow_dt
+  vol_over_dt = vol/option%flow_dt
       
 !#define USE_COMPRESSIBLITY
 #ifndef USE_COMPRESSIBLITY  
   ! accumulation term units = dkmol/dp
   J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
-           porXvol
+           por*vol_over_dt
 
 #else
-  dpor_dp = (por-1.d0)*-1.d-7*exp(-1.d-7*(global_aux_var%pres(1)- &
-                                          option%reference_pressure))
-  J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
-            rich_aux_var%dsat_dp*global_aux_var%den(1))* &
-           porXvol + &
-           global_aux_var%sat(1)*global_aux_var%den(1)*dpor_dp* &
-           vol/option%flow_dt
+  tempreal = exp(-1.d-7*(global_aux_var%pres(1)-option%reference_pressure))
+  J(1,1) = ((global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
+             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+            1.d0-(1.d0-por)*tempreal + &
+            global_aux_var%sat(1)*global_aux_var%den(1)* &
+            (por-1.d0)*-1.d-7*tempreal)* &
+           vol_over_dt
 #endif  
   
   if (option%numerical_derivatives_flow) then
