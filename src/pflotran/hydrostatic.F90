@@ -147,8 +147,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     call printErrMsg(option)
   endif
   
-  pressure_gradient(1:3) = piezometric_head_gradient(1:3)* &
-                           rho*gravity_magnitude
+  ! if a pressure gradient is prescribed in Z (at this point it will be a
+  ! piezometric head gradient), the units of the pressure gradient are
+  ! Pa/m and the pressure gradient does not need conversion
+  if (dabs(piezometric_head_gradient(Z_DIRECTION)) < 1.d-40) then
+    pressure_gradient(1:3) = piezometric_head_gradient(1:3)* &
+                             rho*gravity_magnitude
+  else
+    pressure_gradient(1:3) = piezometric_head_gradient(1:3)
+  endif
 
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
