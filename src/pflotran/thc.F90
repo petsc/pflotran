@@ -2800,6 +2800,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   
   ! Calculating volume fractions for primary and secondary continua
 
+  vol_frac_prim = 1.d0
   r_p = 0.d0
 #if 1
   ! Accumulation terms ------------------------------------
@@ -2985,6 +2986,9 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       Diff_up = thc_parameter%diffusion_coefficient(1)
       Diff_dn = thc_parameter%diffusion_coefficient(1)
       
+#ifdef MC_HEAT
+    vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon 
+#endif	  
 
       call THCFlux(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                   porosity_loc_p(ghosted_id_up), &
@@ -3057,6 +3061,10 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                                      cur_connection_set%dist(1:3,iconn))
 
       icap_dn = int(icap_loc_p(ghosted_id))
+	
+#ifdef MC_HEAT
+    vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon 
+#endif
 
       call THCBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -3517,8 +3525,12 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
-                 
-                                           
+	  
+
+#ifdef MC_HEAT
+      vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+#endif             
+                                       
       call THCFluxDerivative(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                              porosity_loc_p(ghosted_id_up), &
                              tor_loc_p(ghosted_id_up),thc_parameter%sir(1,icap_up), &
@@ -3599,6 +3611,10 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
+	  
+#ifdef MC_HEAT
+      vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+#endif    	  
 
       call THCBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
