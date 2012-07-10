@@ -64,7 +64,7 @@ subroutine Init(simulation)
   use Global_module
 
   use water_eos_module
-  use Utility_module
+!  use Utility_module
   use Output_module
     
 #ifdef SURFACE_FLOW
