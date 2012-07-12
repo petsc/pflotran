@@ -72,55 +72,40 @@ module THC_Aux_module
 #endif
   end type thc_type
 
-! MC_HEAT added by S. Karra 06/15/12
-#ifdef MC_HEAT  
-!  type, public :: sec_heat_type         ! now assuming only 1D secondary continuum
-!    PetscBool :: sec_temp_update        ! flag to check if the temp is updated
-!    PetscInt :: ncells                  ! number of secondary grid cells
-!    PetscReal :: length                 ! length
-!    PetscReal :: area                   ! surface area
-!    PetscReal :: vol                    ! volume of each grid cell
-!    PetscReal :: interfacial_area       ! interfacial area between prim. & sec.
-!    PetscReal :: grid_size              ! grid cell size
-!    PetscReal :: epsilon                ! vol. frac. of primary continuum
-!    PetscReal, pointer :: sec_temp(:)   ! array of temp. at secondary grid cells
-!  end type sec_heat_type 
-  
-   
+! MC_HEAT added by S. Karra 07/11/12
+#ifdef MC_HEAT     
   type, public :: slab_type
-    PetscReal :: length                     !input
-    PetscReal :: area                       !input - surface area
+    PetscReal :: length                       ! input - length of slab
+    PetscReal :: area                         ! input - surface area
   end type slab_type
   
   type, public :: nested_cube_type
-    PetscReal :: length                     !input
+    PetscReal :: length                       ! input - side of cube
   end type nested_cube_type
   
   type, public :: nested_sphere_type
-    PetscReal :: radius                     !input
+    PetscReal :: radius                       ! input - radius of sphere
   end type nested_sphere_type
   
   type, public :: sec_continuum_type
-    PetscInt :: itype
+    PetscInt :: itype                         ! input - type of sec. continuum (slab, nested_cube, nested_sphere,....) 
     type(slab_type) :: slab
     type(nested_cube_type) :: nested_cube
     type(nested_sphere_type) :: nested_sphere 
   end type sec_continuum_type
 
   type, public :: sec_heat_type  
-    PetscBool :: sec_temp_update
-    PetscInt :: ncells
-    PetscReal :: epsilon
+    PetscBool :: sec_temp_update              ! flag to check if the temp is updated
+    PetscInt :: ncells                        ! number of secondary grid cells
+    PetscReal :: epsilon                      ! vol. frac. of primary continuum
     type(sec_continuum_type) :: sec_continuum
-    PetscReal, pointer :: sec_temp(:)
-    PetscReal, pointer :: area(:)             !calculated - surface area
-    PetscReal, pointer :: vol(:)              !calculated  face      node       face
-    PetscReal, pointer :: dm_plus(:)          !calculated   |----------o----------|
-    PetscReal, pointer :: dm_minus(:)         !calculated    <dm_minus> <dm_plus>
-    PetscReal :: interfacial_area             !calculated
+    PetscReal, pointer :: sec_temp(:)         ! array of temp. at secondary grid cells
+    PetscReal, pointer :: area(:)             ! surface area
+    PetscReal, pointer :: vol(:)              ! volume     face      node       face
+    PetscReal, pointer :: dm_plus(:)          ! see fig.    |----------o----------|
+    PetscReal, pointer :: dm_minus(:)         ! see fig.      <dm_minus> <dm_plus>
+    PetscReal :: interfacial_area             ! interfacial area between prim. and sec. per unit volume of prim.+sec.
   end type sec_heat_type  
-  
-
 #endif
 
   public :: THCAuxCreate, THCAuxDestroy, &
@@ -749,7 +734,10 @@ subroutine THCAuxDestroy(aux)
     nullify(aux%thc_parameter%sir)
   endif
   nullify(aux%thc_parameter)
+  
+#ifdef MC_HEAT
   nullify(aux%sec_heat_vars)
+#endif
   
   deallocate(aux)
   nullify(aux)  
