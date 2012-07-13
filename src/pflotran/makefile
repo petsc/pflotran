@@ -26,6 +26,10 @@ ifdef glenn
   MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
+ifdef radioactive_decay
+  MYFLAGS += -DRADIOACTIVE_DECAY
+endif
+
 ifdef matcreate_old
   MYFLAGS += -DMATCREATE_OLD
 endif

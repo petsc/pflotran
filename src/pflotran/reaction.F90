@@ -4135,7 +4135,7 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
     select case(reaction%eqkdtype(irxn))
       case(SORPTION_LINEAR)
         ! Csorb = Kd*Caq
-       res = reaction%eqkddistcoef(irxn)*activity
+        res = reaction%eqkddistcoef(irxn)*activity
         dres_dc = res/molality
       case(SORPTION_LANGMUIR)
         ! Csorb = K*Caq*b/(1+K*Caq)
@@ -4822,7 +4822,76 @@ subroutine RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
     rt_auxvar%dtotal_sorb_eq(:,:)*v_t
 
 end subroutine RAccumulationSorbDerivative
+#ifdef RADIOACTIVE_DECAY
+! ************************************************************************** !
+!
+! RGeneral: Computes the general reaction rates
+! author: Glenn Hammond
+! date: 09/08/10
+!
+! ************************************************************************** !
+subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
+                    porosity,volume,reaction,option)
 
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscBool :: compute_derivative
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
+  PetscReal :: volume
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  
+  PetscInt :: i, icomp, irxn, ncomp
+  PetscReal :: tempreal, L_water, sum, rate
+
+  PetscInt, parameter :: iphase = 1
+
+  L_water = porosity*global_auxvar%sat(iphase)*volume*1.d3 ! L water
+
+  do irxn = 1, reaction%ngeneral_rxn ! for each mineral
+    
+    ! units(kf): 1/sec
+    
+    ! we assume only one chemical component involved in decay reaction
+    icomp = reaction%generalforwardspecid(1,irxn)
+
+    ! sum total moles of component in aqueous and sorbed phases
+    sum = rt_auxvar%total(icomp,iphase)*L_water
+    sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    
+    rate = sum*reaction%general_kf(irxn)
+    
+    ! units(Res): mol/sec
+    ncomp = reaction%generalspecid(0,irxn)
+    do i = 1, ncomp
+      icomp = reaction%generalspecid(i,irxn)
+      ! units = mol/sec
+      Res(icomp) = Res(icomp) - reaction%generalstoich(i,irxn)*rate
+    enddo    
+
+    if (.not. compute_derivative) cycle   
+
+    tempreal = -1.d0*reaction%general_kf(irxn)
+    do i = 1, ncomp
+      icomp = reaction%generalspecid(i,irxn)
+      ! units = (mol/sec)*(kg water/mol) = kg water/sec
+      Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+        tempreal * &
+        reaction%generalstoich(i,irxn) * &
+        (rt_auxvar%aqueous%dtotal(icomp,1:reaction%naqcomp,iphase)*L_water + &
+         rt_auxvar%dtotal_sorb_eq(icomp,1:reaction%naqcomp)*volume)
+    enddo
+    
+  enddo  ! loop over reactions
+    
+end subroutine RGeneral
+#else
 ! ************************************************************************** !
 !
 ! RGeneral: Computes the general reaction rates
@@ -4962,7 +5031,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   enddo  ! loop over reactions
     
 end subroutine RGeneral
-
+#endif
 ! ************************************************************************** !
 !
 ! RSolve: Computes the kinetic mineral precipitation/dissolution
