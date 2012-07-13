@@ -31,6 +31,7 @@ module THC_module
          THCComputeMassBalance, THCResidualToMass, &
 #ifdef MC_HEAT
          THCSecondaryHeat, THCSecondaryHeatJacobian, & 
+         SecondaryContinuumType, &
 #endif
          THCUpdateAuxVars, THCDestroy
          
@@ -132,6 +133,7 @@ subroutine THCSetupPatch(realization)
 #ifdef MC_HEAT
   type(sec_heat_type), pointer :: thc_sec_heat_vars(:)
   type(coupler_type), pointer :: initial_condition
+  PetscReal :: area_per_vol
 #endif
 
   PetscInt :: ghosted_id, iconn, sum_connection
@@ -202,23 +204,48 @@ subroutine THCSetupPatch(realization)
   allocate(thc_sec_heat_vars(grid%ngmax))
   
   do ghosted_id = 1, grid%ngmax
+  
     ! The following values need to be read from an input file -- sk 06/26/12
     thc_sec_heat_vars(ghosted_id)%ncells = 10
-    thc_sec_heat_vars(ghosted_id)%length = 1.d0
-    thc_sec_heat_vars(ghosted_id)%area = 1.d0
     thc_sec_heat_vars(ghosted_id)%epsilon = 0.5d0
-    thc_sec_heat_vars(ghosted_id)%grid_size = &
-        thc_sec_heat_vars(ghosted_id)%length/thc_sec_heat_vars(ghosted_id)%ncells
-    thc_sec_heat_vars(ghosted_id)%vol = thc_sec_heat_vars(ghosted_id)%grid_size* &
-        thc_sec_heat_vars(ghosted_id)%area
-    thc_sec_heat_vars(ghosted_id)%interfacial_area = 1.d0/thc_sec_heat_vars(ghosted_id)%length* &
+    
+    ! Slab
+!    thc_sec_heat_vars(ghosted_id)%sec_continuum%slab%length = 1.d0
+!    thc_sec_heat_vars(ghosted_id)%sec_continuum%slab%area = 1.d0
+!    thc_sec_heat_vars(ghosted_id)%sec_continuum%itype = 0
+    
+    ! Nested cubes
+!    thc_sec_heat_vars(ghosted_id)%sec_continuum%nested_cube%length = 1.d0
+!    thc_sec_heat_vars(ghosted_id)%sec_continuum%itype = 1
+
+    ! Nested spheres
+    thc_sec_heat_vars(ghosted_id)%sec_continuum%nested_sphere%radius = 10.d0
+    thc_sec_heat_vars(ghosted_id)%sec_continuum%itype = 2
+
+    allocate(thc_sec_heat_vars(ghosted_id)%area(thc_sec_heat_vars(ghosted_id)%ncells))
+    allocate(thc_sec_heat_vars(ghosted_id)%vol(thc_sec_heat_vars(ghosted_id)%ncells))
+    allocate(thc_sec_heat_vars(ghosted_id)%dm_minus(thc_sec_heat_vars(ghosted_id)%ncells))
+    allocate(thc_sec_heat_vars(ghosted_id)%dm_plus(thc_sec_heat_vars(ghosted_id)%ncells))
+    
+    
+    call SecondaryContinuumType(thc_sec_heat_vars(ghosted_id)%sec_continuum, &
+                                thc_sec_heat_vars(ghosted_id)%ncells, &
+                                thc_sec_heat_vars(ghosted_id)%area, &
+                                thc_sec_heat_vars(ghosted_id)%vol, &
+                                thc_sec_heat_vars(ghosted_id)%dm_minus, &
+                                thc_sec_heat_vars(ghosted_id)%dm_plus, &
+                                area_per_vol)
+                                
+    thc_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
         (1.d0 - thc_sec_heat_vars(ghosted_id)%epsilon)
-    allocate(thc_sec_heat_vars(ghosted_id)%sec_temp(thc_sec_heat_vars(ghosted_id)%ncells))
+
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/26/12
+    allocate(thc_sec_heat_vars(ghosted_id)%sec_temp(thc_sec_heat_vars(ghosted_id)%ncells))
     thc_sec_heat_vars(ghosted_id)%sec_temp = &
         initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
     thc_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
+    
   enddo
       
   patch%aux%THC%sec_heat_vars => thc_sec_heat_vars    
@@ -3248,7 +3275,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           xx_loc_p(:), tor_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
-  PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
+  PetscInt :: icap,iphas,icap_up,icap_dn
   PetscInt :: ii, jj
   PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
   PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
@@ -3299,10 +3326,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
 #ifdef MC_HEAT
   ! secondary continuum variables
-  PetscReal :: sec_area
   PetscReal :: area_prim_sec
   PetscReal :: jac_sec_heat
-  PetscInt :: ngcells
 #endif
 
   patch => realization%patch
@@ -3351,8 +3376,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     icap = int(icap_loc_p(ghosted_id))
     
 #ifdef MC_HEAT    
-    ngcells = sec_heat_vars(ghosted_id)%ncells
-    sec_area = sec_heat_vars(ghosted_id)%area
     area_prim_sec = sec_heat_vars(ghosted_id)%interfacial_area ! area between primary and secondary continuum 
     vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
 #endif
@@ -3491,9 +3514,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
-
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       
@@ -4110,9 +4130,9 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
-  PetscReal, allocatable :: rhs(:)
+  PetscReal, allocatable :: rhs(:), area(:), vol(:), dm_plus(:), dm_minus(:)
   PetscInt :: i, ngcells
-  PetscReal :: area, vol, gsize, area_fm
+  PetscReal :: area_fm
   PetscReal :: alpha, therm_conductivity, dencpr
   PetscReal :: temp_primary_node
   PetscReal :: m
@@ -4122,7 +4142,8 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
   ngcells = sec_heat_vars%ncells
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
-  gsize = sec_heat_vars%grid_size
+  dm_plus = sec_heat_vars%dm_plus
+  dm_minus = sec_heat_vars%dm_minus
   area_fm = sec_heat_vars%interfacial_area
   temp_primary_node = global_aux_var%temp(1)
 
@@ -4141,21 +4162,26 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
   
   ! Setting the coefficients
   do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area/(gsize*vol)
-    coeff_diag(i) = 2.d0*alpha*area/(gsize*vol) + 1.d0
-    coeff_right(i) = -alpha*area/(gsize*vol)
+    coeff_left(i) = -alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
+    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
   enddo
   
-  coeff_diag(1) = alpha*area/(gsize*vol) + 1.d0
-  coeff_right(1) = -alpha*area/(gsize*vol)
+  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
+  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
   
-  coeff_left(ngcells) = -alpha*area/(gsize*vol)
-  coeff_diag(ngcells) = alpha*area/(gsize*vol) + &
-                        alpha*area/(gsize*vol/2.d0) + 1.d0
+  coeff_left(ngcells) = -alpha*area(ngcells)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
+  coeff_diag(ngcells) = alpha*area(ngcells)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
+                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
+                       + 1.d0
                         
   rhs = sec_heat_vars%sec_temp  ! secondary continuum values from previous time step
   rhs(ngcells) = rhs(ngcells) + & 
-                 alpha*area/(gsize*vol/2.d0)*temp_primary_node
+                 alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
+                 temp_primary_node
                 
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
@@ -4171,7 +4197,7 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
   
   ! Calculate the coupling term
   res_heat = area_fm*therm_conductivity*(temp_current_N - temp_primary_node)/ &
-             (gsize/2.d0)
+             dm_plus(ngcells)
                           
 end subroutine THCSecondaryHeat
 
@@ -4196,9 +4222,9 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
   type(sec_heat_type) :: sec_heat_vars
   type(option_type) :: option
   PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
-  PetscReal, allocatable :: rhs(:)
+  PetscReal, allocatable :: rhs(:), area(:), vol(:),dm_plus(:), dm_minus(:)
   PetscInt :: i, ngcells
-  PetscReal :: area, vol, gsize, area_fm
+  PetscReal :: area_fm
   PetscReal :: alpha, therm_conductivity, dencpr
   PetscReal :: m
   PetscReal :: Dtemp_N_Dtemp_prim
@@ -4207,8 +4233,9 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
   ngcells = sec_heat_vars%ncells
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
-  gsize = sec_heat_vars%grid_size
-
+  dm_plus = sec_heat_vars%dm_plus
+  dm_minus = sec_heat_vars%dm_minus
+  
   allocate(coeff_left(ngcells))
   allocate(coeff_diag(ngcells))
   allocate(coeff_right(ngcells))
@@ -4222,20 +4249,24 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
   alpha = option%flow_dt*therm_conductivity/dencpr
 
   
-  ! Setting the coefficients
+! Setting the coefficients
   do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area/(gsize*vol)
-    coeff_diag(i) = 2.d0*alpha*area/(gsize*vol) + 1.d0
-    coeff_right(i) = -alpha*area/(gsize*vol)
+    coeff_left(i) = -alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
+    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
   enddo
   
-  coeff_diag(1) = alpha*area/(gsize*vol) + 1.d0
-  coeff_right(1) = -alpha*area/(gsize*vol)
+  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
+  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
   
-  coeff_left(ngcells) = -alpha*area/(gsize*vol)
-  coeff_diag(ngcells) = alpha*area/(gsize*vol) + &
-                        alpha*area/(gsize*vol/2.d0) + 1.d0
-                
+  coeff_left(ngcells) = -alpha*area(ngcells)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
+  coeff_diag(ngcells) = alpha*area(ngcells)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
+                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
+                       + 1.d0
+                                        
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
   do i = 2, ngcells
@@ -4245,15 +4276,111 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
   enddo
 
   ! We need the temperature derivative at the outer-most node (closest to primary node)
-  Dtemp_N_Dtemp_prim = 1.d0/coeff_diag(ngcells)*(alpha*area/(gsize*vol/2.d0))
+  Dtemp_N_Dtemp_prim = 1.d0/coeff_diag(ngcells)*alpha*area(ngcells)/ &
+                       (dm_plus(ngcells)*vol(ngcells))
   
   ! Calculate the jacobian term
   jac_heat = area_fm*therm_conductivity*(Dtemp_N_Dtemp_prim - 1.d0)/ &
-             (gsize/2.d0)
+             dm_plus(ngcells)
                             
               
 end subroutine THCSecondaryHeatJacobian
-#endif !MC_HEAT
+
+! ************************************************************************** !
+!
+! SecondaryContinuumType: The area, volume, grid sizes for secondary continuum
+! are calculated based on the input dimensions and geometry
+! author: Satish Karra
+! date: 07/11/12
+!
+! ************************************************************************** !
+subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
+                                  volm,dm1,dm2,interfacial_area)
+
+  implicit none
+  
+  type(sec_continuum_type) :: sec_continuum
+  PetscInt :: igeom, nmat, m
+  PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
+  PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
+  
+  igeom = sec_continuum%itype
+    
+  select case (igeom)      
+    case(0) ! 1D
+    
+      dy = sec_continuum%slab%length/nmat
+      aream0 = sec_continuum%slab%area
+      do m = 1, nmat
+        volm(m) = dy*aream0
+      enddo
+      am0 = 1.d0*aream0
+      vm0 = nmat*dy*aream0
+      interfacial_area = am0/vm0
+     
+       do m = 1, nmat
+        aream(m) = aream0
+        dm1(m) = 0.5d0*dy
+        dm2(m) = 0.5d0*dy
+      enddo
+          
+    case(1) ! nested cubes
+    
+      dy = sec_continuum%nested_cube%length/nmat    
+      r0 = dy
+      volm(1) = dy**3
+      do m = 2, nmat
+        r1 = r0 + 2.d0*dy
+        volm(m) = r1**3 - r0**3
+        r0 = r1
+      enddo
+
+      aream(1) = 0.d0
+      r0 = dy
+      dm1(1) = 0.5d0*dy
+      dm2(1) = 0.5d0*dy
+      do m = 2, nmat
+        aream(m) = 6.d0*r0**2
+        dm1(m) = 0.5d0*dy
+        dm2(m) = 0.5d0*dy
+        r0 = r0 + 2.d0*dy
+      enddo
+      r0 = real(2*nmat-1)*dy
+      am0 = 6.d0*r0**2
+      vm0 = r0**3
+      interfacial_area = am0/vm0
+      
+    case(2) ! nested spheres
+    
+      dy = sec_continuum%nested_sphere%radius/nmat
+      r0 = 0.5d0*dy
+      volm(1) = 4.d0/3.d0*pi*r0**3
+      do m = 2, nmat
+        r1 = r0 + dy
+        volm(m) = 4.d0/3.d0*PI*(r1**3 - r0**3)
+        r0 = r1
+      enddo
+      
+      aream(1) = 0.d0
+      r0 = 0.5d0*dy
+      dm1(1) = 0.5d0*dy
+      dm2(1) = 0.5d0*dy
+      do m = 2, nmat
+        aream(m) = 4.d0*pi*r0**2
+        r0 = r0 + dy
+        dm1(m) = 0.5d0*dy
+        dm2(m) = 0.5d0*dy
+      enddo
+      r0 = 0.5d0*real(2*nmat-1)*dy
+      am0 = 4.d0*pi*r0**2
+      vm0 = am0*r0/3.d0
+      interfacial_area = am0/vm0
+                        
+  end select
+  
+end subroutine SecondaryContinuumType
+#endif 
+!MC_HEAT
 
 ! ************************************************************************** !
 !

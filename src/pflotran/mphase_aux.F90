@@ -787,6 +787,10 @@ subroutine MphaseAuxDestroy(aux)
   if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
   if (associated(aux%delx)) deallocate(aux%delx)
   
+#ifdef MC_HEAT  
+  nullify(aux%sec_heat_vars)
+#endif
+
   deallocate(aux)
   nullify(aux)
   
