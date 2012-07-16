@@ -2776,7 +2776,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
 #ifdef MC_HEAT
   ! secondary continuum variables
-  PetscReal :: sec_conductivity
   PetscReal :: sec_density
   PetscReal :: sec_dencpr
   PetscReal :: res_sec_heat
@@ -2851,6 +2850,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   enddo 
 #endif
 
+! ================== Secondary continuum heat source terms =====================
+
 #if 1
 #ifdef MC_HEAT
   ! Secondary continuum contribution (Added by SK 06/02/2012)
@@ -2883,6 +2884,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     option%sec_vars_update = PETSC_FALSE
 #endif
 #endif
+
+! ============== end secondary continuum heat source ===========================
 
 #if 1
   ! Source/sink terms -------------------------------------
@@ -3376,7 +3379,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     icap = int(icap_loc_p(ghosted_id))
     
 #ifdef MC_HEAT    
-    area_prim_sec = sec_heat_vars(ghosted_id)%interfacial_area ! area between primary and secondary continuum 
     vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
 #endif
     call THCAccumDerivative(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
@@ -3390,7 +3392,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
      call THCSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
                                    thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
                                    thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                                   area_prim_sec,option,jac_sec_heat)
+                                   option,jac_sec_heat)
      Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
                                    jac_sec_heat*option%flow_dt/vol_frac_prim
 #endif
@@ -4212,7 +4214,7 @@ end subroutine THCSecondaryHeat
 subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                                     therm_conductivity, &
                                     dencpr, &
-                                    area_fm,option,jac_heat)
+                                    option,jac_heat)
                                     
   use Option_module 
   use Global_Aux_module
@@ -4234,6 +4236,7 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
   dm_plus = sec_heat_vars%dm_plus
+  area_fm = sec_heat_vars%interfacial_area
   dm_minus = sec_heat_vars%dm_minus
   
   allocate(coeff_left(ngcells))

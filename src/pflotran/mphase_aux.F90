@@ -76,17 +76,39 @@ type, public :: mphase_auxvar_elem_type
 #endif
   end type mphase_type
 
-#ifdef MC_HEAT  
-  type, public :: sec_heat_type  ! now assuming only 1D secondary continuum
-    PetscBool :: sec_temp_update
-    PetscInt :: ncells
-    PetscReal :: length
-    PetscReal :: area
-    PetscReal :: vol
-    PetscReal :: interfacial_area
-    PetscReal :: grid_size
-    PetscReal :: epsilon
-    PetscReal, pointer :: sec_temp(:)
+! MC_HEAT added by S. Karra 07/11/12
+#ifdef MC_HEAT     
+  type, public :: slab_type
+    PetscReal :: length                       ! input - length of slab
+    PetscReal :: area                         ! input - surface area
+  end type slab_type
+  
+  type, public :: nested_cube_type
+    PetscReal :: length                       ! input - side of cube
+  end type nested_cube_type
+  
+  type, public :: nested_sphere_type
+    PetscReal :: radius                       ! input - radius of sphere
+  end type nested_sphere_type
+  
+  type, public :: sec_continuum_type
+    PetscInt :: itype                         ! input - type of sec. continuum (slab, nested_cube, nested_sphere,....) 
+    type(slab_type) :: slab
+    type(nested_cube_type) :: nested_cube
+    type(nested_sphere_type) :: nested_sphere 
+  end type sec_continuum_type
+
+  type, public :: sec_heat_type  
+    PetscBool :: sec_temp_update              ! flag to check if the temp is updated
+    PetscInt :: ncells                        ! number of secondary grid cells
+    PetscReal :: epsilon                      ! vol. frac. of primary continuum
+    type(sec_continuum_type) :: sec_continuum
+    PetscReal, pointer :: sec_temp(:)         ! array of temp. at secondary grid cells
+    PetscReal, pointer :: area(:)             ! surface area
+    PetscReal, pointer :: vol(:)              ! volume     face      node       face
+    PetscReal, pointer :: dm_plus(:)          ! see fig.    |----------o----------|
+    PetscReal, pointer :: dm_minus(:)         ! see fig.      <dm_minus> <dm_plus>
+    PetscReal :: interfacial_area             ! interfacial area between prim. and sec. per unit volume of prim.+sec.
   end type sec_heat_type  
 #endif
 
@@ -590,10 +612,10 @@ end subroutine MphaseAuxVarCompute_WINC
 
 #ifdef MC_HEAT
 subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
-                                   therm_conductivity,dencpr,area_fm, &
+                                   therm_conductivity,dencpr, &
                                    option)
 
-  use Option_module 
+ use Option_module 
   use Global_Aux_module
   
   implicit none
@@ -602,9 +624,10 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
-  PetscReal, allocatable :: rhs(:), sec_temp(:)
+  PetscReal, allocatable :: rhs(:), sec_temp(:), area(:), vol(:)
+  PetscReal, allocatable :: dm_plus(:), dm_minus(:)
   PetscInt :: i, ngcells
-  PetscReal :: area, vol, gsize, area_fm
+  PetscReal :: area_fm
   PetscReal :: alpha, therm_conductivity, dencpr
   PetscReal :: temp_primary_node
   PetscReal :: m
@@ -612,7 +635,9 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   ngcells = sec_heat_vars%ncells
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
-  gsize = sec_heat_vars%grid_size
+  dm_plus = sec_heat_vars%dm_plus
+  dm_minus = sec_heat_vars%dm_minus
+  area_fm = sec_heat_vars%interfacial_area
   temp_primary_node = global_aux_var%temp(1)
 
   allocate(coeff_left(ngcells))
@@ -632,21 +657,26 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   
   ! Setting the coefficients
   do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area/(gsize*vol)
-    coeff_diag(i) = 2.d0*alpha*area/(gsize*vol) + 1.d0
-    coeff_right(i) = -alpha*area/(gsize*vol)
+    coeff_left(i) = -alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
+    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
   enddo
   
-  coeff_diag(1) = alpha*area/(gsize*vol) + 1.d0
-  coeff_right(1) = -alpha*area/(gsize*vol)
+  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
+  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
   
-  coeff_left(ngcells) = -alpha*area/(gsize*vol)
-  coeff_diag(ngcells) = alpha*area/(gsize*vol) + &
-                        alpha*area/(gsize*vol/2.d0) + 1.d0
+  coeff_left(ngcells) = -alpha*area(ngcells)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
+  coeff_diag(ngcells) = alpha*area(ngcells)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
+                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
+                       + 1.d0
                         
   rhs = sec_heat_vars%sec_temp  ! secondary continuum values from previous time step
   rhs(ngcells) = rhs(ngcells) + & 
-                 alpha*area/(gsize*vol/2.d0)*temp_primary_node
+                 alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
+                 temp_primary_node
                 
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
@@ -664,7 +694,7 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   enddo
   
   sec_heat_vars%sec_temp = sec_temp
-      
+            
 end subroutine MphaseSecHeatAuxVarCompute
 #endif
 
