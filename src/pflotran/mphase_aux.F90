@@ -1,5 +1,8 @@
 module Mphase_Aux_module
 use mphase_pckr_module
+#ifdef MC_HEAT
+use Secondary_Continuum_module
+#endif
 
   implicit none
   
@@ -76,41 +79,6 @@ type, public :: mphase_auxvar_elem_type
 #endif
   end type mphase_type
 
-! MC_HEAT added by S. Karra 07/11/12
-#ifdef MC_HEAT     
-  type, public :: slab_type
-    PetscReal :: length                       ! input - length of slab
-    PetscReal :: area                         ! input - surface area
-  end type slab_type
-  
-  type, public :: nested_cube_type
-    PetscReal :: length                       ! input - side of cube
-  end type nested_cube_type
-  
-  type, public :: nested_sphere_type
-    PetscReal :: radius                       ! input - radius of sphere
-  end type nested_sphere_type
-  
-  type, public :: sec_continuum_type
-    PetscInt :: itype                         ! input - type of sec. continuum (slab, nested_cube, nested_sphere,....) 
-    type(slab_type) :: slab
-    type(nested_cube_type) :: nested_cube
-    type(nested_sphere_type) :: nested_sphere 
-  end type sec_continuum_type
-
-  type, public :: sec_heat_type  
-    PetscBool :: sec_temp_update              ! flag to check if the temp is updated
-    PetscInt :: ncells                        ! number of secondary grid cells
-    PetscReal :: epsilon                      ! vol. frac. of primary continuum
-    type(sec_continuum_type) :: sec_continuum
-    PetscReal, pointer :: sec_temp(:)         ! array of temp. at secondary grid cells
-    PetscReal, pointer :: area(:)             ! surface area
-    PetscReal, pointer :: vol(:)              ! volume     face      node       face
-    PetscReal, pointer :: dm_plus(:)          ! see fig.    |----------o----------|
-    PetscReal, pointer :: dm_minus(:)         ! see fig.      <dm_minus> <dm_plus>
-    PetscReal :: interfacial_area             ! interfacial area between prim. and sec. per unit volume of prim.+sec.
-  end type sec_heat_type  
-#endif
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
             MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC, &

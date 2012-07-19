@@ -173,6 +173,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}surface_complexation_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
+	${common_src}secondary_continuum.o\
 	${common_src}thc_aux.o\
 	${common_src}thmc_aux.o\
 	${common_src}richards_aux.o\
@@ -337,11 +338,12 @@ surface_complexation.o : surface_complexation_aux.o reaction_aux.o \
                          global_aux.o  reactive_transport_aux.o option.o \
                          string.o input.o utility.o
 surface_complexation_aux.o : option.o string.o database_aux.o 
-thc.o : thc_aux.o realization.o saturation_function.o
+thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o
 thmc.o : thmc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
 	matrix_buffer.o logging.o
-thc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
+thc_aux.o : secondary_continuum.o option.o material.o water_eos.o \
+    saturation_function.o grid.o
 thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 	matrix_buffer.o global_aux.o
@@ -351,13 +353,14 @@ general.o : general_aux.o global_aux.o realization.o option.o level.o patch.o \
 general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
 	global_aux.o
 geometry.o : input.o option.o
-mphase.o : mphase_aux.o realization.o fluid.o global_aux.o
+mphase.o : mphase_aux.o realization.o fluid.o global_aux.o \
+    secondary_continuum.o
 immis.o : immis_aux.o realization.o  global_aux.o
 miscible.o : miscible_aux.o realization.o  global_aux.o
 flash2.o : flash2_aux.o realization.o fluid.o global_aux.o
 mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 	co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
-	fluid.o saturation_function.o
+	fluid.o saturation_function.o secondary_continuum.o
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
 	co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
 	saturation_function.o

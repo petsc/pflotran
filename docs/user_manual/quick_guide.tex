@@ -1487,7 +1487,9 @@ where several possible options are:
 %\verb|hdf5|: & --enable HDF5 I/O capability\\
 \verb|coll|: & --enable colloid-facilitated transport option\\
 \verb|temp|: & --enable temperature dependent log $K$ capability\\
-\verb|dasvyat|: & --enable MFD full permeability tensor capability
+\verb|dasvyat|: & --enable MFD full permeability tensor capability\\
+\verb|mc_heat|:& --enable multiple continuum formulation for heat\\ &(works only in THC and MPHASE modes)\\
+%\verb|ice|:& --enable permafrost hydrology (works only in THC mode)
 \end{tabular}
 
 \noindent
@@ -3354,6 +3356,15 @@ END
 \item[POROSITY] \ {\tt float} \ Porosity power in mineral surface area
 \end{deflist}
 %\item[(., /, END)]
+\item[SECONDARY\_CONTINUUM] \ Need to compile with flag {\tt mc\_heat} 
+\begin{deflist}{000}
+\item[TYPE] \ {\tt name} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
+\item[LENGTH] \ {\tt <float>} [m] \ length (for SLAB), side (for NESTED\_CUBES), radius (for NESTED\_SPHERES)]
+\item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type (not applicable for other types)
+\item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
+\item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in the REV
+\end{deflist}
+\item[(., /, END)]
 \item[RANDOM\_DATASET] \ {\tt permeability\_filename}
 \end{deflist}
 \item[(., /, END)]
@@ -3372,6 +3383,25 @@ PERMEABILITY
 PERM_X 1.d-12
 PERM_Y 1.d-12
 PERM_Z 1.d-12
+/
+/
+=============
+MATERIAL_PROPERTY soil1
+ID 1 
+SATURATION_FUNCTION sf1
+POROSITY 0.1
+TORTUOSITY 1.
+PERMEABILITY
+PERM_X 1.d-13
+PERM_Y 1.d-13
+PERM_Z 1.d-13
+/
+SECONDARY_CONTINUUM
+TYPE  SLAB
+LENGTH 50
+AREA 2500
+NUM_CELLS 10
+EPSILON 0.02
 /
 /
 \end{verbatim}
@@ -3478,7 +3508,7 @@ MODE THC
 \item[ITOL\_UPDATE (INF\_TOL\_UPDATE)]
 \item[MAXIT] Cuts time step if the number of iterations exceed this value
 \item[MAXF]
-\item[MAX\_NORM]  Cuts time step if the convergence norm exceeds this value. Only works for THC, MPHASE and MISCIBLE modes. 
+\item[MAX\_NORM]  Cuts time step if the convergence norm exceeds this value. 
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}

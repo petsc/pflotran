@@ -49,7 +49,6 @@ module Mphase_module
          MphaseUpdateAuxVars, init_span_wanger, &
 #ifdef MC_HEAT
          MphaseSecondaryHeat, MphaseSecondaryHeatJacobian, &
-         SecondaryContinuumType, &
 #endif
          MphaseComputeMassBalance
 
@@ -171,6 +170,9 @@ subroutine MphaseSetupPatch(realization)
   use Coupler_module
   use Connection_module
   use Grid_module
+#ifdef MC_HEAT
+  use Secondary_Continuum_module
+#endif
  
   implicit none
   
@@ -240,22 +242,19 @@ subroutine MphaseSetupPatch(realization)
   
   do ghosted_id = 1, grid%ngmax
   
-    ! The following values need to be read from an input file -- sk 07/16/12
-    mphase_sec_heat_vars(ghosted_id)%ncells = 10
-    mphase_sec_heat_vars(ghosted_id)%epsilon = 0.5d0
-    
-    ! Slab
-!    mphase_sec_heat_vars(ghosted_id)%sec_continuum%slab%length = 1.d0
-!    mphase_sec_heat_vars(ghosted_id)%sec_continuum%slab%area = 1.d0
-!    mphase_sec_heat_vars(ghosted_id)%sec_continuum%itype = 0
-    
-    ! Nested cubes
-!    mphase_sec_heat_vars(ghosted_id)%sec_continuum%nested_cube%length = 1.d0
-!    mphase_sec_heat_vars(ghosted_id)%sec_continuum%itype = 1
-
-    ! Nested spheres
-    mphase_sec_heat_vars(ghosted_id)%sec_continuum%nested_sphere%radius = 10.d0
-    mphase_sec_heat_vars(ghosted_id)%sec_continuum%itype = 2
+      ! Assuming the same secondary continuum for all regions (need to make it an array)
+    ! S. Karra 07/18/12
+    call SecondaryContinuumSetProperties( &
+        mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
+        realization%material_property_array(1)%ptr%secondary_continuum_name, &
+        realization%material_property_array(1)%ptr%secondary_continuum_length, &
+        realization%material_property_array(1)%ptr%secondary_continuum_area, &
+        option)
+        
+    mphase_sec_heat_vars(ghosted_id)%ncells = &
+      realization%material_property_array(1)%ptr%secondary_continuum_ncells
+    mphase_sec_heat_vars(ghosted_id)%epsilon = &
+      realization%material_property_array(1)%ptr%secondary_continuum_epsilon
 
     allocate(mphase_sec_heat_vars(ghosted_id)%area(mphase_sec_heat_vars(ghosted_id)%ncells))
     allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
@@ -2370,6 +2369,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
+#ifdef MC_HEAT
+  use Secondary_Continuum_module
+#endif
   
   implicit none
 
@@ -3102,6 +3104,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
+#ifdef MC_HEAT
+  use Secondary_Continuum_module
+#endif
   
   implicit none
 
@@ -4095,6 +4100,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
+  use Secondary_Continuum_module
   
   implicit none
   
@@ -4189,7 +4195,8 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  
+  use Secondary_Continuum_module
+
   implicit none
   
   type(sec_heat_type) :: sec_heat_vars
@@ -4259,100 +4266,6 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
                             
               
 end subroutine MphaseSecondaryHeatJacobian
-
-! ************************************************************************** !
-!
-! SecondaryContinuumType: The area, volume, grid sizes for secondary continuum
-! are calculated based on the input dimensions and geometry
-! author: Satish Karra
-! date: 07/16/12
-!
-! ************************************************************************** !
-subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-                                  volm,dm1,dm2,interfacial_area)
-
-  implicit none
-  
-  type(sec_continuum_type) :: sec_continuum
-  PetscInt :: igeom, nmat, m
-  PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
-  PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
-  
-  igeom = sec_continuum%itype
-    
-  select case (igeom)      
-    case(0) ! 1D
-    
-      dy = sec_continuum%slab%length/nmat
-      aream0 = sec_continuum%slab%area
-      do m = 1, nmat
-        volm(m) = dy*aream0
-      enddo
-      am0 = 1.d0*aream0
-      vm0 = nmat*dy*aream0
-      interfacial_area = am0/vm0
-     
-       do m = 1, nmat
-        aream(m) = aream0
-        dm1(m) = 0.5d0*dy
-        dm2(m) = 0.5d0*dy
-      enddo
-          
-    case(1) ! nested cubes
-    
-      dy = sec_continuum%nested_cube%length/nmat    
-      r0 = dy
-      volm(1) = dy**3
-      do m = 2, nmat
-        r1 = r0 + 2.d0*dy
-        volm(m) = r1**3 - r0**3
-        r0 = r1
-      enddo
-
-      aream(1) = 0.d0
-      r0 = dy
-      dm1(1) = 0.5d0*dy
-      dm2(1) = 0.5d0*dy
-      do m = 2, nmat
-        aream(m) = 6.d0*r0**2
-        dm1(m) = 0.5d0*dy
-        dm2(m) = 0.5d0*dy
-        r0 = r0 + 2.d0*dy
-      enddo
-      r0 = real(2*nmat-1)*dy
-      am0 = 6.d0*r0**2
-      vm0 = r0**3
-      interfacial_area = am0/vm0
-      
-    case(2) ! nested spheres
-    
-      dy = sec_continuum%nested_sphere%radius/nmat
-      r0 = 0.5d0*dy
-      volm(1) = 4.d0/3.d0*pi*r0**3
-      do m = 2, nmat
-        r1 = r0 + dy
-        volm(m) = 4.d0/3.d0*PI*(r1**3 - r0**3)
-        r0 = r1
-      enddo
-      
-      aream(1) = 0.d0
-      r0 = 0.5d0*dy
-      dm1(1) = 0.5d0*dy
-      dm2(1) = 0.5d0*dy
-      do m = 2, nmat
-        aream(m) = 4.d0*pi*r0**2
-        r0 = r0 + dy
-        dm1(m) = 0.5d0*dy
-        dm2(m) = 0.5d0*dy
-      enddo
-      r0 = 0.5d0*real(2*nmat-1)*dy
-      am0 = 4.d0*pi*r0**2
-      vm0 = am0*r0/3.d0
-      interfacial_area = am0/vm0
-                        
-  end select
-  
-end subroutine SecondaryContinuumType
 
 #endif 
 !MC_HEAT

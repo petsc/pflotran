@@ -43,6 +43,13 @@ module Material_module
     !PetscReal :: mnrl_surf_area_volfrac_pwr
     !PetscReal :: mnrl_surf_area_porosity_pwr
     PetscReal :: permeability_pwr
+#ifdef MC_HEAT    
+    character(len=MAXWORDLENGTH) :: secondary_continuum_name
+    PetscReal :: secondary_continuum_length
+    PetscReal :: secondary_continuum_area
+    PetscInt :: secondary_continuum_ncells
+    PetscReal :: secondary_continuum_epsilon
+#endif
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
     character(len=MAXSTRINGLENGTH), pointer :: subcontinuum_type_name(:)
@@ -112,6 +119,13 @@ function MaterialPropertyCreate()
   material_property%longitudinal_dispersivity = 0.d0
   material_property%tortuosity_pwr = 0.d0
   material_property%permeability_pwr = 0.d0
+#ifdef ICE
+  material_property%secondary_continuum_name = ''
+  material_property%secondary_continuum_length = 0.d0
+  material_property%secondary_continuum_area = 0.d0
+  material_property%secondary_continuum_epsilon = 1.d0
+  material_property%secondary_continuum_ncells = 0
+#endif
 #ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
   nullify(material_property%subcontinuum_type_count)
@@ -345,6 +359,55 @@ subroutine MaterialPropertyRead(material_property,input,option)
           'per mineral basis under the MINERAL_KINETICS card.  See ' // &
           'reaction_aux.F90.'
           call printErrMsg(option)
+#ifdef MC_HEAT
+      case('SECONDARY_CONTINUUM')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,SECONDARY_CONTINUUM')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,PERMEABILITY')   
+          select case(trim(word))
+            case('TYPE')
+              call InputReadNChars(input,option, &
+                                   material_property%secondary_continuum_name,&
+                                   MAXWORDLENGTH,PETSC_TRUE)
+              call InputErrorMsg(input,option,'type', &
+                                'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('LENGTH')
+              call InputReadDouble(input,option, &
+                                   material_property%secondary_continuum_length)
+              call InputErrorMsg(input,option,'length', &
+                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('AREA')
+              call InputReadDouble(input,option, &
+                                   material_property%secondary_continuum_area)
+              call InputErrorMsg(input,option,'area', &
+                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('NUM_CELLS')
+              call InputReadInt(input,option, &
+                                   material_property%secondary_continuum_ncells)
+              call InputErrorMsg(input,option,'number of cells', &
+                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('EPSILON')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_epsilon)
+              call InputErrorMsg(input,option,'epsilon', &
+                           'MATERIAL_PROPERTY')
+            case default
+              option%io_buffer = 'Keyword (' // trim(word) // &
+                                 ') not recognized in MATERIAL_PROPERTY,' // &
+                                 'SECONDARY_CONTINUUM'
+              call printErrMsg(option)
+          end select
+        enddo
+#endif
+
 #ifdef SUBCONTINUUM_MODEL
       case('SUBCONTINUUM')
         do
