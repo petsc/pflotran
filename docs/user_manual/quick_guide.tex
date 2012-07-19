@@ -833,13 +833,13 @@ giving
 In terms of partial differential equations the heat conduction equations may be written as
 \begin{subequations}
 \EQ
-\frac{\p}{\p t} \epsilon\rho_r C_r T_f + \bnabla\cdot \big(-\epsilon\kappa_f\bnabla T_f\big) \eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
+\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] + \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -\epsilon\kappa_f\bnabla T_f\Big) \eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
 \EN
 and
 \EQ
-\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi}\cdot \big(-\kappa_m\frac{\p T_m}{\p\xi}\big) \eq 0,
+\frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
 \EN
-for fracture and matrix temperatures $T_f$ and $T_m$, respectively. The boundary condition 
+for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D problem. The boundary condition 
 \EQ
 T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
 \EN
