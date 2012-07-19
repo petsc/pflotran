@@ -793,10 +793,9 @@ where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock
 A thermal conduction model employing a multiple continuum model has been added to MPHASE and THC. The formulation is based on Pruess and Narasimhan (1985). The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation is given by
 \begin{subequations}
 \BA
-&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) 
- + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
-&+ \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}}{d_n+d_{n'}}\big(T_n-T_{n'}\big) \Big] A_{nn'} \nonumber\\
-&+ \frac{\kappa_{nM}}{d_n+d_{M}}\big(T_n-T_{M}\big) A_{nM} \eq 0,
+&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
+&\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}}{d_n+d_{n'}}\big(T_n-T_{n'}\big) \Big] A_{nn'} \nonumber\\
+&\qquad + \frac{\kappa_{nM}}{d_n+d_{M}}\big(T_n-T_{M}\big) A_{nM} \eq 0,
 \EA
 for the $n$th fracture control volume, where $v_n$ denotes the fracture volume, and
 \BA
@@ -804,7 +803,14 @@ for the $n$th fracture control volume, where $v_n$ denotes the fracture volume, 
 &+ \delta_{mM}^{}\frac{\kappa_{mM}}{d_m+d_{M}}\big(T_m-T_{M}\big) A_{mM} \eq 0,
 \EA
 \end{subequations}
-for the $m$th matrix node. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. The fracture volume $v_n$ is related to the REV volume $V_n$ by
+for the $m$th matrix node. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. 
+
+Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
+\EQ
+\kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
+\EN
+
+The fracture volume $v_n$ is related to the REV volume $V_n$ by
 \EQ
 \epsilon \eq \frac{v_n}{V_n}.
 \EN
@@ -826,25 +832,32 @@ giving
 
 \begin{figure}[h]\centering
 \includegraphics[scale=0.5]{./figs/mincl}
-\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}
+\parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}}
 \label{fminc}
 \end{figure}
 
 In terms of partial differential equations the heat conduction equations may be written as
 \begin{subequations}
 \EQ
-\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] + \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -\epsilon\kappa_f\bnabla T_f\Big) \eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
+\frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] + \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
+%\epsilon
+\kappa_f\bnabla T_f\Big) \eq -A_{fm} \kappa_{fm}\frac{\p T_m}{\p n},
 \EN
 and
 \EQ
 \frac{\p}{\p t} \rho_r C_r T_m + \frac{\p}{\p\xi} \Big(-\kappa_m\frac{\p T_m}{\p\xi}\Big) \eq 0,
 \EN
-for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D problem. The boundary condition 
+for fracture and matrix temperatures $T_f$ and $T_m$, respectively, where $\xi$ represents the matrix coordinate assumed to be an effective 1D domain. The boundary condition 
 \EQ
 T_m(\xi_d,\,t\,|\,\br) \eq T_f(\br,\,t),
 \EN
 \end{subequations}
 between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer boundary of the matrix.
+
+%The fracture thermal conductivity is defined as
+%\EQ
+%\kappa_f \eq \epsilon^{-1}\kappa.
+%\EN
 
 \subsection{Mode: Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
