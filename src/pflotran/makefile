@@ -66,10 +66,6 @@ ifdef ice
   MYFLAGS += -DICE
 endif
 
-ifdef mc_heat
-  MYFLAGS += -DMC_HEAT
-endif
-
 ifdef chuan_co2
   MYFLAGS += -DCHUAN_CO2
 endif

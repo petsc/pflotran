@@ -1497,16 +1497,16 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call ImmisUpdateReason(update_reason,realization)
           case(MPH_MODE)
 !           call MPhaseUpdateReason(update_reason,realization)
-#ifdef MC_HEAT
-            option%sec_vars_update = PETSC_TRUE
-#endif
+            if (option%use_mc) then
+              option%sec_vars_update = PETSC_TRUE
+            endif
           case(FLASH2_MODE)
 !           call Flash2UpdateReason(update_reason,realization)
           case(THC_MODE)
             update_reason=1
-#ifdef MC_HEAT
-            option%sec_vars_update = PETSC_TRUE
-#endif
+            if (option%use_mc) then
+              option%sec_vars_update = PETSC_TRUE
+            endif
           case(THMC_MODE)
             update_reason=1
           case (MIS_MODE)

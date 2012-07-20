@@ -1641,6 +1641,11 @@ subroutine InitReadInput(simulation)
 
       case('ISOTHERMAL')
         option%use_isothermal = PETSC_TRUE
+        
+!......................
+
+      case('MULTIPLE_CONTINUUM')
+        option%use_mc = PETSC_TRUE
 
 !......................
 

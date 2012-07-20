@@ -1,7 +1,5 @@
 module THC_Aux_module
-#ifdef MC_HEAT
 use Secondary_Continuum_module
-#endif
 
   implicit none
   
@@ -63,24 +61,19 @@ use Secondary_Continuum_module
   type, public :: thc_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
-
     PetscBool :: aux_vars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
     type(thc_parameter_type), pointer :: thc_parameter
     type(thc_auxvar_type), pointer :: aux_vars(:)
     type(thc_auxvar_type), pointer :: aux_vars_bc(:)
-#ifdef MC_HEAT
     type(sec_heat_type), pointer :: sec_heat_vars(:)
-#endif
   end type thc_type
 
 
   public :: THCAuxCreate, THCAuxDestroy, &
             THCAuxVarCompute, THCAuxVarInit, &
-#ifdef MC_HEAT
             THCSecHeatAuxVarCompute, &
-#endif
             THCAuxVarCopy
 
 #ifdef ICE
@@ -126,9 +119,7 @@ function THCAuxCreate(option)
   aux%thc_parameter%diffusion_coefficient = 1.d-9
   aux%thc_parameter%diffusion_activation_energy = 0.d0
 
-#ifdef MC_HEAT  
   nullify(aux%sec_heat_vars)
-#endif
   
   THCAuxCreate => aux
   
@@ -388,8 +379,6 @@ end subroutine THCAuxVarCompute
 ! Date: 06/5/12
 !
 ! ************************************************************************** !
-
-#ifdef MC_HEAT
 subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
                                    therm_conductivity,dencpr, &
                                    option)
@@ -475,7 +464,6 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   sec_heat_vars%sec_temp = sec_temp
             
 end subroutine THCSecHeatAuxVarCompute
-#endif
 
 ! ************************************************************************** !
 ! 
@@ -703,9 +691,7 @@ subroutine THCAuxDestroy(aux)
   endif
   nullify(aux%thc_parameter)
   
-#ifdef MC_HEAT
   nullify(aux%sec_heat_vars)
-#endif
   
   deallocate(aux)
   nullify(aux)  

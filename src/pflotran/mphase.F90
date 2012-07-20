@@ -47,9 +47,7 @@ module Mphase_module
          MphaseMaxChange,MphaseUpdateSolution, &
          MphaseGetTecplotHeader,MphaseInitializeTimestep, &
          MphaseUpdateAuxVars, init_span_wanger, &
-#ifdef MC_HEAT
          MphaseSecondaryHeat, MphaseSecondaryHeatJacobian, &
-#endif
          MphaseComputeMassBalance
 
 contains
@@ -106,7 +104,8 @@ subroutine init_span_wanger(realization)
   if (realization%option%co2eos == EOS_SPAN_WAGNER) then
     select case(realization%option%itable)
        case(0,1,2)
-         call initialize_span_wagner(realization%option%itable,realization%option%myrank)
+         call initialize_span_wagner(realization%option%itable, &
+                                     realization%option%myrank)
        case(4,5)
          myrank = realization%option%myrank
          call initialize_span_wagner(ZERO_INTEGER,myrank)
@@ -170,9 +169,7 @@ subroutine MphaseSetupPatch(realization)
   use Coupler_module
   use Connection_module
   use Grid_module
-#ifdef MC_HEAT
   use Secondary_Continuum_module
-#endif
  
   implicit none
   
@@ -189,11 +186,9 @@ subroutine MphaseSetupPatch(realization)
   type(Mphase_auxvar_type), pointer :: aux_vars(:)
   type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
   type(Mphase_auxvar_type), pointer :: aux_vars_ss(:)  
-#ifdef MC_HEAT
   type(sec_heat_type), pointer :: mphase_sec_heat_vars(:)
   type(coupler_type), pointer :: initial_condition
   PetscReal :: area_per_vol
-#endif
 
   option => realization%option
   patch => realization%patch
@@ -235,56 +230,57 @@ subroutine MphaseSetupPatch(realization)
 ! mphase_parameters create_end *****************************************
 
 ! Create secondary continuum variables - Added by SK 06/28/12
-#ifdef MC_HEAT
 
-  initial_condition => patch%initial_conditions%first
-  allocate(mphase_sec_heat_vars(grid%ngmax))
+  if (option%use_mc) then
+ 
+    initial_condition => patch%initial_conditions%first
+    allocate(mphase_sec_heat_vars(grid%ngmax))
   
-  do ghosted_id = 1, grid%ngmax
+    do ghosted_id = 1, grid%ngmax
   
-      ! Assuming the same secondary continuum for all regions (need to make it an array)
+    ! Assuming the same secondary continuum for all regions (need to make it an array)
     ! S. Karra 07/18/12
-    call SecondaryContinuumSetProperties( &
+      call SecondaryContinuumSetProperties( &
         mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
         realization%material_property_array(1)%ptr%secondary_continuum_name, &
         realization%material_property_array(1)%ptr%secondary_continuum_length, &
         realization%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
         
-    mphase_sec_heat_vars(ghosted_id)%ncells = &
-      realization%material_property_array(1)%ptr%secondary_continuum_ncells
-    mphase_sec_heat_vars(ghosted_id)%epsilon = &
-      realization%material_property_array(1)%ptr%secondary_continuum_epsilon
+      mphase_sec_heat_vars(ghosted_id)%ncells = &
+        realization%material_property_array(1)%ptr%secondary_continuum_ncells
+      mphase_sec_heat_vars(ghosted_id)%epsilon = &
+        realization%material_property_array(1)%ptr%secondary_continuum_epsilon
 
-    allocate(mphase_sec_heat_vars(ghosted_id)%area(mphase_sec_heat_vars(ghosted_id)%ncells))
-    allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
-    allocate(mphase_sec_heat_vars(ghosted_id)%dm_minus(mphase_sec_heat_vars(ghosted_id)%ncells))
-    allocate(mphase_sec_heat_vars(ghosted_id)%dm_plus(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(ghosted_id)%area(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(ghosted_id)%dm_minus(mphase_sec_heat_vars(ghosted_id)%ncells))
+      allocate(mphase_sec_heat_vars(ghosted_id)%dm_plus(mphase_sec_heat_vars(ghosted_id)%ncells))
     
-    
-    call SecondaryContinuumType(mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
-                                mphase_sec_heat_vars(ghosted_id)%ncells, &
-                                mphase_sec_heat_vars(ghosted_id)%area, &
-                                mphase_sec_heat_vars(ghosted_id)%vol, &
-                                mphase_sec_heat_vars(ghosted_id)%dm_minus, &
-                                mphase_sec_heat_vars(ghosted_id)%dm_plus, &
-                                area_per_vol)
+      call SecondaryContinuumType(&
+                              mphase_sec_heat_vars(ghosted_id)%sec_continuum, &
+                              mphase_sec_heat_vars(ghosted_id)%ncells, &
+                              mphase_sec_heat_vars(ghosted_id)%area, &
+                              mphase_sec_heat_vars(ghosted_id)%vol, &
+                              mphase_sec_heat_vars(ghosted_id)%dm_minus, &
+                              mphase_sec_heat_vars(ghosted_id)%dm_plus, &
+                              area_per_vol)
                                 
-    mphase_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
-        (1.d0 - mphase_sec_heat_vars(ghosted_id)%epsilon)
+      mphase_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
+          (1.d0 - mphase_sec_heat_vars(ghosted_id)%epsilon)
 
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/26/12
-    allocate(mphase_sec_heat_vars(ghosted_id)%sec_temp(mphase_sec_heat_vars(ghosted_id)%ncells))
-    mphase_sec_heat_vars(ghosted_id)%sec_temp = &
+      allocate(mphase_sec_heat_vars(ghosted_id)%sec_temp(mphase_sec_heat_vars(ghosted_id)%ncells))
+      mphase_sec_heat_vars(ghosted_id)%sec_temp = &
         initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
-    mphase_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
+      mphase_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
 
-  enddo
+    enddo
       
-  patch%aux%Mphase%sec_heat_vars => mphase_sec_heat_vars    
+    patch%aux%Mphase%sec_heat_vars => mphase_sec_heat_vars    
   
-#endif
+  endif
 
   
   ! allocate aux_var data structures for all grid cells  
@@ -300,8 +296,8 @@ subroutine MphaseSetupPatch(realization)
   allocate(mphase%res_old_AR(grid%nlmax,option%nflowdof))
   allocate(mphase%res_old_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
-! print *,' mph setup allocate app array'
-   ! count the number of boundary connections and allocate
+           
+  ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -311,11 +307,13 @@ subroutine MphaseSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
+
   allocate(aux_vars_bc(sum_connection))
-! print *,' mph setup get AuxBc alloc', sum_connection
+
   do iconn = 1, sum_connection
     call MphaseAuxVarInit(aux_vars_bc(iconn),option)
   enddo
+
   mphase%aux_vars_bc => aux_vars_bc
   mphase%num_aux_bc = sum_connection
   
@@ -358,7 +356,8 @@ subroutine MphaseComputeMassBalance(realization,mass_balance)
   use Patch_module
 
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nphase)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -398,7 +397,8 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
   implicit none
   
   type(realization_type) :: realization
-  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nphase)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2369,9 +2369,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-#ifdef MC_HEAT
   use Secondary_Continuum_module
-#endif
   
   implicit none
 
@@ -2428,9 +2426,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   type(connection_set_type), pointer :: cur_connection_set
   PetscReal, pointer :: msrc(:)
 
-#ifdef MC_HEAT
   type(sec_heat_type), pointer :: mphase_sec_heat_vars(:)
-#endif
 
   PetscBool :: enthalpy_flag
   PetscInt :: ng
@@ -2441,12 +2437,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: distance_gravity
   PetscReal :: vol_frac_prim
   
-#ifdef MC_HEAT
   ! secondary continuum variables
   PetscReal :: sec_dencpr
   PetscReal :: area_prim_sec
   PetscReal :: res_sec_heat
-#endif
   
   patch => realization%patch
   grid => patch%grid
@@ -2462,9 +2456,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
-#ifdef MC_HEAT
   mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
-#endif
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -2608,37 +2600,38 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
 ! ================== Secondary continuum heat source terms =====================
 #if 1
-#ifdef MC_HEAT
+  if (option%use_mc) then
   ! Secondary continuum contribution (Added by SK 06/26/2012)
   ! only one secondary continuum for now for each primary continuum node
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
     
-    vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
-    sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
+      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+      sec_dencpr = mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
 
-    if (option%sec_vars_update) then
-      call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(ghosted_id), &
-                                      global_aux_vars(ghosted_id), &
-                                      mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
-                                      sec_dencpr, &
-                                      option)
-    endif       
+      if (option%sec_vars_update) then
+        call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(ghosted_id), &
+                        global_aux_vars(ghosted_id), &
+                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+                        sec_dencpr, &
+                        option)
+      endif       
     
-    call MphaseSecondaryHeat(mphase_sec_heat_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                             mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
-                             sec_dencpr, &
-                             option,res_sec_heat) 
-    r_p(iend) = r_p(iend) - res_sec_heat/vol_frac_prim*option%flow_dt
+      call MphaseSecondaryHeat(mphase_sec_heat_vars(ghosted_id), &
+                        global_aux_vars(ghosted_id), &
+                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+                        sec_dencpr, &
+                        option,res_sec_heat) 
+      r_p(iend) = r_p(iend) - res_sec_heat/vol_frac_prim*option%flow_dt
 
-  enddo   
+    enddo   
     option%sec_vars_update = PETSC_FALSE
-#endif
+  endif
 #endif
 
 ! ============== end secondary continuum heat source ===========================
@@ -2697,12 +2690,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
+      
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-#ifdef MC_HEAT
-      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
-#endif
+
+      if (option%use_mc) then
+        vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+      endif
       
       call MphaseSourceSink(msrc,nsrcpara, psrc,tsrc1,hsrc1,csrc1, &
                             aux_vars(ghosted_id)%aux_var_elem(0),&
@@ -2823,9 +2818,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       endif
 #endif
 
-#ifdef MC_HEAT
-      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
-#endif
+      if (option%use_mc) then
+        vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+      endif
 
       call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2910,9 +2905,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       D_up = mphase_parameter%ckwet(ithrm_up)
       D_dn = mphase_parameter%ckwet(ithrm_dn)
 
-#ifdef MC_HEAT
-      vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
-#endif
+      if (option%use_mc) then
+        vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
+      endif
 
       call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
           tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
@@ -3104,9 +3099,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-#ifdef MC_HEAT
   use Secondary_Continuum_module
-#endif
   
   implicit none
 
@@ -3168,9 +3161,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   
-#ifdef MC_HEAT
   type(sec_heat_type), pointer :: sec_heat_vars(:)
-#endif  
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -3185,12 +3176,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   Vec :: debug_vec
   PetscReal :: vol_frac_prim
 
-  
-#ifdef MC_HEAT
   ! secondary continuum variables
   PetscReal :: area_prim_sec
   PetscReal :: jac_sec_heat
-#endif  
   
 !-----------------------------------------------------------------------
 ! R stand for residual
@@ -3213,9 +3201,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-#ifdef MC_HEAT  
   sec_heat_vars => patch%aux%Mphase%sec_heat_vars
-#endif   
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -3306,18 +3292,20 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
      cur_connection_set => source_sink%connection_set
  
      do iconn = 1, cur_connection_set%num_connections      
-        local_id = cur_connection_set%id_dn(iconn)
-        ghosted_id = grid%nL2G(local_id)
+       local_id = cur_connection_set%id_dn(iconn)
+       ghosted_id = grid%nL2G(local_id)
 
-        if (associated(patch%imat)) then
-          if (patch%imat(ghosted_id) <= 0) cycle
-        endif
+       if (associated(patch%imat)) then
+         if (patch%imat(ghosted_id) <= 0) cycle
+       endif
 !      if (enthalpy_flag) then
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
-!      endif         
-#ifdef MC_HEAT
-       vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-#endif
+!      endif 
+        
+       if (option%use_mc) then
+         vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+       endif
+        
        do nvar =1, option%nflowdof
          call MphaseSourceSink(msrc,nsrcpara,psrc,tsrc1,hsrc1,csrc1, &
                                aux_vars(ghosted_id)%aux_var_elem(nvar),&
@@ -3363,9 +3351,9 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
       D_dn = mphase_parameter%ckwet(ithrm_dn)
       
-#ifdef MC_HEAT
-    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-#endif      
+      if (option%use_mc) then
+        vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+      endif     
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -3441,46 +3429,44 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 ! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
   do local_id = 1, grid%nlmax  ! For each local node do...
-     ghosted_id = grid%nL2G(local_id)
-     !geh - Ignore inactive cells with inactive materials
-     if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-     endif
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
 
-     ra=0.D0
-     max_dev=0.D0
-     do neq=1, option%nflowdof
-        do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-mphase%res_old_AR(local_id,neq)) &
-                /mphase%delx(nvar,ghosted_id)
-           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
-        enddo
-     enddo
+    ra=0.D0
+    max_dev=0.D0
+    do neq=1, option%nflowdof
+      do nvar=1, option%nflowdof
+        ra(neq,nvar)=(ResInc(local_id,neq,nvar)-mphase%res_old_AR(local_id,neq)) &
+                     /mphase%delx(nvar,ghosted_id)
+        if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+      enddo
+    enddo
    
-   select case(option%idt_switch)
+    select case(option%idt_switch)
       case(1) 
         ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
         if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
-     Jup=ra(1:option%nflowdof,1:option%nflowdof)
+    Jup=ra(1:option%nflowdof,1:option%nflowdof)
      
 
-#ifdef MC_HEAT    
-    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-#endif
+    if (option%use_mc) then   
+      vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
 
-#ifdef MC_HEAT
-     call MphaseSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
-                                      mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
-                                      mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                                      option,jac_sec_heat)
-     ! sk - option%flow_dt cancels out with option%flow_dt in the denominator for the term below                                      
-     Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                                   jac_sec_heat/vol_frac_prim 
-#endif           
-     
+      call MphaseSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
+                        mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
+                        mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                        option,jac_sec_heat)
+ ! sk - option%flow_dt cancels out with option%flow_dt in the denominator for the term below                                      
+      Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
+                               jac_sec_heat/vol_frac_prim 
+    endif
+    
  !    if(volume_p(local_id)>1.D0 )&    !clu removed 05/02/2011
         Jup=Jup / volume_p(local_id)
           
@@ -3555,30 +3541,43 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
 
-#ifdef MC_HEAT
-    vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-#endif 
+      if (option%use_mc) then
+        vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
+      endif
+      
       do nvar = 1, option%nflowdof 
-         call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, vol_frac_prim, Res)
-            ra(:,nvar)= (Res(:)-mphase%res_old_FL(iconn,:))/mphase%delx(nvar,ghosted_id_up)
+         call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar), &
+                         porosity_loc_p(ghosted_id_up), &
+                         tor_loc_p(ghosted_id_up), &
+                         mphase_parameter%sir(:,icap_up), &
+                         dd_up,perm_up,D_up, &
+                         aux_vars(ghosted_id_dn)%aux_var_elem(0), &
+                         porosity_loc_p(ghosted_id_dn), &
+                         tor_loc_p(ghosted_id_dn), &
+                         mphase_parameter%sir(:,icap_dn), &
+                         dd_dn,perm_dn,D_dn, &
+                         cur_connection_set%area(iconn), &
+                         distance_gravity, &
+                         upweight, option, vv_darcy, vol_frac_prim, Res)
+                         
+         ra(:,nvar) = (Res(:)-mphase%res_old_FL(iconn,:))/ &
+                     mphase%delx(nvar,ghosted_id_up)
 
-         call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
-                          dd_up,perm_up,D_up, &
-                          aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
-                          cur_connection_set%area(iconn),distance_gravity, &
-                          upweight, option, vv_darcy, vol_frac_prim, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-mphase%res_old_FL(iconn,:)) &
-              /mphase%delx(nvar,ghosted_id_dn)
+         call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0), &
+                         porosity_loc_p(ghosted_id_up), &
+                         tor_loc_p(ghosted_id_up), &
+                         mphase_parameter%sir(:,icap_up), &
+                         dd_up,perm_up,D_up, &
+                         aux_vars(ghosted_id_dn)%aux_var_elem(nvar), &
+                         porosity_loc_p(ghosted_id_dn),&
+                         tor_loc_p(ghosted_id_dn), &
+                         mphase_parameter%sir(:,icap_dn), &
+                         dd_dn,perm_dn,D_dn, &
+                         cur_connection_set%area(iconn),distance_gravity, &
+                         upweight, option, vv_darcy, vol_frac_prim, Res)
+      
+         ra(:,nvar+option%nflowdof) = (Res(:)-mphase%res_old_FL(iconn,:)) &
+                                      /mphase%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)
@@ -4093,7 +4092,6 @@ end function MphaseGetTecplotHeader
 ! date: 06/26/12
 !
 ! ************************************************************************** !
-#ifdef MC_HEAT
 subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
                             therm_conductivity,dencpr, &
                             option,res_heat)
@@ -4266,9 +4264,6 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
                             
               
 end subroutine MphaseSecondaryHeatJacobian
-
-#endif 
-!MC_HEAT
 
 #if 0
 ! ************************************************************************** !

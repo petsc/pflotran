@@ -71,11 +71,7 @@ module Option_module
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
 #endif
-
-#ifdef MC_HEAT
     PetscBool :: sec_vars_update
-#endif
-
     PetscInt :: air_pressure_id
     PetscInt :: capillary_pressure_id
     PetscInt :: vapor_pressure_id 
@@ -104,6 +100,7 @@ module Option_module
     PetscBool :: use_matrix_free  ! If true, do not form the Jacobian.
     
     PetscBool :: use_isothermal
+    PetscBool :: use_mc           ! If true, multiple continuum formulation is used.
     
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscBool :: use_generalized_grid
@@ -430,6 +427,7 @@ subroutine OptionInitRealization(option)
   
   option%use_isothermal = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
+  option%use_mc = PETSC_FALSE
   
   option%flowmode = ""
   option%iflowmode = NULL_MODE
@@ -653,6 +651,8 @@ subroutine OptionCheckCommandLine(option)
                            option%use_matrix_free, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isothermal", &
                            option%use_isothermal, ierr)
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mc", &
+                           option%use_mc, ierr)
                            
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
                              option%restart_filename, &

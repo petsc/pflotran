@@ -1,4 +1,4 @@
-#ifdef MC_HEAT ! MC_HEAT added by S. Karra 07/11/12
+! added by S. Karra 07/11/12
 
 module Secondary_Continuum_module
 
@@ -193,7 +193,4 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
 end subroutine SecondaryContinuumSetProperties  
 
 end module Secondary_Continuum_module
-
-#endif
-!MC_HEAT   
-         
+            

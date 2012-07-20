@@ -1,8 +1,7 @@
 module Mphase_Aux_module
-use mphase_pckr_module
-#ifdef MC_HEAT
-use Secondary_Continuum_module
-#endif
+  
+  use mphase_pckr_module
+  use Secondary_Continuum_module
 
   implicit none
   
@@ -74,17 +73,13 @@ type, public :: mphase_auxvar_elem_type
      type(mphase_auxvar_type), pointer :: aux_vars(:)
      type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
      type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
-#ifdef MC_HEAT
      type(sec_heat_type), pointer :: sec_heat_vars(:)
-#endif
   end type mphase_type
 
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
             MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC, &
-#ifdef MC_HEAT
             MphaseSecHeatAuxVarCompute, &
-#endif            
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
@@ -128,9 +123,7 @@ function MphaseAuxCreate()
   nullify(aux%res_old_FL)
   nullify(aux%delx)
   
-#ifdef MC_HEAT  
   nullify(aux%sec_heat_vars)
-#endif
 
   MphaseAuxCreate => aux
   
@@ -577,8 +570,6 @@ end subroutine MphaseAuxVarCompute_WINC
 ! Date: 06/28/12
 !
 ! ************************************************************************** !
-
-#ifdef MC_HEAT
 subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
                                    therm_conductivity,dencpr, &
                                    option)
@@ -664,7 +655,6 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   sec_heat_vars%sec_temp = sec_temp
             
 end subroutine MphaseSecHeatAuxVarCompute
-#endif
 
 ! ************************************************************************** !
 !
@@ -785,9 +775,7 @@ subroutine MphaseAuxDestroy(aux)
   if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
   if (associated(aux%delx)) deallocate(aux%delx)
   
-#ifdef MC_HEAT  
   nullify(aux%sec_heat_vars)
-#endif
 
   deallocate(aux)
   nullify(aux)

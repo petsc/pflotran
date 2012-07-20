@@ -793,7 +793,7 @@ where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock
 A thermal conduction model employing a multiple continuum model has been added to MPHASE and THC. The formulation is based on Pruess and Narasimhan (1985). The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation is given by
 \begin{subequations}
 \BA
-&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
+&\epsilon\Big[ \varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
 &\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}}{d_n+d_{n'}}\big(T_n-T_{n'}\big) \Big] A_{nn'} \nonumber\\
 &\qquad + \frac{\kappa_{nM}}{d_n+d_{M}}\big(T_n-T_{M}\big) A_{nM} \eq 0,
 \EA
@@ -809,7 +809,6 @@ Thermal conductivity at the interface between two control volumes is calculated 
 \EQ
 \kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
 \EN
-
 The fracture volume $v_n$ is related to the REV volume $V_n$ by
 \EQ
 \epsilon \eq \frac{v_n}{V_n}.
@@ -1559,7 +1558,6 @@ where several possible options are:
 \verb|coll|: & --enable colloid-facilitated transport option\\
 \verb|temp|: & --enable temperature dependent log $K$ capability\\
 \verb|dasvyat|: & --enable MFD full permeability tensor capability\\
-\verb|mc_heat|:& --enable multiple continuum formulation for heat\\ &(works only in THC and MPHASE modes)\\
 %\verb|ice|:& --enable permafrost hydrology (works only in THC mode)
 \end{tabular}
 
@@ -2007,6 +2005,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
 \hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} & \\
 \hyperlink{target_mode}{\bf MODE} & \\
+\hyperlink{target_mc}{\bf MULTIPLE\_CONTINUUM} & \\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} & \\
 \hyperlink{target_numjac}{\bf NUMERICAL\_JACOBIAN} & \\
 \hyperlink{target_observation}{\bf OBSERVATION} & \\
@@ -3551,6 +3550,20 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 \begin{verbatim}
 MODE THC
 \end{verbatim}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_mc}{}
+
+\subsection{Keyword: MULTIPLE\_CONTINUUM}
+
+\noindent{\bf Description:} 
+This keyword initiates the multiple continuum formulation (implemented currently only for heat equation). The properties of the secondary continuum can be
+specified under MATERIAL\_PROPERTY keyword.
+
+
+%========================================================================
 
 %========================================================================
 
