@@ -838,7 +838,7 @@ The interfacial area $A_{nn'}$ between fracture control volumes is equal to $\De
 A_{nM} \eq 6 d^2.
 \EN
 
-In terms of partial differential equations the heat conduction equations may be written as
+In terms of partial differential equations the heat conservation equations may be written as
 \begin{subequations}
 \EQ
 \frac{\p}{\p t} \epsilon \Big[\varphi \sum_\a s_\a \rho_\a U_\a + (1-\varphi) \rho_r C_r T_f\Big] + \bnabla\cdot \Big(\sum_\a \bq_\a \rho_\a H_\a -
@@ -3433,7 +3433,7 @@ END
 \item[POROSITY] \ {\tt float} \ Porosity power in mineral surface area
 \end{deflist}
 %\item[(., /, END)]
-\item[SECONDARY\_CONTINUUM] \ Need to compile with flag {\tt mc\_heat} 
+\item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
 \item[TYPE] \ {\tt name} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
 \item[LENGTH] \ {\tt <float>} [m] \ length (for SLAB), side (for NESTED\_CUBES), radius (for NESTED\_SPHERES)]
@@ -3514,7 +3514,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 
 \subsection{Keyword: MODE}
 
-\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media); MPH, MPHASE, FLASH2 (CO$_2$ + H$_2$O); THC (Thermal-Hydrologic-Chemical, in pro\-gress); IMMIS, THS (Immisible).
+\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media); MPH, \linebreak MPHASE, FLASH2 (CO$_2$ + H$_2$O); THC (Thermal-Hydrologic-Chemical, in pro\-gress); IMMIS, THS (Immisible).
 
 \begin{comment}
 \noindent{\bf Input:}
@@ -3533,7 +3533,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 
 %\noindent{\bf Explanation:}
 
-\begin{center}
+%\begin{center}
 \begin{tabularx}{\linewidth}{lX}
 %\toprule[1.5pt]
 \bf MODE <option>\\
@@ -3551,7 +3551,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 \bf IMMIS (IMS, THS) &Immissible CO$_2$-water-energy\\
 %\bottomrule[1.5pt]
 \end{tabularx}
-\end{center}
+%\end{center}
 
 \noindent{\bf Example:}
 \begin{verbatim}
@@ -3567,8 +3567,12 @@ MODE THC
 
 \noindent{\bf Description:} 
 This keyword initiates the multiple continuum formulation (implemented currently only for heat equation). The properties of the secondary continuum can be
-specified under MATERIAL\_PROPERTY keyword.
+specified under the MATERIAL\_PROPERTY keyword.
 
+\begin{tabularx}{\linewidth}{lX}
+%\toprule[1.5pt]
+\bf MULTIPLE\_CONTINUUM & Activate multiple continuum model for heat equation.
+\end{tabularx}
 
 %========================================================================
 
