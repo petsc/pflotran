@@ -781,8 +781,7 @@ Additional constitutive relations are needed to close the set of governing equat
  
 %\subsubsection{Thermal Conductivity} 
  
-Thermal conductivity is determined from the equation (Somerton et 
-al., 1974)  
+Thermal conductivity is determined from the equation (Somerton et al., 1974)  
 \EQ\label{cond} 
 \kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
 \EN 
@@ -793,7 +792,7 @@ where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock
 A thermal conduction model employing a multiple continuum model has been added to MPHASE and THC. The formulation is based on Pruess and Narasimhan (1985). The DCDM (dual continuum discrete matrix) model following the classification given in Lichtner (2000) is implemented. In what follows the matrix porosity is assumed to be zero. Using the control volume configuration shown in Figure~\ref{fminc}, with fracture nodes designated by the subscript $n$ and matrix nodes by $m$, the integrated finite volume form of the heat transport equation is given by
 \begin{subequations}
 \BA
-&\epsilon\Big[ \varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
+&\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
 &\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}}{d_n+d_{n'}}\big(T_n-T_{n'}\big) \Big] A_{nn'} \nonumber\\
 &\qquad + \frac{\kappa_{nM}}{d_n+d_{M}}\big(T_n-T_{M}\big) A_{nM} \eq 0,
 \EA
@@ -803,12 +802,18 @@ for the $n$th fracture control volume, where $v_n$ denotes the fracture volume, 
 &+ \delta_{mM}^{}\frac{\kappa_{mM}}{d_m+d_{M}}\big(T_m-T_{M}\big) A_{mM} \eq 0,
 \EA
 \end{subequations}
-for the $m$th matrix node. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. 
+for the $m$th matrix node with volume $v_m$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. 
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.5]{./figs/mincl}
+\parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}\label{fminc}}
+\end{figure}
 
 Thermal conductivity at the interface between two control volumes is calculated using the harmonic average
 \EQ
 \kappa_{ll'} \eq \frac{\kappa_l \kappa_{l'}(d_l+d_{l'})}{d_l \kappa_{l'}+d_{l'}\kappa_l}.
 \EN
+
 The fracture volume $v_n$ is related to the REV volume $V_n$ by
 \EQ
 \epsilon \eq \frac{v_n}{V_n}.
@@ -828,12 +833,10 @@ giving
 & ~\simeq~ \frac{6\delta}{d}.
 \EA
 \end{subequations}
-
-\begin{figure}[h]\centering
-\includegraphics[scale=0.5]{./figs/mincl}
-\parbox{4in}{\caption{Control volumes in DCDM multiple continuum model with fracture aperture $2\delta$ and matrix block size $d$.}}
-\label{fminc}
-\end{figure}
+The interfacial area $A_{nn'}$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. The fracture-matrix interfacial area $A_{nM}$ is equal to
+\EQ
+A_{nM} \eq 6 d^2.
+\EN
 
 In terms of partial differential equations the heat conduction equations may be written as
 \begin{subequations}
@@ -2927,8 +2930,12 @@ Metatorbernite 0.    1.
 \item[PRINT\_JACOBIAN] [MATVIEW\_JACOBIAN, VIEW\_JACOBIAN]
 \item[PRINT\_JACOBIAN\_NORM] [NORM\_JACOBIAN]
 \item[PRINT\_COUPLERS] [PRINT\_COUPLER]
-\item[PRINT\_JACOBIAN\_DETAILED] [MATVIEW\_JACOBIAN\_DETAILED, VIEW\_JACOBIAN\_DETAILED]
-\item  PRINT\_NUMERICAL\_DERIVATIVES] [VIEW\_NUMERICAL\_DERIVATIVES]
+\item[PRINT\_JACOBIAN\_DETAILED] [MATVIEW\_JACOBIAN\_DETAILED, 
+
+VIEW\_JACOBIAN\_DETAILED]
+
+\item[PRINT\_NUMERICAL\_DERIVATIVES] [VIEW\_NUMERICAL\_DERIVATIVES]
+
 \end{deflist}
 \item[\keyend]
 \end{deflist}
