@@ -817,6 +817,8 @@ subroutine THCUpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
+  use Secondary_Continuum_module
+
 
   implicit none
   
@@ -829,11 +831,13 @@ subroutine THCUpdateFixedAccumPatch(realization)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(thc_auxvar_type), pointer :: thc_aux_vars(:)
   type(thc_parameter_type), pointer :: thc_parameter
+  type(sec_heat_type), pointer :: thc_sec_heat_vars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           ithrm_loc_p(:), accum_p(:), perm_xx_loc_p(:)
+  PetscReal :: vol_frac_prim
                           
   PetscErrorCode :: ierr
   
@@ -845,7 +849,9 @@ subroutine THCUpdateFixedAccumPatch(realization)
   thc_parameter => patch%aux%THC%thc_parameter
   thc_aux_vars => patch%aux%THC%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-    
+  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+
+          
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
@@ -857,6 +863,9 @@ subroutine THCUpdateFixedAccumPatch(realization)
 
   call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
 
+
+  vol_frac_prim = 1.d0
+  
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
@@ -884,12 +893,17 @@ subroutine THCUpdateFixedAccumPatch(realization)
                        option)
 #endif
 
+
+    if (option%use_mc) then
+      vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+    endif
+    
     iphase_loc_p(ghosted_id) = iphase
     call THCAccumulation(thc_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,accum_p(istart:iend)) 
+                              option,vol_frac_prim,accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -1009,7 +1023,8 @@ end subroutine THCNumericalJacobianTest
 !
 ! ************************************************************************** !
 subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
-                                     rock_dencpr,option,sat_func,J)
+                              rock_dencpr,option,sat_func, &
+                              vol_frac_prim,J)
 
   use Option_module
   use Saturation_Function_module
@@ -1031,6 +1046,7 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   type(thc_auxvar_type) :: thc_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
+  PetscReal :: vol_frac_prim
   
 #ifdef ICE
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
@@ -1106,6 +1122,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
 #endif
 
 
+  J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
+
   if (option%numerical_derivatives_flow) then
     allocate(thc_aux_var_pert%xmol(option%nflowspec),thc_aux_var_pert%diff(option%nflowspec))
     call GlobalAuxVarInit(global_aux_var_pert,option)  
@@ -1118,7 +1136,9 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
     
 
     call THCAccumulation(thc_aux_var,global_aux_var, &
-                          por,vol,rock_dencpr,option,res)
+                         por,vol,rock_dencpr,option, &
+                         vol_frac_prim,res)
+    
     do ideriv = 1,3
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
@@ -1189,7 +1209,8 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
       end select     
 #endif     
       call THCAccumulation(thc_aux_var_pert,global_aux_var_pert, &
-                          por,vol,rock_dencpr,option,res_pert)
+                           por,vol,rock_dencpr,option,vol_frac_prim, &
+                           res_pert)
       J_pert(:,ideriv) = (res_pert(:)-res(:))/pert
     enddo
 
@@ -1208,7 +1229,8 @@ end subroutine THCAccumDerivative
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res)
+subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
+                           rock_dencpr,option,vol_frac_prim,Res)
 
   use Option_module
   use water_eos_module
@@ -1223,6 +1245,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
      
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
+  PetscReal :: vol_frac_prim
 
 #ifdef ICE
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
@@ -1260,7 +1283,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,Res
 #endif
 
   Res(1:option%nflowdof-1) = mol(:)
-  Res(option%nflowdof) = eng
+  Res(option%nflowdof) = vol_frac_prim*eng
 
 end subroutine THCAccumulation
 
@@ -1281,7 +1304,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-                             vol_frac_prim, &
                              Jup,Jdn)
                              
   use Option_module 
@@ -1322,7 +1344,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   PetscReal :: duh_dp_up, duh_dp_dn, duh_dt_up, duh_dt_dn
   PetscReal :: dq_dp_up, dq_dp_dn, dq_dt_up, dq_dt_dn
   PetscReal :: duxmol_dxmol_up, duxmol_dxmol_dn
-  PetscReal :: vol_frac_prim
   
   PetscReal :: Dk_eff_up, Dk_eff_dn
   PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
@@ -1680,17 +1701,17 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
 #endif  
     
   !  cond = Dk*area*(global_aux_var_up%temp(1)-global_aux_var_dn%temp(1)) 
-  Jup(option%nflowdof,1) = 1/vol_frac_prim*Jup(option%nflowdof,1) + &
+  Jup(option%nflowdof,1) = Jup(option%nflowdof,1) + &
                            area*(global_aux_var_up%temp(1) - &
                            global_aux_var_dn%temp(1))*dDk_dp_up
-  Jdn(option%nflowdof,1) = 1/vol_frac_prim*Jdn(option%nflowdof,1) + &
+  Jdn(option%nflowdof,1) = Jdn(option%nflowdof,1) + &
                            area*(global_aux_var_up%temp(1) - &
                            global_aux_var_dn%temp(1))*dDk_dp_dn
                            
-  Jup(option%nflowdof,2) = 1/vol_frac_prim*Jup(option%nflowdof,2) + Dk*area + &
+  Jup(option%nflowdof,2) = Jup(option%nflowdof,2) + Dk*area + &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_up 
-  Jdn(option%nflowdof,2) = 1/vol_frac_prim*Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
+  Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
                            area*(global_aux_var_up%temp(1) - & 
                            global_aux_var_dn%temp(1))*dDk_dt_dn 
   Jup = Jup*option%flow_dt
@@ -1722,7 +1743,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
       option,v_darcy,Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
       Dk_ice_up,Dk_ice_dn, &
       alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-      vol_frac_prim, &
       res)
     do ideriv = 1,3
       pert_up = x_up(ideriv)*perturbation_tolerance
@@ -1798,7 +1818,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                    alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-                   vol_frac_prim, &
                    res_pert_up)
       call THCFlux(aux_var_up,global_aux_var_up, &
                    por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
@@ -1808,7 +1827,6 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                    option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                    Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                    alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-                   vol_frac_prim, &
                    res_pert_dn)
       J_pert_up(:,ideriv) = (res_pert_up(:)-res(:))/pert_up
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
@@ -1838,7 +1856,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
                   option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
                   alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-                  vol_frac_prim,Res)
+                  Res)
                   
   use Option_module                              
   use water_eos_module
@@ -1868,7 +1886,6 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
-  PetscReal :: vol_frac_prim
   PetscReal, parameter :: epsilon = 1.d-6
 
 #ifdef ICE  
@@ -1994,10 +2011,10 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
  
   Dk = (Dk_eff_up * Dk_eff_dn) / (dd_dn*Dk_eff_up + dd_up*Dk_eff_dn)
   cond = Dk*area*(global_aux_var_up%temp(1) - global_aux_var_dn%temp(1)) 
-  fluxe = fluxe + vol_frac_prim*cond
+  fluxe = fluxe + cond
 
   Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-  Res(option%nflowdof) = fluxe * option%flow_dt/vol_frac_prim
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
  
@@ -2017,7 +2034,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                               aux_var_dn,global_aux_var_dn, &
                               por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                               area,dist_gravity,option, &
-                              sat_func_dn,vol_frac_prim,Jdn)
+                              sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
   use water_eos_module
@@ -2051,7 +2068,6 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: duh_dp_dn, duh_dt_dn
   PetscReal :: dq_dp_dn, dq_dt_dn
   PetscReal :: duxmol_dxmol_dn
-  PetscReal :: vol_frac_prim
 
   PetscInt :: iphase, ideriv
   type(thc_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
@@ -2215,9 +2231,9 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
     Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
   enddo
       ! based on flux = q*density_ave*uh
-  Jdn(option%nflowdof,1) = 1.d0/vol_frac_prim* &
+  Jdn(option%nflowdof,1) =  &
      ((dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn)
-  Jdn(option%nflowdof,2) = 1.d0/vol_frac_prim* &
+  Jdn(option%nflowdof,2) =  &
      ((dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn)
 !  Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
@@ -2340,7 +2356,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                   aux_var_dn,global_aux_var_dn, &
                   por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                   area,dist_gravity,option,v_darcy,Diff_dn, &
-                  vol_frac_prim,res)
+                  res)
     if (ibndtype(THC_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
         ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
         ibndtype(THC_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
@@ -2403,7 +2419,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                     aux_var_pert_dn,global_aux_var_pert_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
-                    vol_frac_prim,res_pert_dn)
+                    res_pert_dn)
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
     enddo
     deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
@@ -2425,7 +2441,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                     aux_var_dn,global_aux_var_dn, &
                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                     area,dist_gravity,option,v_darcy,Diff_dn, &
-                    vol_frac_prim,Res)
+                    Res)
   use Option_module
   use water_eos_module 
  
@@ -2447,7 +2463,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
   PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
-  PetscReal :: vol_frac_prim
   
 #ifdef ICE  
   PetscReal :: Ddiffgas_avg, Ddiffgas_dn, Ddiffgas_up
@@ -2532,7 +2547,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
   do ispec=1, option%nflowspec 
     fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
   enddo
-  fluxe = fluxe + 1.d0/vol_frac_prim*q*density_ave*uh
+  fluxe = fluxe + q*density_ave*uh
 
   ! Diffusion term   
   select case(ibndtype(THC_CONCENTRATION_DOF))
@@ -2826,12 +2841,17 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
 
+
+    if (option%use_mc) then
+      vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+    endif
+
     call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                        option,Res) 
-    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
+                        option,vol_frac_prim,Res) 
+    r_p(istart:iend) = r_p(istart:iend) + Res
   enddo 
 #endif
 
@@ -2849,7 +2869,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
     
-      vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon 
       sec_dencpr = thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))) ! secondary rho*c_p same as primary for now
 
       if (option%sec_vars_update) then
@@ -2865,7 +2884,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                           thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
                           sec_dencpr, &
                           option,res_sec_heat) 
-      r_p(iend) = r_p(iend) - res_sec_heat/vol_frac_prim*option%flow_dt
+      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
@@ -3002,9 +3021,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       Diff_up = thc_parameter%diffusion_coefficient(1)
       Diff_dn = thc_parameter%diffusion_coefficient(1)
       
-      if (option%use_mc) then
-        vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon 
-      endif	  
 
       call THCFlux(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                   porosity_loc_p(ghosted_id_up), &
@@ -3017,7 +3033,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                   cur_connection_set%area(iconn),distance_gravity, &
                   upweight,option,v_darcy,Diff_up,Diff_dn,Dk_dry_up, &
                   Dk_dry_dn,Dk_ice_up,Dk_ice_dn, &
-                  alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn,vol_frac_prim, &
+                  alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                   Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
@@ -3078,10 +3094,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))
 	
-      if (option%use_mc) then
-        vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon 
-      endif
-
       call THCBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
@@ -3094,7 +3106,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                                 cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
-                                v_darcy,Diff_dn,vol_frac_prim,Res)
+                                v_darcy,Diff_dn,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
 
       iend = local_id*option%nflowdof
@@ -3369,7 +3381,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                             thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                             option, &
                             realization%saturation_function_array(icap)%ptr, &
-                            Jup) 
+                            vol_frac_prim,Jup) 
 
     if (option%use_mc) then
       call THCSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
@@ -3378,7 +3390,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*option%flow_dt/vol_frac_prim
+                               jac_sec_heat*option%flow_dt
     endif
                             
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
@@ -3534,10 +3546,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
 	  
 
-      if (option%use_mc) then
-        vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-      endif
-                                                                               
       call THCFluxDerivative(aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                              porosity_loc_p(ghosted_id_up), &
                              tor_loc_p(ghosted_id_up),thc_parameter%sir(1,icap_up), &
@@ -3553,7 +3561,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              Diff_up,Diff_dn,Dk_dry_up,Dk_dry_dn, &
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
-                             vol_frac_prim, &
                              Jup,Jdn)
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -3619,9 +3626,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                      cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 	  
-      if (option%use_mc) then
-        vol_frac_prim = sec_heat_vars(ghosted_id)%epsilon
-      endif	  
 
       call THCBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
@@ -3636,7 +3640,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
-                                vol_frac_prim,Jdn)
+                                Jdn)
       Jdn = -Jdn
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
