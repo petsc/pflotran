@@ -86,7 +86,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
           
     case(1) ! nested cubes
     
-      dy = sec_continuum%nested_cube%length/nmat    
+      dy = sec_continuum%nested_cube%length/nmat/2.d0    
       r0 = dy
       volm(1) = dy**3
       do m = 2, nmat
@@ -105,7 +105,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         dm2(m) = 0.5d0*dy
         r0 = r0 + 2.d0*dy
       enddo
-      r0 = real(2*nmat-1)*dy
+      r0 = real(2*nmat)*dy
       am0 = 6.d0*r0**2
       vm0 = r0**3
       interfacial_area = am0/vm0
@@ -131,7 +131,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
       enddo
-      r0 = 0.5d0*real(2*nmat-1)*dy
+      r0 = 0.5d0*real(2*nmat)*dy
       am0 = 4.d0*pi*r0**2
       vm0 = am0*r0/3.d0
       interfacial_area = am0/vm0
