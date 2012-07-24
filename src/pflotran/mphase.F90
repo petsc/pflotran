@@ -2642,7 +2642,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         sec_dencpr, &
                         option,res_sec_heat) 
-      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt
+      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
 
     enddo   
     option%sec_vars_update = PETSC_FALSE
@@ -3465,7 +3465,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                         option,jac_sec_heat)
  ! sk - option%flow_dt cancels out with option%flow_dt in the denominator for the term below                                      
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat 
+                               jac_sec_heat*volume_p(local_id) 
     endif
     
  !    if(volume_p(local_id)>1.D0 )&    !clu removed 05/02/2011

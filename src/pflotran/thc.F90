@@ -2884,7 +2884,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                           thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
                           sec_dencpr, &
                           option,res_sec_heat) 
-      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt
+      r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
@@ -3390,7 +3390,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                         option,jac_sec_heat)
                         
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
-                               jac_sec_heat*option%flow_dt
+                               jac_sec_heat*option%flow_dt*volume_p(local_id)
     endif
                             
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
