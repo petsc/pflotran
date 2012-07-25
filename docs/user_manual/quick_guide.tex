@@ -795,12 +795,12 @@ A thermal conduction model employing a multiple continuum model has been added t
 \BA
 &\Big[\varphi \Big(\sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k+1} - \sum_\a \big(s_\a\rho_\a U_\a\big)_n^{k}\Big) + (1-\varphi)\Big(\big(\rho_r C_r T\big)_n^{k+1} - \big(\rho_r C_r T\big)_n^{k}\Big)\Big] \frac{v_n}{\Delta t} \nonumber\\
 &\qquad + \sum_{n'} \Big[ \sum_\a\big(q_\a\rho_\a H_\a\big)_{nn'} + \frac{\kappa_{nn'}}{d_n+d_{n'}}\big(T_n-T_{n'}\big) \Big] A_{nn'} \nonumber\\
-&\qquad + \frac{\kappa_{nM}}{d_n+d_{M}}\big(T_n-T_{M}\big) A_{nM} \eq 0,
+&\qquad + \sum_\b\frac{\kappa_{nM}^\b}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) A_{nM}^\b \eq 0,
 \EA
 for the $n$th fracture control volume, where $v_n$ denotes the fracture volume, and
 \BA
-\Big(\big(\rho_r C_r T\big)_m^{k+1} - \big(\rho_r C_r T\big)_m^{k}\Big) \frac{v_m}{\Delta t} &+ \sum_{m'} \frac{\kappa_{mm'}}{d_m+d_{m'}}\big(T_m-T_{m'}\big) A_{mm'} \nonumber\\
-&+ \delta_{mM}^{}\frac{\kappa_{mM}}{d_m+d_{M}}\big(T_m-T_{M}\big) A_{mM} \eq 0,
+\Big(\big(\rho_r C_r T\big)_m^{k+1} - \big(\rho_r C_r T\big)_m^{k}\Big) \frac{v_m}{\Delta t} &+ \sum_{m'} \frac{\kappa_{mm'}^\b}{d_m+d_{m'}}\big(T_m-T_{m'}\big) A_{mm'}^\b \nonumber\\
+&+ \delta_{mM}^{}\frac{\kappa_{mM}^\b}{d_m+d_{M}}\big(T_m-T_{M}\big) A_{mM}^\b \eq 0,
 \EA
 \end{subequations}
 for the $m$th matrix node with volume $v_m$. The matrix node designated by $M$ refers to the outer most node in contact with the fracture. 
