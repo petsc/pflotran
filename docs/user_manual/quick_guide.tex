@@ -89,6 +89,7 @@
 \newcommand{\J}{{\mathcal J}}
 \newcommand{\jo}{{j_o}}
 \newcommand{\M}{{\mathcal M}}
+\newcommand{\N}{{\mathcal N}}
 \newcommand{\mO}{{\mathcal O}}
 \renewcommand{\P}{{{\mathcal P}}}
 \newcommand{\Q}{{\mathcal Q}}
@@ -833,9 +834,34 @@ giving
 & ~\simeq~ \frac{6\delta}{d}.
 \EA
 \end{subequations}
-The interfacial area $A_{nn'}$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. The fracture-matrix interfacial area $A_{nM}$ is equal to
+The interfacial area $A_{nn'}$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
+
+The fracture-matrix interfacial area $A_{nM}$ per unit volume is equal to
 \EQ
-A_{nM} \eq 6 d^2.
+A_{nM}^\b \eq \frac{\N_\b}{V} A_\b^0,
+\EN
+where the number density $\N_\b/V$ of secondary continua of type $\b$ is equal to
+\EQ
+\frac{\N_\b}{V} \eq \frac{1}{V} \frac{V_\b}{V_\b^0} \eq \frac{\epsilon_\b}{V_\b^0},
+\EN
+and $A_\b^0$ and $V_\b^0$ refer to the area and volume of each geometric type as listed in Table~\ref{tdcdm}.
+\begin{table}\centering
+\caption{DCDM geometric parameters.}\label{tdcdm}
+\vspace{3mm}
+\begin{tabular}{lcc}
+\toprule
+Geometry & Area $A_\b^0$ & Volume $V_\b^0$\\
+\midrule
+Slab & $A$ & $A l$ \\
+Nested Squares & $6d^2$ & $d^3$\\
+Nested Spheres & $4 \pi R^2$ & $\frac{4}{3}\pi R^3$\\
+\bottomrule
+\end{tabular}
+\end{table}
+The primary-secondary coupling term can then be written in the form
+\EQ
+\sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) A_{nM}^\b \eq V_n
+\sum_\b\frac{\epsilon_\b\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) \frac{A_\b^0}{V_\b^0}.
 \EN
 
 In terms of partial differential equations the heat conservation equations may be written as
