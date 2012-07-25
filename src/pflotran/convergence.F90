@@ -184,14 +184,16 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !geh: inorm_residual is being used without being calculated.
 !      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
 !        inorm_residual > solver%max_norm) then
-  if (fnorm > solver%max_norm .or. pnorm > solver%max_norm) then
-    reason = -2
-  endif
 
   
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
     reason = 12
+  endif
+  
+  
+  if (option%out_of_table) then
+    reason = -9
   endif
   
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
@@ -215,12 +217,18 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     if (inorm_update < solver%newton_inf_upd_tol .and. it > 0) then
       reason = 11
     endif
+    
+    if (max(fnorm,pnorm,inorm_residual) > solver%max_norm) then
+      reason = -10
+    endif
 
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
-        case(-2)
+        case(-10)
           string = 'max_norm'
+        case(-9)
+          string = 'out_of_EOS_table'
         case(2)
           string = 'atol'
         case(3)
@@ -247,6 +255,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
+        case(-9)
+          string = 'out_of_EOS_table'
         case(2)
           string = 'atol'
         case(3)

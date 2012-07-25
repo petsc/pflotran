@@ -508,6 +508,9 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   PetscReal :: dsi_pl, dsi_temp
   PetscReal :: den_ice, dden_ice_dT, dden_ice_dP
   PetscReal :: u_ice, du_ice_dT
+  PetscBool :: out_of_table_flag
+  
+  out_of_table_flag = PETSC_FALSE
  
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
@@ -551,9 +554,15 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, option)
 
 
-  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+!              option%scale,ierr)
 
+  call wateos_flag (global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
+                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
+  
+  if (out_of_table_flag) then  
+    option%out_of_table = PETSC_TRUE                 
+  endif
 
 !  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
 !                         dw_dt, hw, hw_dp, hw_dt, ierr)

@@ -186,6 +186,8 @@ module Option_module
 
     PetscInt :: chunk_size
     PetscInt :: num_threads
+    
+    PetscBool :: out_of_table
 
   end type option_type
   
@@ -398,6 +400,8 @@ subroutine OptionInitAll(option)
 
   option%chunk_size = 8
   option%num_threads = 1
+  
+  option%out_of_table = PETSC_FALSE
  
   call OptionInitRealization(option)
 
