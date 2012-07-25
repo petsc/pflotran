@@ -191,6 +191,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
+    print *, option%stomp_norm, solver%newton_stomp_tol
     reason = 12
   endif
   

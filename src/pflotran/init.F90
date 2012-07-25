@@ -498,6 +498,17 @@ subroutine Init(simulation)
                                           RichardsCheckUpdatePost, &
                                           realization,ierr)
 #endif
+        case(THC_MODE)
+#ifndef HAVE_SNES_API_3_2
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPostCheck(linesearch, &
+                                          THCCheckUpdatePost, &
+                                          realization,ierr)
+#else         
+          call SNESLineSearchSetPostCheck(flow_solver%snes, &
+                                          THCCheckUpdatePost, &
+                                          realization,ierr)
+#endif        
       end select
     endif
     

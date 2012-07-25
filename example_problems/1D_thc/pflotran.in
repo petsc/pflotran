@@ -2,12 +2,6 @@
 :===================== THC mode ===============================
 MODE THC 
 
-:NUMERICAL_JACOBIAN_FLOW
-
-DEBUG
-  PRINT_JACOBIAN_DETAILED
-  PRINT_SOLUTION
- /
 :===================== Discretization =========================
 GRID
 TYPE structured
@@ -23,9 +17,8 @@ END
 :===================== Solver options ========================
 NEWTON_SOLVER FLOW
 ATOL 1D-12
-RTOL 1D-12
-STOL 1D-8
-DTOL 1D10
+RTOL 1D-8
+STOL 1D-15
 ITOL 1D-8
 MAXIT 100
 MAXF 1000

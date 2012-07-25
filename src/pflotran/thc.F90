@@ -30,7 +30,8 @@ module THC_module
          THCGetTecplotHeader, THCInitializeTimestep, &
          THCComputeMassBalance, THCResidualToMass, &
          THCSecondaryHeat, THCSecondaryHeatJacobian, & 
-         THCUpdateAuxVars, THCDestroy
+         THCUpdateAuxVars, THCDestroy, &
+         THCCheckUpdatePost
          
   PetscInt, parameter :: jh2o = 1
 
@@ -291,6 +292,121 @@ subroutine THCSetupPatch(realization)
 
 end subroutine THCSetupPatch
 
+! ************************************************************************** !
+!
+! THCCheckUpdatePost: Checks update after each update
+! author: Satish Karra
+! date: 07/25/12
+!
+! ************************************************************************** !
+#ifndef HAVE_SNES_API_3_2
+subroutine THCCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+                                   P1_changed,realization,ierr)
+#else
+subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
+                                   P1_changed,ierr)
+#endif
+
+  use Realization_module
+  use Grid_module
+  use Field_module
+  use Option_module
+  use Secondary_Continuum_module
+ 
+  implicit none
+  
+#ifndef HAVE_SNES_API_3_2
+  SNESLineSearch :: line_search
+#else
+  SNES :: snes_
+#endif
+  Vec :: P0
+  Vec :: dP
+  Vec :: P1
+  type(realization_type) :: realization
+  ! ignore changed flag for now.
+  PetscBool :: dP_changed
+  PetscBool :: P1_changed
+  
+  PetscReal, pointer :: P1_p(:)
+  PetscReal, pointer :: dP_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: ithrm_loc_p(:)
+  PetscReal, pointer :: r_p(:)
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(thc_auxvar_type), pointer :: thc_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(thc_parameter_type), pointer :: thc_parameter
+  type(sec_heat_type), pointer :: thc_sec_heat_vars(:)
+
+
+  PetscInt :: local_id, ghosted_id
+  PetscReal :: Res(3)
+  PetscReal :: inf_norm
+  PetscErrorCode :: ierr
+  PetscReal :: vol_frac_prim
+  PetscInt :: istart, iend
+  
+  grid => realization%patch%grid
+  option => realization%option
+  field => realization%field
+  thc_aux_vars => realization%patch%aux%THC%aux_vars
+  thc_parameter => realization%patch%aux%THC%thc_parameter
+  global_aux_vars => realization%patch%aux%Global%aux_vars
+  thc_sec_heat_vars => realization%patch%aux%THC%sec_heat_vars
+
+  
+  dP_changed = PETSC_FALSE
+  P1_changed = PETSC_FALSE
+  
+  if (option%check_stomp_norm) then
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P1,P1_p,ierr)
+    call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+    call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+    
+    inf_norm = 0.d0
+    vol_frac_prim = 1.d0
+    
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (realization%patch%imat(ghosted_id) <= 0) cycle
+    
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      
+      if (option%use_mc) then
+        vol_frac_prim = thc_sec_heat_vars(ghosted_id)%epsilon
+      endif
+
+      call THCAccumulation(thc_aux_vars(ghosted_id), &
+                           global_aux_vars(ghosted_id), &
+                           porosity_loc_p(ghosted_id), &
+                           volume_p(local_id), &
+                           thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                           option,vol_frac_prim,Res)
+                                                        
+      inf_norm = max(inf_norm,min(dabs(dP_p(istart)/P1_p(istart)), &
+                                  dabs(r_p(istart)/Res(1)), &
+                                  dabs(dP_p(iend)/P1_p(iend)), &
+                                  dabs(r_p(iend)/Res(3))))
+    enddo
+    call MPI_Allreduce(inf_norm,option%stomp_norm,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION, &
+                       MPI_MAX,option%mycomm,ierr)
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P1,P1_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+  endif
+  
+end subroutine THCCheckUpdatePost
 
 ! ************************************************************************** !
 !
