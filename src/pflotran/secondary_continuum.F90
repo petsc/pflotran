@@ -55,15 +55,24 @@ module Secondary_Continuum_module
 !
 ! ************************************************************************** !
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-                                  volm,dm1,dm2,interfacial_area)
-
+                                  volm,dm1,dm2,epsilon,interfacial_area)
+  use option_module
   implicit none
   
   type(sec_continuum_type) :: sec_continuum
+
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
   PetscInt :: igeom, nmat, m
   PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
-  PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
-  
+  PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area, aperture, epsilon
+
+  PetscInt, save :: icall
+
+  data icall/0/
+
   igeom = sec_continuum%itype
     
   select case (igeom)      
@@ -109,7 +118,21 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       am0 = 6.d0*r0**2
       vm0 = r0**3
       interfacial_area = am0/vm0
-      
+
+      if (icall == 0) then
+        icall = 1
+        string = 'DCDM Multiple Continuum Model'
+        write(option%fid_out,'(/,2x,a,/)') trim(string)
+        string = 'Nested Cubes'
+        write(option%fid_out,'(2x,a,/)') trim(string)
+        write(option%fid_out,'(2x,"matrix block size: ", 1pe12.4," m")') r0
+        write(option%fid_out,'(2x,"epsilon: ", 1pe12.4)') epsilon
+        write(option%fid_out,'(2x,"specific interfacial area: ", 1pe12.4," m^(-1)")') interfacial_area
+
+        aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
+        write(option%fid_out,'(2x,"aperture: ", 1pe12.4," m")') aperture
+      endif
+
     case(2) ! nested spheres
     
       dy = sec_continuum%nested_sphere%radius/nmat
