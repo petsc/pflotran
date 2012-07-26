@@ -55,7 +55,7 @@ module Secondary_Continuum_module
 !
 ! ************************************************************************** !
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-                                  volm,dm1,dm2,epsilon,interfacial_area)
+                                  volm,dm1,dm2,epsilon,interfacial_area,option)
   use option_module
   implicit none
   

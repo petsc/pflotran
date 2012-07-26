@@ -228,7 +228,7 @@ subroutine THCSetupPatch(realization)
                                   thc_sec_heat_vars(ghosted_id)%dm_minus, &
                                   thc_sec_heat_vars(ghosted_id)%dm_plus, &
                                   thc_sec_heat_vars(ghosted_id)%epsilon, &
-                                  area_per_vol)
+                                  area_per_vol,option)
                                 
       thc_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
         (1.d0 - thc_sec_heat_vars(ghosted_id)%epsilon)

@@ -265,7 +265,7 @@ subroutine MphaseSetupPatch(realization)
                               mphase_sec_heat_vars(ghosted_id)%dm_minus, &
                               mphase_sec_heat_vars(ghosted_id)%dm_plus, &
                               mphase_sec_heat_vars(ghosted_id)%epsilon, &
-                              area_per_vol)
+                              area_per_vol,option)
                                 
       mphase_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
           (1.d0 - mphase_sec_heat_vars(ghosted_id)%epsilon)
