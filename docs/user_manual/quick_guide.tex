@@ -834,7 +834,11 @@ giving
 & ~\simeq~ \frac{6\delta}{d}.
 \EA
 \end{subequations}
-The interfacial area $A_{nn'}$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
+The fracture aperture $2\delta$ is found to be in terms of $\epsilon$ and $d$
+\EQ
+2\delta \eq d \left(\frac{1}{(1-\epsilon)^{1/3}} -1\right).
+\EN
+The interfacial area $A_{nn'}^\a$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
 
 The fracture-matrix interfacial area $A_{nM}$ per unit volume is equal to
 \EQ
@@ -3462,7 +3466,7 @@ END
 \item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
 \item[TYPE] \ {\tt name} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
-\item[LENGTH] \ {\tt <float>} [m] \ length (for SLAB), side (for NESTED\_CUBES), radius (for NESTED\_SPHERES)]
+\item[LENGTH] \ {\tt <float>} [m] \ length (for SLAB), matrix side (for NESTED\_CUBES), matrix radius (for NESTED\_SPHERES)]
 \item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type (not applicable for other types)
 \item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
 \item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in the REV
