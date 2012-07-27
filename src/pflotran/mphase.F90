@@ -4144,8 +4144,8 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
   
   ! Setting the coefficients
   do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i))
-    coeff_diag(i) = alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+    coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
                     alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
     coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
   enddo
@@ -4153,9 +4153,9 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
   coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
   coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
   
-  coeff_left(ngcells) = -alpha*area(ngcells)/ &
+  coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
                        ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
-  coeff_diag(ngcells) = alpha*area(ngcells)/ &
+  coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
                        ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
                        + 1.d0
@@ -4236,8 +4236,8 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
   
 ! Setting the coefficients
   do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i))
-    coeff_diag(i) = alpha*area(i)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+    coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
                     alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
     coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
   enddo
@@ -4245,9 +4245,9 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
   coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
   coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
   
-  coeff_left(ngcells) = -alpha*area(ngcells)/ &
+  coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
                        ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
-  coeff_diag(ngcells) = alpha*area(ngcells)/ &
+  coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
                        ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
                        + 1.d0
