@@ -48,6 +48,7 @@ module Material_module
     PetscReal :: secondary_continuum_area
     PetscInt :: secondary_continuum_ncells
     PetscReal :: secondary_continuum_epsilon
+    PetscReal :: secondary_continuum_init_temp
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
     character(len=MAXSTRINGLENGTH), pointer :: subcontinuum_type_name(:)
@@ -117,13 +118,12 @@ function MaterialPropertyCreate()
   material_property%longitudinal_dispersivity = 0.d0
   material_property%tortuosity_pwr = 0.d0
   material_property%permeability_pwr = 0.d0
-#ifdef ICE
   material_property%secondary_continuum_name = ''
   material_property%secondary_continuum_length = 0.d0
   material_property%secondary_continuum_area = 0.d0
   material_property%secondary_continuum_epsilon = 1.d0
+  material_property%secondary_continuum_init_temp = 100.d0
   material_property%secondary_continuum_ncells = 0
-#endif
 #ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
   nullify(material_property%subcontinuum_type_count)
@@ -396,6 +396,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%secondary_continuum_epsilon)
               call InputErrorMsg(input,option,'epsilon', &
                            'MATERIAL_PROPERTY')
+            case('TEMPERATURE')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_init_temp)
+              call InputErrorMsg(input,option,'secondary continuum init temp', &
+                           'MATERIAL_PROPERTY')
+              option%set_secondary_init_temp = PETSC_TRUE
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &
                                  ') not recognized in MATERIAL_PROPERTY,' // &

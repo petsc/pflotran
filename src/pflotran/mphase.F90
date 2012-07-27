@@ -273,8 +273,15 @@ subroutine MphaseSetupPatch(realization)
     ! Setting the initial values of all secondary node temperatures same as primary node 
     ! temperatures (with initial dirichlet BC only) -- sk 06/26/12
       allocate(mphase_sec_heat_vars(ghosted_id)%sec_temp(mphase_sec_heat_vars(ghosted_id)%ncells))
-      mphase_sec_heat_vars(ghosted_id)%sec_temp = &
+      
+      if (option%set_secondary_init_temp) then
+        mphase_sec_heat_vars(ghosted_id)%sec_temp = &
+          realization%material_property_array(1)%ptr%secondary_continuum_init_temp
+      else
+        mphase_sec_heat_vars(ghosted_id)%sec_temp = &
         initial_condition%flow_condition%temperature%flow_dataset%time_series%cur_value(1)
+      endif
+          
       mphase_sec_heat_vars(ghosted_id)%sec_temp_update = PETSC_FALSE
 
     enddo
