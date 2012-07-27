@@ -66,6 +66,10 @@ ifdef ice
   MYFLAGS += -DICE
 endif
 
+ifdef remove_sat
+  MYFLAGS += -DREMOVE_SATURATION
+endif
+
 ifdef chuan_co2
   MYFLAGS += -DCHUAN_CO2
 endif

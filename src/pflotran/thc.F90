@@ -1397,6 +1397,9 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
   u_g = C_g*(global_aux_var%temp(1) + 273.15d0)       ! in MJ/kmol
   mol(1) = mol(1) + (sat_g*den_g*mol_g + sat_i*den_i)*porXvol
   eng = eng + (sat_g*den_g*u_g + sat_i*den_i*u_i)*porXvol
+#ifdef REMOVE_SATURATION
+  mol(2) = global_aux_var%den(1)*aux_var%xmol(2)*porXvol
+#endif
 #endif
 
   Res(1:option%nflowdof-1) = mol(:)
@@ -2104,6 +2107,12 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
              (dd_up + dd_dn)
              
  endif
+#ifdef REMOVE_SATURATION 
+  difff = diffdp * 0.25D0* &
+            (global_aux_var_up%den(1)+global_aux_var_dn%den(1))
+  fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
+                 (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
+#endif
 #endif 
 
 ! conduction term  
@@ -2726,6 +2735,12 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
       fluxm(1) = fluxm(1) + por_dn*tor_dn*Ddiffgas_avg*(molg_up - molg_dn)/ &
                  dd_up*area
   endif
+
+#ifdef REMOVE_SATURATION
+      diff = diffdp*global_aux_var_dn%den(1)
+      fluxm(2) = fluxm(2) + diff*Diff_dn* &
+                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+#endif
 #endif 
 
     case(NEUMANN_BC)

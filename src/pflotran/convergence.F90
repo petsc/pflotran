@@ -218,7 +218,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = 11
     endif
     
-    if (max(fnorm,pnorm,inorm_residual) > solver%max_norm) then
+    if (inorm_residual > solver%max_norm) then
       reason = -10
     endif
 
