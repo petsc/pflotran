@@ -110,10 +110,10 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       dm1(1) = 0.5d0*dy
       dm2(1) = 0.5d0*dy
       do m = 2, nmat
-        aream(m) = 6.d0*r0**2
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
         r0 = r0 + 2.d0*dy
+        aream(m) = 6.d0*r0**2
       enddo
       r0 = real(2*nmat)*dy
       am0 = 6.d0*r0**2
@@ -152,10 +152,10 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       dm1(1) = 0.5d0*dy
       dm2(1) = 0.5d0*dy
       do m = 2, nmat
-        aream(m) = 4.d0*pi*r0**2
         r0 = r0 + dy
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
+        aream(m) = 4.d0*pi*r0**2
       enddo
       r0 = 0.5d0*real(2*nmat)*dy
       am0 = 4.d0*pi*r0**2
