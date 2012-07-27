@@ -2939,7 +2939,6 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   ! override flags since they will soon be out of date  
   patch%aux%THC%aux_vars_up_to_date = PETSC_FALSE
 
-  
   if (option%compute_mass_balance_new) then
     call THCZeroMassBalDeltaPatch(realization)
   endif

@@ -97,16 +97,16 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
     case(1) ! nested cubes
     
       dy = sec_continuum%nested_cube%length/nmat/2.d0    
-      r0 = dy
-      volm(1) = dy**3
+      r0 = 2.d0*dy
+      volm(1) = r0**3
       do m = 2, nmat
         r1 = r0 + 2.d0*dy
         volm(m) = r1**3 - r0**3
         r0 = r1
       enddo
 
-      aream(1) = 0.d0
-      r0 = dy
+      r0 = 2.d0*dy
+      aream(1) = 6.d0*r0**2
       dm1(1) = 0.5d0*dy
       dm2(1) = 0.5d0*dy
       do m = 2, nmat
@@ -139,16 +139,16 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
     case(2) ! nested spheres
     
       dy = sec_continuum%nested_sphere%radius/nmat
-      r0 = 0.5d0*dy
+      r0 = dy
       volm(1) = 4.d0/3.d0*pi*r0**3
       do m = 2, nmat
         r1 = r0 + dy
-        volm(m) = 4.d0/3.d0*PI*(r1**3 - r0**3)
+        volm(m) = 4.d0/3.d0*pi*(r1**3 - r0**3)
         r0 = r1
       enddo
       
-      aream(1) = 0.d0
-      r0 = 0.5d0*dy
+      r0 = dy
+      aream(1) = 4.d0*pi*r0**2
       dm1(1) = 0.5d0*dy
       dm2(1) = 0.5d0*dy
       do m = 2, nmat
