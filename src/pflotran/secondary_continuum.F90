@@ -67,7 +67,8 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 
   PetscInt :: igeom, nmat, m
   PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
-  PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area, aperture, epsilon
+  PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
+  PetscReal :: num_density, aperture, epsilon
 
   PetscInt, save :: icall
 
@@ -125,12 +126,14 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(/,2x,a,/)') trim(string)
         string = 'Nested Cubes'
         write(option%fid_out,'(2x,a,/)') trim(string)
-        write(option%fid_out,'(2x,"matrix block size: ", 1pe12.4," m")') r0
-        write(option%fid_out,'(2x,"epsilon: ", 1pe12.4)') epsilon
-        write(option%fid_out,'(2x,"specific interfacial area: ", 1pe12.4," m^(-1)")') interfacial_area
+        num_density = (1.d0-epsilon)/vm0
+        write(option%fid_out,'(2x,"number density: ",11x,1pe12.4," m^(-3)")') num_density
+        write(option%fid_out,'(2x,"matrix block size: ",8x,1pe12.4," m")') r0
+        write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
+        write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
 
         aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
-        write(option%fid_out,'(2x,"aperture: ", 1pe12.4," m")') aperture
+        write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
       endif
 
     case(2) ! nested spheres
