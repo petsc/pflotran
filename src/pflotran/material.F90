@@ -48,6 +48,7 @@ module Material_module
     PetscReal :: secondary_continuum_area
     PetscInt :: secondary_continuum_ncells
     PetscReal :: secondary_continuum_epsilon
+    PetscReal :: secondary_continuum_aperture
     PetscReal :: secondary_continuum_init_temp
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
@@ -122,6 +123,7 @@ function MaterialPropertyCreate()
   material_property%secondary_continuum_length = 0.d0
   material_property%secondary_continuum_area = 0.d0
   material_property%secondary_continuum_epsilon = 1.d0
+  material_property%secondary_continuum_aperture = 0.d0
   material_property%secondary_continuum_init_temp = 100.d0
   material_property%secondary_continuum_ncells = 0
 #ifdef SUBCONTINUUM_MODEL
@@ -395,6 +397,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputReadDouble(input,option, &
                              material_property%secondary_continuum_epsilon)
               call InputErrorMsg(input,option,'epsilon', &
+                           'MATERIAL_PROPERTY')
+            case('APERTURE')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_aperture)
+              call InputErrorMsg(input,option,'aperture', &
                            'MATERIAL_PROPERTY')
             case('TEMPERATURE')
               call InputReadDouble(input,option, &

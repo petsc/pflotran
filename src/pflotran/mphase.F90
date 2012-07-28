@@ -249,6 +249,8 @@ subroutine MphaseSetupPatch(realization)
         
       mphase_sec_heat_vars(ghosted_id)%ncells = &
         realization%material_property_array(1)%ptr%secondary_continuum_ncells
+      mphase_sec_heat_vars(ghosted_id)%aperture = &
+        realization%material_property_array(1)%ptr%secondary_continuum_aperture
       mphase_sec_heat_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
 
@@ -264,6 +266,7 @@ subroutine MphaseSetupPatch(realization)
                               mphase_sec_heat_vars(ghosted_id)%vol, &
                               mphase_sec_heat_vars(ghosted_id)%dm_minus, &
                               mphase_sec_heat_vars(ghosted_id)%dm_plus, &
+                              mphase_sec_heat_vars(ghosted_id)%aperture, &
                               mphase_sec_heat_vars(ghosted_id)%epsilon, &
                               area_per_vol,option)
                                 

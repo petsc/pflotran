@@ -31,13 +31,14 @@ module Secondary_Continuum_module
   type, public :: sec_heat_type  
     PetscBool :: sec_temp_update              ! flag to check if the temp is updated
     PetscInt :: ncells                        ! number of secondary grid cells
+    PetscReal :: aperture                     ! fracture aperture
     PetscReal :: epsilon                      ! vol. frac. of primary continuum
     type(sec_continuum_type) :: sec_continuum
-    PetscReal, pointer :: sec_temp(:)         ! array of temp. at secondary grid cells
-    PetscReal, pointer :: area(:)             ! surface area
-    PetscReal, pointer :: vol(:)              ! volume     face      node       face
-    PetscReal, pointer :: dm_plus(:)          ! see fig.    |----------o----------|
-    PetscReal, pointer :: dm_minus(:)         ! see fig.      <dm_minus> <dm_plus>
+    PetscReal, pointer :: sec_temp(:)          ! array of temp. at secondary grid cells
+    PetscReal, pointer :: area(:)              ! surface area
+    PetscReal, pointer :: vol(:)               ! volume     face      node       face
+    PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
+    PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
     PetscReal :: interfacial_area             ! interfacial area between prim. and sec. per unit volume of prim.+sec.
   end type sec_heat_type  
 
@@ -55,7 +56,7 @@ module Secondary_Continuum_module
 !
 ! ************************************************************************** !
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-                                 volm,dm1,dm2,epsilon,interfacial_area,option)
+                                 volm,dm1,dm2,aperture,epsilon,interfacial_area,option)
   use Option_module
   implicit none
   
@@ -112,7 +113,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
           
     case(1) ! nested cubes
     
-      dy = sec_continuum%nested_cube%length/nmat/2.d0    
+      dy = sec_continuum%nested_cube%length/nmat/2.d0
       r0 = 2.d0*dy
       volm(1) = r0**3
       do m = 2, nmat
@@ -136,6 +137,11 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       vm0 = r0**3
       interfacial_area = am0/vm0
 
+!      override epsilon if aperture defined
+      if (aperture > 0.d0) then
+        epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+      endif
+
       if (icall == 0 .and. OptionPrintToFile(option)) then
         icall = 1
         string = 'DCDM Multiple Continuum Model'
@@ -148,7 +154,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
 
-        aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
+        aperture = r0*((1.d0-epsilon)**(-1.d0/3.d0)-1.d0)
         write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
       endif
 

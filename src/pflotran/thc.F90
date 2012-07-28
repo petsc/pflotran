@@ -213,6 +213,8 @@ subroutine THCSetupPatch(realization)
         
       thc_sec_heat_vars(ghosted_id)%ncells = &
         realization%material_property_array(1)%ptr%secondary_continuum_ncells
+      thc_sec_heat_vars(ghosted_id)%aperture = &
+        realization%material_property_array(1)%ptr%secondary_continuum_aperture
       thc_sec_heat_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
 
@@ -227,6 +229,7 @@ subroutine THCSetupPatch(realization)
                                   thc_sec_heat_vars(ghosted_id)%vol, &
                                   thc_sec_heat_vars(ghosted_id)%dm_minus, &
                                   thc_sec_heat_vars(ghosted_id)%dm_plus, &
+                                  thc_sec_heat_vars(ghosted_id)%aperture, &
                                   thc_sec_heat_vars(ghosted_id)%epsilon, &
                                   area_per_vol,option)
                                 
