@@ -55,8 +55,8 @@ module Secondary_Continuum_module
 !
 ! ************************************************************************** !
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-                                  volm,dm1,dm2,epsilon,interfacial_area,option)
-  use option_module
+                                 volm,dm1,dm2,epsilon,interfacial_area,option)
+  use Option_module
   implicit none
   
   type(sec_continuum_type) :: sec_continuum
@@ -77,14 +77,14 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   igeom = sec_continuum%itype
     
   select case (igeom)      
-    case(0) ! 1D
+    case(0) ! 1D Slab
     
       dy = sec_continuum%slab%length/nmat
       aream0 = sec_continuum%slab%area
       do m = 1, nmat
         volm(m) = dy*aream0
       enddo
-      am0 = 1.d0*aream0
+      am0 = aream0
       vm0 = nmat*dy*aream0
       interfacial_area = am0/vm0
      
@@ -93,6 +93,22 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         dm1(m) = 0.5d0*dy
         dm2(m) = 0.5d0*dy
       enddo
+
+      if (icall == 0 .and. OptionPrintToFile(option)) then
+        icall = 1
+        string = 'DCDM Multiple Continuum Model'
+        write(option%fid_out,'(/,2x,a,/)') trim(string)
+        string = 'Slab'
+        write(option%fid_out,'(2x,a,/)') trim(string)
+        num_density = (1.d0-epsilon)/vm0
+        write(option%fid_out,'(2x,"number density: ",11x,1pe12.4," m^(-3)")') num_density
+        write(option%fid_out,'(2x,"matrix block size: ",8x,1pe12.4," m")') sec_continuum%slab%length
+        write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
+        write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
+
+!       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
+!       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
+      endif
           
     case(1) ! nested cubes
     
@@ -120,7 +136,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       vm0 = r0**3
       interfacial_area = am0/vm0
 
-      if (icall == 0) then
+      if (icall == 0 .and. OptionPrintToFile(option)) then
         icall = 1
         string = 'DCDM Multiple Continuum Model'
         write(option%fid_out,'(/,2x,a,/)') trim(string)
@@ -161,6 +177,22 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       am0 = 4.d0*pi*r0**2
       vm0 = am0*r0/3.d0
       interfacial_area = am0/vm0
+
+      if (icall == 0 .and. OptionPrintToFile(option)) then
+        icall = 1
+        string = 'DCDM Multiple Continuum Model'
+        write(option%fid_out,'(/,2x,a,/)') trim(string)
+        string = 'Nested Spheres'
+        write(option%fid_out,'(2x,a,/)') trim(string)
+        num_density = (1.d0-epsilon)/vm0
+        write(option%fid_out,'(2x,"number density: ",11x,1pe12.4," m^(-3)")') num_density
+        write(option%fid_out,'(2x,"sphere radius: ",8x,1pe12.4," m")') sec_continuum%nested_sphere%radius
+        write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
+        write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
+
+!       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
+!       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
+      endif
                         
   end select
   
