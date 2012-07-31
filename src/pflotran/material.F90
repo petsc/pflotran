@@ -45,6 +45,9 @@ module Material_module
     PetscReal :: permeability_pwr
     character(len=MAXWORDLENGTH) :: secondary_continuum_name
     PetscReal :: secondary_continuum_length
+    PetscReal :: secondary_continuum_matrix_block_size
+    PetscReal :: secondary_continuum_fracture_spacing
+    PetscReal :: secondary_continuum_radius
     PetscReal :: secondary_continuum_area
     PetscInt :: secondary_continuum_ncells
     PetscReal :: secondary_continuum_epsilon
@@ -121,6 +124,9 @@ function MaterialPropertyCreate()
   material_property%permeability_pwr = 0.d0
   material_property%secondary_continuum_name = ''
   material_property%secondary_continuum_length = 0.d0
+  material_property%secondary_continuum_matrix_block_size = 0.d0
+  material_property%secondary_continuum_fracture_spacing = 0.d0
+  material_property%secondary_continuum_radius = 0.d0
   material_property%secondary_continuum_area = 0.d0
   material_property%secondary_continuum_epsilon = 1.d0
   material_property%secondary_continuum_aperture = 0.d0
@@ -378,6 +384,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    MAXWORDLENGTH,PETSC_TRUE)
               call InputErrorMsg(input,option,'type', &
                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('MATRIX_BLOCK_SIZE')
+              call InputReadDouble(input,option, &
+                                   material_property%secondary_continuum_matrix_block_size)
+              call InputErrorMsg(input,option,'matrix_block_size', &
+                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('FRACTURE_SPACING')
+              call InputReadDouble(input,option, &
+                                   material_property%secondary_continuum_fracture_spacing)
+              call InputErrorMsg(input,option,'fracture_spacing', &
+                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
+            case('RADIUS')
+              call InputReadDouble(input,option, &
+                                   material_property%secondary_continuum_radius)
+              call InputErrorMsg(input,option,'radius', &
+                                 'MATERIAL_PROPERTY, SECONDARY_CONTINUUM')
             case('LENGTH')
               call InputReadDouble(input,option, &
                                    material_property%secondary_continuum_length)

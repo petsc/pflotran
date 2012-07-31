@@ -208,6 +208,9 @@ subroutine THCSetupPatch(realization)
         thc_sec_heat_vars(ghosted_id)%sec_continuum, &
         realization%material_property_array(1)%ptr%secondary_continuum_name, &
         realization%material_property_array(1)%ptr%secondary_continuum_length, &
+        realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
+        realization%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
+        realization%material_property_array(1)%ptr%secondary_continuum_radius, &
         realization%material_property_array(1)%ptr%secondary_continuum_area, &
         option)
         

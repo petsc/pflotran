@@ -25,6 +25,10 @@
 %\usepackage{toc_entr}
 \usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=black, urlcolor=blue]{hyperref}
 
+\definecolor{lightgray}{gray}{0.9}
+\definecolor{lightblue}{rgb}{0.93,0.95,1.0}
+
+
 \textwidth 6.5in
 \textheight 9.5in
 \topmargin -1.0in
@@ -2073,26 +2077,28 @@ Unless otherwise specified, units in the input file are assumed to be as listed 
 \vspace{3mm}
 
 %\rowcolors{row}{odd-row cyan}{even-row green}
-\rowcolors[]{1}{red!20}{red!10}\rowcolors[]{1}{blue!20}{blue!10}
+%\rowcolors[]{1}{red!20}{red!10}\rowcolors[]{1}{blue!20}{blue!10}
+%\rowcolors{1}{}{lightgray}
+\rowcolors{1}{}{lightblue}
 \begin{tabular}{ll}
 \toprule[2pt]
 %\hline
 %Quantity & \multicolumn{1}{c}{Units}\\
-Quantity & Units\\
+Quantity & \multicolumn{1}{c}{Units}\\
 \midrule[1pt]
 %\hline
 Pressure: & Pascal [Pa] (absolute)\\
 %\rowcolor[rgb]{0.5}
 Temperature: & Celcius [C]\\
-Distance: & meter [m]\\
-Volume: & meter$^3$ [m$^3$]\\
-Time: & second [s]\\
-Velocity: & meter/second [m/s]\\
-Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
-Enthalpy: & kilojoule/mole [kJ/mol]\\
-Mass: & kilogram [kg]\\
-Rate: & mass/second [kg/s] or volume/second [m$^3$/s]\\
-Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
+Distance: & Meter [m]\\
+Volume: & Meter$^3$ [m$^3$]\\
+Time: & Second [s]\\
+Velocity: & Meter/Second [m/s]\\
+Concentration: & Molarity [M] or Molality [m] (see MOLAL keyword)\\
+Enthalpy: & KiloJoule/mole [kJ/mol]\\
+Mass: & Kilogram [kg]\\
+Rate: & Kilogram/Second [kg/s] or Cubic Meter/Second [m$^3$/s]\\
+Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \bottomrule[1.5pt]
 %\hline
 \end{tabular}
@@ -3465,11 +3471,15 @@ END
 %\item[(., /, END)]
 \item[SECONDARY\_CONTINUUM] \ Activate with {\tt MULTIPLE\_CONTINUUM} keyword 
 \begin{deflist}{000}
-\item[TYPE] \ {\tt name} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
-\item[LENGTH] \ {\tt <float>} [m] \ length (for SLAB), matrix side (for NESTED\_CUBES), matrix radius (for NESTED\_SPHERES)]
-\item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type (not applicable for other types)
+\item[TYPE] \ {\tt <char>} (SLAB, NESTED\_CUBES, NESTED\_SPHERES)
+\item[LENGTH] \ {\tt <float>} [m] \ length of SLAB type
+\item[AREA] \ {\tt <float>} [m$^2$] \ cross-section area for SLAB type
+\item[MATRIX\_BLOCK\_SIZE] \ {\tt <float>} [m] \ matrix block size for NESTED\_CUBES type
+\item[FRACTURE\_SPACING] \ {\tt <float>} [m] \ fracture spacing for NESTED\_CUBES type
+\item[RADIUS] \ {\tt <float>} [m] \ radius for NESTED\_SPHERES type
 \item[NUM\_CELLS] \ {\tt <int>} \ Number of secondary continuum grid cells
-\item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in the REV
+\item[EPSILON] \ {\tt <float>} \ Volume fraction of the primary continuum (fracture) in REV
+\item[APERTURE] \ {\tt <float>} \ Fracture aperture (if specified overrides epsilon---applicable for nested cubes only)
 \end{deflist}
 \item[(., /, END)]
 \item[RANDOM\_DATASET] \ {\tt permeability\_filename}
@@ -3601,7 +3611,7 @@ specified under the MATERIAL\_PROPERTY keyword.
 
 \begin{tabularx}{\linewidth}{lX}
 %\toprule[1.5pt]
-\bf MULTIPLE\_CONTINUUM & Activate multiple continuum model for heat equation.
+\bf MULTIPLE\_CONTINUUM & Activate multiple continuum model for heat equation. 
 \end{tabularx}
 
 %========================================================================

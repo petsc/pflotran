@@ -14,7 +14,8 @@ module Secondary_Continuum_module
   end type slab_type
   
   type, public :: nested_cube_type
-    PetscReal :: length                       ! input - side of cube
+    PetscReal :: matrix_block_size            ! input - side of cube
+    PetscReal :: fracture_spacing             ! input - fracture spacing
   end type nested_cube_type
   
   type, public :: nested_sphere_type
@@ -56,8 +57,10 @@ module Secondary_Continuum_module
 !
 ! ************************************************************************** !
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-                                 volm,dm1,dm2,aperture,epsilon,interfacial_area,option)
+            volm,dm1,dm2,aperture,epsilon,interfacial_area,option)
+
   use Option_module
+
   implicit none
   
   type(sec_continuum_type) :: sec_continuum
@@ -69,7 +72,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   PetscInt :: igeom, nmat, m
   PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
   PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
-  PetscReal :: num_density, aperture, epsilon
+  PetscReal :: num_density, aperture, epsilon, fracture_spacing, matrix_block_size
 
   PetscInt, save :: icall
 
@@ -112,8 +115,35 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       endif
           
     case(1) ! nested cubes
-    
-      dy = sec_continuum%nested_cube%length/nmat/2.d0
+
+      if (sec_continuum%nested_cube%fracture_spacing > 0.d0) then
+
+        fracture_spacing = sec_continuum%nested_cube%fracture_spacing
+!        override epsilon if aperture defined
+        if (aperture > 0.d0) then
+          r0 = fracture_spacing - aperture
+          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+        else if (epsilon > 0.d0) then
+          r0 = fracture_spacing*(1.d0-epsilon)**(1.d0/3.d0)
+          aperture = r0*((1.d0-epsilon)**(-1.d0/3.d0)-1.d0)
+        endif
+
+      else if (sec_continuum%nested_cube%matrix_block_size > 0.d0) then
+
+        r0 = sec_continuum%nested_cube%matrix_block_size
+
+!        override epsilon if aperture defined
+        if (aperture > 0.d0) then
+          fracture_spacing = r0 + aperture
+          epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
+        else if (epsilon > 0.d0) then
+          fracture_spacing = r0*(1.d0-epsilon)**(-1.d0/3.d0)
+          aperture = fracture_spacing - r0
+        endif
+      endif
+
+      dy = r0/nmat/2.d0
+
       r0 = 2.d0*dy
       volm(1) = r0**3
       do m = 2, nmat
@@ -137,11 +167,6 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       vm0 = r0**3
       interfacial_area = am0/vm0
 
-!      override epsilon if aperture defined
-      if (aperture > 0.d0) then
-        epsilon = 1.d0 - (1.d0 + aperture/r0)**(-3.0)
-      endif
-
       if (icall == 0 .and. OptionPrintToFile(option)) then
         icall = 1
         string = 'DCDM Multiple Continuum Model'
@@ -153,9 +178,8 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"matrix block size: ",8x,1pe12.4," m")') r0
         write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
-
-        aperture = r0*((1.d0-epsilon)**(-1.d0/3.d0)-1.d0)
-        write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
+        write(option%fid_out,'(2x,"fracture aperture: ",8x,1pe12.4," m")') aperture
+        write(option%fid_out,'(2x,"fracture spacing: ",9x,1pe12.4," m")') fracture_spacing
       endif
 
     case(2) ! nested spheres
@@ -216,6 +240,9 @@ end subroutine SecondaryContinuumType
 subroutine SecondaryContinuumSetProperties(sec_continuum, &
                                            sec_continuum_name, & 
                                            sec_continuum_length, &
+                                           sec_continuum_matrix_block_size, &
+                                           sec_continuum_fracture_spacing, &
+                                           sec_continuum_radius, &
                                            sec_continuum_area, &
                                            option)
                                     
@@ -226,8 +253,11 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
   
   type(sec_continuum_type) :: sec_continuum
   type(option_type) :: option
+  PetscReal :: sec_continuum_matrix_block_size
+  PetscReal :: sec_continuum_fracture_spacing
   PetscReal :: sec_continuum_length
   PetscReal :: sec_continuum_area
+  PetscReal :: sec_continuum_radius
   character(len=MAXWORDLENGTH) :: sec_continuum_name
 
   call StringToUpper(sec_continuum_name)
@@ -244,10 +274,11 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
       sec_continuum%slab%area = sec_continuum_area
     case("NESTED_CUBES")
       sec_continuum%itype = 1
-      sec_continuum%nested_cube%length = sec_continuum_length
+      sec_continuum%nested_cube%matrix_block_size = sec_continuum_matrix_block_size
+      sec_continuum%nested_cube%fracture_spacing = sec_continuum_fracture_spacing
     case("NESTED_SPHERES")
       sec_continuum%itype = 2
-      sec_continuum%nested_sphere%radius = sec_continuum_length
+      sec_continuum%nested_sphere%radius = sec_continuum_radius
     case default
       option%io_buffer = 'Keyword "' // trim(sec_continuum_name) // '" not ' // &
                          'recognized in SecondaryContinuumSetProperties()'
