@@ -834,7 +834,7 @@ v_n \eq (d+2\delta)^3 - d^3,
 giving
 \begin{subequations}
 \BA
-\epsilon &\eq \frac{(d+2\delta)^3 - d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
+\epsilon &\eq 1-\frac{d^3}{(d+2\delta)^3} \eq 1-\left(\dfrac{1}{1+\dfrac{2\delta}{d}}\right)^3,\\
 & ~\simeq~ \frac{6\delta}{d}.
 \EA
 \end{subequations}
@@ -842,7 +842,10 @@ The fracture aperture $2\delta$ is found to be in terms of $\epsilon$ and $d$
 \EQ
 2\delta \eq d \left(\frac{1}{(1-\epsilon)^{1/3}} -1\right).
 \EN
+A list of different sub-continua geometries and parameters implemented in PFLOTRAN is given in Table~\ref{tdcdmgeom}. Different independent and dependent parameters for the nested cube geometry are listed in Table~\ref{tnestedcube}.
 The interfacial area $A_{nn'}^\a$ between fracture control volumes is equal to $\Delta y \Delta z$,  $\Delta z \Delta x$, $\Delta x \Delta y$ for $x$, $y$, and $z$ directions, respectively. 
+
+In the case of nested cubes there are four possible parameters $(\epsilon, \, 2\delta, \, l_m,\, l_f)$, where $l_m$ denotes the matrix block size and $l_f$ refers to the fracture spacing, two of which are independent.
 
 The fracture-matrix interfacial area $A_{nM}$ per unit volume is equal to
 \EQ
@@ -854,14 +857,14 @@ where the number density $\N_\b/V$ of secondary continua of type $\b$ is equal t
 \EN
 and $A_\b^0$ and $V_\b^0$ refer to the area and volume of each geometric type as listed in Table~\ref{tdcdm}.
 \begin{table}\centering
-\caption{DCDM geometric parameters.}\label{tdcdm}
+\caption{DCDM geometric parameters.}\label{tdcdmgeom}
 \vspace{3mm}
 \begin{tabular}{lcc}
 \toprule
 Geometry & Area $A_\b^0$ & Volume $V_\b^0$\\
 \midrule
 Slab & $A$ & $A l$ \\
-Nested Squares & $6d^2$ & $d^3$\\
+Nested Cubes & $6d^2$ & $d^3$\\
 Nested Spheres & $4 \pi R^2$ & $\frac{4}{3}\pi R^3$\\
 \bottomrule
 \end{tabular}
@@ -871,6 +874,23 @@ The primary-secondary coupling term can then be written in the form
 \sum_\b\frac{\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) A_{nM}^\b \eq V_n
 \sum_\b\frac{\epsilon_\b\kappa_{nM}^{\a\b}}{d_n+d_{M}}\big(T_n^\a-T_{M}^\b\big) \frac{A_\b^0}{V_\b^0}.
 \EN
+
+\begin{table}\centering
+\caption{Independent and dependent nested cube parameters.}
+\label{tnestedcube}
+\vspace{3mm}
+\begin{tabular}{lccc}
+\toprule
+\multicolumn{2}{c}{Independent} & \multicolumn{2}{c}{Dependent}\\
+\midrule
+$\epsilon$ & $l_f$ & $2\delta = l_f - l_m$ & $l_m = l_f(1-\epsilon)^{1/3}$\\
+$\epsilon$ & $l_m$ & $2\delta = l_f - l_m$ & $l_f = l_m(1-\epsilon)^{-1/3}$\\
+$2\delta$ & $l_f$ & $\epsilon = 1-(l_m/l_f)^3$ & $l_m = l_f - 2\delta$\\
+$2\delta$ & $l_m$ & $\epsilon = 1-(l_m/_f)^3$ & $l_f = l_m + 2\delta$\\
+$2\delta$ & $\epsilon$ & $l_m = 2\delta \Big(\dfrac{1}{(1-\epsilon)^{1/3}}-1\Big)^{-1}$ & $l_m = l-2\delta$\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 In terms of partial differential equations the heat conservation equations may be written as
 \begin{subequations}
