@@ -362,4 +362,7 @@ PetscInt, parameter :: DECOUPLED     = 0
 PetscInt, parameter :: SEQ_COUPLED   = 1
 PetscInt, parameter :: FULLY_COUPLED = 2
 
+PetscInt, parameter :: KINEMATIC_WAVE = 1
+PetscInt, parameter :: DIFFUSION_WAVE = 2
+
 #define HASH

@@ -70,6 +70,7 @@ module Option_module
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
+    PetscInt :: surface_flow_formulation
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -442,6 +443,7 @@ subroutine OptionInitRealization(option)
 #ifdef SURFACE_FLOW
    option%nsurfflowdof = 0
    option%subsurf_surf_coupling = DECOUPLED
+   option%surface_flow_formulation = KINEMATIC_WAVE
 #endif
 
   option%tranmode = ""

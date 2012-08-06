@@ -92,7 +92,7 @@ END
 :=========================== times ============================================
 TIME
   :FINAL_TIME 3600.d0 s
-  FINAL_TIME 2.d0 s
+  FINAL_TIME 2000.d0 s
   INITIAL_TIMESTEP_SIZE 1.0 s
   MAXIMUM_TIMESTEP_SIZE 1.0 s        ! produces CFL ~<= 1.
 END
@@ -139,6 +139,12 @@ FLOW_CONDITION recharge
   FLUX 0d-9  ! 25 cm/yr
 END
 
+FLOW_CONDITION from_surface
+  TYPE
+    PRESSURE seepage
+  /
+  PRESSURE 101325.d0
+END
 
 :=========================== condition couplers ===============================
 : initial condition
@@ -158,6 +164,11 @@ BOUNDARY_CONDITION subsurf_recharge
   REGION top
 END
 noskip
+
+BOUNDARY_CONDITION from_surface_bc
+  FLOW_CONDITION from_surface
+  REGION top
+END
 :=========================== stratigraphy couplers ============================
 STRATA
   REGION all
@@ -172,6 +183,9 @@ END
 :=========================== surface flow ======================================
 :===============================================================================
 SURFACE_FLOW
+
+:FLOW_FORMULATION KINEMATIC
+FLOW_FORMULATION DIFFUSIVE
 
 SURF_GRID
   TYPE unstructured top_parking_lot_10_1_3.ss
