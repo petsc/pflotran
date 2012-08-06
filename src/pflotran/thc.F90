@@ -3018,16 +3018,18 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       if (option%sec_vars_update) then
         call THCSecHeatAuxVarCompute(thc_sec_heat_vars(ghosted_id), &
                             global_aux_vars(ghosted_id), &
-                            thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+                            thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                             sec_dencpr, &
                             option)
       endif       
     
       call THCSecondaryHeat(thc_sec_heat_vars(ghosted_id), &
                           global_aux_vars(ghosted_id), &
-                          thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+!                         thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+                          thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                           sec_dencpr, &
-                          option,res_sec_heat) 
+                          option,res_sec_heat)
+
       r_p(iend) = r_p(iend) - res_sec_heat*option%flow_dt*volume_p(local_id)
     enddo   
     option%sec_vars_update = PETSC_FALSE
@@ -3529,7 +3531,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
     if (option%use_mc) then
       call THCSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
-                        thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+!                       thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
+                        thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                         option,jac_sec_heat)
                         
