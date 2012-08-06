@@ -45,6 +45,8 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_ntrandof
     type(mfd_type), pointer :: MFD
     VecScatter :: tvd_ghost_scatter
+    
+    PetscInt :: stencil_width
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -122,6 +124,8 @@ function DiscretizationCreate()
   
   nullify(discretization%grid)
   nullify(discretization%MFD)
+  
+  discretization%stencil_width = 1
 
   discretization%tvd_ghost_scatter = 0
   
@@ -258,7 +262,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         call InputErrorMsg(input,option,'Y direction','Origin')
         call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
         call InputErrorMsg(input,option,'Z direction','Origin')        
-      case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX')
+      case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX','STENCIL_WIDTH')
       case('DXYZ','BOUNDS')
         call InputSkipToEND(input,option,word) 
       case default
@@ -525,6 +529,10 @@ subroutine DiscretizationRead(discretization,input,option)
                              'GRID')
         endif          
       case ('INVERT_Z')
+      case ('STENCIL_WIDTH')
+        call InputReadInt(input,option,discretization%stencil_width)
+        call InputErrorMsg(input,option,'stencil_width', &
+                           'GRID')
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                  ' not recognized in DISCRETIZATION, second read.'
@@ -558,7 +566,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
   type(option_type) :: option
       
   PetscInt :: ndof
-  PetscInt, parameter :: stencil_width = 1
+  !PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
   PetscInt :: i
   type(unstructured_grid_type), pointer :: ugrid
@@ -596,18 +604,18 @@ subroutine DiscretizationCreateDMs(discretization,option)
   !-----------------------------------------------------------------------
   ndof = 1
   call DiscretizationCreateDM(discretization,discretization%dm_1dof, &
-                              ndof,stencil_width,option)
+                              ndof,discretization%stencil_width,option)
   
   if (option%nflowdof > 0) then
     ndof = option%nflowdof
     call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
-                                ndof,stencil_width,option)
+                                ndof,discretization%stencil_width,option)
   endif
   
   if (option%ntrandof > 0) then
     ndof = option%ntrandof
     call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
-                                ndof,stencil_width,option)
+                                ndof,discretization%stencil_width,option)
   endif
 
 
