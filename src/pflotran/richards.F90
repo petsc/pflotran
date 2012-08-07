@@ -2511,10 +2511,12 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        if (ukvr*Dq>floweps) then
         v_darcy = Dq * ukvr * dphi
 #ifdef SURFACE_FLOW
-        call density(option%reference_temperature,option%reference_pressure,rho)
-        v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
-                            /option%flow_dt/(-option%gravity(3))/rho
-        v_darcy = min(v_darcy,v_darcy_allowable)
+        if(option%nsurfflowdof>0) then
+          call density(option%reference_temperature,option%reference_pressure,rho)
+          v_darcy_allowable = (global_aux_var_up%pres(1)-option%reference_pressure) &
+                              /option%flow_dt/(-option%gravity(3))/rho
+          v_darcy = min(v_darcy,v_darcy_allowable)
+        endif
 #endif
        endif
       endif 
