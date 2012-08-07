@@ -468,11 +468,11 @@ subroutine Init(simulation)
                                 PETSC_NULL_FUNCTION,ierr) 
 
     
-    
-    if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-        dabs(option%saturation_change_limit) > 0.d0) then
-      select case(option%iflowmode)
-        case(RICHARDS_MODE)
+ 
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+            dabs(option%saturation_change_limit) > 0.d0) then
 #ifndef HAVE_SNES_API_3_2
           call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
           call SNESLineSearchSetPreCheck(linesearch, &
@@ -483,8 +483,25 @@ subroutine Init(simulation)
                                          RichardsCheckUpdatePre, &
                                          realization,ierr)
 #endif
-      end select
-    endif
+        endif
+      case(THC_MODE)
+        if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
+            dabs(option%pressure_change_limit) > 0.d0 .or. &
+            dabs(option%temperature_change_limit) > 0.d0) then
+#ifndef HAVE_SNES_API_3_2
+          call SNESGetSNESLineSearch(flow_solver%snes, linesearch, ierr)
+          call SNESLineSearchSetPreCheck(linesearch, &
+                                         THCCheckUpdatePre, &
+                                         realization,ierr)
+#else        
+          call SNESLineSearchSetPreCheck(flow_solver%snes, &
+                                         THCCheckUpdatePre, &
+                                         realization,ierr)
+#endif          
+        endif
+    end select
+    
+    
     if (option%check_stomp_norm) then
       select case(option%iflowmode)
         case(RICHARDS_MODE)

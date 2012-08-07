@@ -269,6 +269,16 @@ subroutine TimestepperRead(stepper,input,option)
         call InputReadDouble(input,option,option%saturation_change_limit)
         call InputErrorMsg(input,option,'SATURATION_CHANGE_LIMIT', &
                            'TIMESTEPPER')
+                           
+      case('PRESSURE_CHANGE_LIMIT')
+        call InputReadDouble(input,option,option%pressure_change_limit)
+        call InputErrorMsg(input,option,'PRESSURE_CHANGE_LIMIT', &
+                           'TIMESTEPPER')
+                           
+      case('TEMPERATURE_CHANGE_LIMIT')
+        call InputReadDouble(input,option,option%temperature_change_limit)
+        call InputErrorMsg(input,option,'TEMPERATURE_CHANGE_LIMIT', &
+                           'TIMESTEPPER')
 
       case default
         option%io_buffer = 'Timestepper option: '//trim(keyword)// &

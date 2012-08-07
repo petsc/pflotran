@@ -31,7 +31,7 @@ module THC_module
          THCComputeMassBalance, THCResidualToMass, &
          THCSecondaryHeat, THCSecondaryHeatJacobian, & 
          THCUpdateAuxVars, THCDestroy, &
-         THCCheckUpdatePost
+         THCCheckUpdatePost, THCCheckUpdatePre
          
   PetscInt, parameter :: jh2o = 1
 
@@ -305,6 +305,167 @@ subroutine THCSetupPatch(realization)
   enddo
 
 end subroutine THCSetupPatch
+
+! ************************************************************************** !
+!
+! THCCheckUpdatePre: Checks update prior to update
+! author: Satish Karra
+! date: 08/02/12
+!
+! ************************************************************************** !
+#ifndef HAVE_SNES_API_3_2
+subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
+#else
+subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
+#endif
+
+  use Realization_module
+  use Grid_module
+  use Field_module
+  use Option_module
+  use Saturation_Function_module
+  use Patch_module
+ 
+  implicit none
+  
+#ifndef HAVE_SNES_API_3_2
+  SNESLineSearch :: line_search
+#else
+  SNES :: snes_
+#endif
+  Vec :: P
+  Vec :: dP
+  ! ignore changed flag for now.
+  PetscBool :: changed
+  type(realization_type) :: realization
+  
+  PetscReal, pointer :: P_p(:)
+  PetscReal, pointer :: dP_p(:)
+  PetscReal, pointer :: r_p(:)
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(thc_auxvar_type), pointer :: thc_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  PetscInt :: local_id, ghosted_id
+  PetscReal :: P0, P1, P_R, delP, delP_old
+  PetscReal :: scale, press_limit, temp_limit
+  PetscInt :: iend, istart
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  option => realization%option
+  field => realization%field
+  thc_aux_vars => realization%patch%aux%THC%aux_vars
+  global_aux_vars => realization%patch%aux%Global%aux_vars
+
+  if (dabs(option%pressure_change_limit) > 0.d0) then
+
+    patch => realization%patch
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+
+    press_limit = dabs(option%pressure_change_limit)
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (realization%patch%imat(ghosted_id) <= 0) cycle
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      P0 = P_p(istart)
+      delP = dP_p(istart)
+      if (press_limit < dabs(delP)) then
+        write(option%io_buffer,'("dP_trunc:",1i7,2es15.7)') &
+          grid%nG2A(grid%nL2G(local_id)),press_limit,dabs(delP)
+        call printMsgAnyRank(option)
+      endif
+      delP = sign(min(dabs(delP),press_limit),delP)
+      dP_p(istart) = delP
+    enddo
+    
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+
+  endif
+  
+  if (dabs(option%temperature_change_limit) > 0.d0) then
+      
+    patch => realization%patch
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+
+    temp_limit = dabs(option%temperature_change_limit)
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      P0 = P_p(iend)
+      delP = dP_p(iend)
+      if (abs(delP) > abs(temp_limit)) then
+        write(option%io_buffer,'("dT_trunc:",1i7,2es15.7)') &
+          grid%nG2A(grid%nL2G(local_id)),temp_limit,dabs(delP)
+        call printMsgAnyRank(option)
+      endif
+      delP = sign(min(dabs(delP),temp_limit),delP)
+      dP_p(iend) = delP
+    enddo
+    
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+    
+  endif
+
+
+  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+    ! P^p+1 = P^p - dP^p
+    P_R = option%reference_pressure
+    scale = option%pressure_dampening_factor
+
+    call GridVecGetArrayF90(grid,dP,dP_p,ierr)
+    call GridVecGetArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+    do local_id = 1, grid%nlmax
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      delP = dP_p(istart)
+      P0 = P_p(istart)
+      P1 = P0 - delP
+      if (P0 < P_R .and. P1 > P_R) then
+        write(option%io_buffer,'("U -> S:",1i7,2f12.1)') &
+          grid%nG2A(grid%nL2G(local_id)),P0,P1 
+        call printMsgAnyRank(option)
+#if 0
+        ghosted_id = grid%nL2G(local_id)
+        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id),ghosted_id)
+        write(option%io_buffer,'("Residual:",es15.7)') r_p(istart)
+        call printMsgAnyRank(option)
+#endif
+      else if (P1 < P_R .and. P0 > P_R) then
+        write(option%io_buffer,'("S -> U:",1i7,2f12.1)') &
+          grid%nG2A(grid%nL2G(local_id)),P0,P1
+        call printMsgAnyRank(option)
+#if 0
+        ghosted_id = grid%nL2G(local_id)
+        call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
+                                  global_aux_vars(ghosted_id),ghosted_id)
+        write(option%io_buffer,'("Residual:",es15.7)') r_p(istart)
+        call printMsgAnyRank(option)
+#endif
+      endif
+      ! transition from unsaturated to saturated
+      if (P0 < P_R .and. P1 > P_R) then
+        dP_p(istart) = scale*delP
+      endif
+    enddo
+    call GridVecRestoreArrayF90(grid,dP,dP_p,ierr)
+    call GridVecRestoreArrayF90(grid,P,P_p,ierr)
+    call GridVecGetArrayF90(grid,field%flow_r,r_p,ierr)
+  endif
+
+end subroutine THCCheckUpdatePre
 
 ! ************************************************************************** !
 !
