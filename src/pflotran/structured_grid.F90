@@ -182,7 +182,7 @@ end function StructuredGridCreate
 !
 ! ************************************************************************** !
 subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
-                                  option)
+                                  stencil_type,option)
 
   use Option_module
         
@@ -198,7 +198,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   type(structured_grid_type) :: structured_grid
   DM :: da
   PetscInt :: ndof
-  PetscInt :: stencil_width
+  PetscInt :: stencil_width,stencil_type
 
   PetscErrorCode :: ierr
 
@@ -207,7 +207,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   !-----------------------------------------------------------------------
   ! This code is for the DMDACreate3D() interface in PETSc versions >= 3.2 --RTM
   call DMDACreate3D(option%mycomm,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE, &
-                  DMDA_BOUNDARY_NONE,DMDA_STENCIL_STAR, &
+                  DMDA_BOUNDARY_NONE,stencil_type, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
                   ndof,stencil_width, &
