@@ -30,6 +30,7 @@ module Surface_Flow_module
          SurfaceFlowKinematic, &
          SurfaceFlowKinematicDerivative, &
          SurfaceFlowDiffusion, &
+         SurfaceFlowDiffusionDerivative, &
          SurfaceFlowResidual, &
          SurfaceFlowJacobian, &
          SurfaceFlowMaxChange, &
@@ -808,6 +809,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   PetscReal :: hw_up, hw_dn ! water height [m]
   PetscReal, pointer :: xc(:),yc(:),zc(:)
   PetscReal :: dx, dy, dz, dist
+  PetscReal :: vel
   
   patch => surf_realization%patch
   grid => patch%grid
@@ -881,7 +883,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
           call SurfaceFlowKinematic(hw_up,mannings_loc_p(ghosted_id_up), &
                                     hw_dn,mannings_loc_p(ghosted_id_dn), &
                                     slope, cur_connection_set%area(iconn), &
-                                    option,Res)
+                                    option,vel,Res)
         case (DIFFUSION_WAVE)
           call SurfaceFlowDiffusion(hw_up,zc(ghosted_id_up), &
                                     mannings_loc_p(ghosted_id_up), &
@@ -889,11 +891,12 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
                                     mannings_loc_p(ghosted_id_dn), &
                                     dist, &
                                     cur_connection_set%area(iconn), &
-                                    option,Res)
-          !write(*,*),'Res: ',ghosted_id_up,ghosted_id_dn,Res(1)
+                                    option,vel,Res)
       end select
 
-      !write(*,*),sum_connection,hw_up,xx_loc_p(ghosted_id_up)
+      patch%internal_velocities(1,sum_connection) = vel
+      !patch%internal_fluxes(1,sum_connection) = Res(1)
+      
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
@@ -919,7 +922,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       sum_connection = sum_connection + 1
     
       local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
+      ghosted_id_dn = grid%nL2G(local_id)
   
       dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
@@ -937,12 +940,13 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
         write(*,*),'setting pressure values to zero for >> ',ghosted_id_dn
       endif
 
-      !write(*,*),'in BCflux:',hw_dn,xx_loc_p(ghosted_id)
       call SurfaceBCFlux( boundary_condition%flow_condition%itype, &
                           hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
-                          cur_connection_set%area(iconn), option,Res)
-      !write(*,*),sum_connection,local_id,Res(1)
+                          cur_connection_set%area(iconn),option,vel,Res)
 
+      patch%boundary_velocities(1,sum_connection) = vel
+      !patch%boundary_fluxes(1,sum_connection) = Res(1)
+      
       r_p(local_id) = r_p(local_id) - Res(1)
     enddo
     boundary_condition => boundary_condition%next
@@ -1553,6 +1557,7 @@ subroutine SurfaceFlowKinematic(hw_up, &
                                 slope, &
                                 length, &
                                 option, &
+                                vel, &
                                 Res)
 
   use Option_module
@@ -1563,18 +1568,22 @@ subroutine SurfaceFlowKinematic(hw_up, &
   PetscReal :: hw_up, hw_dn
   PetscReal :: slope
   PetscReal :: mannings_up, mannings_dn
-  PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
   PetscReal :: length
+  PetscReal :: vel                      ! units: m/s
+  PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
   
   PetscReal :: flux       ! units: m^2/s
   
   ! initialize
   flux = 0.d0
+  vel  = 0.d0
   
   if (slope<0.d0) then
-    flux =  sqrt(dabs(slope))/mannings_up*((hw_up)**(5.d0/3.d0))
+    vel =  sqrt(dabs(slope))/mannings_up*((hw_up)**(2.d0/3.d0))
+    flux=  hw_up*vel
   else
-    flux = -sqrt(dabs(slope))/mannings_dn*((hw_dn)**(5.d0/3.d0))
+    vel = -sqrt(dabs(slope))/mannings_dn*((hw_dn)**(2.d0/3.d0))
+    flux=  hw_dn*vel
   endif
 
   Res(1) = flux*length
@@ -1640,6 +1649,7 @@ subroutine SurfaceFlowDiffusion(hw_up, &
                                 dist, &
                                 length, &
                                 option, &
+                                vel, &
                                 Res)
 
   use Option_module
@@ -1651,8 +1661,9 @@ subroutine SurfaceFlowDiffusion(hw_up, &
   PetscReal :: zc_up, zc_dn
   PetscReal :: head_up, head_dn
   PetscReal :: mannings_up, mannings_dn
-  PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
   PetscReal :: dist, length
+  PetscReal :: vel                      ! units: m/s
+  PetscReal :: Res(1:option%nflowdof)   ! units: m^3/s
 
   PetscReal :: flux       ! units: m^2/s
   PetscReal :: Cd
@@ -1661,7 +1672,7 @@ subroutine SurfaceFlowDiffusion(hw_up, &
 
   ! initialize
   flux = 0.d0
-  Cd = 4.0d0
+  Cd = 1.0d0
 
   head_up = hw_up + zc_up
   head_dn = hw_dn + zc_dn
@@ -1690,10 +1701,10 @@ subroutine SurfaceFlowDiffusion(hw_up, &
     endif
   endif
 
-  flux = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
-            (hw_half**(5.d0/3.d0))* &
+  vel = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
+            (hw_half**(2.d0/3.d0))* &
             (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
-  
+  flux = hw_half*vel
   Res(1) = flux*length
 
 end subroutine SurfaceFlowDiffusion
@@ -1734,7 +1745,7 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   flux_dh_dn = 0.d0
   
   ! initialize
-  Cd = 4.0d0
+  Cd = 1.0d0
   dhw_half_dhw_up = 0.d0
   dhw_half_dhw_dn = 0.d0
 
@@ -1749,7 +1760,7 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
         dhw_half_dhw_dn = 0.5d0
         dhw_half_dhw_up = 0.5d0
       else
-        hw_half = hw_up
+        hw_half         = hw_up
         dhw_half_dhw_up = 1.d0
       endif
     else
@@ -1778,14 +1789,14 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   !
   term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
   term2 = term2 *(-(head_dn-head_up))/2.d0/ &
-          (abs((head_dn-head_up))**(3.d0/2.d0))
+          (abs((head_dn-head_up) + eps)**(3.d0/2.d0))
   
   Jup = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
           
   !
   term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
   term2 = term2 *((head_dn-head_up))/2.d0/ &
-          (abs((head_dn-head_up))**(3.d0/2.d0))
+          (abs((head_dn-head_up) + eps)**(3.d0/2.d0))
   Jdn = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
 
 end subroutine SurfaceFlowDiffusionDerivative
@@ -1960,39 +1971,43 @@ end subroutine SurfaceFlowAccumulationDerivative
 !! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceBCFlux(ibndtype,head,slope,mannings, &
-                         length,option,Res)
+                         length,option,vel,Res)
 
   use Option_module
   
   implicit none
 
   type(option_type) :: option
-  PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: head
   PetscReal :: slope
   PetscReal :: mannings
   PetscReal :: length
   PetscReal :: flux
   PetscInt  :: ibndtype(:)
+  PetscReal :: vel
+  PetscReal :: Res(1:option%nflowdof) 
 
   PetscInt :: pressure_bc_type
 
+  flux = 0.d0
+  vel = 0.d0
+  
   ! Flow  
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   
   select case(pressure_bc_type)
     case (ZERO_GRADIENT_BC)
       if (slope<0.d0) then
-        flux =  0.d0
+        vel =  0.d0
       else
-        flux = -sqrt(dabs(slope))/mannings*((head)**(5.d0/3.d0))
+        vel = -sqrt(dabs(slope))/mannings*((head)**(2.d0/3.d0))
       endif
     case default
       option%io_buffer = 'Uknown pressure_bc_type for surface flow '
   end select
   
+  flux = head*vel
   Res(1) = flux*length
-  !write(*,*),'SurfaceBCFlux: ',head,Res(1)
 
 end subroutine SurfaceBCFlux
 
