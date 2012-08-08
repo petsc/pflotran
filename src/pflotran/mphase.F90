@@ -2521,13 +2521,13 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (patch%imat(ng) <= 0) cycle
     endif
         
-    istart = (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    istart = (ng-1) * option%nflowdof + 1; iend = istart - 1 + option%nflowdof
     iphase = int(iphase_loc_p(ng))
     ghosted_id = ng
-    call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
-      global_aux_vars(ng), iphase,&
-      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-      realization%fluid_properties,option, xphi)
+    call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0), &
+      global_aux_vars(ng), iphase, &
+      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr, &
+      realization%fluid_properties,option,xphi)
 
 #if 1
     if (associated(global_aux_vars)) then
@@ -2551,8 +2551,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
     if (option%numerical_derivatives_flow) then
-      mphase%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+      mphase%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac !* 1.D-3
       mphase%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+
+!     print *,'mphase_delx: ',dfac,mphase%delx(1,ng),mphase%delx(2,ng),mphase%delx(3,ng), &
+!     xx_loc_p((ng-1)*option%nflowdof+1),xx_loc_p((ng-1)*option%nflowdof+2),xx_loc_p((ng-1)*option%nflowdof+3)
+
       select case (iphase)
         case (1)
           if (xx_loc_p((ng-1)*option%nflowdof+3) < 5D-5) then
@@ -2560,16 +2564,16 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
           else
             mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
           endif
-          if (mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
-          if (mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
+          if (mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng) >= 0.D0) mphase%delx(3,ng) = 1D-8
+          if (mphase%delx(3,ng) > -1D-8 .and. mphase%delx(3,ng) < 0.D0) mphase%delx(3,ng) = -1D-8
         case(2)  
           if (xx_loc_p((ng-1)*option%nflowdof+3) < 0.9995) then
             mphase%delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
           else
             mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
           endif
-          if (mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
-          if (mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
+          if (mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng) >= 0.D0) mphase%delx(3,ng) = 1D-8
+          if (mphase%delx(3,ng) > -1D-8 .and. mphase%delx(3,ng) < 0.D0) mphase%delx(3,ng) = -1D-8
         case(3)
           if (xx_loc_p((ng-1)*option%nflowdof+3) <= 0.9) then
             mphase%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
@@ -2577,13 +2581,13 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
             mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
           endif
            
-          if (mphase%delx(3,ng) < 1D-12 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) = 1D-12
-          if (mphase%delx(3,ng) >-1D-12 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-12
+          if (mphase%delx(3,ng) < 1D-12 .and. mphase%delx(3,ng) >= 0.D0) mphase%delx(3,ng) = 1D-12
+          if (mphase%delx(3,ng) > -1D-12 .and. mphase%delx(3,ng) < 0.D0) mphase%delx(3,ng) = -1D-12
         
-          if ((mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
+          if ((mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3)) > 1.D0) then
             mphase%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
           endif
-          if ((mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
+          if ((mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3)) < 0.D0) then
             mphase%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
           endif
       end select
@@ -3463,8 +3467,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         ra(neq,nvar) = (ResInc(local_id,neq,nvar) - mphase%res_old_AR(local_id,neq)) &
                      /mphase%delx(nvar,ghosted_id)
 
-        print *,'finite dif: ',neq,nvar,ra(neq,nvar),ResInc(local_id,neq,nvar),mphase%res_old_AR(local_id,neq), &
-        mphase%delx(nvar,ghosted_id)
+!       print *,'finite dif: ',neq,nvar,ra(neq,nvar),ResInc(local_id,neq,nvar),mphase%res_old_AR(local_id,neq), &
+!       mphase%delx(nvar,ghosted_id)
 
 !       if (max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
       enddo
@@ -3479,10 +3483,6 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
     Jup = ra(1:option%nflowdof,1:option%nflowdof)
 
-    do i=1,3
-      print *,'jacobian0: ',option%idt_switch,i,(j,Jup(i,j),j=1,3)
-    enddo
-
     if (option%use_mc) then
 
       call MphaseSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
@@ -3493,10 +3493,6 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       Jup(option%nflowdof,2) = Jup(option%nflowdof,2) - &
                                jac_sec_heat*volume_p(local_id) 
     endif
-
-    do i=1,3
-      print *,'jacobian1: ',i,(j,Jup(i,j),j=1,3)
-    enddo
 
 !    if(volume_p(local_id)>1.D0 )&    !clu removed 05/02/2011
     Jup = Jup / volume_p(local_id)
