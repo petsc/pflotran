@@ -2496,7 +2496,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,r, r_p, ierr)
   call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
  
-  call GridVecGetArrayF90(grid,field%flow_yy,yy_p,ierr)
+! call GridVecGetArrayF90(grid,field%flow_yy,yy_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -2530,14 +2530,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       realization%fluid_properties,option, xphi)
 
 #if 1
-     if( associated(global_aux_vars))then
-       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+     if (associated(global_aux_vars)) then
+       global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres - &
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
        global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+       global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
 !      global_aux_vars(ghosted_id)%sat_store = 
-       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+       global_aux_vars(ghosted_id)%fugacoeff(1) = xphi
+       global_aux_vars(ghosted_id)%den(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
@@ -2555,35 +2555,35 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         mphase%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
         select case (iphase)
         case (1)
-           if(xx_loc_p((ng-1)*option%nflowdof+3) < 5D-5)then
+           if (xx_loc_p((ng-1)*option%nflowdof+3) < 5D-5) then
                mphase%delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3)
            else
                mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
-           if( mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
-           if( mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
+           if (mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
+           if (mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
         case(2)  
-           if(xx_loc_p((ng-1)*option%nflowdof+3) < 0.9995)then
+           if (xx_loc_p((ng-1)*option%nflowdof+3) < 0.9995) then
                mphase%delx(3,ng) =  dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            else
                mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
-           if( mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
-           if( mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
+           if (mphase%delx(3,ng) < 1D-8 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) =1D-8
+           if (mphase%delx(3,ng) >-1D-8 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-8
         case(3)
-           if(xx_loc_p((ng-1)*option%nflowdof+3) <= 0.9)then
+           if (xx_loc_p((ng-1)*option%nflowdof+3) <= 0.9) then
               mphase%delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            else
               mphase%delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
            endif
            
-           if( mphase%delx(3,ng) < 1D-12 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) = 1D-12
-           if( mphase%delx(3,ng) >-1D-12 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-12
+           if (mphase%delx(3,ng) < 1D-12 .and. mphase%delx(3,ng)>=0.D0) mphase%delx(3,ng) = 1D-12
+           if (mphase%delx(3,ng) >-1D-12 .and. mphase%delx(3,ng)<0.D0) mphase%delx(3,ng) =-1D-12
         
-           if(( mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+           if ((mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
               mphase%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
            endif
-           if(( mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+           if ((mphase%delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
               mphase%delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
            endif
         end select
@@ -2615,7 +2615,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       vol_frac_prim = mphase_sec_heat_vars(ghosted_id)%epsilon
     endif
     
-    call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
+    call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                             global_aux_vars(ghosted_id), &
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
@@ -2645,6 +2645,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       if (option%sec_vars_update) then
         call MphaseSecHeatAuxVarCompute(mphase_sec_heat_vars(ghosted_id), &
+                        aux_vars(ghosted_id)%aux_var_elem(0), &
                         global_aux_vars(ghosted_id), &
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         sec_dencpr, &
@@ -2652,6 +2653,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       endif       
     
       call MphaseSecondaryHeat(mphase_sec_heat_vars(ghosted_id), &
+                        aux_vars(ghosted_id)%aux_var_elem(0), &
                         global_aux_vars(ghosted_id), &
                         mphase_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         sec_dencpr, &
@@ -2997,7 +2999,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   endif
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
+! call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -4104,19 +4106,21 @@ end function MphaseGetTecplotHeader
 ! date: 06/26/12
 !
 ! ************************************************************************** !
-subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
+subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
                             therm_conductivity,dencpr, &
                             option,res_heat)
                             
   use Option_module 
   use Global_Aux_module
   use Secondary_Continuum_module
-  
+
   implicit none
   
   type(sec_heat_type) :: sec_heat_vars
+  type(mphase_auxvar_elem_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
+
   PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
   PetscReal, allocatable :: rhs(:), area(:), vol(:), dm_plus(:), dm_minus(:)
   PetscInt :: i, ngcells
@@ -4126,14 +4130,15 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,global_aux_var, &
   PetscReal :: m
   PetscReal :: temp_current_N
   PetscReal :: res_heat
-  
+
   ngcells = sec_heat_vars%ncells
   area = sec_heat_vars%area
   vol = sec_heat_vars%vol
   dm_plus = sec_heat_vars%dm_plus
   dm_minus = sec_heat_vars%dm_minus
   area_fm = sec_heat_vars%interfacial_area
-  temp_primary_node = global_aux_var%temp(1)
+! temp_primary_node = global_aux_var%temp(1)
+  temp_primary_node = aux_var%temp
 
   allocate(coeff_left(ngcells))
   allocate(coeff_diag(ngcells))
