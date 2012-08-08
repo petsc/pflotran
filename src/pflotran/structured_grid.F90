@@ -1958,14 +1958,15 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
 
   icount = 0
   
-  select case(stencil_type)
-    case(DMDA_STENCIL_STAR)
-      do ii = max(i-stencil_width_i,1), &
-                min(i+stencil_width_i,structured_grid%ngx)
-        do jj = max(j-stencil_width_j,1), & 
+  ! gb:08/08/13 Dependence on stencil_type is not necessary.
+  !select case(stencil_type)
+  !  case(DMDA_STENCIL_STAR)
+      do kk = max(k-stencil_width_k,1), &
+                min(k+stencil_width_k,structured_grid%ngz)
+        do jj = max(j-stencil_width_j,1), &
                   min(j+stencil_width_j,structured_grid%ngy)
-          do kk = max(k-stencil_width_k,1), &
-                    min(k+stencil_width_k,structured_grid%ngz)
+          do ii = max(i-stencil_width_i,1), &
+                    min(i+stencil_width_i,structured_grid%ngx)
             if (ii == i .and. jj == j .and. kk == k) then
             ! do nothing
             else
@@ -1976,11 +1977,11 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
           enddo
         enddo          
       enddo
-    case(DMDA_STENCIL_BOX)
-      option%io_buffer = 'DMDA_STENCIL_BOX not yet supported in ' // &
-        'StructGridGetNeighbors.'
-      call printErrMsg(option)
-  end select
+  !  case(DMDA_STENCIL_BOX)
+  !    option%io_buffer = 'DMDA_STENCIL_BOX not yet supported in ' // &
+  !      'StructGridGetNeighbors.'
+  !    call printErrMsg(option)
+  !end select
 
 end subroutine StructGridGetGhostedNeighborsCorners
 
