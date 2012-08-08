@@ -120,7 +120,7 @@ contains
       c = -0.001053
       D = b*(T1 - T2) + c*(T1 - T2)**2
       eta = D/(T2 - 168.15d0)
-      deta_dT2 = -A/(T2 - 168.15d0)**2 - (b + 2*c*(T1 - T2))/(T - 168.15d0)
+      deta_dT2 = -D/(T2 - 168.15d0)**2 - (b + 2*c*(T1 - T2))/(T - 168.15d0)
     else
       a = 998.333d0
       b = -8.1855d0
@@ -518,7 +518,7 @@ subroutine wateos (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,ierr)
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
-      write(*,*) 'Warning: negative term in density (wateos): ',t,p,xx
+      write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
 #ifdef DASVYAT
       stop
 #endif
@@ -727,7 +727,7 @@ subroutine wateos_flag (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,flag,ierr)
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
-      write(*,*) 'Warning: negative term in density (wateos): ',t,p,xx
+      write(*,*) 'Warning: negative term in density (wateos): ','t= ',t,' p= ',p,' xx= ',xx
       flag = PETSC_TRUE
 #ifdef DASVYAT
       stop
@@ -937,7 +937,7 @@ subroutine wateos_noderiv (t,p,dw,dwmol,hw,scale,ierr)
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
-      write(*,*) 'Warning: negative term in density (no deriv): ',t,p,xx
+      write(*,*) 'Warning: negative term in density (no deriv): ','t= ',t,' p= ',p,' xx= ',xx
       xx = 1.e-6               !set arbitrarily
     end if
     zz = yy + xx                                     
