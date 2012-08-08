@@ -4114,6 +4114,7 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
   use Utility_module
 
   implicit none
+#include "finclude/petscdmda.h"
 
   type(option_type) :: option
   type(grid_type), pointer :: grid
@@ -4133,7 +4134,7 @@ subroutine THMCComputeDisplacementGradient(grid, global_aux_vars, ghosted_id, &
   PetscInt :: D
    
   call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
-                                         STAR_STENCIL, &
+                                         DMDA_STENCIL_STAR, &
                                          ONE_INTEGER,ONE_INTEGER,ONE_INTEGER, &
                                          ghosted_neighbors_size, &
                                          ghosted_neighbors, &
@@ -4196,6 +4197,7 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
   use Utility_module
 
   implicit none
+#include "finclude/petscdmda.h"
 
   type(option_type) :: option
   type(grid_type), pointer :: grid
@@ -4215,7 +4217,7 @@ subroutine THMCComputeDisplacementGradientPert(grid, global_aux_vars, &
   PetscInt :: D
    
   call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
-                                         STAR_STENCIL, &
+                                         DMDA_STENCIL_STAR, &
                                          ONE_INTEGER,ONE_INTEGER,ONE_INTEGER, &
                                          ghosted_neighbors_size, &
                                          ghosted_neighbors, &

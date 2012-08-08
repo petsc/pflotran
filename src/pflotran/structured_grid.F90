@@ -1861,6 +1861,7 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   use Option_module
 
   implicit none
+#include "finclude/petscdmda.h"
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -1885,7 +1886,7 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   z_count = 0
   icount = 0
   select case(stencil_type)
-    case(STAR_STENCIL)
+    case(DMDA_STENCIL_STAR)
       do ii = max(i-stencil_width_i,1), min(i+stencil_width_i,structured_grid%ngx)
         if (ii /= i) then
           icount = icount + 1
@@ -1910,8 +1911,8 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
             StructGridGetGhostedIDFromIJK(structured_grid,i,j,kk)
         endif
       enddo
-    case(BOX_STENCIL)
-      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
+    case(DMDA_STENCIL_BOX)
+      option%io_buffer = 'DMDA_STENCIL_BOX not yet supported in ' // &
         'StructGridGetNeighbors.'
       call printErrMsg(option)
   end select
@@ -1938,6 +1939,7 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
   use Option_module
 
   implicit none
+#include "finclude/petscdmda.h"
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -1957,7 +1959,7 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
   icount = 0
   
   select case(stencil_type)
-    case(STAR_STENCIL)
+    case(DMDA_STENCIL_STAR)
       do ii = max(i-stencil_width_i,1), &
                 min(i+stencil_width_i,structured_grid%ngx)
         do jj = max(j-stencil_width_j,1), & 
@@ -1974,8 +1976,8 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
           enddo
         enddo          
       enddo
-    case(BOX_STENCIL)
-      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
+    case(DMDA_STENCIL_BOX)
+      option%io_buffer = 'DMDA_STENCIL_BOX not yet supported in ' // &
         'StructGridGetNeighbors.'
       call printErrMsg(option)
   end select

@@ -830,6 +830,8 @@ subroutine CondControlScaleSourceSink(realization)
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
+#include "finclude/petscdmda.h"
+
   
   type(realization_type) :: realization
   
@@ -890,7 +892,7 @@ subroutine CondControlScaleSourceSink(realization)
 
           select case(option%iflowmode)
             case(RICHARDS_MODE,G_MODE)
-               call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+               call GridGetGhostedNeighbors(grid,ghosted_id,DMDA_STENCIL_STAR, &
                                             x_width,y_width,z_width, &
                                             x_count,y_count,z_count, &
                                             ghosted_neighbors,option)

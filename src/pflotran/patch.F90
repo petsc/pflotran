@@ -1296,6 +1296,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
+#include "finclude/petscdmda.h"
   
   type(patch_type) :: patch
   type(coupler_type) :: source_sink
@@ -1351,7 +1352,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
-        call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+        call GridGetGhostedNeighbors(grid,ghosted_id,DMDA_STENCIL_STAR, &
                                     x_width,y_width,z_width, &
                                     x_count,y_count,z_count, &
                                     ghosted_neighbors,option)

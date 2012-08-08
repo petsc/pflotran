@@ -4364,6 +4364,7 @@ subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
   use Utility_module
 
   implicit none
+#include "finclude/petscdmda.h"
 
   type(option_type) :: option
   type(grid_type), pointer :: grid
@@ -4380,7 +4381,7 @@ subroutine THCComputeGradient(grid, global_aux_vars, ghosted_id, gradient, &
   PetscInt :: D
    
   call GridGetGhostedNeighborsWithCorners(grid,ghosted_id, &
-                                         STAR_STENCIL, &
+                                         DMDA_STENCIL_STAR, &
                                          ONE_INTEGER,ONE_INTEGER,ONE_INTEGER, &
                                          ghosted_neighbors_size, &
                                          ghosted_neighbors, &
