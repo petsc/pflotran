@@ -245,10 +245,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           write(string,'(i3)') reason
       end select
       write(*,'(i3," fnrm:",es9.2, &
+              & " xnrm:",es9.2, &
               & " pnrm:",es9.2, &
               & " inrmr:",es9.2, &
               & " inrmu:",es9.2, &
-              & " rsn: ",a)') it, fnorm, pnorm, inorm_residual, inorm_update, &
+              & " rsn: ",a)') it, fnorm, xnorm, pnorm, inorm_residual, inorm_update, &
                               trim(string)
     endif
   else
