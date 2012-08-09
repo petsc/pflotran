@@ -73,7 +73,6 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
   PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
   PetscReal :: num_density, aperture, epsilon, fracture_spacing, matrix_block_size
-  PetscReal :: vol_total
 
   PetscInt, save :: icall
 
@@ -86,10 +85,8 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
     
       dy = sec_continuum%slab%length/nmat
       aream0 = sec_continuum%slab%area
-      vol_total = 0.d0
       do m = 1, nmat
         volm(m) = dy*aream0
-        vol_total = vol_total + volm(m)
       enddo
       am0 = aream0
       vm0 = nmat*dy*aream0
@@ -113,7 +110,8 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
         do m = 1, nmat
-          write(option%fid_out,'(2x,"matrix volume fraction: ",3x,1pe12.4)') volm(m)/vol_total*(1.d0 - epsilon)
+          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
         enddo
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
 !       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
@@ -149,15 +147,12 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
 
       dy = r0/nmat/2.d0
      
-      vol_total = 0.d0
       r0 = 2.d0*dy
       volm(1) = r0**3
-      vol_total = vol_total + volm(1)
       do m = 2, nmat
         r1 = r0 + 2.d0*dy
         volm(m) = r1**3 - r0**3
         r0 = r1
-        vol_total = vol_total + volm(m)
       enddo
       
       r0 = 2.d0*dy
@@ -189,7 +184,8 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"fracture aperture: ",8x,1pe12.4," m")') aperture
         write(option%fid_out,'(2x,"fracture spacing: ",9x,1pe12.4," m")') fracture_spacing
         do m = 1, nmat
-          write(option%fid_out,'(2x,"matrix volume fraction: ",3x,1pe12.4)') volm(m)/vol_total*(1.d0 - epsilon)
+          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
         enddo
       endif
 
@@ -197,15 +193,12 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
     
       dy = sec_continuum%nested_sphere%radius/nmat
       r0 = dy
-      vol_total = 0.d0
 
       volm(1) = 4.d0/3.d0*pi*r0**3
-      vol_total = vol_total + volm(1)
       do m = 2, nmat
         r1 = r0 + dy
         volm(m) = 4.d0/3.d0*pi*(r1**3 - r0**3)
         r0 = r1
-        vol_total = vol_total + volm(m)
       enddo
       
       r0 = dy
@@ -235,7 +228,8 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
         do m = 1, nmat
-          write(option%fid_out,'(2x,"matrix volume fraction: ",3x,1pe12.4)') volm(m)/vol_total*(1.d0 - epsilon)
+          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
         enddo
 
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
