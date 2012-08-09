@@ -376,7 +376,7 @@ subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
       P0 = P_p(istart)
       delP = dP_p(istart)
       if (press_limit < dabs(delP)) then
-        write(option%io_buffer,'("dP_trunc:",1i7,2es15.7)') &
+        write(option%io_buffer,'("dP_trunc:",1i7,2es15.7)') &         
           grid%nG2A(grid%nL2G(local_id)),press_limit,dabs(delP)
         call printMsgAnyRank(option)
       endif
