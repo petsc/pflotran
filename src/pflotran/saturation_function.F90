@@ -55,15 +55,14 @@ module Saturation_Function_module
             SaturationFunctionGetID, &
             SaturationFunctionComputeIce
 
-! Permeability function definition ************************ 
+  ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
   PetscInt, parameter :: THOMEER_COREY = 3
   PetscInt, parameter :: NMT_EXP = 4
   PetscInt, parameter :: PRUESS_1 = 5
 
-
-! Saturation function function definition ************************ 
+  ! Permeability function
   PetscInt, parameter :: DEFAULT = 0
   PetscInt, parameter :: BURDINE = 1
   PetscInt, parameter :: MUALEM = 2
