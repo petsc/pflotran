@@ -66,6 +66,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_output_vec_tecplot
     PetscLogEvent :: event_output_observation
     PetscLogEvent :: event_output_coordinates_hdf5
+    PetscLogEvent :: event_output_hydrograph
 
     PetscLogEvent :: event_r_residual
     PetscLogEvent :: event_r_jacobian
@@ -264,6 +265,9 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('WriteHDF5Coord', &
                              logging%class_pflotran, &
                              logging%event_output_coordinates_hdf5,ierr)
+  call PetscLogEventRegister('OutputHydrograph', &
+                             logging%class_pflotran, &
+                             logging%event_output_hydrograph,ierr)
 
   call PetscLogEventRegister('RResidual', &
                              logging%class_pflotran, &

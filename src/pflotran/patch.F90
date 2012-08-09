@@ -84,6 +84,8 @@ module Patch_module
     type(surface_material_property_type), pointer     :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
     type(surface_field_type),pointer                  :: surf_field
+    PetscReal,pointer :: surf_internal_fluxes(:)
+    PetscReal,pointer :: surf_boundary_fluxes(:)
 #endif
 
   end type patch_type
@@ -193,6 +195,8 @@ function PatchCreate()
     nullify(patch%surf_material_properties)
     nullify(patch%surf_material_property_array)
     nullify(patch%surf_field)
+    nullify(patch%surf_internal_fluxes)
+    nullify(patch%surf_boundary_fluxes)
 #endif
 
   PatchCreate => patch
@@ -672,6 +676,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
+#ifdef SURFACE_FLOW
+  if (patch%surf_or_subsurf_flag == SURFACE) then
+    allocate(patch%surf_internal_fluxes(temp_int))
+    allocate(patch%surf_boundary_fluxes(temp_int))
+  endif
+#endif
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
     temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
@@ -4023,6 +4033,10 @@ subroutine PatchDestroy(patch)
     deallocate(patch%surf_material_property_array)
   nullify(patch%surf_material_property_array)
   nullify(patch%surf_material_properties)
+  if (associated(patch%surf_internal_fluxes)) deallocate(patch%surf_internal_fluxes)
+  if (associated(patch%surf_boundary_fluxes)) deallocate(patch%surf_boundary_fluxes)
+  nullify(patch%surf_internal_fluxes)
+  nullify(patch%surf_boundary_fluxes)
 #endif
 
   call GridDestroy(patch%grid)

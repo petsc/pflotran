@@ -242,6 +242,10 @@ module Option_module
     PetscInt :: num_plot_variables
 #endif
 
+#ifdef SURFACE_FLOW
+    PetscBool :: print_hydrograph
+#endif
+
   end type output_option_type
 
   interface printMsg
@@ -634,7 +638,11 @@ function OutputOptionCreate()
   nullify(output_option%plot_variable_ids)
   output_option%num_plot_variables = 0
 #endif
-  
+
+#ifdef SURFACE_FLOW
+  output_option%print_hydrograph = PETSC_FALSE
+#endif
+
   OutputOptionCreate => output_option
   
 end function OutputOptionCreate

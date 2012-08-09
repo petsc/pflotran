@@ -384,8 +384,6 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
               output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
               output_option%print_porosity = PETSC_TRUE
-            case('MASS_BALANCE')
-              option%compute_mass_balance_new = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
@@ -608,6 +606,8 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
             case('PROCESSOR_ID')
               num_plot_variables = num_plot_variables + 1
               plot_variables(num_plot_variables) = trim(word)
+            case('HYDROGRAPH')
+              output_option%print_hydrograph = PETSC_TRUE
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
@@ -895,7 +895,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       end select
 
       patch%internal_velocities(1,sum_connection) = vel
-      !patch%internal_fluxes(1,sum_connection) = Res(1)
+      patch%surf_internal_fluxes(sum_connection) = Res(1)
       
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
@@ -945,7 +945,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
                           cur_connection_set%area(iconn),option,vel,Res)
 
       patch%boundary_velocities(1,sum_connection) = vel
-      !patch%boundary_fluxes(1,sum_connection) = Res(1)
+      patch%surf_boundary_fluxes(sum_connection) = Res(1)
       
       r_p(local_id) = r_p(local_id) - Res(1)
     enddo
