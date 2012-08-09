@@ -35,6 +35,7 @@ module Output_module
   PetscBool :: observation_first
   PetscBool :: hdf5_first
   PetscBool :: mass_balance_first
+  PetscBool :: hydrograph_first
 
   interface Output
     module procedure Output1
@@ -129,10 +130,12 @@ subroutine OutputInit(realization,num_steps)
     observation_first = PETSC_TRUE
     hdf5_first = PETSC_TRUE
     mass_balance_first = PETSC_TRUE
+    hydrograph_first = PETSC_TRUE
   else
     observation_first = PETSC_FALSE
     hdf5_first = PETSC_FALSE
     mass_balance_first = PETSC_FALSE
+    hydrograph_first = PETSC_FALSE
   endif
 
 #ifdef GLENN_NEW_IO
@@ -1835,7 +1838,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
 
   endif
   
-  ! write blocks
+  ! write blocks'
   
   ! face coordinates
   local_size = grid%nlmax
@@ -2558,7 +2561,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
 
   endif
   
-  ! currently supported for only liquid phase
+  ! currently supported for only liquid phase'
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vx,GLOBAL, &
                                   option)  
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vy,GLOBAL, &
@@ -10245,14 +10248,23 @@ subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
     endif
   
     if (surf_realization%output_option%print_tecplot) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscGetTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(surf_realization%output_option%tecplot_format)
         case (TECPLOT_FEQUADRILATERAL_FORMAT)
           call OutputTecplotFEQUAD(surf_realization,realization)
       end select
+      call PetscGetTime(tend,ierr)
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr)
     endif
 
+    if (surf_realization%output_option%print_hydrograph) then
+      call PetscGetTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_hydrograph,ierr)
+      call OutputHydrograph(surf_realization)
+      call PetscGetTime(tend,ierr)
+      call PetscLogEventEnd(logging%event_output_hydrograph,ierr)
+    endif
     surf_realization%output_option%plot_number = surf_realization%output_option%plot_number + 1
   endif
 
@@ -10958,12 +10970,6 @@ subroutine WriteTecplotDataSetNumPerLine2(fid, &
 end subroutine WriteTecplotDataSetNumPerLine2
 
 ! ************************************************************************** !
-!
-! WriteTecplotDataSetFromVec: Writes data from a Petsc Vec within a block
-!                             of a Tecplot file
-! author: Glenn Hammond
-! date: 10/25/07
-!
 !> This subroutine writes data from a PETSc Vec within a block of a Tecplot
 !! file for surface grid.
 !!
@@ -11114,6 +11120,131 @@ subroutine OutputGetVarFromArray2(surf_realization, &
 
 end subroutine OutputGetVarFromArray2
 
+! ************************************************************************** !
+!> This routine outputs hydrograph fluxes.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date:
+! ************************************************************************** !
+
+subroutine OutputHydrograph(surf_realization)
+
+  use Surface_Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Connection_module
+  use Utility_module
+
+  use Surface_Flow_Module
+  
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  type(output_option_type), pointer :: output_option
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscInt :: icol
+  PetscReal :: sum_flux, sum_flux_global
+
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXSTRINGLENGTH) :: string
+
+  PetscInt :: fid = 86
+
+  patch => surf_realization%patch
+  option => surf_realization%option
+  output_option => surf_realization%output_option
+  
+  if (output_option%print_column_ids) then
+   icol = 1
+  else
+    icol = -1
+  endif
+
+
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    filename = trim(boundary_condition%name) // '_hydrograph.dat'
+    
+    if (option%myrank == option%io_rank) then
+      if (hydrograph_first .or. .not.FileExists(filename)) then
+        open(unit=fid,file=filename,action="write",status="replace")
+
+        ! write header
+        write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'
+      
+        header = ''
+        if (option%iflowmode > 0) then
+          call OutputAppendToHeader(header,'dt_flow',output_option%tunit,'',icol)
+        endif
+        
+        write(fid,'(a)',advance="no") trim(header)
+
+        header = ''
+        !string = 'Outflow '
+        !call OutputAppendToHeader(header,string,'[m^2/s]','',icol)
+        string = 'Outflow'
+        call OutputAppendToHeader(header,string,'[m^3/s]','',icol)
+        write(fid,'(a)',advance="no") trim(header)
+
+        write(fid,'(a)') '' 
+      else
+        open(unit=fid,file=filename,action="write",status="old",position="append")
+      endif
+    endif
+
+100 format(100es16.8)
+110 format(100es16.8)
+
+    ! write time
+    if (option%myrank == option%io_rank) then
+      write(fid,100,advance="no") option%time/output_option%tconv
+    endif
+  
+    if (option%nflowdof > 0) then
+      if (option%myrank == option%io_rank) &
+        write(fid,100,advance="no") option%flow_dt/output_option%tconv
+    endif
+
+    sum_flux = 0.d0
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      !patch%boundary_velocities(1,sum_connection)
+      sum_flux = sum_flux + patch%surf_boundary_fluxes(sum_connection)
+    enddo
+    
+    call MPI_Reduce(sum_flux,sum_flux_global, &
+                    ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%mycomm,ierr)
+
+    if (option%myrank == option%io_rank) then
+      ! change sign for positive in / negative out
+      write(fid,110,advance="no") -sum_flux_global
+      write(fid,'(a)') ''
+      close(fid)
+    endif
+    
+    boundary_condition => boundary_condition%next
+  enddo
+
+  hydrograph_first = PETSC_FALSE
+
+end subroutine OutputHydrograph
 
 #endif SURFACE_FLOW
 

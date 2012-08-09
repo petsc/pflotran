@@ -182,7 +182,7 @@ end function StructuredGridCreate
 !
 ! ************************************************************************** !
 subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
-                                  option)
+                                  stencil_type,option)
 
   use Option_module
         
@@ -198,7 +198,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   type(structured_grid_type) :: structured_grid
   DM :: da
   PetscInt :: ndof
-  PetscInt :: stencil_width
+  PetscInt :: stencil_width,stencil_type
 
   PetscErrorCode :: ierr
 
@@ -207,7 +207,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
   !-----------------------------------------------------------------------
   ! This code is for the DMDACreate3D() interface in PETSc versions >= 3.2 --RTM
   call DMDACreate3D(option%mycomm,DMDA_BOUNDARY_NONE,DMDA_BOUNDARY_NONE, &
-                  DMDA_BOUNDARY_NONE,DMDA_STENCIL_STAR, &
+                  DMDA_BOUNDARY_NONE,stencil_type, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
                   ndof,stencil_width, &
@@ -1861,6 +1861,7 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   use Option_module
 
   implicit none
+#include "finclude/petscdmda.h"
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -1885,7 +1886,7 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   z_count = 0
   icount = 0
   select case(stencil_type)
-    case(STAR_STENCIL)
+    case(DMDA_STENCIL_STAR)
       do ii = max(i-stencil_width_i,1), min(i+stencil_width_i,structured_grid%ngx)
         if (ii /= i) then
           icount = icount + 1
@@ -1910,8 +1911,8 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
             StructGridGetGhostedIDFromIJK(structured_grid,i,j,kk)
         endif
       enddo
-    case(BOX_STENCIL)
-      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
+    case(DMDA_STENCIL_BOX)
+      option%io_buffer = 'DMDA_STENCIL_BOX not yet supported in ' // &
         'StructGridGetNeighbors.'
       call printErrMsg(option)
   end select
@@ -1938,6 +1939,7 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
   use Option_module
 
   implicit none
+#include "finclude/petscdmda.h"
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -1956,14 +1958,15 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
 
   icount = 0
   
-  select case(stencil_type)
-    case(STAR_STENCIL)
-      do ii = max(i-stencil_width_i,1), &
-                min(i+stencil_width_i,structured_grid%ngx)
-        do jj = max(j-stencil_width_j,1), & 
+  ! gb:08/08/13 Dependence on stencil_type is not necessary.
+  !select case(stencil_type)
+  !  case(DMDA_STENCIL_STAR)
+      do kk = max(k-stencil_width_k,1), &
+                min(k+stencil_width_k,structured_grid%ngz)
+        do jj = max(j-stencil_width_j,1), &
                   min(j+stencil_width_j,structured_grid%ngy)
-          do kk = max(k-stencil_width_k,1), &
-                    min(k+stencil_width_k,structured_grid%ngz)
+          do ii = max(i-stencil_width_i,1), &
+                    min(i+stencil_width_i,structured_grid%ngx)
             if (ii == i .and. jj == j .and. kk == k) then
             ! do nothing
             else
@@ -1974,11 +1977,11 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
           enddo
         enddo          
       enddo
-    case(BOX_STENCIL)
-      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
-        'StructGridGetNeighbors.'
-      call printErrMsg(option)
-  end select
+  !  case(DMDA_STENCIL_BOX)
+  !    option%io_buffer = 'DMDA_STENCIL_BOX not yet supported in ' // &
+  !      'StructGridGetNeighbors.'
+  !    call printErrMsg(option)
+  !end select
 
 end subroutine StructGridGetGhostedNeighborsCorners
 

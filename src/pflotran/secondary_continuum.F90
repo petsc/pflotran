@@ -109,7 +109,10 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"matrix block size: ",8x,1pe12.4," m")') sec_continuum%slab%length
         write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
-
+        do m = 1, nmat
+          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
+        enddo
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
 !       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
       endif
@@ -143,7 +146,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
       endif
 
       dy = r0/nmat/2.d0
-
+     
       r0 = 2.d0*dy
       volm(1) = r0**3
       do m = 2, nmat
@@ -151,7 +154,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         volm(m) = r1**3 - r0**3
         r0 = r1
       enddo
-
+      
       r0 = 2.d0*dy
       aream(1) = 6.d0*r0**2
       dm1(1) = 0.5d0*dy
@@ -180,12 +183,17 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
         write(option%fid_out,'(2x,"fracture aperture: ",8x,1pe12.4," m")') aperture
         write(option%fid_out,'(2x,"fracture spacing: ",9x,1pe12.4," m")') fracture_spacing
+        do m = 1, nmat
+          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
+        enddo
       endif
 
     case(2) ! nested spheres
     
       dy = sec_continuum%nested_sphere%radius/nmat
       r0 = dy
+
       volm(1) = 4.d0/3.d0*pi*r0**3
       do m = 2, nmat
         r1 = r0 + dy
@@ -219,6 +227,10 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"sphere radius: ",8x,1pe12.4," m")') sec_continuum%nested_sphere%radius
         write(option%fid_out,'(2x,"epsilon: ",18x,1pe12.4)') epsilon
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
+        do m = 1, nmat
+          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
+        enddo
 
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
 !       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture

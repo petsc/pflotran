@@ -111,7 +111,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  MYFLAGS += -w -g -DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+  MYFLAGS += -w -g #-DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
 endif
 
 ifdef surface_flow
@@ -181,7 +181,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}mphase_aux.o\
 	${common_src}miscible_aux.o\
 	${common_src}immis_aux.o\
-        ${common_src}mfd_aux.o\
+  ${common_src}mfd_aux.o\
 	${common_src}flash2_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
@@ -242,6 +242,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}stochastic_aux.o \
 	${common_src}stochastic.o \
 	${common_src}surface_field.o \
+	${common_src}surface_flow_aux.o \
 	${common_src}surface_flow.o \
 	${common_src}surface_material.o \
 	${common_src}surface_realization.o \
@@ -267,8 +268,8 @@ test: functions.o test.o
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
 	mphase_aux.o flash2_aux.o global_aux.o immis_aux.o miscible_aux.o
-pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
-	stochastic_aux.o stochastic.o
+  pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
+	stochastic_aux.o stochastic.o surface_flow_aux.o
 simulation.o : timestepper.o realization.o 
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o input.o material.o region.o condition.o convergence.o \
@@ -389,7 +390,7 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
-surface_flow.o : surface_realization.o surface_field.o surface_material.o
+surface_flow.o : surface_flow_aux.o surface_realization.o surface_field.o surface_material.o
 surface_material.o : string.o option.o input.o
 surface_realization.o : condition.o debug.o discretization.o input.o level.o \
 	option.o patch.o region.o surface_field.o surface_material.o \

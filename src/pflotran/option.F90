@@ -70,6 +70,7 @@ module Option_module
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
+    PetscInt :: surface_flow_formulation
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -131,6 +132,8 @@ module Option_module
     
     PetscReal :: pressure_dampening_factor
     PetscReal :: saturation_change_limit
+    PetscReal :: pressure_change_limit
+    PetscReal :: temperature_change_limit
     PetscReal :: stomp_norm
     PetscBool :: check_stomp_norm
     
@@ -237,6 +240,10 @@ module Option_module
 #ifdef GLENN_NEW_IO
     PetscInt, pointer :: plot_variable_ids(:,:)
     PetscInt :: num_plot_variables
+#endif
+
+#ifdef SURFACE_FLOW
+    PetscBool :: print_hydrograph
 #endif
 
   end type output_option_type
@@ -442,6 +449,7 @@ subroutine OptionInitRealization(option)
 #ifdef SURFACE_FLOW
    option%nsurfflowdof = 0
    option%subsurf_surf_coupling = DECOUPLED
+   option%surface_flow_formulation = KINEMATIC_WAVE
 #endif
 
   option%tranmode = ""
@@ -481,6 +489,8 @@ subroutine OptionInitRealization(option)
   
   option%pressure_dampening_factor = 0.d0
   option%saturation_change_limit = 0.d0
+  option%pressure_change_limit = 0.d0
+  option%temperature_change_limit = 0.d0
   option%stomp_norm = 0.d0
   option%check_stomp_norm = PETSC_FALSE
   
@@ -628,7 +638,11 @@ function OutputOptionCreate()
   nullify(output_option%plot_variable_ids)
   output_option%num_plot_variables = 0
 #endif
-  
+
+#ifdef SURFACE_FLOW
+  output_option%print_hydrograph = PETSC_FALSE
+#endif
+
   OutputOptionCreate => output_option
   
 end function OutputOptionCreate

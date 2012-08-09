@@ -326,8 +326,8 @@ PetscInt, parameter :: GLOBAL_IMPLICIT = 0
 PetscInt, parameter :: OPERATOR_SPLIT = 1
 
 ! stencil type
-PetscInt, parameter :: STAR_STENCIL = 1
-PetscInt, parameter :: BOX_STENCIL = 2
+!PetscInt, parameter :: STAR_STENCIL = 1
+!PetscInt, parameter :: BOX_STENCIL = 2
 
 ! grid cell type
 PetscInt, parameter :: HEX_TYPE          = 1
@@ -361,5 +361,8 @@ PetscInt, parameter :: SURFACE    = 1
 PetscInt, parameter :: DECOUPLED     = 0
 PetscInt, parameter :: SEQ_COUPLED   = 1
 PetscInt, parameter :: FULLY_COUPLED = 2
+
+PetscInt, parameter :: KINEMATIC_WAVE = 1
+PetscInt, parameter :: DIFFUSION_WAVE = 2
 
 #define HASH

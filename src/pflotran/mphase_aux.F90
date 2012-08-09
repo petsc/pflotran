@@ -530,7 +530,7 @@ end subroutine MphaseAuxVarCompute_NINC
 
 
 
-subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var, global_auxvar,iphase,saturation_function, &
+subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
@@ -570,16 +570,17 @@ end subroutine MphaseAuxVarCompute_WINC
 ! Date: 06/28/12
 !
 ! ************************************************************************** !
-subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
+subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,aux_var,global_aux_var, &
                                    therm_conductivity,dencpr, &
                                    option)
 
- use Option_module 
+  use Option_module 
   use Global_Aux_module
   
   implicit none
   
   type(sec_heat_type) :: sec_heat_vars
+  type(mphase_auxvar_elem_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
@@ -597,7 +598,8 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   dm_plus = sec_heat_vars%dm_plus
   dm_minus = sec_heat_vars%dm_minus
   area_fm = sec_heat_vars%interfacial_area
-  temp_primary_node = global_aux_var%temp(1)
+! temp_primary_node = global_aux_var%temp(1)
+  temp_primary_node = aux_var%temp
 
   allocate(coeff_left(ngcells))
   allocate(coeff_diag(ngcells))

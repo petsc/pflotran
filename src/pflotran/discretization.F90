@@ -45,6 +45,9 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_ntrandof
     type(mfd_type), pointer :: MFD
     VecScatter :: tvd_ghost_scatter
+    
+    PetscInt :: stencil_width
+    PetscInt :: stencil_type
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -122,6 +125,9 @@ function DiscretizationCreate()
   
   nullify(discretization%grid)
   nullify(discretization%MFD)
+  
+  discretization%stencil_width = 1
+  discretization%stencil_type = DMDA_STENCIL_STAR
 
   discretization%tvd_ghost_scatter = 0
   
@@ -258,7 +264,8 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         call InputErrorMsg(input,option,'Y direction','Origin')
         call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
         call InputErrorMsg(input,option,'Z direction','Origin')        
-      case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX')
+      case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX',&
+           'STENCIL_WIDTH','STENCIL_TYPE')
       case('DXYZ','BOUNDS')
         call InputSkipToEND(input,option,word) 
       case default
@@ -525,6 +532,24 @@ subroutine DiscretizationRead(discretization,input,option)
                              'GRID')
         endif          
       case ('INVERT_Z')
+      case ('STENCIL_WIDTH')
+        call InputReadInt(input,option,discretization%stencil_width)
+        call InputErrorMsg(input,option,'stencil_width', &
+                           'GRID')
+      case ('STENCIL_TYPE')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','GRID')
+        call StringToUpper(word)
+        select case(trim(word))
+          case ('BOX')
+            discretization%stencil_type = DMDA_STENCIL_BOX
+          case ('STAR')
+            discretization%stencil_type = DMDA_STENCIL_STAR
+          case default
+            option%io_buffer = 'Keyword: ' // trim(word) // &
+                 ' not recognized in DISCRETIZATION, second read.'
+            call printErrMsg(option)
+        end select
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                  ' not recognized in DISCRETIZATION, second read.'
@@ -558,7 +583,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
   type(option_type) :: option
       
   PetscInt :: ndof
-  PetscInt, parameter :: stencil_width = 1
+  !PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
   PetscInt :: i
   type(unstructured_grid_type), pointer :: ugrid
@@ -596,18 +621,21 @@ subroutine DiscretizationCreateDMs(discretization,option)
   !-----------------------------------------------------------------------
   ndof = 1
   call DiscretizationCreateDM(discretization,discretization%dm_1dof, &
-                              ndof,stencil_width,option)
+                              ndof,discretization%stencil_width, &
+                              discretization%stencil_type,option)
   
   if (option%nflowdof > 0) then
     ndof = option%nflowdof
     call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
-                                ndof,stencil_width,option)
+                                ndof,discretization%stencil_width, &
+                                discretization%stencil_type,option)
   endif
   
   if (option%ntrandof > 0) then
     ndof = option%ntrandof
     call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
-                                ndof,stencil_width,option)
+                                ndof,discretization%stencil_width, &
+                                discretization%stencil_type,option)
   endif
 
 
@@ -633,7 +661,7 @@ end subroutine DiscretizationCreateDMs
 !
 ! ************************************************************************** !
 subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
-                                  option)
+                                  stencil_type,option)
 
   use Option_module
   
@@ -642,13 +670,13 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
   type(discretization_type) :: discretization
   type(dm_ptr_type), pointer :: dm_ptr
   PetscInt :: ndof
-  PetscInt :: stencil_width
+  PetscInt :: stencil_width,stencil_type
   type(option_type) :: option
   
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       call StructuredGridCreateDM(discretization%grid%structured_grid, &
-                                  dm_ptr%sgdm,ndof,stencil_width,option)
+                                  dm_ptr%sgdm,ndof,stencil_width,stencil_type,option)
     case(UNSTRUCTURED_GRID)
       call UGridCreateUGDM(discretization%grid%unstructured_grid, &
                            dm_ptr%ugdm,ndof,option)
