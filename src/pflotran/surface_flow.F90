@@ -173,7 +173,7 @@ end subroutine SurfaceFlowReadRequiredCardsFromInput
 !!
 !! date: 02/09/12
 ! ************************************************************************** !
-subroutine SurfaceFlowRead(surf_realization,input,option)
+subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
 
   use Option_module
   use Input_module
@@ -193,6 +193,7 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   use Units_module
   use Waypoint_module
   use Patch_module
+  use Solver_module
 
   implicit none
 
@@ -207,6 +208,7 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
   type(flow_condition_type), pointer           :: flow_condition
   type(coupler_type), pointer                  :: coupler
   type(strata_type), pointer                   :: strata
+  type(solver_type)                            :: surf_flow_solver
 
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
@@ -236,6 +238,8 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
 
   discretization => surf_realization%discretization
   output_option => surf_realization%output_option
+  !surf_flow_stepper => simulation%surf_flow_stepper
+  !surf_flow_solver => surf_flow_stepper%solver
 
   patch => surf_realization%patch
 
@@ -634,6 +638,14 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
         endif
+      !.........................................................................
+      case('NEWTON_SOLVER')
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
+        select case(word)
+          case('FLOW')
+            call SolverReadNewton(surf_flow_solver,input,option)
+        end select
 
       !.........................................................................
       case default
@@ -643,6 +655,8 @@ subroutine SurfaceFlowRead(surf_realization,input,option)
 
     end select
   enddo
+
+  !surf_flow_solver%print_detailed_convergence = PETSC_TRUE
 
 end subroutine SurfaceFlowRead
 

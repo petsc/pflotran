@@ -881,6 +881,12 @@ subroutine Init(simulation)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
+#ifdef SURFACE_FLOW
+  if (associated(surf_flow_stepper)) then
+    string = 'Surface Flow Stepper:'
+    call TimestepperPrintInfo(surf_flow_stepper,option%fid_out,string,option)
+  endif
+#endif
   if (associated(flow_solver)) then
     string = 'Flow Newton Solver:'
     call SolverPrintNewtonInfo(flow_solver,OptionPrintToScreen(option), &
@@ -893,6 +899,14 @@ subroutine Init(simulation)
                                OptionPrintToFile(option),option%fid_out, &
                                string)
   endif    
+#ifdef SURFACE_FLOW
+  if (associated(surf_flow_solver)) then
+    string = 'Surface Flow Newton Solver:'
+    call SolverPrintNewtonInfo(surf_flow_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
+  endif
+#endif
   if (associated(flow_solver)) then
     string = 'Flow Linear Solver:'
     call SolverPrintLinearInfo(flow_solver,OptionPrintToScreen(option), &
@@ -905,6 +919,14 @@ subroutine Init(simulation)
                                OptionPrintToFile(option),option%fid_out, &
                                string)
   endif    
+#ifdef SURFACE_FLOW
+  if (associated(surf_flow_solver)) then
+    string = 'Surface Flow Linear Solver:'
+    call SolverPrintLinearInfo(surf_flow_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
+  endif
+#endif
 
   if (debug%print_couplers) then
     call verifyAllCouplers(realization)
@@ -2257,7 +2279,7 @@ subroutine InitReadInput(simulation)
 #ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
-        call SurfaceFlowRead(simulation%surf_realization,input,option)
+        call SurfaceFlowRead(simulation%surf_realization,simulation%surf_flow_stepper%solver,input,option)
 #endif
 
 !....................
