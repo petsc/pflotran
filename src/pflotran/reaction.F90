@@ -4418,8 +4418,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                                  reaction%nkinmnrl)
     endif
   endif
-#endif  
+#endif
+
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
+
+    rt_auxvar%mnrl_rate(imnrl) = 0.d0
+
     ! compute ion activity product
     lnQK = -reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
 
@@ -4537,6 +4541,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! store volumetric rate to be used in updating mineral volume fractions
       ! at end of time step
       rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3 bulk
+
     else
       rt_auxvar%mnrl_rate(imnrl) = 0.d0
       cycle
