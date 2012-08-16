@@ -1349,7 +1349,8 @@ subroutine RTCalculateRHS_t1Patch(realization)
   ! add in inflowing sources
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1369,7 +1370,8 @@ subroutine RTCalculateRHS_t1Patch(realization)
       cycle
     endif
     
-    do iconn = 1, cur_connection_set%num_connections      
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
@@ -1718,7 +1720,8 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   enddo
                         
   ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
+  source_sink => patch%source_sinks%first
+  sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1738,7 +1741,8 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
       cycle
     endif
       
-    do iconn = 1, cur_connection_set%num_connections      
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
