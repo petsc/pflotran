@@ -144,12 +144,13 @@ function MineralReactionCreate()
   type(mineral_rxn_type), pointer :: mineral_reaction
 
   allocate(mineral_reaction)  
-
-  mineral_reaction%nmnrl = 0  
+    
+  nullify(mineral_reaction%mineral_list)
   
+  ! for saturation states
+  mineral_reaction%nmnrl = 0  
   nullify(mineral_reaction%mineral_names)
-  nullify(mineral_reaction%kinmnrl_names)
-
+  nullify(mineral_reaction%mnrl_print)
   nullify(mineral_reaction%mnrlspecid)
   nullify(mineral_reaction%mnrlh2oid)
   nullify(mineral_reaction%mnrlstoich)
@@ -157,7 +158,10 @@ function MineralReactionCreate()
   nullify(mineral_reaction%mnrl_logK)
   nullify(mineral_reaction%mnrl_logKcoef)
   
+  ! for kinetic mineral reactions
   mineral_reaction%nkinmnrl = 0  
+  nullify(mineral_reaction%kinmnrl_names)
+  nullify(mineral_reaction%kinmnrl_print)
   nullify(mineral_reaction%kinmnrlspecid)
   nullify(mineral_reaction%kinmnrlstoich)
   nullify(mineral_reaction%kinmnrlh2oid)

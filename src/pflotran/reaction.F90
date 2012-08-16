@@ -266,7 +266,7 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
-      case('MINERALS','KINETIC_MINERALS')
+      case('MINERALS','MINERAL_KINETICS')
         call MineralRead(word,reaction%mineral,input,option)
       case('COLLOIDS')
         nullify(prev_colloid)
