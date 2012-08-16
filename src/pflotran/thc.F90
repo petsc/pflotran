@@ -1410,6 +1410,12 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
                     dsatg_dt*den_g*u_g + sat_g*ddeng_dt*u_g + &
                     sat_g*den_g*dug_dt + dsati_dt*den_i*u_i + &
                     sat_i*ddeni_dt*u_i + sat_i*den_i*dui_dt)*porXvol
+                    
+#ifdef REMOVE_SATURATION
+  J(2,1) = thc_aux_var%dden_dp*porXvol*thc_aux_var%xmol(2)
+  J(2,2) = thc_aux_var%dden_dt*porXvol*thc_aux_var%xmol(2)            
+  J(2,3) = global_aux_var%den(1)*porXvol
+#endif                    
 #endif
 
 
@@ -1824,7 +1830,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
     Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
     Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
-
+    
+ 
 
 #ifdef ICE
   ! Added by Satish Karra, updated 11/11/11
@@ -1917,7 +1924,29 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
   Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
                          (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+                         
+#ifdef REMOVE_SATURATION 
 
+  difff = diffdp * 0.5D0* &
+            (global_aux_var_up%den(1)+global_aux_var_dn%den(1))
+  ddifff_dp_up = diffdp * 0.5d0 * aux_var_up%dden_dp
+  ddifff_dp_dn = diffdp * 0.5d0 * aux_var_dn%dden_dp
+  ddifff_dt_up = diffdp * 0.5d0 * aux_var_up%dden_dt
+  ddifff_dt_dn = diffdp * 0.5d0 * aux_var_dn%dden_dt
+  
+  Jup(2,1) = Jup(2,1) + ddifff_dp_up*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+  Jup(2,2) = Jup(2,2) + ddifff_dt_up*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
+  Jup(2,3) = Jup(2,3) + difff*0.5d0*(Diff_up + Diff_dn)
+
+  Jdn(2,1) = Jdn(2,1) + ddifff_dp_dn*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+  Jdn(2,2) = Jdn(2,2) + ddifff_dt_dn*0.5d0*(Diff_up + Diff_dn)* &
+                         (aux_var_up%xmol(2) - aux_var_dn%xmol(2))
+  Jdn(2,3) = Jdn(2,3) + difff*0.5d0*(Diff_up + Diff_dn)*(-1.d0)
+
+#endif                         
 #endif 
 
         
@@ -2282,7 +2311,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
              
  endif
 #ifdef REMOVE_SATURATION 
-  difff = diffdp * 0.25D0* &
+  difff = diffdp * 0.5D0* &
             (global_aux_var_up%den(1)+global_aux_var_dn%den(1))
   fluxm(2) = fluxm(2) + difff * .5D0 * (Diff_up + Diff_dn)* &
                  (aux_var_up%xmol(2) - aux_var_dn%xmol(2)) 
@@ -2552,6 +2581,21 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars, &
                             (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
       Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
 
+#ifdef ICE
+#ifdef REMOVE_SATURATION
+      diff = diffdp * global_aux_var_dn%den(1)
+      
+      ddiff_dp_dn = diffdp * aux_var_dn%dden_dp
+      ddiff_dt_dn = diffdp * aux_var_dn%dden_dt
+
+      Jdn(2,1) = Jdn(2,1) + ddiff_dp_dn*Diff_dn* &
+                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+      Jdn(2,2) = Jdn(2,2) + ddiff_dt_dn*Diff_dn* &
+                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+      Jdn(2,3) = Jdn(2,3) + diff*Diff_dn*(-1.d0)
+      
+#endif
+#endif
   end select
    
   ! Conduction term
@@ -2864,6 +2908,13 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
         fluxm(2) = fluxm(2) + diff*Diff_dn* &
                            (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
 !pcl  endif
+#ifdef ICE
+#ifdef REMOVE_SATURATION
+        diff = diffdp*global_aux_var_dn%den(1)
+        fluxm(2) = fluxm(2) + diff*Diff_dn* &
+                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
+#endif
+#endif
   end select
   
 
@@ -2910,11 +2961,6 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,global_aux_var_up, &
                  dd_up*area
   endif
 
-#ifdef REMOVE_SATURATION
-      diff = diffdp*global_aux_var_dn%den(1)
-      fluxm(2) = fluxm(2) + diff*Diff_dn* &
-                           (aux_var_up%xmol(2)-aux_var_dn%xmol(2))
-#endif
 #endif 
 
     case(NEUMANN_BC)
