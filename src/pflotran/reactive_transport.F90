@@ -449,16 +449,16 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         endif
                
       ! add contribution from mineral volume fractions
-        if (reaction%nkinmnrl > 0) then
-          do imnrl = 1, reaction%nkinmnrl
-            ncomp = reaction%kinmnrlspecid(0,imnrl)
+        if (reaction%mineral%nkinmnrl > 0) then
+          do imnrl = 1, reaction%mineral%nkinmnrl
+            ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
             do i = 1, ncomp
-              icomp = reaction%kinmnrlspecid(i,imnrl)
+              icomp = reaction%mineral%kinmnrlspecid(i,imnrl)
               mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
-              + reaction%kinmnrlstoich(i,imnrl)                  &
+              + reaction%mineral%kinmnrlstoich(i,imnrl)                  &
               * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
               * volume_p(local_id) &
-              / reaction%kinmnrl_molar_vol(imnrl)
+              / reaction%mineral%kinmnrl_molar_vol(imnrl)
             enddo 
           enddo
         endif
@@ -705,38 +705,38 @@ subroutine RTUpdateSolutionPatch(realization)
 
   if (.not.option%init_stage) then
     ! update mineral volume fractions
-    if (reaction%nkinmnrl > 0) then
+    if (reaction%mineral%nkinmnrl > 0) then
     
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
         if (patch%imat(ghosted_id) <= 0) cycle
-        do imnrl = 1, reaction%nkinmnrl
+        do imnrl = 1, reaction%mineral%nkinmnrl
           ! rate = mol/m^3/sec
           ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
           !                                mol_vol (m^3 mnrl/mol mnrl)
           rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
             rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-            reaction%kinmnrl_molar_vol(imnrl)* &
+            reaction%mineral%kinmnrl_molar_vol(imnrl)* &
             option%tran_dt
           if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
 
 #ifdef CHUAN_CO2
           if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
-            ncomp = reaction%kinmnrlspecid(0,imnrl)
+            ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
             do iaqspec=1, ncomp  
-              icomp = reaction%kinmnrlspecid(iaqspec,imnrl)
+              icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
               if (icomp == realization%reaction%species_idx%co2_aq_id) then
                 global_aux_vars(ghosted_id)%reaction_rate(2) &
                   = global_aux_vars(ghosted_id)%reaction_rate(2)& 
                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+                  * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
               else if (icomp == reaction%species_idx%h2o_aq_id) then
                 global_aux_vars(ghosted_id)%reaction_rate(1) &
                   = global_aux_vars(ghosted_id)%reaction_rate(1)& 
                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+                  * reaction%mineral%mnrlstoich(icomp,imnrl)/option%flow_dt
               endif
             enddo 
           endif   
@@ -4089,9 +4089,9 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo  
     
-  do i=1,reaction%nkinmnrl
-    if (reaction%kinmnrl_print(i)) then
-      string = trim(reaction%kinmnrl_names(i)) // '_vf'
+  do i=1,reaction%mineral%nkinmnrl
+    if (reaction%mineral%kinmnrl_print(i)) then
+      string = trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -4101,9 +4101,9 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
   
-  do i=1,reaction%nkinmnrl
-    if (reaction%kinmnrl_print(i)) then
-      string = trim(reaction%kinmnrl_names(i)) // '_rt'
+  do i=1,reaction%mineral%nkinmnrl
+    if (reaction%mineral%kinmnrl_print(i)) then
+      string = trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &
@@ -4113,9 +4113,9 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     endif
   enddo
   
-  do i=1,reaction%nmnrl
-    if (reaction%mnrl_print(i)) then
-      string = trim(reaction%mineral_names(i)) // '_si'
+  do i=1,reaction%mineral%nmnrl
+    if (reaction%mineral%mnrl_print(i)) then
+      string = trim(reaction%mineral%mineral_names(i)) // '_si'
       call RTAppendToHeader(header,string,cell_string,icolumn)
 #ifdef GLENN_NEW_IO
       call OutputOptionAddPlotVariable(realization%output_option, &

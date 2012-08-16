@@ -1829,14 +1829,14 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   
     call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
 
-    if (reaction%nkinmnrl > 0) then
+    if (reaction%mineral%nkinmnrl > 0) then
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
 
         ! Go ahead and compute for inactive cells since their porosity does
         ! not matter (avoid check on active/inactive)
         sum_volfrac = 0.d0
-        do imnrl = 1, reaction%nkinmnrl
+        do imnrl = 1, reaction%mineral%nkinmnrl
           sum_volfrac = sum_volfrac + &
                         rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)
         enddo 
@@ -1879,16 +1879,16 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       ghosted_id = grid%nL2G(local_id)
       if (option%update_mnrl_surf_with_porosity) then
         porosity_scale = vec_p(local_id)** &
-             reaction%kinmnrl_surf_area_porosity_pwr(imnrl)
+             reaction%mineral%kinmnrl_surf_area_porosity_pwr(imnrl)
 !geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
 !     solely material type.
 !          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
       endif
-      do imnrl = 1, reaction%nkinmnrl
+      do imnrl = 1, reaction%mineral%nkinmnrl
         if (rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl) > 0.d0) then
           volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
                          rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl))** &
-             reaction%kinmnrl_surf_area_vol_frac_pwr(imnrl)
+             reaction%mineral%kinmnrl_surf_area_vol_frac_pwr(imnrl)
 !geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
 !     solely material type.
 !            material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr

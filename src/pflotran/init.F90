@@ -1295,6 +1295,7 @@ subroutine InitReadInput(simulation)
   use String_module
   use Units_module
   use Velocity_module
+  use Mineral_module
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
 #endif
@@ -1434,7 +1435,7 @@ subroutine InitReadInput(simulation)
             case('OUTPUT')
               call ReactionReadOutput(reaction,input,option)
             case('MINERAL_KINETICS')
-              call ReactionReadMineralKinetics(reaction,input,option)
+              call MineralReadKinetics(reaction%mineral,input,option)
             case('SORPTION')
               do
                 call InputReadFlotranString(input,option)

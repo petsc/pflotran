@@ -346,23 +346,25 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 !   nullify(aux_var%eqionx_cec)
   endif
   
-  if (reaction%nkinmnrl > 0) then
-    allocate(aux_var%mnrl_volfrac0(reaction%nkinmnrl))
-    aux_var%mnrl_volfrac0 = 0.d0
-    allocate(aux_var%mnrl_volfrac(reaction%nkinmnrl))
-    aux_var%mnrl_volfrac = 0.d0
-    allocate(aux_var%mnrl_area0(reaction%nkinmnrl))
-    aux_var%mnrl_area0 = 0.d0
-    allocate(aux_var%mnrl_area(reaction%nkinmnrl))
-    aux_var%mnrl_area = 0.d0
-    allocate(aux_var%mnrl_rate(reaction%nkinmnrl))
-    aux_var%mnrl_rate = 0.d0
-  else
-    nullify(aux_var%mnrl_volfrac0)
-    nullify(aux_var%mnrl_volfrac)
-    nullify(aux_var%mnrl_area0)
-    nullify(aux_var%mnrl_area)
-    nullify(aux_var%mnrl_rate)
+  if (associated(reaction%mineral)) then
+    if (reaction%mineral%nkinmnrl > 0) then
+      allocate(aux_var%mnrl_volfrac0(reaction%mineral%nkinmnrl))
+      aux_var%mnrl_volfrac0 = 0.d0
+      allocate(aux_var%mnrl_volfrac(reaction%mineral%nkinmnrl))
+      aux_var%mnrl_volfrac = 0.d0
+      allocate(aux_var%mnrl_area0(reaction%mineral%nkinmnrl))
+      aux_var%mnrl_area0 = 0.d0
+      allocate(aux_var%mnrl_area(reaction%mineral%nkinmnrl))
+      aux_var%mnrl_area = 0.d0
+      allocate(aux_var%mnrl_rate(reaction%mineral%nkinmnrl))
+      aux_var%mnrl_rate = 0.d0
+    else
+      nullify(aux_var%mnrl_volfrac0)
+      nullify(aux_var%mnrl_volfrac)
+      nullify(aux_var%mnrl_area0)
+      nullify(aux_var%mnrl_area)
+      nullify(aux_var%mnrl_rate)
+    endif
   endif
   
   allocate(aux_var%pri_act_coef(reaction%naqcomp))

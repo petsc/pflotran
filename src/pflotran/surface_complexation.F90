@@ -23,7 +23,7 @@ contains
 
 ! ************************************************************************** !
 !
-! ReactionRead: Reads chemical species
+! SurfaceComplexationRead: Reads chemical species 
 ! author: Glenn Hammond
 ! date: 05/02/08
 !

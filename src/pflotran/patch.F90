@@ -1692,6 +1692,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use Richards_Aux_module
   use Reactive_Transport_Aux_module  
   use Reaction_module
+  use Mineral_module
   
   implicit none
 
@@ -2478,6 +2479,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Miscible_Aux_module
   use Reactive_Transport_Aux_module  
   use Reaction_module
+  use Mineral_module
 
   implicit none
 

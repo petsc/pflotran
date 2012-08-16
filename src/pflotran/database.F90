@@ -32,6 +32,7 @@ subroutine DatabaseRead(reaction,option)
   use String_module
   
   use Surface_Complexation_Aux_module
+  use Mineral_Aux_module
   
   implicit none
   
@@ -46,6 +47,7 @@ subroutine DatabaseRead(reaction,option)
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
                                          cur_srfcplx_in_master_list
+  type(mineral_rxn_type), pointer :: mineral_reaction
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -60,6 +62,7 @@ subroutine DatabaseRead(reaction,option)
   PetscInt :: num_nulls
   
   surface_complexation => reaction%surface_complexation
+  mineral_reaction => reaction%mineral
   
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
@@ -80,7 +83,7 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec%id = -abs(cur_gas_spec%id)
     cur_gas_spec => cur_gas_spec%next
   enddo  
-  cur_mineral => reaction%mineral_list
+  cur_mineral => mineral_reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
     cur_mineral%id = -abs(cur_mineral%id)
@@ -284,7 +287,7 @@ subroutine DatabaseRead(reaction,option)
         
                
       case(3) ! minerals
-        cur_mineral => reaction%mineral_list
+        cur_mineral => mineral_reaction%mineral_list
         if (.not.associated(cur_mineral)) cycle
         found = PETSC_FALSE
         do
@@ -518,7 +521,7 @@ subroutine DatabaseRead(reaction,option)
   enddo
   
   ! minerals
-  cur_mineral => reaction%mineral_list
+  cur_mineral => mineral_reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
     cur_mineral2 => cur_mineral%next
@@ -664,7 +667,7 @@ subroutine DatabaseRead(reaction,option)
     endif
     cur_gas_spec => cur_gas_spec%next
   enddo  
-  cur_mineral => reaction%mineral_list
+  cur_mineral => mineral_reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
     if (cur_mineral%id < 0) then
@@ -708,6 +711,7 @@ subroutine BasisInit(reaction,option)
   use Input_module
   
   use Surface_Complexation_Aux_module
+  use Mineral_Aux_module
 
   implicit none
   
@@ -736,6 +740,7 @@ subroutine BasisInit(reaction,option)
   type(transition_state_rxn_type), pointer :: tstrxn
   type(transition_state_prefactor_type), pointer :: cur_prefactor
   type(ts_prefactor_species_type), pointer :: cur_prefactor_species
+  type(mineral_rxn_type), pointer :: mineral_reaction
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -789,6 +794,7 @@ subroutine BasisInit(reaction,option)
   PetscErrorCode :: ierr
   
   surface_complexation => reaction%surface_complexation
+  mineral_reaction => reaction%mineral
   
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
@@ -1288,7 +1294,7 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_gas_spec)) exit
     
     ! gases in mineral reactions
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     do
       if (.not.associated(cur_mineral)) exit
       
@@ -1356,7 +1362,7 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_sec_aq_spec)) exit
     
     ! secondary aqueous species in mineral reactions
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     do
       if (.not.associated(cur_mineral)) exit
       
@@ -1418,7 +1424,7 @@ subroutine BasisInit(reaction,option)
 
   ! substitute new basis into mineral and surface complexation rxns,
   ! if necessary
-  cur_mineral => reaction%mineral_list
+  cur_mineral => mineral_reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
     if (.not.associated(cur_mineral%dbaserxn%spec_ids)) then
@@ -1722,17 +1728,17 @@ subroutine BasisInit(reaction,option)
   ! minerals
   ! Count the number of kinetic mineral reactions, max number of prefactors in a
   !   tst reaction, and the maximum number or species in a prefactor
-  reaction%nkinmnrl = 0
+  mineral_reaction%nkinmnrl = 0
   max_num_prefactors = 0
   max_num_prefactor_species = 0
-  cur_mineral => reaction%mineral_list
+  cur_mineral => mineral_reaction%mineral_list
   !
   do
     if (.not.associated(cur_mineral)) exit
     if (cur_mineral%itype == MINERAL_KINETIC .and. &
         associated(cur_mineral%tstrxn)) then
       ! increment number of kinetic minerals
-      reaction%nkinmnrl = reaction%nkinmnrl + 1
+      mineral_reaction%nkinmnrl = mineral_reaction%nkinmnrl + 1
       cur_prefactor => cur_mineral%tstrxn%prefactor
       ! zero number of prefactors
       i = 0
@@ -1755,10 +1761,10 @@ subroutine BasisInit(reaction,option)
     cur_mineral => cur_mineral%next
   enddo
 
-  if (reaction%nmnrl > 0) then
+  if (mineral_reaction%nmnrl > 0) then
   
     ! get maximum # of aqueous species in a mineral reaction
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     max_aq_species = 0
     do
       if (.not.associated(cur_mineral)) exit
@@ -1766,33 +1772,33 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
     enddo
     
-    allocate(reaction%mineral_names(reaction%nmnrl))
-    reaction%mineral_names = ''
-    allocate(reaction%mnrlspecid(0:max_aq_species,reaction%nmnrl))
-    reaction%mnrlspecid = 0
-    allocate(reaction%mnrlstoich(max_aq_species,reaction%nmnrl))
-    reaction%mnrlstoich = 0.d0
-    allocate(reaction%mnrlh2oid(reaction%nmnrl))
-    reaction%mnrlh2oid = 0
-    allocate(reaction%mnrlh2ostoich(reaction%nmnrl))
-    reaction%mnrlh2ostoich = 0.d0
-    allocate(reaction%mnrl_logK(reaction%nmnrl))
-    reaction%mnrl_logK = 0.d0
-    allocate(reaction%mnrl_print(reaction%nmnrl))
-    reaction%mnrl_print = PETSC_FALSE
+    allocate(mineral_reaction%mineral_names(mineral_reaction%nmnrl))
+    mineral_reaction%mineral_names = ''
+    allocate(mineral_reaction%mnrlspecid(0:max_aq_species,mineral_reaction%nmnrl))
+    mineral_reaction%mnrlspecid = 0
+    allocate(mineral_reaction%mnrlstoich(max_aq_species,mineral_reaction%nmnrl))
+    mineral_reaction%mnrlstoich = 0.d0
+    allocate(mineral_reaction%mnrlh2oid(mineral_reaction%nmnrl))
+    mineral_reaction%mnrlh2oid = 0
+    allocate(mineral_reaction%mnrlh2ostoich(mineral_reaction%nmnrl))
+    mineral_reaction%mnrlh2ostoich = 0.d0
+    allocate(mineral_reaction%mnrl_logK(mineral_reaction%nmnrl))
+    mineral_reaction%mnrl_logK = 0.d0
+    allocate(mineral_reaction%mnrl_print(mineral_reaction%nmnrl))
+    mineral_reaction%mnrl_print = PETSC_FALSE
 #if TEMP_DEPENDENT_LOGK
-    allocate(reaction%mnrl_logKcoef(FIVE_INTEGER,reaction%nmnrl))
-    reaction%mnrl_logKcoef = 0.d0
+    allocate(mineral_reaction%mnrl_logKcoef(FIVE_INTEGER,mineral_reaction%nmnrl))
+    mineral_reaction%mnrl_logKcoef = 0.d0
 #else
-    allocate(reaction%mnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                    reaction%nmnrl))
-    reaction%mnrl_logKcoef = 0.d0
+    allocate(mineral_reaction%mnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                    mineral_reaction%nmnrl))
+    mineral_reaction%mnrl_logKcoef = 0.d0
 #endif
 
-    if (reaction%nkinmnrl > 0) then
+    if (mineral_reaction%nkinmnrl > 0) then
     
       ! get maximum # of aqueous species in a mineral reaction
-      cur_mineral => reaction%mineral_list
+      cur_mineral => mineral_reaction%mineral_list
       max_aq_species = 0
       do
         if (.not.associated(cur_mineral)) exit
@@ -1802,70 +1808,70 @@ subroutine BasisInit(reaction,option)
         cur_mineral => cur_mineral%next
       enddo
     
-      allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
-      reaction%kinmnrl_names = ''
-      allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
-      reaction%kinmnrl_print = PETSC_FALSE
-      allocate(reaction%kinmnrlspecid(0:max_aq_species,reaction%nkinmnrl))
-      reaction%kinmnrlspecid = 0
-      allocate(reaction%kinmnrlstoich(max_aq_species,reaction%nkinmnrl))
-      reaction%kinmnrlstoich = 0.d0
-      allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
-      reaction%kinmnrlh2oid = 0
-      allocate(reaction%kinmnrlh2ostoich(reaction%nkinmnrl))
-      reaction%kinmnrlh2ostoich = 0.d0
-      allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
-      reaction%kinmnrl_logK = 0.d0
+      allocate(mineral_reaction%kinmnrl_names(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_names = ''
+      allocate(mineral_reaction%kinmnrl_print(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_print = PETSC_FALSE
+      allocate(mineral_reaction%kinmnrlspecid(0:max_aq_species,mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrlspecid = 0
+      allocate(mineral_reaction%kinmnrlstoich(max_aq_species,mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrlstoich = 0.d0
+      allocate(mineral_reaction%kinmnrlh2oid(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrlh2oid = 0
+      allocate(mineral_reaction%kinmnrlh2ostoich(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrlh2ostoich = 0.d0
+      allocate(mineral_reaction%kinmnrl_logK(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_logK = 0.d0
 #if TEMP_DEPENDENT_LOGK
-      allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
-      reaction%kinmnrl_logKcoef = 0.d0
+      allocate(mineral_reaction%kinmnrl_logKcoef(FIVE_INTEGER,mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_logKcoef = 0.d0
 #else
-      allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
-                                         reaction%nkinmnrl))
-      reaction%kinmnrl_logKcoef = 0.d0
+      allocate(mineral_reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
+                                         mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_logKcoef = 0.d0
 #endif
 
       ! TST Rxn variables
-      allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
-      reaction%kinmnrl_affinity_threshold = 0.d0
-      allocate(reaction%kinmnrl_rate_limiter(reaction%nkinmnrl))
-      reaction%kinmnrl_rate_limiter = 0.d0
-      allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
-      reaction%kinmnrl_irreversible = 0
-      allocate(reaction%kinmnrl_rate(reaction%nkinmnrl))
-      reaction%kinmnrl_rate = 0.d0
-      allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
-      reaction%kinmnrl_activation_energy = 0.d0
-      allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
-      reaction%kinmnrl_molar_vol = 0.d0
-      allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
-      reaction%kinmnrl_molar_wt = 0.d0
+      allocate(mineral_reaction%kinmnrl_affinity_threshold(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_affinity_threshold = 0.d0
+      allocate(mineral_reaction%kinmnrl_rate_limiter(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_rate_limiter = 0.d0
+      allocate(mineral_reaction%kinmnrl_irreversible(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_irreversible = 0
+      allocate(mineral_reaction%kinmnrl_rate(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_rate = 0.d0
+      allocate(mineral_reaction%kinmnrl_activation_energy(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_activation_energy = 0.d0
+      allocate(mineral_reaction%kinmnrl_molar_vol(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_molar_vol = 0.d0
+      allocate(mineral_reaction%kinmnrl_molar_wt(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_molar_wt = 0.d0
 
-      allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
-      reaction%kinmnrl_num_prefactors = 0
+      allocate(mineral_reaction%kinmnrl_num_prefactors(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_num_prefactors = 0
       if (max_num_prefactors > 0) then
-        allocate(reaction%kinmnrl_pref_rate(max_num_prefactors,reaction%nkinmnrl))
-        reaction%kinmnrl_pref_rate = 0.d0
-        allocate(reaction%kinmnrl_pref_activation_energy(max_num_prefactors, &
-                                                         reaction%nkinmnrl))
-        reaction%kinmnrl_pref_activation_energy = 0.d0
-        allocate(reaction%kinmnrl_prefactor_id(0:max_num_prefactor_species, &
-                                             max_num_prefactors,reaction%nkinmnrl))
-        reaction%kinmnrl_prefactor_id = 0
-        allocate(reaction%kinmnrl_pref_alpha(max_num_prefactor_species, &
-                                             max_num_prefactors,reaction%nkinmnrl))
-        reaction%kinmnrl_pref_alpha = 0.d0
-        allocate(reaction%kinmnrl_pref_beta(max_num_prefactor_species, &
-                                             max_num_prefactors,reaction%nkinmnrl))
-        reaction%kinmnrl_pref_beta = 0.d0
-        allocate(reaction%kinmnrl_pref_atten_coef(max_num_prefactor_species, &
-                                             max_num_prefactors,reaction%nkinmnrl))
-        reaction%kinmnrl_pref_atten_coef = 0.d0
+        allocate(mineral_reaction%kinmnrl_pref_rate(max_num_prefactors,mineral_reaction%nkinmnrl))
+        mineral_reaction%kinmnrl_pref_rate = 0.d0
+        allocate(mineral_reaction%kinmnrl_pref_activation_energy(max_num_prefactors, &
+                                                         mineral_reaction%nkinmnrl))
+        mineral_reaction%kinmnrl_pref_activation_energy = 0.d0
+        allocate(mineral_reaction%kinmnrl_prefactor_id(0:max_num_prefactor_species, &
+                                             max_num_prefactors,mineral_reaction%nkinmnrl))
+        mineral_reaction%kinmnrl_prefactor_id = 0
+        allocate(mineral_reaction%kinmnrl_pref_alpha(max_num_prefactor_species, &
+                                             max_num_prefactors,mineral_reaction%nkinmnrl))
+        mineral_reaction%kinmnrl_pref_alpha = 0.d0
+        allocate(mineral_reaction%kinmnrl_pref_beta(max_num_prefactor_species, &
+                                             max_num_prefactors,mineral_reaction%nkinmnrl))
+        mineral_reaction%kinmnrl_pref_beta = 0.d0
+        allocate(mineral_reaction%kinmnrl_pref_atten_coef(max_num_prefactor_species, &
+                                             max_num_prefactors,mineral_reaction%nkinmnrl))
+        mineral_reaction%kinmnrl_pref_atten_coef = 0.d0
       endif
     endif
     
     ! Determine whether Tempkins constant is used in any TST reactions
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     found = PETSC_FALSE
     do
       if (.not.associated(cur_mineral)) exit
@@ -1879,12 +1885,12 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
     enddo
     if (found) then
-      allocate(reaction%kinmnrl_Tempkin_const(reaction%nkinmnrl))
-      reaction%kinmnrl_Tempkin_const = 1.d0    
+      allocate(mineral_reaction%kinmnrl_Tempkin_const(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_Tempkin_const = 1.d0    
     endif
 
     ! Determine whether affinity factor has power
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     found = PETSC_FALSE
     do
       if (.not.associated(cur_mineral)) exit
@@ -1898,13 +1904,13 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
     enddo
     if (found) then
-      allocate(reaction%kinmnrl_affinity_power(reaction%nkinmnrl))
-      reaction%kinmnrl_affinity_power = 1.d0    
+      allocate(mineral_reaction%kinmnrl_affinity_power(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_affinity_power = 1.d0    
     endif
 
 
     ! Determine whether surface area volume fraction power defined
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     found = PETSC_FALSE
     do
       if (.not.associated(cur_mineral)) exit
@@ -1918,12 +1924,12 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
     enddo
     if (found) then
-      allocate(reaction%kinmnrl_surf_area_vol_frac_pwr(reaction%nkinmnrl))
-      reaction%kinmnrl_surf_area_vol_frac_pwr = 0.d0    
+      allocate(mineral_reaction%kinmnrl_surf_area_vol_frac_pwr(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_surf_area_vol_frac_pwr = 0.d0    
     endif
     
     ! Determine whether surface area volume fraction power defined
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     found = PETSC_FALSE
     do
       if (.not.associated(cur_mineral)) exit
@@ -1937,87 +1943,87 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
     enddo
     if (found) then
-      allocate(reaction%kinmnrl_surf_area_porosity_pwr(reaction%nkinmnrl))
-      reaction%kinmnrl_surf_area_porosity_pwr = 0.d0    
+      allocate(mineral_reaction%kinmnrl_surf_area_porosity_pwr(mineral_reaction%nkinmnrl))
+      mineral_reaction%kinmnrl_surf_area_porosity_pwr = 0.d0    
     endif
     
-    cur_mineral => reaction%mineral_list
+    cur_mineral => mineral_reaction%mineral_list
     imnrl = 1
     ikinmnrl = 1
     do
       if (.not.associated(cur_mineral)) exit
 
-      reaction%mineral_names(imnrl) = cur_mineral%name
+      mineral_reaction%mineral_names(imnrl) = cur_mineral%name
       ispec = 0
       do i = 1, cur_mineral%dbaserxn%nspec
         if (cur_mineral%dbaserxn%spec_ids(i) /= h2o_id) then
           ispec = ispec + 1
           spec_id = cur_mineral%dbaserxn%spec_ids(i)
           if (spec_id > h2o_id) spec_id = spec_id - 1
-          reaction%mnrlspecid(ispec,imnrl) = spec_id
-          reaction%mnrlstoich(ispec,imnrl) = &
+          mineral_reaction%mnrlspecid(ispec,imnrl) = spec_id
+          mineral_reaction%mnrlstoich(ispec,imnrl) = &
             cur_mineral%dbaserxn%stoich(i)
             
         else ! fill in h2o id and stoich
-          reaction%mnrlh2oid(imnrl) = h2o_id
-          reaction%mnrlh2ostoich(imnrl) = &
+          mineral_reaction%mnrlh2oid(imnrl) = h2o_id
+          mineral_reaction%mnrlh2ostoich(imnrl) = &
             cur_mineral%dbaserxn%stoich(i)
         endif
       enddo
-      reaction%mnrlspecid(0,imnrl) = ispec
+      mineral_reaction%mnrlspecid(0,imnrl) = ispec
 
 #if TEMP_DEPENDENT_LOGK
       if (reaction%use_geothermal_hpt) then
-        call ReactionInitializeLogK_hpt(reaction%mnrl_logKcoef(:,imnrl), &
-                                        reaction%mnrl_logK(imnrl), &
+        call ReactionInitializeLogK_hpt(mineral_reaction%mnrl_logKcoef(:,imnrl), &
+                                        mineral_reaction%mnrl_logK(imnrl), &
                                         option,reaction)      
       else
-        call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl), &
+        call ReactionFitLogKCoef(mineral_reaction%mnrl_logKcoef(:,imnrl), &
                                  cur_mineral%dbaserxn%logK, &
                                  reaction%mineral_names(imnrl), &
                                  option,reaction)
-        call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
+        call ReactionInitializeLogK(mineral_reaction%mnrl_logKcoef(:,imnrl), &
                                     cur_mineral%dbaserxn%logK, &
-                                    reaction%mnrl_logK(imnrl), &
+                                    mineral_reaction%mnrl_logK(imnrl), &
                                     option,reaction)
       endif
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_mineral%dbaserxn%logK(itemp_high), &
                        cur_mineral%dbaserxn%logK(itemp_low), &
-                       reaction%mnrl_logK(imnrl))
+                       mineral_reaction%mnrl_logK(imnrl))
 #endif
       ! geh - for now, the user must specify they want each individual
       !       mineral printed for non-kinetic reactions (e.g. for SI).
-      reaction%mnrl_print(imnrl) = cur_mineral%print_me
+      mineral_reaction%mnrl_print(imnrl) = cur_mineral%print_me
       if (cur_mineral%itype == MINERAL_KINETIC) then
-        reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
-        reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
+        mineral_reaction%kinmnrl_names(ikinmnrl) = mineral_reaction%mineral_names(imnrl)
+        mineral_reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
                                            reaction%print_all_mineral_species
-        reaction%kinmnrlspecid(:,ikinmnrl) = reaction%mnrlspecid(:,imnrl)
-        reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
-        reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
-        reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
+        mineral_reaction%kinmnrlspecid(:,ikinmnrl) = mineral_reaction%mnrlspecid(:,imnrl)
+        mineral_reaction%kinmnrlstoich(:,ikinmnrl) = mineral_reaction%mnrlstoich(:,imnrl)
+        mineral_reaction%kinmnrlh2oid(ikinmnrl) = mineral_reaction%mnrlh2oid(imnrl)
+        mineral_reaction%kinmnrlh2ostoich(ikinmnrl) = mineral_reaction%mnrlh2ostoich(imnrl)
 #if TEMP_DEPENDENT_LOGK
         if (reaction%use_geothermal_hpt) then
-          call ReactionInitializeLogK_hpt(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                          reaction%kinmnrl_logK(ikinmnrl), &
+          call ReactionInitializeLogK_hpt(mineral_reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+                                          mineral_reaction%kinmnrl_logK(ikinmnrl), &
                                           option,reaction)        
         else
-          call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+          call ReactionFitLogKCoef(mineral_reaction%kinmnrl_logKcoef(:,ikinmnrl), &
                                    cur_mineral%dbaserxn%logK, &
-                                   reaction%kinmnrl_names(ikinmnrl), &
+                                   mineral_reaction%kinmnrl_names(ikinmnrl), &
                                    option,reaction)
-          call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+          call ReactionInitializeLogK(mineral_reaction%kinmnrl_logKcoef(:,ikinmnrl), &
                                       cur_mineral%dbaserxn%logK, &
-                                      reaction%kinmnrl_logK(ikinmnrl), &
+                                      mineral_reaction%kinmnrl_logK(ikinmnrl), &
                                       option,reaction)
         endif
 #else
         call Interpolate(temp_high,temp_low,option%reference_temperature, &
                          cur_mineral%dbaserxn%logK(itemp_high), &
                          cur_mineral%dbaserxn%logK(itemp_low), &
-                         reaction%kinmnrl_logK(ikinmnrl))
+                         mineral_reaction%kinmnrl_logK(ikinmnrl))
 #endif
 
         tstrxn => cur_mineral%tstrxn
@@ -2030,8 +2036,8 @@ subroutine BasisInit(reaction,option)
             ! ith prefactor
             i = i + 1
 
-            reaction%kinmnrl_pref_rate(i,ikinmnrl) = cur_prefactor%rate
-            reaction%kinmnrl_pref_activation_energy(i,ikinmnrl) = &
+            mineral_reaction%kinmnrl_pref_rate(i,ikinmnrl) = cur_prefactor%rate
+            mineral_reaction%kinmnrl_pref_activation_energy(i,ikinmnrl) = &
               cur_prefactor%activation_energy
 
             cur_prefactor_species => cur_prefactor%species
@@ -2064,53 +2070,53 @@ subroutine BasisInit(reaction,option)
                   '" not found among primary or secondary species.'
                 call printErrMsg(option)
               endif
-              reaction%kinmnrl_prefactor_id(j,i,ikinmnrl) = cur_prefactor_species%id
-              reaction%kinmnrl_pref_alpha(j,i,ikinmnrl) = cur_prefactor_species%alpha
-              reaction%kinmnrl_pref_beta(j,i,ikinmnrl) = cur_prefactor_species%beta
-              reaction%kinmnrl_pref_atten_coef(j,i,ikinmnrl) = &
+              mineral_reaction%kinmnrl_prefactor_id(j,i,ikinmnrl) = cur_prefactor_species%id
+              mineral_reaction%kinmnrl_pref_alpha(j,i,ikinmnrl) = cur_prefactor_species%alpha
+              mineral_reaction%kinmnrl_pref_beta(j,i,ikinmnrl) = cur_prefactor_species%beta
+              mineral_reaction%kinmnrl_pref_atten_coef(j,i,ikinmnrl) = &
                 cur_prefactor_species%attenuation_coef
               cur_prefactor_species => cur_prefactor_species%next
             enddo
             ! store the number of species
-            reaction%kinmnrl_prefactor_id(0,i,ikinmnrl) = j
+            mineral_reaction%kinmnrl_prefactor_id(0,i,ikinmnrl) = j
             cur_prefactor => cur_prefactor%next
           enddo
-          reaction%kinmnrl_num_prefactors(ikinmnrl) = i
+          mineral_reaction%kinmnrl_num_prefactors(ikinmnrl) = i
 
-          reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
+          mineral_reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
             tstrxn%affinity_threshold
-          reaction%kinmnrl_rate_limiter(ikinmnrl) = tstrxn%rate_limiter
-          reaction%kinmnrl_irreversible(ikinmnrl) = tstrxn%irreversible
-          if (reaction%kinmnrl_num_prefactors(ikinmnrl) == 0) then
+          mineral_reaction%kinmnrl_rate_limiter(ikinmnrl) = tstrxn%rate_limiter
+          mineral_reaction%kinmnrl_irreversible(ikinmnrl) = tstrxn%irreversible
+          if (mineral_reaction%kinmnrl_num_prefactors(ikinmnrl) == 0) then
             ! no prefactors, rates stored in upper level
-            reaction%kinmnrl_rate(ikinmnrl) = tstrxn%rate
-            reaction%kinmnrl_activation_energy(ikinmnrl) = &
+            mineral_reaction%kinmnrl_rate(ikinmnrl) = tstrxn%rate
+            mineral_reaction%kinmnrl_activation_energy(ikinmnrl) = &
               tstrxn%activation_energy
           endif
           if (.not.Equal(tstrxn%affinity_factor_sigma, &
                          -999.d0)) then
-            reaction%kinmnrl_Tempkin_const(ikinmnrl) = &
+            mineral_reaction%kinmnrl_Tempkin_const(ikinmnrl) = &
               tstrxn%affinity_factor_sigma
           endif
           if (.not.Equal(tstrxn%affinity_factor_beta, &
                          -999.d0)) then
-            reaction%kinmnrl_affinity_power(ikinmnrl) = &
+            mineral_reaction%kinmnrl_affinity_power(ikinmnrl) = &
               tstrxn%affinity_factor_beta
           endif
           if (.not.Equal(tstrxn%surf_area_vol_frac_pwr, &
                          0.d0)) then
-            reaction%kinmnrl_surf_area_vol_frac_pwr(ikinmnrl) = &
+            mineral_reaction%kinmnrl_surf_area_vol_frac_pwr(ikinmnrl) = &
               tstrxn%surf_area_vol_frac_pwr
           endif
           if (.not.Equal(tstrxn%surf_area_porosity_pwr, &
                          0.d0)) then
-            reaction%kinmnrl_surf_area_porosity_pwr(ikinmnrl) = &
+            mineral_reaction%kinmnrl_surf_area_porosity_pwr(ikinmnrl) = &
               tstrxn%surf_area_porosity_pwr
           endif
         endif ! associated(tstrxn)
 
-        reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
-        reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight
+        mineral_reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
+        mineral_reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight
         ikinmnrl = ikinmnrl + 1
       endif
 
@@ -2474,7 +2480,7 @@ subroutine BasisInit(reaction,option)
                                 reaction%print_all_species
       if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
         surface_complexation%srfcplxrxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+          GetMineralIDFromName(reaction%mineral,cur_srfcplx_rxn%mineral_name)
         surface_complexation%srfcplxrxn_surf_type(irxn) = MINERAL_SURFACE
         if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // &
@@ -2647,7 +2653,7 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
       if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
         reaction%eqionx_rxn_to_surf(irxn) = &
-          GetMineralIDFromName(reaction,cur_ionx_rxn%mineral_name)
+          GetMineralIDFromName(reaction%mineral,cur_ionx_rxn%mineral_name)
         if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
                              'listed in ion exchange ' // &
@@ -3139,11 +3145,11 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%ngas, 'Gas Species'
     write(option%fid_out,110) (reaction%gas_species_names(i),i=1,reaction%ngas)
     
-    write(option%fid_out,100) reaction%nmnrl, 'Reference Minerals'
-    write(option%fid_out,110) (reaction%mineral_names(i),i=1,reaction%nmnrl)
+    write(option%fid_out,100) mineral_reaction%nmnrl, 'Reference Minerals'
+    write(option%fid_out,110) (mineral_reaction%mineral_names(i),i=1,mineral_reaction%nmnrl)
     
-    write(option%fid_out,100) reaction%nkinmnrl, 'Kinetic Mineral Reactions'
-    write(option%fid_out,110) (reaction%kinmnrl_names(i),i=1,reaction%nkinmnrl)
+    write(option%fid_out,100) mineral_reaction%nkinmnrl, 'Kinetic Mineral Reactions'
+    write(option%fid_out,110) (mineral_reaction%kinmnrl_names(i),i=1,mineral_reaction%nkinmnrl)
     
     if (surface_complexation%nsrfcplxrxn > 0) then
       write(word,*) surface_complexation%nsrfcplxrxn
@@ -3240,38 +3246,38 @@ subroutine BasisInit(reaction,option)
 
     write(86,'(/,"<Minerals")')
 
-    do imnrl = 1, reaction%nkinmnrl
-      write(86,'(a," = ")',advance='no') trim(reaction%kinmnrl_names(imnrl))
-      if (reaction%kinmnrlh2oid(imnrl) > 0) then
-        write(86,'(f6.2," H2O ")',advance='no') reaction%kinmnrlh2ostoich(imnrl)
+    do imnrl = 1, mineral_reaction%nkinmnrl
+      write(86,'(a," = ")',advance='no') trim(mineral_reaction%kinmnrl_names(imnrl))
+      if (mineral_reaction%kinmnrlh2oid(imnrl) > 0) then
+        write(86,'(f6.2," H2O ")',advance='no') mineral_reaction%kinmnrlh2ostoich(imnrl)
       endif
-      do i = 1, reaction%kinmnrlspecid(0,imnrl)
-        idum = reaction%kinmnrlspecid(i,imnrl)
-        write(86,'(f6.2,x,a,x)',advance='no') reaction%kinmnrlstoich(i,imnrl), &
+      do i = 1, mineral_reaction%kinmnrlspecid(0,imnrl)
+        idum = mineral_reaction%kinmnrlspecid(i,imnrl)
+        write(86,'(f6.2,x,a,x)',advance='no') mineral_reaction%kinmnrlstoich(i,imnrl), &
                                               trim(reaction%primary_species_names(idum))
       enddo
       !molar volume has been converted to m^3/mol!
-      write(86,'(4(" ; ",1es13.5))') reaction%kinmnrl_logK(imnrl), &
-                                     reaction%kinmnrl_molar_wt(imnrl), &
-                                     reaction%kinmnrl_molar_vol(imnrl)*1.d6, 1.0
+      write(86,'(4(" ; ",1es13.5))') mineral_reaction%kinmnrl_logK(imnrl), &
+                                     mineral_reaction%kinmnrl_molar_wt(imnrl), &
+                                     mineral_reaction%kinmnrl_molar_vol(imnrl)*1.d6, 1.0
     enddo
 
     write(86,'(/,"<Mineral Kinetics")')
-    do imnrl = 1, reaction%nkinmnrl
-      write(86,'(a," ; TST ; log10_rate_constant ")',advance='no') trim(reaction%kinmnrl_names(imnrl))
-      write(86,'(1es13.5," moles/cm^2/sec ")',advance='no') log10(reaction%kinmnrl_rate(imnrl))
-      if (reaction%kinmnrl_num_prefactors(imnrl) /= 0) then
+    do imnrl = 1, mineral_reaction%nkinmnrl
+      write(86,'(a," ; TST ; log10_rate_constant ")',advance='no') trim(mineral_reaction%kinmnrl_names(imnrl))
+      write(86,'(1es13.5," moles/cm^2/sec ")',advance='no') log10(mineral_reaction%kinmnrl_rate(imnrl))
+      if (mineral_reaction%kinmnrl_num_prefactors(imnrl) /= 0) then
         write(86,'(" ; ")',advance='no')
-        do i = 1, reaction%kinmnrl_num_prefactors(imnrl)
+        do i = 1, mineral_reaction%kinmnrl_num_prefactors(imnrl)
           ! number of prefactor species stored in kinmnrl_prefactor_id(0,i,imnrl)
-          do j = 1, reaction%kinmnrl_prefactor_id(0,i,imnrl)
-            idum = reaction%kinmnrl_prefactor_id(j,i,imnrl)
+          do j = 1, mineral_reaction%kinmnrl_prefactor_id(0,i,imnrl)
+            idum = mineral_reaction%kinmnrl_prefactor_id(j,i,imnrl)
             if (idum > 0) then
               write(86,'(a)',advance='no') trim(reaction%primary_species_names(idum))
             else
               write(86,'(a)',advance='no') trim(reaction%secondary_species_names(-idum))
             endif
-            write(86,'(x,1es13.5,x)',advance='no') reaction%kinmnrl_pref_alpha(j,i,imnrl)
+            write(86,'(x,1es13.5,x)',advance='no') mineral_reaction%kinmnrl_pref_alpha(j,i,imnrl)
           enddo
         enddo
       endif
@@ -3355,7 +3361,7 @@ subroutine BasisInit(reaction,option)
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.dat')
     write(86,'(10i4)') reaction%naqcomp, reaction%neqcplx, reaction%ngeneral_rxn, & 
-                       reaction%neqsrfcplxrxn, reaction%nkinmnrl
+                       reaction%neqsrfcplxrxn, mineral_reaction%nkinmnrl
     do icomp = 1, reaction%naqcomp
       write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(icomp), &
                                   reaction%primary_spec_Z(icomp), &
@@ -3400,16 +3406,16 @@ subroutine BasisInit(reaction,option)
 
       enddo
     enddo
-    do imnrl = 1, reaction%nkinmnrl
-      write(86,'(a32)') reaction%kinmnrl_names(imnrl)
-      write(86,'(40i4)') reaction%kinmnrlspecid(:,imnrl)
-      write(86,'(40f6.2)') reaction%kinmnrlstoich(:,imnrl)
-      write(86,'(i4)') reaction%kinmnrlh2oid(imnrl)
-      write(86,'(f6.2)') reaction%kinmnrlh2ostoich(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_logK(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_molar_vol(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_molar_wt(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_rate(1,imnrl)
+    do imnrl = 1, mineral_reaction%nkinmnrl
+      write(86,'(a32)') mineral_reaction%kinmnrl_names(imnrl)
+      write(86,'(40i4)') mineral_reaction%kinmnrlspecid(:,imnrl)
+      write(86,'(40f6.2)') mineral_reaction%kinmnrlstoich(:,imnrl)
+      write(86,'(i4)') mineral_reaction%kinmnrlh2oid(imnrl)
+      write(86,'(f6.2)') mineral_reaction%kinmnrlh2ostoich(imnrl)
+      write(86,'(1es13.5)') mineral_reaction%kinmnrl_logK(imnrl)
+      write(86,'(1es13.5)') mineral_reaction%kinmnrl_molar_vol(imnrl)
+      write(86,'(1es13.5)') mineral_reaction%kinmnrl_molar_wt(imnrl)
+      write(86,'(1es13.5)') mineral_reaction%kinmnrl_rate(1,imnrl)
       write(86,'(1es13.5)') 1.d0 ! specific surface area 1 cm^2 / cm^3
     enddo
         close(86)
@@ -3502,6 +3508,7 @@ subroutine BasisPrint(reaction,title,option)
   use Option_module
   use Reaction_module
   use Surface_Complexation_Aux_module
+  use Mineral_Aux_module
 
   implicit none
   
@@ -3673,7 +3680,7 @@ subroutine BasisPrint(reaction,title,option)
       cur_gas_spec => cur_gas_spec%next
     enddo
     
-    cur_mineral => reaction%mineral_list
+    cur_mineral => reaction%mineral%mineral_list
     if (associated(cur_mineral)) then    
       write(option%fid_out,*)
       write(option%fid_out,*) 'Minerals:'

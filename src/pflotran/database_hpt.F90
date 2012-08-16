@@ -5,6 +5,7 @@ module Database_hpt_module
   use Database_module
   use Database_aux_module
   use Surface_Complexation_Aux_module
+  use Mineral_Aux_module
 
   implicit none
   

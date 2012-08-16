@@ -923,22 +923,22 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
@@ -1410,22 +1410,22 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
@@ -2315,22 +2315,22 @@ subroutine OutputTecplotPoint(realization)
             write(OUTPUT_UNIT,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%nkinmnrl
-          if (reaction%kinmnrl_print(i)) then
+        do i=1,reaction%mineral%nkinmnrl
+          if (reaction%mineral%kinmnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
                                                 i,ghosted_id)
             write(OUTPUT_UNIT,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%nkinmnrl
-          if (reaction%kinmnrl_print(i)) then
+        do i=1,reaction%mineral%nkinmnrl
+          if (reaction%mineral%kinmnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_RATE, &
                                                 i,ghosted_id)
             write(OUTPUT_UNIT,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%nmnrl
-          if (reaction%mnrl_print(i)) then
+        do i=1,reaction%mineral%nmnrl
+          if (reaction%mineral%mnrl_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX, &
                                                 i,ghosted_id)
             write(OUTPUT_UNIT,1000,advance='no') value
@@ -4001,20 +4001,20 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
             RealizGetDatasetValueAtCell(realization,reaction%print_secondary_conc_type,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,MINERAL_RATE,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX,i,ghosted_id)
         endif
@@ -4493,8 +4493,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                           count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_VOLUME_FRACTION,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4503,8 +4503,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_RATE,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -4513,8 +4513,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,MINERAL_SATURATION_INDEX,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -5347,29 +5347,29 @@ subroutine OutputVTK(realization)
           call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinmnrl_names(i)) // '_vf'
+          word = trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
           call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word, &
                                     natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinmnrl_names(i)) // '_rt'
+          word = trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
           call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word, &
                                     natural_vec,VTK_REAL)
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          word = trim(reaction%kinmnrl_names(i)) // '_si'
+          word = trim(reaction%mineral%kinmnrl_names(i)) // '_si'
           call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
         endif
       enddo
@@ -6481,24 +6481,24 @@ subroutine OutputHDF5(realization)
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-          write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_vf'
+          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-          write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_rt'
+          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
-          write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
+          write(string,'(a)') trim(reaction%mineral%mineral_names(i)) // '_si'
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
@@ -9648,24 +9648,24 @@ subroutine OutputHDF5UGrid(realization)
           call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-          write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_vf'
+          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
           call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
-      do i=1,reaction%nkinmnrl
-        if (reaction%kinmnrl_print(i)) then
+      do i=1,reaction%mineral%nkinmnrl
+        if (reaction%mineral%kinmnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-          write(string,'(a)') trim(reaction%kinmnrl_names(i)) // '_rt'
+          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
           call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo
-      do i=1,reaction%nmnrl
-        if (reaction%mnrl_print(i)) then
+      do i=1,reaction%mineral%nmnrl
+        if (reaction%mineral%mnrl_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
-          write(string,'(a)') trim(reaction%mineral_names(i)) // '_si'
+          write(string,'(a)') trim(reaction%mineral%mineral_names(i)) // '_si'
           call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         endif
       enddo

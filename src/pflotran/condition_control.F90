@@ -545,7 +545,7 @@ subroutine CondControlAssignTranInitCond(realization)
 
         ! read in heterogeneous mineral volume fractions
         if (associated(constraint_coupler%minerals)) then
-          do imnrl = 1, reaction%nkinmnrl
+          do imnrl = 1, reaction%mineral%nkinmnrl
             if (constraint_coupler%minerals%external_dataset(imnrl)) then
               re_equilibrate_at_each_cell = PETSC_TRUE
               string = 'constraint ' // trim(constraint_coupler%constraint_name)
@@ -651,7 +651,7 @@ subroutine CondControlAssignTranInitCond(realization)
           endif
           ! mineral volume fractions
           if (associated(constraint_coupler%minerals)) then
-            do imnrl = 1, reaction%nkinmnrl
+            do imnrl = 1, reaction%mineral%nkinmnrl
               ! if read from a dataset, the vol frac was set above.  Don't want to
               ! overwrite
               if (.not.constraint_coupler%minerals%external_dataset(imnrl)) then

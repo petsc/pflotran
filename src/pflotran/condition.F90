@@ -2,10 +2,12 @@ module Condition_module
  
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
-  use Surface_Complexation_Aux_module  
   use Global_Aux_module
   use Dataset_Aux_module
   use Time_Series_module
+  
+  use Surface_Complexation_Aux_module  
+  use Mineral_Aux_module
   
   implicit none
 
@@ -2055,7 +2057,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         
       case('MNRL','MINERALS')
 
-        mineral_constraint => MineralConstraintCreate(reaction,option)
+        mineral_constraint => MineralConstraintCreate(reaction%mineral,option)
 
         imnrl = 0
         do
@@ -2066,7 +2068,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           
           imnrl = imnrl + 1
 
-          if (imnrl > reaction%nkinmnrl) then
+          if (imnrl > reaction%mineral%nkinmnrl) then
             option%io_buffer = &
                      'Number of mineral constraints exceeds number of ' // &
                      'kinetic minerals in constraint: ' // &
@@ -2111,7 +2113,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         
         enddo  
         
-        if (imnrl < reaction%nkinmnrl) then
+        if (imnrl < reaction%mineral%nkinmnrl) then
           option%io_buffer = &
                    'Mineral lists in constraints must provide a volume ' // &
                    'fraction and surface area for all kinetic minerals ' // &
