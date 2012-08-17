@@ -135,8 +135,6 @@ contains
 ! ************************************************************************** !
 function MineralReactionCreate()
 
-  use Option_module
-
   implicit none
   
   type(mineral_rxn_type), pointer :: MineralReactionCreate
@@ -201,8 +199,6 @@ end function MineralReactionCreate
 !
 ! ************************************************************************** !
 function MineralCreate()
-
-  use Option_module
 
   implicit none
   

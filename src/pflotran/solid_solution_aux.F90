@@ -17,8 +17,9 @@ module Solid_Solution_Aux_module
   end type solid_solution_type
 
   type, public :: stoichiometric_solid_type
-    type(mineral_type) :: stoich_solid
+    type(mineral_type), pointer :: mineral ! stoichiometric solid
     type(mineral_type), pointer :: end_members
+    type(stoichiometric_solid_type), pointer :: next
   end type stoichiometric_solid_type
     
   type, public :: solid_solution_rxn_type
@@ -28,36 +29,160 @@ module Solid_Solution_Aux_module
   end type solid_solution_rxn_type
 
   public :: SolidSolutionReactionCreate, &
+            SolidSolutionCreate, &
+            StoichiometricSolidCreate, &
             SolidSolutionReactionDestroy
              
 contains
 
 ! ************************************************************************** !
 !
-! SolidSolutionReactionCreate: Allocate and initialize solid solution object
+! SolidSolutionReactionCreate: Allocate and initialize solid solution reaction
+!                              object
 ! author: Glenn Hammond
 ! date: 08/16/12
 !
 ! ************************************************************************** !
 function SolidSolutionReactionCreate()
 
-  use Option_module
-
   implicit none
   
   type(solid_solution_rxn_type), pointer :: SolidSolutionReactionCreate
   
-  type(solid_solution_rxn_type), pointer :: solid_solution
+  type(solid_solution_rxn_type), pointer :: solid_solution_reaction
+
+  allocate(solid_solution_reaction)
+  
+  nullify(solid_solution_reaction%list)
+  
+  solid_solution_reaction%mineral => MineralReactionCreate()
+
+  SolidSolutionReactionCreate => solid_solution_reaction
+  
+end function SolidSolutionReactionCreate
+
+! ************************************************************************** !
+!
+! SolidSolutionCreate: Allocate and initialize solid solution object
+! author: Glenn Hammond
+! date: 08/17/12
+!
+! ************************************************************************** !
+function SolidSolutionCreate()
+
+  implicit none
+  
+  type(solid_solution_type), pointer :: SolidSolutionCreate
+  
+  type(solid_solution_type), pointer :: solid_solution
 
   allocate(solid_solution)
   
-  nullify(solid_solution%list)
+  solid_solution%name = ''
+  solid_solution%num_stoich_solids = 0
+  solid_solution%num_end_members = 0
   
-  solid_solution%mineral => MineralReactionCreate()
+  nullify(solid_solution%stoich_solid)
+  nullify(solid_solution%next)
+  
+  SolidSolutionCreate => solid_solution
+  
+end function SolidSolutionCreate
 
-  SolidSolutionReactionCreate => solid_solution
+! ************************************************************************** !
+!
+! StoichiometricSolidCreate: Allocate and initialize stoichiometric solid 
+!                            object
+! author: Glenn Hammond
+! date: 08/17/12
+!
+! ************************************************************************** !
+function StoichiometricSolidCreate()
+
+  implicit none
   
-end function SolidSolutionReactionCreate
+  type(stoichiometric_solid_type), pointer :: StoichiometricSolidCreate
+  
+  type(stoichiometric_solid_type), pointer :: stoich_solid
+
+  allocate(stoich_solid)
+  
+  nullify(stoich_solid%mineral)
+  nullify(stoich_solid%end_members) ! nullify the list for now
+  nullify(stoich_solid%next)
+  
+  StoichiometricSolidCreate => stoich_solid
+  
+end function StoichiometricSolidCreate
+
+! ************************************************************************** !
+!
+! StoichiometricSolidDestroy: Deallocates solid solution object
+! author: Glenn Hammond
+! date: 08/17/12
+!
+! ************************************************************************** !
+subroutine StoichiometricSolidDestroy(stoich_solid)
+
+  implicit none
+  
+  type(stoichiometric_solid_type), pointer :: stoich_solid
+  
+  type(mineral_type), pointer :: cur_mineral, prev_mineral
+
+  if (.not.associated(stoich_solid)) return
+  
+  ! Do not use recursion here as it may result in a large drain on the stack
+
+  cur_mineral => stoich_solid%end_members
+  do
+    if (.not.associated(cur_mineral)) exit
+    prev_mineral => cur_mineral
+    cur_mineral => cur_mineral%next
+    call MineralDestroy(prev_mineral)
+  enddo    
+  call MineralDestroy(stoich_solid%mineral)
+  
+  deallocate(stoich_solid)
+  nullify(stoich_solid)
+  
+end subroutine StoichiometricSolidDestroy
+
+! ************************************************************************** !
+!
+! SolidSolutionDestroy: Deallocates solid solution object
+! author: Glenn Hammond
+! date: 08/17/12
+!
+! ************************************************************************** !
+recursive subroutine SolidSolutionDestroy(solid_solution)
+
+  implicit none
+  
+  type(solid_solution_type), pointer :: solid_solution
+  
+  type(stoichiometric_solid_type), pointer :: cur_stoich_solid, &
+                                              prev_stoich_solid
+
+  if (.not.associated(solid_solution)) return
+  
+  ! recursive
+  call SolidSolutionDestroy(solid_solution%next)
+
+  ! I don't want to destroy recursively here as the memory use may
+  ! be to large for large solid solutions
+  cur_stoich_solid => solid_solution%stoich_solid
+  do 
+    if (.not.associated(cur_stoich_solid)) exit
+    prev_stoich_solid => cur_stoich_solid
+    cur_stoich_solid => cur_stoich_solid%next
+    call StoichSolidDestroy(prev_stoich_solid)
+  enddo
+  
+  deallocate(solid_solution)
+  nullify(solid_solution)
+  
+end subroutine SolidSolutionDestroy
 
 ! ************************************************************************** !
 !

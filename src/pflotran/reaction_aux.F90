@@ -3,6 +3,7 @@ module Reaction_Aux_module
   use Database_Aux_module
   use Mineral_Aux_module
   use Surface_Complexation_Aux_module
+  use Solid_Solution_Aux_module
 
   implicit none
   
@@ -152,6 +153,7 @@ module Reaction_Aux_module
     type(general_rxn_type), pointer :: general_rxn_list
     type(kd_rxn_type), pointer :: kd_rxn_list
     type(aq_species_type), pointer :: redox_species_list
+    type(solid_solution_type), pointer :: solid_solution_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscBool :: checkpoint_activity_coefs
@@ -392,6 +394,7 @@ function ReactionCreate()
   nullify(reaction%general_rxn_list)
   nullify(reaction%kd_rxn_list)
   nullify(reaction%redox_species_list)
+  nullify(reaction%solid_solution_list)
   
   ! new reaction objects
   reaction%surface_complexation => SurfaceComplexationCreate()
@@ -1708,6 +1711,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%redox_species_list)) &
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
   nullify(reaction%redox_species_list)
+  
+  ! recursive
+  call SolidSolutionDestroy(reaction%solid_solution_list)
 
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
