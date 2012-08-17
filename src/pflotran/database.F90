@@ -1980,7 +1980,7 @@ subroutine BasisInit(reaction,option)
       else
         call ReactionFitLogKCoef(mineral_reaction%mnrl_logKcoef(:,imnrl), &
                                  cur_mineral%dbaserxn%logK, &
-                                 reaction%mineral_names(imnrl), &
+                                 mineral_reaction%mineral_names(imnrl), &
                                  option,reaction)
         call ReactionInitializeLogK(mineral_reaction%mnrl_logKcoef(:,imnrl), &
                                     cur_mineral%dbaserxn%logK, &

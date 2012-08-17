@@ -796,7 +796,7 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    if (.not.mineral_reaction%use_geothermal_hpt)then
+    if (.not.reaction%use_geothermal_hpt)then
       call ReactionInterpolateLogK(mineral_reaction%mnrl_logKcoef, &
                                    mineral_reaction%mnrl_logK, &
                                    global_auxvar%temp(iphase), &

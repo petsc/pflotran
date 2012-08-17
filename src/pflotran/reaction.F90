@@ -1072,12 +1072,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                      surface_complexation%nsrfcplx)
       endif
       if (associated(mineral_reaction%kinmnrl_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                     global_auxvar%temp(iphase),reaction%nkinmnrl)
+        call ReactionInterpolateLogK(mineral_reaction%kinmnrl_logKcoef, &
+                                     mineral_reaction%kinmnrl_logK, &
+                                     global_auxvar%temp(iphase), &
+                                     mineral_reaction%nkinmnrl)
       endif
       if (associated(mineral_reaction%mnrl_logKcoef)) then
-        call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                     global_auxvar%temp(iphase),reaction%nmnrl)
+        call ReactionInterpolateLogK(mineral_reaction%mnrl_logKcoef, &
+                                     mineral_reaction%mnrl_logK, &
+                                     global_auxvar%temp(iphase), &
+                                     mineral_reaction%nmnrl)
       endif
     else 
       if (associated(reaction%eqcplx_logKcoef)) then
