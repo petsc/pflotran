@@ -24,7 +24,7 @@ module Solid_Solution_Aux_module
   type, public :: solid_solution_rxn_type
     character(len=MAXSTRINGLENGTH) :: database_filename
     type(solid_solution_type), pointer :: list
-    type(mineral_rxn_type), pointer :: mineral_reaction
+    type(mineral_rxn_type), pointer :: mineral
   end type solid_solution_rxn_type
 
   public :: SolidSolutionReactionCreate, &
@@ -52,6 +52,8 @@ function SolidSolutionReactionCreate()
   allocate(solid_solution)
   
   nullify(solid_solution%list)
+  
+  solid_solution%mineral => MineralReactionCreate()
 
   SolidSolutionReactionCreate => solid_solution
   

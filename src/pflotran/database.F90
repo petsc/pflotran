@@ -33,6 +33,7 @@ subroutine DatabaseRead(reaction,option)
   
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+  use Mineral_module
   
   implicit none
   
@@ -303,6 +304,8 @@ subroutine DatabaseRead(reaction,option)
         
         if (.not.found) cycle ! go to next line in database
         
+        call MineralReadFromDatabase(reaction,cur_mineral,input,option)
+#if 0        
         ! read the molar volume
         call InputReadDouble(input,option,cur_mineral%molar_volume)
         call InputErrorMsg(input,option,'MINERAL molar volume','DATABASE')            
@@ -338,8 +341,8 @@ subroutine DatabaseRead(reaction,option)
         enddo
         ! read the molar weight
         call InputReadDouble(input,option,cur_mineral%molar_weight)
-        call InputErrorMsg(input,option,'MINERAL molar weight','DATABASE')            
-        
+        call InputErrorMsg(input,option,'MINERAL molar weight','DATABASE')        
+#endif        
         
       case(4) ! surface complexes
         cur_srfcplx => surface_complexation%complex_list

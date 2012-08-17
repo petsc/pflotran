@@ -15,6 +15,7 @@ module Mineral_module
   
   public :: MineralRead, &
             MineralReadKinetics, &
+            MineralReadFromDatabase, &
             RKineticMineral, &
             RMineralSaturationIndex
             
@@ -391,6 +392,69 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
   enddo
 
 end subroutine MineralReadKinetics
+
+! ************************************************************************** !
+!
+! MineralReadFromDatabase: Reads mineral from database
+! author: Glenn Hammond
+! date: 10/16/08
+!
+! ************************************************************************** !
+subroutine MineralReadFromDatabase(reaction,mineral,input,option)
+
+  use Input_module
+  use String_module  
+  use Option_module
+  use Database_Aux_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(mineral_type) :: mineral
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  PetscInt :: ispec
+  PetscInt :: itemp
+
+  ! read the molar volume
+  call InputReadDouble(input,option,mineral%molar_volume)
+  call InputErrorMsg(input,option,'MINERAL molar volume','DATABASE')            
+  ! convert from cm^3/mol to m^3/mol
+  mineral%molar_volume = mineral%molar_volume*1.d-6
+  ! create mineral reaction
+  if (.not.associated(mineral%tstrxn)) then
+    mineral%tstrxn => TransitionStateTheoryRxnCreate()
+  endif
+  ! read the number of aqueous species in mineral rxn
+  mineral%dbaserxn => DatabaseRxnCreate()
+  call InputReadInt(input,option,mineral%dbaserxn%nspec)
+  call InputErrorMsg(input,option,'Number of species in mineral reaction', &
+                  'DATABASE')  
+  ! allocate arrays for rxn
+  allocate(mineral%dbaserxn%spec_name(mineral%dbaserxn%nspec))
+  mineral%dbaserxn%spec_name = ''
+  allocate(mineral%dbaserxn%stoich(mineral%dbaserxn%nspec))
+  mineral%dbaserxn%stoich = 0.d0
+  allocate(mineral%dbaserxn%logK(reaction%num_dbase_temperatures))
+  mineral%dbaserxn%logK = 0.d0
+  ! read in species and stoichiometries
+  do ispec = 1, mineral%dbaserxn%nspec
+    call InputReadDouble(input,option,mineral%dbaserxn%stoich(ispec))
+    call InputErrorMsg(input,option,'MINERAL species stoichiometry','DATABASE')            
+    call InputReadQuotedWord(input,option,mineral%dbaserxn% &
+                              spec_name(ispec),PETSC_TRUE)
+    call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
+  enddo
+  do itemp = 1, reaction%num_dbase_temperatures
+    call InputReadDouble(input,option,mineral%dbaserxn%logK(itemp))
+    call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
+  enddo
+  ! read the molar weight
+  call InputReadDouble(input,option,mineral%molar_weight)
+  call InputErrorMsg(input,option,'MINERAL molar weight','DATABASE')
+        
+end subroutine MineralReadFromDatabase
 
 ! ************************************************************************** !
 !
