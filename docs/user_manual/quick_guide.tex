@@ -2215,11 +2215,16 @@ MAX\_STEPS 100000\\
 :TYPE amr ! amr grid\\
 TYPE structured\\
 NXYZ 6 6 6\\
-DXYZ\\
-1.\\
-1.\\
-1.\\
+BOUNDS\\
+0.d0 1.d0\\
+0.d0 1.d0\\
+0.d0 1.d0\\
 /\\
+:DXYZ\\
+:1.\\
+:1.\\
+:1.\\
+:/\\
 /
 
 \noindent
@@ -2265,9 +2270,12 @@ STOL 1.d-30\\
 
 \noindent
 : == fluid properties =========================================================\\
-FLUID\_PROPERTY\\
+\hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY}\\
 DIFFUSION\_COEFFICIENT 1.d-9\\
 /
+
+\noindent
+:\hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 
 \noindent
 : == material properties ======================================================\\

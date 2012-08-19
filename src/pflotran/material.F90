@@ -104,6 +104,7 @@ function MaterialPropertyCreate()
   material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   material_property%tortuosity = 1.d0
+  material_property%tortuosity_pwr = 0.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
   material_property%rock_density = 0.d0
@@ -120,8 +121,6 @@ function MaterialPropertyCreate()
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
-  material_property%tortuosity_pwr = 0.d0
-  material_property%permeability_pwr = 0.d0
   material_property%secondary_continuum_name = ''
   material_property%secondary_continuum_length = 0.d0
   material_property%secondary_continuum_matrix_block_size = 0.d0
