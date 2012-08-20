@@ -918,19 +918,16 @@ between fracture and matrix continua is imposed, where $\xi_d$ denotes the outer
 \subsection{Mode: Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
 The governing mass conservation equations for the geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
-\BA\label{rteqn}
-\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) &+
-\nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
-&\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
-\EA
+\EQ\label{rteqn}
+\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\nabla\cdot\sum_\a\bOmega_j^\a 
+\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
+\EN
 and
 \EQ
 \frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
 \EN
-for minerals with molar volume $\overline V_m$, mineral reaction rate $I_m$ and mineral volume fraction $\varphi_m$ referenced to an REV and satisfying
-\EQ
-\varphi + \sum_m \varphi_m \eq 1. 
-\EN
+for minerals with molar volume $\overline V_m$, mineral reaction rate $I_m$ and mineral volume fraction $\varphi_m$ referenced to an REV. 
 Sums over $\a$ in Eqn.\eqref{rteqn} are over all fluid phases in the system. The quantity $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
 \EQ
 \Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a.
@@ -944,7 +941,11 @@ yielding
 C_i^\a \eq \frac{K_i^\a}{\gamma_i^\a} \prod_j \Big(\gamma_j^l C_j^l\Big)^{\nu_{ji}^\a},
 \EN
 with equilibrium constant $K_i^\a$, and activity coefficients $\gamma_k^\a$.
-Diffusion is assumed to be species independent, but may be different for different phases, e.g. an aqueous electrolyte solution or gas phase. Dispersivity currently must be described through a diagonal dispersion tensor. The Darcy velocity $\bq_\a$ for phase $\a$ is given by
+The total flux $\bOmega_j^\a$ for species-independent diffusion is given by
+\EQ
+\bOmega_j^\a \eq \big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a.
+\EN
+The diffusion/dispersion coefficient $\bD_\a$ may be different for different phases, e.g. an aqueous electrolyte solution or gas phase, but is assumed to be species independent. Dispersivity currently must be described through a diagonal dispersion tensor. The Darcy velocity $\bq_\a$ for phase $\a$ is given by
 \EQ
 \bq_a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(p_\a -\rho_\a g z\big),
 \EN
@@ -956,6 +957,11 @@ with bulk permeability of the porous medium $k$ and relative permeability $k_\a$
 %\Big),
 \EN
 with longitudinal and transverse dispersivity coefficients $a_L$, $a_T$, respectively, $\tau$ refers to tortuosity, and $D_m$ to the molecular diffusion coefficient. Currently, only longitudinal dispersion is implemented in PFLOTRAN.
+
+The porosity may be calculated from the mineral volume fractions according to the relation
+\EQ
+\varphi \eq 1 - \sum_m \varphi_m. 
+\EN
 
 The temperature dependence of the diffusion coefficient is defined through the relation
 \EQ
@@ -2215,11 +2221,16 @@ MAX\_STEPS 100000\\
 :TYPE amr ! amr grid\\
 TYPE structured\\
 NXYZ 6 6 6\\
-DXYZ\\
-1.\\
-1.\\
-1.\\
+BOUNDS\\
+0.d0 1.d0\\
+0.d0 1.d0\\
+0.d0 1.d0\\
 /\\
+:DXYZ\\
+:1.\\
+:1.\\
+:1.\\
+:/\\
 /
 
 \noindent
@@ -2265,9 +2276,12 @@ STOL 1.d-30\\
 
 \noindent
 : == fluid properties =========================================================\\
-FLUID\_PROPERTY\\
+\hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY}\\
 DIFFUSION\_COEFFICIENT 1.d-9\\
 /
+
+\noindent
+:\hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 
 \noindent
 : == material properties ======================================================\\
@@ -2597,19 +2611,23 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\begin{deflist}{000000000000000000000}
 \begin{deflist}{0000}
 \item [Mineral Name]
-\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s] \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
-\item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] \ \ \ Referenced to rate constant at 25\degc.
+\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
+\item [AFFINITY\_POWER] \ {\tt Value} [---]
+\item [TEMPKINS\_CONSTANT] \ {\tt Value} [---]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
-\item [RATE\_CONSTANT] \ {\tt Value} \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
+\item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
 \item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K] 
 \item [PREFACTOR\_SPECIES] \ {\tt Name}
 \begin{deflist}{0000}
-\item [ALPHA] \ {\tt Value}
-\item [BETA] \ {\tt Value}
+\item [ALPHA] \ {\tt Value} [---]
+\item [BETA] \ {\tt Value} [---]
 \item [ATTENUATION\_COEF] \ {\tt Value}
 \end{deflist}
 \item [\keyend]
@@ -2706,7 +2724,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[UPDATE\_POROSITY]
 \item[UPDATE\_TORTUOSITY]
 \item[UPDATE\_PERMEABILITY]
-\item[UPDATE\_MINERAL\_SURFACE\_AREA]
+%\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
 \item[OUTPUT] ~
 \begin{deflist}{000000000000000000000}
