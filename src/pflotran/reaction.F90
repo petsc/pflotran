@@ -501,7 +501,6 @@ subroutine ReactionRead(reaction,input,option)
         reaction%update_tortuosity = PETSC_TRUE
       case('UPDATE_PERMEABILITY')
         reaction%update_permeability = PETSC_TRUE
-        reaction%update_porosity = PETSC_TRUE
       case('UPDATE_MINERAL_SURFACE_AREA')
         reaction%update_mineral_surface_area = PETSC_TRUE
       case('MOLAL','MOLALITY')
@@ -596,8 +595,20 @@ subroutine ReactionRead(reaction,input,option)
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
       reaction%ngeneral_rxn > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
+      endif
+      
+  ! ensure that update porosity is ON if update of tortuosity, permeability or
+  ! mineral surface area are ON
+  if (.not.reaction%update_porosity .and. &
+      (reaction%update_tortuosity .or. &
+       reaction%update_permeability .or. &
+       reaction%update_mnrl_surf_with_porosity)) then
+    option%io_buffer = 'UPDATE_POROSITY must be listed under CHEMISTRY ' // &
+      'card when UPDATE_TORTUOSITY, UPDATE_PERMEABILITY, or ' // &
+      'UPDATE_MNRL_SURF_WITH_POROSITY are listed.'
+    call printErrMsg(option)
   endif
- 
+    
   if (len_trim(reaction%database_filename) < 2) &
     reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
   

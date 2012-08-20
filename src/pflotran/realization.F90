@@ -1855,7 +1855,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
       ! if porosity ratio is used in mineral surface area update, we must
       ! recalculate it every time.
       (reaction%update_mineral_surface_area .and. &
-       option%update_mnrl_surf_with_porosity)) then
+       reaction%update_mnrl_surf_with_porosity)) then
     call GridVecGetArrayF90(grid,field%porosity0,porosity0_p,ierr)
     call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
     call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
@@ -1877,7 +1877,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
     endif
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (option%update_mnrl_surf_with_porosity) then
+      if (reaction%update_mnrl_surf_with_porosity) then
         porosity_scale = vec_p(local_id)** &
              reaction%mineral%kinmnrl_surf_area_porosity_pwr(imnrl)
 !geh: srf_area_vol_frac_pwr must be defined on a per mineral basis, not
@@ -1900,7 +1900,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
         endif
       enddo
     enddo
-    if (option%update_mnrl_surf_with_porosity) then
+    if (reaction%update_mnrl_surf_with_porosity) then
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
     endif
 

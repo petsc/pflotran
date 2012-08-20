@@ -494,8 +494,6 @@ subroutine OptionInitRealization(option)
   option%stomp_norm = 0.d0
   option%check_stomp_norm = PETSC_FALSE
   
-  option%update_mnrl_surf_with_porosity = PETSC_FALSE
-    
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE
   option%no_restart_kinetic_sorption = PETSC_FALSE
