@@ -31,7 +31,8 @@ module Solid_Solution_Aux_module
   public :: SolidSolutionReactionCreate, &
             SolidSolutionCreate, &
             StoichiometricSolidCreate, &
-            SolidSolutionReactionDestroy
+            SolidSolutionReactionDestroy, &
+            SolidSolutionDestroy
              
 contains
 
@@ -176,7 +177,7 @@ recursive subroutine SolidSolutionDestroy(solid_solution)
     if (.not.associated(cur_stoich_solid)) exit
     prev_stoich_solid => cur_stoich_solid
     cur_stoich_solid => cur_stoich_solid%next
-    call StoichSolidDestroy(prev_stoich_solid)
+    call StoichiometricSolidDestroy(prev_stoich_solid)
   enddo
   
   deallocate(solid_solution)
