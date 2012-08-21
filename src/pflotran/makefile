@@ -26,6 +26,10 @@ ifdef glenn
   MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
+ifdef solid_solution
+  MYFLAGS += -DSOLID_SOLUTION
+endif
+
 ifdef radioactive_decay
   MYFLAGS += -DRADIOACTIVE_DECAY
 endif
