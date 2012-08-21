@@ -337,7 +337,9 @@ material_aux.o : option.o
 matrix_buffer.o : grid.o structured_grid.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
-mineral.o : mineral_aux.o 
+mineral.o : mineral_aux.o reaction_aux.o reactive_transport_aux.o global_aux.o \
+            option.o string.o input.o utility.o solid_solution_aux.o database_aux.o
+mineral_aux.o : database_aux.o option.o string.o
 miscible.o : miscible_aux.o realization.o  global_aux.o
 miscible_aux.o : option.o material.o
 mphase.o : mphase_aux.o realization.o fluid.o global_aux.o \
@@ -357,11 +359,12 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           field.o saturation.o surface_field.o mineral.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o
-reaction.o : reactive_transport_aux.o reaction_aux.o surface_complexation.o \
-             mineral.o option.o string.o mineral_aux.o solid_solution_aux.o \
-             solid_solution.o
+reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
+             surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
+             surface_complexation.o mineral.o solid_solution.o option.o string.o \
+             input.o condition.o co2eos.o water_eos.o
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
-                 solid_solution_aux.o
+                 surface_complexation_aux.o solid_solution_aux.o utility.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o
@@ -380,7 +383,8 @@ richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 simulation.o : timestepper.o realization.o 
-solid_solution.o : solid_solution_aux.o reaction_aux.o mineral_aux.o
+solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
+                   utility.o mineral.o input.o
 solid_solution_aux.o : mineral_aux.o
 solver.o : option.o field.o input.o string.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
