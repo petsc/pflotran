@@ -1299,6 +1299,9 @@ subroutine InitReadInput(simulation)
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
 #endif
+#ifdef SOLID_SOLUTION
+  use Solid_Solution_module, only : SolidSolutionReadFromInputFile
+#endif
  
   implicit none
   
@@ -1436,6 +1439,11 @@ subroutine InitReadInput(simulation)
               call ReactionReadOutput(reaction,input,option)
             case('MINERAL_KINETICS')
               call MineralReadKinetics(reaction%mineral,input,option)
+            case('SOLID_SOLUTIONS')
+#ifdef SOLID_SOLUTION                
+              call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
+                                                  input,option)
+#endif
             case('SORPTION')
               do
                 call InputReadFlotranString(input,option)

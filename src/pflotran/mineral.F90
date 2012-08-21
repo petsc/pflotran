@@ -28,7 +28,7 @@ contains
 ! date: 08/16/12
 !
 ! ************************************************************************** !
-subroutine MineralRead(keyword,mineral_reaction,input,option)
+subroutine MineralRead(mineral_reaction,input,option)
 
   use Option_module
   use String_module
@@ -37,75 +37,34 @@ subroutine MineralRead(keyword,mineral_reaction,input,option)
   
   implicit none
   
-  character(len=MAXWORDLENGTH) :: keyword
   type(mineral_rxn_type) :: mineral_reaction
   type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name  
-  character(len=MAXWORDLENGTH) :: card
   type(mineral_type), pointer :: mineral, prev_mineral
            
-  select case(trim(keyword))
-    case('MINERALS')
-      nullify(prev_mineral)
-      do
-        call InputReadFlotranString(input,option)
-        if (InputError(input)) exit
-        if (InputCheckExit(input,option)) exit
+  nullify(prev_mineral)
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
           
-        mineral_reaction%nmnrl = mineral_reaction%nmnrl + 1
+    mineral_reaction%nmnrl = mineral_reaction%nmnrl + 1
           
-        mineral => MineralCreate()
-        call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
-        call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
-        if (.not.associated(mineral_reaction%mineral_list)) then
-          mineral_reaction%mineral_list => mineral
-          mineral%id = 1
-        endif
-        if (associated(prev_mineral)) then
-          prev_mineral%next => mineral
-          mineral%id = prev_mineral%id + 1
-        endif
-        prev_mineral => mineral
-        nullify(mineral)
-      enddo
-    case('MINERAL_KINETICS') ! mineral kinetics read on second round
-      do
-        call InputReadFlotranString(input,option)
-        call InputReadStringErrorMsg(input,option,card)
-        if (InputCheckExit(input,option)) exit
-        call InputReadWord(input,option,name,PETSC_TRUE)
-        call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword', &
-                                  'CHEMISTRY,MINERAL_KINETICS')
-          call StringToUpper(word)
-          select case(word)
-            case('PREFACTOR')
-              do 
-                call InputReadFlotranString(input,option)
-                call InputReadStringErrorMsg(input,option,card)
-                if (InputCheckExit(input,option)) exit
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword', &
-                                    'CHEMISTRY,MINERAL_KINETICS,PREFACTOR')
-                call StringToUpper(word)
-                select case(word)
-                  case('PREFACTOR_SPECIES')
-                    call InputSkipToEnd(input,option,word)
-                end select
-              enddo
-          end select
-        enddo
-      enddo 
-  end select
+    mineral => MineralCreate()
+    call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
+    if (.not.associated(mineral_reaction%mineral_list)) then
+      mineral_reaction%mineral_list => mineral
+      mineral%id = 1
+    endif
+    if (associated(prev_mineral)) then
+      prev_mineral%next => mineral
+      mineral%id = prev_mineral%id + 1
+    endif
+    prev_mineral => mineral
+    nullify(mineral)
+  enddo
 
 end subroutine MineralRead
 
@@ -510,7 +469,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   
 #ifdef SOLID_SOLUTION
   PetscBool :: cycle_
-  PetscReal :: max_rate
   PetscReal :: rate_scale(reaction%mineral%nkinmnrl)
   type(solid_solution_type), pointer :: cur_solid_soln
   PetscInt :: istoich_solid
@@ -564,15 +522,17 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     cur_solid_soln => reaction%solid_solution_list
     do
       if (.not.associated(cur_solid_soln)) exit
-     ! max_rate = 0.d0
+      tempreal = 0.d0
       do istoich_solid = 1, cur_solid_soln%num_stoich_solid
         imnrl = cur_solid_soln%stoich_solid_ids(istoich_solid)
         ! do something with mineral ikinmnrl rate, e.g. 
-        ! max_rate = max(max_rate,dabs(rt_auxvar%mnrl_rate(ikinmnrl)))
+        tempreal = tempreal + rt_auxvar%mnrl_rate(imnrl)
+        !tempreal = max(tempreal,dabs(rt_auxvar%mnrl_rate(ikinmnrl))
       enddo
+      tempreal = tempreal / dble(cur_solid_soln%num_stoich_solid)
       do istoich_solid = 1, cur_solid_soln%num_stoich_solid
         imnrl = cur_solid_soln%stoich_solid_ids(istoich_solid)
-      ! rate_scale(imnrl) = 1/max_rate
+        rate_scale(imnrl) = tempreal
       enddo
       cur_solid_soln => cur_solid_soln%next
     enddo

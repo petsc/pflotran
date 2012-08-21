@@ -271,12 +271,49 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
-      case('MINERALS','MINERAL_KINETICS')
-        call MineralRead(word,reaction%mineral,input,option)
-      case('SOLID_SOLUTIONS')
+      case('MINERALS')
+        call MineralRead(reaction%mineral,input,option)
+      case('MINERAL_KINETICS') ! mineral kinetics read on second round
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,name,PETSC_TRUE)
+          call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
+          do
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword', &
+                                    'CHEMISTRY,MINERAL_KINETICS')
+            call StringToUpper(word)
+            select case(word)
+              case('PREFACTOR')
+                do 
+                  call InputReadFlotranString(input,option)
+                  call InputReadStringErrorMsg(input,option,card)
+                  if (InputCheckExit(input,option)) exit
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'keyword', &
+                                      'CHEMISTRY,MINERAL_KINETICS,PREFACTOR')
+                  call StringToUpper(word)
+                  select case(word)
+                    case('PREFACTOR_SPECIES')
+                      call InputSkipToEnd(input,option,word)
+                  end select
+                enddo
+            end select
+          enddo
+        enddo       
+      case('SOLID_SOLUTIONS') ! solid solutions read on second round
 #ifdef SOLID_SOLUTION
-        call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
-                                            input,option)
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputSkipToEnd(input,option,word)
+        enddo       
 #else
         option%io_buffer = 'To use solid solutions, must compile with -DSOLID_SOLUTION'
         call printErrMsg(option)

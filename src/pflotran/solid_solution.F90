@@ -67,6 +67,7 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
                        'CHEMISTRY,SOLID_SOLUTIONS')
 
     stoich_solid_count = 0
+    stoich_solid_names = ''
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
@@ -93,7 +94,6 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
     solid_solution%stoich_solid_ids = 0
     allocate(solid_solution%stoich_solid_names(stoich_solid_count))
     solid_solution%stoich_solid_names(:) = stoich_solid_names(:)
-    stoich_solid_names = ''
     solid_solution%num_stoich_solid = stoich_solid_count
 
 #if 0
