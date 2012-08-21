@@ -1331,13 +1331,13 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec 
-  PetscReal :: porXvol, mol(option%nflowspec), eng
+  PetscReal :: porXvol, mol(option%nflowspec), eng, por1
 
   PetscInt :: iphase, ideriv
   type(thc_auxvar_type) :: thc_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
-  PetscReal :: vol_frac_prim
+  PetscReal :: vol_frac_prim, tempreal
   
 #ifdef ICE
   PetscReal :: sat_g, p_g, den_g, p_sat, mol_g, u_g, C_g
@@ -1351,12 +1351,27 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   PetscErrorCode :: ierr
 #endif
 
-  porXvol = por*vol
   
   ! X = {p, T, x_2}; R = {R_x1, R_x2, R_T} = {R_p, R_x2, R_T}
-
+  
+  
+#ifndef USE_COMPRESSIBILITY
+  porXvol = por*vol
   J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
            thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol !*thc_aux_var%xmol(1)
+#else
+  por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(abs(global_aux_var%pres(1)- &
+                                       option%reference_pressure)))
+  porXvol = por1*vol
+  tempreal = exp(-1.d-7*(abs(global_aux_var%pres(1)-option%reference_pressure)))
+  J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
+           thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol + &
+           global_aux_var%sat(1)*global_aux_var%den(1)*vol*1.d-7* &
+           (1.d0 - por)*tempreal*abs(global_aux_var%pres(1)- &
+           option%reference_pressure)/(global_aux_var%pres(1)- &
+           option%reference_pressure)
+#endif
+
   J(1,2) = global_aux_var%sat(1)*thc_aux_var%dden_dt*porXvol !*thc_aux_var%xmol(1)
   J(1,3) = 0.d0 !-global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
   J(2,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
@@ -1538,7 +1553,7 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
-  PetscReal :: vol,por,rock_dencpr
+  PetscReal :: vol,por,rock_dencpr,por1
      
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
@@ -1554,7 +1569,15 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
   
 ! TechNotes, THC Mode: First term of Equation 8
   porXvol = por*vol
+  
+#ifndef USE_COMPRESSIBILITY  
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
+#else
+  por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(abs(global_aux_var%pres(1)- &
+                                       option%reference_pressure)))
+  mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*por1*vol
+#endif
+    
   mol(2) = global_aux_var%sat(1)*global_aux_var%den(1)*aux_var%xmol(2)*porXvol
 
 ! TechNotes, THC Mode: First term of Equation 9
