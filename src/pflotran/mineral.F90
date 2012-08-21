@@ -400,7 +400,8 @@ end subroutine MineralReadKinetics
 ! date: 10/16/08
 !
 ! ************************************************************************** !
-subroutine MineralReadFromDatabase(reaction,mineral,input,option)
+subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
+                                   option)
 
   use Input_module
   use String_module  
@@ -409,8 +410,8 @@ subroutine MineralReadFromDatabase(reaction,mineral,input,option)
   
   implicit none
   
-  type(reaction_type) :: reaction
   type(mineral_type) :: mineral
+  PetscInt :: num_dbase_temperatures
   type(input_type) :: input
   type(option_type) :: option
   
@@ -436,7 +437,7 @@ subroutine MineralReadFromDatabase(reaction,mineral,input,option)
   mineral%dbaserxn%spec_name = ''
   allocate(mineral%dbaserxn%stoich(mineral%dbaserxn%nspec))
   mineral%dbaserxn%stoich = 0.d0
-  allocate(mineral%dbaserxn%logK(reaction%num_dbase_temperatures))
+  allocate(mineral%dbaserxn%logK(num_dbase_temperatures))
   mineral%dbaserxn%logK = 0.d0
   ! read in species and stoichiometries
   do ispec = 1, mineral%dbaserxn%nspec
@@ -446,7 +447,7 @@ subroutine MineralReadFromDatabase(reaction,mineral,input,option)
                               spec_name(ispec),PETSC_TRUE)
     call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
   enddo
-  do itemp = 1, reaction%num_dbase_temperatures
+  do itemp = 1, num_dbase_temperatures
     call InputReadDouble(input,option,mineral%dbaserxn%logK(itemp))
     call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
   enddo
@@ -468,6 +469,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
 
   use Option_module
+#ifdef SOLID_SOLUTION
+  use Solid_Solution_Aux_module
+#endif
   
   implicit none
   
@@ -504,6 +508,14 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt ::  icplx
   PetscReal :: ln_gam_m_beta
   
+#if SOLID_SOLUTION
+  PetscBool :: cycle_
+  PetscReal :: max_rate
+  PetscReal :: rate_scale(reaction%mineral%nkinmnrl)
+  type(solid_solution_type), pointer :: cur_solid_soln
+  PetscInt :: istoich_solid
+#endif  
+
   type(mineral_rxn_type), pointer :: mineral_reaction
 
   PetscInt, parameter :: needs_to_be_fixed = 1
@@ -539,11 +551,49 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif
 
+#if SOLID_SOLUTION
+  rate_scale = 1.d0
+  if (associated(reaction%solid_solution_list)) then
+    do imnrl = 1, mineral_reaction%nkinmnrl ! for each mineral
+      call RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
+                        QK,Im,Im_const,sum_prefactor_rate,affinity_factor, &
+                        prefactor,ln_prefactor_spec,cycle_, &
+                        reaction,mineral_reaction,option)
+      if (cycle_) cycle
+    enddo
+  
+    cur_solid_soln => reaction%solid_solution_list
+    do
+      if (.not.associated(cur_solid_soln)) exit
+      do istoich_solid = 1, cur_solid_soln%num_stoich_solid
+        imnrl = cur_solid_soln%stoich_solid_ids(istoich_solid)
+        ! do something with mineral ikinmnrl rate, e.g. 
+        ! max_rate = max(max_rate,rt_auxvar%mnrl_rate(ikinmnrl))
+      enddo
+      do istoich_solid = 1, cur_solid_soln%num_stoich_solid
+        imnrl = cur_solid_soln%stoich_solid_ids(istoich_solid)
+      ! rate_scale(imnrl) = 1/max_rate
+      enddo
+      cur_solid_soln => cur_solid_soln%next
+    enddo
+  endif
+#endif
+
   ! Zero all rates as default 
   rt_auxvar%mnrl_rate(:) = 0.d0
 
   do imnrl = 1, mineral_reaction%nkinmnrl ! for each mineral
 
+#if SOLID_SOLUTION
+    call RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
+                      QK,Im,Im_const,sum_prefactor_rate,affinity_factor, &
+                      prefactor,ln_prefactor_spec,cycle_, &
+                      reaction,mineral_reaction,option)
+    if (cycle_) cycle
+    
+    Im = rate_scale(imnrl)*Im
+    Im_const = rate_scale(imnrl)*Im_const
+#else
     ! compute ion activity product
     lnQK = -mineral_reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
 
@@ -667,7 +717,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     else ! rate is already zero by default; move on to next mineral
       cycle
     endif
-    
+#endif
+
     ! scale Im_const by volume for calculating derivatives below
     ! units: cm^2 mnrl
     Im_const = Im_const*volume
@@ -830,6 +881,178 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   enddo  ! loop over minerals
     
 end subroutine RKineticMineral
+
+! ************************************************************************** !
+!
+! RMineralRate: Calculates the mineral saturation index
+! author: Glenn Hammond
+! date: 08/29/11
+!
+! ************************************************************************** !
+subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
+                        QK,Im,Im_const,sum_prefactor_rate,affinity_factor, &
+                        prefactor,ln_prefactor_spec,cycle_, &
+                        reaction,mineral_reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  type(mineral_rxn_type) :: mineral_reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_sec_act(reaction%neqcplx)
+  PetscReal :: QK
+  PetscReal :: Im, Im_const
+  PetscReal :: sum_prefactor_rate
+  PetscReal :: affinity_factor
+  PetscReal :: prefactor(10), ln_prefactor_spec(5,10)
+  PetscBool :: cycle_
+  
+  PetscReal :: lnQK
+  PetscInt :: i, imnrl, icomp, ncomp, ipref, ipref_species
+  PetscReal :: sign_
+
+  PetscReal :: ln_spec_act
+  PetscReal :: ln_prefactor, ln_numerator, ln_denominator
+  
+  PetscReal :: arrhenius_factor
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscInt, parameter :: iphase = 1
+  
+  cycle_ = PETSC_FALSE
+  
+  ! compute ion activity product
+  lnQK = -mineral_reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
+
+  ! activity of water
+  if (mineral_reaction%kinmnrlh2oid(imnrl) > 0) then
+    lnQK = lnQK + mineral_reaction%kinmnrlh2ostoich(imnrl)* &
+                  rt_auxvar%ln_act_h2o
+  endif
+
+  ncomp = mineral_reaction%kinmnrlspecid(0,imnrl)
+  do i = 1, ncomp
+    icomp = mineral_reaction%kinmnrlspecid(i,imnrl)
+    lnQK = lnQK + mineral_reaction%kinmnrlstoich(i,imnrl)*ln_act(icomp)
+  enddo
+    
+  if (lnQK <= 6.90776d0) then
+    QK = exp(lnQK)
+  else
+    QK = 1.d3
+  endif
+    
+  if (associated(mineral_reaction%kinmnrl_Tempkin_const)) then
+    affinity_factor = 1.d0-QK**(1.d0/ &
+                                mineral_reaction%kinmnrl_Tempkin_const(imnrl))
+  else
+    affinity_factor = 1.d0-QK
+  endif
+    
+  sign_ = sign(1.d0,affinity_factor)
+
+  if (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
+
+!   if ((mineral_reaction%kinmnrl_irreversible(imnrl) == 0 &
+!     .and. (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0)) &
+!     .or. (mineral_reaction%kinmnrl_irreversible(imnrl) == 1 .and. sign_ < 0.d0)) then
+    
+!     check for supersaturation threshold for precipitation
+!     if (associated(mineral_reaction%kinmnrl_affinity_threshold)) then
+    if (mineral_reaction%kinmnrl_affinity_threshold(imnrl) > 0.d0) then
+      if (sign_ < 0.d0 .and. &
+          QK < mineral_reaction%kinmnrl_affinity_threshold(imnrl)) then
+        cycle_ = PETSC_TRUE
+        return
+      endif
+    endif
+    
+!     check for rate limiter for precipitation
+    if (mineral_reaction%kinmnrl_rate_limiter(imnrl) > 0.d0) then
+      affinity_factor = affinity_factor/(1.d0+(1.d0-affinity_factor) &
+        /mineral_reaction%kinmnrl_rate_limiter(imnrl))
+    endif
+
+    ! compute prefactor
+    if (mineral_reaction%kinmnrl_num_prefactors(imnrl) > 0) then
+      sum_prefactor_rate = 0
+      prefactor = 0.d0
+      ln_prefactor_spec = 0.d0
+      ! sum over parallel prefactors
+      do ipref = 1, mineral_reaction%kinmnrl_num_prefactors(imnrl)
+        ln_prefactor = 0.d0
+        ! product of "monod" equations
+        do ipref_species = 1, mineral_reaction%kinmnrl_prefactor_id(0,ipref,imnrl)
+          icomp = mineral_reaction%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
+          if (icomp > 0) then ! primary species
+            ln_spec_act = ln_act(icomp)
+          else ! secondary species (given a negative id to differentiate)
+            ln_spec_act = ln_sec_act(-icomp)
+          endif
+          ln_numerator = &
+            mineral_reaction%kinmnrl_pref_alpha(ipref_species,ipref,imnrl)* &
+            ln_spec_act
+          ln_denominator = log(1.d0 + &
+            exp(log(mineral_reaction%kinmnrl_pref_atten_coef(ipref_species,ipref,imnrl)) + &
+                mineral_reaction%kinmnrl_pref_beta(ipref_species,ipref,imnrl)* &
+                ln_spec_act))
+          ln_prefactor = ln_prefactor + ln_numerator
+          ln_prefactor = ln_prefactor - ln_denominator
+          ln_prefactor_spec(ipref_species,ipref) = ln_numerator - ln_denominator
+        enddo
+        prefactor(ipref) = exp(ln_prefactor)
+      ! Arrhenius factor
+        arrhenius_factor = 1.d0
+        if (mineral_reaction%kinmnrl_pref_activation_energy(ipref,imnrl) > 0.d0) then
+          arrhenius_factor = &
+            exp(mineral_reaction%kinmnrl_pref_activation_energy(ipref,imnrl)/rgas &
+                *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+ &
+                                              273.15d0)))
+        endif
+        sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)* &
+                              mineral_reaction%kinmnrl_pref_rate(ipref,imnrl)* &
+                              arrhenius_factor
+      enddo
+    else
+      ! Arrhenius factor
+      arrhenius_factor = 1.d0
+      if (mineral_reaction%kinmnrl_activation_energy(imnrl) > 0.d0) then
+        arrhenius_factor = exp(mineral_reaction%kinmnrl_activation_energy(imnrl)/rgas &
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp(iphase)+273.15d0)))
+      endif
+      sum_prefactor_rate = mineral_reaction%kinmnrl_rate(imnrl)*arrhenius_factor
+    endif
+
+    ! compute rate
+    ! rate: mol/cm^2 mnrl/sec
+    ! area: cm^2 mnrl/cm^3 bulk
+    ! volume: m^3 bulk
+      
+    ! convert cm^2 mnrl/cm^3 bulk -> cm^2 mnrl/m^3 bulk
+    Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 
+
+    ! units: mol/sec/m^3 bulk
+    if (associated(mineral_reaction%kinmnrl_affinity_power)) then
+      ! Im_const: cm^2 mnrl/m^3 bulk
+      ! sum_prefactor_rate: mol/cm^2 mnrl/sec
+      Im = Im_const*sign_* &
+            abs(affinity_factor)**mineral_reaction%kinmnrl_affinity_power(imnrl)* &
+            sum_prefactor_rate
+    else
+      Im = Im_const*sign_*abs(affinity_factor)*sum_prefactor_rate
+    endif
+    ! store volumetric rate to be used in updating mineral volume fractions
+    ! at end of time step
+    rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3 bulk
+  else ! rate is already zero by default; move on to next mineral
+    cycle_ = PETSC_TRUE
+  endif
+
+end subroutine RMineralRate
 
 ! ************************************************************************** !
 !

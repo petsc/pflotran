@@ -10,12 +10,17 @@ module Solid_Solution_Aux_module
 
   type, public :: solid_solution_type
     character(len=MAXWORDLENGTH) :: name
-    PetscInt :: num_stoich_solids
-    PetscInt :: num_end_members
+    PetscInt :: num_stoich_solid
+    character(len=MAXWORDLENGTH), pointer :: stoich_solid_names(:)
+    PetscInt, pointer :: stoich_solid_ids(:)
+#if 0
+    PetscInt :: num_end_member
     type(stoichiometric_solid_type), pointer :: stoich_solid
+#endif    
     type(solid_solution_type), pointer :: next
   end type solid_solution_type
 
+#if 0
   type, public :: stoichiometric_solid_type
     type(mineral_type), pointer :: mineral ! stoichiometric solid
     type(mineral_type), pointer :: end_members
@@ -24,18 +29,19 @@ module Solid_Solution_Aux_module
     
   type, public :: solid_solution_rxn_type
     character(len=MAXSTRINGLENGTH) :: database_filename
+    PetscInt :: num_dbase_temperatures
+    PetscReal, pointer :: dbase_temperatures(:)
     type(solid_solution_type), pointer :: list
     type(mineral_rxn_type), pointer :: mineral
   end type solid_solution_rxn_type
-
-  public :: SolidSolutionReactionCreate, &
-            SolidSolutionCreate, &
-            StoichiometricSolidCreate, &
-            SolidSolutionReactionDestroy, &
+#endif
+  
+  public :: SolidSolutionCreate, &
             SolidSolutionDestroy
              
 contains
 
+#if 0
 ! ************************************************************************** !
 !
 ! SolidSolutionReactionCreate: Allocate and initialize solid solution reaction
@@ -50,17 +56,21 @@ function SolidSolutionReactionCreate()
   
   type(solid_solution_rxn_type), pointer :: SolidSolutionReactionCreate
   
-  type(solid_solution_rxn_type), pointer :: solid_solution_reaction
+  type(solid_solution_rxn_type), pointer :: solid_solution_rxn
 
-  allocate(solid_solution_reaction)
+  allocate(solid_solution_rxn)
   
-  nullify(solid_solution_reaction%list)
-  
-  solid_solution_reaction%mineral => MineralReactionCreate()
+  solid_solution_rxn%num_dbase_temperatures = 0
+  nullify(solid_solution_rxn%dbase_temperatures)
 
-  SolidSolutionReactionCreate => solid_solution_reaction
+  nullify(solid_solution_rxn%list)
+  
+  solid_solution_rxn%mineral => MineralReactionCreate()
+
+  SolidSolutionReactionCreate => solid_solution_rxn
   
 end function SolidSolutionReactionCreate
+#endif
 
 ! ************************************************************************** !
 !
@@ -80,16 +90,20 @@ function SolidSolutionCreate()
   allocate(solid_solution)
   
   solid_solution%name = ''
-  solid_solution%num_stoich_solids = 0
-  solid_solution%num_end_members = 0
-  
-  nullify(solid_solution%stoich_solid)
+  solid_solution%num_stoich_solid = 0
+#if 0  
+  solid_solution%num_end_member = 0
+#endif
+
+  nullify(solid_solution%stoich_solid_names)
+  nullify(solid_solution%stoich_solid_ids)
   nullify(solid_solution%next)
   
   SolidSolutionCreate => solid_solution
   
 end function SolidSolutionCreate
 
+#if 0
 ! ************************************************************************** !
 !
 ! StoichiometricSolidCreate: Allocate and initialize stoichiometric solid 
@@ -148,6 +162,7 @@ subroutine StoichiometricSolidDestroy(stoich_solid)
   nullify(stoich_solid)
   
 end subroutine StoichiometricSolidDestroy
+#endif
 
 ! ************************************************************************** !
 !
@@ -162,14 +177,17 @@ recursive subroutine SolidSolutionDestroy(solid_solution)
   
   type(solid_solution_type), pointer :: solid_solution
   
+#if 0  
   type(stoichiometric_solid_type), pointer :: cur_stoich_solid, &
                                               prev_stoich_solid
+#endif
 
   if (.not.associated(solid_solution)) return
   
   ! recursive
   call SolidSolutionDestroy(solid_solution%next)
 
+#if 0  
   ! I don't want to destroy recursively here as the memory use may
   ! be to large for large solid solutions
   cur_stoich_solid => solid_solution%stoich_solid
@@ -179,12 +197,18 @@ recursive subroutine SolidSolutionDestroy(solid_solution)
     cur_stoich_solid => cur_stoich_solid%next
     call StoichiometricSolidDestroy(prev_stoich_solid)
   enddo
+#endif
+  deallocate(solid_solution%stoich_solid_names)
+  nullify(solid_solution%stoich_solid_names)
+  deallocate(solid_solution%stoich_solid_ids)
+  nullify(solid_solution%stoich_solid_ids)
   
   deallocate(solid_solution)
   nullify(solid_solution)
   
 end subroutine SolidSolutionDestroy
 
+#if 0
 ! ************************************************************************** !
 !
 ! SolidSolutionReactionDestroy: Deallocates a solid solution object
@@ -198,9 +222,13 @@ subroutine SolidSolutionReactionDestroy(solid_solution)
 
   type(solid_solution_rxn_type), pointer :: solid_solution
   
+  ! recursive
+  call SolidSolutionDestroy(solid_solution%list)
+  
   deallocate(solid_solution)
   nullify(solid_solution)
 
 end subroutine SolidSolutionReactionDestroy
+#endif
 
 end module Solid_Solution_Aux_module

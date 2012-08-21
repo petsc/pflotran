@@ -304,46 +304,9 @@ subroutine DatabaseRead(reaction,option)
         
         if (.not.found) cycle ! go to next line in database
         
-        call MineralReadFromDatabase(reaction,cur_mineral,input,option)
-#if 0        
-        ! read the molar volume
-        call InputReadDouble(input,option,cur_mineral%molar_volume)
-        call InputErrorMsg(input,option,'MINERAL molar volume','DATABASE')            
-        ! convert from cm^3/mol to m^3/mol
-        cur_mineral%molar_volume = cur_mineral%molar_volume*1.d-6
-        ! create mineral reaction
-        if (.not.associated(cur_mineral%tstrxn)) then
-          cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
-        endif
-        ! read the number of aqueous species in mineral rxn
-        cur_mineral%dbaserxn => DatabaseRxnCreate()
-        call InputReadInt(input,option,cur_mineral%dbaserxn%nspec)
-        call InputErrorMsg(input,option,'Number of species in mineral reaction', &
-                        'DATABASE')  
-        ! allocate arrays for rxn
-        allocate(cur_mineral%dbaserxn%spec_name(cur_mineral%dbaserxn%nspec))
-        cur_mineral%dbaserxn%spec_name = ''
-        allocate(cur_mineral%dbaserxn%stoich(cur_mineral%dbaserxn%nspec))
-        cur_mineral%dbaserxn%stoich = 0.d0
-        allocate(cur_mineral%dbaserxn%logK(reaction%num_dbase_temperatures))
-        cur_mineral%dbaserxn%logK = 0.d0
-        ! read in species and stoichiometries
-        do ispec = 1, cur_mineral%dbaserxn%nspec
-          call InputReadDouble(input,option,cur_mineral%dbaserxn%stoich(ispec))
-          call InputErrorMsg(input,option,'MINERAL species stoichiometry','DATABASE')            
-          call InputReadQuotedWord(input,option,cur_mineral%dbaserxn% &
-                                   spec_name(ispec),PETSC_TRUE)
-          call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
-        enddo
-        do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_mineral%dbaserxn%logK(itemp))
-          call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
-        enddo
-        ! read the molar weight
-        call InputReadDouble(input,option,cur_mineral%molar_weight)
-        call InputErrorMsg(input,option,'MINERAL molar weight','DATABASE')        
-#endif        
-        
+        call MineralReadFromDatabase(cur_mineral, &
+                                     reaction%num_dbase_temperatures,input, &
+                                     option)
       case(4) ! surface complexes
         cur_srfcplx => surface_complexation%complex_list
         found = PETSC_FALSE
@@ -696,7 +659,7 @@ subroutine DatabaseRead(reaction,option)
   if (flag) call printErrMsg(option,'Species not found in database.')
 
   call InputDestroy(input)
-
+  
 end subroutine DatabaseRead
 
 ! ************************************************************************** !
@@ -715,6 +678,10 @@ subroutine BasisInit(reaction,option)
   
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+  
+#ifdef SOLID_SOLUTION  
+  use Solid_Solution_module
+#endif  
 
   implicit none
   
@@ -2126,6 +2093,10 @@ subroutine BasisInit(reaction,option)
       cur_mineral => cur_mineral%next
       imnrl = imnrl + 1
     enddo
+#ifdef SOLID_SOLUTION    
+    call SolidSolutionLinkNamesToIDs(reaction%solid_solution_list, &
+                                     mineral_reaction,option)
+#endif
   endif
   
   ! colloids

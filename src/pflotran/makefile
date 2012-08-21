@@ -172,6 +172,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}database_aux.o\
 	${common_src}surface_complexation_aux.o\
 	${common_src}mineral_aux.o\
+	${common_src}solid_solution_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}secondary_continuum.o\
@@ -229,6 +230,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}transport.o\
 	${common_src}surface_complexation.o\
 	${common_src}mineral.o\
+	${common_src}solid_solution.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
 	${common_src}thc.o\
@@ -352,8 +354,10 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o
 reaction.o : reactive_transport_aux.o reaction_aux.o surface_complexation.o \
-             mineral.o option.o string.o mineral_aux.o
-reaction_aux.o : option.o string.o database_aux.o mineral_aux.o
+             mineral.o option.o string.o mineral_aux.o solid_solution_aux.o \
+             solid_solution.o
+reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
+                 solid_solution_aux.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o
@@ -372,6 +376,8 @@ richards_aux.o : option.o material.o water_eos.o saturation_function.o \
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 simulation.o : timestepper.o realization.o 
+solid_solution.o : solid_solution_aux.o reaction_aux.o mineral_aux.o
+solid_solution_aux.o : mineral_aux.o
 solver.o : option.o field.o input.o string.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
                init.o logging.o

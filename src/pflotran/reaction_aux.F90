@@ -3,7 +3,10 @@ module Reaction_Aux_module
   use Database_Aux_module
   use Mineral_Aux_module
   use Surface_Complexation_Aux_module
+  
+#ifdef SOLID_SOLUTION  
   use Solid_Solution_Aux_module
+#endif  
 
   implicit none
   
@@ -153,7 +156,6 @@ module Reaction_Aux_module
     type(general_rxn_type), pointer :: general_rxn_list
     type(kd_rxn_type), pointer :: kd_rxn_list
     type(aq_species_type), pointer :: redox_species_list
-    type(solid_solution_type), pointer :: solid_solution_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscBool :: checkpoint_activity_coefs
@@ -165,6 +167,9 @@ module Reaction_Aux_module
     ! new reaction objects
     type(surface_complexation_type), pointer :: surface_complexation
     type(mineral_rxn_type), pointer :: mineral
+#ifdef SOLID_SOLUTION    
+    type(solid_solution_type), pointer :: solid_solution_list
+#endif    
     
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
@@ -395,11 +400,13 @@ function ReactionCreate()
   nullify(reaction%general_rxn_list)
   nullify(reaction%kd_rxn_list)
   nullify(reaction%redox_species_list)
-  nullify(reaction%solid_solution_list)
   
   ! new reaction objects
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralReactionCreate()
+#ifdef SOLID_SOLUTION  
+  nullify(reaction%solid_solution_list)
+#endif
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -1704,6 +1711,9 @@ subroutine ReactionDestroy(reaction)
   
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralReactionDestroy(reaction%mineral)
+#ifdef SOLID_SOLUTION  
+  call SolidSolutionDestroy(reaction%solid_solution_list)
+#endif  
 
   if (associated(reaction%dbase_temperatures)) &
     deallocate(reaction%dbase_temperatures)
@@ -1713,9 +1723,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%redox_species_list)) &
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
   nullify(reaction%redox_species_list)
-  
-  ! recursive
-  call SolidSolutionDestroy(reaction%solid_solution_list)
 
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)

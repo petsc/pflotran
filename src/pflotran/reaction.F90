@@ -6,9 +6,14 @@ module Reaction_module
   
   use Surface_Complexation_module
   use Mineral_module
-  
+
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+
+#ifdef SOLID_SOLUTION  
+  use Solid_Solution_module
+  use Solid_Solution_Aux_module
+#endif  
   
   implicit none
  
@@ -268,6 +273,14 @@ subroutine ReactionRead(reaction,input,option)
 
       case('MINERALS','MINERAL_KINETICS')
         call MineralRead(word,reaction%mineral,input,option)
+      case('SOLID_SOLUTIONS')
+#ifdef SOLID_SOLUTION
+        call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
+                                            input,option)
+#else
+        option%io_buffer = 'To use solid solutions, must compile with -DSOLID_SOLUTION'
+        call printErrMsg(option)
+#endif
       case('COLLOIDS')
         nullify(prev_colloid)
         do
