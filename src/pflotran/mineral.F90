@@ -564,10 +564,11 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     cur_solid_soln => reaction%solid_solution_list
     do
       if (.not.associated(cur_solid_soln)) exit
+     ! max_rate = 0.d0
       do istoich_solid = 1, cur_solid_soln%num_stoich_solid
         imnrl = cur_solid_soln%stoich_solid_ids(istoich_solid)
         ! do something with mineral ikinmnrl rate, e.g. 
-        ! max_rate = max(max_rate,rt_auxvar%mnrl_rate(ikinmnrl))
+        ! max_rate = max(max_rate,dabs(rt_auxvar%mnrl_rate(ikinmnrl)))
       enddo
       do istoich_solid = 1, cur_solid_soln%num_stoich_solid
         imnrl = cur_solid_soln%stoich_solid_ids(istoich_solid)
