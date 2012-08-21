@@ -559,7 +559,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                         QK,Im,Im_const,sum_prefactor_rate,affinity_factor, &
                         prefactor,ln_prefactor_spec,cycle_, &
                         reaction,mineral_reaction,option)
-      if (cycle_) cycle
     enddo
   
     cur_solid_soln => reaction%solid_solution_list
