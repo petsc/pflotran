@@ -74,6 +74,10 @@ ifdef remove_sat
   MYFLAGS += -DREMOVE_SATURATION
 endif
 
+ifdef compressibility
+  MYFLAGS += -DUSE_COMPRESSIBILITY
+endif
+
 ifdef chuan_co2
   MYFLAGS += -DCHUAN_CO2
 endif
