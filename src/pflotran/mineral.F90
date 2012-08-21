@@ -508,7 +508,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt ::  icplx
   PetscReal :: ln_gam_m_beta
   
-#if SOLID_SOLUTION
+#ifdef SOLID_SOLUTION
   PetscBool :: cycle_
   PetscReal :: max_rate
   PetscReal :: rate_scale(reaction%mineral%nkinmnrl)
@@ -551,7 +551,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif
 
-#if SOLID_SOLUTION
+#ifdef SOLID_SOLUTION
   rate_scale = 1.d0
   if (associated(reaction%solid_solution_list)) then
     do imnrl = 1, mineral_reaction%nkinmnrl ! for each mineral
@@ -584,7 +584,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
   do imnrl = 1, mineral_reaction%nkinmnrl ! for each mineral
 
-#if SOLID_SOLUTION
+#ifdef SOLID_SOLUTION
     call RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
                       QK,Im,Im_const,sum_prefactor_rate,affinity_factor, &
                       prefactor,ln_prefactor_spec,cycle_, &
