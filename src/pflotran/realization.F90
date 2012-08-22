@@ -183,7 +183,9 @@ function RealizationCreate2(option)
   
   nullify(realization%reaction)
 
-  nullify(realization%patch)    
+  nullify(realization%patch)
+  nullify(realization%level_list)
+  nullify(realization%waypoints)
 
   RealizationCreate2 => realization
   

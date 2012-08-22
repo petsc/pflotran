@@ -42,10 +42,8 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
   character(len=MAXWORDLENGTH) :: card
   PetscInt, parameter :: max_stoich_solid_names = 200
   PetscInt :: stoich_solid_count
-  character(len=MAXWORDLENGTH), allocatable :: stoich_solid_names(:)
+  character(len=MAXWORDLENGTH) :: stoich_solid_names(max_stoich_solid_names)
   type(solid_solution_type), pointer :: solid_solution, prev_solid_solution
-  
-  allocate(stoich_solid_names(max_stoich_solid_names))
   
   nullify(prev_solid_solution)
   do
@@ -93,7 +91,8 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
     allocate(solid_solution%stoich_solid_ids(stoich_solid_count))
     solid_solution%stoich_solid_ids = 0
     allocate(solid_solution%stoich_solid_names(stoich_solid_count))
-    solid_solution%stoich_solid_names(:) = stoich_solid_names(:)
+    solid_solution%stoich_solid_names(1:stoich_solid_count) = &
+      stoich_solid_names(1:stoich_solid_count)
     solid_solution%num_stoich_solid = stoich_solid_count
 
 #if 0
@@ -124,8 +123,6 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
 #endif  
   enddo
   
-  deallocate(stoich_solid_names)
-
 end subroutine SolidSolutionReadFromInputFile
 
 ! ************************************************************************** !
