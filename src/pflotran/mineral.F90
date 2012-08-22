@@ -455,7 +455,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj, den
 
-  PetscReal :: ln_spec_act, spec_act_coef, ln_spec_conc
+  PetscReal :: ln_spec_act, spec_act_coef
   PetscReal :: ln_prefactor, ln_numerator, ln_denominator
   PetscReal :: prefactor(10), ln_prefactor_spec(5,10)
   PetscReal :: sum_prefactor_rate
@@ -765,10 +765,10 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
           dprefactor_dprefactor_spec = ln_prefactor-ln_prefactor_spec(ipref_species,ipref)
           icomp = mineral_reaction%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
           if (icomp > 0) then ! primary species
-            ln_spec_conc = ln_act(icomp)
+            ln_spec_act = ln_act(icomp)
             spec_act_coef = rt_auxvar%pri_act_coef(icomp)
           else ! secondary species
-            ln_spec_conc = ln_sec_act(-icomp)
+            ln_spec_act = ln_sec_act(-icomp)
             spec_act_coef = rt_auxvar%sec_act_coef(-icomp)
           endif
           ! derivative of numerator in eq. 54 with respect to species activity
