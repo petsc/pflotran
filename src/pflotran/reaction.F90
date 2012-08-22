@@ -1650,7 +1650,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         print *, 'constraint:', conc
         print *, 'constraint type:', constraint_type
         print *, 'free_conc:', free_conc
-        option%io_buffer = 'Stopping due to excessive iteration count!'
+        option%io_buffer = 'Equilibration of constraint "' // &
+          trim(constraint_name) // &
+          '" stopping due to excessive iteration count!'
         call printErrMsgByRank(option)
       endif
     endif

@@ -194,14 +194,14 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                 call InputErrorMsg(input,option,'word',error_string) 
                 select case(trim(word))
                   case('RATE_CONSTANT')
-    !             read rate constant
-                  call InputReadDouble(input,option,prefactor%rate)
-                  call InputErrorMsg(input,option,'rate',error_string)
-                  if (prefactor%rate < 0.d0) then
-                    prefactor%rate = 10.d0**prefactor%rate
-                  endif
+                    ! read rate constant
+                    call InputReadDouble(input,option,prefactor%rate)
+                    call InputErrorMsg(input,option,'rate',error_string)
+                    if (prefactor%rate < 0.d0) then
+                      prefactor%rate = 10.d0**prefactor%rate
+                    endif
                   case('ACTIVATION_ENERGY')
-      !             read activation energy for Arrhenius law
+                    ! read activation energy for Arrhenius law
                     call InputReadDouble(input,option,prefactor%activation_energy)
                     call InputErrorMsg(input,option,'activation',error_string)
                   case('PREFACTOR_SPECIES')
