@@ -2783,6 +2783,8 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'dirichlet'
     case(NEUMANN_BC)
       string = 'neumann'
+    case(DIRICHLET_ZERO_GRADIENT_BC)
+      string = 'dirichlet-zero gradient'
     case(MASS_RATE_SS)
       string = 'mass_rate'
     case(WELL_SS)
@@ -2801,6 +2803,10 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'equilibrium'
     case(UNIT_GRADIENT_BC)
       string = 'unit gradient'
+    case(SCALED_MASS_RATE_SS)
+      string = 'scaled mass rate'
+    case(SCALED_VOLUMETRIC_RATE_SS)
+      string = 'scaled volumetric rate'
   end select
   100 format(6x,'Type: ',a)  
   write(option%fid_out,100) trim(string)
