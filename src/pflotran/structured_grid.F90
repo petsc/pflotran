@@ -1808,7 +1808,7 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,nG2L,nL2G, &
   ! Local(non ghosted)->Natural(natural order starts from 0)
 
   ! if STAR stencil, need to set corner ghosted cells to -1
-  if (stencil_type == DMDA_STENCIL_BOX) then
+  if (stencil_type == DMDA_STENCIL_STAR) then
     !geh - set corner ghosted nodes to -1
     do k=1,structured_grid%ngz
       do j=1,structured_grid%ngy
