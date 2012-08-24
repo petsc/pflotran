@@ -680,6 +680,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   if (patch%surf_or_subsurf_flag == SURFACE) then
     allocate(patch%surf_internal_fluxes(temp_int))
     allocate(patch%surf_boundary_fluxes(temp_int))
+    patch%surf_internal_fluxes = 0.d0
+    patch%surf_boundary_fluxes = 0.d0
   endif
 #endif
  
