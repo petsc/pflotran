@@ -24,8 +24,9 @@ module THMC_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-    PetscReal :: gradient(3,3)       ! displacement gradient
     PetscReal :: stress(3,3)
+    PetscReal :: gradient(3,3)
+    PetscReal :: Minv(3,3)           ! this matrix depends only on the grid and is precomputed and stored
 #ifdef ICE
     PetscReal :: sat_ice
     PetscReal :: sat_gas
@@ -160,6 +161,8 @@ subroutine THMCAuxVarInit(aux_var,option)
   allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 1.d-9
   aux_var%gradient = 0.d0
+  aux_var%stress = 0.d0
+  aux_var%Minv = 0.d0
 #ifdef ICE
   aux_var%sat_ice = 0.d0
   aux_var%sat_gas = 0.d0
@@ -211,6 +214,8 @@ subroutine THMCAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%xmol = aux_var%xmol
   aux_var2%diff = aux_var%diff
   aux_var2%gradient = aux_var%gradient
+  aux_var2%stress = aux_var%stress
+  aux_var2%Minv = aux_var%Minv
 #ifdef ICE
   aux_var2%sat_ice = aux_var%sat_ice 
   aux_var2%sat_gas = aux_var%sat_gas
@@ -306,17 +311,9 @@ subroutine THMCAuxVarCompute(x,aux_var,global_aux_var, &
     dpw_dp = 1.d0
   endif  
 
-!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-!              option%scale,ierr)
+  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+              option%scale,ierr)
               
-!  print *, 'wateos:', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
-
-  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
-                         dw_dt, hw, hw_dp, hw_dt, ierr)
-                         
-!  print *, 'wateos_simple', dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt
-
 
 ! may need to compute dpsat_dt to pass to VISW
   call psat(global_aux_var%temp(1),sat_pressure,dpsat_dt,ierr)
