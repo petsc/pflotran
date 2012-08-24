@@ -361,4 +361,6 @@ PetscInt, parameter :: FULLY_COUPLED = 2
 PetscInt, parameter :: KINEMATIC_WAVE = 1
 PetscInt, parameter :: DIFFUSION_WAVE = 2
 
+PetscInt, parameter :: TWO_POINT_FLUX = 0
+PetscInt, parameter :: LSM_FLUX       = 1
 #define HASH

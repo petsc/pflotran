@@ -48,6 +48,9 @@ module Discretization_module
     
     PetscInt :: stencil_width
     PetscInt :: stencil_type
+    
+    PetscInt :: flux_method
+    
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -128,6 +131,7 @@ function DiscretizationCreate()
   
   discretization%stencil_width = 1
   discretization%stencil_type = DMDA_STENCIL_STAR
+  discretization%flux_method = TWO_POINT_FLUX
 
   discretization%tvd_ghost_scatter = 0
   
@@ -265,7 +269,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
         call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
         call InputErrorMsg(input,option,'Z direction','Origin')        
       case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX',&
-           'STENCIL_WIDTH','STENCIL_TYPE')
+           'STENCIL_WIDTH','STENCIL_TYPE','FLUX_METHOD')
       case('DXYZ','BOUNDS')
         call InputSkipToEND(input,option,word) 
       case default
@@ -545,6 +549,20 @@ subroutine DiscretizationRead(discretization,input,option)
             discretization%stencil_type = DMDA_STENCIL_BOX
           case ('STAR')
             discretization%stencil_type = DMDA_STENCIL_STAR
+          case default
+            option%io_buffer = 'Keyword: ' // trim(word) // &
+                 ' not recognized in DISCRETIZATION, second read.'
+            call printErrMsg(option)
+        end select
+      case ('FLUX_METHOD')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','GRID')
+        call StringToUpper(word)
+        select case(trim(word))
+          case ('TWO_POINT_FLUX')
+            discretization%flux_method = TWO_POINT_FLUX
+          case ('LSM_FLUX')
+            discretization%flux_method = LSM_FLUX
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
                  ' not recognized in DISCRETIZATION, second read.'
