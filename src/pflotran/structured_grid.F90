@@ -52,6 +52,8 @@ module Structured_Grid_module
     
     PetscReal, pointer :: dx(:), dy(:), dz(:)  ! ghosted grid spacings for each grid cell
     
+    PetscInt, pointer :: cell_neighbors(:,:)
+    
   end type structured_grid_type
 
   public :: StructuredGridCreate, &
@@ -72,7 +74,8 @@ module Structured_Grid_module
             StructGridGetIJKFromGhostedID, &
             StructGridGetGhostedNeighbors, &
             StructGridCreateTVDGhosts, &
-            StructGridGetGhostedNeighborsCorners
+            StructGridGetGhostedNeighborsCorners, &
+            StructGridComputeNeighbors
   
 contains
 
@@ -2093,6 +2096,9 @@ subroutine StructuredGridDestroy(structured_grid)
   if (associated(structured_grid%dz)) deallocate(structured_grid%dz)
   nullify(structured_grid%dz)
   
+  if(associated(structured_grid%cell_neighbors)) deallocate(structured_grid%cell_neighbors)
+  nullify(structured_grid%cell_neighbors)
+  
   deallocate(structured_grid)
   nullify(structured_grid)
 
@@ -2460,5 +2466,45 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
   StructGetTVDGhostConnection = -index
 
 end function StructGetTVDGhostConnection
+
+! ************************************************************************** !
+!> This routine saves indices (in ghosted order) of neighbors for all ghosted
+!! cells.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 08/24/12
+! ************************************************************************** !
+subroutine StructGridComputeNeighbors(structured_grid,option)
+
+  use Option_module
+
+  implicit none
+  
+#include "finclude/petscdmda.h"
+
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  
+  PetscInt :: ghosted_id, ncount, ghosted_neighbors(27)
+  
+  allocate(structured_grid%cell_neighbors(0:27,structured_grid%ngmax))
+  structured_grid%cell_neighbors = 0
+  
+  do ghosted_id = 1,structured_grid%ngmax
+    call StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
+                                         DMDA_STENCIL_BOX, &
+                                         ONE_INTEGER_MPI, &
+                                         ONE_INTEGER_MPI, &
+                                         ONE_INTEGER_MPI, &
+                                         ncount, &
+                                         ghosted_neighbors, &
+                                         option)
+    structured_grid%cell_neighbors(0,ghosted_id) = ncount
+    structured_grid%cell_neighbors(1:ncount,ghosted_id) = ghosted_neighbors(1:ncount)
+  enddo
+  
+end subroutine
 
 end module Structured_Grid_module

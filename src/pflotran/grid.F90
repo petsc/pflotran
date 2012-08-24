@@ -139,7 +139,8 @@ module Grid_module
             GridComputeCell2FaceConnectivity, &
             GridComputeGlobalCell2FaceConnectivity, &
             GridGetGhostedNeighbors, &
-            GridGetGhostedNeighborsWithCorners
+            GridGetGhostedNeighborsWithCorners, &
+            GridComputeNeighbors
   
 contains
 
@@ -3305,6 +3306,34 @@ function GridIndexToCellID(vec,index,grid,vec_type)
                      MPI_MAX,PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID
+
+! ************************************************************************** !
+!> This routine computes the indices of neighbours for all ghosted cells
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 08/24/12
+! ************************************************************************** !
+subroutine GridComputeNeighbors(grid,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+
+  select case(grid%itype)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      call StructGridComputeNeighbors(grid%structured_grid,option)
+    case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID) 
+      option%io_buffer = 'GridComputeNeighbors not currently supported for ' // &
+        'unstructured grids.'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridComputeNeighbors
 
 !! ********************************************************************** !
 !!

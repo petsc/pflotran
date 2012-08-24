@@ -387,6 +387,7 @@ subroutine RealizationCreateDiscretization(realization)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
+      call GridComputeNeighbors(grid,option)
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -404,6 +405,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeInternalConnect(grid,option, &
                                       discretization%dm_1dof%ugdm) 
       call GridComputeVolumes(grid,field%volume,option)
+      call GridComputeNeighbors(grid,option)
   end select 
  
   ! Vectors with face degrees of freedom
