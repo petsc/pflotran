@@ -2214,7 +2214,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
                               mat_vert2cell_offdiag, icol, iicol, ierr)
       call MatGetRowIJF90(mat_vert2cell_diag, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-#ifdef HAVE_SNES_API_3_3      
+#ifdef HAVE_PETSC_API_3_3      
       call MatGetArray(mat_vert2cell_diag, aa, aaa, ierr)
 #else      
       call MatSeqAIJGetArray(mat_vert2cell_diag, aa, aaa, ierr)
@@ -2223,7 +2223,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     else 
       call MatGetRowIJF90(mat_vert2cell, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-#ifdef HAVE_SNES_API_3_3      
+#ifdef HAVE_PETSC_API_3_3      
       call MatGetArray(mat_vert2cell, aa, aaa, ierr)
 #else
       call MatSeqAIJGetArray(mat_vert2cell, aa, aaa, ierr)
@@ -2264,7 +2264,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     if (option%mycommsize > 1) then
       call MatRestoreRowIJF90(mat_vert2cell_diag, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-#ifdef HAVE_SNES_API_3_3
+#ifdef HAVE_PETSC_API_3_3
       call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
 #else
       call MatSeqAIJRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
@@ -2273,7 +2273,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     else
       call MatRestoreRowIJF90(mat_vert2cell, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-#ifdef HAVE_SNES_API_3_3
+#ifdef HAVE_PETSC_API_3_3
       call MatRestoreArray(mat_vert2cell, aa, aaa, ierr)
 #else      
       call MatSeqAIJRestoreArray(mat_vert2cell, aa, aaa, ierr)
@@ -2284,7 +2284,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     if (option%mycommsize > 1) then
       call MatGetRowIJF90(mat_vert2cell_offdiag, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-#ifdef HAVE_SNES_API_3_3
+#ifdef HAVE_PETSC_API_3_3
       call MatGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
 #else
       call MatSeqAIJGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
@@ -2312,7 +2312,7 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       enddo
       call MatRestoreRowIJF90(mat_vert2cell_offdiag, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-#ifdef HAVE_SNES_API_3_3
+#ifdef HAVE_PETSC_API_3_3
       call MatRestoreArray(mat_vert2cell_offdiag,aa,aaa,ierr)
 #else
       call MatSeqAIJRestoreArray(mat_vert2cell_offdiag,aa,aaa,ierr)
