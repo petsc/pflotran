@@ -368,7 +368,8 @@ subroutine RealizationCreateDiscretization(realization)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
-      call GridMapIndices(grid, discretization%dm_1dof%sgdm)
+      call GridMapIndices(grid, discretization%dm_1dof%sgdm, &
+                          discretization%stencil_type)
       if (option%itranmode == EXPLICIT_ADVECTION) then
         call StructGridCreateTVDGhosts(grid%structured_grid, &
                                        realization%reaction%naqcomp, &
@@ -390,8 +391,8 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid, &
-                            discretization%dm_1dof%ugdm, &
-                            grid%nG2L,grid%nL2G,grid%nG2A)
+                           discretization%dm_1dof%ugdm, &
+                           grid%nG2L,grid%nL2G,grid%nG2A)
       call GridComputeCoordinates(grid,discretization%origin,option, & 
                                     discretization%dm_1dof%ugdm) 
       if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then

@@ -1744,11 +1744,17 @@ end subroutine StructuredGridComputeVolumes
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nG2A)
+subroutine StructuredGridMapIndices(structured_grid,stencil_type,nG2L,nL2G, &
+                                    nG2A)
 
   implicit none
+  
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
+#include "finclude/petscdmda.h"  
 
   type(structured_grid_type) :: structured_grid
+  PetscInt :: stencil_type
   PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:)
 
   PetscInt :: i, j, k, local_id, ghosted_id, natural_id, count1
@@ -1797,47 +1803,50 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nG2A)
   enddo
   ! Local(non ghosted)->Natural(natural order starts from 0)
 
-  !geh - set corner ghosted nodes to -1
-  do k=1,structured_grid%ngz
-    do j=1,structured_grid%ngy
-      do i=1,structured_grid%ngx
-        count1 = 0
-        if (i == 1 .and. &
-            abs(structured_grid%lxs-structured_grid%gxs) > 0) &
-          count1 = count1 + 1
-        if (i == structured_grid%ngx .and. &
-            abs(structured_grid%gxe-structured_grid%lxe) > 0) &
-          count1 = count1 + 1
-        if (j == 1 .and. &
-            abs(structured_grid%lys-structured_grid%gys) > 0) &
-          count1 = count1 + 1
-        if (j == structured_grid%ngy .and. &
-            abs(structured_grid%gye-structured_grid%lye) > 0) &
-          count1 = count1 + 1
-        if (k == 1 .and. &
-            abs(structured_grid%lzs-structured_grid%gzs) > 0) &
-          count1 = count1 + 1
-        if (k == structured_grid%ngz .and. &
-            abs(structured_grid%gze-structured_grid%lze) > 0) &
-          count1 = count1 + 1
-        if (count1 > 1) then
-          ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
-          nG2L(ghosted_id) = -1
-        endif
+  ! if STAR stencil, need to set corner ghosted cells to -1
+  if (stencil_type == DMDA_STENCIL_BOX) then
+    !geh - set corner ghosted nodes to -1
+    do k=1,structured_grid%ngz
+      do j=1,structured_grid%ngy
+        do i=1,structured_grid%ngx
+          count1 = 0
+          if (i == 1 .and. &
+              abs(structured_grid%lxs-structured_grid%gxs) > 0) &
+            count1 = count1 + 1
+          if (i == structured_grid%ngx .and. &
+              abs(structured_grid%gxe-structured_grid%lxe) > 0) &
+            count1 = count1 + 1
+          if (j == 1 .and. &
+              abs(structured_grid%lys-structured_grid%gys) > 0) &
+            count1 = count1 + 1
+          if (j == structured_grid%ngy .and. &
+              abs(structured_grid%gye-structured_grid%lye) > 0) &
+            count1 = count1 + 1
+          if (k == 1 .and. &
+              abs(structured_grid%lzs-structured_grid%gzs) > 0) &
+            count1 = count1 + 1
+          if (k == structured_grid%ngz .and. &
+              abs(structured_grid%gze-structured_grid%lze) > 0) &
+            count1 = count1 + 1
+          if (count1 > 1) then
+            ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+            nG2L(ghosted_id) = -1
+          endif
+        enddo
       enddo
     enddo
-  enddo
+  endif
 
   ! local ghosted -> natural (1-based)
-  local_id=0
+  ghosted_id = 0
   do k=1,structured_grid%ngz
     do j=1,structured_grid%ngy
       do i=1,structured_grid%ngx
-        local_id = local_id + 1
+        ghosted_id = ghosted_id + 1
         natural_id = i + structured_grid%gxs + & ! 1-based
                       (j-1+structured_grid%gys)*structured_grid%nx+ &
                       (k-1+structured_grid%gzs)*structured_grid%nxy
-        nG2A(local_id) = natural_id
+        nG2A(ghosted_id) = natural_id
       enddo
     enddo
   enddo

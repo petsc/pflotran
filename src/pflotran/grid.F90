@@ -1221,7 +1221,7 @@ end subroutine CreateMFDStruct4LP
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm)
+subroutine GridMapIndices(grid, sgdm, stencil_type)
 
 
   implicit none
@@ -1239,6 +1239,7 @@ subroutine GridMapIndices(grid, sgdm)
   
   type(grid_type) :: grid
   DM :: sgdm
+  PetscInt :: stencil_type
 
   PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
@@ -1248,8 +1249,8 @@ subroutine GridMapIndices(grid, sgdm)
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                    grid%nG2A)
+      call StructuredGridMapIndices(grid%structured_grid,stencil_type, &
+                                    grid%nG2L,grid%nL2G,grid%nG2A)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
