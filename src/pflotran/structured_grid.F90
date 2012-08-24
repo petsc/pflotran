@@ -1745,7 +1745,9 @@ end subroutine StructuredGridComputeVolumes
 !
 ! ************************************************************************** !
 subroutine StructuredGridMapIndices(structured_grid,stencil_type,nG2L,nL2G, &
-                                    nG2A)
+                                    nG2A,ghosted_level,option)
+
+  use Option_module
 
   implicit none
   
@@ -1755,7 +1757,8 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,nG2L,nL2G, &
 
   type(structured_grid_type) :: structured_grid
   PetscInt :: stencil_type
-  PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:)
+  PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:), ghosted_level(:)
+  type(option_type) :: option
 
   PetscInt :: i, j, k, local_id, ghosted_id, natural_id, count1
   PetscErrorCode :: ierr
@@ -1763,6 +1766,7 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,nG2L,nL2G, &
   allocate(nL2G(structured_grid%nlmax))
   allocate(nG2L(structured_grid%ngmax))
   allocate(nG2A(structured_grid%ngmax))
+  allocate(ghosted_level(structured_grid%ngmax))
 
   structured_grid%istart = structured_grid%lxs-structured_grid%gxs
   structured_grid%jstart = structured_grid%lys-structured_grid%gys
@@ -1847,6 +1851,62 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,nG2L,nL2G, &
                       (j-1+structured_grid%gys)*structured_grid%nx+ &
                       (k-1+structured_grid%gzs)*structured_grid%nxy
         nG2A(ghosted_id) = natural_id
+      enddo
+    enddo
+  enddo
+  
+  ! Save information about ghost cell belong in which level of SNES stencil
+  ghosted_level = 0
+  do k=structured_grid%gzs,structured_grid%gze-1
+    do j=structured_grid%gys,structured_grid%gye-1
+      do i=structured_grid%gxs,structured_grid%gxe-1
+        if(i<structured_grid%lxs) then
+          ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
+                                                      i-structured_grid%gxs+1, &
+                                                      j-structured_grid%gys+1, &
+                                                      k-structured_grid%gzs+1)
+          ghosted_level(ghosted_id) = structured_grid%lxs-i
+        endif
+        if(i>structured_grid%lxe-1) then
+          ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
+                                                      i-structured_grid%gxs+1, &
+                                                      j-structured_grid%gys+1, &
+                                                      k-structured_grid%gzs+1)
+          ghosted_level(ghosted_id) = -(structured_grid%lxe-1-i)
+        endif
+
+        if(j<structured_grid%lys) then
+          ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
+                                                      i-structured_grid%gxs+1, &
+                                                      j-structured_grid%gys+1, &
+                                                      k-structured_grid%gzs+1)
+          ghosted_level(ghosted_id) = structured_grid%lys-j
+        endif
+
+        if(j>structured_grid%lye-1) then
+          ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
+                                                      i-structured_grid%gxs+1, &
+                                                      j-structured_grid%gys+1, &
+                                                      k-structured_grid%gzs+1)
+          ghosted_level(ghosted_id) = -(structured_grid%lye-1-j)
+        endif
+
+        if(k<structured_grid%lzs) then
+          ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
+                                                      i-structured_grid%gxs+1, &
+                                                      j-structured_grid%gys+1, &
+                                                      k-structured_grid%gzs+1)
+          ghosted_level(ghosted_id) = structured_grid%lzs-k
+        endif
+
+        if(k>structured_grid%lze-1) then
+          ghosted_id = StructGridGetGhostedIDFromIJK( structured_grid, &
+                                                      i-structured_grid%gxs+1, &
+                                                      j-structured_grid%gys+1, &
+                                                      k-structured_grid%gzs+1)
+          ghosted_level(ghosted_id) = -(structured_grid%lze-1-k)
+        endif
+
       enddo
     enddo
   enddo

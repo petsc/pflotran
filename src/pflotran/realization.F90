@@ -369,7 +369,7 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, discretization%dm_1dof%sgdm, &
-                          discretization%stencil_type)
+                          discretization%stencil_type,option)
       if (option%itranmode == EXPLICIT_ADVECTION) then
         call StructGridCreateTVDGhosts(grid%structured_grid, &
                                        realization%reaction%naqcomp, &

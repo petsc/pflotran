@@ -73,6 +73,11 @@ module Grid_module
     Vec :: e2f             ! global vector to establish connection between global face_id and cell_id
     Vec :: e2n, e2n_LP     ! global cell connectivity vector
 
+    ! This vector has information regarding how far away a ghost cell is from
+    ! a local cell.
+    ! 1) Zero-value represent a local cell.
+    ! 2) If SNES stencil_width = 2, the maximum value of this vector can be 2.
+    PetscInt,pointer :: ghosted_level(:)
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
@@ -169,6 +174,7 @@ function GridCreate()
   nullify(grid%nG2L)
   nullify(grid%nG2A)
   nullify(grid%nG2P)
+  nullify(grid%ghosted_level)
 
 #ifdef DASVYAT
   nullify(grid%fL2G)
@@ -1221,8 +1227,9 @@ end subroutine CreateMFDStruct4LP
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm, stencil_type)
+subroutine GridMapIndices(grid, sgdm, stencil_type, option)
 
+use Option_module
 
   implicit none
 #include "finclude/petscvec.h"
@@ -1240,6 +1247,7 @@ subroutine GridMapIndices(grid, sgdm, stencil_type)
   type(grid_type) :: grid
   DM :: sgdm
   PetscInt :: stencil_type
+  type(option_type) :: option
 
   PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
@@ -1250,7 +1258,8 @@ subroutine GridMapIndices(grid, sgdm, stencil_type)
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridMapIndices(grid%structured_grid,stencil_type, &
-                                    grid%nG2L,grid%nL2G,grid%nG2A)
+                                    grid%nG2L,grid%nL2G,grid%nG2A, &
+                                    grid%ghosted_level,option)
 #ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
@@ -3171,6 +3180,8 @@ subroutine GridDestroy(grid)
   nullify(grid%nG2A)
   if (associated(grid%nG2P)) deallocate(grid%nG2P)
   nullify(grid%nG2P)
+  if (associated(grid%ghosted_level)) deallocate(grid%ghosted_level)
+  nullify(grid%ghosted_level)
 
 #ifdef DASVYAT
   if (associated(grid%fL2G)) deallocate(grid%fL2G)
