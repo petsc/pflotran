@@ -10,7 +10,7 @@ END
 
 :=========================== discretization ===================================
 GRID
-TYPE unstructured hdf5/usg_5x4x3.h5
+TYPE unstructured dat/usg_5x4x3.mesh
 END
 
 :=========================== fluid properties =================================
@@ -56,37 +56,39 @@ REFERENCE_PRESSURE 101325.
 :=========================== regions ==========================================
 
 REGION All
-FILE hdf5/usg_5x4x3.h5
-GRID unstructured
+  COORDINATES
+    0.d0 0.d0 0.d0
+    60.d0 46.d0 60.d0
+  /
 END 
 
 REGION Top_sidesets
-FILE hdf5/usg_5x4x3.h5
+FILE dat/Top_sidesets.ss
 GRID unstructured
 END 
 
 REGION Bottom_sidesets
-FILE hdf5/usg_5x4x3.h5
+FILE dat/Bottom_sidesets.ss
 GRID unstructured
 END 
 
 REGION North_sidesets
-FILE hdf5/usg_5x4x3.h5
+FILE dat/North_sidesets.ss
 GRID unstructured
 END 
 
 REGION South_sidesets
-FILE hdf5/usg_5x4x3.h5
+FILE dat/South_sidesets.ss
 GRID unstructured
 END 
 
 REGION East_sidesets
-FILE hdf5/usg_5x4x3.h5
+FILE dat/East_sidesets.ss
 GRID unstructured
 END 
 
 REGION West_sidesets
-FILE hdf5/usg_5x4x3.h5
+FILE dat/West_sidesets.ss
 GRID unstructured
 END 
 

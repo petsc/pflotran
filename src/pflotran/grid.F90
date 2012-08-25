@@ -2214,12 +2214,20 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
                               mat_vert2cell_offdiag, icol, iicol, ierr)
       call MatGetRowIJF90(mat_vert2cell_diag, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+#ifdef HAVE_PETSC_API_3_3      
+      call MatGetArray(mat_vert2cell_diag, aa, aaa, ierr)
+#else      
       call MatSeqAIJGetArray(mat_vert2cell_diag, aa, aaa, ierr)
+#endif      
       ! call MatGetArrayF90(mat_vert2cell_diag, aa, ierr)
     else 
       call MatGetRowIJF90(mat_vert2cell, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+#ifdef HAVE_PETSC_API_3_3      
+      call MatGetArray(mat_vert2cell, aa, aaa, ierr)
+#else
       call MatSeqAIJGetArray(mat_vert2cell, aa, aaa, ierr)
+#endif
       !call MatGetArrayF90(mat_vert2cell, aa, ierr)
     endif
       
@@ -2256,19 +2264,31 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
     if (option%mycommsize > 1) then
       call MatRestoreRowIJF90(mat_vert2cell_diag, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+#ifdef HAVE_PETSC_API_3_3
+      call MatRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
+#else
       call MatSeqAIJRestoreArray(mat_vert2cell_diag, aa, aaa, ierr)
+#endif      
       !call MatRestoreArrayF90(mat_vert2cell_diag, aa, ierr)
     else
       call MatRestoreRowIJF90(mat_vert2cell, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+#ifdef HAVE_PETSC_API_3_3
+      call MatRestoreArray(mat_vert2cell, aa, aaa, ierr)
+#else      
       call MatSeqAIJRestoreArray(mat_vert2cell, aa, aaa, ierr)
+#endif      
       ! call MatRestoreArrayF90(mat_vert2cell, aa, ierr)
     endif
       
     if (option%mycommsize > 1) then
       call MatGetRowIJF90(mat_vert2cell_offdiag, ONE_INTEGER, PETSC_FALSE, &
                           PETSC_FALSE, n, ia_p, ja_p, done, ierr)
+#ifdef HAVE_PETSC_API_3_3
+      call MatGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
+#else
       call MatSeqAIJGetArray(mat_vert2cell_offdiag, aa, aaa, ierr)
+#endif
       !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
       do ii=1, n
         count = ia_p(ii+1) - ia_p(ii)
@@ -2292,7 +2312,11 @@ subroutine GridLocalizeRegionsForUGrid(grid, region, option)
       enddo
       call MatRestoreRowIJF90(mat_vert2cell_offdiag, ONE_INTEGER, PETSC_FALSE, &
                               PETSC_FALSE, n, ia_p, ja_p, done, ierr)
-      call MatSeqAIJGetArray(mat_vert2cell_offdiag,aa,aaa,ierr)
+#ifdef HAVE_PETSC_API_3_3
+      call MatRestoreArray(mat_vert2cell_offdiag,aa,aaa,ierr)
+#else
+      call MatSeqAIJRestoreArray(mat_vert2cell_offdiag,aa,aaa,ierr)
+#endif      
       !call MatGetArrayF90(mat_vert2cell_offdiag,aa,ierr)
       call MatDestroy(mat_vert2cell, ierr)
     endif

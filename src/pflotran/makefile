@@ -50,6 +50,10 @@ ifdef snes_api_3_2
   MYFLAGS += -DHAVE_SNES_API_3_2
 endif
 
+ifdef petsc_api_3_3
+  MYFLAGS += -DHAVE_PETSC_API_3_3
+endif
+
 ifdef dbl
   MYFLAGS += -DDOUBLE_LAYER
 endif
