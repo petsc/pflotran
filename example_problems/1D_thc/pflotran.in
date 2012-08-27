@@ -12,6 +12,7 @@ BOUNDS
 0.d0 1.d0
 0.d0 1.d0
 /
+STENCIL_TYPE BOX
 END
 
 :===================== Solver options ========================

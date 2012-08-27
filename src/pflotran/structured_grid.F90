@@ -167,7 +167,8 @@ function StructuredGridCreate()
   nullify(structured_grid%dy)
   nullify(structured_grid%dz)
   
-  
+  nullify(structured_grid%cell_neighbors)
+ 
   structured_grid%origin = -1.d20
   structured_grid%bounds = -1.d20
   
