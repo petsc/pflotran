@@ -1228,7 +1228,7 @@ end subroutine CreateMFDStruct4LP
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid, sgdm, stencil_type, flux_method, option)
+subroutine GridMapIndices(grid, sgdm, stencil_type, lsm_flux_method, option)
 
 use Option_module
 
@@ -1248,7 +1248,7 @@ use Option_module
   type(grid_type) :: grid
   DM :: sgdm
   PetscInt :: stencil_type
-  PetscInt :: flux_method
+  PetscBool :: lsm_flux_method
   type(option_type) :: option
 
   PetscInt :: ierr, icount
@@ -1260,7 +1260,7 @@ use Option_module
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridMapIndices(grid%structured_grid,stencil_type, &
-                                    flux_method, &
+                                    lsm_flux_method, &
                                     grid%nG2L,grid%nL2G,grid%nG2A, &
                                     grid%ghosted_level,option)
 #ifdef DASVYAT
