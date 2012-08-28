@@ -408,7 +408,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     if(present(xphico2)) xphico2 = xphi
    
     mco2 = (p - sat_pressure)*1.D-5*Qkco2
-    xco2eq = mco2/(1.D3/fmwh2o + mco2 + m_nacl) 
+    xco2eq = mco2/(1.D3/fmwh2o + mco2 + m_nacl)
+
+!   print *,'mphase_duan_den: ',xco2eq,mco2,m_nacl,qkco2,p,p2,sat_pressure,t
+
 !   question here: m_nacl or m_na+m_cl ?
    
     select case(iphase)     

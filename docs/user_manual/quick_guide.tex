@@ -1007,18 +1007,49 @@ and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction
 where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
-Porosity, permeability and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
-\EQ
+Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
+\EQ\label{por}
 \varphi \eq 1-\sum_m\varphi_m,
 \EN
 \EQ
 k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
 \EN
+\EQ
+\tau \eq \tau_0 \left(\frac{\varphi}{\varphi_0}\right)^b,
+\EN
 and
 \EQ
 a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n,
 \EN
-where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals that do not completely dissolve.
+where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$.
+
+In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{por} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
+\begin{subequations}
+\BA
+\varphi_m &\eq (1-\varphi) \frac{x_m \overline V_m}{\sum_{m'} x_{m'} \overline V_{m'}},\\
+&\eq (1-\varphi) \frac{y_m^{} \rho_m^{-1}}{\sum_{m'} y_{m'}^{} \rho_{m'}^{-1}},
+\EA
+\end{subequations}
+where
+\EQ
+\rho_m^{} \eq W_m^{} \overline V_m^{-1}.
+\EN
+In these relations $W_m$ refers to the formula weight and $\overline V_m$ the molar volume of the $m$th mineral. The solid molar density $\eta_s$ is given by
+\EQ
+\eta_s \eq \frac{1}{\sum_m x_m \overline V_m},
+\EN
+which is related to the mass density $\rho_s$ by
+\EQ
+\rho_s \eq W \eta_s,
+\EN
+with the mean molecular weight $W$ equal to
+\EQ
+W \eq \sum_m x_m W_m \eq \frac{1}{\sum_m W_m^{-1} y_m^{}}.
+\EN
+Mass and mole fractions are related by the expression
+\EQ
+W_m x_m \eq W y_m.
+\EN
 
 \subsubsection{Sorption}
 
@@ -2717,13 +2748,15 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[DATABASE] {\tt Path/Database\_Name}
 \item[LOG\_FORMULATION]
 \item[NO\_CHECKPOINT\_ACT\_COEFS]
-\item[ACTIVITY\_COEFFICIENTS] [\bf LAG, NEWTON, TIMESTEP, NEWTON\_ITERATION]
+\item[ACTIVITY\_COEFFICIENTS] [{\bf LAG, NEWTON, TIMESTEP, NEWTON\_ITERATION}]
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
 \item[NO\_BDOT]
 \item[UPDATE\_POROSITY]
 \item[UPDATE\_TORTUOSITY]
-\item[UPDATE\_PERMEABILITY]
+\item[UPDATE\_PERMEABILITY] \ Also turns on update\_porosity.
+\item[UPDATE\_MINERAL\_SURFACE\_AREA]
+\item[MINIMUM\_POROSITY] {\tt Value}
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
 \item[OUTPUT] ~
