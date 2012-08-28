@@ -1876,8 +1876,9 @@ subroutine RealizationUpdatePropertiesPatch(realization)
 
   if (reaction%update_mineral_surface_area) then
     porosity_scale = 1.d0
-    if (option%update_mnrl_surf_with_porosity) then
-      ! placing the get/restore array calls within the condition will 
+!   if (option%update_mnrl_surf_with_porosity) then
+    if (reaction%update_mnrl_surf_with_porosity) then
+      ! placing the get/restore array calls within the condition will
       ! avoid improper access.
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
     endif
