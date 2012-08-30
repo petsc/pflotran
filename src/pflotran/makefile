@@ -82,6 +82,10 @@ ifdef compressibility
   MYFLAGS += -DUSE_COMPRESSIBILITY
 endif
 
+ifdef no_vapor_diffusion
+  MYFLAGS += -DNO_VAPOR_DIFFUSION
+endif
+
 ifdef chuan_co2
   MYFLAGS += -DCHUAN_CO2
 endif
