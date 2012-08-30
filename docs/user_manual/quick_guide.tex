@@ -23,7 +23,7 @@
 \usepackage{color}
 \usepackage[table]{xcolor}
 %\usepackage{toc_entr}
-\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=black, urlcolor=blue]{hyperref}
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
 
 \definecolor{lightgray}{gray}{0.9}
 \definecolor{lightblue}{rgb}{0.93,0.95,1.0}
@@ -49,6 +49,9 @@
 %\cfoot{}
 %\footrulewidth 0.4pt
 \newcommand\keyend{{(., \, /, \, END)}}
+\newcommand\return{{\hfill$\hookrightarrow$}}
+%\newcommand\return{{\hfill\bf RETURN}}
+
 \newcommand{\negsp}{\vspace{-4mm}}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
@@ -2081,7 +2084,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 
 %\begin{tabular}{lll}
 \toprule[1.5pt]
-\multicolumn{1}{c}{\bf Keyword} & \multicolumn{1}{c}{\bf Description}\\
+\multicolumn{1}{c}{\hypertarget{target_key}{\bf Keyword}} & \multicolumn{1}{c}{\bf Description}\\
 \midrule[1pt]
 \hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} & \\
 \hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
@@ -2134,9 +2137,11 @@ Unless otherwise specified, units in the input file are assumed to be as listed 
 \vspace{3mm}
 
 %\rowcolors{row}{odd-row cyan}{even-row green}
-%\rowcolors[]{1}{red!20}{red!10}\rowcolors[]{1}{blue!20}{blue!10}
+%\rowcolors[]{1}{red!20}{red!10}
+%\rowcolors[]{1}{blue!20}{blue!10}
+\rowcolors[]{1}{teal!20}{teal!10}
 %\rowcolors{1}{}{lightgray}
-\rowcolors{1}{}{lightblue}
+%\rowcolors{1}{}{teal}
 \begin{tabular}{ll}
 \toprule[2pt]
 %\hline
@@ -2544,6 +2549,8 @@ REGION ground_surface
 END
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -2554,6 +2561,8 @@ END
 \begin{deflist}{000}
 \item[BRINE, BRIN] {\tt Value m\_nacl} [MOLAL, MASS, MOLE]
 \end{deflist}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -2592,6 +2601,8 @@ CHECKPOINT 1000
 
 CHECKPOINT 5
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 \newpage
@@ -2752,10 +2763,13 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
 \item[NO\_BDOT]
-\item[UPDATE\_POROSITY]
-\item[UPDATE\_TORTUOSITY]
-\item[UPDATE\_PERMEABILITY] \ Also turns on update\_porosity.
-\item[UPDATE\_MINERAL\_SURFACE\_AREA]
+\item[UPDATE\_POROSITY] {\tt Value}
+\item[UPDATE\_TORTUOSITY] {\tt Value}
+\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity.)
+\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \\
+(Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
+\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \\
+(Must set SURFACE\_AREA\_POROSITY\_POWER)
 \item[MINIMUM\_POROSITY] {\tt Value}
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
@@ -2908,6 +2922,8 @@ Albite
 END
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -2931,6 +2947,8 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 \begin{verbatim}
 COMPUTE_STATISTICS
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3005,6 +3023,8 @@ Metatorbernite 0.    1.
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3020,6 +3040,8 @@ Metatorbernite 0.    1.
 \begin{deflist}{000}
 \item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
 \end{deflist}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3052,6 +3074,8 @@ VIEW\_JACOBIAN\_DETAILED]
 \bigskip
 
 {\noindent\bf Examples:}
+
+\hyperlink{target_key}{\return}
 
 %================================================================
 
@@ -3228,6 +3252,8 @@ PRESSURE 101325.d0
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3261,6 +3287,8 @@ DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
 DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 /
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3372,6 +3400,8 @@ END
 \noindent
 By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-independent fashion and, as a result, the grid spacing may be changed by modifying the keyword {\tt NXYZ} only.
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3408,6 +3438,8 @@ TRANSPORT_CONDITION Initial
 REGION all
 END
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3491,6 +3523,8 @@ END
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3594,6 +3628,9 @@ EPSILON 0.02
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+%\hyperlink{target_key}{\hfill$\hookrightarrow$}
+
 %========================================================================
 
 \newpage
@@ -3617,6 +3654,8 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 /
 /
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3669,6 +3708,8 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 MODE THC
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3685,7 +3726,7 @@ specified under the MATERIAL\_PROPERTY keyword.
 \bf MULTIPLE\_CONTINUUM & Activate multiple continuum model for heat equation. 
 \end{tabularx}
 
-%========================================================================
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3723,6 +3764,8 @@ specified under the MATERIAL\_PROPERTY keyword.
 
 \noindent{\bf Example:}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3732,6 +3775,8 @@ specified under the MATERIAL\_PROPERTY keyword.
 \begin{deflist}{0000000000}
 \item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
 \end{deflist}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3776,6 +3821,8 @@ BOUNDARY_CONDITION river
 END
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3785,6 +3832,8 @@ END
 \begin{deflist}{0000000000}
 \item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
 \end{deflist}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3876,6 +3925,8 @@ MASS_BALANCE
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -3889,6 +3940,8 @@ MASS_BALANCE
 \end{deflist}
 %\end{minipage}
 %}
+
+\hyperlink{target_key}{\return}
 
 %================================================================
 
@@ -3908,6 +3961,8 @@ MASS_BALANCE
 
 {\tt PROC 1 1 8} \ \ \ \ ! Force decomposition in z direction only (1$\times$1$\times$8 decomposition).
 \end{deflist}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -3999,6 +4054,8 @@ FACE WEST
 END
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -4039,6 +4096,8 @@ RESTART restart.chk 0.d0 y
 RESTART pflotran.chk3000
 
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -4081,6 +4140,8 @@ POWER 1.d0
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -4106,6 +4167,8 @@ REGION Well_2-9_1
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -4123,6 +4186,8 @@ REGION Well_2-9_1
 \end{deflist}
 %\end{minipage}
 %}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -4155,6 +4220,9 @@ INITIAL_TIMESTEP_SIZE 1.d-3 h
 MAXIMUM_TIMESTEP_SIZE 1.d0 h
 /
 \end{verbatim}
+
+\hyperlink{target_key}{\return}
+
 %================================================================
 
 \newpage
@@ -4185,6 +4253,8 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -4288,6 +4358,8 @@ Metatorbernite 0.    1.
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -4310,6 +4382,8 @@ Metatorbernite 0.    1.
 UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -4327,6 +4401,8 @@ UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
+
+\hyperlink{target_key}{\return}
 
 %========================================================================
 
@@ -4372,6 +4448,8 @@ VELOCITY
 /
 \end{verbatim}
 
+\hyperlink{target_key}{\return}
+
 %========================================================================
 
 \newpage
@@ -4389,6 +4467,9 @@ VELOCITY
 \noindent{\bf Example:} {\tt WALLCLOCK\_STOP 9.5 h}
 
 %========================================================================
+
+\hyperlink{target_key}{\return}
+
 %========================================================================
 %========================================================================
 \newpage
