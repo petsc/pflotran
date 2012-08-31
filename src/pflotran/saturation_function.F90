@@ -816,9 +816,7 @@ implicit none
     case(VAN_GENUCHTEN)
       if (liquid_pressure >= option%reference_pressure) then
         function_B = 1.d0
-        liquid_relative_perm = 1.d0
         dfunc_B_pl = 0.d0
-        dkr_pc = 0.d0
       else
         alpha = saturation_function%alpha
         pc = option%reference_pressure - liquid_pressure
@@ -888,25 +886,20 @@ implicit none
 
   select case(saturation_function%permeability_function_itype)
     case(MUALEM)
-      if (liquid_pressure >= option%reference_pressure) then
-        dkr_pl = 0.d0
-        dkr_temp = 0.d0
-      else 
-        one_over_m = 1.d0/m
-        liq_sat_one_over_m = liquid_saturation**one_over_m
-        liquid_relative_perm = sqrt(liquid_saturation)* &
-                               (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
-        if (liquid_saturation == 1.d0) then
-          dkr_ds_liq = 0.d0
-        else
-          dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
-                       2.d0*liquid_saturation**(one_over_m - 0.5d0)* &
-                       (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
-                       (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
-         endif
+      one_over_m = 1.d0/m
+      liq_sat_one_over_m = liquid_saturation**one_over_m
+      liquid_relative_perm = sqrt(liquid_saturation)* &
+                             (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+      if (liquid_saturation == 1.d0) then
+        dkr_ds_liq = 0.d0
+      else
+        dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
+                     2.d0*liquid_saturation**(one_over_m - 0.5d0)* &
+                     (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                     (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
         dkr_pl = dkr_ds_liq*dsl_pl
         dkr_temp = dkr_ds_liq*dsl_temp
-      endif
     case default
       option%io_buffer = 'Ice module only supports Mualem' 
       call printErrMsg(option)

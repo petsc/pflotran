@@ -50,6 +50,10 @@ ifdef snes_api_3_2
   MYFLAGS += -DHAVE_SNES_API_3_2
 endif
 
+ifdef petsc_api_3_3
+  MYFLAGS += -DHAVE_PETSC_API_3_3
+endif
+
 ifdef dbl
   MYFLAGS += -DDOUBLE_LAYER
 endif
@@ -76,6 +80,10 @@ endif
 
 ifdef compressibility
   MYFLAGS += -DUSE_COMPRESSIBILITY
+endif
+
+ifdef no_vapor_diffusion
+  MYFLAGS += -DNO_VAPOR_DIFFUSION
 endif
 
 ifdef chuan_co2

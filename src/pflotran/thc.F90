@@ -1873,6 +1873,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
              (T_ref + 273.15d0))**(1.8)  
   Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.15d0)/ &
              (T_ref + 273.15d0))**(1.8)    
+
+             
   Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
   Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
   call PSAT(global_aux_var_up%temp(1), psat_up, dpsat_dt_up, ierr)
@@ -1899,6 +1901,8 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   endif 
 
   Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
+
+#ifndef NO_VAPOR_DIFFUION  
 #if 0
   Jup(1,1) = Jup(1,1) + upweight*(por_up*tor_up*Diffg_up*dsatg_dp_up* &
              deng_up + por_up*tor_up*satg_up*deng_up*dDiffg_dp_up)* &
@@ -1934,6 +1938,7 @@ subroutine THCFluxDerivative(aux_var_up,global_aux_var_up,por_up,tor_up, &
   Jdn(1,2) = Jdn(1,2) + ((1.D0 - upweight)*por_dn*tor_dn*satg_dn*(Diffg_dn* &
              ddeng_dt_dn + deng_dn*dDiffg_dp_dn)*(molg_up - molg_dn) &
              + Ddiffgas_avg*(-dmolg_dt_dn))/(dd_up + dd_dn)*area
+#endif
 #endif
   endif
 
@@ -2315,6 +2320,7 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
              (T_ref + 273.15d0))**(1.8)  
   Diffg_dn = Diffg_ref*(p_ref/p_g)*((global_aux_var_dn%temp(1) + 273.15d0)/ &
              (T_ref + 273.15d0))**(1.8)
+             
   Ddiffgas_up = por_up*tor_up*satg_up*deng_up*Diffg_up
   Ddiffgas_dn = por_dn*tor_dn*satg_dn*deng_dn*Diffg_dn
   call PSAT(global_aux_var_up%temp(1), psat_up, ierr)
@@ -2329,9 +2335,11 @@ subroutine THCFlux(aux_var_up,global_aux_var_up, &
   endif
     
   Ddiffgas_avg = upweight*Ddiffgas_up + (1.D0 - upweight)*Ddiffgas_dn 
-  fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
+#ifndef NO_VAPOR_DIFFUSION
+fluxm(1) = fluxm(1) + Ddiffgas_avg*area*(molg_up - molg_dn)/ &
              (dd_up + dd_dn)
-             
+#endif
+
  endif
 #ifdef REMOVE_SATURATION 
   difff = diffdp * 0.5D0* &

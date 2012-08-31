@@ -49,7 +49,10 @@ module Discretization_module
     PetscInt :: stencil_width
     PetscInt :: stencil_type
     
-    PetscInt :: flux_method
+    PetscInt :: hydr_flux_method
+    PetscInt :: therm_flux_method
+    PetscInt :: mech_flux_method
+    PetscBool:: lsm_flux_method
     
   end type discretization_type
 
@@ -131,7 +134,10 @@ function DiscretizationCreate()
   
   discretization%stencil_width = 1
   discretization%stencil_type = DMDA_STENCIL_STAR
-  discretization%flux_method = TWO_POINT_FLUX
+  discretization%hydr_flux_method = TWO_POINT_FLUX
+  discretization%therm_flux_method = TWO_POINT_FLUX
+  discretization%mech_flux_method = TWO_POINT_FLUX
+  discretization%lsm_flux_method = PETSC_FALSE
 
   discretization%tvd_ghost_scatter = 0
   
@@ -559,13 +565,54 @@ subroutine DiscretizationRead(discretization,input,option)
         call InputErrorMsg(input,option,'keyword','GRID')
         call StringToUpper(word)
         select case(trim(word))
-          case ('TWO_POINT_FLUX')
-            discretization%flux_method = TWO_POINT_FLUX
-          case ('LSM_FLUX')
-            discretization%flux_method = LSM_FLUX
+          case ('HYDRAULICS')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','GRID')
+            call StringToUpper(word)
+            select case(trim(word))
+              case ('TWO_POINT_FLUX')
+                discretization%hydr_flux_method = TWO_POINT_FLUX
+              case ('LSM_FLUX')
+                discretization%hydr_flux_method = LSM_FLUX
+                discretization%lsm_flux_method = PETSC_TRUE
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                  ' not recognized in DISCRETIZATION, second read.'
+                call printErrMsg(option)
+            end select
+          case ('THERMAL')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','GRID')
+            call StringToUpper(word)
+            select case(trim(word))
+              case ('TWO_POINT_FLUX')
+                discretization%therm_flux_method = TWO_POINT_FLUX
+              case ('LSM_FLUX')
+                discretization%therm_flux_method = LSM_FLUX
+                discretization%lsm_flux_method = PETSC_TRUE
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                  ' not recognized in DISCRETIZATION, second read.'
+                call printErrMsg(option)
+            end select
+          case ('MECHANICAL')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','GRID')
+            call StringToUpper(word)
+            select case(trim(word))
+              case ('TWO_POINT_FLUX')
+                discretization%mech_flux_method = TWO_POINT_FLUX
+              case ('LSM_FLUX')
+                discretization%mech_flux_method = LSM_FLUX
+                discretization%lsm_flux_method = PETSC_TRUE
+              case default
+                option%io_buffer = 'Keyword: ' // trim(word) // &
+                  ' not recognized in DISCRETIZATION, second read.'
+                call printErrMsg(option)
+            end select
           case default
             option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in DISCRETIZATION, second read.'
+            ' not recognized in DISCRETIZATION, second read.'
             call printErrMsg(option)
         end select
       case default
@@ -581,6 +628,15 @@ subroutine DiscretizationRead(discretization,input,option)
         option%gravity(Z_DIRECTION) = -1.d0*option%gravity(Z_DIRECTION)
       endif
   end select
+  
+  if(discretization%lsm_flux_method) then
+    if(discretization%stencil_type/=DMDA_STENCIL_BOX) then
+      option%io_buffer='For LSM-Flux option, the stencil type needs to be DMDA_STENCIL_BOX'
+      call printMsg(option)
+      discretization%stencil_type = DMDA_STENCIL_BOX
+      discretization%STENCIL_WIDTH = 2
+    endif
+  endif
 
 end subroutine DiscretizationRead
 

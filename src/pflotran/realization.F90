@@ -369,7 +369,8 @@ subroutine RealizationCreateDiscretization(realization)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, discretization%dm_1dof%sgdm, &
-                          discretization%stencil_type,discretization%flux_method, &
+                          discretization%stencil_type,&
+                          discretization%lsm_flux_method, &
                           option)
       if (option%itranmode == EXPLICIT_ADVECTION) then
         call StructGridCreateTVDGhosts(grid%structured_grid, &
@@ -388,7 +389,7 @@ subroutine RealizationCreateDiscretization(realization)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
-      if (discretization%flux_method==LSM_FLUX) call GridComputeNeighbors(grid,option)
+      if (discretization%lsm_flux_method) call GridComputeNeighbors(grid,option)
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -1875,8 +1876,9 @@ subroutine RealizationUpdatePropertiesPatch(realization)
 
   if (reaction%update_mineral_surface_area) then
     porosity_scale = 1.d0
-    if (option%update_mnrl_surf_with_porosity) then
-      ! placing the get/restore array calls within the condition will 
+!   if (option%update_mnrl_surf_with_porosity) then
+    if (reaction%update_mnrl_surf_with_porosity) then
+      ! placing the get/restore array calls within the condition will
       ! avoid improper access.
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
     endif

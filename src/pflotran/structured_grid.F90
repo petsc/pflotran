@@ -167,7 +167,8 @@ function StructuredGridCreate()
   nullify(structured_grid%dy)
   nullify(structured_grid%dz)
   
-  
+  nullify(structured_grid%cell_neighbors)
+ 
   structured_grid%origin = -1.d20
   structured_grid%bounds = -1.d20
   
@@ -1747,7 +1748,7 @@ end subroutine StructuredGridComputeVolumes
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridMapIndices(structured_grid,stencil_type,flux_method, &
+subroutine StructuredGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
                                     nG2L,nL2G, &
                                     nG2A,ghosted_level,option)
 
@@ -1760,7 +1761,8 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,flux_method, &
 #include "finclude/petscdmda.h"  
 
   type(structured_grid_type) :: structured_grid
-  PetscInt :: stencil_type, flux_method
+  PetscInt :: stencil_type
+  PetscBool :: lsm_flux_method
   PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:), ghosted_level(:)
   type(option_type) :: option
 
@@ -1858,7 +1860,7 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,flux_method, &
     enddo
   enddo
   
-  if (flux_method==LSM_FLUX) then
+  if (lsm_flux_method) then
   
     allocate(ghosted_level(structured_grid%ngmax))
     
