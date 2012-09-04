@@ -3235,7 +3235,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
-! now assign access pointer to local variables
+  ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,r, r_p, ierr)
   call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -3243,12 +3243,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 
   ! Accumulation terms ------------------------------------
   if (.not.option%steady_state) then
-#if 1
-    
-
     r_p = r_p - accum_p
-
-!     write(*,*) "accum_p 15", accum_p(15)
 
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -3259,15 +3254,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res) 
-!        if (ghosted_id==77) then
-!            write(*,*) "accum ",accum_p(local_id), "Res ", Res(1),  "diff ", Res(1) - accum_p(local_id)
-!            write(*,*) "Sat", global_aux_vars(ghosted_id)%sat(1), "Pres", global_aux_vars(ghosted_id)%pres(1)
-!        end if
       r_p(local_id) = r_p(local_id) + Res(1)
     enddo
-#endif
   endif
-#if 1
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
   sum_connection = 0
@@ -3311,23 +3301,12 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
-#endif
-
-
-!#ifdef DASVYAT
-!     write(*,*) "richards 2608"
-!     stop
-!#endif
 
   if (patch%aux%Richards%inactive_cells_exist) then
     do i=1,patch%aux%Richards%n_zero_rows
       r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
     enddo
   endif
-
-
-!   write(*,*) "FV Residual 15", r_p(15)
-
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
