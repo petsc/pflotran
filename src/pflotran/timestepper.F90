@@ -595,8 +595,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
       flow_t0 = option%flow_time
       call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
+#ifndef SURFACE_FLOW
       call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
                               failure)
+#else
+      if((.not.associated(surf_flow_stepper)).or.(surf_realization%option%subsurf_surf_coupling==SEQ_COUPLED)) then
+        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
+                                failure)
+      endif
+#endif
       call PetscLogStagePop(ierr)
       if (failure) return ! if flow solve fails, exit
       option%flow_time = flow_stepper%target_time
