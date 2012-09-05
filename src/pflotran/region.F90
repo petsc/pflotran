@@ -68,13 +68,13 @@ module Region_module
   interface RegionReadFromFile
     module procedure RegionReadFromFileId
     module procedure RegionReadFromFilename
-    module procedure RegionReadSideset
+    module procedure RegionReadSideSet
     module procedure RegionReadExplicitFaceSet
   end interface RegionReadFromFile
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
             RegionInitList, RegionDestroyList, RegionGetPtrFromList, & 
-            RegionRead, RegionReadSideset, RegionCreateSideset
+            RegionRead, RegionReadSideSet, RegionCreateSideset
   
 contains
 

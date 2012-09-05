@@ -95,6 +95,7 @@ subroutine ReactionRead(reaction,input,option)
   nullify(prev_cation)
   nullify(prev_general_rxn)
   nullify(prev_kd_rxn)
+  nullify(prev_ionx_rxn)
   
   srfcplx_count = 0
   input%ierr = 0

@@ -3482,22 +3482,31 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
   
   type(stepper_type) :: stepper
   PetscInt :: fid
-  character(len=MAXSTRINGLENGTH) :: header  
+  character(len=MAXSTRINGLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: string
   type(option_type) :: option
   
   if (OptionPrintToScreen(option)) then
     write(*,*) 
     write(*,'(a)') trim(header)
-    write(*,'("max steps:",i8)') stepper%max_time_step
-    write(*,'("max const cumulative_time_steps:",i4)') stepper%constant_time_step_threshold
-    write(*,'("max cuts:",i4)') stepper%max_time_step_cuts
+    write(string,*) stepper%max_time_step
+    write(*,'("max steps:",x,a)') trim(adjustl(string))
+    write(string,*) stepper%constant_time_step_threshold
+    write(*,'("max constant cumulative time steps:",x,a)') &
+      trim(adjustl(string))
+    write(string,*) stepper%max_time_step_cuts
+    write(*,'("max cuts:",x,a)') trim(adjustl(string))
   endif
   if (OptionPrintToFile(option)) then
     write(fid,*) 
     write(fid,'(a)') trim(header)
-    write(fid,'("max steps:",i8)') stepper%max_time_step
-    write(fid,'("max const cumulative_time_steps:",i4)') stepper%constant_time_step_threshold
-    write(fid,'("max cuts:",i4)') stepper%max_time_step_cuts
+    write(string,*) stepper%max_time_step
+    write(fid,'("max steps:",x,a)') trim(adjustl(string))
+    write(string,*) stepper%constant_time_step_threshold
+    write(fid,'("max constant cumulative time steps:",x,a)') &
+      trim(adjustl(string))
+    write(string,*) stepper%max_time_step_cuts
+    write(fid,'("max cuts:",x,a)') trim(adjustl(string))
   endif    
 
 end subroutine TimestepperPrintInfo

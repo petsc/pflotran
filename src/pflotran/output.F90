@@ -2778,29 +2778,35 @@ subroutine WriteTecplotUGridVertices1(fid,realization)
   grid => patch%grid
   option => realization%option
 
-  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
-                    grid%unstructured_grid%num_vertices_global, &
-                    global_vertex_vec,ierr)
-  call VecGetLocalSize(global_vertex_vec,local_size,ierr)
-  call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
-  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
-                           local_size)
-  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+  if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
+    call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                      grid%unstructured_grid%num_vertices_global, &
+                      global_vertex_vec,ierr)
+    call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+    call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                             local_size)
+    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-  call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
-  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
-                           local_size)
-  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                             local_size)
+    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-  call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
-  call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-  call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
-                           local_size)
-  call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                             local_size)
+    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-  call VecDestroy(global_vertex_vec, ierr)
+    call VecDestroy(global_vertex_vec, ierr)
+  else
+    if (option%myrank == option%io_rank) then
+      write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
+    endif
+  endif
 
 end subroutine WriteTecplotUGridVertices1
 
