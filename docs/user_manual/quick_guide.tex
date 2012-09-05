@@ -50,6 +50,7 @@
 %\footrulewidth 0.4pt
 \newcommand\keyend{{(., \, /, \, END)}}
 \newcommand\return{{\hfill$\hookrightarrow$}}
+\newcommand\returnb{{\hfill$\nearrow$}}
 %\newcommand\return{{\hfill\bf RETURN}}
 
 \newcommand{\negsp}{\vspace{-4mm}}
@@ -2183,15 +2184,20 @@ Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \end{verbatim}
 \end{comment}
 
+\clearpage
+
 \subsection{Example Input File}
 
+\hypertarget{target_input_file}{}
+
 \footnotesize
-:colon denotes a comment line
 :Description: 3D infiltration problem with calcite dissolution
+:colon denotes a comment line\\
 
 \noindent
 : == debugging ================================================================\\
 :\hyperlink{target_dbg}{\bf DEBUG}\\
+%\hypertarget{target_key}{\bf DEBUG}\\
 :MATVIEW\_JACOBIAN\\
 :VECVIEW\_RESIDUAL\\
 :VECVIEW\_SOLUTION\\
@@ -2213,8 +2219,8 @@ Tracer\\
 /\\
 SECONDARY\_SPECIES\\
 OH-\\
-HCO3-\\
-CO3--\\
+HCO3$-$\\
+CO3$-$$-$\\
 CaHCO3+\\
 CaCO3(aq)\\
 /\\
@@ -2254,13 +2260,12 @@ MAX\_STEPS 100000\\
 \noindent
 : == discretization ===========================================================\\
 \hyperlink{target_grid}{\bf GRID}\\
-:TYPE amr ! amr grid\\
+%:TYPE amr ! amr grid\\
 TYPE structured\\
 NXYZ 6 6 6\\
 BOUNDS\\
-0.d0 1.d0\\
-0.d0 1.d0\\
-0.d0 1.d0\\
+0.d0 0.d0 0.d0\\
+1.d0 1.d0 1.d0\\
 /\\
 :DXYZ\\
 :1.\\
@@ -2624,35 +2629,52 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \begin{deflist}{000}
 
+\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
+
+~\\
+
 \item [PRIMARY\_SPECIES] ~
 \item {\tt Name}
 \item [\keyend]
+
+~\\
 
 \item [SECONDARY\_SPECIES] ~
 \item {\tt Name}
 \item [\keyend]
 
+~\\
+
 \item [REDOX\_SPECIES] ~
 \item {\tt Name}
 \item [\keyend]
+
+~\\
 
 \item[GAS\_SPECIES] ~
 \item {\tt Name}
 \item [\keyend]
 
+~\\
+
 \item[MINERALS]
 \item {\tt Name}
 \item [\keyend]
 
+~\\
+
 \item[COLLOIDS]
 \item {\tt Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
 \item [\keyend]
+
+~\\
 
 \item[MINERAL\_KINETICS] ~
 
 %\begin{deflist}{000000000000000000000}
 \begin{deflist}{0000}
 \item [Mineral Name]
+\begin{deflist}{0000}
 \item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
 \item [ACTIVATION\_ENERGY] \ {\tt Value} [kJ/mol/K], \ \ \ Referenced to rate constant at 25\degc.
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
@@ -2662,6 +2684,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
+
+~\\
+
 \item [PREFACTOR] ~
 \begin{deflist}{0000}
 \item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s], \ \ \ \ {\em If} \ {\tt Value} $<$ 0, {\tt Value} = 10$^{\tt Value}$
@@ -2677,8 +2702,13 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [\keyend]
 \end{deflist}
 
+~\\
+
 \item [\keyend]
+\end{deflist}
 \item [\keyend]
+
+~\\
 
 \item[SORPTION] ~
 \begin{deflist}{000}
@@ -2696,6 +2726,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [RATE, RATES] \ {\tt Value} [1/s] \ \ \ \ \ (Continuation line `$\backslash$')
 \item [MULTIRATE\_SCALE\_FACTOR] {\tt Value} [---]
 
+~\\
+
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
 \item[SITE] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
@@ -2704,6 +2736,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[\tt Complex Name]
 \end{deflist}
 \item [\keyend] ~
+
+~\\
+
 \item[COMPLEX\_KINETICS] ~
 \begin{deflist}{000}
 \item[COMPLEX] {\tt name}
@@ -2713,6 +2748,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [\keyend] ~
 \end{deflist}
 \item [\keyend] ~
+
+~\\
 
 \item [COLLOID] {\tt Name}
 \begin{deflist}{000}
@@ -2728,6 +2765,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 \end{deflist}
+
+~\\
 
 \begin{deflist}{000}
 \item [ION\_EXCHANGE\_RXN] ~
@@ -2747,6 +2786,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{deflist}
 \item [\keyend] ~
 
+~\\
+
 \item[DISTRIBUTION\_COEF] \ (not implemented)
 \item[JUMPSTART\_KINETIC\_SORPTION]
 \item[NO\_CHECKPOINT\_KINETIC\_SORPTION]
@@ -2754,6 +2795,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \end{deflist}
 
 \item [\keyend]
+
+~\\
 
 \item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
@@ -2773,6 +2816,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[MINIMUM\_POROSITY] {\tt Value}
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]
 \item[MAX\_DLNC] \rm (Default 5)
+
+~\\
+
 \item[OUTPUT] ~
 \begin{deflist}{000000000000000000000}
 \item[MOLALITY]
@@ -2792,9 +2838,13 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 
+~ 
+
 \end{deflist}
+\begin{deflist}{000000000000000000000}
 \item[MAX\_RELATIVE\_CHANGE\_TOLERANCE] Relative speciation tolerance (Default 1.d-12)
 \item[MAX\_RESIDUAL\_TOLERANCE] Speciation tolerance (Default 1.d-12)
+\end{deflist}
 
 \item [\keyend]
 \end{deflist}
@@ -3401,6 +3451,8 @@ END
 By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-independent fashion and, as a result, the grid spacing may be changed by modifying the keyword {\tt NXYZ} only.
 
 \hyperlink{target_key}{\return}
+
+\hyperlink{target_input_file}{\returnb}
 
 %========================================================================
 
