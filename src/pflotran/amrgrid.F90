@@ -369,7 +369,7 @@ end interface
               gridlevel(ln+1)%grids(pn+1)%grid_ptr => GridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%itype = STRUCTURED_GRID 
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%ctype = 'structured'
-              struct_grid=>StructuredGridCreate()
+              struct_grid=>StructGridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid=>struct_grid
               struct_grid%p_samr_patch=hierarchy_get_patch(p_application, ln, pn)
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%x_min_global = x0
@@ -611,7 +611,7 @@ end subroutine AMRGridReadDXYZ
 
 ! ************************************************************************** !
 !
-! StructuredGridReadArrayNew: Reads structured grid spacing along an axis from  
+! StructGridReadArrayNew: Reads structured grid spacing along an axis from  
 !                         input file
 ! author: Glenn Hammond
 ! date: 05/21/09

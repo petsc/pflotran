@@ -56,18 +56,18 @@ module Structured_Grid_module
     
   end type structured_grid_type
 
-  public :: StructuredGridCreate, &
-            StructuredGridDestroy, &
-            StructuredGridCreateDM, &
+  public :: StructGridCreate, &
+            StructGridDestroy, &
+            StructGridCreateDM, &
             StructGridComputeLocalBounds, &
             StructGridComputeInternConnect, &
             StructGridComputeBoundConnect, &
-            StructuredGridCreateVecFromDM, &
-            StructuredGridMapIndices, &
-            StructuredGridComputeSpacing, &
-            StructuredGridComputeCoord, &
-            StructuredGridReadDXYZ, &
-            StructuredGridComputeVolumes, &
+            StructGridCreateVecFromDM, &
+            StructGridMapIndices, &
+            StructGridComputeSpacing, &
+            StructGridComputeCoord, &
+            StructGridReadDXYZ, &
+            StructGridComputeVolumes, &
             StructGridPopulateConnection, &
             StructGridGetIJKFromCoordinate, &
             StructGridGetIJKFromLocalID, &
@@ -81,16 +81,16 @@ contains
 
 ! ************************************************************************** !
 !
-! StructuredGridCreate: Creates a structured grid object
+! StructGridCreate: Creates a structured grid object
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-function StructuredGridCreate()
+function StructGridCreate()
 
   implicit none
   
-  type(structured_grid_type), pointer :: StructuredGridCreate
+  type(structured_grid_type), pointer :: StructGridCreate
 
   type(structured_grid_type), pointer :: structured_grid
 
@@ -174,18 +174,18 @@ function StructuredGridCreate()
   
   structured_grid%invert_z_axis = PETSC_FALSE
   
-  StructuredGridCreate => structured_grid
+  StructGridCreate => structured_grid
   
-end function StructuredGridCreate
+end function StructGridCreate
   
 ! ************************************************************************** !
 !
-! StructuredGridCreateDMs: Creates structured distributed, parallel meshes/grids
+! StructGridCreateDMs: Creates structured distributed, parallel meshes/grids
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
+subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                                   stencil_type,option)
 
   use Option_module
@@ -224,7 +224,7 @@ subroutine StructuredGridCreateDM(structured_grid,da,ndof,stencil_width, &
                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                  PETSC_NULL_INTEGER,ierr)
 
-end subroutine StructuredGridCreateDM
+end subroutine StructGridCreateDM
 
 ! ************************************************************************** !
 !
@@ -278,12 +278,12 @@ end subroutine StructGridComputeLocalBounds
 
 ! ************************************************************************** !
 !
-! StructuredGridCreateVecFromDM: Creates a PETSc vector from a DM
+! StructGridCreateVecFromDM: Creates a PETSc vector from a DM
 ! author: Glenn Hammond
 ! date: 02/08/08
 !
 ! ************************************************************************** !
-subroutine StructuredGridCreateVecFromDM(da,vector,vector_type)
+subroutine StructGridCreateVecFromDM(da,vector,vector_type)
 
   implicit none
 
@@ -302,16 +302,16 @@ subroutine StructuredGridCreateVecFromDM(da,vector,vector_type)
       call DMDACreateNaturalVector(da,vector,ierr)
   end select
 
-end subroutine StructuredGridCreateVecFromDM
+end subroutine StructGridCreateVecFromDM
 
 ! ************************************************************************** !
 !
-! StructuredGridReadDXYZ: Reads structured grid spacing from input file
+! StructGridReadDXYZ: Reads structured grid spacing from input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadDXYZ(structured_grid,input,option)
+subroutine StructGridReadDXYZ(structured_grid,input,option)
 
   use Option_module
   use Input_module
@@ -333,13 +333,13 @@ subroutine StructuredGridReadDXYZ(structured_grid,input,option)
   structured_grid%dz_global = 0.d0
 
   word = 'X'
-  call StructuredGridReadArrayNew(structured_grid%dx_global, &
+  call StructGridReadArrayNew(structured_grid%dx_global, &
                                structured_grid%nx,word,input,option)
   word = 'Y'
-  call StructuredGridReadArrayNew(structured_grid%dy_global, &
+  call StructGridReadArrayNew(structured_grid%dy_global, &
                                structured_grid%ny,word,input,option)
   word = 'Z'
-  call StructuredGridReadArrayNew(structured_grid%dz_global, &
+  call StructGridReadArrayNew(structured_grid%dz_global, &
                                structured_grid%nz,word,input,option)
     
   if (OptionPrintToFile(option)) then
@@ -352,17 +352,17 @@ subroutine StructuredGridReadDXYZ(structured_grid,input,option)
       (structured_grid%dz_global(i),i=1,structured_grid%nz)
   endif
 
-end subroutine StructuredGridReadDXYZ
+end subroutine StructGridReadDXYZ
 
 ! ************************************************************************** !
 !
-! StructuredGridReadArray: Reads structured grid spacing along an axis from  
+! StructGridReadArray: Reads structured grid spacing along an axis from  
 !                         input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadArray(a,n,input,option)
+subroutine StructGridReadArray(a,n,input,option)
 
   use Input_module
   use Option_module
@@ -415,17 +415,17 @@ subroutine StructuredGridReadArray(a,n,input,option)
     if (i2 >= n) exit
   enddo
     
-end subroutine StructuredGridReadArray
+end subroutine StructGridReadArray
 
 ! ************************************************************************** !
 !
-! StructuredGridReadArrayNew: Reads structured grid spacing along an axis from  
+! StructGridReadArrayNew: Reads structured grid spacing along an axis from  
 !                         input file
 ! author: Glenn Hammond
 ! date: 05/21/09
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadArrayNew(array,array_size,axis,input,option)
+subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
 
   use Input_module
   use String_module
@@ -483,10 +483,10 @@ subroutine StructuredGridReadArrayNew(array,array_size,axis,input,option)
         word3 = word(i+1:len_trim(word))
         string2 = word2
         call InputReadInt(string2,option,num_values,input%ierr)
-        call InputErrorMsg(input,option,'# values','StructuredGridReadArrayNew')
+        call InputErrorMsg(input,option,'# values','StructGridReadArrayNew')
         string2 = word3
         call InputReadDouble(string2,option,value,input%ierr)
-        call InputErrorMsg(input,option,'value','StructuredGridReadArrayNew')
+        call InputErrorMsg(input,option,'value','StructGridReadArrayNew')
         do i=1, num_values
           count = count + 1
           array(count) = value
@@ -494,23 +494,23 @@ subroutine StructuredGridReadArrayNew(array,array_size,axis,input,option)
       else
         string2 = word
         call InputReadDouble(string2,option,value,input%ierr)
-        call InputErrorMsg(input,option,'value','StructuredGridReadDXYZ')
+        call InputErrorMsg(input,option,'value','StructGridReadDXYZ')
         count = count + 1
         array(count) = value
       endif
     enddo
   enddo
 
-end subroutine StructuredGridReadArrayNew
+end subroutine StructGridReadArrayNew
 
 ! ************************************************************************** !
 !
-! StructuredGridComputeSpacing: Computes structured grid spacing
+! StructGridComputeSpacing: Computes structured grid spacing
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeSpacing(structured_grid,option)
+subroutine StructGridComputeSpacing(structured_grid,option)
 
   use Option_module
   
@@ -591,16 +591,16 @@ subroutine StructuredGridComputeSpacing(structured_grid,option)
     enddo
   enddo
   
-end subroutine StructuredGridComputeSpacing
+end subroutine StructGridComputeSpacing
 
 ! ************************************************************************** !
 !
-! StructuredGridComputeCoord: Computes structured coordinates in x,y,z
+! StructGridComputeCoord: Computes structured coordinates in x,y,z
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
+subroutine StructGridComputeCoord(structured_grid,option,origin_global, &
                                       grid_x,grid_y,grid_z, &
                                       x_min,x_max,y_min,y_max,z_min,z_max)
 
@@ -685,7 +685,7 @@ implicit none
       z = z + 0.5d0*(structured_grid%dzg_local(k)+structured_grid%dzg_local(k+1))
   enddo
     
-end subroutine StructuredGridComputeCoord
+end subroutine StructGridComputeCoord
 
 ! ************************************************************************** !
 !
@@ -1665,12 +1665,12 @@ end subroutine StructGridPopulateConnection
 
 ! ************************************************************************** !
 !
-! StructuredGridComputeVolumes: Computes the volumes of cells in structured grid
+! StructGridComputeVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
+subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
 
   use Option_module
   
@@ -1738,17 +1738,17 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
         structured_grid%gzs,structured_grid%gze
   endif
 
-end subroutine StructuredGridComputeVolumes
+end subroutine StructGridComputeVolumes
 
 ! ************************************************************************** !
 !
-! StructuredGridMapIndices: maps global, local and natural indices of cells 
+! StructGridMapIndices: maps global, local and natural indices of cells 
 !                          to each other
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
+subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
                                     nG2L,nL2G, &
                                     nG2A,ghosted_level,option)
 
@@ -1921,7 +1921,7 @@ subroutine StructuredGridMapIndices(structured_grid,stencil_type,lsm_flux_method
     enddo ! k-loop
   endif ! if LSM_FLUX
 
-end subroutine StructuredGridMapIndices
+end subroutine StructGridMapIndices
 
 ! ************************************************************************** !
 !
@@ -2066,12 +2066,12 @@ end subroutine StructGridGetGhostedNeighborsCorners
 
 ! ************************************************************************** !
 !
-! StructuredGridDestroy: Deallocates a structured grid
+! StructGridDestroy: Deallocates a structured grid
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridDestroy(structured_grid)
+subroutine StructGridDestroy(structured_grid)
 
   implicit none
   
@@ -2109,7 +2109,7 @@ subroutine StructuredGridDestroy(structured_grid)
   deallocate(structured_grid)
   nullify(structured_grid)
 
-end subroutine StructuredGridDestroy
+end subroutine StructGridDestroy
 
 ! ************************************************************************** !
 !

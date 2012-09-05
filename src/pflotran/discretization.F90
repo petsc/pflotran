@@ -327,7 +327,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)      
       if (nx*ny*nz <= 0) &
         call printErrMsg(option,'NXYZ not set correctly for structured grid.')
-      str_grid => StructuredGridCreate()
+      str_grid => StructGridCreate()
       str_grid%nx = nx
       str_grid%ny = ny
       str_grid%nz = nz
@@ -398,7 +398,7 @@ subroutine DiscretizationRead(discretization,input,option)
       case('DXYZ')
         select case(discretization%itype)
           case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-            call StructuredGridReadDXYZ(discretization%grid%structured_grid,input,option)
+            call StructGridReadDXYZ(discretization%grid%structured_grid,input,option)
           case default
             call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
         end select
@@ -749,7 +749,7 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
   
   select case(discretization%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      call StructuredGridCreateDM(discretization%grid%structured_grid, &
+      call StructGridCreateDM(discretization%grid%structured_grid, &
                                   dm_ptr%sgdm,ndof,stencil_width,stencil_type,option)
     case(UNSTRUCTURED_GRID)
       call UGridCreateUGDM(discretization%grid%unstructured_grid, &

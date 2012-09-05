@@ -1259,7 +1259,7 @@ use Option_module
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructuredGridMapIndices(grid%structured_grid,stencil_type, &
+      call StructGridMapIndices(grid%structured_grid,stencil_type, &
                                     lsm_flux_method, &
                                     grid%nG2L,grid%nL2G,grid%nG2A, &
                                     grid%ghosted_level,option)
@@ -1302,7 +1302,7 @@ subroutine GridComputeSpacing(grid,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructuredGridComputeSpacing(grid%structured_grid,option)
+      call StructGridComputeSpacing(grid%structured_grid,option)
     case(IMPLICIT_UNSTRUCTURED_GRID)
   end select
   
@@ -1339,7 +1339,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
   
   select case(grid%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      call StructuredGridComputeCoord(grid%structured_grid,option, &
+      call StructGridComputeCoord(grid%structured_grid,option, &
                                       origin_global, &
                                       grid%x,grid%y,grid%z, &
                                       grid%x_min_local,grid%x_max_local, &
@@ -1419,7 +1419,7 @@ subroutine GridComputeVolumes(grid,volume,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
+      call StructGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
@@ -1453,7 +1453,7 @@ subroutine GridComputeAreas(grid,area,option)
   
   select case(grid%itype)
     !case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
-      !call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
+      !call StructGridComputeVolumes(grid%x,grid%structured_grid,option, &
       !                                  grid%nL2G,volume)
     case(IMPLICIT_UNSTRUCTURED_GRID)
       call UGridComputeAreas(grid%unstructured_grid,option,area)
@@ -2250,7 +2250,7 @@ subroutine GridDestroy(grid)
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
   
   call UGridDestroy(grid%unstructured_grid)    
-  call StructuredGridDestroy(grid%structured_grid)
+  call StructGridDestroy(grid%structured_grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
