@@ -271,10 +271,9 @@ MODE RICHARDS
 GRID
   TYPE structured        \bluecomment{! structured grid}
   NXYZ 1 1 100           \bluecomment{! NX, NY, NZ}
-  BOUNDS          \bluecomment{! define the rectangular domain}
-    0.d0 1.d0     \bluecomment{! xmin xmax}
-    0.d0 1.d0     \bluecomment{! ymin ymax}
-    0.d0 10.d0    \bluecomment{! zmin zmax}
+  BOUNDS             \bluecomment{! define the rectangular domain}
+    0.d0 0.d0 0.d0   \bluecomment{! xmin ymin zmin}
+    1.d0 1.d0 10.d0  \bluecomment{! xmax ymax zmax}
   /  \bluecomment{! <-- closes out BOUNDS card}
 END  \bluecomment{! <-- closes out GRID card}
 \end{semiverbatim}

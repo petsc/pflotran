@@ -207,12 +207,11 @@ I_j &\eq \text{mineral reaction rate for species } j
 
 \begin{semiverbatim}
 GRID
-  TYPE structured        \bluecomment{! structured grid}
-  NXYZ 100 1 1           \bluecomment{! NX, NY, NZ}
-  BOUNDS          \bluecomment{! define the rectangular domain}
-    0.d0 100.d0   \bluecomment{! xmin xmax}
-    0.d0 1.d0     \bluecomment{! ymin ymax}
-    0.d0 1.d0     \bluecomment{! zmin zmax}
+  TYPE structured     \bluecomment{! structured grid}
+  NXYZ 100 1 1        \bluecomment{! NX, NY, NZ}
+  BOUNDS              \bluecomment{! define the rectangular domain}
+    0.d0 0.d0 0.d0    \bluecomment{! xmin ymin zmin}
+    100.d0 1.d0 1.d0  \bluecomment{! xmax ymax zmax}
   /  \bluecomment{! <-- closes out BOUNDS card}
 END  \bluecomment{! <-- closes out GRID card}
 \end{semiverbatim}
@@ -823,9 +822,8 @@ GRID
   TYPE structured
   NXYZ \magentacomment{1} 1 \magentacomment{100}     \bluecomment{! Switch to Z}
   BOUNDS
-    0.d0 \magentacomment{1.d0}      \bluecomment{! 1 m in X}
-    0.d0 1.d0
-    0.d0 \magentacomment{10.d0}     \bluecomment{! 10 m in Z}
+    0.d0 0.d0 0.d0
+    \magentacomment{1.d0} 1.d0 \magentacomment{10.d0}  \bluecomment{! 1 m in X, 10 m in Z}
   /
 END
 \end{semiverbatim}
