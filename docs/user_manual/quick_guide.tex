@@ -2706,11 +2706,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [\keyend]
 \end{deflist}
-\item [\keyend]
+\item [\keyend] ~
 
 ~\\
 
 \item[SORPTION] ~
+
 \begin{deflist}{000}
 \item[SURFACE\_COMPLEXATION\_RXN] ~
 
@@ -3013,26 +3014,20 @@ The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constra
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item [CONSTRAINT] \ {\tt constrain\_name}
+\item [CONSTRAINT] \ {\tt constraint\_name}
 \begin{deflist}{000}
-\item[CONC, CONCENTRATIONS]
+\item[CONC, CONCENTRATIONS] ~
 \begin{deflist}{000}
-\item[{\tt Name, Concentration\_Value, Constraint}] ~\\
-The variable {\tt Constraint} is chosen from the following list:
-\item[F, FREE]
-\item[T, TOTAL] 
-\item[TOTAL\_SORB]
-\item[P, PH]
-\item[L, LOG] 
-\item[M, MINERAL, MNRL]
-\item[G, GAS]
-\item[SC, CONSTRAINT\_SUPERCRIT\_CO2] 
-\item[Z, CHG]
+\item[{\tt Name, Concentration\_Value, Constraint, Name}] ~
 \end{deflist}
-\item[(., /, END)]
+\item[(., /, END)] ~
+
+%~\\
+
 \item[MNRL, MINERALS] ~
+
 \begin{deflist}{000}
-\item[{\tt mineral\_name, volume\_fraction, surface\_area}]
+\item[{\tt mineral\_name}, \ {\tt volume\_fraction} {[---]}, \ {\tt surface\_area} [cm$^{-1}$]]
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}
@@ -3040,6 +3035,22 @@ The variable {\tt Constraint} is chosen from the following list:
 \end{deflist}
 
 \noindent {\bf Explanation:}
+
+The variable {\tt Constraint} is chosen from the following list:
+
+\rowcolors[]{1}{teal!20}{teal!10}
+
+\begin{tabular}{ll}
+F, \ FREE & --Free ion/species concentration\\
+T, \ TOTAL & --Total aqueous concentration\\
+TOTAL\_SORB & --Total aqueous and sorbed concentration\\
+P, \ pH & --pH\\
+L, \ LOG & --Log base 10 of free ion concentration\\
+M, \ MINERAL, \ MNRL & --Mineral equilibrium constraint\\
+G, GAS & --Gaseous species constraint [bars]\\
+SC, \ CONSTRAINT\_SUPERCRIT\_CO2 & --Supercritical CO$_2$ EOS\\
+Z, \ CHG & --Charge balance
+\end{tabular}
 
 \noindent
 {\bf Example:}
@@ -3194,18 +3205,18 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \item[{\bf FILE} \ {\tt file\_name}]
 \end{deflist}
 \item [FLUX]
-\item [TEMP, TEMPERATURE]
-\item [CONC, CONCENTRATION]
-\item [H, ENTHALPY]
+\item [TEMP, \ TEMPERATURE]
+\item [CONC, \ CONCENTRATION]
+\item [H, \ ENTHALPY]
 \end{deflist}
 \item[(., /, END)]
-\item[TEMPERATURE, TEMP] \ {\tt <float>}
+\item[TEMPERATURE, \ TEMP] \ {\tt <float>}
 \item[ENTHALPY, H] \ {\tt <float>}
-\item[PRESSURE, PRES, PRESS] \ {\tt <float>}
+\item[PRESSURE, \ PRES, \ RESS] \ {\tt <float>}
 \item[RATE] \ {\tt Value}
-\item[FLUX, VELOCITY, VEL] \ {\tt <float>}
-\item[CONC, CONCENTRATION] \ {\tt <float>}
-\item[SAT,SATURATION] \ {\tt <float>}
+\item[FLUX, \ VELOCITY, \ VEL] \ {\tt <float>}
+\item[CONC, \ CONCENTRATION] \ {\tt <float>}
+\item[SAT, \ SATURATION] \ {\tt <float>}
 \item[CONDUCTANCE] \ {\tt <float>}
 %\item[CONSTRAINT\_LIST]
 \end{deflist}
@@ -3215,43 +3226,52 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 {\noindent\bf Explanation:}
 
 \begin{center}
+\begin{tabular}{ccc}
+IPHASE & Phases present & CO$_2$ concentration\\
+1 & H$_2$O & $X_{\rm CO_2}^{\rm H_2O}$\\
+2 & SC CO$_2$ & $X_{\rm CO_2}^{\rm SC CO_2}$\\
+3 & H$_2$O -- SC CO$_2$ & \Big($X_{\rm CO_2}^{\rm H_2O}\Big)_{\rm eq}$\\
+\end{tabular}
+\end{center}
+
+\begin{center}
 \begin{tabularx}{\linewidth}{lX}
 \toprule[1.5pt]
 \bf Keyword & \bf Description\\
 \midrule
-\bf FLOW/TRANSPORT\_CONDITION & Initiates a condition entry and defines its name.\\
+\bf FLOW/TRANSPORT\_CONDITION & Initiates a condition entry and defines its name\\
 \midrule
-\bf CYCLIC & Instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set.\\
+\bf CYCLIC & Instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set\\
 \midrule
-\bf INTERPOLATION & Defines the method for interpolating between data set times.\\
+\bf INTERPOLATION & Defines the method for interpolating between data set times\\
 \midrule
-\bf DATUM & Location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined.\\
+\bf DATUM & Location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined\\
 \midrule
-\bf TYPE & Specifies the type of condition.\\
+\bf TYPE & Specifies condition type\\
 \midrule
-\bf PRESSURE & Specifies the type of pressure condition.\\
- \bf TEMPERATURE & Specifies the type of temperature condition.\\
-    \bf CONCENTRATION & Specifies the type of concentration condition.\\
-    \bf SATURATION & Specifies the type of saturation condition.\\
-    \bf ENTHALPY & Specifies the type of enthalpy condition.\\
-    \bf END & Terminates type entry.\\
-\midrule\midrule
-\bf GRADIENT & Gradient of the scalar field in 3D space.\\
+\bf PRESSURE & Specifies pressure condition type\\
+ \bf TEMPERATURE & Specifies temperature condition type\\
+    \bf CONCENTRATION & Specifies the type of concentration condition\\
+    \bf SATURATION & Specifies saturation condition type\\
+    \bf ENTHALPY & Specifies enthalpy condition type\\
+    \bf END & Terminates type entry\\
+\toprule[1.5pt]
+\bf GRADIENT & Gradient of the scalar field in 3D space\\
 \midrule
-\bf PRESSURE & Pressure gradient in $x$-, $y$-, and $z$-directions.\\
-\bf TEMPERATURE & Temperature gradient in $x$-, $y$-, and $z$-directions.\\
-\bf CONCENTRATION & Concentration gradient in $x$-, $y$-, and $z$-directions.\\
-\bf ENTHALPY & Enthalpy gradient in $x$-, $y$-, and $z$-directions.\\
-\bf END & Terminates gradient entry.\\
-\midrule\midrule
-\bf PRESSURE & Absolute fluid pressure at the datum.\\
-\bf FLUX & Darcy velocity of fluid defining flux across a boundary.\\
-\bf TEMPERATURE & Temperature in $^\circ$C at the datum.\\
-\bf CONCENTRATION & Solute concentration at the datum.\\
-\bf SATURATION & Solute saturation at the datum.\\
-\bf ENTHALPY & Enthalpy at the datum.\\
-\bf CONSTRAINT\_LIST & Specifies a list of concentration constraints for solute transport.\\
-\bf END & Terminates the condition entry.\\
+\bf PRESSURE & Pressure gradient in $x$-, $y$-, and $z$-directions\\
+\bf TEMPERATURE & Temperature gradient in $x$-, $y$-, and $z$-directions\\
+\bf CONCENTRATION & Concentration gradient in $x$-, $y$-, and $z$-directions\\
+\bf ENTHALPY & Enthalpy gradient in $x$-, $y$-, and $z$-directions\\
+\bf END & Terminates gradient entry\\
+\toprule[1.5pt]
+\bf PRESSURE & Absolute fluid pressure at the datum\\
+\bf FLUX & Darcy velocity of fluid defining flux across specified boundary\\
+\bf TEMPERATURE & Temperature in $^\circ$C at datum\\
+\bf CONCENTRATION & Solute concentration at datum\\
+\bf SATURATION & Solute saturation at datum\\
+\bf ENTHALPY & Enthalpy at datum\\
+\bf CONSTRAINT\_LIST & Specifies list of concentration constraints for solute transport\\
+\bf END & Terminates condition entry\\
 \bottomrule[1.5pt]
 \end{tabularx}
 \end{center}
@@ -3366,20 +3386,24 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 
 \item[FILE <filename>:] Name of file containing grid information (unstructured only)
 
+~\\
+
 \item[BOUNDS:] Specifies bounds of structured cartesian grid (see examples below)
 \begin{description}
-\item[<x\_min, x\_max>]~
-\item[<y\_min, y\_max>]~
-\item[<z\_min, z\_max>]~
+\item[<x\_min, \ x\_max>]~
+\item[<y\_min, \ y\_max>]~
+\item[<z\_min, \ z\_max>]~
 \end{description}
 \item[\keyend] ~
+
+~\\
 
 \noindent
 \item[\em Equivalently:] ~
 \item[BOUNDS:] ~
 \begin{description}
-\item[<x\_min, y\_min, z\_min>]~
-\item[<x\_max, y\_max, z\_max>]~
+\item[<x\_min, \ y\_min, \ z\_min>]~
+\item[<x\_max, \ y\_max, \ z\_max>]~
 \end{description}
 \item[\keyend] ~
 
@@ -3444,6 +3468,16 @@ BOUNDS
 0. 1024.
 0.    1.
 0.   64.
+END
+\end{verbatim}
+
+\noindent
+or, equivalently
+
+\begin{verbatim}
+BOUNDS
+0. 0. 0.
+1024. 1. 64.
 END
 \end{verbatim}
 
