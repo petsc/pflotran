@@ -391,9 +391,15 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   type(sec_heat_type) :: sec_heat_vars
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
-  PetscReal, allocatable :: rhs(:), sec_temp(:), area(:), vol(:)
-  PetscReal, allocatable :: dm_plus(:), dm_minus(:)
+  PetscReal :: coeff_left(sec_heat_vars%ncells)
+  PetscReal :: coeff_diag(sec_heat_vars%ncells)
+  PetscReal :: coeff_right(sec_heat_vars%ncells)
+  PetscReal :: rhs(sec_heat_vars%ncells)
+  PetscReal :: sec_temp(sec_heat_vars%ncells)
+  PetscReal :: area(sec_heat_vars%ncells)
+  PetscReal :: vol(sec_heat_vars%ncells)
+  PetscReal :: dm_plus(sec_heat_vars%ncells)
+  PetscReal :: dm_minus(sec_heat_vars%ncells)
   PetscInt :: i, ngcells
   PetscReal :: area_fm
   PetscReal :: alpha, therm_conductivity, dencpr
@@ -407,12 +413,6 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
   dm_minus = sec_heat_vars%dm_minus
   area_fm = sec_heat_vars%interfacial_area
   temp_primary_node = global_aux_var%temp(1)
-
-  allocate(coeff_left(ngcells))
-  allocate(coeff_diag(ngcells))
-  allocate(coeff_right(ngcells))
-  allocate(rhs(ngcells))
-  allocate(sec_temp(ngcells))
   
   coeff_left = 0.d0
   coeff_diag = 0.d0

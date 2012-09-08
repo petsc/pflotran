@@ -4129,9 +4129,15 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
   type(mphase_auxvar_elem_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-
-  PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
-  PetscReal, allocatable :: rhs(:), area(:), vol(:), dm_plus(:), dm_minus(:)
+  PetscReal :: coeff_left(sec_heat_vars%ncells)
+  PetscReal :: coeff_diag(sec_heat_vars%ncells)
+  PetscReal :: coeff_right(sec_heat_vars%ncells)
+  PetscReal :: rhs(sec_heat_vars%ncells)
+  PetscReal :: sec_temp(sec_heat_vars%ncells)
+  PetscReal :: area(sec_heat_vars%ncells)
+  PetscReal :: vol(sec_heat_vars%ncells)
+  PetscReal :: dm_plus(sec_heat_vars%ncells)
+  PetscReal :: dm_minus(sec_heat_vars%ncells)
   PetscInt :: i, ngcells
   PetscReal :: area_fm
   PetscReal :: alpha, therm_conductivity, dencpr
@@ -4149,11 +4155,6 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
 ! temp_primary_node = global_aux_var%temp(1)
   temp_primary_node = aux_var%temp
 
-  allocate(coeff_left(ngcells))
-  allocate(coeff_diag(ngcells))
-  allocate(coeff_right(ngcells))
-  allocate(rhs(ngcells))
-  
   coeff_left = 0.d0
   coeff_diag = 0.d0
   coeff_right = 0.d0
@@ -4225,8 +4226,14 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
   
   type(sec_heat_type) :: sec_heat_vars
   type(option_type) :: option
-  PetscReal, allocatable :: coeff_left(:), coeff_diag(:), coeff_right(:)
-  PetscReal, allocatable :: rhs(:), area(:), vol(:),dm_plus(:), dm_minus(:)
+  PetscReal :: coeff_left(sec_heat_vars%ncells)
+  PetscReal :: coeff_diag(sec_heat_vars%ncells)
+  PetscReal :: coeff_right(sec_heat_vars%ncells)
+  PetscReal :: rhs(sec_heat_vars%ncells)
+  PetscReal :: area(sec_heat_vars%ncells)
+  PetscReal :: vol(sec_heat_vars%ncells)
+  PetscReal :: dm_plus(sec_heat_vars%ncells)
+  PetscReal :: dm_minus(sec_heat_vars%ncells)
   PetscInt :: i, ngcells
   PetscReal :: area_fm
   PetscReal :: alpha, therm_conductivity, dencpr
@@ -4240,12 +4247,7 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
   dm_plus = sec_heat_vars%dm_plus
   area_fm = sec_heat_vars%interfacial_area
   dm_minus = sec_heat_vars%dm_minus
-  
-  allocate(coeff_left(ngcells))
-  allocate(coeff_diag(ngcells))
-  allocate(coeff_right(ngcells))
-  allocate(rhs(ngcells))
-  
+ 
   coeff_left = 0.d0
   coeff_diag = 0.d0
   coeff_right = 0.d0
