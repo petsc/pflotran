@@ -3988,9 +3988,17 @@ function MphaseGetTecplotHeader(realization,icolumn)
   
   if (icolumn > -1) then
     icolumn = icolumn + 1
-    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
+    write(string2,'('',"'',i2,''-P(l) [Pa]"'')') icolumn
   else
-    write(string2,'('',"P [Pa]"'')')
+    write(string2,'('',"P(l) [Pa]"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-P(g) [Pa]"'')') icolumn
+  else
+    write(string2,'('',"P(g) [Pa]"'')')
   endif
   string = trim(string) // trim(string2)
   

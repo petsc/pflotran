@@ -11,7 +11,7 @@ module Mphase_Aux_module
 #include "definitions.h"
 
 type, public :: mphase_auxvar_elem_type
-   PetscReal :: pres
+    PetscReal :: pres
     PetscReal :: temp
     PetscReal , pointer :: sat(:)
     PetscReal , pointer :: den(:)

@@ -710,8 +710,24 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! liquid pressure
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! gas pressure
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -1197,8 +1213,24 @@ subroutine OutputTecplotFEBrick(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! liquid pressure
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! gas pressure
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -2111,8 +2143,24 @@ subroutine OutputTecplotPoint(realization)
 
         ! pressure
         select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
+          case(FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
             value = RealizGetDatasetValueAtCell(realization,PRESSURE, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(OUTPUT_UNIT,1000,advance='no') value
+        end select
+
+        ! liquid pressure
+        select case(option%iflowmode)
+          case(MPH_MODE)
+            value = RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(OUTPUT_UNIT,1000,advance='no') value
+        end select
+
+        ! gas pressure
+        select case(option%iflowmode)
+          case(MPH_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_PRESSURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(OUTPUT_UNIT,1000,advance='no') value
         end select
@@ -3631,7 +3679,32 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
       call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
       call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
-    case (MPH_MODE, FLASH2_MODE)
+    case (MPH_MODE)
+      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Pl','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Pg','[Pa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
+      call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'kvrg','[1/sPa]',cell_string,icolumn)
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xl(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+      enddo
+      do i = 1, option%nflowspec
+        write(string,'(i2)') i
+        string = 'Xg(' // trim(adjustl(string)) // ')'
+        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+      enddo
+      call OutputAppendToHeader(header,'Phase','',cell_string,icolumn)
+    case (FLASH2_MODE)
       call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
@@ -3835,10 +3908,24 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE, &
+    case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE, &
          MIS_MODE,G_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! liquid pressure
+  select case(option%iflowmode)
+    case(MPH_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas pressure
+  select case(option%iflowmode)
+    case(MPH_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_PRESSURE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! state
@@ -4233,10 +4320,32 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
+    case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
          FLASH2_MODE,G_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! liquid pressure
+  select case(option%iflowmode)
+    case(MPH_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,LIQUID_PRESSURE,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! gas pressure
+  select case(option%iflowmode)
+    case(MPH_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,GAS_PRESSURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
@@ -9451,9 +9560,25 @@ subroutine OutputHDF5UGrid(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case (THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
+          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+      end select
+
+      ! liquid pressure
+      select case(option%iflowmode)
+        case (MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+          string = "Liquid Pressure"
+          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+      end select
+
+      ! gas pressure
+      select case(option%iflowmode)
+        case (MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
+          string = "Gas Pressure"
           call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
