@@ -35,7 +35,7 @@ END
 
 :=========================== discretization ===================================
 GRID
-TYPE unstructured wedge.dat
+TYPE unstructured wedge.mesh
 END
 
 :=========================== fluid properties =================================
@@ -93,7 +93,10 @@ REFERENCE_PRESSURE 101325.
 
 :=========================== regions ==========================================
 REGION all
-FILE wedge_region.dat 
+COORDINATES
+0.d0 0.d0 0.d0
+60.d0 46.d0 60.d0
+/
 END 
 
 
