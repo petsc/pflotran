@@ -20,7 +20,7 @@ filenames = pft.get_full_paths(path,files)
 
 f = plt.figure(figsize=(6,6))
 plt.subplot(1,1,1)
-f.suptitle("1D Calcite - Transport Only",fontsize=16)
+f.suptitle("1D Calcite",fontsize=16)
 plt.xlabel('X [m]')
 plt.ylabel('Concentration [M]')
 
@@ -58,7 +58,11 @@ plt.twinx()
 plt.ylabel('Volume Fraction [-]')
 plt.ylim(0.,1.1e-5)
 data = pft.Dataset(filenames[0],1,8)
-plt.plot(data.get_array('x'),data.get_array('y'),ls='--',label=data.get_name('yname'))
+plt.plot(data.get_array('x'),data.get_array('y'),ls='--', \
+         color='black',label=data.get_name('yname'))
+
+major_formatter = plt.FormatStrFormatter('%1.0e')
+plt.gca().yaxis.set_major_formatter(major_formatter)
 
 plt.legend(loc=1)
 # xx-small, x-small, small, medium, large, x-large, xx-large, 12, 14
@@ -70,6 +74,6 @@ plt.setp(plt.gca().get_legend().draw_frame(False))
 
 f.subplots_adjust(hspace=0.2,wspace=0.2,
                   bottom=.12,top=.9,
-                  left=.12,right=.82)
+                  left=.12,right=.84)
 
 plt.show()
