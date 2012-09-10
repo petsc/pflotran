@@ -960,11 +960,16 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                                   realization%fluid_properties,option, xphi)
 ! update global variables
-    if(associated(global_aux_vars))then
-      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres - &
-               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-   !   print *,'UPdate mphase and gloable vars', ghosted_id, aux_vars(ghosted_id)%aux_var_elem(0)%pc(:), & 
-   !    global_aux_vars(ghosted_id)%pres(:)
+    if (associated(global_aux_vars)) then
+      global_aux_vars(ghosted_id)%pres(:) = aux_vars(ghosted_id)%aux_var_elem(0)%pres
+      if (iphase == 3) then ! 2-phase
+        global_aux_vars(ghosted_id)%pres(1) = aux_vars(ghosted_id)%aux_var_elem(0)%pres - &
+               aux_vars(ghosted_id)%aux_var_elem(0)%pc(1)
+      endif
+
+!     print *,'UPdate mphase and global vars ', ghosted_id, &
+!        aux_vars(ghosted_id)%aux_var_elem(0)%pc(:),aux_vars(ghosted_id)%aux_var_elem(0)%pres, &
+!        global_aux_vars(ghosted_id)%pres(:)
 
       global_aux_vars(ghosted_id)%temp(:) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
