@@ -42,25 +42,53 @@ class Dataset:
     self.dictionary = {}
     self.title = ''
     self.variables = []
+    self.var_dict = {}
     self.arrays = []
 
     self.f = open(filename,'r')
     self.read_file_header()
 
-    if self.filetype == FileType.TECPLOT_BLOCK:
-      self.dictionary['zname'] = self.variables[xcol-1]
-      self.read_dataset_from_block(xcol)
+    # if variables are strings, index to ids
+    if isinstance(xcol,str):
+      xcol_id = self.var_dict[xcol.strip()]
     else:
       # xcol and ycol are 1-based
-      self.dictionary['xname'] = self.variables[xcol-1]
-      self.dictionary['yname'] = self.variables[ycol-1]
-      self.read_dataset_from_columns(xcol,ycol)
+      xcol_id = xcol-1
+    if isinstance(ycol,str):
+      ycol_id = self.var_dict[xcol.strip()]
+    else:
+      ycol_id = ycol-1
+
+    if self.filetype == FileType.TECPLOT_BLOCK:
+      self.dictionary['zname'] = self.variables[xcol_id]
+      self.read_dataset_from_block(xcol_id)
+      if isinstance(xcol,str):
+        self.dictionary[xcol] = self.dictionary['z']
+      self.dictionary['X'] = self.dictionary['x']
+      self.dictionary['Y'] = self.dictionary['y']
+    else:
+      self.dictionary['xname'] = self.variables[xcol_id]
+      self.dictionary['yname'] = self.variables[ycol_id]
+      self.read_dataset_from_columns(xcol_id,ycol_id)
+      if isinstance(xcol,str):
+        self.dictionary[xcol] = self.dictionary['x']
+      if isinstance(ycol,str):
+        self.dictionary[ycol] = self.dictionary['y']
 
   def get_array(self,dictionary_entry):
-    iarray = self.dictionary[dictionary_entry]
+    try:
+      iarray = self.dictionary[dictionary_entry]
+    except KeyError:
+      print('Array %s not stored in Dataset object' % dictionary_entry)
+      sys.exit(1)
     return self.arrays[iarray]
 
   def get_name(self,dictionary_entry):
+    try:
+      iarray = self.dictionary[dictionary_entry]
+    except KeyError:
+      print('Array %s not stored in Dataset object' % dictionary_entry)
+      sys.exit(1)
     return self.dictionary[dictionary_entry]
 
   def read_file_header(self):
@@ -77,7 +105,9 @@ class Dataset:
         line = line.strip().split('S=')[1]
         w = line.strip().split(',')
         for i in range(len(w)):
-          self.variables.append(w[i].strip('"'))
+          variable = w[i].strip('"')
+          self.variables.append(variable)
+          self.var_dict[variable] = i
       elif line.strip().startswith('ZONE'):
         w = line.strip().split(',')
         zone_name = w[0].split('=')[1]
@@ -96,6 +126,9 @@ class Dataset:
           nx = int(w[1].split("=")[1])-1
           ny = int(w[2].split("=")[1])-1
           nz = int(w[3].split("=")[1])-1
+          if nz > 1:
+            print('Tecplot BLOCK format is only supported for 2D problems in X-Y.')
+            sys.exit()
           self.read_discretization(nx,ny,nz)
         return
 
