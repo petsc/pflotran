@@ -43,7 +43,7 @@ for ifile in range(len(filenames)):
 #'lower center' : 8,
 #'upper center' : 9,
 #'center'       : 10,
-plt.legend(loc=1)
+plt.legend(loc=1,title='Time [y]')
 # xx-small, x-small, small, medium, large, x-large, xx-large, 12, 14
 plt.setp(plt.gca().get_legend().get_texts(),fontsize='small')
 #      plt.setp(plt.gca().get_legend().get_texts(),linespacing=0.)

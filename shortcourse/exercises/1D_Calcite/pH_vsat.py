@@ -66,7 +66,7 @@ plt.setp(plt.gca().get_legend().get_frame().set_fill(False))
 plt.setp(plt.gca().get_legend().draw_frame(False))
 
 f.subplots_adjust(hspace=0.2,wspace=0.2,
-                  bottom=.12,top=.9,
+                  bottom=.12,top=.85,
                   left=.12,right=.9)
 
 plt.show()

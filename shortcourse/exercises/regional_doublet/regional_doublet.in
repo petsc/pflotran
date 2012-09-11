@@ -111,6 +111,7 @@ OUTPUT
   PERIODIC_OBSERVATION TIMESTEP 1
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
+  PRINT_COLUMN_IDS
   VELOCITIES
 END
 
@@ -199,6 +200,10 @@ REGION Obs_pt_center
   COORDINATE 2500.d0 1250.d0 60.d0
 END
 
+REGION Obs_pt_center_lower
+  COORDINATE 2500.d0 1250.d0 40.d0
+END
+
 REGION Obs_pt_west
   COORDINATE 1875.d0 1250.d0 60.d0
 END
@@ -218,6 +223,12 @@ END
 :=========================== observation points ===============================
 OBSERVATION
   REGION Obs_pt_center
+  AT_CELL_CENTER
+  VELOCITY
+END
+ 
+OBSERVATION
+  REGION Obs_pt_center_lower
   AT_CELL_CENTER
   VELOCITY
 END

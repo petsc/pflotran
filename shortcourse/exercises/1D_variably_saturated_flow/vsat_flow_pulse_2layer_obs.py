@@ -29,9 +29,8 @@ plt.ylabel('Saturation [-]')
 #plt.ylim(0.,1.)
 #plt.grid(True)
 
-for ifile in range(len(filenames)):
-  data = pft.Dataset(filenames[ifile],1,3)
-  plt.plot(data.get_array('x'),data.get_array('y'),label=data.title)
+data = pft.Dataset(filenames[0],1,3)
+plt.plot(data.get_array('x'),data.get_array('y'),label='(0.5 0.5 5.0)')
 
 #'best'         : 0, (only implemented for axis legends)
 #'upper right'  : 1,
@@ -44,16 +43,16 @@ for ifile in range(len(filenames)):
 #'lower center' : 8,
 #'upper center' : 9,
 #'center'       : 10,
-#plt.legend(loc=1)
+plt.legend(loc=1,title='Location')
 # xx-small, x-small, small, medium, large, x-large, xx-large, 12, 14
-#plt.setp(plt.gca().get_legend().get_texts(),fontsize='small')
+plt.setp(plt.gca().get_legend().get_texts(),fontsize='small')
 #plt.setp(plt.gca().get_legend().get_texts(),linespacing=0.)
-#plt.setp(plt.gca().get_legend().get_frame().set_fill(False))
-#plt.setp(plt.gca().get_legend().draw_frame(False))
+plt.setp(plt.gca().get_legend().get_frame().set_fill(False))
+plt.setp(plt.gca().get_legend().draw_frame(False))
 #plt.gca().yaxis.get_major_formatter().set_powerlimits((-1,1))
 
 f.subplots_adjust(hspace=0.2,wspace=0.2,
                   bottom=.12,top=.9,
-                  left=.12,right=.9)
+                  left=.14,right=.9)
 
 plt.show()
