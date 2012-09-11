@@ -5918,7 +5918,7 @@ function RichardsGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
 #ifdef GLENN_NEW_IO
-  call OutputOptionAddPlotVariable(realization%output_option,PRESSURE, &
+  call OutputOptionAddPlotVariable(realization%output_option,LIQUID_PRESSURE, &
                              ZERO_INTEGER,ZERO_INTEGER)
 #endif
 

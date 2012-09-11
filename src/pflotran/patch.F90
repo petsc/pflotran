@@ -1727,7 +1727,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
 
   iphase = 1
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_PRESSURE,GAS_PRESSURE, &
+    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
@@ -1739,7 +1739,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
             enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
@@ -1797,7 +1797,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
             enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
@@ -1878,7 +1878,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             call printErrMsg(option,'LIQUID_MOBILITY not supported by Richards')
           case(GAS_MOBILITY)
             call printErrMsg(option,'GAS_MOBILITY not supported by Richards')
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
@@ -1902,7 +1902,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
             enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2)
             enddo
@@ -2054,7 +2054,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
 !           do local_id=1,grid%nlmax
 !             vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
 !           enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
@@ -2079,7 +2079,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
             enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2)
             enddo
@@ -2114,7 +2114,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%temp
             enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               istate = patch%aux%Global%aux_vars(ghosted_id)%istate
@@ -2527,7 +2527,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
              
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_PRESSURE,GAS_PRESSURE, &
+    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
@@ -2537,7 +2537,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         select case(ivar)
           case(TEMPERATURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
@@ -2570,7 +2570,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         select case(ivar)
           case(TEMPERATURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
@@ -2615,7 +2615,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
@@ -2626,7 +2626,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         select case(ivar)
           case(TEMPERATURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(2)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
@@ -2698,7 +2698,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         select case(ivar)
           case(TEMPERATURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(2)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
@@ -2727,7 +2727,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         select case(ivar)
 !         case(TEMPERATURE)
 !           value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
 !         case(LIQUID_SATURATION)
 !           value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
@@ -2746,7 +2746,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
         select case(ivar)
           case(TEMPERATURE)
             value = patch%aux%General%aux_vars(ZERO_INTEGER,ghosted_id)%temp
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             istate = patch%aux%Global%aux_vars(ghosted_id)%istate
             select case(istate)
               case(LIQUID_STATE,TWO_PHASE_STATE)
@@ -2982,7 +2982,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
 
   iphase = 1
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_PRESSURE,GAS_PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+    case(TEMPERATURE,LIQUID_PRESSURE,GAS_PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
          LIQUID_MOBILITY,GAS_MOBILITY,STATE)
@@ -2998,7 +2998,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
                 patch%aux%Global%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
               enddo
             endif
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
@@ -3099,7 +3099,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
                 patch%aux%Global%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
               enddo
             endif
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
@@ -3212,7 +3212,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1) = vec_ptr(local_id)
@@ -3255,7 +3255,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
                 patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%temp = vec_ptr(ghosted_id)
               enddo
             endif
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
                 patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
@@ -3399,7 +3399,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
 #if 0
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
                 patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
@@ -3549,7 +3549,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
                 patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%temp = vec_ptr(ghosted_id)
               enddo
             endif
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
                 patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
@@ -3616,7 +3616,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             do local_id=1,grid%nlmax
               patch%aux%General%aux_vars(ZERO_INTEGER,grid%nL2G(local_id))%temp = vec_ptr(local_id)
             enddo
-          case(PRESSURE)
+          case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               istate = patch%aux%Global%aux_vars(ghosted_id)%istate
@@ -4159,7 +4159,7 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
   iphase = 1
   
   select case(ivar)
-    case(PRESSURE)
+    case(LIQUID_PRESSURE)
       call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
         ! gb: grid%nL2G(local_id)

@@ -210,7 +210,7 @@ subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
   option => realization%option  
   
   select case(ivar)
-    case(PRESSURE)
+    case(LIQUID_PRESSURE)
       do i=1, patch%aux%Global%num_aux
         patch%aux%Global%aux_vars(i)%pres = value
       enddo
@@ -325,7 +325,24 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
   call GridVecGetArrayF90(grid,vec_loc,vec_loc_p,ierr)
   
   select case(ivar)
-    case(PRESSURE)
+    case(LIQUID_PRESSURE)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%liquid_phase,TIME_T) = &
+                vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%liquid_phase,TIME_TpDT) = &
+                vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%pres(option%liquid_phase) = vec_loc_p(ghosted_id)
+          enddo
+      end select
+    case(GAS_PRESSURE)
       select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
@@ -340,7 +357,6 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
         case default
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
-            patch%aux%Global%aux_vars(ghosted_id)%pres(option%liquid_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
     case(TEMPERATURE)
@@ -645,12 +661,19 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
    
-      ! pressure
-      call RealizationGetDataset(realization,field%work,PRESSURE, &
+      ! liquid pressure
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
                              ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
-      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
+ 
+      ! gas pressure
+      call RealizationGetDataset(realization,field%work,GAS_PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_PRESSURE,time_level)                                     
  
       ! temperature
       call RealizationGetDataset(realization,field%work,TEMPERATURE, &
@@ -691,11 +714,11 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
 #endif
 
       ! pressure
-      call RealizationGetDataset(realization,field%work,PRESSURE, &
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
                              ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
-      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
  
       ! temperature
       call RealizationGetDataset(realization,field%work,TEMPERATURE, &
@@ -729,11 +752,11 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
 #endif
 
       ! pressure
-      call RealizationGetDataset(realization,field%work,PRESSURE, &
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
                              ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
-      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
  
       ! temperature
       call RealizationGetDataset(realization,field%work,TEMPERATURE, &
@@ -765,11 +788,11 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
    
       ! pressure
-      call RealizationGetDataset(realization,field%work,PRESSURE, &
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
                              ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
-      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
  
       ! temperature
       call RealizationGetDataset(realization,field%work,TEMPERATURE, &
@@ -800,11 +823,11 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
    
       ! pressure
-      call RealizationGetDataset(realization,field%work,PRESSURE, &
+      call RealizationGetDataset(realization,field%work,LIQUID_PRESSURE, &
                              ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
-      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE,time_level)                                     
  
       ! temperature
       call RealizationGetDataset(realization,field%work,TEMPERATURE, &

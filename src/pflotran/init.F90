@@ -847,7 +847,7 @@ subroutine Init(simulation)
     ! initialize densities and saturations
     if (option%nflowdof == 0) then
       call GlobalSetAuxVarScalar(realization,option%reference_pressure, &
-                                 PRESSURE)
+                                 LIQUID_PRESSURE)
       call GlobalSetAuxVarScalar(realization,option%reference_temperature, &
                                  TEMPERATURE)
       call GlobalSetAuxVarScalar(realization,option%reference_saturation, &

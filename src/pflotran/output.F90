@@ -708,21 +708,10 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
       end select
 
-      ! pressure
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
       ! liquid pressure
-      select case(option%iflowmode)
-        case(MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
+      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
       ! gas pressure
       select case(option%iflowmode)
@@ -1211,21 +1200,10 @@ subroutine OutputTecplotFEBrick(realization)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
       end select
 
-      ! pressure
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
       ! liquid pressure
-      select case(option%iflowmode)
-        case(MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
+      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
       ! gas pressure
       select case(option%iflowmode)
@@ -2141,21 +2119,10 @@ subroutine OutputTecplotPoint(realization)
             write(OUTPUT_UNIT,1000,advance='no') value
         end select
 
-        ! pressure
-        select case(option%iflowmode)
-          case(FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,PRESSURE, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
         ! liquid pressure
-        select case(option%iflowmode)
-          case(MPH_MODE)
-            value = RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
+        value = RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE, &
+                                            ZERO_INTEGER,ghosted_id)
+        write(OUTPUT_UNIT,1000,advance='no') value
 
         ! gas pressure
         select case(option%iflowmode)
@@ -3906,20 +3873,9 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
   end select
 
-  ! pressure
-  select case(option%iflowmode)
-    case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE, &
-         MIS_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
-  end select
-
   ! liquid pressure
-  select case(option%iflowmode)
-    case(MPH_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE,ZERO_INTEGER,ghosted_id)
-  end select
+  write(fid,110,advance="no") &
+    RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE,ZERO_INTEGER,ghosted_id)
 
   ! gas pressure
   select case(option%iflowmode)
@@ -4306,235 +4262,225 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       enddo
     enddo
   enddo
-  
-  ! temperature
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
 
-  ! pressure
   select case(option%iflowmode)
-    case(THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
-         FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+    case(RICHARDS_MODE,MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
 
-  ! liquid pressure
-  select case(option%iflowmode)
-    case(MPH_MODE)
+    ! temperature
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
+
+      ! liquid pressure
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_PRESSURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
                                      count,ghosted_ids)
-  end select
 
-  ! gas pressure
-  select case(option%iflowmode)
-    case(MPH_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,GAS_PRESSURE,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! gas pressure
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_PRESSURE,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! state
-  select case(option%iflowmode)
-    case(G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,STATE,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! state
+      select case(option%iflowmode)
+        case(G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,STATE,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! liquid saturation
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! liquid saturation
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! gas saturation
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
       ! gas saturation
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
+          ! gas saturation
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-#ifdef ICE
-! ice saturation
-  select case(option%iflowmode)
-    case(THC_MODE,THMC_MODE)
-      ! ice saturation
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,ICE_SATURATION,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+    #ifdef ICE
+    ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          ! ice saturation
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,ICE_SATURATION,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-! ice density
-  select case(option%iflowmode)
-    case(THC_MODE,THMC_MODE)
-      ! ice saturation
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,ICE_DENSITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
-#endif
+    ! ice density
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          ! ice saturation
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,ICE_DENSITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
+    #endif
 
-  ! liquid density
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! liquid density
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! gas density
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,GAS_DENSITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! gas density
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_DENSITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! liquid energy
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! liquid energy
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! gas energy
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,GAS_ENERGY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! gas energy
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_ENERGY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! liquid viscosity
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,LIQUID_VISCOSITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! liquid viscosity
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_VISCOSITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! gas viscosity
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,GAS_VISCOSITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! gas viscosity
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_VISCOSITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! liquid mobility
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! liquid mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_MOBILITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! gas mobility
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        OutputGetVarFromArrayAtCoord(realization,GAS_MOBILITY,ZERO_INTEGER, &
-                                     region%coordinates(ONE_INTEGER)%x, &
-                                     region%coordinates(ONE_INTEGER)%y, &
-                                     region%coordinates(ONE_INTEGER)%z, &
-                                     count,ghosted_ids)
-  end select
+      ! gas mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_MOBILITY,ZERO_INTEGER, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+      end select
 
-  ! liquid mole fraction
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      do i=1,option%nflowspec
-        write(fid,110,advance="no") &
-          OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
-                                       region%coordinates(ONE_INTEGER)%x, &
-                                       region%coordinates(ONE_INTEGER)%y, &
-                                       region%coordinates(ONE_INTEGER)%z, &
-                                       count,ghosted_ids)
-      enddo
-  end select
+      ! liquid mole fraction
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+          do i=1,option%nflowspec
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          enddo
+      end select
 
- ! gas mole fractions
-  select case(option%iflowmode)
-    case(MPH_MODE,FLASH2_MODE,G_MODE)
-      do i=1,option%nflowspec
-        write(fid,110,advance="no") &
-          OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i, &
-                                       region%coordinates(ONE_INTEGER)%x, &
-                                       region%coordinates(ONE_INTEGER)%y, &
-                                       region%coordinates(ONE_INTEGER)%z, &
-                                       count,ghosted_ids)
-      enddo
-  end select 
+     ! gas mole fractions
+      select case(option%iflowmode)
+        case(MPH_MODE,FLASH2_MODE,G_MODE)
+          do i=1,option%nflowspec
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          enddo
+      end select 
 
-  ! phase
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-     write(fid,111,advance="no") &
-       int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
-                                        region%coordinates(ONE_INTEGER)%x, &
-                                        region%coordinates(ONE_INTEGER)%y, &
-                                        region%coordinates(ONE_INTEGER)%z, &
-                                        count,ghosted_ids))
+      ! phase
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+         write(fid,111,advance="no") &
+           int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+                                            region%coordinates(ONE_INTEGER)%x, &
+                                            region%coordinates(ONE_INTEGER)%y, &
+                                            region%coordinates(ONE_INTEGER)%z, &
+                                            count,ghosted_ids))
+      end select
+  
   end select
 
   if (option%ntrandof > 0) then
@@ -5302,13 +5248,10 @@ subroutine OutputVTK(realization)
       end select
 
       ! pressure
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          word = 'Pressure'
-          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
-      end select
+      word = 'Liquid Pressure'
+      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+      call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
       ! phase
       select case(option%iflowmode)
@@ -6390,14 +6333,11 @@ subroutine OutputHDF5(realization)
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
-      ! pressure
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
-          string = "Pressure"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
+      ! liquid pressure
+      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+      string = "Liquid Pressure"
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
+ 
       ! liquid saturation
       select case(option%iflowmode)
         case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
@@ -6406,9 +6346,12 @@ subroutine OutputHDF5(realization)
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
       end select
 
-      ! gas saturation
+      ! gas pressure and saturation
       select case(option%iflowmode)
         case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
+          string = "Gas Pressure"
+          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
@@ -6964,7 +6907,7 @@ subroutine OutputMAD(realization)
                                   option)   
 
   ! pressure
-  call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+  call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
 #ifdef ALL
   string = 'Pressure' // trim(option%group_prefix)
 #else
@@ -9558,21 +9501,10 @@ subroutine OutputHDF5UGrid(realization)
           call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
-      ! pressure
-      select case(option%iflowmode)
-        case (THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
-          string = "Pressure"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
       ! liquid pressure
-      select case(option%iflowmode)
-        case (MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-          string = "Liquid Pressure"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
+      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+      string = "Liquid Pressure"
+      call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
 
       ! gas pressure
       select case(option%iflowmode)
@@ -10497,7 +10429,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
       !pressure
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          call OutputGetVarFromArray(surf_realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call OutputGetVarFromArray(surf_realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(OUTPUT_UNIT,surf_realization,natural_vec,TECPLOT_REAL)
       end select

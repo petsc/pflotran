@@ -222,7 +222,7 @@ PetscInt, parameter :: X_COORDINATE =             1
 PetscInt, parameter :: Y_COORDINATE =             2
 PetscInt, parameter :: Z_COORDINATE =             3
 PetscInt, parameter :: TEMPERATURE =              4
-PetscInt, parameter :: PRESSURE =                 5
+PetscInt, parameter :: LIQUID_PRESSURE =          5
 PetscInt, parameter :: LIQUID_SATURATION =        6
 PetscInt, parameter :: GAS_SATURATION =           7
 PetscInt, parameter :: LIQUID_DENSITY =           8
@@ -271,8 +271,7 @@ PetscInt, parameter :: PROCESSOR_ID =            49
 PetscInt, parameter :: ICE_SATURATION =          50
 PetscInt, parameter :: TOTAL_BULK =              51
 PetscInt, parameter :: ICE_DENSITY =             52
-PetscInt, parameter :: LIQUID_PRESSURE =         53
-PetscInt, parameter :: GAS_PRESSURE =            54
+PetscInt, parameter :: GAS_PRESSURE =            53
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
