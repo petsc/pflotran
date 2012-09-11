@@ -113,32 +113,36 @@
 \end{comment}
 
 \begin{document}
-\title{3D Regional Flow and Transport \ldots in a Nutshell}
-\author{Glenn Hammond}
+\title{2D Copper Leaching Problem}
+\author{Peter C. Lichtner}
 \date{\today}
 
 %\frame{\titlepage}
 
 %-----------------------------------------------------------------------------
-\section{Description of 3D Regional Flow and Transport Model}
+\section{Description of 2D Copper Leaching Problem}
 
 \subsection{3D Regional Flow and Transport Model}
 
 \frame{\frametitle{Description of 3D Regional Flow and Transport Scenario}
-The ``3D Regional Flow and Transport Scenario'' simulates groundwater flow and solute transport within a large kilometer-scale domain:
+The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transport for a quarter symmetry element of a 5-spot domain:
 \begin{itemize}
-  \item Problem domain: $5000 \times 2500 \times 100$ m$^3$ ($x \times y \times z$)
-  \item Grid resolution $50 \times 49.02 \times 5$ m$^3$ ($100 \times$ 51 $\times$ 20 cells)
-  \item Maximum time step size: 0.1 y (for CFL $<= 1$)
-  \item Total simulation time: 10 y
+  \item Problem domain: $16 \times 16 \times 128$ m$^3$ ($x \times y \times z$)
+  \item Grid resolution $0.5 \times 0.5 \times 128$ m$^3$ (($32 \times$ 32 $\times$ 1 cells)
+  \item Maximum time step size: 0.01 y
+  \item Total simulation time: 2 years
+  \item Fully saturated
+  \item 12 primary species
+  \item DOFs = 12,288
+  \item Scaling: 1p-7.76 min, 2p-4.52 min, 4p-3.85 min (MacBook Pro)
 \end{itemize}
 
 }
 
 %-----------------------------------------------------------------------------
-\frame{\frametitle{3D Regional Flow and Transport Scenario Schematic}
-\includegraphics[width=\linewidth]{./regional_doublet_fig}
-}
+%\frame{\frametitle{3D Regional Flow and Transport Scenario Schematic}
+%\includegraphics[width=\linewidth]{./regional_doublet_fig}
+%}
 
 %-----------------------------------------------------------------------------
 \subsection{Flow Governing Equations}
@@ -147,13 +151,13 @@ The ``3D Regional Flow and Transport Scenario'' simulates groundwater flow and s
 
 {\bf Continuity Equation:}
 \EQ
-\frac{\p}{\p t} \big(\varphi s \rho\big) + \bnabla\cdot\rho\bq \eq Q
+\frac{\p}{\p t} \big(\varphi \rho\big) + \bnabla\cdot\rho\bq \eq Q
 \EN
 
 
 {\bf Darcy's Law:}
 \EQ
-\bq \eq -\frac{\bk k_r}{\mu} \bnabla\big(\pressure-\rho g z\big)
+\bq \eq -\frac{k}{\mu} \bnabla\big(\pressure-\rho g z\big)
 \EN
 
 \normalsize
@@ -162,10 +166,10 @@ The ``3D Regional Flow and Transport Scenario'' simulates groundwater flow and s
 \column{0.5\linewidth}
 \begin{itemize}
 \item $\varphi \eq $ porosity
-\item $s \eq $ saturation
+%\item $s \eq $ saturation
 \item $\rho \eq $ water density
 \item $\bk \eq $ intrinsic permeability tensor
-\item $k_r \eq $ relative permeability
+%\item $k_r \eq $ relative permeability
 \end{itemize}
 \column{0.5\linewidth}
 \begin{itemize}
@@ -180,6 +184,7 @@ The ``3D Regional Flow and Transport Scenario'' simulates groundwater flow and s
 }
 
 %-----------------------------------------------------------------------------
+\begin{comment}
 \frame{\frametitle{Constitutive Relations
 %\dblline
 }
@@ -224,8 +229,9 @@ k_r \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2\nonumber
 \end{columns}
 
 }
-
+\end{comment}
 %-----------------------------------------------------------------------------
+\begin{comment}
 \frame{
 \frametitle{Constitutive Relations [Cont.]
 %\dblline
@@ -268,25 +274,26 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 \end{itemize}
 \end{columns}
 }
-
+\end{comment}
 %-----------------------------------------------------------------------------
 \frame{\frametitle{Flow Boundary Conditions}
 
-\begin{itemize}
-\item Dirichlet (e.g. specified pressure)
-\item Neumann (e.g. specified flux)
-\end{itemize}
+%\begin{itemize}
+%\item Dirichlet (e.g. specified pressure)
+%\item Neumann (e.g. specified flux)
+%\end{itemize}
 
 \begin{itemize}
-\item No Flow
-\item Recharge
-\item Hydrostatic
-\item Seepage Face
+\item No flow at all boundaries (default)
+\item Source/Sink
+%\item Hydrostatic
+%\item Seepage Face
 \end{itemize}
 
 }
 
 %-----------------------------------------------------------------------------
+\begin{comment}
 \frame{\frametitle{Flow Boundary Conditions Schematic}
 \includegraphics[width=\linewidth]{./flow_bcs}
 }
@@ -310,8 +317,9 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 \end{itemize}
 
 }
-
+\end{comment}
 %-----------------------------------------------------------------------------
+\begin{comment}
 \frame{\frametitle{Richards Equation - Averaging Schemes}
 
 \Large
@@ -328,7 +336,7 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 
 \end{itemize}
 }
-
+\end{comment}
 %-----------------------------------------------------------------------------
 \subsection{Transport Governing Equations}
 
@@ -337,25 +345,24 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 \Large
 
 \EQ\label{trans}
-\frac{\p}{\p t} \left(\varphi s \Psi_j\right) + \bnabla\cdot\bOmega_j \eq S_j
+\frac{\p}{\p t} \left(\varphi \Psi_j\right) + \bnabla\cdot\bOmega_j \eq S_j
 \EN
 
 \EQ\label{flux}
-\bOmega_j \eq \big(\bq - \varphi s \Dbs\bnabla\big) \Psi_j
+\bOmega_j \eq \big(\bq - \varphi \Dbs\bnabla\big) \Psi_j
 \EN
 
 %\bigskip
 %\normalsize
 \footnotesize
 \begin{align*}
-\varphi &\eq \text{porosity}; \quad
-s \eq \text{liquid saturation}\\
-\Psi_j &\eq \text{solute concentration for aqueous species } j\\
-S_j &\eq \text{source/sink term for aqueous species } j\\
-\bOmega &\eq \text{solute flux}; \quad
+\varphi &\eq \text{porosity}%; \quad s \eq \text{liquid saturation}\\
+\Psi_j &\eq \text{solute concentration for aqueous primary species } j\\
+S_j &\eq \text{source/sink term for aqueous primary species } j\\
+\bOmega_j &\eq \text{solute flux for $j$th primary species}; \quad
 \bq \eq \text{Darcy velocity} \\
 \Dbs &\eq \text{hydrodynamic dispersion} \eq\gD^\ast + \alpha_L|\bnu|\\
-\gD^\ast &\eq \text{species {\color{red} independent} coefficient of diffusion}\\
+\gD &\eq \text{species {\color{red} independent} coefficient of diffusion}\\
 \alpha_L &\eq \text{longitudinal dispersity}\\
 \bnu &\eq \text{pore water velocity} \eq \bq/\varphi
 \end{align*}
@@ -366,9 +373,10 @@ S_j &\eq \text{source/sink term for aqueous species } j\\
 \frame{\frametitle{Transport Boundary Conditions}
 
 \begin{itemize}
-\item Dirichlet (e.g. specified concentration)
-\item Neumann (e.g. specified mass flux)
-\item Zero Gradient (e.g. outflow boundary)
+%\item Dirichlet (e.g. specified concentration)
+%\item Neumann (e.g. specified mass flux)
+%\item Zero Gradient (e.g. outflow boundary)
+\item Closed system (no flow)
 \end{itemize}
 
 
