@@ -207,7 +207,7 @@ class Dataset:
       lines_per_var += 1
 
     # skip to variable of interest
-    for i in range(ivar-4):
+    for i in range(ivar-3):
       count = 0
       for line in self.f:
         count += 1
