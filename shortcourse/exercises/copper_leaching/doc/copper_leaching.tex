@@ -122,9 +122,9 @@
 %-----------------------------------------------------------------------------
 \section{Description of 2D Copper Leaching Problem}
 
-\subsection{3D Regional Flow and Transport Model}
+\subsection{2D Copper Leaching Model}
 
-\frame{\frametitle{Description of 3D Regional Flow and Transport Scenario}
+\frame{\frametitle{Description of 2D Copper Leaching Problem}
 The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transport for a quarter symmetry element of a 5-spot domain:
 \begin{itemize}
   \item Problem domain: $16 \times 16 \times 128$ m$^3$ ($x \times y \times z$)
@@ -133,8 +133,13 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
   \item Total simulation time: 2 years
   \item Fully saturated
   \item 12 primary species
-  \item DOFs = 12,288
-  \item Scaling: 1p-7.76 min, 2p-4.52 min, 4p-3.85 min (MacBook Pro)
+  \item Transport DOFs = 12,288
+  \item Scaling: (MacBook Pro)
+  \begin{tabular}{ll}
+  1p&7.76 min\\
+  2p&4.52 min\\
+  4p&3.85 min 
+  \end{tabular}
 \end{itemize}
 
 }
@@ -170,10 +175,10 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 \item $\rho \eq $ water density
 \item $\bk \eq $ intrinsic permeability tensor
 %\item $k_r \eq $ relative permeability
+\item $\mu \eq $ viscosity
 \end{itemize}
 \column{0.5\linewidth}
 \begin{itemize}
-\item $\mu \eq $ viscosity
 \item $\pressure \eq $ water pressure
 \item $g \eq $ gravity
 \item $z \eq $ distance in direction of gravity
@@ -183,98 +188,6 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 
 }
 
-%-----------------------------------------------------------------------------
-\begin{comment}
-\frame{\frametitle{Constitutive Relations
-%\dblline
-}
-\begin{itemize}
-\item Capillary Pressure Relations
-\begin{itemize}
-\item van Genuchten
-\begin{itemize}
-\item Effective Saturation:
-\EQ\label{seff}
-s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-m}\nonumber
-\EN
-\item Saturation:
-\EQ
-s \eq s_e (1-s_r)+s_r
-\EN
-\item Relative Permeability (Mualem)
-\EQ\label{krl}
-k_r \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2\nonumber
-\EN
-
-\end{itemize}
-\end{itemize}
-\end{itemize}
-
-\bigskip
-\footnotesize
-\begin{columns}[c]
-\column{0.6\linewidth}
-\begin{itemize}
-\item $s \eq $ saturation
-\item $s_e \eq $effective saturation
-\item $s_r \eq $ residual saturation
-\item $P_c \eq $ capillary pressure $\eq P_\text{atm} - \pressure$
-\end{itemize}
-\column{0.4\linewidth}
-\begin{itemize}
-\item $\alpha \eq $ inverse of air entry pressure [Pa$^{-1}$]
-\item $n \eq $ van Genuchten $n$
-\item $m \eq 1 - 1/n$
-\end{itemize}
-\end{columns}
-
-}
-\end{comment}
-%-----------------------------------------------------------------------------
-\begin{comment}
-\frame{
-\frametitle{Constitutive Relations [Cont.]
-%\dblline
-}
-
-\begin{itemize}
-\item[]
-\begin{itemize}
-\item Brooks-Corey
-\begin{itemize}
-\item Effective Saturation:
-\EQ\label{seffbc}
-s_e \eq \left( \alpha |P_c| \right)^{-\lambda}\nonumber
-\EN
-\item Saturation:
-\EQ
-s \eq s_e (1-s_r)+s_r
-\EN
-\item Relative permeability (Burdine)
-\BA
-k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
-&\eq \left( \alpha |P_c| \right)^{-(2+3\lambda)}\nonumber \label{krlbc}
-\EA
-\end{itemize}
-\end{itemize}
-\end{itemize}
-
-\bigskip
-\footnotesize
-\begin{columns}[c]
-\column{0.6\linewidth}
-\begin{itemize}
-\item $\alpha \eq $ inverse of air entry pressure [Pa$^{-1}$]
-\item $\lambda \eq $Brooks Corey function parameter $\lambda$
-\end{itemize}
-\column{0.4\linewidth}
-\begin{itemize}
-\item[]
-\item[]
-\end{itemize}
-\end{columns}
-}
-\end{comment}
 %-----------------------------------------------------------------------------
 \frame{\frametitle{Flow Boundary Conditions}
 
@@ -293,51 +206,6 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 }
 
 %-----------------------------------------------------------------------------
-\begin{comment}
-\frame{\frametitle{Flow Boundary Conditions Schematic}
-\includegraphics[width=\linewidth]{./flow_bcs}
-}
-
-\frame{\frametitle{Flow Boundary Conditions}
-
-\large
-\EQ
-\bq \eq -\frac{kk_r}{\mu} \left(\frac{\pressure_\text{cell}-\pressure_\text{boundary}-\rho g \bz}{\Delta l}\right)
-\EN
-
-\bigskip
-\small
-\begin{itemize}
-\item $\bq$ units: $\left[\frac{l^3_\text{water}}{l^2_\text{bulk} \cdot t}\right]$ where $l \eq$ length and $t \eq$ time
-\item[]
-\item No flow (Neumann) : $\bq = 0$ or even better, no flux calculation at all
-\item Recharge (Neumann) : $\bq = \bq_0$
-\item Hydrostatic (Dirichlet): $\pressure_\text{boundary} \eq f\left(\pressure_\text{datum},x,y,z,\rho\left(P,T\right)\right)$
-\item Seepage Face (Dirichlet) : $\pressure_\text{boundary} \eq max\left(\text{Hydrostatic},\pressure_\text{atm}\right)$
-\end{itemize}
-
-}
-\end{comment}
-%-----------------------------------------------------------------------------
-\begin{comment}
-\frame{\frametitle{Richards Equation - Averaging Schemes}
-
-\Large
-\EQ
-\bq \eq -\frac{\bk k_r}{\mu} \bnabla\big(\pressure-\rho g z\big)
-\EN
-
-%\normalsize
-\begin{itemize}
-\item $\bk$: harmonic
-\item $k_r$: upwind
-\item $\mu$: upwind
-\item $\rho$: arithmetic
-
-\end{itemize}
-}
-\end{comment}
-%-----------------------------------------------------------------------------
 \subsection{Transport Governing Equations}
 
 \frame{\frametitle{Governing Transport Equations}
@@ -345,7 +213,7 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 \Large
 
 \EQ\label{trans}
-\frac{\p}{\p t} \left(\varphi \Psi_j\right) + \bnabla\cdot\bOmega_j \eq S_j
+\frac{\p}{\p t} \left(\varphi \Psi_j\right) + \bnabla\cdot\bOmega_j \eq Q_j - \sum_m \nu_{jm} I_m
 \EN
 
 \EQ\label{flux}
@@ -356,16 +224,45 @@ k_r &\eq \left(s_e \right)^{(2+3\lambda)/\lambda}\nonumber\\
 %\normalsize
 \footnotesize
 \begin{align*}
-\varphi &\eq \text{porosity}%; \quad s \eq \text{liquid saturation}\\
+\varphi &\eq \text{porosity}\\
 \Psi_j &\eq \text{solute concentration for aqueous primary species } j\\
-S_j &\eq \text{source/sink term for aqueous primary species } j\\
+Q_j &\eq \text{source/sink term for aqueous primary species } j\\
 \bOmega_j &\eq \text{solute flux for $j$th primary species}; \quad
 \bq \eq \text{Darcy velocity} \\
 \Dbs &\eq \text{hydrodynamic dispersion} \eq\gD^\ast + \alpha_L|\bnu|\\
 \gD &\eq \text{species {\color{red} independent} coefficient of diffusion}\\
 \alpha_L &\eq \text{longitudinal dispersity}\\
-\bnu &\eq \text{pore water velocity} \eq \bq/\varphi
+\bnu &\eq \text{pore water velocity} \eq \bq/\varphi\\
+I_m &\eq \text{mineral reaction rate}\\
+\nu_{jm} &\eq \text{stoichiometric coefficient}
 \end{align*}
+
+}
+
+%-----------------------------------------------------------------------------
+\frame{\frametitle{Mineral Kinetic Rate Law}
+
+\begin{itemize}
+\item Transition State Theory (TST) Rate Law:
+\EQ
+I_m \eq -a_m \left(\sum_l k_{ml} \P_{ml}\right) \left(1-K_m Q_m\right) \zeta_m
+\EN
+\EQ
+Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
+\EN
+\EQ\label{prefactor}
+\P_{ml} \eq \prod_i\dfrac{\big(\gamma_i m_i\big)^{\a_{il}^m}}{1+K_{ml}\big(\gamma_i m_i\big)^{\beta_{il}^m} }
+\EN
+\EQ
+\zeta_m \eq
+\left\{
+\begin{array}{ll}
+1, \ \varphi_m>0 \ \text{or} \ K_m Q_m > 1\\
+0, \ \text{otherwise}
+\end{array}
+\right.
+\EN
+\end{itemize}
 
 }
 
@@ -392,8 +289,10 @@ S_j &\eq \text{source/sink term for aqueous primary species } j\\
 \bigskip
 %\normalsize
 \begin{itemize}
-\item $s$: arithmetic
+%\item $s$: arithmetic
+\item $\bq \Psi_j$: upwinding
 \item $\varphi$: arithmetic
+\item $D$: harmonic
 \end{itemize}
 }
 
@@ -404,12 +303,14 @@ S_j &\eq \text{source/sink term for aqueous primary species } j\\
 \begin{frame}[fragile,containsverbatim]\frametitle{MODE}
 
 \begin{itemize}
-  \item Single-phase variably saturated flow
+  \item Single-phase fully saturated flow
 \end{itemize}
 
 \begin{semiverbatim}
 
 MODE RICHARDS
+
+CHEMISTRY
 \end{semiverbatim}
 
 \end{frame}
@@ -418,17 +319,17 @@ MODE RICHARDS
 \begin{frame}[fragile,containsverbatim]\frametitle{GRID}
 
 \begin{itemize}
-  \item Problem domain: $5000 \times 2500 \times 100$ m (x $\times$ y $\times$ z)
-  \item Grid resolution $50 \times 49.02 \times 5$ m
+  \item Problem domain: $16 \times 16 \times 128$ m ($x \times y \times z$)
+  \item Grid resolution $0.5 \times 0.5 \times 128$ m$^3$
 \end{itemize}
 
 \begin{semiverbatim}
 GRID
   TYPE structured
-  NXYZ 100 51 20
+  NXYZ 32 32 1
   BOUNDS
     0.d0 0.d0 0.d0
-    5000.d0 2500.d0 100.d0
+    16.d0 16.d0 128.d0
   /
 END
 \end{semiverbatim}
@@ -455,7 +356,7 @@ END
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
-    5000.d0 2500.d0 100.d0
+    16.d0 16.d0 128.d0
   /
 END
 
@@ -498,20 +399,18 @@ END
 \begin{frame}[fragile,containsverbatim]\frametitle{MATERIAL\_PROPERTY}
 
 \begin{itemize}
-  \item Anisotropic permeability
+  \item Isotropic permeability
 \end{itemize}
 
 \begin{semiverbatim}
-MATERIAL_PROPERTY soil3
-  ID 3
-  POROSITY 0.25d0
-  TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
-  PERMEABILITY        \bluecomment{! diagonal permeability tensor}
-    PERM_X 5.d-11     \bluecomment{!   x component}
-    PERM_Y 5.d-11     \bluecomment{!   y component}
-    PERM_Z 5.d-12     \bluecomment{!   z component}
+MATERIAL_PROPERTY oxide-ore
+  ID 1
+  POROSITY 0.05d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.5d-13 \bluecomment{! isotropic permeability tensor}
   /
+  SATURATION_FUNCTION default
 END
 \end{semiverbatim}
 
@@ -522,18 +421,13 @@ END
 
 \begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
 
-\begin{itemize}
-\item Add van Genuchten parameters
-\item Assume Mualem permeability (default)
-\end{itemize}
+%\begin{itemize}
+%\item Add van Genuchten parameters
+%\item Assume Mualem permeability (default)
+%\end{itemize}
 
 \begin{semiverbatim}
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0     \bluecomment{! van Genuchten m in n = 1/(1-m)}
-  ALPHA 1.d-4      \bluecomment{! [Pa^-1]}
-  MAX_CAPILLARY_PRESSURE 1.d8
+SATURATION_FUNCTION default
 END
 \end{semiverbatim}
 
@@ -563,17 +457,183 @@ END
 \begin{frame}[fragile,allowframebreaks]\frametitle{CHEMISTRY}
 
 \begin{itemize}
-\item Two tracers
-\item Database is not needed!
+\item 12 primary species including redox reaction for Cu$^+$--Cu$^{2+}$
+%\item Database is not needed!
 \end{itemize}
 
 \begin{semiverbatim}
+
 CHEMISTRY
   PRIMARY_SPECIES
-    Tracer
-    Tracer2
+  /
+  SECONDARY_SPECIES
+  /
+  GAS_SPECIES
+  /
+  MINERALS
+  /
+  MINERAL_KINETICS
   /
 END
+\end{semiverbatim}
+
+\newpage
+%\footnotesize
+\begin{semiverbatim}
+
+  PRIMARY_SPECIES
+    Na+
+    K+
+    Ca++
+    H+
+    Cu++
+    Al+++
+    Fe++
+    SiO2(aq)
+    HCO3-
+    SO4--
+    Cl-
+    O2(aq)
+  /
+\end{semiverbatim}
+
+\newpage
+  \begin{columns}[c]
+    \column{0.333\linewidth}
+\begin{semiverbatim}
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaOH+
+    CaHCO3+
+    CaCO3(aq)
+    CaSO4(aq)
+    Cu+
+    CuOH+
+    CuO2--
+    CuCl+
+    CuCl2(aq)
+\end{semiverbatim}
+        \column{0.333\linewidth}
+\begin{semiverbatim}
+    CuCl2-
+    CuCl3--
+    CuCl4--
+    CuSO4(aq)
+    HSO4-
+    AlOH++
+    Al(OH)2+
+    Al(OH)3(aq)
+    Al(OH)4-
+    Al(SO4)2-
+    AlSO4+
+\end{semiverbatim}
+        \column{0.333\linewidth}
+\begin{semiverbatim}
+    Fe+++
+    Fe(OH)2(aq)
+    Fe(OH)2+
+    Fe(OH)3(aq)
+    Fe(OH)3-
+    Fe(OH)4-
+    FeSO4(aq)
+    FeSO4+
+    Fe(SO4)2-
+  /
+\end{semiverbatim}
+  \end{columns}
+  
+  \newpage
+\begin{semiverbatim}
+
+  GAS_SPECIES
+    CO2(g)
+    O2(g)
+  /
+\end{semiverbatim}
+  
+  \newpage
+  
+  \begin{columns}[c]
+    \column{0.5\linewidth}
+
+\begin{semiverbatim}
+  MINERALS
+    Albite
+    Alunite
+    Anorthite
+    Antlerite
+    Aragonite
+    Brochantite
+    Calcite
+    Chalcanthite
+    Chalcedony
+    Chrysocolla2
+    Cuprite
+    Gibbsite
+\end{semiverbatim}
+    \column{0.5\linewidth}
+\begin{semiverbatim}
+    Goethite
+    Gypsum
+    Jarosite
+    Jurbanite
+    K-Feldspar
+    Kaolinite
+    Malachite
+    Muscovite
+    SiO2(am)
+    Tenorite
+    Quartz
+  /
+\end{semiverbatim}
+  \end{columns}
+
+  \newpage
+\begin{semiverbatim}
+  MINERAL_KINETICS
+    Alunite
+      RATE_CONSTANT 1.d-11
+    /
+    Chrysocolla2
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      PREFACTOR
+        RATE_CONSTANT 1.d-10
+        PREFACTOR_SPECIES H+
+          ALPHA 0.39
+        /
+      /
+    /
+    Goethite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-11
+    /
+    Gypsum
+      RATE_CONSTANT 1.d-10
+    /
+    Jarosite
+      RATE_CONSTANT 1.d-11
+    /
+    Jurbanite
+      RATE_CONSTANT 1.d-11
+    /
+    Kaolinite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-13
+    /
+    Muscovite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-13
+    /
+    SiO2(am)
+      RATE_CONSTANT 1.d-11
+    /
+    Quartz
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-14
+    /
+  /
 \end{semiverbatim}
 
 \end{frame}
@@ -662,60 +722,66 @@ END                   \bluecomment{! negative rate = extraction}
 \begin{frame}[fragile,allowframebreaks]\frametitle{TRANSPORT\_CONDITION / CONSTRAINT}
 
 \begin{itemize}
-  \item Set up three transport conditions and constraints for tracers
-  \item Constraints embedded within transport conditions
-  \begin{itemize}
-    \item Embedded constraints may not be transient
-  \end{itemize}
+  \item Set up two transport constraints for primary species and minerals corresponding to initial conditions and injected fluid composition
+   \begin{itemize}
+     \item Primary species concentrations
+     \item Reactive minerals---both primary and secondary
+   \end{itemize}
 \end{itemize}
 
 \newpage
-{
+
 \begin{semiverbatim}
 
-TRANSPORT_CONDITION initial      \bluecomment{! previous approach}
-  TYPE dirichlet_zero_gradient
-  \magentacomment{CONSTRAINT_LIST       \bluecomment{! list of constraints}
-    0.d0 initial  }
+CONSTRAINT initial
+  CONCENTRATIONS
+    Na+        5.0d-3   T
+    K+         2.5d-5   M Muscovite
+    Ca++       6.5d-4   M Calcite
+    H+         8.d0    pH
+    Cu++       6.4d-9   M Chrysocolla2
+    Al+++      2.8d-17  M Kaolinite
+    Fe++       1.2d-23  M Goethite
+    SiO2(aq)   1.8d-4   M Chalcedony
+    HCO3-      -3.d0    G CO2(g)
+    SO4--      5.0d-4   T
+    Cl-        3.7d-3   Z
+    O2(aq)     -0.699d0 G O2(g)
+  /
+  
+  \newpage
+  MINERALS !volume fraction specific surface area
+    Alunite       0.d0    1.d0
+    Chrysocolla2  5.0d-3  1.d0
+    Goethite      2.5d-2  1.d0
+    Gypsum        0.d0    1.d0
+    Jarosite      0.d0    1.d0
+    Jurbanite     0.d0    1.d0
+    Kaolinite     5.0d-2  1.d0
+    Muscovite     5.0d-2  1.d0
+    SiO2(am)      0.d0    1.d0
+    Quartz        8.2d-1  1.d0
   /
 END
-
-TRANSPORT_CONDITION initial      \bluecomment{! embedded approach}
-  TYPE dirichlet_zero_gradient
-  \magentacomment{CONSTRAINT initial
-    CONCENTRATIONS      \bluecomment{! single constraint @ time 0.}
-      Tracer  1.d-10 T  \bluecomment{! background concentration set}
-      Tracer2 1.d-10 T  \bluecomment{!   to a small value, not zero}
-    /}
-  /
-END
-\end{semiverbatim}
-}
 
 \newpage
-{\small
-\begin{semiverbatim}
-TRANSPORT_CONDITION west
-  TYPE dirichlet_zero_gradient
-  CONSTRAINT west
-    CONCENTRATIONS
-      Tracer  1.d-10 T
-      Tracer2 1.d0   T
-    /
-  /
-END
-
-TRANSPORT_CONDITION injection
-  TYPE dirichlet_zero_gradient
-  CONSTRAINT injection
-    CONCENTRATIONS
-      Tracer  1.d0   T
-      Tracer2 1.d-10 T
-    /
+CONSTRAINT inlet
+  CONCENTRATIONS
+    Na+        5.0d-3   T
+    K+         1.3d-4   M Jarosite
+    Ca++       1.1d-2   M Gypsum
+    H+         1.d0    pH
+    Cu++       1.0d-8   T 
+    Al+++      2.5d-2   T 
+    Fe++       3.4d-9   M Goethite
+    SiO2(aq)   1.9d-3   M SiO2(am)
+    HCO3-      -2.d0    G CO2(g)
+    SO4--      6.1d-2   Z
+    Cl-        5.0d-3   T
+    O2(aq)     -0.699d0 G O2(g)
   /
 END
 \end{semiverbatim}
-}
 
 \end{frame}
 
