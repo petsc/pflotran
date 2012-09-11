@@ -3866,140 +3866,141 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%y(ghosted_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
 
-  ! temperature
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
-  end select
-
-  ! liquid pressure
-  write(fid,110,advance="no") &
-    RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE,ZERO_INTEGER,ghosted_id)
-
-  ! gas pressure
-  select case(option%iflowmode)
-    case(MPH_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_PRESSURE,ZERO_INTEGER,ghosted_id)
-  end select
-
-  ! state
-  select case(option%iflowmode)
-    case(G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,STATE,ZERO_INTEGER,ghosted_id)
-  end select
-
-  ! liquid saturation
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,ghosted_id)
-  end select
+    
+      ! temperature
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
+      end select
 
- ! gas saturation
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
+      ! liquid pressure
       write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
-  end select
+        RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE,ZERO_INTEGER,ghosted_id)
+
+      ! gas pressure
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,GAS_PRESSURE,ZERO_INTEGER,ghosted_id)
+      end select
+
+      ! state
+      select case(option%iflowmode)
+        case(G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,STATE,ZERO_INTEGER,ghosted_id)
+      end select
+
+      ! liquid saturation
+      write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,ghosted_id)
+
+     ! gas saturation
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
+      end select
 
 #ifdef ICE
- ! ice saturation
-  select case(option%iflowmode)
-    case(THC_MODE,THMC_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,ICE_SATURATION,ZERO_INTEGER,ghosted_id)
-  end select
+     ! ice saturation
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,ICE_SATURATION,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! ice density
-  select case(option%iflowmode)
-    case(THC_MODE,THMC_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,ICE_DENSITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! ice density
+      select case(option%iflowmode)
+        case(THC_MODE,THMC_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,ICE_DENSITY,ZERO_INTEGER,ghosted_id)
+      end select
 #endif
 
-  ! liquid density
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! liquid density
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! gas density
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_DENSITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! gas density
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,GAS_DENSITY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! liquid energy
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! liquid energy
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! gas energy
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_ENERGY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! gas energy
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,GAS_ENERGY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! liquid viscosity
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! liquid viscosity
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! gas viscosity
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! gas viscosity
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! liquid mobility
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! liquid mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! gas mobility
-  select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,110,advance="no") &
-        RealizGetDatasetValueAtCell(realization,GAS_MOBILITY,ZERO_INTEGER,ghosted_id)
-  end select
+      ! gas mobility
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,GAS_MOBILITY,ZERO_INTEGER,ghosted_id)
+      end select
 
-  ! liquid mole fractions
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
-      do i=1,option%nflowspec
-        write(fid,110,advance="no") &
-          RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION,i,ghosted_id)
-      enddo
-  end select
+      ! liquid mole fractions
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
+          do i=1,option%nflowspec
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION,i,ghosted_id)
+          enddo
+      end select
 
-  ! gas mole fractions
-  select case(option%iflowmode)
-    case(MPH_MODE,FLASH2_MODE,G_MODE)
-      do i=1,option%nflowspec
-        write(fid,110,advance="no") &
-          RealizGetDatasetValueAtCell(realization,GAS_MOLE_FRACTION,i,ghosted_id)
-      enddo
-  end select 
+      ! gas mole fractions
+      select case(option%iflowmode)
+        case(MPH_MODE,FLASH2_MODE,G_MODE)
+          do i=1,option%nflowspec
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,GAS_MOLE_FRACTION,i,ghosted_id)
+          enddo
+      end select 
 
-  ! phase
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-      write(fid,111,advance="no") &
-        int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
+      ! phase
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
+          write(fid,111,advance="no") &
+            int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
+      end select
   end select
 
   if (option%ntrandof > 0) then
@@ -4330,7 +4331,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
       end select
 
-    #ifdef ICE
+#ifdef ICE
     ! ice saturation
       select case(option%iflowmode)
         case(THC_MODE,THMC_MODE)
@@ -4354,7 +4355,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          region%coordinates(ONE_INTEGER)%z, &
                                          count,ghosted_ids)
       end select
-    #endif
+#endif
 
       ! liquid density
       select case(option%iflowmode)

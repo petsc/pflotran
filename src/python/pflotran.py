@@ -74,6 +74,8 @@ class Dataset:
         self.dictionary[xcol] = self.dictionary['x']
       if isinstance(ycol,str):
         self.dictionary[ycol] = self.dictionary['y']
+        
+    self.f.close()
 
   def get_array(self,dictionary_entry):
     try:
@@ -186,8 +188,8 @@ class Dataset:
         array2.resize(size)
       w = line.split()
       # xcol and ycol are 1-based
-      array1[count] = float(w[xcol-1])
-      array2[count] = float(w[ycol-1])
+      array1[count] = float(w[xcol])
+      array2[count] = float(w[ycol])
       count += 1
     array1.resize(count)
     array2.resize(count)
