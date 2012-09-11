@@ -46,10 +46,15 @@ class Dataset:
 
     self.f = open(filename,'r')
     self.read_file_header()
-    # xcol and ycol are 1-based
-    self.dictionary['xname'] = self.variables[xcol-1]
-    self.dictionary['yname'] = self.variables[ycol-1]
-    self.read_dataset_from_columns(xcol,ycol)
+
+    if self.filetype == FileType.TECPLOT_BLOCK:
+      self.dictionary['zname'] = self.variables[xcol-1]
+      self.read_dataset_from_block(xcol)
+    else:
+      # xcol and ycol are 1-based
+      self.dictionary['xname'] = self.variables[xcol-1]
+      self.dictionary['yname'] = self.variables[ycol-1]
+      self.read_dataset_from_columns(xcol,ycol)
 
   def get_array(self,dictionary_entry):
     iarray = self.dictionary[dictionary_entry]
@@ -84,13 +89,57 @@ class Dataset:
               self.filetype = FileType.TECPLOT_POINT
             elif s.endswith('BLOCK'):
               self.filetype = FileType.TECPLOT_BLOCK
-              print('Block datapacking not yet supported')
-              exit(0)
             else:
               print('Datapacking method undefined')
               exit(0)
+        if self.filetype == FileType.TECPLOT_BLOCK:
+          nx = int(w[1].split("=")[1])-1
+          ny = int(w[2].split("=")[1])-1
+          nz = int(w[3].split("=")[1])-1
+          self.read_discretization(nx,ny,nz)
         return
 
+  def read_discretization(self,nx,ny,nz):
+    x = np.zeros(nx,'=f8')
+    y = np.zeros(ny,'=f8')
+    n = (nx+1)*(ny+1)*(nz+1)
+    temp_array = np.zeros(n,'=f8')
+    # X
+    count = 0
+    for line in self.f:
+      w = line.split()
+      for i in range(len(w)):
+        temp_array[count] = float(w[i])
+        count += 1
+      if count >= n:
+        break
+    for i in range(nx):
+      x[i] = 0.5*(temp_array[i]+temp_array[i+1])
+    # Y
+    count = 0
+    for line in self.f:
+      w = line.split()
+      for i in range(len(w)):
+        temp_array[count] = float(w[i])
+        count += 1
+      if count >= n:
+        break
+    for i in range(ny):
+      y[i] = 0.5*(temp_array[i*ny]+temp_array[(i+1)*ny])
+    # Z
+    count = 0
+    for line in self.f:
+      w = line.split()
+      for i in range(len(w)):
+        temp_array[count] = float(w[i])
+        count += 1
+      if count >= n:
+        break
+    self.dictionary['x'] = len(self.arrays)
+    self.arrays.append(x)
+    self.dictionary['y'] = len(self.arrays)
+    self.arrays.append(y)
+  
   def read_dataset_from_columns(self,xcol,ycol):
     size = 100
     arrays = []
@@ -109,7 +158,40 @@ class Dataset:
       count += 1
     array1.resize(count)
     array2.resize(count)
+    self.dictionary['x'] = len(self.arrays)
     self.arrays.append(array1)
+    self.dictionary['y'] = len(self.arrays)
     self.arrays.append(array2)
-    self.dictionary['x'] = 0
-    self.dictionary['y'] = 1
+
+  def read_dataset_from_block(self,ivar):
+    nx = len(self.arrays[self.dictionary['x']])
+    ny = len(self.arrays[self.dictionary['y']])
+    n = nx*ny
+    array = np.zeros(n,'=f8')
+
+    lines_per_var = n/10
+    if not n == lines_per_var*10:
+      lines_per_var += 1
+
+    # skip to variable of interest
+    for i in range(ivar-4):
+      count = 0
+      for line in self.f:
+        count += 1
+        if count >= lines_per_var:
+          break
+
+    count = 0
+    for line in self.f:
+      w = line.split()
+      for i in range(len(w)):
+        array[count] = float(w[i])
+        count += 1
+        if count >= n:
+          break
+      if count >= n:
+        break
+
+    self.dictionary['z'] = len(self.arrays)
+    self.arrays.append(array)
+    
