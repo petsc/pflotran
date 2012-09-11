@@ -1360,16 +1360,27 @@ subroutine THCAccumDerivative(thc_aux_var,global_aux_var,por,vol, &
   J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
            thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol !*thc_aux_var%xmol(1)
 #else
-  por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(abs(global_aux_var%pres(1)- &
+  if (thc_aux_var%pc > 0.d0) then
+    por1 = por
+  else
+    por1 = 1.d0-(1.d0-por)*exp(-1.d-10*(abs(global_aux_var%pres(1)- &
                                        option%reference_pressure)))
+  endif
+  
   porXvol = por1*vol
-  tempreal = exp(-1.d-7*(abs(global_aux_var%pres(1)-option%reference_pressure)))
-  J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
-           thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol + &
-           global_aux_var%sat(1)*global_aux_var%den(1)*vol*1.d-7* &
-           (1.d0 - por)*tempreal*abs(global_aux_var%pres(1)- &
-           option%reference_pressure)/(global_aux_var%pres(1)- &
-           option%reference_pressure)
+  
+  if (thc_aux_var%pc > 0.d0) then
+    J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
+             thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol
+  else
+    tempreal = exp(-1.d-10*(abs(global_aux_var%pres(1)-option%reference_pressure)))
+    J(1,1) = (global_aux_var%sat(1)*thc_aux_var%dden_dp + &
+             thc_aux_var%dsat_dp*global_aux_var%den(1))*porXvol + &
+             global_aux_var%sat(1)*global_aux_var%den(1)*vol*1.d-10* &
+             (1.d0 - por)*tempreal*abs(global_aux_var%pres(1)- &
+             option%reference_pressure)/(global_aux_var%pres(1)- &
+             option%reference_pressure)
+  endif
 #endif
 
   J(1,2) = global_aux_var%sat(1)*thc_aux_var%dden_dt*porXvol !*thc_aux_var%xmol(1)
@@ -1573,8 +1584,12 @@ subroutine THCAccumulation(aux_var,global_aux_var,por,vol, &
 #ifndef USE_COMPRESSIBILITY  
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*porXvol
 #else
-  por1 = 1.d0-(1.d0-por)*exp(-1.d-7*(abs(global_aux_var%pres(1)- &
+  if (aux_var%pc > 0.d0) then
+    por1 = por 
+  else
+    por1 = 1.d0-(1.d0-por)*exp(-1.d-10*(abs(global_aux_var%pres(1)- &
                                        option%reference_pressure)))
+  endif
   mol(1) = global_aux_var%sat(1)*global_aux_var%den(1)*por1*vol
 #endif
     

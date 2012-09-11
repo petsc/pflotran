@@ -526,6 +526,12 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
    
   global_aux_var%pres = x(1)  
   global_aux_var%temp = x(2)
+  
+  ! Check if the pressure is less than -100MPa
+  
+  if (global_aux_var%pres(1) < -1.d8) then
+    global_aux_var%pres(1) = -1.d8
+  endif
  
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
   aux_var%xmol(1) = 1.d0
@@ -555,8 +561,8 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, option)
 
 
-!  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-!              option%scale,ierr)
+  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+              option%scale,ierr)
 
 !  call wateos_flag (global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
 !                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
@@ -565,8 +571,8 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
 !    option%out_of_table = PETSC_TRUE                 
 !  endif
 
-  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
-                         dw_dt, hw, hw_dp, hw_dt, ierr)
+!  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
+!                         dw_dt, hw, hw_dp, hw_dt, ierr)
                          
   call psat(global_aux_var%temp(1), sat_pressure, dpsat_dt, ierr)
   
