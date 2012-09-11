@@ -3312,7 +3312,8 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: sat_pressure
   PetscErrorCode :: ierr 
 
- ! print *,'CO2AqActCoeff: ', global_auxvar%pres(:) 
+! print *,'CO2AqActCoeff: ', global_auxvar%pres(:)
+
   tc = global_auxvar%temp(1)
   pco2 = global_auxvar%pres(2)
   sat_pressure =0D0
