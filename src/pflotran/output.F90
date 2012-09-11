@@ -4330,7 +4330,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
       end select
 
-    #ifdef ICE
+#ifdef ICE
     ! ice saturation
       select case(option%iflowmode)
         case(THC_MODE,THMC_MODE)
@@ -4354,7 +4354,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          region%coordinates(ONE_INTEGER)%z, &
                                          count,ghosted_ids)
       end select
-    #endif
+#endif
 
       ! liquid density
       select case(option%iflowmode)
