@@ -348,16 +348,14 @@ END
 %-----------------------------------------------------------------------------
 \subsection{REGION}
 
-\begin{frame}[fragile,containsverbatim,allowframebreaks]\frametitle{REGION}
+\begin{frame}[fragile,containsverbatim,allowframebreaks]\frametitle{\bf REGION}
 
 \begin{itemize}
   \item Delineate regions in the 3D domain for:
   \begin{itemize}
     \item entire domain
-    \item west boundary face
-    \item east boundary face
-    \item top boundary face
-    \item well screens
+    \item inlet, outlet
+    \item observation point
   \end{itemize}
 \end{itemize}
 
@@ -370,31 +368,21 @@ REGION all
 END
 
 \newpage
-REGION layer2        \bluecomment{! layer of domain}
+\vspace{-5mm}
+REGION inlet
   COORDINATES
-    0.d0 0.d0 30.d0
-    5000.d0 2500.d0 50.d0
+    0.d0 0.d0 0.d0
+    0.d0 0.d0 128.d0
   /
 END
-
-REGION Top           \bluecomment{! top surface}
+REGION outlet
   COORDINATES
-    0.d0 0.d0 100.d0
-    5000.d0 2500.d0 100.d0
-  /
-  FACE TOP
-END
-
-\newpage
-REGION Extraction_well
-  COORDINATES             \bluecomment{! vertical line}
-    3750.d0 1250.d0 20.d0
-    3750.d0 1250.d0 55.d0
+    16.d0 16.d0 0.d0
+    16.d0 16.d0 128.d0
   /
 END
-
-REGION Obs_pt_center      \bluecomment{! point}
-  \magentacomment{COORDINATE} 2500.d0 1250.d0 60.d0
+REGION obs_outlet \bluecomment{! observation point at outlet}
+  COORDINATE 16.d0 16.d0 64.d0
 END
 
 \end{semiverbatim}
@@ -674,60 +662,69 @@ and do not add to number of degrees of freedom
 \end{semiverbatim}
 
 \end{frame}
+%-----------------------------------------------------------------------------
+\begin{frame}[fragile]\frametitle{\bf CHEMISTRY}
+
+\begin{itemize}
+\item Specify thermodynamic database and path
+\item Activity coefficient alogorithm
+\item Output variables
+\end{itemize}
+
+\begin{semiverbatim}
+: DATABASE ./hanford.dat
+  DATABASE /Users/lichtner/pflotran/repository/
+    pflotran/database/hanford.dat
+  LOG_FORMULATION
+:  OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP
+  OUTPUT
+    pH
+    all
+  /
+END
+\end{semiverbatim}
+\end{frame}
 
 %-----------------------------------------------------------------------------
 \subsection{FLOW\_CONDITION}
 
-\begin{frame}[fragile,allowframebreaks]\frametitle{FLOW\_CONDITION}
+\begin{frame}[fragile,allowframebreaks]\frametitle{\bf FLOW\_CONDITION}
 
 \begin{semiverbatim}
-
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic  \bluecomment{! hydrostatic condition}
+    PRESSURE hydrostatic \bluecomment{! hydrostatic condition}
   /
-  DATUM 0.d0 0.d0 90.d0   \bluecomment{! point in space}
-  GRADIENT
-    PRESSURE -0.002 0. 0. \bluecomment{! gradient for pressure \redcomment{[m/m]}}
-  /                       \bluecomment{!   unless \redcomment{dz} specified \redcomment{[Pa/m]}}
-  PRESSURE 101325.d0      \bluecomment{! pressure at datum}
+  PRESSURE 201325.d0
+  DATUM 0.d0 0.d0 128.d0
 END
 
 \newpage
-
-FLOW_CONDITION river
+! Note: Do not use scaled_volumetric_rate below.  
+!       Mass balance blows up.
+FLOW_CONDITION inlet
   TYPE
-    PRESSURE seepage     \bluecomment{! seepage face condition}
+    RATE scaled_mass_rate
   /
-  INTERPOLATION linear   \bluecomment{! dataset time interpolation}
-  CYCLIC                 \bluecomment{! cycle dataset}
-  DATUM FILE river_stage.txt  \bluecomment{! read transient datum}
-  PRESSURE 101325.d0          \bluecomment{!    dataset from file}
+  RATE 0.68 kg/s \bluecomment{! flow rate (injection)}
 END
 
-\newpage
-FLOW_CONDITION injection
-  TYPE                           \bluecomment{! volumetric flow}
-    RATE scaled_volumetric_rate  \bluecomment{!   rate scaled by}
-  /                              \bluecomment{!   f(permeability)}
-  RATE 1.d5 m^3/day  \bluecomment{! flow rate 10,000 [m^3/day]}
-END    
-
-FLOW_CONDITION extraction
+FLOW_CONDITION outlet
   TYPE
-    RATE scaled_volumetric_rate
+    RATE scaled_mass_rate
   /
-  RATE -1.d5 m^3/day  \bluecomment{! flow rate -10,000 [m^3/day]}
-END                   \bluecomment{! negative rate = extraction}
+  RATE -0.68 kg/s \bluecomment{! flow rate (extraction)}
+END
 
 \end{semiverbatim}
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{TRANSPORT\_CONDITION / CONSTRAINT}
+\subsection{TRANSPORT\_CONDITION}
 
-\begin{frame}[fragile,allowframebreaks]\frametitle{\bf TRANSPORT\_CONDITION / CONSTRAINT}
-
+\begin{frame}[fragile]\frametitle{\bf TRANSPORT\_CONDITION}
+\vspace{-1mm}
 \begin{itemize}
   \item Set up two transport constraints for primary species and minerals corresponding to initial conditions and injected fluid composition
    \begin{itemize}
@@ -735,8 +732,27 @@ END                   \bluecomment{! negative rate = extraction}
      \item Reactive minerals---both primary and secondary
    \end{itemize}
 \end{itemize}
+\vspace{-3mm}
+\begin{semiverbatim}
+TRANSPORT_CONDITION initial
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+\vspace{-3mm}
+TRANSPORT_CONDITION inlet
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 inlet
+  /
+END
+\end{semiverbatim}
+\end{frame}
 
 \newpage
+
+\begin{frame}[fragile,allowframebreaks]\frametitle{\bf CONSTRAINT}
 
 \begin{semiverbatim}
 
@@ -803,25 +819,13 @@ END
 \begin{frame}[fragile]\frametitle{\bf STRATA}
 
 \begin{itemize}
-\item Couple material types with regions
+\item Couple material type with region
 \end{itemize}
 
 \begin{semiverbatim}
 STRATA
-  REGION layer1
-  MATERIAL soil1
-END
-
-STRATA
-  REGION layer2
-  MATERIAL soil2
-END
-
-\ldots
-
-STRATA
-  REGION layer4
-  MATERIAL soil4
+  REGION all
+  MATERIAL oxide-ore
 END
 \end{semiverbatim}
 
@@ -834,40 +838,12 @@ END
 \begin{frame}[fragile]\frametitle{\bf OBSERVATION}
 
 \begin{itemize}
-\item Couple observation points with regions in model
+\item Couple observation point with region in model
 \end{itemize}
 
 \begin{semiverbatim}
-OBSERVATION  \bluecomment{! observation point assigned region name}
-  REGION Obs_pt_center  \bluecomment{! region name}
-  AT_CELL_CENTER        \bluecomment{! do not interpolate}
-  VELOCITY              \bluecomment{! include velocity}
-END
-
 OBSERVATION
-  REGION Obs_pt_west
-  AT_CELL_CENTER
-  VELOCITY
-END
-
-\dots
-\end{semiverbatim}
-
-\end{frame}
-
-%-----------------------------------------------------------------------------
-\subsection{NEWTON\_SOLVER}
-
-\begin{frame}[fragile]\frametitle{\bf NEWTON\_SOLVER}
-
-\begin{itemize}
-  \item Set converged if maximum pressure change within all cells is less than 1 Pa.
-\end{itemize}
-
-\begin{semiverbatim}
-
-NEWTON_SOLVER FLOW
-ITOL_UPDATE 1.d0   \bluecomment{! infinity norm of update vector}
+  REGION obs_outlet
 END
 \end{semiverbatim}
 
@@ -879,7 +855,7 @@ END
 \begin{frame}[fragile]\frametitle{\bf INITIAL\_CONDITION}
 
 \begin{itemize}
-\item Couple the greencomment{initial} flow and transport conditions with region \greencomment{all} for the initial condition
+\item Couple the \greencomment{initial} flow and transport conditions with region \greencomment{all} for the initial condition
 \end{itemize}
 
 \begin{semiverbatim}
@@ -894,73 +870,64 @@ END
 
 \end{frame}
 
-%-----------------------------------------------------------------------------
-\subsection{BOUNDARY\_CONDITION}
-
-\begin{frame}[fragile,allowframebreaks]\frametitle{BOUNDARY\_CONDITION}
-
-\small
-\begin{semiverbatim}
-BOUNDARY_CONDITION west
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION west
-  REGION west
-END
-
-BOUNDARY_CONDITION east
-  FLOW_CONDITION river
-  TRANSPORT_CONDITION initial
-  REGION east
-END
-
-BOUNDARY_CONDITION top
-  FLOW_CONDITION recharge
-  TRANSPORT_CONDITION initial
-  REGION top
-END
-\end{semiverbatim}
-
-\end{frame}
 
 %-----------------------------------------------------------------------------
 \subsection{SOURCE\_SINK (CONDITION)}
 
-\begin{frame}[fragile,allowframebreaks]\frametitle{\bf SOURCE\_SINK}
+\begin{frame}[fragile]
+\frametitle{\bf SOURCE\_SINK}
 
 \begin{semiverbatim}
-SOURCE_SINK injection_well   \bluecomment{! source/sink name (optional)}
-  FLOW_CONDITION injection       \bluecomment{! flow condition name}
-  TRANSPORT_CONDITION injection  \bluecomment{! tran. condition name}
-  REGION injection_well        \bluecomment{! location of source/sink}
+
+SOURCE_SINK inlet
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION inlet
 END
 
-SOURCE_SINK extraction_well
-  FLOW_CONDITION extraction
+SOURCE_SINK outlet
+  FLOW_CONDITION outlet
   TRANSPORT_CONDITION initial
-  REGION extraction_well
+  REGION outlet
 END
 \end{semiverbatim}
 
 \end{frame}
 
+%-----------------------------------------------------------------------------
+\subsection{TIMESTEPPER}
+
+\begin{frame}[fragile]\frametitle{\bf TIMESTEPPER}
+
+\begin{semiverbatim}
+TIMESTEPPER FLOW
+  INITIALIZE_TO_STEADY_STATE
+  RUN_AS_STEADY_STATE
+END
+
+TIMESTEPPER TRANSPORT
+  TS_ACCELERATION 32
+END
+\end{semiverbatim}
+
+\end{frame}
 %-----------------------------------------------------------------------------
 \subsection{TIME}
 
 \begin{frame}[fragile]\frametitle{\bf TIME}
 
 \begin{itemize}
-\item Set final simulation time to 10 years
-\item Set initial time step size to 1.e-2 days
-\item Set maximum time step size to 0.1 years
+\item Set final simulation time to 2 years
+\item Set initial time step size to 1.e-3 seconds
+\item Set maximum time step size to 0.01 years
 \end{itemize}
-
 
 \begin{semiverbatim}
 
 TIME
-  FINAL_TIME 10.d0 y
-  INITIAL_TIMESTEP_SIZE 1.d-2 d
-  MAXIMUM_TIMESTEP_SIZE 0.1 y    \bluecomment{! ensures CFL ~<= 1.}
+  FINAL_TIME 2.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d-3 s
+  MAXIMUM_TIMESTEP_SIZE 0.01 y
 END
 \end{semiverbatim}
 
@@ -970,55 +937,30 @@ END
 \subsection{OUTPUT}
 
 \begin{frame}[fragile]\frametitle{\bf OUTPUT}
-
+\vspace{-1mm}
 \begin{itemize}
-\item Print entire solution every year in Tecplot block datapacking and PFLOTRAN HDF5 format compatible with Visit
-\item Print entire solution at 1.25, 1.5 and 1.75 years to see fluctuation in river stage
-\item Print solution at observation points every time step
+\item Printout every 0.25 years in Tecplot block PFLOTRAN HDF5 format compatible with Visit
+%\item Print entire solution at 1.25, 1.5 and 1.75 years to see fluctuation in river stage
+\item Print solution at observation point every time step
 \item Include velocities when entire solution is printed
 \end{itemize}
-
+\vspace{-4mm}
 \begin{semiverbatim}
-
 OUTPUT
-  TIMES y 1.25 1.5 1.75  \bluecomment{! specific times}
-  PERIODIC TIME 1. y     \bluecomment{! solution every year}
+  TIMES h  1. \bluecomment{! print output at specific times}
+  TIMES d  1.
+  TIMES w  1.
+  TIMES mo 1.
+  PERIODIC TIME 0.25 y     \bluecomment{! solution every year}
   PERIODIC_OBSERVATION TIMESTEP 1  \bluecomment{! observ. every step}
-  FORMAT TECPLOT BLOCK   \bluecomment{! Tecplot BLOCK format}
-  FORMAT HDF5            \bluecomment{! PFLOTRAN HDF5 Visit format}
-  PRINT_COLUMN_IDS       \bluecomment{! Adds column ids to obs. header}
-  VELOCITIES             \bluecomment{! include velocities}
+  FORMAT TECPLOT BLOCK \bluecomment{! Tecplot BLOCK format}
+  FORMAT HDF5          \bluecomment{! PFLOTRAN HDF5 Visit format}
+  PRINT_COLUMN_IDS     \bluecomment{! Adds column ids to obs. header}
+  VELOCITIES           \bluecomment{! include velocities}
 END
 \end{semiverbatim}
 
 \end{frame}
 
-%-----------------------------------------------------------------------------
-\section{CHECKPOINT/RESTART}
-
-\begin{frame}[fragile]\frametitle{\bf CHECKPOINT/RESTART}
-
-\begin{itemize}
-\item Checkpointing: saving the ``state'' of the simulation at a point in time, from which the entire solution can be reconstructed.
-  \begin{itemize}
-    \item Fault tolerance
-    \item Restarting from a saved initial condition
-    \item Checkpoint files named ``pflotran.chk\#'' where \# is the time step number (e.g. pflotran.chk100)
-    \item Restart file named ``restart.chk''
-  \end{itemize}
-\item Restart: resetting a simulation to a ``state''
-\end{itemize}
-
-
-\begin{semiverbatim}
-
-CHECKPOINT 100          \bluecomment{! write a checkpoint file every}
-                        \bluecomment{!   100 time steps}
-RESTART pflotran.chk100 \bluecomment{! restart simulation using file}
-                        \bluecomment{!   \redcomment{restart.chk}}
-RESTART restart.chk \redcomment{0.d0}  \bluecomment{! reset time to 0.}
-\end{semiverbatim}
-
-\end{frame}
 
 \end{document} 
