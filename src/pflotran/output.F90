@@ -3644,8 +3644,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
     case (MPH_MODE)
       call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
       call OutputAppendToHeader(header,'Pl','[Pa]',cell_string,icolumn)
@@ -3654,8 +3654,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
       call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
       call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
       call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
@@ -3678,8 +3678,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
       call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
       call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
       call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
@@ -3703,8 +3703,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'Sat(g)','',cell_string,icolumn)
       call OutputAppendToHeader(header,'Rho(l)','[kg/m^3]',cell_string,icolumn)
       call OutputAppendToHeader(header,'Rho(g)','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'U(l)','[MJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'U(g)','[MJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'U(l)','[kJ/mol]',cell_string,icolumn)
+      call OutputAppendToHeader(header,'U(g)','[kJ/mol]',cell_string,icolumn)
       do i = 1, option%nflowspec
         write(string,'(i2)') i
         string = 'Xl(' // trim(adjustl(string)) // ')'
@@ -3722,7 +3722,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
       call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
       if (option%iflowmode == THC_MODE .or. option%iflowmode == THMC_MODE) then
-        call OutputAppendToHeader(header,'Ul','[MJ/mol]',cell_string,icolumn)
+        call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
         do i = 1, option%nflowspec
           write(string,'(i2)') i
           string = 'Xl(' // trim(adjustl(string)) // ')'
