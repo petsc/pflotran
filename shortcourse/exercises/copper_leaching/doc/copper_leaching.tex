@@ -120,22 +120,24 @@
 %\frame{\titlepage}
 
 %-----------------------------------------------------------------------------
-\section{Description of 2D Copper Leaching Problem}
+\section{\bf Description of 2D Copper Leaching Problem}
 
-\subsection{2D Copper Leaching Model}
+\subsection{\bf 2D Copper Leaching Model}
 
-\frame{\frametitle{Description of 2D Copper Leaching Problem}
+\frame{\frametitle{\bf Description of 2D Copper Leaching Problem}
 The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transport for a quarter symmetry element of a 5-spot domain:
 \begin{itemize}
   \item Problem domain: $16 \times 16 \times 128$ m$^3$ ($x \times y \times z$)
-  \item Grid resolution $0.5 \times 0.5 \times 128$ m$^3$ (($32 \times$ 32 $\times$ 1 cells)
+  \item Grid resolution $0.5 \times 0.5 \times 128$ m$^3$ ($32 \times 32 \times 1$ cells)
   \item Maximum time step size: 0.01 y
   \item Total simulation time: 2 years
-  \item Fully saturated
+  \item Fully saturated, isothermal
   \item 12 primary species
   \item Transport DOFs = 12,288
-  \item Scaling: (MacBook Pro)
+  
   \begin{tabular}{ll}
+  Scaling: & MacBook Pro\\
+  \midrule
   1p&7.76 min\\
   2p&4.52 min\\
   4p&3.85 min 
@@ -145,14 +147,17 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 }
 
 %-----------------------------------------------------------------------------
-%\frame{\frametitle{3D Regional Flow and Transport Scenario Schematic}
-%\includegraphics[width=\linewidth]{./regional_doublet_fig}
-%}
+\frame{
+\frametitle{\bf 2D 5-Spot Velocity Field}
+\begin{center}
+\includegraphics[width=0.75\linewidth]{./32x32x1.jpg}
+\end{center}
+}
 
 %-----------------------------------------------------------------------------
 \subsection{Flow Governing Equations}
 
-\frame{\frametitle{Governing Flow Equations}
+\frame{\frametitle{\bf Flow Equations}
 
 {\bf Continuity Equation:}
 \EQ
@@ -189,7 +194,7 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 }
 
 %-----------------------------------------------------------------------------
-\frame{\frametitle{Flow Boundary Conditions}
+\frame{\frametitle{\bf Flow Boundary Conditions}
 
 %\begin{itemize}
 %\item Dirichlet (e.g. specified pressure)
@@ -208,7 +213,7 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 %-----------------------------------------------------------------------------
 \subsection{Transport Governing Equations}
 
-\frame{\frametitle{Governing Transport Equations}
+\frame{\frametitle{\bf Reactive Transport Equations}
 
 \Large
 
@@ -230,7 +235,7 @@ Q_j &\eq \text{source/sink term for aqueous primary species } j\\
 \bOmega_j &\eq \text{solute flux for $j$th primary species}; \quad
 \bq \eq \text{Darcy velocity} \\
 \Dbs &\eq \text{hydrodynamic dispersion} \eq\gD^\ast + \alpha_L|\bnu|\\
-\gD &\eq \text{species {\color{red} independent} coefficient of diffusion}\\
+\gD^\ast &\eq \text{species {\color{red} independent} coefficient of diffusion}\\
 \alpha_L &\eq \text{longitudinal dispersity}\\
 \bnu &\eq \text{pore water velocity} \eq \bq/\varphi\\
 I_m &\eq \text{mineral reaction rate}\\
@@ -240,12 +245,15 @@ I_m &\eq \text{mineral reaction rate}\\
 }
 
 %-----------------------------------------------------------------------------
-\frame{\frametitle{Mineral Kinetic Rate Law}
+\frame{\frametitle{\bf Mineral Kinetic Rate Law}
 
 \begin{itemize}
 \item Transition State Theory (TST) Rate Law:
 \EQ
-I_m \eq -a_m \left(\sum_l k_{ml} \P_{ml}\right) \left(1-K_m Q_m\right) \zeta_m
+\sum_j\nu_{jm}\A_j \arrows \M_m
+\EN
+\EQ
+I_m \eq -a_m \Big(\sum_l k_{ml} \P_{ml}\Big) \left(1-K_m Q_m\right) \zeta_m
 \EN
 \EQ
 Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
@@ -267,7 +275,7 @@ Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
 }
 
 %-----------------------------------------------------------------------------
-\frame{\frametitle{Transport Boundary Conditions}
+\frame{\frametitle{\bf Transport Boundary Conditions}
 
 \begin{itemize}
 %\item Dirichlet (e.g. specified concentration)
@@ -280,10 +288,10 @@ Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
 }
 
 %-----------------------------------------------------------------------------
-\frame{\frametitle{Transport - Averaging Schemes}
+\frame{\frametitle{\bf Transport - Averaging Schemes}
 \Large
 \EQ\label{flux}
-\bOmega_j \eq \big(\bq - \varphi s \Dbs\bnabla\big) \Psi_j
+\bOmega_j \eq \big(\bq - \varphi\Dbs\bnabla\big) \Psi_j
 \EN
 
 \bigskip
@@ -291,8 +299,8 @@ Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
 \begin{itemize}
 %\item $s$: arithmetic
 \item $\bq \Psi_j$: upwinding
-\item $\varphi$: arithmetic
-\item $D$: harmonic
+\item $\varphi D$: harmonic
+%\item $D$: harmonic
 \end{itemize}
 }
 
@@ -300,11 +308,7 @@ Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
 \section{Description of Input Deck}
 
 \subsection{MODE}
-\begin{frame}[fragile,containsverbatim]\frametitle{MODE}
-
-\begin{itemize}
-  \item Single-phase fully saturated flow
-\end{itemize}
+\begin{frame}[fragile,containsverbatim]\frametitle{\bf MODE}
 
 \begin{semiverbatim}
 
@@ -313,10 +317,15 @@ MODE RICHARDS
 CHEMISTRY
 \end{semiverbatim}
 
+\begin{itemize}
+  \item Single-phase fully saturated flow
+  \item Flow coupled to multicomponent reactive transport
+\end{itemize}
+
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\begin{frame}[fragile,containsverbatim]\frametitle{GRID}
+\begin{frame}[fragile,containsverbatim]\frametitle{\bf GRID}
 
 \begin{itemize}
   \item Problem domain: $16 \times 16 \times 128$ m ($x \times y \times z$)
@@ -396,10 +405,11 @@ END
 %-----------------------------------------------------------------------------
 \subsection{MATERIAL\_PROPERTY}
 
-\begin{frame}[fragile,containsverbatim]\frametitle{MATERIAL\_PROPERTY}
+\begin{frame}[fragile,containsverbatim]\frametitle{\bf MATERIAL\_PROPERTY}
 
 \begin{itemize}
   \item Isotropic permeability
+  \item Fully saturated
 \end{itemize}
 
 \begin{semiverbatim}
@@ -419,7 +429,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{SATURATION\_FUNCTION}
 
-\begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
+\begin{frame}[fragile]\frametitle{\bf SATURATION\_FUNCTION}
 
 %\begin{itemize}
 %\item Add van Genuchten parameters
@@ -434,12 +444,12 @@ END
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{FLUID\_PROPERTY}
+\subsection{\bf FLUID\_PROPERTY}
 
-\begin{frame}[fragile,containsverbatim]\frametitle{FLUID\_PROPERTY}
+\begin{frame}[fragile,containsverbatim]\frametitle{\bf FLUID\_PROPERTY}
 
 \begin{itemize}
-  \item Assign a molecular diffusion coefficient of $10^{-9}$ m$^2$/s to all aqueous species
+  \item Assign molecular diffusion coefficient of $10^{-9}$ m$^2$/s to all aqueous species
 \end{itemize}
 
 \begin{semiverbatim}
@@ -454,12 +464,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{CHEMISTRY}
 
-\begin{frame}[fragile,allowframebreaks]\frametitle{CHEMISTRY}
-
-\begin{itemize}
-\item 12 primary species including redox reaction for Cu$^+$--Cu$^{2+}$
-%\item Database is not needed!
-\end{itemize}
+\begin{frame}[fragile,allowframebreaks]\frametitle{\bf CHEMISTRY}
 
 \begin{semiverbatim}
 
@@ -478,9 +483,17 @@ END
 \end{semiverbatim}
 
 \newpage
-%\footnotesize
-\begin{semiverbatim}
+~
 
+\begin{itemize}
+
+\item 12 primary species including redox reaction for Cu$^+$--Cu$^{2+}$
+\item Species properties (log$K_i$, $\nu_{ji}$, $a_i^\circ$, $z_i$, $W_i$, $\overline V_m$, $\cdots$) read from thermodynamic database.
+\item Species names must match database entry
+\end{itemize}
+\begin{columns}[c]
+    \column{0.5\linewidth}
+\begin{semiverbatim}
   PRIMARY_SPECIES
     Na+
     K+
@@ -489,6 +502,9 @@ END
     Cu++
     Al+++
     Fe++
+\end{semiverbatim}
+        \column{0.5\linewidth}
+\begin{semiverbatim}
     SiO2(aq)
     HCO3-
     SO4--
@@ -496,8 +512,16 @@ END
     O2(aq)
   /
 \end{semiverbatim}
+  \end{columns}
 
 \newpage
+~
+\begin{itemize}
+\item User responsible for selecting aqueous secondary species
+\item Secondary species assumed to obey local equilibrium conditions
+and do not add to number of degrees of freedom
+\end{itemize}
+\vspace{-5mm}
   \begin{columns}[c]
     \column{0.333\linewidth}
 \begin{semiverbatim}
@@ -545,6 +569,10 @@ END
   \end{columns}
   
   \newpage
+  ~
+  \begin{itemize}
+  \item Gas species O$_{\rm 2(aq)}$ needed for redox reactions
+  \end{itemize}
 \begin{semiverbatim}
 
   GAS_SPECIES
@@ -554,10 +582,13 @@ END
 \end{semiverbatim}
   
   \newpage
-  
+  ~
+  \begin{itemize}
+  \item Mineral list includes both active primary and secondary minerals and passive mineral speciation constraints and saturation indices
+  \end{itemize}
+  \vspace{-3mm}
   \begin{columns}[c]
     \column{0.5\linewidth}
-
 \begin{semiverbatim}
   MINERALS
     Albite
@@ -571,10 +602,11 @@ END
     Chalcedony
     Chrysocolla2
     Cuprite
-    Gibbsite
+    
 \end{semiverbatim}
     \column{0.5\linewidth}
 \begin{semiverbatim}
+    Gibbsite
     Goethite
     Gypsum
     Jarosite
@@ -591,6 +623,9 @@ END
   \end{columns}
 
   \newpage
+  \begin{itemize}
+  \item Specify rate constants, prefactors, surface area powers
+  \end{itemize}
 \begin{semiverbatim}
   MINERAL_KINETICS
     Alunite
@@ -605,6 +640,8 @@ END
         /
       /
     /
+    
+    
     Goethite
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
       RATE_CONSTANT 1.d-11
@@ -669,36 +706,6 @@ FLOW_CONDITION river
 END
 
 \newpage
-
-\bluecomment{! Contents of river_stage.txt:}
-\bluecomment{!   Note: assumes SI units}
-
-\bluecomment{: time x y z}
-0.d0 5000.d0 0.d0 80.d0          \bluecomment{! 0 yr}
-7884000.d0 5000.d0 0.d0 77.d0    \bluecomment{! 0.25 yr}
-15768000.d0 5000.d0 0.d0 79.d0   \bluecomment{! 0.5 yr}
-23652000.d0 5000.d0 0.d0 79.d0   \bluecomment{! 0.75 yr}
-31536000.d0 5000.d0 0.d0 80.d0   \bluecomment{! 1 yr}
-
-\newpage
-
-FLOW_CONDITION recharge
-  TYPE
-    FLUX neumann
-  /
-  FLUX LIST
-    TIME_UNITS yr
-    DATA_UNITS cm/yr
-    0.d0 25.d0  
-    1.d0 23.d0
-    2.d0 27.d0
-    3.d0 22.d0
-    4.d0 24.d0
-    5.d0 29.d0
-  /
-END
-
-\newpage
 FLOW_CONDITION injection
   TYPE                           \bluecomment{! volumetric flow}
     RATE scaled_volumetric_rate  \bluecomment{!   rate scaled by}
@@ -719,7 +726,7 @@ END                   \bluecomment{! negative rate = extraction}
 %-----------------------------------------------------------------------------
 \subsection{TRANSPORT\_CONDITION / CONSTRAINT}
 
-\begin{frame}[fragile,allowframebreaks]\frametitle{TRANSPORT\_CONDITION / CONSTRAINT}
+\begin{frame}[fragile,allowframebreaks]\frametitle{\bf TRANSPORT\_CONDITION / CONSTRAINT}
 
 \begin{itemize}
   \item Set up two transport constraints for primary species and minerals corresponding to initial conditions and injected fluid composition
@@ -748,8 +755,11 @@ CONSTRAINT initial
     Cl-        3.7d-3   Z
     O2(aq)     -0.699d0 G O2(g)
   /
-  
+\end{semiverbatim}
+
   \newpage
+\begin{semiverbatim}
+
   MINERALS !volume fraction specific surface area
     Alunite       0.d0    1.d0
     Chrysocolla2  5.0d-3  1.d0
@@ -763,8 +773,10 @@ CONSTRAINT initial
     Quartz        8.2d-1  1.d0
   /
 END
+\end{semiverbatim}
 
 \newpage
+\begin{semiverbatim}
 CONSTRAINT inlet
   CONCENTRATIONS
     Na+        5.0d-3   T
@@ -788,7 +800,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{STRATA}
 
-\begin{frame}[fragile]\frametitle{STRATA}
+\begin{frame}[fragile]\frametitle{\bf STRATA}
 
 \begin{itemize}
 \item Couple material types with regions
@@ -819,7 +831,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{OBSERVATION}
 
-\begin{frame}[fragile]\frametitle{OBSERVATION}
+\begin{frame}[fragile]\frametitle{\bf OBSERVATION}
 
 \begin{itemize}
 \item Couple observation points with regions in model
@@ -846,7 +858,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{NEWTON\_SOLVER}
 
-\begin{frame}[fragile]\frametitle{NEWTON\_SOLVER}
+\begin{frame}[fragile]\frametitle{\bf NEWTON\_SOLVER}
 
 \begin{itemize}
   \item Set converged if maximum pressure change within all cells is less than 1 Pa.
@@ -864,7 +876,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{INITIAL\_CONDITION}
 
-\begin{frame}[fragile]\frametitle{INITIAL\_CONDITION}
+\begin{frame}[fragile]\frametitle{\bf INITIAL\_CONDITION}
 
 \begin{itemize}
 \item Couple the greencomment{initial} flow and transport conditions with region \greencomment{all} for the initial condition
@@ -913,7 +925,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{SOURCE\_SINK (CONDITION)}
 
-\begin{frame}[fragile,allowframebreaks]\frametitle{SOURCE\_SINK}
+\begin{frame}[fragile,allowframebreaks]\frametitle{\bf SOURCE\_SINK}
 
 \begin{semiverbatim}
 SOURCE_SINK injection_well   \bluecomment{! source/sink name (optional)}
@@ -934,7 +946,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{TIME}
 
-\begin{frame}[fragile]\frametitle{TIME}
+\begin{frame}[fragile]\frametitle{\bf TIME}
 
 \begin{itemize}
 \item Set final simulation time to 10 years
@@ -957,7 +969,7 @@ END
 %-----------------------------------------------------------------------------
 \subsection{OUTPUT}
 
-\begin{frame}[fragile]\frametitle{OUTPUT}
+\begin{frame}[fragile]\frametitle{\bf OUTPUT}
 
 \begin{itemize}
 \item Print entire solution every year in Tecplot block datapacking and PFLOTRAN HDF5 format compatible with Visit
@@ -984,7 +996,7 @@ END
 %-----------------------------------------------------------------------------
 \section{CHECKPOINT/RESTART}
 
-\begin{frame}[fragile]\frametitle{CHECKPOINT/RESTART}
+\begin{frame}[fragile]\frametitle{\bf CHECKPOINT/RESTART}
 
 \begin{itemize}
 \item Checkpointing: saving the ``state'' of the simulation at a point in time, from which the entire solution can be reconstructed.
