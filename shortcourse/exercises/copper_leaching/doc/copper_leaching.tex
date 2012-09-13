@@ -148,9 +148,10 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 
 %-----------------------------------------------------------------------------
 \frame{
-\frametitle{\bf 2D 5-Spot Velocity Field}
+\frametitle{\bf 2D 5-Spot Pressure Field}
 \begin{center}
-\includegraphics[width=0.75\linewidth]{./32x32x1.jpg}
+%\includegraphics[width=0.75\linewidth]{./32x32x1.jpg}
+\includegraphics[width=1.1\linewidth]{./pressure}
 \end{center}
 }
 
@@ -478,6 +479,7 @@ END
 \item 12 primary species including redox reaction for Cu$^+$--Cu$^{2+}$
 \item Species properties (log$K_i$, $\nu_{ji}$, $a_i^\circ$, $z_i$, $W_i$, $\overline V_m$, $\cdots$) read from thermodynamic database.
 \item Species names must match database entry
+\item Primary and secondary species interchangeable provided reaction network linearly independent
 \end{itemize}
 \begin{columns}[c]
     \column{0.5\linewidth}
