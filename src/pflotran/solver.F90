@@ -190,8 +190,6 @@ subroutine SolverSetSNESOptions(solver)
   
   type(solver_type) :: solver
 
-  PetscMPIInt :: myrank
-  
 #ifndef HAVE_SNES_API_3_2  
   SNESLineSearch :: linesearch
 #else
@@ -739,18 +737,28 @@ end subroutine SolverReadNewton
 ! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine SolverPrintLinearInfo(solver,print_to_screen,print_to_file,fid, &
-                                 header)
+subroutine SolverPrintLinearInfo(solver,header,option)
 
+  use Option_module
+  
   implicit none
   
   type(solver_type) :: solver
-  PetscBool :: print_to_screen
-  PetscBool :: print_to_file
-  PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header  
+  type(option_type) :: option
 
-  if (print_to_screen) then
+  PetscInt :: fid
+
+  if (option%mycommsize > 1) then
+    if (solver%ksp_type == KSPPREONLY .and. solver%pc_type == PCLU) then
+      option%io_buffer = 'Direct solver (KSPPREONLY + PCLU) not ' // &
+        'not supported when running in parallel.  Switch to SOLVER ' // &
+        'ITERATIVE.'
+      call printErrMsg(option)
+    endif
+  endif
+  
+  if (OptionPrintToScreen(option)) then
     write(*,*) 
     write(*,'(a)') trim(header)
     write(*,'("   solver:  ",a)') trim(solver%ksp_type)
@@ -765,7 +773,8 @@ subroutine SolverPrintLinearInfo(solver,print_to_screen,print_to_file,fid, &
     endif
   endif
   
-  if (print_to_file) then
+  if (OptionPrintToFile(option)) then
+    fid = option%fid_out
     write(fid,*) 
     write(fid,'(a)') trim(header)
     write(fid,'("   solver:  ",a)') trim(solver%ksp_type)

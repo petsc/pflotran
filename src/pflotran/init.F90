@@ -916,22 +916,16 @@ subroutine Init(simulation)
 #endif
   if (associated(flow_solver)) then
     string = 'Flow Linear Solver:'
-    call SolverPrintLinearInfo(flow_solver,OptionPrintToScreen(option), &
-                               OptionPrintToFile(option),option%fid_out, &
-                               string)
+    call SolverPrintLinearInfo(flow_solver,string,option)
   endif    
   if (associated(tran_solver)) then
     string = 'Transport Linear Solver'
-    call SolverPrintLinearInfo(tran_solver,OptionPrintToScreen(option), &
-                               OptionPrintToFile(option),option%fid_out, &
-                               string)
+    call SolverPrintLinearInfo(tran_solver,string,option)
   endif    
 #ifdef SURFACE_FLOW
   if (associated(surf_flow_solver)) then
     string = 'Surface Flow Linear Solver:'
-    call SolverPrintLinearInfo(surf_flow_solver,OptionPrintToScreen(option), &
-                               OptionPrintToFile(option),option%fid_out, &
-                               string)
+    call SolverPrintLinearInfo(surf_flow_solver,string,option)
   endif
 #endif
 
