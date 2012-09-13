@@ -752,8 +752,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
   if (option%mycommsize > 1) then
     if (solver%ksp_type == KSPPREONLY .and. solver%pc_type == PCLU) then
       option%io_buffer = 'Direct solver (KSPPREONLY + PCLU) not ' // &
-        'not supported when running in parallel.  Switch to SOLVER ' // &
-        'ITERATIVE.'
+        ' supported when running in parallel.  Switch to SOLVER ITERATIVE.'
       call printErrMsg(option)
     endif
   endif
