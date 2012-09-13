@@ -398,7 +398,7 @@ subroutine THMCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   PetscReal :: dsg_pl, dsg_temp
   PetscReal :: dsi_pl, dsi_temp
   PetscReal :: den_ice, dden_ice_dT, dden_ice_dP
-  PetscReal :: u_ice, du_ice_dT
+  PetscReal :: u_ice, du_ice_dT, pth
  
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
@@ -433,13 +433,15 @@ subroutine THMCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
     pw = global_aux_var%pres(1)
     dpw_dp = 1.d0
   endif  
+  
+  pth = 1.d8 - 1
 
   call SaturationFunctionComputeIce(global_aux_var%pres(1), & 
                                     global_aux_var%temp(1), ice_saturation, &
                                     global_aux_var%sat(1), gas_saturation, &
                                     kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                     dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
-                                    saturation_function, option)
+                                    saturation_function, pth, option)
 
 
 !  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &

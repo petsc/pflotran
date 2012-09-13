@@ -53,7 +53,8 @@ module Saturation_Function_module
             SatFuncGetRelPermFromSat, &
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
-            SaturationFunctionComputeIce
+            SaturationFunctionComputeIce, &
+            CapillaryPressureThreshold
 
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -769,7 +770,7 @@ subroutine SaturationFunctionComputeIce(liquid_pressure, temperature, &
                                         liquid_relative_perm, dsl_pl, & 
                                         dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
                                         dsi_temp, dkr_pl, dkr_temp, &
-                                        saturation_function, option)
+                                        saturation_function, pth, option)
 
   use Option_module
  
@@ -796,6 +797,7 @@ implicit none
   PetscReal :: dfunc_A_temp
   PetscReal :: dfunc_B_pl
   PetscReal :: liq_sat_one_over_m, dkr_ds_liq, dkr_temp
+  PetscReal :: pth, dSe_pc_at_pth
   PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
   PetscReal, parameter :: heat_of_fusion = 3.34d5 !in J/kg at 273.15K
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
@@ -827,6 +829,12 @@ implicit none
         one_plus_pc_alpha_n = 1.d0 + pc_alpha_n
         Se = one_plus_pc_alpha_n**(-m)
         dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
+        if (pc >= pth) then
+          dSe_pc_at_pth = -m*n*(1.d0 + (alpha*pth)**n)**(-1.d0-m)*(alpha**n*pth**(n-1.d0))
+          Se = (pc - 1.d8)*dSe_pc_at_pth
+          dSe_pc = dSe_pc_at_pth
+        ! write (*,*) option%myrank, 'pc:', pc, 'Se:', Se, 'dSe_pc', dSe_pc 
+        endif 
         function_B = 1.d0/Se
         dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc        
       endif
@@ -904,6 +912,12 @@ implicit none
       option%io_buffer = 'Ice module only supports Mualem' 
       call printErrMsg(option)
   end select
+  
+!  write(*,*) 'rank:', option%myrank, 'sl:', liquid_saturation, &
+!  'sg:', gas_saturation, 'si:', ice_saturation, 'dsl_pl:', dsl_pl, &
+! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
+!  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
+!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp
 
 end subroutine SaturationFunctionComputeIce
 
@@ -963,6 +977,100 @@ subroutine SatFuncGetRelPermFromSat(saturation,relative_perm,dkr_Se, &
   end select
 
 end subroutine SatFuncGetRelPermFromSat
+
+! ************************************************************************** !
+!
+! CapillaryPressureThreshold: Computes the capillary pressure threshold 
+! after which instead of van Genuchten a linear function is used upto 100 Mpa
+! capillary pressure. The saturation at 100 Mpa is set to zero
+! This threshold value depends only on van Genuchten parameters alpha and lambda
+! This is used mainly for ice problem, so that the pressure doesnt go to large
+! negative values
+! author: Satish Karra
+! date: 09/12/12
+!
+! ************************************************************************** !
+
+subroutine CapillaryPressureThreshold(saturation_function,cap_threshold,option)
+
+  use Option_module
+  
+  implicit none
+  
+  PetscReal :: alpha, lambda, cap_threshold
+  type(option_type) :: option
+  type(saturation_function_type) :: saturation_function
+
+  
+  PetscReal :: gamma, p_new, res_value, jac_value, p_old
+  PetscReal, parameter :: eps = 1.d-8
+  PetscInt, parameter :: maxit = 100
+  PetscInt :: i 
+  
+  alpha = saturation_function%alpha
+  lambda = saturation_function%m
+  alpha = alpha*1.d6
+  gamma = 1.d0/(1.d0 - lambda)
+  
+  p_old = 99.d0
+  
+  
+  do i = 1, maxit
+    call ResidualCapPressThre(p_old,alpha,lambda,gamma,res_value)
+    call JacobianCapPressThre(p_old,alpha,lambda,gamma,jac_value)
+    p_new = p_old - res_value/jac_value
+    !write (*,*) 'rank:', option%myrank, 'iter:', i, 'p_new:', p_new, 'p_old:', p_old, &
+    !  'residual:', res_value, 'jacobian:', jac_value
+    if ((abs(p_new - p_old) < eps)) exit
+    p_old = p_new
+  enddo
+  
+  cap_threshold = p_old*1.d6 ! convert to Pa
+  
+end subroutine CapillaryPressureThreshold
+
+! ************************************************************************** !
+!
+! ResidualCapPressThre: Computes the residual to calculate capillary pressure
+! thresold in the subroutine CapillaryPressureThreshold
+! author: Satish Karra
+! date: 09/12/12
+!
+! ************************************************************************** !
+
+subroutine ResidualCapPressThre(p,alpha,lambda,gamma,res)
+
+  implicit none
+  
+  PetscReal :: p, alpha, lambda, gamma, res
+  
+  res = lambda*gamma*alpha**gamma*p**(gamma-1.0)*1.d2 - &
+        (alpha*p)**gamma*(1.d0 + gamma*lambda) - 1.d0
+
+end subroutine ResidualCapPressThre
+
+
+! ************************************************************************** !
+!
+! JacobianCapPressThre: Computes the jacobian to calculate capillary pressure
+! thresold in the subroutine CapillaryPressureThreshold
+! author: Satish Karra
+! date: 09/12/12
+!
+! ************************************************************************** !
+
+subroutine JacobianCapPressThre(p,alpha,lambda,gamma,jac)
+
+  implicit none
+  
+  PetscReal :: p, alpha, lambda, gamma, jac
+  
+  jac = lambda*gamma*alpha**gamma*(gamma - 1.d0)*p**(gamma - 2.d0)*1.d2 - &
+        alpha**gamma*gamma*p**(gamma - 1.d0)*(1.d0 + gamma*lambda)
+  
+ 
+end subroutine JacobianCapPressThre
+
 
 ! ************************************************************************** !
 !

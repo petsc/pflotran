@@ -510,6 +510,7 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   PetscReal :: den_ice, dden_ice_dT, dden_ice_dP
   PetscReal :: u_ice, du_ice_dT
   PetscBool :: out_of_table_flag
+  PetscReal :: p_th
   
   out_of_table_flag = PETSC_FALSE
  
@@ -527,11 +528,12 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   global_aux_var%pres = x(1)  
   global_aux_var%temp = x(2)
   
-  ! Check if the pressure is less than -100MPa
+  ! Check if the capillary pressure is less than -100MPa
   
-  if (global_aux_var%pres(1) < -1.d8) then
-    global_aux_var%pres(1) = -1.d8
+  if (global_aux_var%pres(1) - option%reference_pressure < -1.d8 + 1.d0) then
+    global_aux_var%pres(1) = -1.d8 + option%reference_pressure + 1.d0
   endif
+
  
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
   aux_var%xmol(1) = 1.d0
@@ -552,13 +554,16 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
     pw = global_aux_var%pres(1)
     dpw_dp = 1.d0
   endif  
+  
+  call CapillaryPressureThreshold(saturation_function,p_th,option)
+
 
   call SaturationFunctionComputeIce(global_aux_var%pres(1), & 
                                     global_aux_var%temp(1), ice_saturation, &
                                     global_aux_var%sat(1), gas_saturation, &
                                     kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                     dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
-                                    saturation_function, option)
+                                    saturation_function, p_th, option)
 
 
   call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
