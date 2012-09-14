@@ -1797,7 +1797,7 @@ subroutine wateos_simple(T, P, den_water_kg, den_water_kmol, dden_water_dp, &
   den_w_one_bar = a + b*(T_K - T_ref) + c*(T_K - T_ref)**(2.d0) + &
                   d*(T_K - T_ref)**(3.d0)
   den_water_kg = den_w_one_bar*(1 + alpha*(P - P_ref))
-  den_water_kmol = den_water_kg/FMWH2O     ! in Kmol
+  den_water_kmol = den_water_kg/FMWH2O     ! in mol
   
   ! Internal energy
   u_J_mol = 76.0d0*(T_K - T_ref)        ! in J/mol
