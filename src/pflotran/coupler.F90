@@ -32,6 +32,7 @@ module Coupler_module
     PetscInt, pointer :: faces_set(:)                   ! ids of the elements of array grid%faces. Include local and ghosted faces. Doesn't require additional allocation of connections. Implemented in MIMETIC mode.
     PetscInt :: numfaces_set
     type(coupler_type), pointer :: next                 ! pointer to next coupler
+    PetscBool :: allocate_aux_vars                      ! to decide if allocation of auxillary arrays needs to done
   end type coupler_type
   
   type, public :: coupler_ptr_type
@@ -94,7 +95,7 @@ function CouplerCreate1()
   nullify(coupler%connection_set)
   nullify(coupler%faces_set)
   nullify(coupler%next)
-   
+  coupler%allocate_aux_vars = PETSC_FALSE
   
   CouplerCreate1 => coupler
 
@@ -161,6 +162,7 @@ function CouplerCreateFromCoupler(coupler)
   new_coupler%itran_condition = coupler%itran_condition
   new_coupler%iregion = coupler%iregion
   new_coupler%iface = coupler%iface
+  new_coupler%allocate_aux_vars = coupler%allocate_aux_vars
 
   ! these must remain null  
   nullify(coupler%flow_condition)
@@ -235,6 +237,8 @@ subroutine CouplerRead(coupler,input,option)
         call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
         call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
+      case('DISTRIBUTED_SOURCE_SINK')
+        coupler%allocate_aux_vars = PETSC_TRUE
       case default
         option%io_buffer = 'Coupler card (' // trim(word) // ') not recognized.'
         call printErrMsg(option)        
