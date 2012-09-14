@@ -86,7 +86,7 @@ ifdef no_vapor_diffusion
   MYFLAGS += -DNO_VAPOR_DIFFUSION
 endif
 
-ifdef chuan_co2
+ifdef scco2
   MYFLAGS += -DCHUAN_CO2
 endif
 
@@ -114,7 +114,7 @@ ifdef gpu
   MYFLAGS += -DCHUNK
 endif
 
-ifdef dasvyat
+ifdef mfd
   MYFLAGS += -DDASVYAT
 endif
 
