@@ -231,9 +231,9 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
 \footnotesize
 \begin{align*}
 \varphi &\eq \text{porosity}\\
-\Psi_j &\eq \text{solute concentration for aqueous primary species } j\\
+\Psi_j &\eq \text{total solute concentration for aqueous primary species } j\\
 Q_j &\eq \text{source/sink term for aqueous primary species } j\\
-\bOmega_j &\eq \text{solute flux for $j$th primary species}; \quad
+\bOmega_j &\eq \text{total solute flux for $j$th primary species}; \quad
 \bq \eq \text{Darcy velocity} \\
 \Dbs &\eq \text{hydrodynamic dispersion} \eq\gD^\ast + \alpha_L|\bnu|\\
 \gD^\ast &\eq \text{species {\color{red} independent} coefficient of diffusion}\\
@@ -276,23 +276,10 @@ Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
 }
 
 %-----------------------------------------------------------------------------
-\frame{\frametitle{\bf Transport Boundary Conditions}
-
-\begin{itemize}
-%\item Dirichlet (e.g. specified concentration)
-%\item Neumann (e.g. specified mass flux)
-%\item Zero Gradient (e.g. outflow boundary)
-\item Closed system (no flow)
-\end{itemize}
-
-
-}
-
-%-----------------------------------------------------------------------------
 \frame{\frametitle{\bf Transport - Averaging Schemes}
-\Large
+%\Large
 \EQ\label{flux}
-\bOmega_j \eq \big(\bq - \varphi\Dbs\bnabla\big) \Psi_j
+\bOmega_j \eq \big(\bq - \varphi \Dbs\bnabla\big) \Psi_j
 \EN
 
 \bigskip
@@ -300,8 +287,18 @@ Q_m \eq \prod_j\big(\gamma_j m_j\big)^{\nu_{jm}}
 \begin{itemize}
 %\item $s$: arithmetic
 \item $\bq \Psi_j$: upwinding
-\item $\varphi D$: harmonic
-%\item $D$: harmonic
+\EQ
+\big(q\Psi_j\big)_{nn'} \eq \left\{ \begin{array}{ll}
+q_{nn'} \Psi_{jn}, & q_{nn'} > 0\\
+q_{nn'} \Psi_{jn'}, & q_{nn'} < 0\\
+\end{array}\right.
+\EN
+
+\item $\varphi D = \varphi (\a_L |q| + s \tau D^0)$: harmonic
+\BA
+\big(\varphi D\big)_{nn'} &\eq \big(\varphi \a_l\big)_{nn'} |q_{nn'}| \\ 
+&\qquad\qquad+\frac{\varphi_n\varphi_{n'} s_n s_{n'} \tau_n \tau_{n'} D_n^0D_{n'}^0 (d_n+d_{n'})}{d_{n'} \varphi_n s_n\tau_n D_n^0 + d_n \varphi_{n'} s_{n'}\tau_{n'} D_{n'}^0}
+\EA
 \end{itemize}
 }
 
