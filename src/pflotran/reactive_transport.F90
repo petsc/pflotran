@@ -2498,10 +2498,10 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   
   if (.not.patch%aux%RT%aux_vars_up_to_date) then
     if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
-      ! update:                             cells      bcs        act. coefs.
+      ! update: cells      bcs        act. coefs.
       call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
     else 
-      ! update:                             cells      bcs        act. coefs.
+      ! update: cells      bcs        act. coefs.
       call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
     endif
   endif

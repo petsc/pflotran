@@ -791,7 +791,7 @@ Additional constitutive relations are needed to close the set of governing equat
 %\subsubsection{Thermal Conductivity} 
  
 Thermal conductivity is determined from the equation (Somerton et al., 1974)  
-\EQ\label{cond} 
+\EQ\label{cond1} 
 \kappa \eq \kappa_{\rm dry} + \sqrt{s_l^{}} (\kappa_{\rm sat} - \kappa_{\rm dry}), 
 \EN 
 where $\kappa_{\rm dry}$ and $\kappa_{\rm sat}$ are dry and fully saturated rock thermal conductivities. 
@@ -1514,7 +1514,12 @@ make install
 
 \subsubsection{PETSc}
 
-The PETSc {\tt ./configure} script can be used not only to install PETSc but also MPI, HDF5, ParMetis/Metis, and various solvers such as the sparse direct solver Mumps and the Trilinos multilevel solver ML. PFLOTRAN requires the PETSc developer version petsc-dev which can be either downloaded from the PETSc web page \linebreak (http://www.mcs.anl.gov/petsc/developers/index.html), or installed using Mercurial following instructions on the PETSc developer web page. It is recommended to install PETSc using the version control system Mercurial (http://mercurial.selenic.com/wiki).
+The PETSc {\tt ./configure} script can be used not only to install PETSc but also MPI, HDF5, ParMetis/Metis, and various solvers such as the sparse direct solver Mumps and the Trilinos multilevel solver ML. PFLOTRAN requires the PETSc developer version petsc-dev which can be either downloaded from the PETSc web page 
+
+http://www.mcs.anl.gov/petsc/developers/index.html, 
+
+\noindent
+or installed using Mercurial following instructions on the PETSc developer web page. It is recommended to install PETSc using the version control system Mercurial (http://mercurial.selenic.com/wiki).
 
 Define environment variables $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the directory where the libraries for the particular architecture are stored after compiling and installing PETSc.
 
@@ -6353,7 +6358,7 @@ s_{\rm eff} \eq \left[1+\left( \alpha |P_c| \right)^n
 \EN 
 where $s_{\rm 
 eff}$ is defined by 
-\EQ\label{seff}
+\EQ\label{seff1}
 s_{\rm eff} \eq \frac{s - s_r}{1 - s_r}, 
 \EN 
 and where $s_r$ denotes the residual saturation. The quantity $n$ is related to $m$ by the expression 

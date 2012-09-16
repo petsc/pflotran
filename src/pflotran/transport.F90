@@ -120,8 +120,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
     diffusion(iphase) = disp_ave_over_dist*dabs(q) + &
-                        stp_ave_over_dist* &
-                        rt_parameter%diffusion_coefficient(iphase)
+                        stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
                         
 ! Add the effect of temperature on diffusivity, Satish Karra, 10/29/2011
 
@@ -138,8 +137,7 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,disp_up,dist_up, &
     weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
                  (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
     diffusion(iphase) = diffusion(iphase) + weight_new - &
-                        stp_ave_over_dist* &
-                        rt_parameter%diffusion_coefficient(iphase)
+                        stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
 #endif
   endif
 
