@@ -916,6 +916,8 @@ subroutine FlowConditionRead(condition,input,option)
                 call printErrMsg(option)
               endif
               sub_condition_ptr%itype = UNIT_GRADIENT_BC
+            case('distributed_rate_ss')
+              sub_condition_ptr%itype = DISTRIBUTED_RATE_SS
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -1533,6 +1535,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+            case('distributed_rate_ss')
+              sub_condition_ptr%itype = DISTRIBUTED_RATE_SS
             case default
               option%io_buffer = 'bc type "' // trim(word) // &
                                  '" not recognized in condition,type'
@@ -2807,6 +2811,8 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'scaled mass rate'
     case(SCALED_VOLUMETRIC_RATE_SS)
       string = 'scaled volumetric rate'
+    case(DISTRIBUTED_RATE_SS)
+      string = 'distributed_rate'
   end select
   100 format(6x,'Type: ',a)  
   write(option%fid_out,100) trim(string)

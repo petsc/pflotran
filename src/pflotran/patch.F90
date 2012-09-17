@@ -815,21 +815,18 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
-              coupler%allocate_aux_vars = PETSC_TRUE
 
             case(THC_MODE)
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
-              coupler%allocate_aux_vars = PETSC_TRUE
               
             case(THMC_MODE)
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
-              coupler%allocate_aux_vars = PETSC_TRUE
 
             case(MPH_MODE, IMS_MODE, FLASH2_MODE, MIS_MODE)
 !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
@@ -837,14 +834,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
-              coupler%allocate_aux_vars = PETSC_TRUE
                 
             case(G_MODE)
               allocate(coupler%flow_aux_real_var(FOUR_INTEGER,num_connections))
               allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
-              coupler%allocate_aux_vars = PETSC_TRUE
                 
             case default
           end select
@@ -856,7 +851,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
         if (associated(coupler%flow_condition%rate)) then
 
           select case(coupler%flow_condition%rate%itype)
-            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS,DISTRIBUTED_RATE_SS)
 
               select case(option%iflowmode)
                 case(RICHARDS_MODE)
@@ -865,17 +860,6 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   
               end select
           end select
-        
-          if (coupler%allocate_aux_vars) then
-            select case (option%iflowmode)
-              case(RICHARDS_MODE)
-                num_connections = coupler%region%num_cells
-                allocate(coupler%flow_aux_real_var(2,num_connections))
-                allocate(coupler%flow_aux_int_var(1,num_connections))
-                coupler%flow_aux_real_var = 0.d0
-                coupler%flow_aux_int_var = 0
-            end select
-          endif
         endif ! associated(coupler%flow_condition%rate)
       endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
     endif ! associated(coupler%connection_set)
