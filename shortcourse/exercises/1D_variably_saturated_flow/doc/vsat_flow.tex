@@ -414,7 +414,7 @@ FLOW_CONDITION recharge  \bluecomment{! named \greencomment{recharge}}
   TYPE
     FLUX neumann         \bluecomment{! type is \redcomment{neumann} for a flux}
   /
-  FLUX 3.170979d-9       \bluecomment{! Darcy velocity of 10 cm/y}
+  FLUX 10.d0 cm/y        \bluecomment{! Darcy velocity of 10 cm/y}
 END
 \end{semiverbatim}
 
@@ -767,7 +767,8 @@ END}
 \begin{frame}[fragile]\frametitle{OUTPUT}
 
 \begin{itemize}
-\item Change output times to 0.1, 0.2, 0.3 and 1 year
+\item Change output times to every 0.1 years
+\item Add output of observation data at every time step
 \end{itemize}
 
 

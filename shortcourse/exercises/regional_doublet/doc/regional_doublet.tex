@@ -613,7 +613,6 @@ END
 31536000.d0 5000.d0 0.d0 80.d0   \bluecomment{! 1 yr}
 
 \newpage
-
 FLOW_CONDITION recharge
   TYPE
     FLUX neumann
@@ -623,8 +622,7 @@ FLOW_CONDITION recharge
     DATA_UNITS cm/yr
     0.d0 25.d0  
     1.d0 23.d0
-    2.d0 27.d0
-    3.d0 22.d0
+    ...
     4.d0 24.d0
     5.d0 29.d0
   /
@@ -781,7 +779,7 @@ END
 \begin{semiverbatim}
 
 NEWTON_SOLVER FLOW
-ITOL_UPDATE 1.d0   \bluecomment{! infinity norm of update vector}
+  ITOL_UPDATE 1.d0   \bluecomment{! infinity norm of update vector}
 END
 \end{semiverbatim}
 

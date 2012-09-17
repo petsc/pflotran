@@ -134,7 +134,7 @@ FLOW_CONDITION recharge
   TYPE
     FLUX neumann
   /
-  FLUX 3.170979d-9  ! 10 cm/y
+  FLUX 10 cm/y
 END
 
 :=========================== transport conditions =============================

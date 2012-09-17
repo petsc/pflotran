@@ -962,4 +962,37 @@ END
 \end{frame}
 
 
+%-----------------------------------------------------------------------------
+\frame{
+\frametitle{\bf Scaling: $32 \times 32 \times \magentacomment{4}$ Grid $\times 12$ Species}
+
+\begin{itemize}
+\item Scalabilty study performed on 1--1024 processor cores
+\item Grid Resolution: $32 \times 32 \times \magentacomment{4}$
+\item 49K degrees of freedom total (48 dof/core \@ 1024 cores)
+\end{itemize}
+
+\begin{center}
+\includegraphics[width=2in]{./49K_runtime}
+\includegraphics[width=2in]{./49K_runtime_zoom}
+\end{center}
+}
+
+%-----------------------------------------------------------------------------
+\frame{
+\frametitle{\bf Speedup: $32 \times 32 \times \magentacomment{4}$ Grid $\times 12$ Species}
+\begin{center}
+\includegraphics[width=2in]{./49K_speedup}
+\includegraphics[width=2in]{./49K_speedup_zoom}
+\end{center}
+}
+
+%-----------------------------------------------------------------------------
+\frame{
+\frametitle{\bf Solver Iterations: $32 \times 32 \times \magentacomment{4}$ Grid $\times 12$ Species}
+\begin{center}
+\includegraphics[width=2in]{./49K_solver_iterations}
+\end{center}
+}
+
 \end{document} 

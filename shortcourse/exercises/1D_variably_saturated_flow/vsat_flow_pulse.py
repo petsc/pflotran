@@ -18,6 +18,14 @@ path.append('.')
 files = pft.get_tec_filenames(range(6))
 filenames = pft.get_full_paths(path,files)
 
+line_styles = []
+line_styles.append('-')
+line_styles.append('-')
+line_styles.append('-')
+line_styles.append('-')
+line_styles.append('-')
+line_styles.append('--')
+
 f = plt.figure(figsize=(6,6))
 plt.subplot(1,1,1)
 f.suptitle("1D Variably Saturated Flow - Pulse",fontsize=16)
@@ -30,7 +38,8 @@ plt.xlim(0.,1.)
 
 for ifile in range(len(filenames)):
   data = pft.Dataset(filenames[ifile],5,3)
-  plt.plot(data.get_array('x'),data.get_array('y'),label=data.title)
+  plt.plot(data.get_array('x'),data.get_array('y'),label=data.title, \
+           ls=line_styles[ifile])
 
 #'best'         : 0, (only implemented for axis legends)
 #'upper right'  : 1,
