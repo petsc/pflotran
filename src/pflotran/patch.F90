@@ -932,10 +932,8 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   
   !geh: no need to update initial conditions as they only need updating
   !     once as performed in PatchInitCouplerAuxVars()
-  write(*,*),'BC'
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
-  write(*,*),'Source/Sinks'
   call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
                                  force_update_flag,option)
 
@@ -983,15 +981,12 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
-  write(*,*),'In PatchUpdateCouplerAuxVars: >>>> '
   
   do
     if (.not.associated(coupler)) exit
-    write(*,*),'associated(coupler)'
     
     ! FLOW
     if (associated(coupler%flow_aux_real_var)) then
-    write(*,*),'associated(flow_aux_real_var)'
 
       num_connections = coupler%connection_set%num_connections
 #ifdef DASVYAT      
@@ -1271,7 +1266,6 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             endif
   
           case(RICHARDS_MODE) ! Richards mode, added by Satish Karra, 10/11/11
-            write(*,*),'In PatchUpdateCouplerAuxVars: >>>> '
             if (associated(flow_condition%pressure)) then
               select case(flow_condition%pressure%itype)
                 case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
