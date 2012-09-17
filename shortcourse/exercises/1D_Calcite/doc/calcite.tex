@@ -77,7 +77,7 @@
 \def\potassium{K$^+$}
 \def\uranium{UO$_2^{2+}$}
 \def\hion{H$^+$}
-\def\hydroxide{0H$^-$}
+\def\hydroxide{OH$^-$}
 \def\bicarbonate{HCO$_3^-$}
 \def\carbonate{CO$_3^{2-}$}
 \def\cotwo{CO$_2$(aq)}
@@ -144,7 +144,7 @@ The ``1D Calcite Scenario'' simulates solute transport (without flow) along a ho
 \Large
 
 \EQ\label{trans}
-\frac{\p}{\p t} \left(\varphi s \Psi_j + \Psi_{S,j}\right) + \bnabla\cdot\bOmega_j \eq
+\frac{\p}{\p t} \left(\varphi s \Psi_j\right) + \bnabla\cdot\bOmega_j \eq
 \gR\left(c_1,c_2,\ldots,c_n\right)
 \EN
 
@@ -466,7 +466,7 @@ END
 \begin{frame}[fragile]\frametitle{INITIAL\_CONDITION}
 
 \begin{itemize}
-\item Couple the greencomment{initial} transport condition with region \greencomment{all} for the initial condition
+\item Couple the \greencomment{initial} transport condition with region \greencomment{all} for the initial condition
 \end{itemize}
 
 \begin{semiverbatim}
@@ -590,7 +590,7 @@ END                       \bluecomment{! converted to SI}
 
 \begin{semiverbatim}
 
-UNIFORM_VELOCITY 3.170979d-8 0.d0 0.d0  \bluecomment{! SI units [m/s]}
+UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr  \bluecomment{! 1 m/yr Darcy}
 \end{semiverbatim}
 
 \end{frame}
@@ -706,7 +706,7 @@ FLOW_CONDITION inlet      \bluecomment{! named \greencomment{inlet}}
   TYPE
     FLUX neumann          \bluecomment{! type is \redcomment{neumann} for a flux}
   /
-  FLUX 3.170979d-8        \bluecomment{! Darcy velocity of 1 m/y}
+  FLUX 1.d0 m/yr          \bluecomment{! Darcy velocity of 1 m/y}
 END
 \end{semiverbatim}
 
