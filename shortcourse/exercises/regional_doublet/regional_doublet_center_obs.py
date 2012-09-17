@@ -26,7 +26,7 @@ plt.xlabel('Time [y]')
 plt.ylabel('Concentration [M]')
 
 #plt.xlim(0.,1.)
-plt.ylim(0.,1.2)
+plt.ylim(0.,1.3)
 #plt.grid(True)
 
 icols = [4,11]
