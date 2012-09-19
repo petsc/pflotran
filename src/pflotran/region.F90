@@ -284,6 +284,17 @@ function RegionCreateWithRegion(region)
                size(region%sideset%face_vertices,2)))
     new_region%sideset%face_vertices = region%sideset%face_vertices
   endif
+  if (associated(region%explicit_faceset)) then
+    new_region%explicit_faceset => RegionCreateExplicitFaceSet()
+    allocate(new_region%explicit_faceset%face_centroids( &
+               size(region%explicit_faceset%face_centroids)))
+    new_region%explicit_faceset%face_centroids = &
+      region%explicit_faceset%face_centroids
+    allocate(new_region%explicit_faceset%face_areas( &
+               size(region%explicit_faceset%face_areas)))
+    new_region%explicit_faceset%face_areas = &
+      region%explicit_faceset%face_areas
+  endif
   if (associated(region%polygonal_volume)) then
     new_region%polygonal_volume => GeometryCreatePolygonalVolume()
     if (associated(region%polygonal_volume%xy_coordinates)) then

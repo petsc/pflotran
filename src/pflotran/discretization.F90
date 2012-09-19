@@ -721,6 +721,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%structured_grid%ngmax
     case(UNSTRUCTURED_GRID)
+      discretization%grid%nmax = discretization%grid%unstructured_grid%nmax
       discretization%grid%nlmax = discretization%grid%unstructured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%unstructured_grid%ngmax
   end select
