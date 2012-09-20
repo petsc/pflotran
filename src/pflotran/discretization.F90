@@ -673,6 +673,11 @@ subroutine DiscretizationCreateDMs(discretization,option)
         case(IMPLICIT_UNSTRUCTURED_GRID)
           call UGridDecompose(discretization%grid%unstructured_grid, &
                               option)
+          if(discretization%lsm_flux_method) then
+            call UGridGrowStencilSupport(discretization%grid%unstructured_grid, &
+                                         discretization%stencil_width, &
+                                         option)
+          endif
         case(EXPLICIT_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
           call ExplicitUGridDecompose(ugrid%explicit_grid, &

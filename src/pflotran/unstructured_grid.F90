@@ -47,6 +47,7 @@ module Unstructured_Grid_module
             UGridGetCellsInRectangle, &
             UGridEnsureRightHandRule, &
             UGridMapSideSet, &
+            UGridGrowStencilSupport, &
             UGridMapBoundFacesInPolVol
 
 contains
@@ -2087,6 +2088,16 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecDestroy(elements_petsc,ierr)
     
 #if UGRID_DEBUG
+  write(string,*) option%myrank
+  if (unstructured_grid%grid_type == THREE_DIM_GRID) then
+    string = 'elements_local' // trim(adjustl(string)) // '_subsurf.out'
+  else
+    string = 'elements_local' // trim(adjustl(string)) // '_surf.out'
+  endif
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+  call VecView(elements_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
   call printMsg(option,'Scatter/gathering local ghosted vertices')
 #endif
 
@@ -2368,7 +2379,7 @@ subroutine UGridDecompose(unstructured_grid,option)
       call printErrMsg(option)
   end select
         
-  unstructured_grid%global_offset = global_offset_new  
+  unstructured_grid%global_offset = global_offset_new
 
 end subroutine UGridDecompose
 
@@ -2525,7 +2536,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           vertex_id = face_to_vertex(ivertex,face_id) ! face_to_vertex is 1-based indexing
           vertex_found = PETSC_FALSE
           do ivertex2 = 1, unstructured_grid%cell_vertices(0,cell_id2)
-            vertex_id2 = unstructured_grid%cell_vertices(ivertex2,cell_id2) 
+            vertex_id2 = unstructured_grid%cell_vertices(ivertex2,cell_id2)
             if (vertex_id == vertex_id2) then
               vertex_found = PETSC_TRUE
               exit
@@ -3409,7 +3420,6 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
     do iface = 1, num_faces
       face_type = UCellGetFaceType(cell_type,iface,option)
       call UCellGetFaceVertices(option,cell_type,iface,face_vertex_ids)
-
       ! Need to find distance of a point (centroid) from a line (formed by
       ! joining vertices of a line)
       point1 = &
@@ -3428,7 +3438,8 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
       endif
 
       call UCellComputePlane(plane1,point1,point2,point3)
-      distance = UCellComputeDistanceFromPlane(plane1,point) 
+      distance = UCellComputeDistanceFromPlane(plane1,point)
+
       if (distance > 0.d0) then
         ! need to swap so that distance is negative (point lies below plane)
 #ifndef GB_DEBUG
@@ -3772,6 +3783,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
         boundary_faces(boundary_face_count) = face_id
         call UCellGetNFaceVertsandVerts(option,cell_type,iface,nvertices, &
                                         int_array4)
+        
         ! For this matrix:
         !   irow = local face id
         !   icol = natural (global) vertex id
@@ -3989,7 +4001,7 @@ end subroutine UGridMapSideSet
 ! ************************************************************************** !
 !
 ! UGridMapBoundFacesInPolVol: Maps all global boundary cell faces within a 
-          !                   polygonal volume to a region
+!                             polygonal volume to a region
 ! author: Glenn Hammond
 ! date: 12/16/11
 !
@@ -4159,5 +4171,1038 @@ subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
   endif
   
 end subroutine UGridGetBoundaryFaces
+
+! ************************************************************************** !
+!> This routine will update the mesh to accomodate larger stencil width.
+!!  -1) Stencil support will be increased by one cell at a time.
+!!  -2) Find updated list of local+ghost cells (Note: Only the list of
+!!    ghost cells get updated).
+!!  -3) Find the 'new' ghost cells from the updated list found in (2)
+!!  -4) Lastly update the mesh
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/17/12
+! ************************************************************************** !
+subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width,option)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+  PetscInt :: stencil_width
+  
+  Mat :: Mat_vert_to_cell  !
+  Mat :: Mat_vert_to_proc  !
+  Mat :: Mat_proc_to_vert  !
+  
+  PetscInt :: offset
+  PetscInt :: local_id,ghosted_id
+  PetscInt :: ivertex
+  PetscInt :: cell_type
+  PetscInt :: nvertices
+  PetscInt :: vertex_id_local
+  PetscInt :: vertex_id_nat
+  PetscInt :: ngmax_new
+  PetscInt :: swidth
+
+  PetscInt, pointer               :: ia_p(:), ja_p(:)
+  PetscInt                        :: nrow,rstart,rend,icol(1)
+  PetscOffset                     :: iia,jja,aaa,iicol,jj
+  PetscBool                       :: done
+  PetscScalar                     :: aa(1)
+
+  PetscReal, allocatable :: real_arrayV(:)
+  PetscInt, allocatable :: int_arrayV(:)
+  PetscInt, allocatable :: cell_ids_natural(:)
+  PetscInt, allocatable :: cell_ids_petsc(:)
+  PetscInt, allocatable :: int_array(:)
+  PetscInt, allocatable :: cids_new(:)
+  
+  Vec :: Vec_cids_local
+  !Vec :: cids_porder
+  PetscReal, pointer :: vec_ptr(:)
+
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+
+  IS :: is_from
+  IS :: is_to
+  
+  VecScatter :: vec_scatter
+
+  PetscInt :: nghost_new
+  PetscInt,allocatable :: ghost_cids_new(:)
+  PetscInt,allocatable :: ghost_cids_new_petsc(:)
+
+  ! There are no ghost cells when running with a single processor, so get out
+  ! of here
+  if(option%mycommsize==1) return
+  
+  allocate(real_arrayV(unstructured_grid%max_nvert_per_cell))
+  allocate(int_arrayV(unstructured_grid%max_nvert_per_cell))
+  real_arrayV=1.d0
+
+  ! Allocate memory for a matrix to saves mesh connectivity
+  ! size(Mat_vert_to_cell) = global_num_cell x global_num_vertices
+#ifdef MATCREATE_OLD
+  call MatCreateMPIAIJ(option%mycomm, &
+#else
+  call MatCreateAIJ(option%mycomm, &
+#endif
+                    unstructured_grid%nlmax, &
+                    PETSC_DETERMINE, &
+                    PETSC_DETERMINE, &
+                    unstructured_grid%num_vertices_global, &
+                    unstructured_grid%max_nvert_per_cell, &
+                    PETSC_NULL_INTEGER, &
+                    unstructured_grid%max_nvert_per_cell, &
+                    PETSC_NULL_INTEGER, &
+                    Mat_vert_to_cell, &
+                    ierr)
+
+  call MatZeroEntries(Mat_vert_to_cell,ierr)
+
+  offset=0
+  call MPI_Exscan(unstructured_grid%nlmax,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  ! Create the mesh connectivity matrix
+  do local_id=1,unstructured_grid%nlmax
+    cell_type = unstructured_grid%cell_type(local_id)
+    nvertices=UCellGetNVertices(cell_type,option)
+    do ivertex=1,nvertices
+      vertex_id_local=unstructured_grid%cell_vertices(ivertex,local_id)
+      vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
+      int_arrayV(ivertex)=vertex_id_nat-1
+    enddo
+    call MatSetValues(Mat_vert_to_cell,1,local_id-1+offset, &
+                      nvertices,int_arrayV,real_arrayV, &
+                      INSERT_VALUES,ierr)
+  enddo
+
+  call MatAssemblyBegin(Mat_vert_to_cell,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(Mat_vert_to_cell,MAT_FINAL_ASSEMBLY,ierr)
+  
+  ! Create a vector which has natural cell ids in PETSc order
+  call VecCreateMPI(option%mycomm,unstructured_grid%nlmax, &
+                    PETSC_DETERMINE, &
+                    Vec_cids_local,ierr)
+
+  call VecGetArrayF90(Vec_cids_local,vec_ptr,ierr)
+  do local_id = 1,unstructured_grid%nlmax
+    vec_ptr(local_id) = unstructured_grid%cell_ids_natural(local_id)
+  enddo
+  call VecRestoreArrayF90(Vec_cids_local,vec_ptr,ierr)
+
+  ! Now begin expanding stencil support
+  do swidth = 1,stencil_width
+
+    ! Create a matrix that saves natural id of vertices present on each
+    ! processor
+#ifdef MATCREATE_OLD
+    call MatCreateMPIAIJ(option%mycomm, &
+#else
+    call MatCreateAIJ(option%mycomm, &
+#endif
+                      1, &
+                      PETSC_DETERMINE, &
+                      PETSC_DETERMINE, &
+                      unstructured_grid%num_vertices_global, &
+                      unstructured_grid%num_vertices_global, &
+                      PETSC_NULL_INTEGER, &
+                      unstructured_grid%num_vertices_global, &
+                      PETSC_NULL_INTEGER, &
+                      Mat_vert_to_proc, &
+                      ierr)
+
+    call MatZeroEntries(Mat_vert_to_proc,ierr)
+
+    if(swidth==1) then
+      ! When the stencil width counter = 1, loop over only local cells present
+      do local_id=1,unstructured_grid%nlmax
+        cell_type = unstructured_grid%cell_type(local_id)
+        nvertices=UCellGetNVertices(cell_type,option)
+        do ivertex=1,nvertices
+          vertex_id_local=unstructured_grid%cell_vertices(ivertex,local_id)
+          vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
+          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES,ierr)
+        enddo
+      enddo
+    else
+      ! When the stencil width counter is > 1, loop over ghosted cells
+      do ghosted_id=1,unstructured_grid%ngmax
+        cell_type = unstructured_grid%cell_type(ghosted_id)
+        nvertices=UCellGetNVertices(cell_type,option)
+        do ivertex=1,nvertices
+          vertex_id_local=unstructured_grid%cell_vertices(ivertex,ghosted_id)
+          vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_local)
+          call MatSetValues(Mat_vert_to_proc,1,option%myrank,1,vertex_id_nat-1,1.d0,INSERT_VALUES,ierr)
+        enddo
+      enddo
+    endif
+
+    ! Assemble the matrix
+    call MatAssemblyBegin(Mat_vert_to_proc,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(Mat_vert_to_proc,MAT_FINAL_ASSEMBLY,ierr)
+
+    ! Transpose the matrix
+    call MatTranspose(Mat_vert_to_proc,MAT_INITIAL_MATRIX, &
+                      Mat_proc_to_vert,ierr)
+    call MatDestroy(Mat_vert_to_proc,ierr)
+
+    ! Find the number and natural ids of cells (local+ghost) when stencil width
+    ! is increased by one.
+    call UGridFindCellIDsAfterGrowingStencilWidthByOne( &
+                                    Mat_vert_to_cell, &
+                                    Mat_proc_to_vert, &
+                                    Vec_cids_local, &
+                                    cids_new, &
+                                    ngmax_new, &
+                                    option)
+
+    ! Find additional ghost cells
+    call UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid,&
+                      cids_new, &
+                      ngmax_new, &
+                      ghost_cids_new, &
+                      ghost_cids_new_petsc, &
+                      nghost_new, &
+                      option)
+                                          
+    ! Update the mesh by adding the new ghost cells
+    if (nghost_new>0) then
+      call UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid,&
+            ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
+    endif
+
+    ! Free up the memory
+    call MatDestroy(Mat_vert_to_proc,ierr)
+    call MatDestroy(Mat_proc_to_vert,ierr)
+    deallocate(ghost_cids_new)
+    deallocate(ghost_cids_new_petsc)
+    deallocate(cids_new)
+
+  enddo
+
+  call MatDestroy(Mat_vert_to_cell,ierr)
+  call VecDestroy(Vec_cids_local,ierr)
+
+end subroutine UGridGrowStencilSupport
+
+! ************************************************************************** !
+!> This routine finds the cells that are required on a given processor, if
+!! stencil width is increased by one.
+!!  - It used the same algorithm used in UGridMapSidesets, but instead of a
+!!    matrix-vector product, matrix-matrix product is used in this subroutine.
+!!  - Returns a list of natural ids of all cells (local+ghost)
+!!
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/17/12
+! ************************************************************************** !
+subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
+                                      Mat_proc_to_vert, &
+                                      Vec_cids_local, &
+                                      cids_new, &
+                                      ngmax_new, &
+                                      option)
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(option_type) :: option
+  Mat :: Mat_vert_to_cell
+  Vec :: Vec_cids_local
+  !PetscInt, intent(out) :: ngmax_new
+  PetscInt :: ngmax_new
+  
+  Mat :: Mat_proc_to_vert  !
+  Mat :: Mat_cell_to_proc  !
+  Mat :: Mat_proc_to_cell  !
+  Mat :: Mat_cell_to_proc_loc
+  
+  PetscInt :: offset
+  PetscInt :: local_id
+  PetscInt :: ivertex
+  PetscInt :: cell_type
+  PetscInt :: nvertices
+  PetscInt :: vertex_id_local
+  PetscInt :: vertex_id_nat
+
+  PetscInt, pointer               :: ia_p(:), ja_p(:)
+  PetscInt                        :: nrow,rstart,rend,icol(1)
+  PetscOffset                     :: iia,jja,aaa,iicol,jj
+  PetscBool                       :: done
+  PetscScalar                     :: aa(1)
+
+  PetscReal, allocatable :: real_arrayV(:)
+  PetscInt, allocatable :: int_arrayV(:)
+  PetscInt, allocatable :: cell_ids_natural(:)
+  PetscInt, allocatable :: cell_ids_petsc(:)
+  PetscInt, allocatable :: int_array(:)
+  PetscInt, allocatable :: cids_new(:)
+  
+  Vec :: Vec_cids_ghosted
+  PetscReal, pointer :: vec_ptr(:)
+
+  PetscErrorCode :: ierr
+
+  IS :: is_from
+  IS :: is_to
+
+  VecScatter :: vec_scatter
+  
+  ! Perform a matrix-matrix multiplication
+  call MatMatMult(Mat_vert_to_cell,Mat_proc_to_vert, &
+                    MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,Mat_proc_to_cell,ierr)
+
+  ! Transpose of the result gives: cell ids that are needed after growing stencil
+  ! width by one
+  call MatTranspose(Mat_proc_to_cell,MAT_INITIAL_MATRIX, &
+                    Mat_cell_to_proc,ierr)
+  call MatDestroy(Mat_proc_to_cell,ierr)
+
+  if(option%mycommsize > 1) then
+    ! From the MPI-Matrix get the local-matrix
+    call MatMPIAIJGetLocalMat(Mat_cell_to_proc,MAT_INITIAL_MATRIX,Mat_cell_to_proc_loc,ierr)
+    ! Get i and j indices of the local-matrix
+    call MatGetRowIJF90(Mat_cell_to_proc_loc, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
+                        nrow, ia_p, ja_p, done, ierr)
+    ! Get values stored in the local-matrix
+#ifdef HAVE_PETSC_API_3_3      
+    call MatGetArray(Mat_cell_to_proc_loc, aa, aaa, ierr)
+#else
+    call MatSeqAIJGetArray(Mat_cell_to_proc_loc, aa, aaa, ierr)
+#endif
+  else
+    ! Get i and j indices of the local-matrix
+    call MatGetRowIJF90(Mat_cell_to_proc, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
+                        nrow, ia_p, ja_p, done, ierr)
+    ! Get values stored in the local-matrix
+#ifdef HAVE_PETSC_API_3_3      
+    call MatGetArray(Mat_cell_to_proc, aa, aaa, ierr)
+#else
+    call MatSeqAIJGetArray(Mat_cell_to_proc, aa, aaa, ierr)
+#endif
+  endif
+
+  ! Obtain the PETSc index of all cells required.
+  ! Note: We get PETSc index because the rows of Mat_vert_to_cell correspond to
+  !       PETSc index of cells.
+  ngmax_new = ia_p(2)-ia_p(1)
+  allocate(cell_ids_petsc(ngmax_new))
+  do jj=ia_p(1),ia_p(2)-1
+    cell_ids_petsc(jj)=ja_p(jj)
+  enddo
+
+  ! Now, find natural ids of all cells required from PETSc index. This is done
+  ! by scattering the 'Vec_cids_local'
+  
+  ! Create MPI vector to save natural ids of cells required
+  call VecCreateMPI(option%mycomm,ngmax_new,PETSC_DETERMINE,Vec_cids_ghosted,ierr)
+
+  offset=0
+  call MPI_Exscan(ngmax_new,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(int_array(ngmax_new))
+  do jj=1,ngmax_new
+    int_array(jj)=jj+offset
+  enddo
+  int_array=int_array-1
+  
+  ! Create a index set to scatter to
+  call ISCreateGeneral(option%mycomm,ngmax_new, &
+                       int_array,PETSC_COPY_VALUES,is_to,ierr)
+  deallocate(int_array)
+
+  ! Create a index set to scatter from
+  cell_ids_petsc = cell_ids_petsc - 1
+  call ISCreateGeneral(option%mycomm,ngmax_new, &
+                       cell_ids_petsc,PETSC_COPY_VALUES,is_from,ierr)
+  cell_ids_petsc = cell_ids_petsc + 1
+
+  ! Create a vec-scatter contex
+  call VecScatterCreate(Vec_cids_local,is_from,Vec_cids_ghosted,is_to, &
+                        vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  ! Scatter the data
+  call VecScatterBegin(vec_scatter,Vec_cids_local,Vec_cids_ghosted, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,Vec_cids_local,Vec_cids_ghosted, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+
+  ! Save the natural ids of all cells required after growning the stencil
+  ! width by one.
+  allocate(cids_new(ngmax_new))
+  call VecGetArrayF90(Vec_cids_ghosted,vec_ptr,ierr)
+  do jj=1,ngmax_new
+    cids_new(jj) = vec_ptr(jj)
+  enddo
+  call VecRestoreArrayF90(Vec_cids_ghosted,vec_ptr,ierr)
+  
+  call MatDestroy(Mat_cell_to_proc,ierr)
+  call MatDestroy(Mat_cell_to_proc_loc,ierr)
+  call VecDestroy(Vec_cids_ghosted,ierr)
+
+end subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne
+
+! ************************************************************************** !
+!> This routine finds new ghosts cells needed to be saved on a local processor
+!! after stencil width is increased.
+!!  - Returns the natural index of new ghosts cells.
+!!  - Also, returns the PETSc index of new ghosts cells. (Required for creating
+!!    gather/scater contexts in UGridCreateUGDM)
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/17/12
+! ************************************************************************** !
+subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
+                      cids_new, &
+                      ngmax_new, &
+                      ghost_cids_new, &
+                      ghost_cids_new_petsc, &
+                      nghost_new, &
+                      option)
+              
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  PetscInt :: cids_new(:)
+  type(option_type) :: option
+  PetscInt :: ngmax_new
+
+  ! local
+  PetscInt :: count
+  PetscInt :: ii
+  PetscInt :: ghosted_id,local_id,nat_id
+  PetscInt :: nghost_new
+  PetscInt :: offset
+  PetscInt,allocatable :: ghost_cids_new(:)
+  PetscInt,allocatable :: ghost_cids_new_petsc(:)
+  
+  PetscInt,allocatable :: int_array1(:)
+  PetscInt,allocatable :: int_array2(:)
+  PetscScalar,pointer  :: tmp_scl_array(:)
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  Vec :: cids_petsc
+  Vec :: ghosts_petsc
+  Vec :: cells_on_proc
+  Vec :: cids_on_proc
+  IS  :: is_from
+  IS  :: is_to
+  VecScatter :: vec_scatter
+
+  ! Step-1: Find additional ghost cells
+
+  ! 1.0) Find which cells in 'cids_new' are local or ghost
+  call VecCreateMPI(option%mycomm,unstructured_grid%nlmax,PETSC_DETERMINE,cells_on_proc,ierr)
+  
+  allocate(int_array1(unstructured_grid%nlmax))
+  allocate(tmp_scl_array(unstructured_grid%nlmax))
+  do ii=1,unstructured_grid%nlmax
+    int_array1(ii)=unstructured_grid%cell_ids_natural(ii)
+    tmp_scl_array(ii)=option%myrank
+  enddo
+  int_array1=int_array1-1
+  
+  call VecSetValues(cells_on_proc,unstructured_grid%nlmax,int_array1,tmp_scl_array,INSERT_VALUES,ierr)
+  deallocate(int_array1)
+  deallocate(tmp_scl_array)
+  call VecAssemblyBegin(cells_on_proc,ierr)
+  call VecAssemblyEnd(cells_on_proc,ierr)
+  
+  allocate(int_array1(ngmax_new))
+  int_array1=cids_new-1.d0
+  call ISCreateGeneral(option%mycomm,ngmax_new, &
+                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+  deallocate(int_array1)
+  
+  call VecCreateMPI(option%mycomm,ngmax_new,PETSC_DETERMINE,cids_on_proc,ierr)
+
+  offset=0
+  call MPI_Exscan(ngmax_new,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(int_array1(ngmax_new))
+  do ii=1,ngmax_new
+    int_array1(ii)=ii-1+offset
+  enddo
+  call ISCreateGeneral(option%mycomm,ngmax_new, &
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+
+  call VecScatterCreate(cells_on_proc,is_from,cids_on_proc,is_to,vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  call VecScatterBegin(vec_scatter,cells_on_proc,cids_on_proc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,cells_on_proc,cids_on_proc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+  call VecDestroy(cells_on_proc,ierr)
+  
+  deallocate(int_array1)
+
+  
+  ! 1.1) Create an array containing cell-ids of 'exisiting' ghost cells + 
+  !      ghost cells from 'cids_new'
+  !
+  count = ngmax_new-unstructured_grid%nlmax + &
+          unstructured_grid%ngmax - unstructured_grid%nlmax
+  allocate(int_array1(count))
+  allocate(int_array2(count))
+
+  count=0
+  do ii=1,unstructured_grid%ngmax-unstructured_grid%nlmax
+    count=count+1
+    ghosted_id=ii+unstructured_grid%nlmax
+    int_array1(count)=unstructured_grid%cell_ids_natural(ghosted_id)
+    int_array2(count)=count
+  enddo
+  
+  call VecGetArrayF90(cids_on_proc,vec_ptr,ierr)
+  do ii=1,ngmax_new
+    if(vec_ptr(ii)/=option%myrank) then
+      count=count+1
+      int_array1(count)=cids_new(ii)
+      int_array2(count)=count
+    endif
+  enddo
+  call VecRestoreArrayF90(cids_on_proc,vec_ptr,ierr)
+  call VecDestroy(cids_on_proc,ierr)
+
+  ! 1.2) Sort the array
+  int_array2 = int_array2-1
+  call PetscSortIntWithPermutation(count,int_array1, &
+                                   int_array2,ierr)
+  int_array2 = int_array2+1
+
+  ! 1.3) Count the entries in the sorted array which appear only once.
+  nghost_new=0
+  ii=1
+  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) nghost_new=nghost_new+1
+  
+  do ii=2,count-1
+    if((int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))).and. &
+       (int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) ) nghost_new=nghost_new+1
+  enddo
+
+  ii=count
+  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))) nghost_new=nghost_new+1
+  
+  ! 1.4) Save the entries in the sorted array which appear only once.
+  allocate(ghost_cids_new(nghost_new))
+  nghost_new=0
+  ii=1
+  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) then
+    nghost_new=nghost_new+1
+    ghost_cids_new(nghost_new) = int_array1(int_array2(ii))
+  endif
+  
+  do ii=2,count-1
+    if((int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))).and. &
+       (int_array1(int_array2(ii)) /= int_array1(int_array2(ii+1))) ) then
+      nghost_new=nghost_new+1
+      ghost_cids_new(nghost_new) = int_array1(int_array2(ii))
+    endif
+  enddo
+
+  ii=count
+  if(int_array1(int_array2(ii)) /= int_array1(int_array2(ii-1))) then
+    nghost_new=nghost_new+1
+    ghost_cids_new(nghost_new) = int_array1(int_array2(ii))
+  endif
+  
+  deallocate(int_array1)
+  deallocate(int_array2)
+
+  ! Step-2: Find PETSc index of additional ghost cells
+  call VecCreateMPI(option%mycomm, &
+                    unstructured_grid%nlmax, &
+                    PETSC_DETERMINE, &
+                    cids_petsc,ierr)
+  
+  offset=0
+  call MPI_Exscan(unstructured_grid%nlmax,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(int_array1(unstructured_grid%nlmax))
+  allocate(tmp_scl_array(unstructured_grid%nlmax))
+  
+  do local_id=1,unstructured_grid%nlmax
+    nat_id=unstructured_grid%cell_ids_natural(local_id)
+    int_array1(local_id)=nat_id - 1
+    tmp_scl_array(local_id)=local_id+offset+0.d0
+  enddo
+  
+  call VecSetValues(cids_petsc,unstructured_grid%nlmax,int_array1,tmp_scl_array,INSERT_VALUES,ierr)
+  deallocate(int_array1)
+  deallocate(tmp_scl_array)
+  
+  call VecAssemblyBegin(cids_petsc,ierr)
+  call VecAssemblyEnd(cids_petsc,ierr)
+
+  call VecCreateMPI(option%mycomm,nghost_new,PETSC_DETERMINE,ghosts_petsc,ierr)
+  allocate(int_array1(nghost_new))
+
+  int_array1=ghost_cids_new-1.d0
+  call ISCreateGeneral(option%mycomm,nghost_new, &
+                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+
+  offset=0
+  call MPI_Exscan(nghost_new,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  do ii=1,nghost_new
+    int_array1(ii)=ii-1+offset
+  enddo
+  call ISCreateGeneral(option%mycomm,nghost_new, &
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+  deallocate(int_array1)
+  
+  call VecScatterCreate(cids_petsc,is_from,ghosts_petsc,is_to,vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  call VecScatterBegin(vec_scatter,cids_petsc,ghosts_petsc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,cids_petsc,ghosts_petsc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+  
+  allocate(ghost_cids_new_petsc(nghost_new))
+  call VecGetArrayF90(ghosts_petsc,vec_ptr,ierr)
+  do ii=1,nghost_new
+    ghost_cids_new_petsc(ii)=vec_ptr(ii)
+  enddo
+  call VecRestoreArrayF90(ghosts_petsc,vec_ptr,ierr)
+
+  call VecDestroy(cids_petsc,ierr)
+  call VecDestroy(ghosts_petsc,ierr)
+
+end subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth
+
+! ************************************************************************** !
+!> This routine updates the mesh after additional ghost cells have be found
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 09/17/12
+! ************************************************************************** !
+subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
+              ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
+
+
+  use Option_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+  PetscInt :: ngmax_new
+
+  ! local
+  PetscInt :: count,count2
+  PetscInt :: ii,jj
+  PetscInt :: ivertex
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: nghost_new
+  PetscInt :: vertex_id_nat
+  PetscInt :: vertex_id_loc
+  PetscInt :: offset
+  PetscInt :: nverts
+  PetscInt  :: nverts_new
+  PetscInt :: cell_type
+  PetscInt :: nvertices
+    
+  PetscReal, pointer :: vec_ptr(:)
+  PetscViewer :: viewer
+
+  PetscErrorCode :: ierr
+  
+  Vec :: elements_petsc
+  Vec :: elements_ghost_cells
+!  Vec :: cids_nat
+!  Vec :: cids_nat2petsc
+!  Vec :: needed_ghosts_cids_petsc
+  Vec :: vertices_nat
+  Vec :: vertices_loc
+  
+  IS :: is_from
+  IS :: is_to
+  VecScatter :: vec_scatter
+  PetscInt,allocatable :: ghost_cids_new(:)
+  PetscInt,allocatable :: ghost_cids_new_petsc(:)
+  PetscInt,allocatable :: int_array1(:)
+  PetscInt,allocatable :: int_array2(:)
+  PetscInt,allocatable :: int_array3(:)
+  PetscInt,allocatable :: int_array4(:)
+  
+  PetscInt,allocatable :: cell_vertices(:,:)
+  PetscInt,allocatable :: cell_ids_natural(:)
+  PetscInt,allocatable :: ghost_cell_ids_petsc(:)
+
+  PetscScalar,pointer  :: tmp_scl_array(:)
+  
+  ! Step-1: Find the natural ids for vertices forming new ghost cells
+  
+  ! Create a vector listing the vertices forming each cell in PETSc-order
+  call VecCreateMPI(option%mycomm, &
+                    unstructured_grid%nlmax*unstructured_grid%max_nvert_per_cell, &
+                    PETSC_DETERMINE, &
+                    elements_petsc,ierr)
+
+  call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
+  vec_ptr = -9999
+  do local_id=1,unstructured_grid%nlmax
+    do ivertex = 1, unstructured_grid%cell_vertices(0,local_id)
+      vertex_id_loc=unstructured_grid%cell_vertices(ivertex,local_id)
+      vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_loc)
+      vec_ptr((local_id-1)*unstructured_grid%max_nvert_per_cell+ivertex)=vertex_id_nat
+    enddo
+  enddo
+  call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+
+  offset=0
+  call MPI_Exscan(nghost_new,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(int_array1(nghost_new*unstructured_grid%max_nvert_per_cell))
+  
+  do ii=1,nghost_new
+    do jj=1,unstructured_grid%max_nvert_per_cell
+      int_array1((ii-1)*unstructured_grid%max_nvert_per_cell + jj) = &
+        (ghost_cids_new_petsc(ii)-1)*unstructured_grid%max_nvert_per_cell + jj-1
+    enddo
+  enddo
+
+  call ISCreateGeneral(option%mycomm,nghost_new*unstructured_grid%max_nvert_per_cell, &
+                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+  deallocate(int_array1)
+
+  call VecCreateMPI(option%mycomm, &
+                    nghost_new*unstructured_grid%max_nvert_per_cell, &
+                    PETSC_DETERMINE, &
+                    elements_ghost_cells,ierr)
+  
+  allocate(int_array1(nghost_new*unstructured_grid%max_nvert_per_cell))
+  do ii=1,nghost_new
+    do jj=1,unstructured_grid%max_nvert_per_cell
+      int_array1((ii-1)*unstructured_grid%max_nvert_per_cell + jj) = &
+        (ii-1)*unstructured_grid%max_nvert_per_cell + jj-1 + &
+        offset*unstructured_grid%max_nvert_per_cell
+    enddo
+  enddo
+  call ISCreateGeneral(option%mycomm,nghost_new*unstructured_grid%max_nvert_per_cell, &
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+
+  deallocate(int_array1)
+  
+  call VecScatterCreate(elements_petsc,is_from,elements_ghost_cells,is_to,vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  call VecScatterBegin(vec_scatter,elements_petsc,elements_ghost_cells, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,elements_petsc,elements_ghost_cells, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+
+  ! Step-2: Given already existing vertices + vertices of new ghost
+  !         cells, find additional vertices that need to be now saved.
+  !         Once, the new vertices are found, all vertices will be reorder
+  !
+  ! Note: Algorithm is similar to the one used in UGridDecompose
+  
+  allocate(int_array1((unstructured_grid%ngmax+nghost_new)*unstructured_grid%max_nvert_per_cell))
+  allocate(int_array2((unstructured_grid%ngmax+nghost_new)*unstructured_grid%max_nvert_per_cell))
+
+  ! save vertices of local+ghost cells
+  count=0
+  do ghosted_id=1,unstructured_grid%ngmax
+    cell_type = unstructured_grid%cell_type(ghosted_id)
+    nvertices=UCellGetNVertices(cell_type,option)
+    do ivertex=1,nvertices
+      vertex_id_loc=unstructured_grid%cell_vertices(ivertex,ghosted_id)
+      vertex_id_nat=unstructured_grid%vertex_ids_natural(vertex_id_loc)
+      
+      count=count+1
+      int_array1(count) = vertex_id_nat
+      int_array2(count) = count
+    enddo
+  enddo
+  
+  ! save vertices of new ghost cells
+  call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr)
+  do ii =1,nghost_new
+    do jj=1,unstructured_grid%max_nvert_per_cell
+      if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
+        count=count+1
+        int_array1(count)=vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)
+        int_array2(count)=count
+      endif
+    enddo
+  enddo
+  call VecRestoreArrayF90(elements_ghost_cells,vec_ptr,ierr)
+
+  int_array2 = int_array2-1
+  call PetscSortIntWithPermutation(count,int_array1,int_array2,ierr)
+  int_array2 = int_array2+1
+
+  ! remove duplicates
+  allocate(int_array3(count))
+  allocate(int_array4(count))
+
+  int_array3 = 0
+  int_array4 = 0
+  int_array3(1) = int_array1(int_array2(1))
+  count2 = 1
+  int_array4(int_array2(1)) = count2
+  do ii = 2, count
+    jj = int_array1(int_array2(ii))
+    if (jj > int_array3(count2)) then
+      count2 = count2 + 1
+      int_array3(count2) = jj
+    endif
+    int_array4(int_array2(ii)) = count2
+  enddo
+
+  deallocate(int_array1)
+  
+  allocate(cell_vertices(0:unstructured_grid%max_nvert_per_cell,unstructured_grid%ngmax+nghost_new))
+  cell_vertices=0
+  
+  ! Update vertices for local+ghost cells
+  count=0
+  do ghosted_id=1,unstructured_grid%ngmax
+    cell_type = unstructured_grid%cell_type(ghosted_id)
+    nvertices = UCellGetNVertices(cell_type,option)
+    cell_vertices(0,ghosted_id)=nvertices
+    do ivertex=1,nvertices
+      count=count+1
+      cell_vertices(ivertex,ghosted_id)=int_array4(count)
+    enddo
+  enddo
+
+  call VecGetArrayF90(elements_ghost_cells,vec_ptr,ierr)
+  do ii =1,nghost_new
+    do jj=1,unstructured_grid%max_nvert_per_cell
+      if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
+        count=count+1
+        cell_vertices(jj,ii+unstructured_grid%ngmax)=int_array4(count)
+        cell_vertices(0 ,ii+unstructured_grid%ngmax)=cell_vertices(0 ,ii+unstructured_grid%ngmax)+1
+      endif
+    enddo
+  enddo
+  call VecRestoreArrayF90(elements_ghost_cells,vec_ptr,ierr)
+
+  ! Make local copies of array which need to be updated.
+  
+  ! cells
+  allocate(cell_ids_natural(unstructured_grid%ngmax+nghost_new))
+  allocate(ghost_cell_ids_petsc(unstructured_grid%num_ghost_cells+nghost_new))
+
+  cell_ids_natural(1:unstructured_grid%ngmax)=unstructured_grid%cell_ids_natural(:)
+  ghost_cell_ids_petsc(1:unstructured_grid%num_ghost_cells)=unstructured_grid%ghost_cell_ids_petsc(:)
+  
+  do ii=1,nghost_new
+    cell_ids_natural(ii+unstructured_grid%ngmax)=ghost_cids_new(ii)
+    ghost_cell_ids_petsc(ii+unstructured_grid%num_ghost_cells)=ghost_cids_new_petsc(ii)
+  enddo
+  
+  ! Save location of vertices needed on a given processor
+  call VecCreateMPI(option%mycomm, &
+                    PETSC_DETERMINE, &
+                    unstructured_grid%num_vertices_global*3, &
+                    vertices_nat,ierr)
+
+  allocate(tmp_scl_array(unstructured_grid%num_vertices_local*3))
+  allocate(int_array1(unstructured_grid%num_vertices_local*3))
+  count=0
+  do ivertex=1,unstructured_grid%num_vertices_local
+    count=count+1
+    tmp_scl_array(count)=unstructured_grid%vertices(ivertex)%x
+    int_array1(count)=(unstructured_grid%vertex_ids_natural(ivertex)-1)*3+0
+
+    count=count+1
+    tmp_scl_array(count)=unstructured_grid%vertices(ivertex)%y
+    int_array1(count)=(unstructured_grid%vertex_ids_natural(ivertex)-1)*3+1
+
+    count=count+1
+    tmp_scl_array(count)=unstructured_grid%vertices(ivertex)%z
+    int_array1(count)=(unstructured_grid%vertex_ids_natural(ivertex)-1)*3+2
+  enddo
+  
+  call VecSetValues(vertices_nat,count,int_array1, &
+                      tmp_scl_array,INSERT_VALUES,ierr)
+  call VecAssemblyBegin(vertices_nat,ierr)
+  call VecAssemblyEnd(vertices_nat,ierr)
+  
+  deallocate(int_array1)
+  deallocate(tmp_scl_array)
+
+  allocate(int_array1(count2*3))
+  do ii=1,count2
+    int_array1((ii-1)*3+1)=(int_array3(ii)-1)*3
+    int_array1((ii-1)*3+2)=(int_array3(ii)-1)*3+1
+    int_array1((ii-1)*3+3)=(int_array3(ii)-1)*3+2
+  enddo
+
+  call ISCreateGeneral(option%mycomm,count2*3, &
+                       int_array1,PETSC_COPY_VALUES,is_from,ierr)
+  deallocate(int_array1)
+  
+  offset=0
+  call MPI_Exscan(count2*3,offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  allocate(int_array1(count2*3))
+  do ii=1,count2*3
+    int_array1(ii)=ii-1+offset
+  enddo
+  call ISCreateGeneral(option%mycomm,count2*3, &
+                       int_array1,PETSC_COPY_VALUES,is_to,ierr)
+
+  call VecCreateMPI(option%mycomm, &
+                    count2*3, &
+                    PETSC_DETERMINE, &
+                    vertices_loc,ierr)
+
+  call VecScatterCreate(vertices_nat,is_from,vertices_loc,is_to,vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  call VecScatterBegin(vec_scatter,vertices_nat,vertices_loc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,vertices_nat,vertices_loc, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+  call VecDestroy(vertices_nat,ierr)
+
+  ! Update the mesh
+
+  ! cell update
+  unstructured_grid%ngmax = unstructured_grid%ngmax+nghost_new
+
+  deallocate(unstructured_grid%cell_vertices)
+  allocate(unstructured_grid%cell_vertices(0:unstructured_grid%max_nvert_per_cell,unstructured_grid%ngmax))
+  unstructured_grid%cell_vertices = cell_vertices
+  deallocate(cell_vertices)
+
+  deallocate(unstructured_grid%cell_ids_natural)
+  allocate(unstructured_grid%cell_ids_natural(unstructured_grid%ngmax))
+  unstructured_grid%cell_ids_natural=cell_ids_natural
+  deallocate(cell_ids_natural)
+  
+  ! vertex update
+  deallocate(unstructured_grid%vertex_ids_natural)
+  allocate(unstructured_grid%vertex_ids_natural(count2))
+  unstructured_grid%vertex_ids_natural(:)=int_array3(1:count2)
+  unstructured_grid%num_vertices_local=count2
+  
+  deallocate(unstructured_grid%vertices)
+  allocate(unstructured_grid%vertices(count2))
+  
+  call VecGetArrayF90(vertices_loc,vec_ptr,ierr)
+  unstructured_grid%num_vertices_local=count2
+  do ii=1,count2
+    unstructured_grid%vertices(ii)%id = int_array3(ii)
+    unstructured_grid%vertices(ii)%x = vec_ptr((ii-1)*3+1)
+    unstructured_grid%vertices(ii)%y = vec_ptr((ii-1)*3+2)
+    unstructured_grid%vertices(ii)%z = vec_ptr((ii-1)*3+3)
+  enddo
+  call VecRestoreArrayF90(vertices_loc,vec_ptr,ierr)
+  call VecDestroy(vertices_loc,ierr)
+  
+  ! ghost cell update
+  unstructured_grid%num_ghost_cells=unstructured_grid%ngmax-unstructured_grid%nlmax
+  deallocate(unstructured_grid%ghost_cell_ids_petsc)
+  allocate(unstructured_grid%ghost_cell_ids_petsc(unstructured_grid%num_ghost_cells))
+  unstructured_grid%ghost_cell_ids_petsc=ghost_cell_ids_petsc
+  deallocate(ghost_cell_ids_petsc)
+  
+  ! cell type update
+  deallocate(unstructured_grid%cell_type)
+  allocate(unstructured_grid%cell_type(unstructured_grid%ngmax))
+
+  select case(unstructured_grid%grid_type)
+    case(THREE_DIM_GRID)
+      do ghosted_id = 1, unstructured_grid%ngmax
+        ! Determine number of faces and cell-type of the current cell
+        select case(unstructured_grid%cell_vertices(0,ghosted_id))
+          case(8)
+            unstructured_grid%cell_type(ghosted_id) = HEX_TYPE
+          case(6)
+            unstructured_grid%cell_type(ghosted_id) = WEDGE_TYPE
+          case(5)
+            unstructured_grid%cell_type(ghosted_id) = PYR_TYPE
+          case(4)
+            unstructured_grid%cell_type(ghosted_id) = TET_TYPE
+          case default
+            option%io_buffer = 'Cell type not recognized: '
+            call printErrMsg(option)
+        end select      
+      enddo
+    case(TWO_DIM_GRID)
+      do ghosted_id = 1, unstructured_grid%ngmax
+        select case(unstructured_grid%cell_vertices(0,ghosted_id))
+          case(4)
+            unstructured_grid%cell_type = QUAD_TYPE
+          case(3)
+            unstructured_grid%cell_type = TRI_TYPE
+          case default
+            option%io_buffer = 'Cell type not recognized: '
+            call printErrMsg(option)
+        end select
+      end do
+    case default
+      option%io_buffer = 'Grid type not recognized: '
+      call printErrMsg(option)
+  end select
+
+  call VecDestroy(elements_petsc,ierr)
+  call VecDestroy(elements_ghost_cells,ierr)
+
+end subroutine UGridUpdateMeshAfterGrowingStencilWidth
+
 
 end module Unstructured_Grid_module
