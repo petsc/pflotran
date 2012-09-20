@@ -4379,10 +4379,8 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width,option)
                       option)
                                           
     ! Update the mesh by adding the new ghost cells
-    if (nghost_new>0) then
-      call UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid,&
-            ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
-    endif
+    call UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid,&
+          ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
 
     ! Free up the memory
     call MatDestroy(Mat_vert_to_proc,ierr)
