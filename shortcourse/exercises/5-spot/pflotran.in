@@ -34,6 +34,7 @@ Chrysocolla2
 MINERAL_KINETICS
 Chrysocolla2
 RATE_CONSTANT 5.e-12
+SURFACE_AREA_VOL_FRAC_POWER 0.666667d0
 /
 SiO2(am) 
 RATE_CONSTANT 1.e-10
@@ -125,7 +126,6 @@ TORTUOSITY 1.0
 PERMEABILITY
 PERM_ISO 5.43d-13
 /
-MINERAL_SURFACE_AREA_POWER VOLUME_FRACTION 0.666667d0
 /
 
 : == saturation / permeability functions ======================================
