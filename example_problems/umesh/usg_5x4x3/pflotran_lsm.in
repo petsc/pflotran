@@ -41,10 +41,10 @@ ALPHA 1.d-4
 /
 
 :=========================== output options ===================================
-:OUTPUT
-:FORMAT TECPLOT BLOCK
-:HDF5_WRITE_GROUP_SIZE 1
-:/
+OUTPUT
+FORMAT TECPLOT BLOCK
+HDF5_WRITE_GROUP_SIZE 1
+/
 
 :=========================== times ============================================
 TIME
@@ -68,7 +68,6 @@ FILE dat/Top_sidesets.ss
 GRID unstructured
 END 
 
-skip
 REGION Bottom_sidesets
 FILE dat/Bottom_sidesets.ss
 GRID unstructured
@@ -93,7 +92,6 @@ REGION West_sidesets
 FILE dat/West_sidesets.ss
 GRID unstructured
 END 
-noskip
 
 :=========================== flow conditions ==================================
 FLOW_CONDITION initial
@@ -132,8 +130,3 @@ END
 
 HDF5_READ_GROUP_SIZE 1
 
-:DEBUG
-:VECVIEW_SOLUTION
-:VECVIEW_RESIDUAL
-:MATVIEW_JACOBIAN
-:END
