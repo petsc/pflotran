@@ -676,6 +676,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
           if(discretization%lsm_flux_method) then
             call UGridGrowStencilSupport(discretization%grid%unstructured_grid, &
                                          discretization%stencil_width, &
+                                         discretization%grid%ghosted_level, &
                                          option)
           endif
         case(EXPLICIT_UNSTRUCTURED_GRID)

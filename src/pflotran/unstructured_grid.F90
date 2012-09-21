@@ -4185,7 +4185,8 @@ end subroutine UGridGetBoundaryFaces
 !!
 !! date: 09/17/12
 ! ************************************************************************** !
-subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width,option)
+subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
+                                   ghosted_level,option)
 
   use Option_module
 
@@ -4199,6 +4200,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width,option)
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
   PetscInt :: stencil_width
+  PetscInt, pointer :: ghosted_level(:)
   
   Mat :: Mat_vert_to_cell  !
   Mat :: Mat_vert_to_proc  !
@@ -4226,9 +4228,9 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width,option)
   PetscInt, allocatable :: cell_ids_petsc(:)
   PetscInt, allocatable :: int_array(:)
   PetscInt, allocatable :: cids_new(:)
+  PetscInt, pointer :: ghosted_level_new(:)
   
   Vec :: Vec_cids_local
-  !Vec :: cids_porder
   PetscReal, pointer :: vec_ptr(:)
 
   PetscErrorCode :: ierr
@@ -4382,6 +4384,37 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width,option)
     call UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid,&
           ghost_cids_new,ghost_cids_new_petsc,nghost_new,option)
 
+    ! Update ghosted_level array
+    if(swidth==1) then
+      ! In this case, ghosted_level will have only two values: 
+      !   0 - local cells
+      !   1 - ghost cells
+      allocate(ghosted_level(unstructured_grid%ngmax))
+      do local_id=1,unstructured_grid%nlmax
+        ghosted_level(local_id)=0
+      enddo
+      
+      do ghosted_id=unstructured_grid%nlmax+1,unstructured_grid%ngmax
+        ghosted_level(ghosted_id)=1
+      enddo
+    else
+    
+      ! ghosted_level of all new ghost cells will be 'swidth' 
+      allocate(ghosted_level_new(unstructured_grid%ngmax))
+      do ghosted_id=1,unstructured_grid%ngmax-nghost_new
+        ghosted_level_new(ghosted_id)=ghosted_level(ghosted_id)
+      enddo
+      
+      do ghosted_id=unstructured_grid%ngmax-nghost_new+1,unstructured_grid%ngmax
+        ghosted_level_new(ghosted_id)=swidth
+      enddo
+      
+      deallocate(ghosted_level)
+      allocate(ghosted_level(unstructured_grid%ngmax))
+      ghosted_level=ghosted_level_new
+      deallocate(ghosted_level_new)
+    endif
+    
     ! Free up the memory
     call MatDestroy(Mat_vert_to_proc,ierr)
     call MatDestroy(Mat_proc_to_vert,ierr)
