@@ -3567,6 +3567,17 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif  
+
+  do local_id = 1, grid%nlmax
+    if (associated(patch%imat)) then
+      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    endif
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    r_p (istart:iend)=r_p(istart:iend)/volume_p(local_id)
+    if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *, r_p (istart:istart+2)
+  enddo
+
   if (option%use_isothermal) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -3835,7 +3846,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
     if (option%use_mc) then
       call THCSecondaryHeatJacobian(sec_heat_vars(ghosted_id), &
-!                       thc_parameter%ckdry(int(ithrm_loc_p(ghosted_id))), &
                         thc_parameter%ckwet(int(ithrm_loc_p(ghosted_id))), &
                         thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                         option,jac_sec_heat)
@@ -3844,6 +3854,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                jac_sec_heat*option%flow_dt*volume_p(local_id)
     endif
                             
+! scale by the volume of the cell
+    Jup = Jup/volume_p(local_id)
+                           
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr)
   enddo
@@ -4014,6 +4027,11 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                              Jup,Jdn)
       if (local_id_up > 0) then
+      
+!  scale by the volume of the cell
+        Jup = Jup/volume_p(local_id_up)
+        Jdn = Jdn/volume_p(local_id_up)
+        
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
@@ -4022,6 +4040,11 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
+        
+!  scale by the volume of the cell
+        Jup = Jup/volume_p(local_id_dn)
+        Jdn = Jdn/volume_p(local_id_dn)
+        
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
@@ -4093,6 +4116,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
+  
+!  scale by the volume of the cell
+        Jdn = Jdn/volume_p(local_id)
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  
