@@ -2062,7 +2062,7 @@ subroutine SurfaceBCFluxDerivative(ibndtype,head,slope,mannings, &
       if (slope<0.d0) then
         flux_dh = 0.d0
       else
-        flux_dh = -5.d0/3.d0*sqrt(dabs(slope))/mannings*((head)**(2.d0/3.d0))*length
+        flux_dh = -5.d0/3.d0*sqrt(dabs(slope))/mannings*((head)**(2.d0/3.d0))
       endif
     case default
       option%io_buffer = 'Uknown pressure_bc_type for surface flow '
