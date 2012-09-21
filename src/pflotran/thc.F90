@@ -3574,8 +3574,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    r_p (istart:iend)=r_p(istart:iend)/volume_p(local_id)
-    if(r_p(istart) > 1E20 .or. r_p(istart) < -1E20) print *, r_p (istart:istart+2)
+    r_p (istart:iend)= r_p(istart:iend)/volume_p(local_id)
   enddo
 
   if (option%use_isothermal) then
@@ -4026,12 +4025,13 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              Dk_ice_up,Dk_ice_dn, &
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                              Jup,Jdn)
-      if (local_id_up > 0) then
       
 !  scale by the volume of the cell
+      
         Jup = Jup/volume_p(local_id_up)
-        Jdn = Jdn/volume_p(local_id_up)
-        
+        Jdn = Jdn/volume_p(local_id_dn)                       
+      
+      if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
@@ -4040,10 +4040,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
-        
-!  scale by the volume of the cell
-        Jup = Jup/volume_p(local_id_dn)
-        Jdn = Jdn/volume_p(local_id_dn)
         
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
