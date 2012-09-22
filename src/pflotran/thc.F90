@@ -4026,25 +4026,22 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              alpha_up,alpha_dn,alpha_fr_up,alpha_fr_dn, &
                              Jup,Jdn)
       
-!  scale by the volume of the cell
-      
-        Jup = Jup/volume_p(local_id_up)
-        Jdn = Jdn/volume_p(local_id_dn)                       
+!  scale by the volume of the cell                      
       
       if (local_id_up > 0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                      Jup,ADD_VALUES,ierr)
+                                      Jup/volume_p(local_id_up),ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                      Jdn,ADD_VALUES,ierr)
+                                      Jdn/volume_p(local_id_up),ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
         
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                      Jdn,ADD_VALUES,ierr)
+                                      Jdn/volume_p(local_id_dn),ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                      Jup,ADD_VALUES,ierr)
+                                      Jup/volume_p(local_id_dn),ADD_VALUES,ierr)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
