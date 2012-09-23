@@ -2707,8 +2707,12 @@ subroutine BasisInit(reaction,option)
           if (.not.StringStartsWithAlpha(string2)) then
             ! the word is the stoichiometry value
           else
-            ! the word is the species name
-            icount = icount + 1
+            ! check water
+            word2 = 'H2O'
+            if (.not.StringCompareIgnoreCase(word,word2)) then
+              ! the word is the species name
+              icount = icount + 1
+            endif
           endif
         end select
 
@@ -2734,6 +2738,10 @@ subroutine BasisInit(reaction,option)
       midpoint = 0
       negative_flag = PETSC_FALSE
       do
+        !geh: This conditional ensures that if water is at the end of
+        !     the reaction expression, it is skipped.
+        if (icount > dbaserxn%nspec) exit
+        
         ierr = 0
         call InputReadWord(string,word,PETSC_TRUE,ierr)
         if (InputError(ierr)) exit
@@ -2779,20 +2787,20 @@ subroutine BasisInit(reaction,option)
               ! check water
               word2 = 'H2O'
               if (StringCompareIgnoreCase(word,word2)) then
+                ! set stoichiometry back to uninitialized
+                dbaserxn%stoich(icount) = -999.d0
                 ! don't increment icount
-                exit
-              endif              
-              if (.not.found) then
+              else if (.not.found) then
                 option%io_buffer = 'Species ' // trim(word) // &
                          ' in general reaction' // &
                          ' not found among primary species list.'
                 call printErrMsg(option)     
+              else
+                icount = icount + 1
               endif
-              icount = icount + 1
             endif
             negative_flag = PETSC_FALSE
         end select
-
       enddo
       
       ! if no stoichiometry specified, default = 1.
