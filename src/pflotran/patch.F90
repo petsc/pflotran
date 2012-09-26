@@ -851,7 +851,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
         if (associated(coupler%flow_condition%rate)) then
 
           select case(coupler%flow_condition%rate%itype)
-            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS,DISTRIBUTED_RATE_SS)
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS,DISTRIBUTED_VOLUMETRIC_RATE_SS)
 
               select case(option%iflowmode)
                 case(RICHARDS_MODE)
