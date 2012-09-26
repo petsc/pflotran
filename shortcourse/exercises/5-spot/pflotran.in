@@ -44,7 +44,7 @@ RATE_CONSTANT 1.e-18
 /
 /
 :
-DATABASE /Users/lichtner/flotran/database/hanford.dat
+DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
 MOLAL
