@@ -487,30 +487,6 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
       real_array(i) = real_buffer(index-prev_real_count)
     enddo
 
-! Sarat - I don't think this is necessary in this case BEGIN
-#ifdef HDF5_BROADCAST
-    do 
-      if (real_count >= num_reals_in_file) exit
-      temp_int = num_reals_in_file-real_count
-      temp_int = min(temp_int,read_block_size)
-      if (dims(1) /= temp_int) then
-        dims(1) = temp_int
-      endif
-      ! offset is zero-based
-      offset(1) = real_count
-      length(1) = dims(1)
-      if (option%myrank == io_rank) then 
-        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
-        call parallelIO_read_same_sub_dataset(real_buffer, PIO_DOUBLE, rank_mpi, dims, & 
-                offset, file_id, dataset_name, option%ioread_group_id, ierr)
-        !call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
-                       !hdf5_err,memory_space_id,file_space_id,prop_id)
-        call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
-      endif
-     real_count = real_count + length(1)                  
-    enddo
-#endif
-! Sarat - I don't think this is necessary in this case END
     deallocate(real_buffer)
   ! otherwise, read the entire array
   else
