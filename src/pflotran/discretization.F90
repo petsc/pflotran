@@ -115,6 +115,7 @@ function DiscretizationCreate()
   discretization%ctype = ''
   discretization%itype = 0
   discretization%origin = 0.d0
+  discretization%filename = ''
 
   ! nullify DM pointers
   nullify(discretization%dmc_nflowdof)
