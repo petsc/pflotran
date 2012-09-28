@@ -626,7 +626,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   integer(HSIZE_T) :: offset(2), length(2), stride(2), block(2), dims(2)
 #endif
 
-  ! Initialize FOTRAN predefined datatypes
+  ! Initialize FORTRAN predefined datatypes
   call h5open_f(hdf5_err)
 
   ! Setup file access property with parallel I/O access
@@ -902,7 +902,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   integer(HSIZE_T) :: offset(2), length(2), stride(2), block(2), dims(2)
 #endif
 
-  ! Initialize FOTRAN predefined datatypes
+  ! Initialize FORTRAN predefined datatypes
   call h5open_f(hdf5_err)
 
   ! Setup file access property with parallel I/O access
