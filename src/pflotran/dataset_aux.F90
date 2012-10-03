@@ -56,6 +56,7 @@ module Dataset_Aux_module
   PetscInt, parameter, public :: DIM_XZ = 5
   PetscInt, parameter, public :: DIM_YZ = 6
   PetscInt, parameter, public :: DIM_XYZ = 7
+  PetscInt, parameter, public :: DIM_SS = 8
     
   public :: DatasetCreate, &
             DatasetBufferCreate, &
@@ -312,6 +313,8 @@ subroutine DatasetSetDimension(dataset,word)
       dataset%data_dim = DIM_YZ
     case('XYZ')
       dataset%data_dim = DIM_XYZ
+    case('SOURCE_SINK')
+      dataset%data_dim = DIM_SS
   end select
       
 end subroutine DatasetSetDimension
@@ -332,7 +335,7 @@ function DatasetGetNDimensions(dataset)
   PetscInt :: DatasetGetNDimensions
 
   select case(dataset%data_dim)
-    case(DIM_X,DIM_Y,DIM_Z)
+    case(DIM_X,DIM_Y,DIM_Z,DIM_SS)
       DatasetGetNDimensions = ONE_INTEGER
     case(DIM_XY,DIM_XZ,DIM_YZ)
       DatasetGetNDimensions = TWO_INTEGER
@@ -360,7 +363,7 @@ subroutine DatasetInterpolateBetweenTimes(dataset,option)
   type(dataset_type) :: dataset
   type(option_type) :: option
   
-  PetscInt :: array_size
+  PetscInt :: array_size,i
   PetscInt :: time_interpolation_method
   PetscReal :: weight2
   PetscInt :: time1_start, time1_end, time2_start, time2_end
