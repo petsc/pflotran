@@ -1585,6 +1585,11 @@ subroutine InitReadInput(simulation)
         
 !....................
       case ('TRANSPORT_CONDITION')
+        if (.not.associated(reaction)) then
+          option%io_buffer = 'TRANSPORT_CONDITIONs not supported without ' // &
+            'CHEMISTRY.'
+          call printErrMsg(option)
+        endif
         tran_condition => TranConditionCreate(option)
         call InputReadWord(input,option,tran_condition%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'TRANSPORT_CONDITION','name') 
@@ -1596,6 +1601,10 @@ subroutine InitReadInput(simulation)
 
 !....................
       case('CONSTRAINT')
+        if (.not.associated(reaction)) then
+          option%io_buffer = 'CONSTRAINTs not supported without CHEMISTRY.'
+          call printErrMsg(option)
+        endif
         tran_constraint => TranConstraintCreate(option)
         call InputReadWord(input,option,tran_constraint%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'constraint','name') 
