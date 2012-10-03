@@ -142,7 +142,7 @@ function InputCreate(fid,filename,option)
   open(unit=input%fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
     if (len_trim(filename) == 0) filename = '<blank>'
-    option%io_buffer = 'File: ' // trim(filename) // ' not found.'
+    option%io_buffer = 'File: "' // trim(filename) // '" not found.'
     call printErrMsg(option)
   endif
   
