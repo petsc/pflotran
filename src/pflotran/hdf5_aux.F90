@@ -230,7 +230,7 @@ subroutine HDF5ReadDataset(dataset,option)
                      attribute_dim,hdf5_err)
       call h5aclose_f(attribute_id,hdf5_err)
     else
-      if(dataset%data_dim/=DIM_SS) then
+      if(dataset%data_dim/=DIM_CELL) then
         option%io_buffer = &
           'Discretization attribute must be included in hdf5 dataset file.'
         call printErrMsg(option)

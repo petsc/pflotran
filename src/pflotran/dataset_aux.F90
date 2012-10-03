@@ -56,7 +56,7 @@ module Dataset_Aux_module
   PetscInt, parameter, public :: DIM_XZ = 5
   PetscInt, parameter, public :: DIM_YZ = 6
   PetscInt, parameter, public :: DIM_XYZ = 7
-  PetscInt, parameter, public :: DIM_SS = 8
+  PetscInt, parameter, public :: DIM_CELL = 8
     
   public :: DatasetCreate, &
             DatasetBufferCreate, &
@@ -313,8 +313,8 @@ subroutine DatasetSetDimension(dataset,word)
       dataset%data_dim = DIM_YZ
     case('XYZ')
       dataset%data_dim = DIM_XYZ
-    case('SOURCE_SINK')
-      dataset%data_dim = DIM_SS
+    case('CELL')
+      dataset%data_dim = DIM_CELL
   end select
       
 end subroutine DatasetSetDimension
@@ -335,7 +335,7 @@ function DatasetGetNDimensions(dataset)
   PetscInt :: DatasetGetNDimensions
 
   select case(dataset%data_dim)
-    case(DIM_X,DIM_Y,DIM_Z,DIM_SS)
+    case(DIM_X,DIM_Y,DIM_Z,DIM_CELL)
       DatasetGetNDimensions = ONE_INTEGER
     case(DIM_XY,DIM_XZ,DIM_YZ)
       DatasetGetNDimensions = TWO_INTEGER
