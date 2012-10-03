@@ -1270,6 +1270,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
                   call PatchScaleSourceSink(patch,coupler,option)
+                case (DISTRIBUTED_VOLUMETRIC_RATE_SS)
+                  call PatchUpdateDistributedSourceSinkAuxVars(patch,coupler,option)
               end select
             endif
           
@@ -1427,6 +1429,74 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
    
 end subroutine PatchScaleSourceSink
+
+! ************************************************************************** !
+!> This subroutine updates aux vars for distributed source/sink
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 10/03/2012
+! ************************************************************************** !
+subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
+
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Connection_module
+  use Condition_module
+  use Grid_module
+  use Dataset_module
+  use Dataset_Aux_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscdmda.h"
+
+  type(patch_type) :: patch
+  type(coupler_type) :: source_sink
+  type(option_type) :: option
+
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscErrorCode :: ierr
+  PetscInt       :: iconn
+
+  type(dataset_type), pointer :: dataset
+
+  if(option%mycommsize>1) then
+    option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
+      ' for single processor runs.'
+    call printErrMsg(option)
+  endif
+
+  if(option%iflowmode/=RICHARDS_MODE) then
+    option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
+      ' for RICHARDS mode.'
+    call printErrMsg(option)
+  endif
+
+  if(.not.associated(source_sink%flow_condition%rate)) then
+    option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
+      ' for RATE flow condition.'
+    call printErrMsg(option)
+  endif
+
+  dataset => source_sink%flow_condition%rate%flow_dataset%dataset
+  cur_connection_set => source_sink%connection_set
+
+  if(size(dataset%rarray)/=cur_connection_set%num_connections) then
+    option%io_buffer='Length of array in dataset does not match no. of connection '// &
+      ' sets.'
+    call printErrMsg(option)
+  endif
+
+  do iconn=1,cur_connection_set%num_connections
+    source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
+  enddo
+
+end subroutine PatchUpdateDistributedSourceSinkAuxVars
 
 ! ************************************************************************** !
 !
