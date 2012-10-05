@@ -3489,10 +3489,6 @@ subroutine OutputObservationTecplot(realization)
                 call WriteVelocityAtCoord(fid,realization, &
                                           observation%region)
               endif
- !             if (observation%print_secondary_data) then
- !               call WriteObservationSecondaryDataAtCoord(fid,realization, &
- !                                                      observation%region)
- !             endif
             else
               do icell=1,observation%region%num_cells
                 local_id = observation%region%cell_ids(icell)
@@ -5171,8 +5167,8 @@ end function GetVelocityAtCoord
 ! ************************************************************************** !
 !
 ! WriteObservationSecondaryDataAtCell: Print data for data at a cell
-! author: Glenn Hammond
-! date: 02/11/08
+! author: Satish Karra
+! date: 10/4/12
 !
 ! ************************************************************************** !  
 subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id)
