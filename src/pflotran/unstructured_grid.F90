@@ -1251,10 +1251,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt, allocatable :: local_vertices(:)
   PetscInt, allocatable :: local_vertex_offset(:)
   PetscInt :: index_format_flag, num_common_vertices
-  PetscInt, allocatable :: cell_counts(:)
-  PetscInt, pointer :: index_ptr(:)
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: vec_ptr2(:)
   PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
   PetscBool :: success
@@ -1266,13 +1263,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   Mat :: Dual_mat
   MatPartitioning :: Part
   Vec :: elements_natural
-  Vec :: elements_petsc
   Vec :: elements_local
   Vec :: elements_old
   Vec :: vertices_old
   Vec :: vertices_new
   IS :: is_new
-  IS :: is_num
   IS :: is_scatter
   IS :: is_gather
 
@@ -1281,8 +1276,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: vertex_ids_offset
   PetscInt :: dual_offset
 
-  PetscInt :: ghost_cell_count
-  PetscInt :: max_ghost_cell_count
   PetscInt :: max_int_count
   PetscInt :: temp_int
   PetscInt :: min_value
@@ -1294,13 +1287,23 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt, allocatable :: int_array2(:)
   PetscInt, allocatable :: int_array3(:)
   PetscInt, allocatable :: int_array4(:)
-  PetscInt, allocatable :: int_array5(:)
   PetscInt, allocatable :: needed_vertices_petsc(:)
   PetscInt, pointer :: int_array_pointer(:)
   
   PetscInt :: idual, dual_id
   PetscInt :: iflag
   PetscBool :: found
+
+#ifndef UGRID_NEW
+  PetscInt, pointer :: index_ptr(:)
+  Vec :: elements_petsc
+  IS :: is_num
+  PetscInt :: ghost_cell_count
+  PetscInt :: max_ghost_cell_count
+  PetscInt, allocatable :: int_array5(:)
+  PetscReal, pointer :: vec_ptr2(:)
+  PetscInt, allocatable :: cell_counts(:)  
+#endif
   
 !  cell distribution across processors (size = num_cores + 1)
 !  core i owns cells cell_distribution(i):cell_distribution(i+1), note
@@ -1421,6 +1424,21 @@ subroutine UGridDecompose(unstructured_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+#ifdef UGRID_NEW
+  call UGridPartition(unstructured_grid, &
+                             option, &
+                             Adj_mat, &
+                             num_common_vertices, &
+                             Dual_mat,is_new, &
+                             num_cells_local_new)
+  
+  call MatDestroy(Adj_mat,ierr)
+  if (allocated(local_vertices)) deallocate(local_vertices)
+  if (allocated(local_vertex_offset)) deallocate(local_vertex_offset)
+  
+! this has been placed in unstructured_grid_aux.F90:UGridGet_Dual_Part_IS() 
+#else
+!----------------------
 #if UGRID_DEBUG
   call printMsg(option,'Dual matrix')
 #endif
@@ -1485,7 +1503,9 @@ subroutine UGridDecompose(unstructured_grid,option)
     option%io_buffer = 'A processor core has been assigned zero cells.'
     call printErrMsg(option)
   endif
-
+!---------------------- 
+#endif  
+  
   ! second argument of ZERO_INTEGER means to use 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
@@ -1544,7 +1564,14 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! the purpose of -777, -888, and -999999 is to allow one to use cells of 
   ! various geometry.  Currently, the max # vertices = 8 and max # duals = 6.
   ! But this will be generalized in the future.
-    
+#ifdef UGRID_NEW
+  
+  call UGridCreateOldVec(unstructured_grid,option,elements_old, &
+                                num_cells_local_old,num_cells_local_new, &
+                                is_new,is_scatter,stride)
+
+#else
+!-------------
   ! create a petsc vec to store all the information for each element
   ! based on the stride calculated above.  
   call VecCreate(option%mycomm,elements_natural,ierr)
@@ -1586,7 +1613,8 @@ subroutine UGridDecompose(unstructured_grid,option)
   call VecCreate(option%mycomm,elements_old,ierr)
   call VecSetSizes(elements_old,stride*num_cells_local_old,PETSC_DECIDE,ierr)
   call VecSetFromOptions(elements_old,ierr)
-
+!-------------
+#endif
 
   ! 0 = 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
@@ -1645,6 +1673,15 @@ subroutine UGridDecompose(unstructured_grid,option)
                           num_rows,ia_ptr,ja_ptr,success,ierr)
   call MatDestroy(Dual_mat,ierr)
  
+#ifdef UGRID_NEW
+  
+  call UGridNaturalToPetsc(unstructured_grid,option, &
+                           elements_old,elements_local, &
+                           num_cells_local_new,stride,dual_offset, &
+                           is_scatter)
+  
+#else  
+!----------  
 #if UGRID_DEBUG
   call printMsg(option,'Before element scatter')
 #endif
@@ -2100,6 +2137,9 @@ subroutine UGridDecompose(unstructured_grid,option)
 
   call printMsg(option,'Scatter/gathering local ghosted vertices')
 #endif
+
+!----------
+#endif  
 
   ! make a list of local vertices
   max_int_count = 2*unstructured_grid%ngmax
