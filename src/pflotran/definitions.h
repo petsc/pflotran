@@ -273,6 +273,7 @@ PetscInt, parameter :: ICE_SATURATION =          50
 PetscInt, parameter :: TOTAL_BULK =              51
 PetscInt, parameter :: ICE_DENSITY =             52
 PetscInt, parameter :: GAS_PRESSURE =            53
+PetscInt, parameter :: SECONDARY_TEMPERATURE =   54
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

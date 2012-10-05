@@ -79,6 +79,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   data icall/0/
 
   igeom = sec_continuum%itype
+  option%nsec_cells = nmat
     
   select case (igeom)      
     case(0) ! 1D Slab

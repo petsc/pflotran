@@ -3448,12 +3448,16 @@ subroutine OutputObservationTecplot(realization)
               call WriteObservationHeaderForCoord(fid,realization, &
                                                   observation%region, &
                                                   observation%print_velocities, &
+                                                  observation% &
+                                                  print_secondary_data, &
                                                   icolumn)
             else
               do icell=1,observation%region%num_cells
                 call WriteObservationHeaderForCell(fid,realization, &
                                                    observation%region,icell, &
                                                    observation%print_velocities, &
+                                                   observation% &
+                                                   print_secondary_data, &
                                                    icolumn)
               enddo
             endif
@@ -3485,12 +3489,20 @@ subroutine OutputObservationTecplot(realization)
                 call WriteVelocityAtCoord(fid,realization, &
                                           observation%region)
               endif
+ !             if (observation%print_secondary_data) then
+ !               call WriteObservationSecondaryDataAtCoord(fid,realization, &
+ !                                                      observation%region)
+ !             endif
             else
               do icell=1,observation%region%num_cells
                 local_id = observation%region%cell_ids(icell)
                 call WriteObservationDataForCell(fid,realization,local_id)
                 if (observation%print_velocities) then
                   call WriteVelocityAtCell(fid,realization,local_id)
+                endif
+               if (observation%print_secondary_data) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization, &
+                                                           local_id)
                 endif
               enddo
             endif
@@ -3520,7 +3532,9 @@ end subroutine OutputObservationTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
-                                         print_velocities,icolumn)
+                                         print_velocities, &
+                                         print_secondary_data, &
+                                         icolumn)
 
   use Realization_module
   use Grid_module
@@ -3536,6 +3550,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   type(region_type) :: region
   PetscInt :: icell
   PetscBool :: print_velocities
+  PetscBool :: print_secondary_data
   PetscInt :: icolumn
   
   PetscInt :: local_id
@@ -3559,7 +3574,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                 ' ' // trim(adjustl(z_string)) // ')'
   
   call WriteObservationHeader(fid,realization,cell_string,print_velocities, &
-                              icolumn)
+                              print_secondary_data,icolumn)
 
 end subroutine WriteObservationHeaderForCell
 
@@ -3571,7 +3586,9 @@ end subroutine WriteObservationHeaderForCell
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCoord(fid,realization,region, &
-                                          print_velocities,icolumn)
+                                         print_velocities, &
+                                         print_secondary_data, &
+                                         icolumn)
 
   use Realization_module
   use Option_module
@@ -3585,6 +3602,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   type(realization_type) :: realization
   type(region_type) :: region
   PetscBool :: print_velocities
+  PetscBool :: print_secondary_data
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header
@@ -3601,7 +3619,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                 trim(adjustl(z_string)) // ')'
 
   call WriteObservationHeader(fid,realization,cell_string,print_velocities, &
-                              icolumn)
+                              print_secondary_data,icolumn)
 
 end subroutine WriteObservationHeaderForCoord
 
@@ -3613,17 +3631,20 @@ end subroutine WriteObservationHeaderForCoord
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeader(fid,realization,cell_string, &
-                                  print_velocities,icolumn)
-
+                                         print_velocities, &
+                                         print_secondary_data, &
+                                         icolumn)
   use Realization_module
   use Option_module
   use Reactive_Transport_module
+  use Secondary_Continuum_module
 
   implicit none
   
   PetscInt :: fid
   type(realization_type) :: realization
   PetscBool :: print_velocities
+  PetscBool :: print_secondary_data
   character(len=MAXSTRINGLENGTH) :: cell_string
   PetscInt :: icolumn
   
@@ -3764,7 +3785,22 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
     call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
     write(fid,'(a)',advance="no") trim(header)
   endif
-
+  
+  if (print_secondary_data) then
+    select case (option%iflowmode) 
+      case (THC_MODE, MPH_MODE) 
+        header = ''
+        do i = 1, option%nsec_cells
+          write(string,'(i2)') i
+          string = 'T_sec(' // trim(adjustl(string)) // ')'
+          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+        enddo
+      case default
+        header = ''
+    end select
+    write(fid,'(a)',advance="no") trim(header)
+  endif
+  
 end subroutine WriteObservationHeader
 
 ! ************************************************************************** !
@@ -4157,6 +4193,8 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   endif  
 
 end subroutine WriteObservationDataForCell
+
+
 
 ! ************************************************************************** !
 !
@@ -5128,6 +5166,60 @@ function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
   GetVelocityAtCoord = velocity  
 
 end function GetVelocityAtCoord
+
+
+! ************************************************************************** !
+!
+! WriteObservationSecondaryDataAtCell: Print data for data at a cell
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !  
+subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id)
+
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid, i
+  type(realization_type) :: realization
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(output_option_type), pointer :: output_option    
+  
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+  output_option => realization%output_option
+
+100 format(es14.6)
+101 format(i2)
+110 format(es14.6)
+111 format(i2)
+
+  ghosted_id = grid%nL2G(local_id)
+
+  if (option%nsec_cells > 0) then
+    select case(option%iflowmode)
+      case(MPH_MODE,THC_MODE)
+        do i = 1, option%nsec_cells 
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,SECONDARY_TEMPERATURE,i, &
+                                        ghosted_id)
+        enddo
+      end select
+   endif
+  
+end subroutine WriteObservationSecondaryDataAtCell
 
 ! ************************************************************************** !
 !
