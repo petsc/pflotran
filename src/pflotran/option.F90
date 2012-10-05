@@ -67,6 +67,7 @@ module Option_module
     PetscInt :: nflowspec
     PetscInt :: rt_idof
     PetscInt :: nmechdof
+    PetscInt :: nsec_cells
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
@@ -446,6 +447,7 @@ subroutine OptionInitRealization(option)
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
   option%nmechdof = 0
+  option%nsec_cells = 0
 #ifdef SURFACE_FLOW
    option%nsurfflowdof = 0
    option%subsurf_surf_coupling = DECOUPLED

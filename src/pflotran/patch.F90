@@ -2600,7 +2600,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
-         LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY)
+         LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
+         SECONDARY_TEMPERATURE)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -2634,6 +2635,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
             value = patch%aux%THC%aux_vars(ghosted_id)%u
+          case(SECONDARY_TEMPERATURE)
+            value = patch%aux%THC%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
         end select
      else if (associated(patch%aux%THMC)) then
         select case(ivar)
@@ -2762,6 +2765,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%Global%aux_vars(ghosted_id)%den(2)
           case(SC_FUGA_COEFF)
             value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
+          case(SECONDARY_TEMPERATURE)
+            value = patch%aux%Mphase%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
         end select
       else if (associated(patch%aux%Immis)) then
         select case(ivar)
