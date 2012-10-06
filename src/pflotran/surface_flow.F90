@@ -198,17 +198,18 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   implicit none
 
   type(surface_realization_type)               :: surf_realization
-  type(discretization_type),pointer            :: discretization
-  type(grid_type), pointer                     :: grid
+  type(solver_type)                            :: surf_flow_solver
   type(input_type)                             :: input
   type(option_type)                            :: option
+  
+  type(discretization_type),pointer            :: discretization
+  type(grid_type), pointer                     :: grid
   type(unstructured_grid_type), pointer        :: un_str_sfgrid
   type(surface_material_property_type),pointer :: surf_material_property
   type(region_type), pointer                   :: region
   type(flow_condition_type), pointer           :: flow_condition
   type(coupler_type), pointer                  :: coupler
   type(strata_type), pointer                   :: strata
-  type(solver_type)                            :: surf_flow_solver
 
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
@@ -238,8 +239,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
 
   discretization => surf_realization%discretization
   output_option => surf_realization%output_option
-  !surf_flow_stepper => simulation%surf_flow_stepper
-  !surf_flow_solver => surf_flow_stepper%solver
 
   patch => surf_realization%patch
 
@@ -648,6 +647,34 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
         end select
 
       !.........................................................................
+      case ('SURF_TIME')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'word','SURF_TIME')
+          select case(trim(word))
+            case ('INITIAL_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
+              surf_realization%dt_min = temp_real*UnitsConvertToInternal(word,option)
+            case('MAXIMUM_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','TIME')
+              surf_realization%dt_max = temp_real*UnitsConvertToInternal(word,option)
+            case default
+              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in TIME.'
+              call printErrMsg(option)
+            end select
+        enddo
+      
+      !.........................................................................
       case default
         option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
                            'not recognized'
@@ -693,6 +720,7 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)
   
@@ -730,24 +758,34 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
     cur_level => cur_level%next
   enddo
 
+  surf_realization%iter_count = surf_realization%iter_count+1
   if (surf_realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rresidual.out', &
+    write(string,*) surf_realization%iter_count
+    string = 'Surf_Rresidual_' // trim(adjustl(string)) // '.out'
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 
-    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rresidual.bin', &
+    write(string,*) surf_realization%iter_count
+    string = 'Surf_Rresidual_' // trim(adjustl(string)) // '.bin'
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
   if (surf_realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rxx.out', &
+    write(string,*) surf_realization%iter_count
+    string = 'Surf_Rxx_' // trim(adjustl(string)) // '.out'
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rxx.bin', &
+
+    write(string,*) surf_realization%iter_count
+    string = 'Surf_Rxx_' // trim(adjustl(string)) // '.bin'
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -961,6 +999,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(sum_connection) = Res(1)
       
+      !write(*,*),'Res: BC term: ',local_id,r_p(local_id),Res(1)
       r_p(local_id) = r_p(local_id) - Res(1)
     enddo
     boundary_condition => boundary_condition%next
@@ -1054,7 +1093,6 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   call GridVecGetArrayF90(grid,surf_field%flow_accum,accum_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,surf_field%area,area_p,ierr)
-  call GridVecGetArrayF90(grid,surf_field%qsrc_from_subsurface_loc,qsrc_loc_p,ierr)
   
   call density(option%reference_temperature,option%reference_pressure,rho)
 
@@ -1082,8 +1120,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
   sum_connection = 0
-  !write(*,*),'Source/Sink: Residual '
-  do 
+  do
     if (.not.associated(source_sink)) exit
     
     !write(*,*),'surface source/sink: ',source_sink%name
@@ -1097,21 +1134,18 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      if(StringCompare(source_sink%name,'from_subsurface_ss')) then
-        qsrc_flow = qsrc_loc_p(iconn)
-      endif
-
       select case(source_sink%flow_condition%rate%itype)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc = m^3/sec
-          qsrc = qsrc_flow/1.d0*area_p(local_id)
+          qsrc = qsrc_flow*area_p(local_id)
+        case(DISTRIBUTED_VOLUMETRIC_RATE_SS)
+          ! qsrc = m^3/sec
+          qsrc = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)*area_p(local_id)
         case default
           option%io_buffer = 'Source/Sink flow condition type not recognized'
           call printErrMsg(option)
       end select
       
-
-      !if(iconn == 1) write(*,*),local_id,qsrc_flow,qsrc!,area_p(local_id)
       r_p(local_id) = r_p(local_id) - qsrc
 
     enddo
@@ -1122,7 +1156,6 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%flow_accum,accum_p,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%flow_xx_loc,xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
-  call GridVecRestoreArrayF90(grid,surf_field%qsrc_from_subsurface_loc,qsrc_loc_p,ierr)
 
   end subroutine SurfaceFlowResidualPatch2
 
@@ -1160,6 +1193,7 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
+  character(len=MAXSTRINGLENGTH) :: string
 
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
@@ -1194,12 +1228,16 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
   enddo
 
   if (surf_realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(surf_realization%option%mycomm,'Surf_Rjacobian.out', &
+    write(string,*) surf_realization%iter_count
+    string = 'Surf_Rjacobian_' // trim(adjustl(string)) // '.out'
+    call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
                               viewer,ierr)
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
 
-    call PetscViewerBinaryOpen(surf_realization%option%mycomm,'Surf_Rjacobian.bin', &
+    write(string,*) surf_realization%iter_count
+    string = 'Surf_Rjacobian_' // trim(adjustl(string)) // '.bin'
+    call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -1382,19 +1420,19 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       !write(*,*),sum_connection,ghosted_id,local_id
   
-      dx = xc(ghosted_id_dn) - cur_connection_set%intercp(1,iconn)
-      dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
-      dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
+      dx = xc(ghosted_id) - cur_connection_set%intercp(1,iconn)
+      dy = yc(ghosted_id) - cur_connection_set%intercp(2,iconn)
+      dz = zc(ghosted_id) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
 #if 0
-      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
+      dP = xx_loc_p(ghosted_id)-option%reference_pressure
       if (dP<eps) dP = 0.0d0
       hw_dn = dP/abs(option%gravity(3))/rho
 #endif
-      hw_dn = xx_loc_p(ghosted_id_dn)
+      hw_dn = xx_loc_p(ghosted_id)
       call SurfaceBCFluxDerivative( boundary_condition%flow_condition%itype, &
-                                    hw_dn,slope_dn,mannings_loc_p(ghosted_id_dn), &
+                                    hw_dn,slope_dn,mannings_loc_p(ghosted_id), &
                                     cur_connection_set%area(iconn),option,Jdn)
 
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
@@ -1507,7 +1545,6 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
 #endif
     head = xx_loc_p(ghosted_id)
     call SurfaceFlowAccumulationDerivative(head,area_p(local_id),option,Jup(1,1))
-    !write(*,*),ghosted_id,Jup(1,1)
     
     call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                            ADD_VALUES,ierr)
@@ -1921,6 +1958,8 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
     head = xx_loc_p(ghosted_id)
     call SurfaceFlowAccumulation(head,area_p(local_id),option, &
                                  accum_p(local_id:local_id))
+    call SurfaceFlowAccumulation(head,area_p(1),option, &
+                                 accum_p(local_id:local_id))
 
   enddo
 
@@ -1948,7 +1987,7 @@ subroutine SurfaceFlowAccumulation(head, area, option, Res)
   PetscReal         :: Res(1:option%nflowdof)
   PetscReal         :: head, area
 
-  Res(1) = head * area / option%flow_dt
+  Res(1) = head*area/option%surf_flow_dt
 
 end subroutine SurfaceFlowAccumulation
 
@@ -1971,7 +2010,7 @@ subroutine SurfaceFlowAccumulationDerivative(head, area, option, J)
   PetscReal         :: J(option%nflowdof,option%nflowdof)
   PetscReal         :: head, area
 
-  J(1,1) = area / option%flow_dt
+  J(1,1) = area /option%surf_flow_dt
 
 end subroutine SurfaceFlowAccumulationDerivative
 
