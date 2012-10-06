@@ -3289,8 +3289,9 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
           qsrc_mol = qsrc*global_aux_vars(ghosted_id)%den(1)* & ! den = kmol/m^3
             source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
         case(DISTRIBUTED_VOLUMETRIC_RATE_SS)
-          qsrc = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)* &
-                 global_aux_vars(ghosted_id)%den(1)
+          ! qsrc1 = m^3/sec
+          qsrc_mol = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)* & ! flow = m^3/s
+                     global_aux_vars(ghosted_id)%den(1)                  ! den  = kmol/m^3
       end select
       if (option%compute_mass_balance_new) then
         ! need to added global aux_var for src/sink
