@@ -323,7 +323,7 @@ global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o
 global_aux.o : option.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-         input.o mfd_aux.o unstructured_grid_aux.o
+         input.o mfd_aux.o unstructured_grid_aux.o unstructured_explicit.o
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
