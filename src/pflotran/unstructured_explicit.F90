@@ -309,7 +309,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
         print *, trim(string)
 #endif
         int_mpi = num_to_read*5
-        call MPI_Send(temp_real_array,int_mpi,MPIU_INTEGER,irank, &
+        call MPI_Send(temp_real_array,int_mpi,MPI_DOUBLE_PRECISION,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
@@ -325,7 +325,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     allocate(temp_real_array(5,num_cells_local))
     int_mpi = num_cells_local*5
     call MPI_Recv(temp_real_array,int_mpi, &
-                  MPIU_INTEGER,option%io_rank, &
+                  MPI_DOUBLE_PRECISION,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
     do icell = 1, num_cells_local
       explicit_grid%cell_ids(icell) = int(temp_real_array(1,icell))
@@ -433,8 +433,8 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
                  trim(adjustl(word))
         print *, trim(string)
 #endif
-        int_mpi = num_to_read*5
-        call MPI_Send(temp_real_array,int_mpi,MPIU_INTEGER,irank, &
+        int_mpi = num_to_read*6
+        call MPI_Send(temp_real_array,int_mpi,MPI_DOUBLE_PRECISION,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
@@ -447,10 +447,10 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
               trim(adjustl(word))
     print *, trim(string)
 #endif
-    allocate(temp_real_array(5,num_connections_local))
-    int_mpi = num_connections_local*5
+    allocate(temp_real_array(6,num_connections_local))
+    int_mpi = num_connections_local*6
     call MPI_Recv(temp_real_array,int_mpi, &
-                  MPIU_INTEGER,option%io_rank, &
+                  MPI_DOUBLE_PRECISION,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
     do iconn = 1, num_connections_local
       explicit_grid%connections(1,iconn) = int(temp_real_array(1,iconn))
