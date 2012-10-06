@@ -2821,7 +2821,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
             iphase = int(iphase_loc_p(ghosted_id))
           case(NEUMANN_BC)  
-        
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            iphase = int(iphase_loc_p(ghosted_id))
         end select
       enddo
 
@@ -3409,7 +3410,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
              delxbc(idof) = mphase%delx(idof,ghosted_id)
           endif 
-        case(ZERO_GRADIENT_BC)
+        case(ZERO_GRADIENT_BC,NEUMANN_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
