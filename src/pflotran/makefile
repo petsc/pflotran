@@ -22,8 +22,8 @@ endif
 
 ifdef glenn
   #MYFLAGS += -DGLENN -DUGRID_DEBUG
-  #MYFLAGS += -DUGRID_DEBUG
-  MYFLAGS += -DGLENN -DTVD_DEBUG
+  MYFLAGS += -DUGRID_DEBUG -UGRID_NEW
+  #MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
 ifdef solid_solution
@@ -430,10 +430,10 @@ time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
 unstructured_cell.o : option.o utility.o 
-unstructured_explicit.o : geometry.o
+unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
                       unstructured_grid_aux.o geometry.o
-unstructured_grid_aux.o : unstructured_cell.o unstructured_explicit.o
+unstructured_grid_aux.o : unstructured_cell.o
 utility.o : string.o input.o option.o
 velocity.o : option.o input.o string.o logging.o units.o
 waypoint.o : option.o 
