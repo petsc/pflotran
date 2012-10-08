@@ -1091,6 +1091,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   global_offset_new = 0
   call MPI_Exscan(num_cells_local_new,global_offset_new, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  ugrid%global_offset = global_offset_new
 
   allocate(ugrid%cell_ids_natural(num_cells_local_new))
   ugrid%cell_ids_natural = 0

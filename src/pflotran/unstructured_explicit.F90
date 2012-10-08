@@ -803,58 +803,7 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
                            cells_old,cells_local, &
                            num_cells_local_new,stride,dual_offset, &
                            is_scatter)
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-#if 0    
-  num_cells_local_new = size(explicit_grid%cell_ids)
-  global_offset_new = 0
-  
-  allocate(cell_ids_natural(num_cells_local_new))
-  cell_ids_natural = explicit_grid%cell_ids
 
-  ! make a list of petsc ids for each local cell (you simply take the global 
-  ! offset and add it to the local contiguous cell ids on each processor
-  allocate(int_array(num_cells_local_new))
-  do local_id = 1, num_cells_local_new
-    int_array(local_id) = local_id+global_offset_new
-  enddo
-  
-  ! make the arrays zero-based
-  int_array = int_array - 1
-  cell_ids_natural = cell_ids_natural - 1
-  ! create an application ordering (mapping of natural to petsc ordering)
-  call AOCreateBasic(option%mycomm,num_cells_local_new, &
-                     cell_ids_natural,int_array, &
-                     ao_natural_to_petsc,ierr)
-  deallocate(int_array)
-  ! make cell_ids_natural 1-based again
-  cell_ids_natural = cell_ids_natural + 1
-  
-  allocate(cell_ids_petsc(num_cells_local_new))
-  cell_ids_petsc = cell_ids_natural
-  
-  nmax = num_cells_local_new
-  nlmax = nmax
-  ngmax = nmax
-
-  num_ghost_cells = 0
-  global_offset = global_offset_new
-#endif
-  
 end subroutine ExplicitUGridDecomposeNew
 
 ! ************************************************************************** !
