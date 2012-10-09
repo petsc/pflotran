@@ -927,7 +927,7 @@ end subroutine UGridPartition
 !
 ! ************************************************************************** !
 subroutine UGridCreateOldVec(ugrid,option,elements_old, &
-                             num_cells_local_old,num_cells_local_new, &
+                             num_cells_local_old, &
                              is_new,is_scatter,stride)
   use Option_module                  
 
@@ -940,7 +940,7 @@ subroutine UGridCreateOldVec(ugrid,option,elements_old, &
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
   Vec :: elements_old
-  PetscInt :: num_cells_local_old, num_cells_local_new
+  PetscInt :: num_cells_local_old
   IS :: is_new 
   IS :: is_scatter
   PetscInt :: stride

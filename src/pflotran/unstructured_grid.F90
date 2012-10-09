@@ -1567,7 +1567,7 @@ subroutine UGridDecompose(unstructured_grid,option)
 #ifdef UGRID_NEW
   
   call UGridCreateOldVec(unstructured_grid,option,elements_old, &
-                                num_cells_local_old,num_cells_local_new, &
+                                num_cells_local_old, &
                                 is_new,is_scatter,stride)
 
 #else
