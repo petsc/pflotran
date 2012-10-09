@@ -559,7 +559,7 @@ end subroutine ExplicitUGridDecompose
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
+subroutine ExplicitUGridDecomposeNew(ugrid,option)
 
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
@@ -576,7 +576,7 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
 #include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
 
   type(unstructured_explicit_type), pointer :: explicit_grid
@@ -589,33 +589,41 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
   MatPartitioning :: Part
   IS :: is_new
   IS :: is_scatter  
+  IS :: is_gather  
   PetscInt :: num_cells_local_new, num_cells_local_old
   Vec :: cells_old, cells_local
+  Vec :: connections_old, connections_local
+  AO :: ao_natural_to_local
+  VecScatter :: vec_scatter
   
   PetscInt :: global_offset_old
   PetscInt :: global_offset_new
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   PetscInt, allocatable :: local_connections(:), local_connection_offsets(:)
-  PetscInt, allocatable :: int_array(:) 
+  PetscInt, allocatable :: int_array(:), int_array2(:)
+  PetscInt, pointer :: int_array_pointer(:)
   PetscInt :: num_common_faces
-  PetscInt :: num_connections_local_old
+  PetscInt :: num_connections_local_old, num_connections_local
   PetscInt :: num_connections_global, global_connection_offset
-  PetscInt :: id_up, id_dn, iconn, icell, count
+  PetscInt :: id_up, id_dn, iconn, icell, count, offset
+  PetscInt :: conn_id, dual_id
+  PetscBool :: found
   PetscInt :: max_num_conn_per_input_file
-  PetscInt :: i, temp_int
+  PetscInt :: i, temp_int, idual
   PetscReal :: temp_real
   
   PetscInt :: iflag
   PetscBool :: success
   PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
-  PetscReal, pointer :: vec_ptr(:)
+  PetscInt, pointer :: ia_ptr2(:), ja_ptr2(:)
+  PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
-  PetscInt :: stride, dual_offset
+  PetscInt :: cell_stride, dual_offset, connection_offset, connection_stride
   PetscErrorCode :: ierr
   
   character(len=MAXSTRINGLENGTH) :: string
 
-  explicit_grid => unstructured_grid%explicit_grid
+  explicit_grid => ugrid%explicit_grid
   
 #if UGRID_DEBUG
   call printMsg(option,'Adjacency matrix')
@@ -623,7 +631,7 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
 
   num_cells_local_old = size(explicit_grid%cell_ids)
   
-  call MPI_Allreduce(num_cells_local_old,unstructured_grid%nmax, &
+  call MPI_Allreduce(num_cells_local_old,ugrid%nmax, &
                      ONE_INTEGER_MPI,MPIU_INTEGER, &
                      MPI_SUM,option%mycomm,ierr)  
 
@@ -641,7 +649,7 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
   call MPI_Exscan(num_connections_local_old,global_connection_offset, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
-  call VecCreateMPI(option%mycomm,num_cells_local_old,unstructured_grid%nmax, &   
+  call VecCreateMPI(option%mycomm,num_cells_local_old,ugrid%nmax, &   
                     M_vec,ierr)
   call VecZeroEntries(M_vec,ierr)
   do iconn = 1, num_connections_local_old
@@ -660,11 +668,11 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
 #endif
 
   call VecMax(M_vec,PETSC_NULL_INTEGER,temp_real,ierr)
-  unstructured_grid%max_ndual_per_cell = int(temp_real+0.1d0)
+  ugrid%max_ndual_per_cell = int(temp_real+0.1d0)
   call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
-                    unstructured_grid%nmax,num_connections_global, &
-                    unstructured_grid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
-                    unstructured_grid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
+                    ugrid%nmax,num_connections_global, &
+                    ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
+                    ugrid%max_ndual_per_cell,PETSC_NULL_INTEGER, &
                     M_mat,ierr)
   call MatZeroEntries(M_mat,ierr)
   do iconn = 1, num_connections_local_old
@@ -693,15 +701,13 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
 #endif
 
   num_common_faces = 1
-  call UGridPartition(unstructured_grid, &
+  call UGridPartition(ugrid, &
                              option, &
                              Adj_mat, &
                              num_common_faces, &
                              Dual_mat,is_new, &
                              num_cells_local_new)
 
-  call MatDestroy(Adj_mat,ierr)
-  
   ! second argument of ZERO_INTEGER means to use 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
@@ -713,15 +719,15 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
     call printErrMsg(option)
   endif
 
-  
   call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
                           num_rows,ia_ptr,ja_ptr,success,ierr)
   
   ! in order to redistributed cell/connection data among ranks, I package it
   ! in a crude way within a strided petsc vec and pass it.  The stride 
   ! determines the size of each cells "packaged" data 
-  dual_offset = 6 + 1 ! +1 for -888
-  stride = dual_offset + unstructured_grid%max_ndual_per_cell + 1 ! +1 for -999999
+  connection_offset = 6 + 1 ! +1 for -777
+  dual_offset = connection_offset + ugrid%max_ndual_per_cell + 1 ! +1 for -888
+  cell_stride = dual_offset + ugrid%max_ndual_per_cell + 1 ! +1 for -999999
 
   ! Information for each cell is packed in a strided petsc vec
   ! The information is ordered within each stride as follows:
@@ -731,7 +737,12 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
   ! cell y coordinate
   ! cell z coordinate
   ! cell volume
-  ! -888      ! separator between cell info and dual ids
+  ! -777      ! separator between cell info and connection info
+  ! conn1     ! connection ids between cell_N and others
+  ! conn1
+  ! ...
+  ! connN     
+  ! -888      ! separator between connection info and dual ids
   ! dual1     ! dual ids between cell_N and others
   ! dual2
   ! ...
@@ -741,14 +752,25 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
   ! the purpose of -888, and -999999 is to allow one to use cells of 
   ! various geometry.  
   
-  call UGridCreateOldVec(unstructured_grid,option,cells_old, &
+  call UGridCreateOldVec(ugrid,option,cells_old, &
                          num_cells_local_old,num_cells_local_new, &
-                         is_new,is_scatter,stride)
+                         is_new,is_scatter,cell_stride)
 
   ! 0 = 0-based indexing
   ! MagGetRowIJF90 returns row and column pointers for compressed matrix data
+  ! pointers to Dual mat
   call MatGetRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,num_rows, &
                       ia_ptr,ja_ptr,success,ierr)
+  ! pointers to Adj mat
+  call MatGetRowIJF90(Adj_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE,temp_int, &
+                      ia_ptr2,ja_ptr2,success,ierr)
+  
+  if (num_rows /= temp_int) then
+    write(string,*) num_rows, temp_int
+    option%io_buffer = 'Number of rows in Adj and Dual matrices inconsistent:'
+    option%io_buffer = trim(option%io_buffer) // trim(adjustl(string))
+    call printErrMsgByRank(option)
+  endif
 
   call VecGetArrayF90(cells_old,vec_ptr,ierr)
   count = 0
@@ -770,17 +792,40 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
     ! add the separator
     count = count + 1
     vec_ptr(count) = -888  ! help differentiate
+ 
+    ! add the connection ids
+    istart = ia_ptr2(local_id)
+    iend = ia_ptr2(local_id+1)-1
+    num_cols = iend-istart+1
+    if (num_cols > ugrid%max_ndual_per_cell) then
+      option%io_buffer = &
+        'Number of columns in Adj matrix is larger then max_ndual_per_cell.'
+      call printErrMsgByRank(option)
+    endif
+    do icol = 1, ugrid%max_ndual_per_cell
+      count = count + 1
+      if (icol <= num_cols) then
+        ! increment for 1-based ordering
+        vec_ptr(count) = ja_ptr2(icol+istart) + 1
+      else
+        vec_ptr(count) = 0
+      endif
+    enddo
+    
+    ! add the separator
+    count = count + 1
+    vec_ptr(count) = -888  ! help differentiate
 
     ! add the dual ids
     istart = ia_ptr(local_id)
     iend = ia_ptr(local_id+1)-1
     num_cols = iend-istart+1
-    if (num_cols > unstructured_grid%max_ndual_per_cell) then
+    if (num_cols > ugrid%max_ndual_per_cell) then
       option%io_buffer = &
         'Number of columns in Dual matrix is larger then max_ndual_per_cell.'
       call printErrMsgByRank(option)
     endif
-    do icol = 1, unstructured_grid%max_ndual_per_cell
+    do icol = 1, ugrid%max_ndual_per_cell
       count = count + 1
       if (icol <= num_cols) then
         ! increment for 1-based ordering
@@ -789,21 +834,286 @@ subroutine ExplicitUGridDecomposeNew(unstructured_grid,option)
         vec_ptr(count) = 0
       endif
     enddo
-    count = count + 1 
+
     ! final separator
+    count = count + 1 
     vec_ptr(count) = -999999  ! help differentiate
   enddo
   call VecRestoreArrayF90(cells_old,vec_ptr,ierr)
   
+  ! pointers to Dual mat
   call MatRestoreRowIJF90(Dual_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
                           num_rows,ia_ptr,ja_ptr,success,ierr)
+  ! pointers to Adj mat
+  call MatRestoreRowIJF90(Adj_mat,ZERO_INTEGER,PETSC_FALSE,PETSC_FALSE, &
+                          temp_int,ia_ptr2,ja_ptr2,success,ierr)
   call MatDestroy(Dual_mat,ierr)
+  call MatDestroy(Adj_mat,ierr)
   
-  call UGridNaturalToPetsc(unstructured_grid,option, &
+  ! is_scatter is destroyed within UGridNaturalToPetsc
+  call UGridNaturalToPetsc(ugrid,option, &
                            cells_old,cells_local, &
-                           num_cells_local_new,stride,dual_offset, &
+                           num_cells_local_new,cell_stride,dual_offset, &
                            is_scatter)
+  
+  call VecDestroy(cells_old,ierr)
 
+  ! set up connections
+  connection_stride = 7
+  ! create strided vector with the old connection distribution
+  call VecCreate(option%mycomm,connections_old,ierr)
+  call VecSetSizes(connections_old, &
+                   connection_stride*num_connections_local_old, &
+                   PETSC_DECIDE,ierr)
+  call VecSetFromOptions(connections_old,ierr) 
+
+  call VecGetArrayF90(connections_old,vec_ptr,ierr)
+  do iconn = 1, num_connections_local_old
+    offset = (iconn-1)*connection_stride
+    vec_ptr(offset+1) = explicit_grid%connections(1,iconn)
+    vec_ptr(offset+2) = explicit_grid%connections(2,iconn)
+    vec_ptr(offset+3) = explicit_grid%face_centroids(iconn)%x
+    vec_ptr(offset+4) = explicit_grid%face_centroids(iconn)%y
+    vec_ptr(offset+5) = explicit_grid%face_centroids(iconn)%z
+    vec_ptr(offset+6) = explicit_grid%face_areas(iconn)
+    vec_ptr(offset+7) = -999.d0
+  enddo
+  call VecRestoreArrayF90(connections_old,vec_ptr,ierr)
+
+    
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'connections_old' // trim(adjustl(string)) // '.out'
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+  call VecView(connections_old,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif    
+  
+  ! count the number of cells and their duals  
+  call VecGetArrayF90(cells_local,vec_ptr,ierr)
+  count = 0
+  do local_id=1, num_cells_local_new
+    do iconn = 1, ugrid%max_ndual_per_cell
+      conn_id = vec_ptr(iconn + connection_offset + (local_id-1)*cell_stride)
+      if (conn_id < 1) exit ! here we hit the 0 at the end of last dual
+      dual_id = vec_ptr(iconn + dual_offset + (local_id-1)*cell_stride)
+      ! only count one side of the connection
+      if (local_id < dual_id) count = count + 1
+    enddo
+  enddo   
+  ! allocate and fill an array with the natural cell and dual ids
+  allocate(int_array(count))
+  count = 0
+  do local_id=1, ugrid%nlmax
+    do iconn = 1, ugrid%max_ndual_per_cell
+      conn_id = vec_ptr(iconn + connection_offset + (local_id-1)*cell_stride)
+      if (conn_id < 1) exit ! again we hit the 0 
+      dual_id = vec_ptr(iconn + dual_offset + (local_id-1)*cell_stride)
+      if (local_id < dual_id) then
+        count = count + 1
+        int_array(count) = conn_id
+      endif
+    enddo
+  enddo
+  call VecRestoreArrayF90(cells_local,vec_ptr,ierr)  
+  
+  ! sort 
+  call PetscSortInt(count,int_array,ierr)
+  
+  allocate(int_array2(count))
+  int_array2(1) = int_array(1)
+  temp_int = count
+  count = 1
+  do iconn = 1, temp_int
+    if (int_array(iconn) > int_array2(count)) then
+      count = count + 1
+      int_array2(count) = int_array(iconn)
+    endif
+  enddo
+  
+  num_connections_local = count
+  deallocate(int_array)
+  allocate(int_array(num_connections_local))
+  int_array = int_array2(1:num_connections_local)
+  deallocate(int_array2)
+  
+  call VecCreate(PETSC_COMM_SELF,connections_local,ierr)
+  call VecSetSizes(connections_local,num_connections_local*connection_stride, &
+                   PETSC_DECIDE,ierr)
+  call VecSetBlockSize(connections_local,connection_stride,ierr)
+  call VecSetFromOptions(connections_local,ierr)
+
+  int_array = int_array-1
+  call ISCreateBlock(option%mycomm,connection_stride,num_connections_local, &
+                     int_array,PETSC_COPY_VALUES,is_scatter,ierr)
+  do iconn = 1, connection_stride
+    int_array(iconn) = iconn-1
+  enddo
+  call ISCreateBlock(option%mycomm,connection_stride,num_connections_local, &
+                     int_array,PETSC_COPY_VALUES,is_gather,ierr)
+  deallocate(int_array)
+
+#if UGRID_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'is_scatter_conn_old_to_local.out',viewer,ierr)
+  call ISView(is_scatter,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'is_gather_conn_old_to_local.out',viewer,ierr)
+  call ISView(is_gather,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  call printMsg(option,'Scatter/gathering local connection info')
+#endif  
+  
+  ! scatter all the connection data from the old to local
+  call VecScatterCreate(connections_old,is_scatter,connections_local, &
+                        is_gather,vec_scatter,ierr)
+  call ISDestroy(is_scatter,ierr)
+  call VecScatterBegin(vec_scatter,connections_old,connections_local, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,connections_old,connections_local, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)  
+
+    
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'connections_local' // trim(adjustl(string)) // '.out'
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+  call VecView(connections_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif   
+  
+  ! create temporary mapping to local natural ids to local ghosted ids
+  allocate(int_array(ugrid%ngmax))
+  do ghosted_id = 1, ugrid%ngmax
+    int_array(ghosted_id) = ghosted_id
+  enddo
+
+  allocate(int_array2(ugrid%ngmax))
+  call VecGetArrayF90(cells_local,vec_ptr,ierr)
+  do ghosted_id = 1, ugrid%ngmax
+    int_array2(ghosted_id) = vec_ptr((ghosted_id-1)*cell_stride+2)
+  enddo
+  call VecRestoreArrayF90(cells_local,vec_ptr,ierr)
+  
+  ! make the arrays zero-based
+  int_array = int_array - 1  ! local
+  int_array2 = int_array2 - 1  ! natural
+  ! create an application ordering (mapping of natural to petsc ordering)
+  call AOCreateBasic(option%mycomm,ugrid%ngmax, &
+                     int_array2,int_array,ao_natural_to_local,ierr)
+  deallocate(int_array)  
+  deallocate(int_array2)
+  
+  allocate(int_array(num_connections_local*2))
+  call VecGetArrayF90(connections_local,vec_ptr,ierr)
+  count = 0
+  do iconn = 1, num_connections_local
+    offset = connection_stride*(iconn-1)
+    count = count + 1
+    int_array(count) = vec_ptr(offset+1)
+    count = count + 1
+    int_array(count) = vec_ptr(offset+2)
+  enddo
+  call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
+  int_array = int_array - 1
+  call AOApplicationToPetsc(ao_natural_to_local,2*num_connections_local, &
+                            int_array,ierr)
+  int_array = int_array + 1
+  call VecGetArrayF90(connections_local,vec_ptr,ierr)
+  count = 0
+  do iconn = 1, num_connections_local
+    offset = connection_stride*(iconn-1)
+    count = count + 1
+    vec_ptr(offset+1) = int_array(count)
+    count = count + 1
+    vec_ptr(offset+2) = int_array(count)
+  enddo
+  call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
+  
+  ! now check to ensure that each connection is aligned with the PETSc/ParMETIS
+  ! calculated dual
+  call VecGetArrayF90(cells_local,vec_ptr,ierr)
+  call VecGetArrayF90(connections_local,vec_ptr2,ierr)
+  do iconn = 1, num_connections_local_old
+    offset = connection_stride*(iconn-1)
+    id_up = vec_ptr2(offset+1)
+    id_dn = vec_ptr2(offset+2)
+    if (id_up > id_dn) then
+      temp_int = id_up
+      id_up = id_dn
+      id_dn = temp_int
+      vec_ptr2(offset+1) = id_up
+      vec_ptr2(offset+2) = id_dn
+    endif
+    found = PETSC_FALSE
+    do idual = 1, ugrid%max_ndual_per_cell
+      temp_int = vec_ptr((id_up-1)*cell_stride+dual_offset+idual)
+      ! temp_int should be = id_dn 
+      if (temp_int < 1) exit ! again we hit the 0 
+      if (temp_int == id_dn) then
+        if (found) then ! already found
+          write(string,*) iconn, id_up, id_dn
+          option%io_buffer = 'Duplicate connection: ' // trim(adjustl(string))
+          call printErrMsgByRank(option)
+        endif
+        found = PETSC_TRUE
+      endif
+    enddo
+    if (.not.found) then
+      write(string,*) iconn, id_up, id_dn
+      option%io_buffer = 'Inconsistent connection: ' // trim(adjustl(string))
+      call printErrMsgByRank(option)
+    endif
+  enddo
+  call VecRestoreArrayF90(cells_local,vec_ptr,ierr)
+  call VecRestoreArrayF90(connections_local,vec_ptr2,ierr)
+  
+  ! deallocate/allocate connection info locally
+  deallocate(explicit_grid%connections)
+  deallocate(explicit_grid%face_areas)
+  deallocate(explicit_grid%face_centroids)
+  allocate(explicit_grid%connections(2,num_connections_local))
+  explicit_grid%connections = 0
+  allocate(explicit_grid%face_areas(num_connections_local))
+  explicit_grid%face_areas = 0    
+  allocate(explicit_grid%face_centroids(num_connections_local))
+  do iconn = 1, num_connections_local
+    explicit_grid%face_centroids(iconn)%x = 0.d0
+    explicit_grid%face_centroids(iconn)%y = 0.d0
+    explicit_grid%face_centroids(iconn)%z = 0.d0
+  enddo  
+  call VecGetArrayF90(connections_local,vec_ptr,ierr)
+  do iconn = 1, num_connections_local
+    offset = connection_stride*(iconn-1)
+    explicit_grid%connections(1,iconn) = vec_ptr(offset+1)
+    explicit_grid%connections(2,iconn) = vec_ptr(offset+2)
+    explicit_grid%face_centroids(iconn)%x = vec_ptr(offset+3)
+    explicit_grid%face_centroids(iconn)%y = vec_ptr(offset+4)
+    explicit_grid%face_centroids(iconn)%z = vec_ptr(offset+5)
+    explicit_grid%face_areas(iconn) = vec_ptr(offset+6)
+  enddo
+  call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
+
+#if UGRID_DEBUG
+  write(string,'(2i5,4pe8.3)') option%myrank
+  string = 'connections_local' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do iconn = 1, num_connections_local
+    write(86,*) explicit_grid%connections(1,iconn), &
+                explicit_grid%connections(2,iconn), &
+                explicit_grid%face_centroids(iconn)%x, &
+                explicit_grid%face_centroids(iconn)%y, &
+                explicit_grid%face_centroids(iconn)%z, &
+                explicit_grid%face_areas(iconn)
+  enddo
+  close(86)
+#endif     
+  
+  call AODestroy(ao_natural_to_local,ierr)
+  call VecDestroy(connections_old,ierr)
+  call VecDestroy(connections_local,ierr)
+  call VecDestroy(cells_local,ierr)
+  
 end subroutine ExplicitUGridDecomposeNew
 
 ! ************************************************************************** !
