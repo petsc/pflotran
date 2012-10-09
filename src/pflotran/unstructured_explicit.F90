@@ -884,7 +884,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
 #if UGRID_DEBUG
   write(string,*) option%myrank
   string = 'connections_old' // trim(adjustl(string)) // '.out'
-  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer,ierr)
   call VecView(connections_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif    
@@ -946,7 +946,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   int_array = int_array-1
   call ISCreateBlock(option%mycomm,connection_stride,num_connections_local, &
                      int_array,PETSC_COPY_VALUES,is_scatter,ierr)
-  do iconn = 1, connection_stride
+  do iconn = 1, num_connections_local
     int_array(iconn) = iconn-1
   enddo
   call ISCreateBlock(option%mycomm,connection_stride,num_connections_local, &
