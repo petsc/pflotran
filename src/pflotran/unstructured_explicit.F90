@@ -983,6 +983,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif   
   
+#if 0
   ! create temporary mapping to local natural ids to local ghosted ids
   allocate(int_array(ugrid%ngmax))
   do ghosted_id = 1, ugrid%ngmax
@@ -1004,6 +1005,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
                      int_array2,int_array,ao_natural_to_local,ierr)
   deallocate(int_array)  
   deallocate(int_array2)
+#endif  
   
   allocate(int_array(num_connections_local*2))
   call VecGetArrayF90(connections_local,vec_ptr,ierr)
@@ -1016,10 +1018,14 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
     int_array(count) = vec_ptr(offset+2)
   enddo
   call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
+
+#if 0  
   int_array = int_array - 1
   call AOApplicationToPetsc(ao_natural_to_local,2*num_connections_local, &
                             int_array,ierr)
   int_array = int_array + 1
+#endif
+
   call VecGetArrayF90(connections_local,vec_ptr,ierr)
   count = 0
   do iconn = 1, num_connections_local
