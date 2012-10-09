@@ -104,7 +104,8 @@ module Option_module
     
     PetscBool :: use_isothermal
     PetscBool :: use_mc           ! If true, multiple continuum formulation is used.
-    PetscBool :: set_secondary_init_temp
+    PetscBool :: set_secondary_init_temp  ! If true, then secondary init temp is different from prim. init temp
+    PetscBool :: set_secondary_init_conc  ! If true, then secondary init conc is different from prim. init conc.
     
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscBool :: use_generalized_grid

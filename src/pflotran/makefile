@@ -186,12 +186,12 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}material_aux.o\
 	${common_src}matrix_block_aux.o\
 	${common_src}database_aux.o\
+	${common_src}secondary_continuum.o\
 	${common_src}surface_complexation_aux.o\
 	${common_src}mineral_aux.o\
 	${common_src}solid_solution_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
-	${common_src}secondary_continuum.o\
 	${common_src}thc_aux.o\
 	${common_src}thmc_aux.o\
 	${common_src}richards_aux.o\
@@ -380,8 +380,8 @@ reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o
-reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
-                           matrix_block_aux.o
+reactive_transport_aux.o : option.o matrix_block_aux.o secondary_continuum.o\
+						   mineral_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
                 observation.o velocity.o patch.o level.o discretization.o \

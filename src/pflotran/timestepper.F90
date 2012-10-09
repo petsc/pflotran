@@ -1625,7 +1625,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             update_reason=1
           case(RICHARDS_MODE,G_MODE)
             update_reason=1
-        end select   
+         end select   
         !if (option%print_screen_flag) print *,'update_reason: ',update_reason
       endif
    
@@ -2205,6 +2205,10 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+    
+    if (snes_reason >= 0 .and. option%use_mc) then
+      option%sec_vars_update = PETSC_TRUE
+    endif
     
     if (snes_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
@@ -3234,6 +3238,7 @@ subroutine StepperSandbox(realization)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use String_module
+  use Secondary_Continuum_module
 
   implicit none
 
@@ -3255,6 +3260,9 @@ subroutine StepperSandbox(realization)
   PetscInt :: species_offset
   PetscInt :: num_iterations
   PetscErrorCode :: ierr
+  
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscReal :: vol_frac_prim
 
   discretization => realization%discretization
   field => realization%field
@@ -3265,6 +3273,7 @@ subroutine StepperSandbox(realization)
 
   rt_aux_vars => patch%Aux%RT%aux_vars
   global_aux_vars => patch%Aux%Global%aux_vars
+  rt_sec_transport_vars => patch%Aux%RT%sec_transport_vars
 
                                    ! cells     bcs        act coefs.
   call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
@@ -3272,6 +3281,8 @@ subroutine StepperSandbox(realization)
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  
+  vol_frac_prim = 1.d0
 
   do species_offset = 1, reaction%naqcomp
     if (StringCompare(reaction%primary_species_names(species_offset), &
@@ -3289,6 +3300,10 @@ subroutine StepperSandbox(realization)
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
     
+    if (option%use_mc) then
+      vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+    endif
+    
     tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%total(:,ONE_INTEGER)
     ! scale uo2++ total concentration by 0.25
     tran_xx_p(istart + species_offset) = 0.25d0 * &
@@ -3297,7 +3312,7 @@ subroutine StepperSandbox(realization)
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                 tran_xx_p(istart:iend),volume_p(local_id), &
                 porosity_loc_p(ghosted_id), &
-                num_iterations,reaction,option)
+                num_iterations,reaction,option,vol_frac_prim)
     tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
   enddo
 
