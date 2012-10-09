@@ -2962,7 +2962,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                 sec_porosity, &
                                 option,res_sec_transport)
                         
-      r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)
+      r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)*1.d3 ! convert vol to L from m3
 
     enddo   
     option%sec_vars_update = PETSC_FALSE
@@ -3519,7 +3519,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
 
-
+  vol_frac_prim = 1.d0
+  
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
  
@@ -3566,7 +3567,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                           reaction, &
                                           option,jac_transport)
                                         
-        Jup = Jup - jac_transport*volume_p(local_id)
+        Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L
       endif
 
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
@@ -5099,7 +5100,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
 
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
-  vol = sec_transport_vars%vol
+  vol = sec_transport_vars%vol          
   dm_plus = sec_transport_vars%dm_plus
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
