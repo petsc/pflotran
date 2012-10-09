@@ -966,6 +966,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   ! scatter all the connection data from the old to local
   call VecScatterCreate(connections_old,is_scatter,connections_local, &
                         is_gather,vec_scatter,ierr)
+  call ISDestroy(is_gather,ierr)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,connections_old,connections_local, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
