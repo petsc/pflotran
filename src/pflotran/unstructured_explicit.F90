@@ -1099,7 +1099,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   string = 'connections_local' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do iconn = 1, num_connections_local
-    write(86,'(2i5,4pe8.3)') explicit_grid%connections(1,iconn), &
+    write(86,'(2i5,4f7.3)') explicit_grid%connections(1,iconn), &
                 explicit_grid%connections(2,iconn), &
                 explicit_grid%face_centroids(iconn)%x, &
                 explicit_grid%face_centroids(iconn)%y, &
