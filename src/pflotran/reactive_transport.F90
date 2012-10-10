@@ -197,10 +197,8 @@ subroutine RTSetupPatch(realization)
       rt_sec_transport_vars(ghosted_id)%aperture = &
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
       rt_sec_transport_vars(ghosted_id)%epsilon = &
-        realization%material_property_array(1)%ptr%secondary_continuum_epsilon
-      rt_sec_transport_vars(ghosted_id)%epsilon = &
-        realization%material_property_array(1)%ptr%secondary_continuum_porosity    
-
+        realization%material_property_array(1)%ptr%secondary_continuum_epsilon 
+        
       allocate(rt_sec_transport_vars(ghosted_id)%area(rt_sec_transport_vars(ghosted_id)%ncells))
       allocate(rt_sec_transport_vars(ghosted_id)%vol(rt_sec_transport_vars(ghosted_id)%ncells))
       allocate(rt_sec_transport_vars(ghosted_id)%dm_minus(rt_sec_transport_vars(ghosted_id)%ncells))
@@ -2942,7 +2940,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                   secondary_continuum_diff_coeff
       sec_porosity = realization%material_property_array(1)%ptr% &
                      secondary_continuum_porosity
-
+                     
 
       if (option%sec_vars_update) then
         call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
@@ -2961,9 +2959,8 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                 sec_diffusion_coefficient, &
                                 sec_porosity, &
                                 option,res_sec_transport)
-                        
+                                                        
       r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)*1.d3 ! convert vol to L from m3
-
     enddo   
     option%sec_vars_update = PETSC_FALSE
   endif
@@ -3544,6 +3541,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                     porosity_loc_p(ghosted_id), &
                                     volume_p(local_id),reaction,option, &
                                     vol_frac_prim,Jup) 
+                                    
       if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_aux_vars(ghosted_id), &
                                          global_aux_vars(ghosted_id), &
@@ -3566,7 +3564,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                           sec_porosity, &
                                           reaction, &
                                           option,jac_transport)
-                                        
+                                                                                
         Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L
       endif
 
@@ -5249,8 +5247,7 @@ subroutine RTSecondaryTransportJacobian(sec_transport_vars, &
   
   ! Calculate the jacobian term
   jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
-             dm_plus(ngcells)
-                            
+                  dm_plus(ngcells)                         
               
 end subroutine RTSecondaryTransportJacobian
 
