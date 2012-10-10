@@ -1560,6 +1560,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           enddo
 #endif
         case(EXPLICIT_UNSTRUCTURED_GRID)
+          call GridLocalizeExplicitFaceset(grid%unstructured_grid,region, &
+                                           option)
         case default
           option%io_buffer = 'GridLocalizeRegions: define region by list ' // &
             'of cells not implemented: ' // trim(region%name)
@@ -1762,6 +1764,102 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
   endif
 
 end subroutine GridLocalizeRegionsFromCellIDsUGrid
+
+! ************************************************************************** !
+!
+! GridLocalizeExplicitFaceset
+! author: Glenn Hammond
+! date: 10/10/12
+!
+! ************************************************************************** !
+subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
+
+  use Region_module
+  use Option_module
+
+  implicit none
+  
+  type(unstructured_grid_type) :: ugrid
+  type(region_type) :: region
+  type(option_type) :: option
+  Vec :: volume
+
+  type(unstructured_explicit_type), pointer :: explicit_grid
+  type(region_explicit_face_type), pointer :: faceset
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: icell, count
+  PetscInt, allocatable :: int_array(:)
+  PetscReal, allocatable :: real_array_2d(:,:)
+  PetscErrorCode :: ierr
+
+  explicit_grid => ugrid%explicit_grid
+  faceset => region%explicit_faceset
+  
+  ! convert ids to petsc
+  region%cell_ids = region%cell_ids - 1
+  call AOApplicationToPetsc(ugrid%ao_natural_to_petsc,size(region%cell_ids), &
+                            region%cell_ids,ierr)
+  region%cell_ids = region%cell_ids + 1
+  
+  ! if petsc ids are below global_offset or above global_offset + nlmax, 
+  ! they are off processor; otherwise, local
+
+  ! negate off processor ids
+  allocate(int_array(size(region%cell_ids)))
+  allocate(real_array_2d(4,size(region%cell_ids)))
+  int_array = -999
+  real_array_2d = -999.d0
+  count = 0
+  do icell = 1, size(region%cell_ids)
+    if (region%cell_ids(icell) < ugrid%global_offset .or. &
+        region%cell_ids(icell) >= ugrid%global_offset + ugrid%nlmax) then
+      region%cell_ids(icell) = -1*region%cell_ids(icell)
+    else
+      count = count + 1
+      ! local cell id
+      int_array(count) = region%cell_ids(icell) + ugrid%global_offset
+      real_array_2d(1,count) = faceset%face_centroids(icell)%x
+      real_array_2d(2,count) = faceset%face_centroids(icell)%y
+      real_array_2d(3,count) = faceset%face_centroids(icell)%z
+      real_array_2d(4,count) = faceset%face_areas(icell)
+    endif
+  enddo
+  
+  deallocate(region%cell_ids)
+  deallocate(faceset%face_centroids)
+  deallocate(faceset%face_areas)
+
+  allocate(region%cell_ids(count))
+  allocate(faceset%face_centroids(count))
+  allocate(faceset%face_areas(count))
+  
+  region%cell_ids = int_array(1:count)
+  do icell = 1, count
+    faceset%face_centroids(icell)%x = real_array_2d(1,icell)
+    faceset%face_centroids(icell)%y = real_array_2d(2,icell)
+    faceset%face_centroids(icell)%z = real_array_2d(3,icell)
+    faceset%face_areas(icell) = real_array_2d(4,icell)
+  enddo
+  
+  deallocate(int_array)
+  deallocate(real_array_2d)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'region_faceset_' // trim(region%name) // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do icell = 1, size(region%cell_ids)
+    write(86,'(i5,4f7.3)') region%cell_ids(icell), &
+                faceset%face_centroids(icell)%x, &
+                faceset%face_centroids(icell)%y, &
+                faceset%face_centroids(icell)%z, &
+                faceset%face_areas(icell)
+  enddo
+  close(86)
+#endif  
+
+end subroutine GridLocalizeExplicitFaceset
 
 ! ************************************************************************** !
 !
