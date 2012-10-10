@@ -5155,7 +5155,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   conc_current_N = rhs(ngcells)/coeff_diag(ngcells)
   
   ! Calculate the coupling term
-  res_transport = area_fm*diffusion_coefficient* &
+  res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
                           
 end subroutine RTSecondaryTransport
@@ -5247,7 +5247,7 @@ subroutine RTSecondaryTransportJacobian(sec_transport_vars, &
   
   ! Calculate the jacobian term
   jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
-                  dm_plus(ngcells)                         
+                  dm_plus(ngcells)*porosity                         
               
 end subroutine RTSecondaryTransportJacobian
 
