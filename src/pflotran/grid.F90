@@ -1845,18 +1845,33 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
   deallocate(int_array)
   deallocate(real_array_2d)
 
+  region%num_cells = count
+  
+  if (region%num_cells == 0) then
+    deallocate(region%cell_ids)
+    nullify(region%cell_ids)
+    deallocate(faceset%face_centroids)
+    nullify(faceset%face_centroids)
+    deallocate(faceset%face_areas)
+    nullify(faceset%face_areas)
+    deallocate(faceset)
+    nullify(faceset)
+  endif
+
 #if UGRID_DEBUG
-  write(string,*) option%myrank
-  string = 'region_faceset_' // trim(region%name) // trim(adjustl(string)) // '.out'
-  open(unit=86,file=trim(string))
-  do icell = 1, size(region%cell_ids)
-    write(86,'(i5,4f7.3)') region%cell_ids(icell), &
-                faceset%face_centroids(icell)%x, &
-                faceset%face_centroids(icell)%y, &
-                faceset%face_centroids(icell)%z, &
-                faceset%face_areas(icell)
-  enddo
-  close(86)
+  if (region%num_cells > 0) then
+    write(string,*) option%myrank
+    string = 'region_faceset_' // trim(region%name) // trim(adjustl(string)) // '.out'
+    open(unit=86,file=trim(string))
+    do icell = 1, region%num_cells
+      write(86,'(i5,4f7.3)') region%cell_ids(icell), &
+                  faceset%face_centroids(icell)%x, &
+                  faceset%face_centroids(icell)%y, &
+                  faceset%face_centroids(icell)%z, &
+                  faceset%face_areas(icell)
+    enddo
+    close(86)
+  endif
 #endif  
 
 end subroutine GridLocalizeExplicitFaceset
