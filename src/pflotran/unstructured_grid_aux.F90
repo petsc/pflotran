@@ -1119,6 +1119,16 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   enddo
   call VecRestoreArrayF90(elements_new,vec_ptr,ierr)
 
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'natural_ids' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do local_id = 1, num_cells_local_new
+    write(86,'(i5)') ugrid%cell_ids_natural(local_id)
+  enddo
+  close(86)
+#endif     
+
   ! make a list of petsc ids for each local cell (you simply take the global 
   ! offset and add it to the local contiguous cell ids on each processor
   allocate(int_array(num_cells_local_new))

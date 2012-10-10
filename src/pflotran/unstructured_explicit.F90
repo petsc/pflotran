@@ -593,7 +593,6 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   PetscInt :: num_cells_local_new, num_cells_local_old
   Vec :: cells_old, cells_local
   Vec :: connections_old, connections_local
-  AO :: ao_natural_to_local
   VecScatter :: vec_scatter
   
   PetscInt :: global_offset_old
@@ -860,7 +859,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call VecDestroy(cells_old,ierr)
 
   ! set up connections
-  connection_stride = 7
+  connection_stride = 8
   ! create strided vector with the old connection distribution
   call VecCreate(option%mycomm,connections_old,ierr)
   call VecSetSizes(connections_old, &
@@ -877,7 +876,8 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
     vec_ptr(offset+4) = explicit_grid%face_centroids(iconn)%y
     vec_ptr(offset+5) = explicit_grid%face_centroids(iconn)%z
     vec_ptr(offset+6) = explicit_grid%face_areas(iconn)
-    vec_ptr(offset+7) = -999.d0
+    vec_ptr(offset+7) = 1.d0 ! flag for local connections
+    vec_ptr(offset+8) = -888.d0
   enddo
   call VecRestoreArrayF90(connections_old,vec_ptr,ierr)
 
@@ -1051,6 +1051,12 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call VecGetArrayF90(connections_local,vec_ptr,ierr)
   do iconn = 1, num_connections_local
     offset = connection_stride*(iconn-1)
+    ! all values should be negative at this point, unless uninitialized
+    if (maxval(int_array2d(:,iconn)) >= 999) then
+      ! connection is between two ghosted cells
+      vec_ptr(offset+7) = 0.d0
+      cycle
+    endif
     id_up = vec_ptr(offset+1) ! this is the natural id
     id_dn = vec_ptr(offset+2)
     count = 0
@@ -1090,6 +1096,10 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
       vec_ptr(offset+1) = id_dn
       vec_ptr(offset+2) = id_up 
     endif
+    if (id_up > ugrid%nlmax .and. id_dn > ugrid%nlmax) then
+      ! connection is between two ghosted cells
+      vec_ptr(offset+7) = 0.d0
+    endif
   enddo
   call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
   deallocate(int_array2d)
@@ -1106,27 +1116,41 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   deallocate(explicit_grid%connections)
   deallocate(explicit_grid%face_areas)
   deallocate(explicit_grid%face_centroids)
-  allocate(explicit_grid%connections(2,num_connections_local))
-  explicit_grid%connections = 0
-  allocate(explicit_grid%face_areas(num_connections_local))
-  explicit_grid%face_areas = 0    
-  allocate(explicit_grid%face_centroids(num_connections_local))
+
+  count = 0
+  call VecGetArrayF90(connections_local,vec_ptr,ierr)
   do iconn = 1, num_connections_local
+    offset = connection_stride*(iconn-1)
+    if (vec_ptr(offset+7) > 0.1d0) count = count + 1
+  enddo
+  call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
+
+  allocate(explicit_grid%connections(2,count))
+  explicit_grid%connections = 0
+  allocate(explicit_grid%face_areas(count))
+  explicit_grid%face_areas = 0    
+  allocate(explicit_grid%face_centroids(count))
+  do iconn = 1, count
     explicit_grid%face_centroids(iconn)%x = 0.d0
     explicit_grid%face_centroids(iconn)%y = 0.d0
     explicit_grid%face_centroids(iconn)%z = 0.d0
   enddo  
   call VecGetArrayF90(connections_local,vec_ptr,ierr)
+  count = 0
   do iconn = 1, num_connections_local
     offset = connection_stride*(iconn-1)
-    explicit_grid%connections(1,iconn) = vec_ptr(offset+1)
-    explicit_grid%connections(2,iconn) = vec_ptr(offset+2)
-    explicit_grid%face_centroids(iconn)%x = vec_ptr(offset+3)
-    explicit_grid%face_centroids(iconn)%y = vec_ptr(offset+4)
-    explicit_grid%face_centroids(iconn)%z = vec_ptr(offset+5)
-    explicit_grid%face_areas(iconn) = vec_ptr(offset+6)
+    if (vec_ptr(offset+7) > 0.1d0) then
+      count = count + 1
+      explicit_grid%connections(1,count) = vec_ptr(offset+1)
+      explicit_grid%connections(2,count) = vec_ptr(offset+2)
+      explicit_grid%face_centroids(count)%x = vec_ptr(offset+3)
+      explicit_grid%face_centroids(count)%y = vec_ptr(offset+4)
+      explicit_grid%face_centroids(count)%z = vec_ptr(offset+5)
+      explicit_grid%face_areas(count) = vec_ptr(offset+6)
+    endif
   enddo
   call VecRestoreArrayF90(connections_local,vec_ptr,ierr)
+  num_connections_local = count
 
 #if UGRID_DEBUG
   write(string,*) option%myrank
@@ -1143,7 +1167,6 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   close(86)
 #endif     
   
-  call AODestroy(ao_natural_to_local,ierr)
   call VecDestroy(connections_old,ierr)
   call VecDestroy(connections_local,ierr)
   call VecDestroy(cells_local,ierr)
