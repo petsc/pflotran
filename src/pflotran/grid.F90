@@ -1425,7 +1425,7 @@ subroutine GridComputeVolumes(grid,volume,option)
       call UGridComputeVolumes(grid%unstructured_grid,option,volume)
       call UGridComputeQuality(grid%unstructured_grid,option)
     case(EXPLICIT_UNSTRUCTURED_GRID)
-      call ExplicitUGridComputeVolumes(grid%unstructured_grid%explicit_grid, &
+      call ExplicitUGridComputeVolumes(grid%unstructured_grid, &
                                        option,volume)
   end select
 

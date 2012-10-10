@@ -1111,6 +1111,47 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call VecView(connections_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif   
+
+  ! deallocate/allocate grid cell info locally
+  deallocate(explicit_grid%cell_ids)
+  deallocate(explicit_grid%cell_volumes)
+  deallocate(explicit_grid%cell_centroids)
+
+  allocate(explicit_grid%cell_ids(ugrid%ngmax))
+  explicit_grid%cell_ids = -999
+  allocate(explicit_grid%cell_volumes(ugrid%ngmax))
+  explicit_grid%cell_volumes = -999.d0
+  allocate(explicit_grid%cell_centroids(ugrid%ngmax))
+  do icell = 1, ugrid%ngmax
+    explicit_grid%cell_centroids(icell)%x = -999.d0
+    explicit_grid%cell_centroids(icell)%y = -999.d0
+    explicit_grid%cell_centroids(icell)%z = -999.d0
+  enddo
+
+  call VecGetArrayF90(cells_local,vec_ptr,ierr)
+  do ghosted_id=1, ugrid%ngmax
+    offset = cell_stride*(ghosted_id-1)
+    explicit_grid%cell_ids(ghosted_id) = vec_ptr(offset + 2)
+    explicit_grid%cell_centroids(ghosted_id)%x = vec_ptr(offset + 3)
+    explicit_grid%cell_centroids(ghosted_id)%y = vec_ptr(offset + 4)
+    explicit_grid%cell_centroids(ghosted_id)%z = vec_ptr(offset + 5)
+    explicit_grid%cell_volumes(ghosted_id) = vec_ptr(offset + 6)
+  enddo
+  call VecRestoreArrayF90(cells_local,vec_ptr,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'cells_local_raw' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do ghosted_id = 1, ugrid%ngmax
+    write(86,'(i5,4f7.3)') explicit_grid%cell_ids(ghosted_id), &
+                explicit_grid%cell_centroids(ghosted_id)%x, &
+                explicit_grid%cell_centroids(ghosted_id)%y, &
+                explicit_grid%cell_centroids(ghosted_id)%z, &
+                explicit_grid%cell_volumes(ghosted_id)
+  enddo
+  close(86)
+#endif     
   
   ! deallocate/allocate connection info locally
   deallocate(explicit_grid%connections)
@@ -1193,7 +1234,7 @@ subroutine ExplicitUGridSetCellCentroids(explicit_grid,x,y,z, &
 
   PetscInt :: icell
   
-  do icell = 1, size(x)
+  do icell = 1, size(explicit_grid%cell_centroids)
     x(icell) = explicit_grid%cell_centroids(icell)%x
     y(icell) = explicit_grid%cell_centroids(icell)%y
     z(icell) = explicit_grid%cell_centroids(icell)%z
@@ -1279,22 +1320,26 @@ end function ExplicitUGridSetInternConnect
 ! date: 05/17/12
 !
 ! ************************************************************************** !
-subroutine ExplicitUGridComputeVolumes(explicit_grid,option,volume)
+subroutine ExplicitUGridComputeVolumes(ugrid,option,volume)
 
   use Option_module
 
   implicit none
   
-  type(unstructured_explicit_type) :: explicit_grid
+  type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
   Vec :: volume
+
+  type(unstructured_explicit_type), pointer :: explicit_grid
   
   PetscInt :: icell
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
+  explicit_grid => ugrid%explicit_grid
+
   call VecGetArrayF90(volume,vec_ptr,ierr)
-  do icell = 1, size(explicit_grid%cell_volumes)
+  do icell = 1, ugrid%nlmax
     vec_ptr(icell) = explicit_grid%cell_volumes(icell)
   enddo
   call VecRestoreArrayF90(volume,vec_ptr,ierr)

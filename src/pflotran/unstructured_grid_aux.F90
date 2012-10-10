@@ -626,15 +626,15 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
     do iconn = 1, size(unstructured_grid%explicit_grid%connections,2)
       id_up = unstructured_grid%explicit_grid%connections(1,iconn)
       id_dn = unstructured_grid%explicit_grid%connections(2,iconn)
-      if (id_up > 0) then
-        if (id_dn > 0) then
+      if (id_up <= unstructured_grid%nlmax) then ! local
+        if (id_dn <= unstructured_grid%nlmax) then
           d_nnz(id_up) = d_nnz(id_up) + 1
         else
           o_nnz(id_up) = o_nnz(id_up) + 1
         endif
       endif
-      if (id_dn > 0) then
-        if (id_up > 0) then
+      if (id_dn <= unstructured_grid%nlmax) then ! local
+        if (id_up <= unstructured_grid%nlmax) then
           d_nnz(id_dn) = d_nnz(id_dn) + 1
         else
           o_nnz(id_dn) = o_nnz(id_dn) + 1
@@ -643,8 +643,10 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
     enddo
   else
     do local_id = 1, unstructured_grid%nlmax
-      do ineighbor = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-        neighbor_id = unstructured_grid%cell_neighbors_local_ghosted(ineighbor,local_id)
+      do ineighbor = 1, unstructured_grid% &
+                          cell_neighbors_local_ghosted(0,local_id)
+        neighbor_id = unstructured_grid% &
+                        cell_neighbors_local_ghosted(ineighbor,local_id)
         if (neighbor_id > 0) then
           d_nnz(local_id) = d_nnz(local_id) + 1
         else
