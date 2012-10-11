@@ -14,7 +14,7 @@ module Observation_module
     PetscInt :: id
     PetscInt :: itype
     PetscBool :: print_velocities
-    PetscBool :: print_secondary_data
+    PetscBool :: print_secondary_data(2)          ! first entry is for temp. and second is for conc.
     PetscBool :: at_cell_center
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: linkage_name
@@ -153,12 +153,21 @@ subroutine ObservationRead(observation,input,option)
         observation%print_velocities = PETSC_TRUE
       case('SECONDARY_TEMPERATURE')
       if (option%use_mc) then
-        observation%print_secondary_data = PETSC_TRUE
+        observation%print_secondary_data(1) = PETSC_TRUE
       else
         option%io_buffer = 'Keyword SECONDARY_TEMPERATURE can only be used' // &
                            ' MULTIPLE_CONTINUUM keyword'
         call printErrMsg(option)
       endif
+      case('SECONDARY_CONCENTRATION')
+      if (option%use_mc) then
+        observation%print_secondary_data(2) = PETSC_TRUE
+      else
+        option%io_buffer = 'Keyword SECONDARY_CONCENTRATION can only be used' // &
+                           ' MULTIPLE_CONTINUUM keyword'
+        call printErrMsg(option)
+      endif
+
       case('AT_CELL_CENTER')
         observation%at_cell_center = PETSC_TRUE
       case default

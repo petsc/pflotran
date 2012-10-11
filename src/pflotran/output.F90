@@ -3496,9 +3496,13 @@ subroutine OutputObservationTecplot(realization)
                 if (observation%print_velocities) then
                   call WriteVelocityAtCell(fid,realization,local_id)
                 endif
-               if (observation%print_secondary_data) then
+                if (observation%print_secondary_data(1)) then
                   call WriteObservationSecondaryDataAtCell(fid,realization, &
-                                                           local_id)
+                                                           local_id,1)
+                endif
+                if (observation%print_secondary_data(2)) then
+                  call WriteObservationSecondaryDataAtCell(fid,realization, &
+                                                           local_id,2)
                 endif
               enddo
             endif
@@ -3546,7 +3550,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   type(region_type) :: region
   PetscInt :: icell
   PetscBool :: print_velocities
-  PetscBool :: print_secondary_data
+  PetscBool :: print_secondary_data(2)
   PetscInt :: icolumn
   
   PetscInt :: local_id
@@ -3598,7 +3602,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   type(realization_type) :: realization
   type(region_type) :: region
   PetscBool :: print_velocities
-  PetscBool :: print_secondary_data
+  PetscBool :: print_secondary_data(2)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header
@@ -3640,7 +3644,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   PetscInt :: fid
   type(realization_type) :: realization
   PetscBool :: print_velocities
-  PetscBool :: print_secondary_data
+  PetscBool :: print_secondary_data(2)
   character(len=MAXSTRINGLENGTH) :: cell_string
   PetscInt :: icolumn
   
@@ -3782,7 +3786,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
     write(fid,'(a)',advance="no") trim(header)
   endif
   
-  if (print_secondary_data) then
+  ! add secondary temperature to header
+  if (print_secondary_data(1)) then
     select case (option%iflowmode) 
       case (THC_MODE, MPH_MODE) 
         header = ''
@@ -3794,6 +3799,17 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
       case default
         header = ''
     end select
+    write(fid,'(a)',advance="no") trim(header)
+  endif
+  
+  ! add secondary concentrations to header
+  if (print_secondary_data(2)) then
+        header = ''
+        do i = 1, option%nsec_cells
+          write(string,'(i2)') i
+          string = 'C_sec(' // trim(adjustl(string)) // ')'
+          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
+        enddo
     write(fid,'(a)',advance="no") trim(header)
   endif
   
@@ -5171,7 +5187,7 @@ end function GetVelocityAtCoord
 ! date: 10/4/12
 !
 ! ************************************************************************** !  
-subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id)
+subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
 
   use Realization_module
   use Option_module
@@ -5190,6 +5206,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option    
+  PetscInt :: ivar
   
   option => realization%option
   patch => realization%patch
@@ -5205,15 +5222,24 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id)
   ghosted_id = grid%nL2G(local_id)
 
   if (option%nsec_cells > 0) then
-    select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE)
-        do i = 1, option%nsec_cells 
-          write(fid,110,advance="no") &
-            RealizGetDatasetValueAtCell(realization,SECONDARY_TEMPERATURE,i, &
-                                        ghosted_id)
-        enddo
-      end select
-   endif
+    if (ivar == 1) then
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE)
+          do i = 1, option%nsec_cells 
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,SECONDARY_TEMPERATURE,i, &
+                                          ghosted_id)
+          enddo
+        end select
+     endif
+     if (ivar == 2) then
+       do i = 1, option%nsec_cells 
+         write(fid,110,advance="no") &
+           RealizGetDatasetValueAtCell(realization,SECONDARY_CONCENTRATION,i, &
+                                       ghosted_id)
+       enddo
+     endif
+   endif 
   
 end subroutine WriteObservationSecondaryDataAtCell
 

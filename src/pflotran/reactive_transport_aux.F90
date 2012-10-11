@@ -559,6 +559,12 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   PetscReal :: alpha, diffusion_coefficient, porosity
   PetscReal :: conc_primary_node
   PetscReal :: m
+  PetscReal :: kin_mnrl_rate
+  PetscReal :: mnrl_area, mnrl_molar_vol
+  PetscReal :: equil_conc, Im(sec_transport_vars%ncells)
+  PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
+  PetscInt :: sec_zeta(sec_transport_vars%ncells)
+  PetscReal :: diag_react, rhs_react
   
   
   ngcells = sec_transport_vars%ncells
@@ -574,8 +580,12 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
     call printErrMsg(option)
   endif
 
-  conc_primary_node = aux_var%total(1,1)  !*1000.d0  convert to mol/m3 
-
+  conc_primary_node = aux_var%total(1,1)                           ! in mol/L 
+  kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+  mnrl_area = aux_var%mnrl_area(1)                                 ! in 1/cm
+  equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
+  mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
   
   coeff_left = 0.d0
   coeff_diag = 0.d0
@@ -584,7 +594,8 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   sec_conc = 0.d0
   
   alpha = diffusion_coefficient*option%tran_dt    ! Assuming porosity and diffusion coeff. are same throughout sec. continuum
-
+  diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+  rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3 
   
   ! Setting the coefficients
   do i = 2, ngcells-1
@@ -625,9 +636,28 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   enddo
 
  ! print *,'conc_dcdm= ',(sec_conc(i),i=1,ngcells)
+ 
+   do i = 1, ngcells
+    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/cm^3/s
+    if (Im(i) > 0.d0) then 
+      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+                            mnrl_molar_vol*Im(i)
+      sec_zeta(i) = 1
+      else
+      if (sec_mnrl_volfrac(i) > 0.d0) then
+        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+                              mnrl_molar_vol*Im(i)
+        sec_zeta(i) = 1
+      else
+        Im(i) = 0.d0
+        sec_zeta(i) = 0
+      endif
+    endif
+  enddo
   
   sec_transport_vars%sec_conc = sec_conc
-
+  sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
+  sec_transport_vars%sec_zeta = sec_zeta
 
 end subroutine RTSecTransportAuxVarCompute
 
@@ -901,7 +931,10 @@ subroutine RTAuxDestroy(aux)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)
-
+  
+  if (associated(aux%sec_transport_vars)) deallocate (aux%sec_transport_vars)
+  nullify (aux%sec_transport_vars)
+  
   deallocate(aux)
   nullify(aux)  
 

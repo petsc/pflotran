@@ -56,6 +56,7 @@ module Material_module
     PetscReal :: secondary_continuum_init_conc
     PetscReal :: secondary_continuum_porosity
     PetscReal :: secondary_continuum_diff_coeff
+    PetscReal :: secondary_continuum_eq_conc
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
     character(len=MAXSTRINGLENGTH), pointer :: subcontinuum_type_name(:)
@@ -136,6 +137,7 @@ function MaterialPropertyCreate()
   material_property%secondary_continuum_init_conc = 0.d0
   material_property%secondary_continuum_porosity = 0.5d0
   material_property%secondary_continuum_diff_coeff = 1.d-9
+  material_property%secondary_continuum_eq_conc = 1.d-12
   material_property%secondary_continuum_ncells = 0
 #ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
@@ -450,6 +452,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputReadDouble(input,option, &
                              material_property%secondary_continuum_diff_coeff)
               call InputErrorMsg(input,option,'secondary continuum diff coeff', &
+                           'MATERIAL_PROPERTY')
+            case('EQUILIBRIUM_CONCENTRATION')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_eq_conc)
+              call InputErrorMsg(input,option,'secondary continuum Eq. conc.', &
                            'MATERIAL_PROPERTY')
                 
             case default

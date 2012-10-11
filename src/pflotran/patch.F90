@@ -3002,6 +3002,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
       value = option%myrank
+    case(SECONDARY_CONCENTRATION)
+      value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
