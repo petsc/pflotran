@@ -3004,6 +3004,9 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = option%myrank
     case(SECONDARY_CONCENTRATION)
       value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
+    case(SEC_MIN_VOLFRAC)
+      value = patch%aux%RT%sec_transport_vars(ghosted_id)% &
+              sec_mnrl_volfrac(isubvar)
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &
