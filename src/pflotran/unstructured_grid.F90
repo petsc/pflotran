@@ -1294,6 +1294,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: iflag
   PetscBool :: found
 
+#define UGRID_NEW  
 #ifndef UGRID_NEW
   PetscInt, pointer :: index_ptr(:)
   Vec :: elements_petsc
