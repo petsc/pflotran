@@ -1812,13 +1812,11 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
   real_array_2d = -999.d0
   count = 0
   do icell = 1, size(region%cell_ids)
-    if (region%cell_ids(icell) < ugrid%global_offset .or. &
-        region%cell_ids(icell) >= ugrid%global_offset + ugrid%nlmax) then
-      region%cell_ids(icell) = -1*region%cell_ids(icell)
-    else
+    if (region%cell_ids(icell) > ugrid%global_offset .and. &
+        region%cell_ids(icell) <= ugrid%global_offset + ugrid%nlmax) then
       count = count + 1
       ! local cell id
-      int_array(count) = region%cell_ids(icell) + ugrid%global_offset
+      int_array(count) = region%cell_ids(icell) - ugrid%global_offset
       real_array_2d(1,count) = faceset%face_centroids(icell)%x
       real_array_2d(2,count) = faceset%face_centroids(icell)%y
       real_array_2d(3,count) = faceset%face_centroids(icell)%z
@@ -1854,8 +1852,9 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
     nullify(faceset%face_centroids)
     deallocate(faceset%face_areas)
     nullify(faceset%face_areas)
-    deallocate(faceset)
-    nullify(faceset)
+    ! note that have to use full reference
+    deallocate(region%explicit_faceset)
+    nullify(region%explicit_faceset)
   endif
 
 #if UGRID_DEBUG

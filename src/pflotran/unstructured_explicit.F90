@@ -668,6 +668,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
 #endif
 
   call VecMax(M_vec,PETSC_NULL_INTEGER,temp_real,ierr)
+  call VecDestroy(M_vec,ierr)
   ugrid%max_ndual_per_cell = int(temp_real+0.1d0)
   call MatCreateAIJ(option%mycomm,num_cells_local_old,PETSC_DECIDE, &
                     ugrid%nmax,num_connections_global, &
