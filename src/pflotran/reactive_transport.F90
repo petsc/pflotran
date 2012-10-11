@@ -222,8 +222,10 @@ subroutine RTSetupPatch(realization)
       allocate(rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(rt_sec_transport_vars(ghosted_id)%ncells)) 
       allocate(rt_sec_transport_vars(ghosted_id)%sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
       ! Assuming only one mineral
-      rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = initial_condition% &
-        tran_condition%cur_constraint_coupler%minerals%constraint_vol_frac(1)
+      rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = &
+        realization%material_property_array(1)%ptr%secondary_continuum_mnrl_volfrac
+      rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = &
+        realization%material_property_array(1)%ptr%secondary_continuum_mnrl_area        
 
       if (option%set_secondary_init_conc) then
         rt_sec_transport_vars(ghosted_id)%sec_conc = &
@@ -5140,7 +5142,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
 
   conc_primary_node = aux_var%total(1,1)                           ! in mol/L 
   kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-  mnrl_area = aux_var%mnrl_area(1)                                 ! in 1/cm
+  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
   equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
   mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
@@ -5263,7 +5265,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   endif
 
   kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-  mnrl_area = aux_var%mnrl_area(1)                                 ! in 1/cm
+  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
   equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
   mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3

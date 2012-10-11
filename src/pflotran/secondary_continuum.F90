@@ -57,6 +57,7 @@ module Secondary_Continuum_module
     PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
     PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
     PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
+    PetscReal :: sec_mnrl_area                 ! secondary mineral surface area
   end type sec_transport_type  
 
 

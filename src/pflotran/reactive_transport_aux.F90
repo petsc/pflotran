@@ -582,7 +582,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
 
   conc_primary_node = aux_var%total(1,1)                           ! in mol/L 
   kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-  mnrl_area = aux_var%mnrl_area(1)                                 ! in 1/cm
+  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
   equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
   mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
