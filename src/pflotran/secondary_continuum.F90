@@ -50,13 +50,14 @@ module Secondary_Continuum_module
     PetscReal :: epsilon                      ! vol. frac. of primary continuum
     type(sec_continuum_type) :: sec_continuum
     PetscReal, pointer :: sec_conc(:)          ! array of aqueous species conc. at secondary grid cells
-    PetscReal, pointer :: sec_mineral_volfrac  ! array of minearl vol fraction at secondary grid cells
+    PetscReal, pointer :: sec_mnrl_volfrac(:)  ! array of mineral vol fraction at secondary grid cells
+    PetscInt, pointer :: sec_zeta(:)          ! array of zetas at secondary grid cells
     PetscReal, pointer :: area(:)              ! surface area
     PetscReal, pointer :: vol(:)               ! volume     face      node       face
     PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
     PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
     PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
-    PetscReal :: porosity                      ! secondary continuum porosity
+    PetscReal :: sec_mnrl_area                 ! secondary mineral surface area
   end type sec_transport_type  
 
 

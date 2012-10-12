@@ -4690,7 +4690,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   ! all Jacobian entries should be in kg water/sec
   J = 0.d0
   if (associated(rt_auxvar%aqueous%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt
+    psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt*vol_frac_prim
     J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
   else
     psvd_t = por*global_auxvar%sat(iphase)* &
