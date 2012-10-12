@@ -574,28 +574,32 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
   
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
+  diag_react = 0.d0
+  rhs_react = 0.d0
+  
   if (reaction%naqcomp > 1 .or. reaction%mineral%nkinmnrl > 1) then
     option%io_buffer = 'Currently only single component system with ' // &
                        'multiple continuum is implemented'
     call printErrMsg(option)
   endif
 
-  conc_primary_node = aux_var%total(1,1)                           ! in mol/L 
-  kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
-  equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
-  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
-  mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+  conc_primary_node = aux_var%total(1,1)                             ! in mol/L 
+  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac             ! dimensionless
+  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/cm
   
-  coeff_left = 0.d0
-  coeff_diag = 0.d0
-  coeff_right = 0.d0
-  rhs = 0.d0
-  sec_conc = 0.d0
-  
-  alpha = diffusion_coefficient*option%tran_dt    ! Assuming porosity and diffusion coeff. are same throughout sec. continuum
-  diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
-  rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3 
+  if (reaction%mineral%nkinmnrl > 0) then
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+    rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3       ! in mol/L
+  endif
+ 
+  alpha = diffusion_coefficient*option%tran_dt   
   
   ! Setting the coefficients
   do i = 2, ngcells-1

@@ -221,30 +221,36 @@ subroutine RTSetupPatch(realization)
       allocate(rt_sec_transport_vars(ghosted_id)%sec_conc(rt_sec_transport_vars(ghosted_id)%ncells))
       allocate(rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(rt_sec_transport_vars(ghosted_id)%ncells)) 
       allocate(rt_sec_transport_vars(ghosted_id)%sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
-      ! Assuming only one mineral
-      rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = &
-        realization%material_property_array(1)%ptr%secondary_continuum_mnrl_volfrac
-      rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = &
-        realization%material_property_array(1)%ptr%secondary_continuum_mnrl_area        
-
+      
       if (option%set_secondary_init_conc) then
         rt_sec_transport_vars(ghosted_id)%sec_conc = &
           realization%material_property_array(1)%ptr%secondary_continuum_init_conc
       else
         rt_sec_transport_vars(ghosted_id)%sec_conc = &
         initial_condition%tran_condition%cur_constraint_coupler%aqueous_species%constraint_conc(1)
-      endif          
+      endif  
+      ! Assuming only one mineral
+      rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = 0.d0
+      rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = 0.d0
+      rt_sec_transport_vars(ghosted_id)%sec_zeta = 0
       
-      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/L
+      if (reaction%mineral%nkinmnrl > 0) then
+        rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = &
+          realization%material_property_array(1)%ptr%secondary_continuum_mnrl_volfrac
+        rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = &
+          realization%material_property_array(1)%ptr%secondary_continuum_mnrl_area        
+      
+        equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/L
              
-      if (rt_sec_transport_vars(ghosted_id)%sec_conc(1) > equil_conc) then 
-        rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
-      else
-        if (rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(1) > 0.d0) then
+        if (rt_sec_transport_vars(ghosted_id)%sec_conc(1) > equil_conc) then 
           rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
         else
-          rt_sec_transport_vars(ghosted_id)%sec_zeta = 0
-        endif      
+          if (rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(1) > 0.d0) then
+            rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
+          else
+            rt_sec_transport_vars(ghosted_id)%sec_zeta = 0
+          endif      
+        endif
       endif
             
       rt_sec_transport_vars(ghosted_id)%sec_conc_update = PETSC_FALSE
@@ -3140,6 +3146,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                      global_aux_vars(ghosted_id), &
                      porosity_loc_p(ghosted_id), &
                      volume_p(local_id),reaction,option)
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif 
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                    
 
     enddo
@@ -5167,29 +5177,33 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   area_fm = sec_transport_vars%interfacial_area
   sec_zeta = sec_transport_vars%sec_zeta
   
-
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
+  diag_react = 0.d0
+  rhs_react = 0.d0
+  
   if (reaction%naqcomp > 1 .or. reaction%mineral%nkinmnrl > 1) then
     option%io_buffer = 'Currently only single component system with ' // &
                        'multiple continuum is implemented'
     call printErrMsg(option)
   endif
 
-  conc_primary_node = aux_var%total(1,1)                           ! in mol/L 
-  kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
-  equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
-  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
-  mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+  conc_primary_node = aux_var%total(1,1)                             ! in mol/L 
+  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac             ! dimensionless
+  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/cm
+  
+  if (reaction%mineral%nkinmnrl > 0) then
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+    rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3       ! in mol/L
+  endif
+ 
+  alpha = diffusion_coefficient*option%tran_dt   
     
-  coeff_left = 0.d0
-  coeff_diag = 0.d0
-  coeff_right = 0.d0
-  rhs = 0.d0
-  
-  alpha = diffusion_coefficient*option%tran_dt 
-  diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
-  rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3       ! in mol/L
-  
   ! Setting the coefficients
   do i = 2, ngcells-1
     coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
@@ -5216,7 +5230,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   
   rhs(ngcells) = rhs(ngcells) + & 
                  alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
-                 conc_primary_node - rhs_react*sec_zeta(i)
+                 conc_primary_node 
                 
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
@@ -5265,7 +5279,6 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   PetscReal :: coeff_left(sec_transport_vars%ncells)
   PetscReal :: coeff_diag(sec_transport_vars%ncells)
   PetscReal :: coeff_right(sec_transport_vars%ncells)
-  PetscReal :: rhs(sec_transport_vars%ncells)
   PetscReal :: area(sec_transport_vars%ncells)
   PetscReal :: vol(sec_transport_vars%ncells)
   PetscReal :: dm_plus(sec_transport_vars%ncells)
@@ -5282,7 +5295,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   PetscReal :: equil_conc
   PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
   PetscInt :: sec_zeta(sec_transport_vars%ncells)
-  PetscReal :: diag_react, rhs_react
+  PetscReal :: diag_react
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -5291,6 +5304,10 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   area_fm = sec_transport_vars%interfacial_area
   dm_minus = sec_transport_vars%dm_minus
   
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  diag_react = 0.d0
   
   if (reaction%naqcomp > 1 .or. reaction%mineral%nkinmnrl > 1) then
     option%io_buffer = 'Currently only single component system with ' // &
@@ -5298,21 +5315,18 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
     call printErrMsg(option)
   endif
 
-  kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
-  equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
-  mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
+  
+  if (reaction%mineral%nkinmnrl > 0) then
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+  endif
  
-  coeff_left = 0.d0
-  coeff_diag = 0.d0
-  coeff_right = 0.d0
-  rhs = 0.d0
-  
   alpha = diffusion_coefficient*option%tran_dt   
-  diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
-  rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3       ! in mol/L
-  
+
   ! Setting the coefficients
   do i = 2, ngcells-1
     coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
@@ -5332,7 +5346,6 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
                        ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
                        + 1.d0 - diag_react*sec_zeta(ngcells)
-
                 
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
