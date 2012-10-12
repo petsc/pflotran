@@ -2536,6 +2536,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   use Connection_module
   use Coupler_module  
   use Debug_module
+  use Secondary_Continuum_module
   
   implicit none
 
@@ -2575,6 +2576,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscReal :: vol_frac_prim
+  
 #ifdef CENTRAL_DIFFERENCE  
   PetscReal :: T_11(realization%option%nphase)
   PetscReal :: T_12(realization%option%nphase)
@@ -2603,6 +2607,8 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
+
   
   if (.not.patch%aux%RT%aux_vars_up_to_date) then
     if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
@@ -2626,6 +2632,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
 
   r_p = 0.d0
+  vol_frac_prim = 1.d0
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -2661,6 +2668,11 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   global_aux_vars(ghosted_id_dn), &
                   coef_up,coef_dn,option,Res)
 
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
+        Res = Res*vol_frac_prim
+      endif  
+
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
         rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) - Res        
@@ -2694,6 +2706,12 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   rt_aux_vars(ghosted_id_dn), &
                   global_aux_vars(ghosted_id_dn), &
                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
+                  
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon ! assuming epsilon is same for up and dn.
+        Res_1 = Res_1*vol_frac_prim
+        Res_2 = Res_2*vol_frac_prim
+      endif  
                    
       if (local_id_up>0) then
         iend = local_id_up*reaction%ncomp
@@ -2742,6 +2760,11 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   rt_aux_vars(ghosted_id), &
                   global_aux_vars(ghosted_id), &
                   coef_up,coef_dn,option,Res)
+                  
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif  
  
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
@@ -2773,6 +2796,11 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   rt_aux_vars(ghosted_id), &
                   global_aux_vars(ghosted_id), &
                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
+
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Res_2 = Res_2*vol_frac_prim
+      endif  
 
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
@@ -3023,6 +3051,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
+                                   
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif 
+      
       if (reaction%ncoll > 0) then
         Res(istartcoll:iendcoll) = coef_in*rt_aux_vars(ghosted_id)%colloid%conc_mob(:) + &
                                    coef_out*source_sink%tran_condition%cur_constraint_coupler% &
