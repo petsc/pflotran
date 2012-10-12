@@ -2661,12 +2661,19 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       ! TFluxCoef will eventually be moved to another routine where it should be
       ! called only once per flux interface at the beginning of a transport
       ! time step.
+      
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
+      endif  
+      
+      
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                      patch%internal_velocities(:,sum_connection), &
-                      patch%internal_tran_coefs(:,sum_connection), &
-                      cur_connection_set%dist(-1,iconn), &
-                      coef_up,coef_dn)
+                patch%internal_velocities(:,sum_connection), &
+                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                cur_connection_set%dist(-1,iconn), &
+                coef_up,coef_dn)
+                      
       call TFlux(rt_parameter, &
                   rt_aux_vars(ghosted_id_up), &
                   global_aux_vars(ghosted_id_up), &
@@ -2674,10 +2681,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   global_aux_vars(ghosted_id_dn), &
                   coef_up,coef_dn,option,Res)
 
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
-        Res = Res*vol_frac_prim
-      endif  
+
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
@@ -2702,23 +2706,17 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       endif
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                    patch%internal_velocities(:,sum_connection), &
-                    patch%internal_tran_coefs(:,sum_connection), &
-                    cur_connection_set%dist(-1,iconn), &
-                    T_11,T_12,T_21,T_22)
+                 patch%internal_velocities(:,sum_connection), &
+                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                 cur_connection_set%dist(-1,iconn), &
+                 T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
                   rt_aux_vars(ghosted_id_up), &
                   global_aux_vars(ghosted_id_up), &
                   rt_aux_vars(ghosted_id_dn), &
                   global_aux_vars(ghosted_id_dn), &
                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
-                  
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon ! assuming epsilon is same for up and dn.
-        Res_1 = Res_1*vol_frac_prim
-        Res_2 = Res_2*vol_frac_prim
-      endif  
-                   
+                             
       if (local_id_up>0) then
         iend = local_id_up*reaction%ncomp
         istart = iend-reaction%ncomp+1
@@ -2752,13 +2750,17 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      endif  
+      
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                      patch%boundary_velocities(:,sum_connection), &
-                      patch%boundary_tran_coefs(:,sum_connection), &
-                      0.5d0, &
-                      coef_up,coef_dn)
+                  patch%boundary_velocities(:,sum_connection), &
+                  patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                  0.5d0, &
+                  coef_up,coef_dn)
       ! TFlux accomplishes the same as what TBCFlux would
       call TFlux(rt_parameter, &
                   rt_aux_vars_bc(sum_connection), &
@@ -2767,11 +2769,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   global_aux_vars(ghosted_id), &
                   coef_up,coef_dn,option,Res)
                   
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
-        Res = Res*vol_frac_prim
-      endif  
- 
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
@@ -2792,21 +2789,16 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                        patch%boundary_velocities(:,sum_connection), &
-                        patch%boundary_tran_coefs(:,sum_connection), &
-                        0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
-                        T_11,T_12,T_21,T_22)
+                patch%boundary_velocities(:,sum_connection), &
+                patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
+                T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
                   rt_aux_vars_bc(sum_connection), &
                   global_aux_vars_bc(sum_connection), &
                   rt_aux_vars(ghosted_id), &
                   global_aux_vars(ghosted_id), &
                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
-
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
-        Res_2 = Res_2*vol_frac_prim
-      endif  
 
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
@@ -5237,6 +5229,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   do i = 2, ngcells
     m = coeff_left(i)/coeff_diag(i-1)
     coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
+    rhs(i) = rhs(i) - m*rhs(i-1)
   enddo
 
   ! Back substitution
@@ -5244,7 +5237,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
 
   
   ! Calculate the coupling term
-  res_transport = area_fm*diffusion_coefficient* &
+  res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
                                                    
 
@@ -5360,7 +5353,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   
   ! Calculate the jacobian term
   jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
-                  dm_plus(ngcells)                         
+                  dm_plus(ngcells)*porosity                         
               
 end subroutine RTSecondaryTransportJacobian
 
