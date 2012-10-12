@@ -14,6 +14,7 @@ module Structured_Grid_module
 
     character(len=MAXWORDLENGTH) :: ctype
     PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
+    PetscInt :: global_offset
     PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
     PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
     PetscInt :: npx, npy, npz ! Processor partition in each direction.
@@ -98,6 +99,7 @@ function StructGridCreate()
   
   structured_grid%ctype = ''
   structured_grid%itype = 0
+  structured_grid%global_offset = 0
   structured_grid%nx = 0
   structured_grid%ny = 0
   structured_grid%nz = 0
@@ -186,7 +188,7 @@ end function StructGridCreate
 !
 ! ************************************************************************** !
 subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
-                                  stencil_type,option)
+                              stencil_type,option)
 
   use Option_module
         
@@ -234,9 +236,11 @@ end subroutine StructGridCreateDM
 ! date: 03/13/08
 !
 ! ************************************************************************** !
-subroutine StructGridComputeLocalBounds(structured_grid,da)
+subroutine StructGridComputeLocalBounds(structured_grid,da,option)
 
-implicit none
+  use Option_module
+  
+  implicit none
      
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -244,6 +248,7 @@ implicit none
 #include "finclude/petscdm.h90"
 
   type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
   DM :: da
 
   PetscErrorCode :: ierr
@@ -273,6 +278,10 @@ implicit none
   structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
   structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
   structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
+  
+  structured_grid%global_offset = 0
+  call MPI_Exscan(structured_grid%nlmax,structured_grid%global_offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)  
    
 end subroutine StructGridComputeLocalBounds
 

@@ -32,6 +32,7 @@ module Grid_module
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt :: global_offset ! Offset of first cell on process in petsc ordering
     PetscInt :: nlmax_faces  ! Total number of non-ghosted faces in local domain.
     PetscInt :: ngmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
     PetscInt :: nmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
@@ -206,6 +207,7 @@ function GridCreate()
   grid%nmax = 0
   grid%nlmax = 0 
   grid%ngmax = 0
+  grid%global_offset = 0
 
 #ifdef DASVYAT  
   nullify(grid%faces)

@@ -142,6 +142,7 @@ subroutine StochasticRun(stochastic,option)
   use Option_module
   use Init_module
   use Logging_module
+  use Regression_module
 
   implicit none
 
@@ -197,6 +198,9 @@ subroutine StochasticRun(stochastic,option)
     call StepperRun(simulation%realization,simulation%flow_stepper, &
                     simulation%tran_stepper)
 #endif
+
+    call RegressionOutput(simulation%regression,simulation%realization, &
+                          simulation%flow_stepper,simulation%tran_stepper)
 
     call SimulationDestroy(simulation)
 

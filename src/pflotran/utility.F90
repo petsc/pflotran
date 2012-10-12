@@ -18,6 +18,7 @@ module Utility_module
   end interface
 
   interface DeallocateArray
+    ! TODO(geh) replace deallocations with the below
     module procedure DeallocateArray1DInteger
     module procedure DeallocateArray2DInteger
     module procedure DeallocateArray3DInteger

@@ -66,6 +66,7 @@ subroutine Init(simulation)
   use water_eos_module
 !  use Utility_module
   use Output_module
+  use Regression_module
     
 #ifdef SURFACE_FLOW
   use Surface_Field_module
@@ -263,11 +264,8 @@ subroutine Init(simulation)
     call SurfaceRealizationCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
-! deprecated - geh
-!  if (option%compute_mass_balance) then
-!    call MassBalanceCreate(realization)
-!  endif  
-  
+
+  call RegressionCreateMapping(simulation%regression,realization)
 
   if (realization%discretization%itype == STRUCTURED_GRID .or. &
       realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
@@ -1297,6 +1295,8 @@ subroutine InitReadInput(simulation)
   use Units_module
   use Velocity_module
   use Mineral_module
+  use Regression_module
+  
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
 #endif
@@ -2224,7 +2224,11 @@ subroutine InitReadInput(simulation)
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
         endif
-            
+
+!.....................
+      case ('REGRESSION')
+        call RegressionRead(simulation%regression,input,option)
+
 !.....................
       case ('TIME')
         do
