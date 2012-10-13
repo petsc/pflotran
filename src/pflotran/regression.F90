@@ -340,7 +340,8 @@ subroutine RegressionCreateMapping(regression,realization)
     call VecScatterEnd(temp_scatter,temp_vec, &
                        regression%cells_per_process_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-     call VecScatterDestroy(temp_scatter,ierr) 
+    call VecScatterDestroy(temp_scatter,ierr) 
+    call VecDestroy(temp_vec,ierr)
    
     ! transfer cell ids into array for creating new scatter
     if (option%myrank == option%io_rank) then
@@ -370,7 +371,7 @@ subroutine RegressionCreateMapping(regression,realization)
                           regression%cells_per_process_vec, &
                           PETSC_NULL_OBJECT, &
                           regression%scatter_cells_per_process_gtos,ierr)
-    call ISDestroy(temp_is,ierr)
+    call ISDestroy(is_petsc,ierr)
 
 #ifdef REGRESSION_DEBUG
     call PetscViewerASCIIOpen(option%mycomm, &
