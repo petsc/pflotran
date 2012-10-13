@@ -267,6 +267,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}surface_material.o \
 	${common_src}surface_realization.o \
 	${common_src}output.o \
+	${common_src}regression.o \
 	${common_src}init.o
 #	${common_src}reaction_chunk.o\
 
@@ -340,7 +341,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          richards.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
-        database_hpt.o
+         database_hpt.o init.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -370,7 +371,7 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
           field.o saturation.o surface_field.o mineral.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
-             stochastic_aux.o stochastic.o surface_flow_aux.o
+             stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o string.o \
@@ -388,19 +389,21 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
                 dataset.o surface_field.o surface_material.o
 region.o : input.o utility.o logging.o string.o geometry.o
+regression.o : realization.o discretization.o timestepper.o option.o string.o \
+               utility.o grid.o output.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o logging.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
-simulation.o : timestepper.o realization.o 
+simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o
 solid_solution_aux.o : mineral_aux.o
 solver.o : option.o field.o input.o string.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
-               init.o logging.o
+               init.o logging.o regression.o
 stochastic_aux.o : simulation.o input.o option.o
 strata.o : input.o region.o material.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
