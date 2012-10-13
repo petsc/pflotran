@@ -193,15 +193,20 @@ subroutine RegressionCreateMapping(regression,realization)
   
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
 
   type(regression_type), pointer :: regression
   type(realization_type) :: realization
   
-  IS :: is_global
-  PetscInt, allocatable :: int_array(:), int_array2(:)
+  IS :: is_petsc
+  PetscInt, allocatable :: int_array(:)
   PetscInt :: i, upper_bound, lower_bound, count, temp_int
   PetscInt :: local_id
   PetscReal, pointer :: vec_ptr(:)
+  Vec :: temp_vec
+  VecScatter :: temp_scatter
+  IS :: temp_is
+  PetscViewer :: viewer
   PetscErrorCode :: ierr
 
   type(grid_type), pointer :: grid
@@ -214,7 +219,7 @@ subroutine RegressionCreateMapping(regression,realization)
   
   ! natural cell ids
   if (size(regression%natural_cell_ids) > 0) then
-    call VecCreate(option%mycomm,regression%natural_cell_id_vec,ierr)
+    call VecCreate(PETSC_COMM_SELF,regression%natural_cell_id_vec,ierr)
     if (option%myrank == option%io_rank) then
       call VecSetSizes(regression%natural_cell_id_vec, &
                        size(regression%natural_cell_ids), &
@@ -225,40 +230,46 @@ subroutine RegressionCreateMapping(regression,realization)
     endif
     call VecSetFromOptions(regression%natural_cell_id_vec,ierr)
   
-    ! determine how many of the natural cell ids are local
-    allocate(int_array(size(regression%natural_cell_ids)))
-    int_array = regression%natural_cell_ids
-    ! convert to zero based
-    int_array = int_array - 1
+    if (option%myrank == option%io_rank) then
+      count = size(regression%natural_cell_ids)
+      ! determine how many of the natural cell ids are local
+      allocate(int_array(count))
+      int_array = regression%natural_cell_ids
+      ! convert to zero based
+      int_array = int_array - 1
+    else
+      count = 0
+      allocate(int_array(count))
+    endif
     call DiscretAOApplicationToPetsc(realization%discretization,int_array)
-    ! convert back to one based
-    int_array = int_array + 1
-    allocate(int_array2(size(int_array)))
-    int_array2 = -999
-    lower_bound = grid%global_offset
-    upper_bound = lower_bound + grid%nlmax
-    count = 0
-    do i = 1, size(int_array)
-      if (int_array(i) > lower_bound .and. int_array(i) <= upper_bound) then
-        count = count + 1
-        int_array2(count) = int_array(i)
-      endif
-    enddo
-    deallocate(int_array)
   
-    ! create IS for global petsc cell ids
-    allocate(int_array(count))
-    int_array = int_array2(1:count) - 1 ! zero-based
-    deallocate(int_array2)
+  ! create IS for global petsc cell ids
     call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES, &
-                         is_global,ierr)
+                         is_petsc,ierr)
     deallocate(int_array)
   
+#ifdef REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'is_petsc_natural_cell_id.out', &
+                              viewer,ierr)
+    call ISView(is_petsc,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+#endif
+
     ! create scatter context
-    call VecScatterCreate(realization%field%work,is_global, &
+    call VecScatterCreate(realization%field%work,is_petsc, &
                           regression%natural_cell_id_vec,PETSC_NULL_OBJECT, &
                           regression%scatter_natural_cell_id_gtos,ierr)
-    call ISDestroy(is_global,ierr)
+
+    call ISDestroy(is_petsc,ierr)
+
+#ifdef REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'regression_scatter_nat_cell_ids.out',viewer,ierr)
+    call VecScatterView(regression%scatter_natural_cell_id_gtos,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+#endif
+
   endif
 
   if (regression%num_cells_per_process > 0) then
@@ -274,51 +285,113 @@ subroutine RegressionCreateMapping(regression,realization)
     endif
   
     ! cells ids per processor
-    call VecCreate(option%mycomm,regression%cells_per_process_vec,ierr)
+    call VecCreate(PETSC_COMM_SELF,regression%cells_per_process_vec,ierr)
     if (option%myrank == option%io_rank) then
       call VecSetSizes(regression%cells_per_process_vec, &
                        regression%num_cells_per_process*option%mycommsize, &
                        PETSC_DECIDE,ierr)  
     else
-      call VecSetSizes(regression%cells_per_process_vec,0, &
+      call VecSetSizes(regression%cells_per_process_vec,ZERO_INTEGER, &
                        PETSC_DECIDE,ierr)  
     endif
     call VecSetFromOptions(regression%cells_per_process_vec,ierr)
+
+    ! create temporary vec to transfer down ids of cells
+    call VecCreate(option%mycomm,temp_vec,ierr)
+    call VecSetSizes(temp_vec, &
+                     regression%num_cells_per_process, &
+                     PETSC_DECIDE,ierr)  
+    call VecSetFromOptions(temp_vec,ierr)
   
     ! calculate interval
+    call VecGetArrayF90(temp_vec,vec_ptr,ierr)
     temp_int = grid%nlmax / regression%num_cells_per_process
-  
-    ! calculate local cells ids
-    allocate(int_array(regression%num_cells_per_process))
     do i = 1, regression%num_cells_per_process
-      int_array(i) = temp_int*(i-1) + 1
+      vec_ptr(i) = temp_int*(i-1) + 1 + grid%global_offset
     enddo
-  
-    ! create IS for global petsc cell ids
-    ! convert local ids to global petsc ids
-    int_array = int_array + lower_bound ! the global offset for this process
-    int_array = int_array - 1 ! zero-based
-    call ISCreateGeneral(option%mycomm,regression%num_cells_per_process, &
-                         int_array,PETSC_COPY_VALUES,is_global,ierr)
+    call VecRestoreArrayF90(temp_vec,vec_ptr,ierr)
+
+    ! create temporary scatter to transfer values to io_rank
+    if (option%myrank == option%io_rank) then
+      count = option%mycommsize*regression%num_cells_per_process
+      ! determine how many of the natural cell ids are local
+      allocate(int_array(count))
+      do i = 1, count
+        int_array(i) = i
+      enddo
+      ! convert to zero based
+      int_array = int_array - 1
+    else
+      count = 0
+      allocate(int_array(count))
+    endif
+    call ISCreateGeneral(option%mycomm,count, &
+                         int_array,PETSC_COPY_VALUES,temp_is,ierr)
+
+    call VecScatterCreate(temp_vec,temp_is, &
+                          regression%cells_per_process_vec,PETSC_NULL_OBJECT, &
+                          temp_scatter,ierr)
+    call ISDestroy(temp_is,ierr)
+ 
+    ! scatter ids to io_rank
+    call VecScatterBegin(temp_scatter,temp_vec, &
+                         regression%cells_per_process_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(temp_scatter,temp_vec, &
+                       regression%cells_per_process_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+     call VecScatterDestroy(temp_scatter,ierr) 
+   
+    ! transfer cell ids into array for creating new scatter
+    if (option%myrank == option%io_rank) then
+      count = option%mycommsize*regression%num_cells_per_process
+      call VecGetArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
+      do i = 1, count
+        int_array(i) = int(vec_ptr(i)+0.1d0) ! tolerance to ensure int value
+      enddo
+      call VecRestoreArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
+      ! convert to zero based
+      int_array = int_array - 1
+    endif
+
+    call ISCreateGeneral(option%mycomm,count, &
+                         int_array,PETSC_COPY_VALUES,is_petsc,ierr)
     deallocate(int_array)
-  
-    ! create scatter context
-    call VecScatterCreate(realization%field%work,is_global, &
+
+#ifdef REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'is_petsc_cells_per_process.out', &
+                              viewer,ierr)
+    call ISView(is_petsc,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+#endif
+
+    call VecScatterCreate(realization%field%work,is_petsc, &
                           regression%cells_per_process_vec, &
                           PETSC_NULL_OBJECT, &
                           regression%scatter_cells_per_process_gtos,ierr)
-    call ISDestroy(is_global,ierr)
+    call ISDestroy(temp_is,ierr)
+
+#ifdef REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'regression_scatter_cells_per_process.out', &
+                              viewer,ierr)
+    call VecScatterView(regression%scatter_cells_per_process_gtos,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+#endif
   
     ! fill in natural ids of these cells on the io_rank
     if (option%myrank == option%io_rank) then
       allocate(regression%cells_per_process_natural_ids( &
                regression%num_cells_per_process*option%mycommsize))
     endif
+
     call VecGetArrayF90(realization%field%work,vec_ptr,ierr)
     do local_id = 1, grid%nlmax
       vec_ptr(local_id) = grid%nG2A(grid%nL2G(local_id))
     enddo
     call VecRestoreArrayF90(realization%field%work,vec_ptr,ierr)
+
     call VecScatterBegin(regression%scatter_cells_per_process_gtos, &
                           realization%field%work, &
                           regression%cells_per_process_vec, &
@@ -327,11 +400,13 @@ subroutine RegressionCreateMapping(regression,realization)
                        realization%field%work, &
                        regression%cells_per_process_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+
     if (option%myrank == option%io_rank) then
       call VecGetArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
       regression%cells_per_process_natural_ids(:) = int(vec_ptr(:)+0.1)
       call VecRestoreArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
     endif
+
   endif
   
 end subroutine RegressionCreateMapping
@@ -404,11 +479,11 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     
     ! list of natural ids
     if (size(regression%natural_cell_ids) > 0) then
-      call VecScatterBegin(regression%scatter_cells_per_process_gtos, &
+      call VecScatterBegin(regression%scatter_natural_cell_id_gtos, &
                            global_vec, &
                            regression%natural_cell_id_vec, &
                            INSERT_VALUES,SCATTER_FORWARD,ierr)
-      call VecScatterEnd(regression%scatter_cells_per_process_gtos, &
+      call VecScatterEnd(regression%scatter_natural_cell_id_gtos, &
                          global_vec, &
                          regression%natural_cell_id_vec, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)

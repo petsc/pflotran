@@ -23,7 +23,8 @@ endif
 ifdef glenn
   #MYFLAGS += -DGLENN -DUGRID_DEBUG
   #MYFLAGS += -DUGRID_DEBUG
-  MYFLAGS += -DGLENN -DTVD_DEBUG
+  MYFLAGS += -DREGRESSION_DEBUG
+  #MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
 ifdef solid_solution
