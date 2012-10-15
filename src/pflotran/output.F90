@@ -1,6 +1,7 @@
 module Output_module
 
-  use Logging_module  
+  use Logging_module 
+  use Output_Aux_module
   
   implicit none
 
@@ -154,8 +155,7 @@ end subroutine OutputInit
 subroutine Output1(realization,plot_flag,transient_plot_flag)
 
   use Realization_module, only : realization_type
-  use Option_module, only : OptionCheckTouch, option_type, &
-                            output_option_type, printMsg
+  use Option_module, only : OptionCheckTouch, option_type, printMsg
   
   implicit none
   
@@ -494,15 +494,6 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
 
   ! write material ids
   header = trim(header) // ',"Material_ID"'
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      header = trim(header) // ',"' // &
-        trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                        option)) // &
-        '"'
-    enddo
-  endif
 
   write(fid,'(a)') trim(header)
 
@@ -1052,16 +1043,6 @@ subroutine OutputTecplotBlock(realization)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
 
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-                                    isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-    enddo
-  endif
-
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
@@ -1542,16 +1523,6 @@ subroutine OutputTecplotFEBrick(realization)
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-                                    isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-    enddo
-  endif
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -2452,34 +2423,6 @@ subroutine OutputTecplotPoint(realization)
     value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
                                             ZERO_INTEGER,ghosted_id)
     write(OUTPUT_UNIT,1001,advance='no') int(value)
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-                                      isubvar,var_type,option)
-        value = RealizGetDatasetValueAtCell(realization,ivar, &
-                                            isubvar,ghosted_id)
-        if (var_type == INT_VAR) then
-          if (abs(value) < 1.d1) then
-            write(OUTPUT_UNIT,'(i3,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d2) then
-            write(OUTPUT_UNIT,'(i4,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d3) then
-            write(OUTPUT_UNIT,'(i5,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d4) then
-            write(OUTPUT_UNIT,'(i6,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d5) then
-            write(OUTPUT_UNIT,'(i7,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d6) then
-            write(OUTPUT_UNIT,'(i8,1x)',advance='no') int(value)
-          else
-            write(OUTPUT_UNIT,'(i9,1x)',advance='no') int(value)
-          endif
-        else
-          write(OUTPUT_UNIT,1000,advance='no') value
-        endif
-      enddo
-    endif
 
     write(OUTPUT_UNIT,1009) 
 
@@ -6676,22 +6619,6 @@ subroutine OutputHDF5(realization)
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   string = "Material_ID"
   call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      word = trim(output_option%plot_variables(i))
-      call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      string = PatchGetVarNameFromKeyword(word,option)
-      if (var_type == INT_VAR) then
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,HDF_NATIVE_INTEGER) 
-      else
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,H5T_NATIVE_DOUBLE) 
-      endif
-    enddo
-  endif
   
   if (output_option%print_hdf5_velocities) then
 
@@ -9848,22 +9775,6 @@ subroutine OutputHDF5UGrid(realization)
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   string = "Material_ID"
   call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      word = trim(output_option%plot_variables(i))
-      call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      string = PatchGetVarNameFromKeyword(word,option)
-      if (var_type == INT_VAR) then
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,HDF_NATIVE_INTEGER)
-      else
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,H5T_NATIVE_DOUBLE)
-      endif
-    enddo
-  endif
   
   if (output_option%print_hdf5_velocities) then
 
@@ -10440,16 +10351,6 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   call OutputGetVarFromArray(surf_realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,surf_realization,natural_vec,TECPLOT_INTEGER)
-
-  if (associated(output_option%plot_variables)) then
-    !do i = 1, size(output_option%plot_variables)
-    !  call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-    !                                isubvar,var_type,option)
-    !  call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-    !  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    !  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-    !enddo
-  endif
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)

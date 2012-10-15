@@ -1,6 +1,7 @@
 module Waypoint_module
  
   use Option_module
+  use Output_Aux_module
   
   implicit none
   
@@ -498,6 +499,7 @@ end function WaypointSkipToTime
 subroutine WaypointListPrint(list,option,output_option)
 
   use Option_module
+  use Output_Aux_module
 
   implicit none
   

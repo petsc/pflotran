@@ -1,6 +1,7 @@
 module Realization_module
 
   use Option_module
+  use Output_Aux_module
   use Input_module
   use Region_module
   use Condition_module
@@ -16,6 +17,7 @@ module Realization_module
   use Debug_module
   use Velocity_module
   use Waypoint_module
+  use Output_Aux_module
   
   use Reaction_Aux_module
   

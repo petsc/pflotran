@@ -115,6 +115,7 @@ subroutine Checkpoint(realization, &
   use Reaction_Aux_module
   use Discretization_module
   use Option_module
+  use Output_Aux_module
   use Field_module
   use Logging_module
   use Grid_module
@@ -529,6 +530,7 @@ subroutine Restart(realization, &
   use Realization_module
   use Discretization_module
   use Option_module
+  use Output_Aux_module
   use Field_module
   use Logging_module
   use Grid_module
