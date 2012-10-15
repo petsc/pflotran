@@ -580,6 +580,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   rhs = 0.d0
   diag_react = 0.d0
   rhs_react = 0.d0
+  Im = 0.d0
   
   if (reaction%naqcomp > 1 .or. reaction%mineral%nkinmnrl > 1) then
     option%io_buffer = 'Currently only single component system with ' // &
@@ -596,20 +597,22 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
     equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
-    rhs_react = kin_mnrl_rate*mnrl_area*option%tran_dt/porosity*1.d-3       ! in mol/L
+    rhs_react = diag_react*equil_conc                                ! in mol/L
   endif
  
-  alpha = diffusion_coefficient*option%tran_dt   
+  alpha = diffusion_coefficient*option%tran_dt/porosity   
   
   ! Setting the coefficients
   do i = 2, ngcells-1
     coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
     coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
-                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
+                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0 &
+                    + diag_react*sec_zeta(i)
     coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
   enddo
   
-  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
+  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0 &
+                  + diag_react*sec_zeta(1)
   coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
   
   coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
@@ -617,12 +620,15 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
                        ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
-                       + 1.d0
+                       + 1.d0 + diag_react*sec_zeta(ngcells)
                         
-  rhs = sec_transport_vars%sec_conc  ! secondary continuum values from previous time step
+  do i = 1, ngcells
+    rhs(i) = sec_transport_vars%sec_conc(i) + rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
+  enddo
+  
   rhs(ngcells) = rhs(ngcells) + & 
                  alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
-                 conc_primary_node
+                 conc_primary_node 
                 
   ! Thomas algorithm for tridiagonal system
   ! Forward elimination
@@ -657,7 +663,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
         sec_zeta(i) = 0
       endif
     endif
-  enddo
+  enddo   
   
   sec_transport_vars%sec_conc = sec_conc
   sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
