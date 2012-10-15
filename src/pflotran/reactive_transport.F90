@@ -222,14 +222,20 @@ subroutine RTSetupPatch(realization)
       allocate(rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(rt_sec_transport_vars(ghosted_id)%ncells)) 
       allocate(rt_sec_transport_vars(ghosted_id)%sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
       
-      equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/L
-
+      if (reaction%mineral%nkinmnrl > 0) then 
+        equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/L
+      else
+        equil_conc = initial_condition%tran_condition% &
+        cur_constraint_coupler%aqueous_species%constraint_conc(1)
+      endif  
+        
       if (option%set_secondary_init_conc) then
         rt_sec_transport_vars(ghosted_id)%sec_conc = &
           realization%material_property_array(1)%ptr%secondary_continuum_init_conc
       else
         rt_sec_transport_vars(ghosted_id)%sec_conc = equil_conc
       endif  
+      
       ! Assuming only one mineral
       rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = 0.d0
       rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = 0.d0
