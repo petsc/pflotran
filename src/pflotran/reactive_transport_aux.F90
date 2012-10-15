@@ -653,7 +653,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
       sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
                             mnrl_molar_vol*Im(i)
       sec_zeta(i) = 1
-      else
+    else
       if (sec_mnrl_volfrac(i) > 0.d0) then
         sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
                               mnrl_molar_vol*Im(i)
@@ -663,8 +663,12 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
         sec_zeta(i) = 0
       endif
     endif
-  enddo   
-  
+    if (sec_mnrl_volfrac(i) < 0.d0) then
+      sec_mnrl_volfrac(i) = 0.d0
+      sec_zeta(i) = 0
+    endif
+  enddo
+
   sec_transport_vars%sec_conc = sec_conc
   sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
   sec_transport_vars%sec_zeta = sec_zeta
