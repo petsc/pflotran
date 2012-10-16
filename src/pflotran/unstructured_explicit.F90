@@ -619,6 +619,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
   PetscInt :: cell_stride, dual_offset, connection_offset, connection_stride
+  PetscInt :: natural_id_offset
   PetscErrorCode :: ierr
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -729,6 +730,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   connection_offset = 6 + 1 ! +1 for -777
   dual_offset = connection_offset + ugrid%max_ndual_per_cell + 1 ! +1 for -888
   cell_stride = dual_offset + ugrid%max_ndual_per_cell + 1 ! +1 for -999999
+  natural_id_offset = 2
 
   ! Information for each cell is packed in a strided petsc vec
   ! The information is ordered within each stride as follows:
@@ -855,7 +857,7 @@ subroutine ExplicitUGridDecomposeNew(ugrid,option)
   call UGridNaturalToPetsc(ugrid,option, &
                            cells_old,cells_local, &
                            num_cells_local_new,cell_stride,dual_offset, &
-                           is_scatter)
+                           natural_id_offset,is_scatter)
   
   call VecDestroy(cells_old,ierr)
 

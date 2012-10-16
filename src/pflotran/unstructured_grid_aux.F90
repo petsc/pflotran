@@ -997,7 +997,7 @@ end subroutine UGridCreateOldVec
 ! ************************************************************************** !
 subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
                                num_cells_local_new,stride,dual_offset, &
-                               is_scatter)
+                               natural_id_offset,is_scatter)
 
   use Option_module
   use Utility_module, only: reallocateIntArray  
@@ -1016,6 +1016,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   PetscInt :: num_cells_local_new
   PetscInt :: stride
   PetscInt :: dual_offset
+  PetscInt :: natural_id_offset
   IS :: is_scatter  
   
   Vec :: elements_petsc, elements_natural
@@ -1117,7 +1118,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     ! It may match the first entry (the calculated natural id based on the
     ! order that cells were read), but it need not.
     ugrid%cell_ids_natural(local_id) = &
-      abs(vec_ptr((local_id-1)*stride+2))
+      abs(vec_ptr((local_id-1)*stride+natural_id_offset))
   enddo
   call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
 
