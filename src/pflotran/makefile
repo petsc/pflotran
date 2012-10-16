@@ -23,7 +23,7 @@ endif
 ifdef glenn
   #MYFLAGS += -DGLENN -DUGRID_DEBUG
   #MYFLAGS += -DUGRID_DEBUG
-  MYFLAGS += -DREGRESSION_DEBUG
+  MYFLAGS += -DREGRESSION_DEBUG -DGLENN_NEW_IO
   #MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
@@ -182,6 +182,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}geometry.o\
 	${common_src}units.o\
 	${common_src}logging.o \
+	${common_src}output_aux.o \
 	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
 	${common_src}material_aux.o\
@@ -291,7 +292,7 @@ test: functions.o test.o
 auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
                miscible_aux.o
-checkpoint.o : realization.o logging.o
+checkpoint.o : realization.o logging.o output_aux.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.F90 dataset.o time_series.o \
               reactive_transport_aux.o
@@ -342,7 +343,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          richards.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
-         database_hpt.o init.o
+         database_hpt.o init.o output_aux.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -367,10 +368,10 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
            reactive_transport.o immis.o miscible.o \
            thc.o thmc.o richards.o mphase.o flash2.o general.o \
            discretization.o logging.o unstructured_grid_aux.o \
-           surface_realization.o surface_flow.o
+           surface_realization.o surface_flow.o output_aux.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
-          field.o saturation.o surface_field.o mineral.o
+          field.o saturation.o surface_field.o mineral.o output_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
@@ -381,19 +382,20 @@ reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-                       reactive_transport_aux.o fluid.o logging.o global.o
+                       reactive_transport_aux.o fluid.o logging.o global.o \
+                       output_aux.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
                 observation.o velocity.o patch.o level.o discretization.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
-                dataset.o surface_field.o surface_material.o
+                dataset.o surface_field.o surface_material.o output_aux.o
 region.o : input.o utility.o logging.o string.o geometry.o
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
-               utility.o grid.o output.o
+               utility.o grid.o output.o output_aux.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o logging.o
+             matrix_buffer.o logging.o output_aux.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
@@ -429,7 +431,7 @@ timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 input.o string.o reactive_transport.o condition_control.o \
-                surface_flow.o 
+                surface_flow.o output_aux.o
 time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
@@ -440,4 +442,4 @@ unstructured_grid.o : option.o connection.o unstructured_cell.o \
 unstructured_grid_aux.o : unstructured_cell.o unstructured_explicit.o
 utility.o : string.o input.o option.o
 velocity.o : option.o input.o string.o logging.o units.o
-waypoint.o : option.o 
+waypoint.o : option.o output_aux.o
