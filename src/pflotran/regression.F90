@@ -502,34 +502,38 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- '',a,'' --'')') trim(cur_variable%name)
       ! natural cell ids
-      call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
-      if (cur_variable%iformat == 0) then
-        do i = 1, size(regression%natural_cell_ids)
-          write(OUTPUT_UNIT,100) &
-            regression%natural_cell_ids(i),vec_ptr(i)
-        enddo
-      else
-        do i = 1, size(regression%natural_cell_ids)
-          write(OUTPUT_UNIT,101) &
-            regression%natural_cell_ids(i),int(vec_ptr(i))
-        enddo
+      if (size(regression%natural_cell_ids) > 0) then
+        call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
+        if (cur_variable%iformat == 0) then
+          do i = 1, size(regression%natural_cell_ids)
+            write(OUTPUT_UNIT,100) &
+              regression%natural_cell_ids(i),vec_ptr(i)
+          enddo
+        else
+          do i = 1, size(regression%natural_cell_ids)
+            write(OUTPUT_UNIT,101) &
+              regression%natural_cell_ids(i),int(vec_ptr(i))
+          enddo
+        endif
+        call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
       endif
-      call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
-
+      
       ! cell ids per process
-      call VecGetArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
-      if (cur_variable%iformat == 0) then
-        do i = 1, regression%num_cells_per_process*option%mycommsize
-          write(OUTPUT_UNIT,100) &
-            regression%cells_per_process_natural_ids(i),vec_ptr(i)
-        enddo
-      else
-        do i = 1, regression%num_cells_per_process*option%mycommsize
-          write(OUTPUT_UNIT,101) &
-            regression%cells_per_process_natural_ids(i),int(vec_ptr(i))
-        enddo
+      if (regression%num_cells_per_process > 0) then
+        call VecGetArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
+        if (cur_variable%iformat == 0) then
+          do i = 1, regression%num_cells_per_process*option%mycommsize
+            write(OUTPUT_UNIT,100) &
+              regression%cells_per_process_natural_ids(i),vec_ptr(i)
+          enddo
+        else
+          do i = 1, regression%num_cells_per_process*option%mycommsize
+            write(OUTPUT_UNIT,101) &
+              regression%cells_per_process_natural_ids(i),int(vec_ptr(i))
+          enddo
+        endif
+        call VecRestoreArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
       endif
-      call VecRestoreArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
     endif
   
     cur_variable => cur_variable%next

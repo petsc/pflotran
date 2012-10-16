@@ -212,16 +212,10 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
       select case(realization%output_option%tecplot_format)
         case (TECPLOT_POINT_FORMAT)
           call OutputTecplotPoint(realization)
-        case (TECPLOT_BLOCK_FORMAT)
+        case (TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
           call OutputTecplotBlock(realization)
-        case (TECPLOT_FEBRICK_FORMAT)
-!geh          if(option%mycommsize == 1 ) then
-            call OutputTecplotFEBrick(realization)
-!geh          else
-!geh            option%io_buffer = 'FEBrick output is currently supported for ' //&
-!geh                               ' single proc only'
-!geh            call printMsg(option)
-!geh          endif  
+!geh        case (TECPLOT_FEBRICK_FORMAT)
+!geh          call OutputTecplotFEBrick(realization)
       end select
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
@@ -257,8 +251,6 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
     if (option%compute_statistics) then
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
-!      call OutputMassBalance(realization)
-!      call ComputeFlowMassBalance(realization)
     endif
   
     realization%output_option%plot_number = realization%output_option%plot_number + 1
@@ -267,7 +259,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   
   if (transient_plot_flag) then
     if (option%compute_mass_balance_new) then
-      call OutputMassBalanceNew(realization)
+      call OutputMassBalance(realization)
     endif
     call OutputObservation(realization)
   endif
@@ -455,7 +447,7 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
             '"Z [m]"'
 
 #ifdef GLENN_NEW_IO    
-  header = OutputVariableListToHeader(output_option%output_variable_list,'', &
+  header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
                                       icolumn,PETSC_TRUE)
 #else
   ! write flow variables
@@ -496,6 +488,7 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
   header = trim(header) // ',"Material_ID"'
 #endif      
 
+  header = trim(header) // trim(header2)
   write(fid,'(a)') trim(header)
 
   ! count vars in header
@@ -6138,6 +6131,7 @@ subroutine OutputHDF5(realization)
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   
   Vec :: global_vec
   Vec :: natural_vec
@@ -6312,6 +6306,25 @@ subroutine OutputHDF5(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
 
+#ifdef GLENN_NEW_IO
+
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    string = trim(cur_variable%name)
+    if (cur_variable%iformat == 0) then
+      call HDF5WriteStructDataSetFromVec(string,realization, &
+                                         global_vec,grp_id,H5T_NATIVE_DOUBLE)
+    else
+      call HDF5WriteStructDataSetFromVec(string,realization, &
+                                         global_vec,grp_id,H5T_NATIVE_INTEGER)
+    endif
+    cur_variable => cur_variable%next
+  enddo
+
+#else
   select case(option%iflowmode)
   
     case(FLASH2_MODE,MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,IMS_MODE, &
@@ -6667,7 +6680,8 @@ subroutine OutputHDF5(realization)
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   string = "Material_ID"
   call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-  
+#endif
+
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
@@ -7913,12 +7927,12 @@ end subroutine ComputeFlowMassBalance
 
 ! ************************************************************************** !
 !
-! OutputMassBalanceNew: Print to Tecplot POINT format
+! OutputMassBalance: Print to Tecplot POINT format
 ! author: Glenn Hammond
 ! date: 06/18/08
 !
 ! ************************************************************************** !  
-subroutine OutputMassBalanceNew(realization)
+subroutine OutputMassBalance(realization)
 
   use Realization_module
   use Patch_module
@@ -8702,7 +8716,7 @@ subroutine OutputMassBalanceNew(realization)
   
   mass_balance_first = PETSC_FALSE
 
-end subroutine OutputMassBalanceNew
+end subroutine OutputMassBalance
 
 ! ************************************************************************** !
 !

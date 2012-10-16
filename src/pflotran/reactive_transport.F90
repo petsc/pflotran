@@ -4231,7 +4231,7 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_pH .and. associated(reaction%species_idx)) then
     if (reaction%species_idx%h_ion_id > 0) then
       name = 'pH'
-      name_short = 'pH'
+      name_short = name
       units = ''
       call OutputVariableAddToList(list,name,name_short,units,PH, &
                                    reaction%species_idx%h_ion_id)
@@ -4241,9 +4241,10 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_total_component) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        name = reaction%primary_species_names(i)
+        name = trim(reaction%primary_species_names(i)) // '_tot_' // &
+               trim(tot_mol_char)
         name_short = name
-        units = 'Total ' // trim(tot_mol_char)
+        units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                      reaction%print_tot_conc_type,i)
       endif
@@ -4253,9 +4254,10 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_free_ion) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        name = reaction%primary_species_names(i)
+        name = trim(reaction%primary_species_names(i)) // '_free_' // &
+               trim(free_mol_char)
         name_short = name
-        units = 'Free ' // trim(free_mol_char)
+        units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                       reaction%print_free_conc_type,i)
       endif
@@ -4265,9 +4267,9 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_total_bulk) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        name = reaction%primary_species_names(i)
+        name = trim(reaction%primary_species_names(i)) // '_total_bulk'
         name_short = name
-        units = 'Total Bulk mol/m^3'
+        units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                      TOTAL_BULK,i)   
       endif
@@ -4277,8 +4279,8 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_act_coefs) then
     do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
-        name = reaction%primary_species_names(i)
-        name_short = trim(name) // '_gam'
+        name = trim(reaction%primary_species_names(i)) // '_gam'
+        name_short = name
         units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                      PRIMARY_ACTIVITY_COEF,i) 
@@ -4288,9 +4290,10 @@ subroutine RTSetPlotVariables(realization)
   
   do i=1,reaction%neqcplx
     if (reaction%secondary_species_print(i)) then
-      name = reaction%secondary_species_names(i)
+      name = trim(reaction%secondary_species_names(i)) // '_' // &
+             trim(sec_mol_char)
       name_short = name
-      units = trim(sec_mol_char)
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    SECONDARY_ACTIVITY_COEF,i) 
     endif
@@ -4298,9 +4301,9 @@ subroutine RTSetPlotVariables(realization)
 
   do i=1,reaction%mineral%nkinmnrl
     if (reaction%mineral%kinmnrl_print(i)) then
-      name = reaction%mineral%kinmnrl_names(i)
-      name_short = trim(name) // '_vf'
-      units = 'VF m^3 mnrl/m^3 bulk'
+      name = trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
+      name_short = name
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    MINERAL_VOLUME_FRACTION,i)     
     endif
@@ -4308,9 +4311,9 @@ subroutine RTSetPlotVariables(realization)
   
   do i=1,reaction%mineral%nkinmnrl
     if (reaction%mineral%kinmnrl_print(i)) then
-      name = reaction%mineral%kinmnrl_names(i)
-      name_short = trim(name) // '_rt'
-      units = 'Rate mol/sec'
+      name = trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
+      name_short = name
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    MINERAL_RATE,i)      
     endif
@@ -4318,8 +4321,8 @@ subroutine RTSetPlotVariables(realization)
   
   do i=1,reaction%mineral%nmnrl
     if (reaction%mineral%mnrl_print(i)) then
-      name = reaction%mineral%kinmnrl_names(i)
-      name_short = trim(name) // '_si'
+      name = trim(reaction%mineral%kinmnrl_names(i)) // '_si'
+      name_short = name
       units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    MINERAL_SATURATION_INDEX,i)    
@@ -4328,9 +4331,10 @@ subroutine RTSetPlotVariables(realization)
   
   do i=1,realization%reaction%surface_complexation%nsrfcplxrxn
     if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-      name = reaction%surface_complexation%srfcplxrxn_site_names(i)
-      name_short = trim(name) // '_den'
-      units = 'mol/m^3'
+      name = trim(reaction%surface_complexation%srfcplxrxn_site_names(i)) // &
+             '_den'
+      name_short = name
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    SURFACE_SITE_DENSITY,i)
     endif
@@ -4340,7 +4344,7 @@ subroutine RTSetPlotVariables(realization)
     if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
       name = reaction%surface_complexation%srfcplxrxn_site_names(i)
       name_short = name
-      units = 'mol/m^3'
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    SURFACE_CMPLX_FREE,i)
     endif
@@ -4351,7 +4355,7 @@ subroutine RTSetPlotVariables(realization)
     if (reaction%surface_complexation%srfcplx_print(i)) then
       name = reaction%surface_complexation%srfcplx_names(i)
       name_short = name
-      units = 'mol/m^3'
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    SURFACE_CMPLX,i)
     endif
@@ -4363,7 +4367,7 @@ subroutine RTSetPlotVariables(realization)
       call printErrMsg(option)
       name = reaction%surface_complexation%srfcplxrxn_site_names(i)
       name_short = name
-      units = 'mol/m^3'
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    KIN_SURFACE_CMPLX_FREE,i)
     endif
@@ -4375,7 +4379,7 @@ subroutine RTSetPlotVariables(realization)
       call printErrMsg(option)
       name = reaction%surface_complexation%srfcplx_names(i)
       name_short = name
-      units = 'mol/m^3'
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    KIN_SURFACE_CMPLX,i)
     endif
@@ -4384,8 +4388,8 @@ subroutine RTSetPlotVariables(realization)
   if (associated(reaction%kd_print)) then
     do i=1,reaction%naqcomp
       if (reaction%kd_print(i)) then
-      name = reaction%primary_species_names(i)
-      name_short = trim(name) // '_kd'
+      name = trim(reaction%primary_species_names(i)) // '_kd'
+      name_short = name
       units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    PRIMARY_KD,i)
@@ -4396,9 +4400,9 @@ subroutine RTSetPlotVariables(realization)
   if (associated(reaction%total_sorb_print)) then
     do i=1,reaction%naqcomp
       if (reaction%total_sorb_print(i)) then
-        name = reaction%primary_species_names(i)
+        name = trim(reaction%primary_species_names(i)) // '_total_sorb'
         name_short = name
-        units = 'Total Sorb mol/m^3'
+        units = ''
        call  OutputVariableAddToList(list,name,name_short,units, &
                                      TOTAL_SORBED,i)        
       endif
@@ -4408,9 +4412,9 @@ subroutine RTSetPlotVariables(realization)
   if (associated(reaction%total_sorb_mobile_print)) then
     do i=1,reaction%ncollcomp
       if (reaction%total_sorb_mobile_print(i)) then
-        name = reaction%colloid_species_names(i)
+        name = trim(reaction%colloid_species_names(i)) // '_total_sorb_mob'
         name_short = name
-        units = 'Total Sorb Mobile mol/m^3'
+        units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                      TOTAL_SORBED_MOBILE,i)  
       endif
@@ -4420,18 +4424,20 @@ subroutine RTSetPlotVariables(realization)
   if (reaction%print_colloid) then
     do i=1,reaction%ncoll
       if (reaction%colloid_print(i)) then
-        name = reaction%colloid_names(i)
+        name = trim(reaction%colloid_names(i)) // '_col_mob_' // &
+               trim(tot_mol_char)
         name_short = name
-        units = 'Total Mobile ' // trim(tot_mol_char)
+        units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                      COLLOID_MOBILE,i)         
       endif
     enddo
     do i=1,reaction%ncoll
       if (reaction%colloid_print(i)) then
-        name = reaction%colloid_names(i)
+        name = trim(reaction%colloid_names(i)) // '_col_imb_' // &
+               trim(tot_mol_char)
         name_short = name
-        units = 'Total Immobile ' // trim(tot_mol_char)
+        units = ''
         call OutputVariableAddToList(list,name,name_short,units, &
                                      COLLOID_IMMOBILE,i)         
       endif
@@ -4443,7 +4449,7 @@ subroutine RTSetPlotVariables(realization)
     if (reaction%species_idx%tracer_age_id > 0) then
       name = 'Tracer Age'
       name_short = name
-      units = '' // trim(tot_mol_char)
+      units = ''
       call OutputVariableAddToList(list,name,name_short,units, &
                                    AGE,reaction%species_idx%tracer_age_id, &
                                    reaction%species_idx%tracer_aq_id)       
