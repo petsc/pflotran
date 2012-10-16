@@ -218,9 +218,9 @@ subroutine RegressionCreateMapping(regression,realization)
   
   grid => realization%patch%grid
   option => realization%option
-  
+
   ! natural cell ids
-  if (size(regression%natural_cell_ids) > 0) then
+  if (associated(regression%natural_cell_ids)) then
     call VecCreate(PETSC_COMM_SELF,regression%natural_cell_id_vec,ierr)
     if (option%myrank == option%io_rank) then
       call VecSetSizes(regression%natural_cell_id_vec, &
@@ -475,7 +475,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
     
     ! list of natural ids
-    if (size(regression%natural_cell_ids) > 0) then
+    if (associated(regression%natural_cell_ids)) then
       call VecScatterBegin(regression%scatter_natural_cell_id_gtos, &
                            global_vec, &
                            regression%natural_cell_id_vec, &
@@ -505,7 +505,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       write(OUTPUT_UNIT,'(''-- '',a,'': '',a,'' --'')') &
         trim(string), trim(cur_variable%name)
       ! natural cell ids
-      if (size(regression%natural_cell_ids) > 0) then
+      if (associated(regression%natural_cell_ids)) then
         call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
         if (cur_variable%iformat == 0) then
           do i = 1, size(regression%natural_cell_ids)
