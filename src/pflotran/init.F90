@@ -66,6 +66,7 @@ subroutine Init(simulation)
   use water_eos_module
 !  use Utility_module
   use Output_module
+  use Output_Aux_module
   use Regression_module
     
 #ifdef SURFACE_FLOW
@@ -92,6 +93,7 @@ subroutine Init(simulation)
   type(flow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   type(input_type), pointer :: input
+  type(output_variable_type), pointer :: output_variable
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   PetscInt :: temp_int
@@ -775,6 +777,10 @@ subroutine Init(simulation)
   if (associated(tran_stepper)) then
     tran_stepper%cur_waypoint => realization%waypoints%first
   endif
+  
+  ! initialize plot variables
+  realization%output_option%output_variable_list => OutputVariableListCreate()
+  
   ! initialize global auxilliary variable object
   call GlobalSetup(realization)
   ! initialize FLOW
@@ -876,6 +882,23 @@ subroutine Init(simulation)
       call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
     endif
   endif
+  
+  ! Add plot variables that are not mode specific
+  if (realization%output_option%print_porosity) then
+    ! add porosity to header
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list, &
+           'Porosity','Porosity','',POROSITY)  
+  endif
+
+  ! write material ids
+  output_variable => OutputVariableCreate('Material ID','Material ID','', &
+                                          MATERIAL_ID)
+  output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList( &
+         realization%output_option%output_variable_list,output_variable)  
+
   
   ! print info
   if (associated(flow_stepper)) then

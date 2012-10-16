@@ -106,6 +106,7 @@ subroutine RTSetup(realization)
   type(realization_type) :: realization
   
   call RTSetupPatch(realization)
+  call RTSetPlotVariables(realization)
 
 end subroutine RTSetup
 
@@ -4014,11 +4015,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%species_idx%h_ion_id > 0) then
       string = 'pH'
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option,PH, &
-                                       reaction%species_idx%h_ion_id, &
-                                       ZERO_INTEGER)
-#endif
     endif
   endif
   
@@ -4028,11 +4024,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%primary_species_names(i)) // '_tot_' // &
                  trim(tot_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         reaction%print_tot_conc_type,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4043,11 +4034,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%primary_species_names(i)) // '_free_' // &
                  trim(free_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         reaction%print_free_conc_type,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo  
   endif
@@ -4057,11 +4043,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%primary_species_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_total_bulk'
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         reaction%print_tot_conc_type,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4071,11 +4052,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%primary_species_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_gam'
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         PRIMARY_ACTIVITY_COEF,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4085,11 +4061,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       string = trim(reaction%secondary_species_names(i)) // &
                '_' // trim(sec_mol_char)
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       reaction%print_secondary_conc_type,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo  
     
@@ -4097,11 +4068,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%mineral%kinmnrl_print(i)) then
       string = trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       MINERAL_VOLUME_FRACTION,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
   
@@ -4109,11 +4075,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%mineral%kinmnrl_print(i)) then
       string = trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       MINERAL_RATE,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
   
@@ -4121,11 +4082,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%mineral%mnrl_print(i)) then
       string = trim(reaction%mineral%mineral_names(i)) // '_si'
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       MINERAL_SATURATION_INDEX,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
 
@@ -4133,11 +4089,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
       string = trim(reaction%surface_complexation%srfcplxrxn_site_names(i)) // '_den'
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       SURFACE_SITE_DENSITY,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
   
@@ -4145,11 +4096,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
       string = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       SURFACE_CMPLX_FREE,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
   
@@ -4157,11 +4103,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%surface_complexation%srfcplx_print(i)) then
       string = trim(reaction%surface_complexation%srfcplx_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       SURFACE_CMPLX,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
   
@@ -4171,11 +4112,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     call printErrMsg(option)
       string = trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       KIN_SURFACE_CMPLX_FREE,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
   
@@ -4185,11 +4121,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     call printErrMsg(option)
       string = trim(reaction%surface_complexation%srfcplx_names(i))
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                       KIN_SURFACE_CMPLX,i, &
-                                       ZERO_INTEGER)
-#endif
     endif
   enddo
 
@@ -4198,11 +4129,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%kd_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_kd'
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         PRIMARY_KD,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4212,11 +4138,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%total_sorb_print(i)) then
         string = trim(reaction%primary_species_names(i)) // '_total_sorb'
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         TOTAL_SORBED,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4226,11 +4147,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
       if (reaction%total_sorb_mobile_print(i)) then
         string = trim(reaction%colloid_species_names(i)) // '_total_sorb_mob'
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         TOTAL_SORBED_MOBILE,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4241,11 +4157,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%colloid_names(i)) // '_col_mob_' // &
                  trim(tot_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         COLLOID_MOBILE,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
     do i=1,reaction%ncoll
@@ -4253,11 +4164,6 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
         string = trim(reaction%colloid_names(i)) // '_col_imb_' // &
                  trim(tot_mol_char)
         call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-        call OutputOptionAddPlotVariable(realization%output_option, &
-                                         COLLOID_IMMOBILE,i, &
-                                         ZERO_INTEGER)
-#endif
       endif
     enddo
   endif
@@ -4266,17 +4172,285 @@ function RTGetTecplotHeader(realization,cell_string,icolumn)
     if (reaction%species_idx%tracer_age_id > 0) then
       string = 'Tracer_Age'
       call RTAppendToHeader(header,string,cell_string,icolumn)
-#ifdef GLENN_NEW_IO
-      call OutputOptionAddPlotVariable(realization%output_option, &
-                                 AGE,reaction%species_idx%tracer_age_id, &
-                                 reaction%species_idx%tracer_aq_id)
-#endif
     endif
   endif
     
   RTGetTecplotHeader = header
 
 end function RTGetTecplotHeader
+
+! ************************************************************************** !
+!
+! RTSetPlotVariables: Adds variables to be printed to list
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+subroutine RTSetPlotVariables(realization)
+  
+  use Realization_module
+  use Option_module
+  use Output_Aux_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  character(len=MAXWORDLENGTH) :: name, name_short, units
+  type(output_variable_list_type), pointer :: list
+  
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) string
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  PetscInt :: i
+  
+  option => realization%option
+  reaction => realization%reaction
+  list => realization%output_option%output_variable_list
+  
+  if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+    free_mol_char = 'm'
+  else
+    free_mol_char = 'M'
+  endif
+  
+  if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+    tot_mol_char = 'm'
+  else
+    tot_mol_char = 'M'
+  endif
+  
+  if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+    sec_mol_char = 'm'
+  else
+    sec_mol_char = 'M'
+  endif
+  
+  if (reaction%print_pH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      name = 'pH'
+      name_short = 'pH'
+      units = ''
+      call OutputVariableAddToList(list,name,name_short,units,PH, &
+                                   reaction%species_idx%h_ion_id)
+    endif
+  endif  
+  
+  if (reaction%print_total_component) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = reaction%primary_species_names(i)
+        name_short = name
+        units = 'Total ' // trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                     reaction%print_tot_conc_type,i)
+      endif
+    enddo
+  endif  
+  
+  if (reaction%print_free_ion) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = reaction%primary_species_names(i)
+        name_short = name
+        units = 'Free ' // trim(free_mol_char)
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                      reaction%print_free_conc_type,i)
+      endif
+    enddo
+  endif  
+  
+  if (reaction%print_total_bulk) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = reaction%primary_species_names(i)
+        name_short = name
+        units = 'Total Bulk mol/m^3'
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                     TOTAL_BULK,i)   
+      endif
+    enddo
+  endif
+  
+  if (reaction%print_act_coefs) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = reaction%primary_species_names(i)
+        name_short = trim(name) // '_gam'
+        units = ''
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                     PRIMARY_ACTIVITY_COEF,i) 
+      endif
+    enddo
+  endif
+  
+  do i=1,reaction%neqcplx
+    if (reaction%secondary_species_print(i)) then
+      name = reaction%secondary_species_names(i)
+      name_short = name
+      units = trim(sec_mol_char)
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   SECONDARY_ACTIVITY_COEF,i) 
+    endif
+  enddo   
+
+  do i=1,reaction%mineral%nkinmnrl
+    if (reaction%mineral%kinmnrl_print(i)) then
+      name = reaction%mineral%kinmnrl_names(i)
+      name_short = trim(name) // '_vf'
+      units = 'VF m^3 mnrl/m^3 bulk'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   MINERAL_VOLUME_FRACTION,i)     
+    endif
+  enddo
+  
+  do i=1,reaction%mineral%nkinmnrl
+    if (reaction%mineral%kinmnrl_print(i)) then
+      name = reaction%mineral%kinmnrl_names(i)
+      name_short = trim(name) // '_rt'
+      units = 'Rate mol/sec'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   MINERAL_RATE,i)      
+    endif
+  enddo  
+  
+  do i=1,reaction%mineral%nmnrl
+    if (reaction%mineral%mnrl_print(i)) then
+      name = reaction%mineral%kinmnrl_names(i)
+      name_short = trim(name) // '_si'
+      units = ''
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   MINERAL_SATURATION_INDEX,i)    
+    endif
+  enddo
+  
+  do i=1,realization%reaction%surface_complexation%nsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
+      name = reaction%surface_complexation%srfcplxrxn_site_names(i)
+      name_short = trim(name) // '_den'
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   SURFACE_SITE_DENSITY,i)
+    endif
+  enddo  
+
+  do i=1,realization%reaction%surface_complexation%nsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+      name = reaction%surface_complexation%srfcplxrxn_site_names(i)
+      name_short = name
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   SURFACE_CMPLX_FREE,i)
+    endif
+  enddo
+  
+  
+  do i=1,realization%reaction%surface_complexation%nsrfcplx
+    if (reaction%surface_complexation%srfcplx_print(i)) then
+      name = reaction%surface_complexation%srfcplx_names(i)
+      name_short = name
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   SURFACE_CMPLX,i)
+    endif
+  enddo
+
+  do i=1,realization%reaction%surface_complexation%nkinsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+      option%io_buffer = 'Printing of kinetic surface complexes needs to be fixed'
+      call printErrMsg(option)
+      name = reaction%surface_complexation%srfcplxrxn_site_names(i)
+      name_short = name
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   KIN_SURFACE_CMPLX_FREE,i)
+    endif
+  enddo  
+  
+  do i=1,realization%reaction%surface_complexation%nkinsrfcplx
+    if (reaction%surface_complexation%srfcplx_print(i)) then
+      option%io_buffer = 'Printing of kinetic surface complexes needs to be fixed'
+      call printErrMsg(option)
+      name = reaction%surface_complexation%srfcplx_names(i)
+      name_short = name
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   KIN_SURFACE_CMPLX,i)
+    endif
+  enddo  
+
+  if (associated(reaction%kd_print)) then
+    do i=1,reaction%naqcomp
+      if (reaction%kd_print(i)) then
+      name = reaction%primary_species_names(i)
+      name_short = trim(name) // '_kd'
+      units = ''
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   PRIMARY_KD,i)
+      endif
+    enddo
+  endif
+  
+  if (associated(reaction%total_sorb_print)) then
+    do i=1,reaction%naqcomp
+      if (reaction%total_sorb_print(i)) then
+        name = reaction%primary_species_names(i)
+        name_short = name
+        units = 'Total Sorb mol/m^3'
+       call  OutputVariableAddToList(list,name,name_short,units, &
+                                     TOTAL_SORBED,i)        
+      endif
+    enddo
+  endif
+  
+  if (associated(reaction%total_sorb_mobile_print)) then
+    do i=1,reaction%ncollcomp
+      if (reaction%total_sorb_mobile_print(i)) then
+        name = reaction%colloid_species_names(i)
+        name_short = name
+        units = 'Total Sorb Mobile mol/m^3'
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                     TOTAL_SORBED_MOBILE,i)  
+      endif
+    enddo
+  endif  
+  
+  if (reaction%print_colloid) then
+    do i=1,reaction%ncoll
+      if (reaction%colloid_print(i)) then
+        name = reaction%colloid_names(i)
+        name_short = name
+        units = 'Total Mobile ' // trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                     COLLOID_MOBILE,i)         
+      endif
+    enddo
+    do i=1,reaction%ncoll
+      if (reaction%colloid_print(i)) then
+        name = reaction%colloid_names(i)
+        name_short = name
+        units = 'Total Immobile ' // trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,name_short,units, &
+                                     COLLOID_IMMOBILE,i)         
+      endif
+    enddo
+  endif
+  
+  
+  if (reaction%print_age) then
+    if (reaction%species_idx%tracer_age_id > 0) then
+      name = 'Tracer Age'
+      name_short = name
+      units = '' // trim(tot_mol_char)
+      call OutputVariableAddToList(list,name,name_short,units, &
+                                   AGE,reaction%species_idx%tracer_age_id, &
+                                   reaction%species_idx%tracer_aq_id)       
+    endif
+  endif  
+  
+end subroutine RTSetPlotVariables
 
 ! ************************************************************************** !
 !

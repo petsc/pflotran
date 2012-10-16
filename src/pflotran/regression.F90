@@ -1,5 +1,7 @@
 module Regression_module
  
+  use Output_Aux_module
+  
   implicit none
 
   private
@@ -427,6 +429,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   use Option_module
   use Discretization_module
   use Output_module
+  use Output_Aux_module
   
   implicit none
   
@@ -440,7 +443,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   Vec :: global_vec
   PetscInt :: ivar, isubvar
   type(option_type), pointer :: option
-  type(regression_variable_type), pointer :: cur_variable
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: i
   PetscErrorCode :: ierr
@@ -461,20 +464,12 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                   global_vec,GLOBAL,option)  
   
-  cur_variable => regression%variable_list
+  cur_variable => realization%output_option%output_variable_list%first
   do 
     if (.not.associated(cur_variable)) exit
-    ! need to move this elsewhere
-    ivar = 0
-    isubvar = 0
-    select case(cur_variable%name)
-      case('PRESSURE')
-        ivar = LIQUID_PRESSURE
-      case default
-        option%io_buffer = 'Variable "' // & trim(cur_variable%name) // &
-          '" not recognized in regression suite.'
-        call printErrMsg(option)
-    end select
+    
+    ivar = cur_variable%ivar
+    isubvar = cur_variable%isubvar
   
     call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
     
@@ -502,23 +497,38 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     endif
 
 100 format(i9,1x,es20.13)    
+101 format(i9,1x,i9)    
     
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- '',a,'' --'')') trim(cur_variable%name)
       ! natural cell ids
       call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
-      do i = 1, size(regression%natural_cell_ids)
-        write(OUTPUT_UNIT,100) &
-          regression%natural_cell_ids(i),vec_ptr(i)
-      enddo
+      if (cur_variable%iformat == 0) then
+        do i = 1, size(regression%natural_cell_ids)
+          write(OUTPUT_UNIT,100) &
+            regression%natural_cell_ids(i),vec_ptr(i)
+        enddo
+      else
+        do i = 1, size(regression%natural_cell_ids)
+          write(OUTPUT_UNIT,101) &
+            regression%natural_cell_ids(i),int(vec_ptr(i))
+        enddo
+      endif
       call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
 
       ! cell ids per process
       call VecGetArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
-      do i = 1, regression%num_cells_per_process*option%mycommsize
-        write(OUTPUT_UNIT,100) &
-          regression%cells_per_process_natural_ids(i),vec_ptr(i)
-      enddo
+      if (cur_variable%iformat == 0) then
+        do i = 1, regression%num_cells_per_process*option%mycommsize
+          write(OUTPUT_UNIT,100) &
+            regression%cells_per_process_natural_ids(i),vec_ptr(i)
+        enddo
+      else
+        do i = 1, regression%num_cells_per_process*option%mycommsize
+          write(OUTPUT_UNIT,101) &
+            regression%cells_per_process_natural_ids(i),int(vec_ptr(i))
+        enddo
+      endif
       call VecRestoreArrayF90(regression%cells_per_process_vec,vec_ptr,ierr)
     endif
   

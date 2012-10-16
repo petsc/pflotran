@@ -2413,6 +2413,7 @@ subroutine RealizationDestroy(realization)
   call FieldDestroy(realization%field)
 
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
+  call OutputOptionDestroy(realization%output_option)
   call RegionDestroyList(realization%regions)
   
   call FlowConditionDestroyList(realization%flow_conditions)

@@ -45,6 +45,8 @@ module Output_Aux_module
     PetscBool :: print_permeability
     PetscBool :: print_porosity
     
+    type(output_variable_list_type), pointer :: output_variable_list
+    
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
@@ -60,16 +62,35 @@ module Output_Aux_module
   end type output_variable_list_type
   
   type, public :: output_variable_type
-    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name   ! string that appears in hdf5 file
+    character(len=MAXWORDLENGTH) :: header ! string to appear in header
+    character(len=MAXWORDLENGTH) :: units
+    PetscBool :: plot_only
+    PetscInt :: iformat
     PetscInt :: ivar
     PetscInt :: isubvar
     PetscInt :: isubsubvar
     type(output_variable_type), pointer :: next
   end type output_variable_type
+  
+  interface OutputVariableCreate
+    module procedure OutputVariableCreate1
+    module procedure OutputVariableCreate2
+    module procedure OutputVariableCreate3
+  end interface OutputVariableCreate
+  
+  interface OutputVariableAddToList
+    module procedure OutputVariableAddToList1
+    module procedure OutputVariableAddToList2
+  end interface OutputVariableAddToList
     
   public :: OutputOptionCreate, &
             OutputVariableCreate, &
             OutputVariableListCreate, &
+            OutputVariableListDuplicate, &
+            OutputVariableAddToList, &
+            OutputAppendToHeader, &
+            OutputVariableListToHeader, &
             OutputOptionDestroy, &
             OutputVariableListDestroy
 
@@ -117,6 +138,8 @@ function OutputOptionCreate()
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
   
+  nullify(output_option%output_variable_list)
+  
   output_option%tconv = 1.d0
   output_option%tunit = 's'
   
@@ -130,29 +153,105 @@ end function OutputOptionCreate
 
 ! ************************************************************************** !
 !
-! OutputVariableCreate: initializes output variable object
+! OutputVariableCreate1: initializes output variable object
 ! author: Glenn Hammond
 ! date: 10/15/12
 !
 ! ************************************************************************** !
-function OutputVariableCreate()
+function OutputVariableCreate1()
 
   implicit none
   
-  type(output_variable_type), pointer :: OutputVariableCreate
+  type(output_variable_type), pointer :: OutputVariableCreate1
   
   type(output_variable_type), pointer :: output_variable
   
   allocate(output_variable)
   output_variable%name = ''
+  output_variable%header = ''
+  output_variable%units = ''
+  output_variable%plot_only = PETSC_FALSE
+  output_variable%iformat = 0
   output_variable%ivar = 0
   output_variable%isubvar = 0
   output_variable%isubsubvar = 0
   nullify(output_variable%next)
   
-  OutputVariableCreate => output_variable
+  OutputVariableCreate1 => output_variable
   
-end function OutputVariableCreate
+end function OutputVariableCreate1
+
+! ************************************************************************** !
+!
+! OutputVariableCreate2: initializes output variable object
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+function OutputVariableCreate2(name,header_name,units,ivar,isubvar,isubsubvar)
+
+  implicit none
+  
+  character(len=*) :: name
+  character(len=*) :: header_name
+  character(len=*) :: units
+  PetscInt :: ivar
+  PetscInt, intent(in), optional :: isubvar
+  PetscInt, intent(in), optional :: isubsubvar
+
+  type(output_variable_type), pointer :: OutputVariableCreate2
+  
+  type(output_variable_type), pointer :: output_variable
+  
+  output_variable => OutputVariableCreate()
+  output_variable%name = trim(adjustl(name))
+  output_variable%header = trim(adjustl(header_name))
+  output_variable%units = trim(adjustl(units))
+  output_variable%ivar = ivar
+  if (present(isubvar)) then
+    output_variable%isubvar = isubvar
+  endif
+  if (present(isubsubvar)) then
+    output_variable%isubsubvar = isubsubvar
+  endif
+  nullify(output_variable%next)
+  
+  OutputVariableCreate2 => output_variable
+  
+end function OutputVariableCreate2
+
+! ************************************************************************** !
+!
+! OutputVariableCreate3: initializes output variable object from an existing
+!                        output variabl object
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+function OutputVariableCreate3(output_variable)
+
+  implicit none
+  
+  type(output_variable_type), pointer :: output_variable
+
+  type(output_variable_type), pointer :: OutputVariableCreate3
+  
+  type(output_variable_type), pointer :: new_output_variable
+  
+  allocate(new_output_variable)
+  new_output_variable%name = output_variable%name
+  new_output_variable%header = output_variable%header
+  new_output_variable%units = output_variable%units
+  new_output_variable%plot_only = output_variable%plot_only
+  new_output_variable%iformat = output_variable%iformat
+  new_output_variable%ivar = output_variable%ivar
+  new_output_variable%isubvar = output_variable%isubvar
+  new_output_variable%isubsubvar = output_variable%isubsubvar
+  nullify(new_output_variable%next)
+  
+  OutputVariableCreate3 => new_output_variable
+  
+end function OutputVariableCreate3
 
 ! ************************************************************************** !
 !
@@ -179,22 +278,199 @@ end function OutputVariableListCreate
 
 ! ************************************************************************** !
 !
-! OutputVariableAddToList: initializes output variable list object
+! OutputVariableListDuplicate: initializes output variable list object
 ! author: Glenn Hammond
 ! date: 10/15/12
 !
 ! ************************************************************************** !
-subroutine OutputVariableAddToList(list,variable)
+function OutputVariableListDuplicate(old_list,new_list)
 
   implicit none
   
-  type(output_variable_list_type), pointer :: list
+  type(output_variable_list_type) :: old_list
+  
+  type(output_variable_list_type), pointer :: OutputVariableListDuplicate
+  
+  type(output_variable_list_type), pointer :: new_list
+  type(output_variable_type), pointer :: cur_variable
+  
+  allocate(new_list)
+  nullify(new_list%first)
+  nullify(new_list%last)
+  
+  cur_variable => old_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputVariableAddToList(new_list,OutputVariableCreate(cur_variable))
+    cur_variable => cur_variable%next
+  enddo
+
+  OutputVariableListDuplicate => new_list
+  
+end function OutputVariableListDuplicate
+
+! ************************************************************************** !
+!
+! OutputVariableAddToList1: adds variable to list object
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+subroutine OutputVariableAddToList1(list,variable)
+
+  implicit none
+  
+  type(output_variable_list_type) :: list
   type(output_variable_type), pointer :: variable
   
-  list%last%next => variable
+  if (.not. associated(list%first)) then
+    list%first => variable
+  else
+    list%last%next => variable
+  endif
   list%last => variable
   
-end subroutine OutputVariableAddToList
+end subroutine OutputVariableAddToList1
+
+! ************************************************************************** !
+!
+! OutputVariableAddToList2: creates variable and adds to list object
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+subroutine OutputVariableAddToList2(list,name,header_name,units,ivar, &
+                                    isubvar,isubsubvar)
+
+  implicit none
+  
+  type(output_variable_list_type) :: list
+  character(len=*) :: name
+  character(len=*) :: header_name
+  character(len=*) :: units
+  PetscInt :: ivar
+  PetscInt, intent(in), optional :: isubvar
+  PetscInt, intent(in), optional :: isubsubvar
+  
+  type(output_variable_type), pointer :: variable
+  
+  if (present(isubvar)) then
+    if (present(isubsubvar)) then
+      variable => OutputVariableCreate(name,header_name,units, &
+                                       ivar,isubvar,isubsubvar)
+    else
+      variable => OutputVariableCreate(name,header_name,units, &
+                                       ivar,isubvar)
+    endif
+  else
+    variable => OutputVariableCreate(name,header_name,units,ivar)
+  endif
+  call OutputVariableAddToList1(list,variable)
+  
+end subroutine OutputVariableAddToList2
+
+! ************************************************************************** !
+!
+! OutputVariableListToHeader: Converts a variable list to a header string
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
+                                    plot_file)
+  
+  implicit none
+  
+  type(output_variable_list_type) :: variable_list
+  character(len=*) :: cell_string
+  PetscInt :: icolumn
+  PetscBool :: plot_file
+  
+  character(len=MAXHEADERLENGTH) :: OutputVariableListToHeader
+
+  character(len=MAXHEADERLENGTH) :: header
+  type(output_variable_type), pointer :: cur_variable
+  character(len=MAXWORDLENGTH) :: variable_name, units
+  
+  header = ''
+  
+  cur_variable => variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    if (.not. plot_file .and. cur_variable%plot_only == PETSC_TRUE) then
+      cur_variable => cur_variable%next
+      cycle
+    endif
+    variable_name = cur_variable%header
+    units = cur_variable%units
+    call OutputAppendToHeader(header,variable_name,units,cell_string,icolumn)
+    cur_variable => cur_variable%next
+  enddo
+  
+  OutputVariableListToHeader = header
+  
+end function OutputVariableListToHeader
+
+! ************************************************************************** !
+!
+! OutputAppendToHeader: Appends formatted strings to header string
+! author: Glenn Hammond
+! date: 10/27/11
+!
+! ************************************************************************** !
+subroutine OutputAppendToHeader(header,variable_string,units_string, &
+                                cell_string, icolumn)
+
+  implicit none
+
+  character(len=MAXHEADERLENGTH) :: header
+  character(len=*) :: variable_string, units_string, cell_string
+  character(len=MAXWORDLENGTH) :: column_string
+  character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj
+  character(len=MAXSTRINGLENGTH) :: cell_string_adj
+  PetscInt :: icolumn, len_cell_string, len_units
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  variable_string_adj = variable_string
+  units_string_adj = units_string
+  cell_string_adj = cell_string
+
+  !geh: Shift to left.  Cannot perform on same string since len=*
+  variable_string_adj = adjustl(variable_string_adj)
+  units_string_adj = adjustl(units_string_adj)
+  cell_string_adj = adjustl(cell_string_adj)
+
+  if (icolumn > 0) then
+    icolumn = icolumn + 1
+    write(column_string,'(i4,''-'')') icolumn
+    column_string = trim(adjustl(column_string))
+  else
+    column_string = ''
+  endif
+
+  !geh: this is all to remove the lousy spaces
+  len_units = len_trim(units_string)
+  len_cell_string = len_trim(cell_string)
+  if (len_units > 0 .and. len_cell_string > 0) then
+    write(string,'('',"'',a,a,'' ['',a,''] '',a,''"'')') trim(column_string), &
+          trim(variable_string_adj), trim(units_string_adj), &
+          trim(cell_string_adj)
+  else if (len_units > 0 .or. len_cell_string > 0) then
+    if (len_units > 0) then
+      write(string,'('',"'',a,a,'' ['',a,'']"'')') trim(column_string), &
+            trim(variable_string_adj), trim(units_string_adj)
+    else
+      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
+            trim(variable_string_adj), trim(cell_string_adj)
+    endif
+  else
+    write(string,'('',"'',a,a,''"'')') trim(column_string), &
+          trim(variable_string_adj)
+  endif
+  header = trim(header) // trim(string)
+
+end subroutine OutputAppendToHeader
 
 ! ************************************************************************** !
 !
@@ -252,7 +528,8 @@ subroutine OutputOptionDestroy(output_option)
   
   type(output_option_type), pointer :: output_option
   
-
+  if (.not.associated(output_option)) return
+  
   deallocate(output_option)
   nullify(output_option)
   

@@ -95,6 +95,7 @@ subroutine RichardsSetup(realization)
   type(realization_type) :: realization
   
   call RichardsSetupPatch(realization)
+  call RichardsSetPlotVariables(realization)
 
 end subroutine RichardsSetup
 
@@ -5925,10 +5926,6 @@ function RichardsGetTecplotHeader(realization,icolumn)
     write(string2,'('',"P [Pa]"'')') 
   endif
   string = trim(string) // trim(string2)
-#ifdef GLENN_NEW_IO
-  call OutputOptionAddPlotVariable(realization%output_option,LIQUID_PRESSURE, &
-                             ZERO_INTEGER,ZERO_INTEGER)
-#endif
 
   if (icolumn > -1) then
     icolumn = icolumn + 1
@@ -5937,14 +5934,45 @@ function RichardsGetTecplotHeader(realization,icolumn)
     write(string2,'('',"sl"'')') 
   endif
   string = trim(string) // trim(string2)
-#ifdef GLENN_NEW_IO
-  call OutputOptionAddPlotVariable(realization%output_option, &
-                                   LIQUID_SATURATION,ZERO_INTEGER,ZERO_INTEGER)
-#endif
  
   RichardsGetTecplotHeader = string
 
 end function RichardsGetTecplotHeader
+
+! ************************************************************************** !
+!
+! RichardsSetPlotVariables: Adds variables to be printed to list
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+subroutine RichardsSetPlotVariables(realization)
+  
+  use Realization_module
+  use Output_Aux_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  character(len=MAXWORDLENGTH) :: name, name_short, units
+  type(output_variable_list_type), pointer :: list
+  
+  list => realization%output_option%output_variable_list
+  
+  name = 'Liquid Pressure'
+  name_short = 'P'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,name_short,units, &
+                               LIQUID_PRESSURE)
+
+  name = 'Liquid Saturation'
+  name_short = 'sl'
+  units = ''
+  call OutputVariableAddToList(list,name,name_short,units, &
+                               LIQUID_SATURATION)
+  
+end subroutine RichardsSetPlotVariables
 
 ! ************************************************************************** !
 !

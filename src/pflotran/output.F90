@@ -139,10 +139,6 @@ subroutine OutputInit(realization,num_steps)
     hydrograph_first = PETSC_FALSE
   endif
 
-#ifdef GLENN_NEW_IO
-  call OutputOptionPlotVariablesInit(realization%output_option)
-#endif
-
 end subroutine OutputInit
 
 ! ************************************************************************** !
@@ -458,6 +454,10 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
             '"Y [m]",' // &
             '"Z [m]"'
 
+#ifdef GLENN_NEW_IO    
+  header = OutputVariableListToHeader(output_option%output_variable_list,'', &
+                                      icolumn,PETSC_TRUE)
+#else
   ! write flow variables
   header2 = ''
   select case(option%iflowmode)
@@ -494,12 +494,9 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
 
   ! write material ids
   header = trim(header) // ',"Material_ID"'
+#endif      
 
   write(fid,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO
-  call OutputOptionPlotVarFinalize(output_option)
-#endif
 
   ! count vars in header
   quote_count = 0
@@ -650,6 +647,7 @@ subroutine OutputTecplotBlock(realization)
   type(patch_type), pointer :: patch 
   type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec
   Vec :: natural_vec
@@ -687,6 +685,27 @@ subroutine OutputTecplotBlock(realization)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
   endif
 
+#ifdef GLENN_NEW_IO
+    
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                        natural_vec,ONEDOF)
+    if (cur_variable%iformat == 0) then
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+                                      TECPLOT_REAL)
+    else
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+                                      TECPLOT_INTEGER)
+    endif
+    cur_variable => cur_variable%next
+  enddo
+
+#else  
+  
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
          FLASH2_MODE,G_MODE)
@@ -1042,6 +1061,7 @@ subroutine OutputTecplotBlock(realization)
   call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
+#endif ! GLENN_NEW_IO  
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -2036,6 +2056,7 @@ subroutine OutputTecplotPoint(realization)
   type(patch_type), pointer :: patch 
   type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -2078,6 +2099,22 @@ subroutine OutputTecplotPoint(realization)
     write(OUTPUT_UNIT,1000,advance='no') grid%y(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') grid%z(ghosted_id)
 
+#ifdef GLENN_NEW_IO
+    
+    cur_variable => output_option%output_variable_list%first
+    do
+      if (.not.associated(cur_variable)) exit
+      value = RealizGetDatasetValueAtCell(realization,cur_variable%ivar, &
+                                          cur_variable%isubvar,ghosted_id)
+      if (cur_variable%iformat == 0) then
+        write(OUTPUT_UNIT,1000,advance='no') value
+      else
+        write(OUTPUT_UNIT,1001,advance='no') int(value)
+      endif
+      cur_variable => cur_variable%next
+    enddo
+
+#else
     select case(option%iflowmode)
       case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE, &
            MIS_MODE,G_MODE)
@@ -2423,11 +2460,11 @@ subroutine OutputTecplotPoint(realization)
     value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
                                             ZERO_INTEGER,ghosted_id)
     write(OUTPUT_UNIT,1001,advance='no') int(value)
+#endif  
 
     write(OUTPUT_UNIT,1009) 
 
   enddo
-  
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
@@ -3468,6 +3505,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   use Realization_module
   use Grid_module
   use Option_module
+  use Output_Aux_module
   use Patch_module
   use Region_module
   use Utility_module, only : BestFloat
@@ -3579,6 +3617,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   option => realization%option
   output_option => realization%output_option
   
+  
+#ifndef GLENN_NEW_IO  
   header = ''
 
   select case(option%iflowmode)
@@ -3698,7 +3738,15 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
     call OutputAppendToHeader(header,'Porosity','',cell_string,icolumn)
     write(fid,'(a)',advance="no") trim(header)
   endif
-  
+
+#else
+
+  header = OutputVariableListToHeader(output_option%output_variable_list, &
+                                      cell_string,icolumn,PETSC_FALSE)
+  write(fid,'(a)',advance="no") trim(header)
+
+#endif
+ 
   if (print_velocities) then
     header = ''
     write(string,'(''[m/'',a,'']'')') trim(realization%output_option%tunit)
@@ -9025,65 +9073,6 @@ end subroutine OutputPermeability
 
 ! ************************************************************************** !
 !
-! OutputAppendToHeader: Appends formatted strings to header string
-! author: Glenn Hammond
-! date: 10/27/11
-!
-! ************************************************************************** !
-subroutine OutputAppendToHeader(header,variable_string,units_string, &
-                                cell_string, icolumn)
-
-  character(len=MAXHEADERLENGTH) :: header
-  character(len=*) :: variable_string, units_string, cell_string
-  character(len=MAXWORDLENGTH) :: column_string
-  character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj
-  character(len=MAXSTRINGLENGTH) :: cell_string_adj
-  PetscInt :: icolumn, len_cell_string, len_units
-
-  character(len=MAXSTRINGLENGTH) :: string
-
-  variable_string_adj = variable_string
-  units_string_adj = units_string
-  cell_string_adj = cell_string
-
-  !geh: Shift to left.  Cannot perform on same string since len=*
-  variable_string_adj = adjustl(variable_string_adj)
-  units_string_adj = adjustl(units_string_adj)
-  cell_string_adj = adjustl(cell_string_adj)
-
-  if (icolumn > 0) then
-    icolumn = icolumn + 1
-    write(column_string,'(i4,''-'')') icolumn
-    column_string = trim(adjustl(column_string))
-  else
-    column_string = ''
-  endif
-
-  !geh: this is all to remove the lousy spaces
-  len_units = len_trim(units_string)
-  len_cell_string = len_trim(cell_string)
-  if (len_units > 0 .and. len_cell_string > 0) then
-    write(string,'('',"'',a,a,'' '',a,'' '',a,''"'')') trim(column_string), &
-          trim(variable_string_adj), trim(units_string_adj), &
-          trim(cell_string_adj)
-  else if (len_units > 0 .or. len_cell_string > 0) then
-    if (len_units > 0) then
-      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
-            trim(variable_string_adj), trim(units_string_adj)
-    else
-      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
-            trim(variable_string_adj), trim(cell_string_adj)
-    endif
-  else
-    write(string,'('',"'',a,a,''"'')') trim(column_string), &
-          trim(variable_string_adj)
-  endif
-  header = trim(header) // trim(string)
-
-end subroutine OutputAppendToHeader
-
-! ************************************************************************** !
-!
 ! OutputPrintCouplers: Prints values of auxilliary variables associated with
 !                      couplers (boundary and initial conditions, source
 !                      sinks).  Note that since multiple connections for
@@ -10457,10 +10446,6 @@ subroutine OutputTecplotHeader2(fid,surf_realization,icolumn)
   endif
 
   write(fid,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO
-  !call OutputOptionPlotVarFinalize(output_option)
-#endif
 
   ! count vars in header
   quote_count = 0
