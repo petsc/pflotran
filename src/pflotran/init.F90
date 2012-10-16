@@ -888,11 +888,11 @@ subroutine Init(simulation)
     ! add porosity to header
     call OutputVariableAddToList( &
            realization%output_option%output_variable_list, &
-           'Porosity','-',POROSITY)  
+           'Porosity',OUTPUT_GENERIC,'-',POROSITY)  
   endif
 
   ! write material ids
-  output_variable => OutputVariableCreate('Material ID','', &
+  output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
                                           MATERIAL_ID)
   output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
   output_variable%iformat = 1 ! integer

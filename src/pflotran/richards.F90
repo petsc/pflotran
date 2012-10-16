@@ -5962,12 +5962,12 @@ subroutine RichardsSetPlotVariables(realization)
   
   name = 'Liquid Pressure'
   units = 'Pa'
-  call OutputVariableAddToList(list,name,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
                                LIQUID_PRESSURE)
 
   name = 'Liquid Saturation'
   units = ''
-  call OutputVariableAddToList(list,name,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
                                LIQUID_SATURATION)
   
 end subroutine RichardsSetPlotVariables

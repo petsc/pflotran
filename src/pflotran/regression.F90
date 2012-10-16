@@ -501,7 +501,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
 101 format(i9,1x,i9)    
     
     if (option%myrank == option%io_rank) then
-      write(OUTPUT_UNIT,'(''-- '',a,'' --'')') trim(cur_variable%name)
+      string = OutputVariableToCategoryString(cur_variable%icategory)
+      write(OUTPUT_UNIT,'(''-- '',a,'': '',a,'' --'')') &
+        trim(string), trim(cur_variable%name)
       ! natural cell ids
       if (size(regression%natural_cell_ids) > 0) then
         call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
@@ -550,7 +552,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     call VecNorm(realization%field%flow_xx,NORM_2,x_norm,ierr)
     call VecNorm(realization%field%flow_r,NORM_2,r_norm,ierr)
     if (option%myrank == option%io_rank) then
-      write(OUTPUT_UNIT,'(''-- Flow Solution --'')')
+      write(OUTPUT_UNIT,'(''-- SOLUTION: Flow --'')')
+      write(OUTPUT_UNIT,'(''   Time (seconds): '',es20.13)') &
+        flow_stepper%cumulative_solver_time
       write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_stepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
         flow_stepper%cumulative_newton_iterations
@@ -566,7 +570,9 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr)
     call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
     if (option%myrank == option%io_rank) then
-      write(OUTPUT_UNIT,'(''-- Transport Solution --'')')
+      write(OUTPUT_UNIT,'(''-- SOLUTION: Transport --'')')
+      write(OUTPUT_UNIT,'(''   Time (seconds): '',es20.13)') &
+        tran_stepper%cumulative_solver_time
       write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') tran_stepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
         tran_stepper%cumulative_newton_iterations

@@ -66,6 +66,7 @@ module Output_Aux_module
     character(len=MAXWORDLENGTH) :: units
     PetscBool :: plot_only
     PetscInt :: iformat
+    PetscInt :: icategory ! category for variable-specific regression testing
     PetscInt :: ivar
     PetscInt :: isubvar
     PetscInt :: isubsubvar
@@ -82,6 +83,15 @@ module Output_Aux_module
     module procedure OutputVariableAddToList1
     module procedure OutputVariableAddToList2
   end interface OutputVariableAddToList
+  
+  ! Output categories
+  PetscInt, parameter, public :: OUTPUT_GENERIC = 0
+  PetscInt, parameter, public :: OUTPUT_PRESSURE = 1
+  PetscInt, parameter, public :: OUTPUT_SATURATION = 2
+  PetscInt, parameter, public :: OUTPUT_CONCENTRATION = 3
+  PetscInt, parameter, public :: OUTPUT_RATE = 4
+  PetscInt, parameter, public :: OUTPUT_VOLUME_FRACTION = 5
+  PetscInt, parameter, public :: OUTPUT_DISCRETE = 6
     
   public :: OutputOptionCreate, &
             OutputVariableCreate, &
@@ -90,6 +100,7 @@ module Output_Aux_module
             OutputVariableAddToList, &
             OutputAppendToHeader, &
             OutputVariableListToHeader, &
+            OutputVariableToCategoryString, &
             OutputOptionDestroy, &
             OutputVariableListDestroy
 
@@ -170,6 +181,7 @@ function OutputVariableCreate1()
   output_variable%units = ''
   output_variable%plot_only = PETSC_FALSE
   output_variable%iformat = 0
+  output_variable%icategory = OUTPUT_GENERIC
   output_variable%ivar = 0
   output_variable%isubvar = 0
   output_variable%isubsubvar = 0
@@ -186,11 +198,13 @@ end function OutputVariableCreate1
 ! date: 10/15/12
 !
 ! ************************************************************************** !
-function OutputVariableCreate2(name,units,ivar,isubvar,isubsubvar)
+function OutputVariableCreate2(name,icategory,units,ivar,isubvar,isubsubvar)
 
   implicit none
   
   character(len=*) :: name
+  PetscInt :: icategory ! note that I tuck it inbetween the strings to avoid
+                        ! errors
   character(len=*) :: units
   PetscInt :: ivar
   PetscInt, intent(in), optional :: isubvar
@@ -202,6 +216,7 @@ function OutputVariableCreate2(name,units,ivar,isubvar,isubsubvar)
   
   output_variable => OutputVariableCreate()
   output_variable%name = trim(adjustl(name))
+  output_variable%icategory = icategory
   output_variable%units = trim(adjustl(units))
   output_variable%ivar = ivar
   if (present(isubvar)) then
@@ -239,6 +254,7 @@ function OutputVariableCreate3(output_variable)
   new_output_variable%units = output_variable%units
   new_output_variable%plot_only = output_variable%plot_only
   new_output_variable%iformat = output_variable%iformat
+  new_output_variable%icategory = output_variable%icategory
   new_output_variable%ivar = output_variable%ivar
   new_output_variable%isubvar = output_variable%isubvar
   new_output_variable%isubsubvar = output_variable%isubsubvar
@@ -334,7 +350,7 @@ end subroutine OutputVariableAddToList1
 ! date: 10/15/12
 !
 ! ************************************************************************** !
-subroutine OutputVariableAddToList2(list,name,units,ivar, &
+subroutine OutputVariableAddToList2(list,name,icategory,units,ivar, &
                                     isubvar,isubsubvar)
 
   implicit none
@@ -342,6 +358,7 @@ subroutine OutputVariableAddToList2(list,name,units,ivar, &
   type(output_variable_list_type) :: list
   character(len=*) :: name
   character(len=*) :: units
+  PetscInt :: icategory
   PetscInt :: ivar
   PetscInt, intent(in), optional :: isubvar
   PetscInt, intent(in), optional :: isubsubvar
@@ -350,14 +367,14 @@ subroutine OutputVariableAddToList2(list,name,units,ivar, &
   
   if (present(isubvar)) then
     if (present(isubsubvar)) then
-      variable => OutputVariableCreate(name,units, &
+      variable => OutputVariableCreate(name,icategory,units, &
                                        ivar,isubvar,isubsubvar)
     else
-      variable => OutputVariableCreate(name,units, &
+      variable => OutputVariableCreate(name,icategory,units, &
                                        ivar,isubvar)
     endif
   else
-    variable => OutputVariableCreate(name,units,ivar)
+    variable => OutputVariableCreate(name,icategory,units,ivar)
   endif
   call OutputVariableAddToList1(list,variable)
   
@@ -465,6 +482,47 @@ subroutine OutputAppendToHeader(header,variable_string,units_string, &
   header = trim(header) // trim(string)
 
 end subroutine OutputAppendToHeader
+
+! ************************************************************************** !
+!
+! OutputVariableToCategoryString: returns a string associated with an 
+!                                 output variable category
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+function OutputVariableToCategoryString(icategory)
+
+  implicit none
+  
+  PetscInt :: icategory
+  
+  character(len=MAXWORDLENGTH) :: OutputVariableToCategoryString
+  
+  character(len=MAXWORDLENGTH) :: string
+  
+  select case(icategory)
+    case(OUTPUT_GENERIC)
+      string = 'GENERIC'
+    case(OUTPUT_PRESSURE)
+      string = 'PRESSURE'
+    case(OUTPUT_SATURATION)
+      string = 'SATURATION'
+    case(OUTPUT_CONCENTRATION)
+      string = 'CONCENTRATION'
+    case(OUTPUT_RATE)
+      string = 'RATE'
+    case(OUTPUT_VOLUME_FRACTION)
+      string = 'VOLUME_FRACTION'
+    case(OUTPUT_DISCRETE)
+      string = 'DISCRETE'
+    case default
+      string = 'GENERIC'
+  end select
+
+  OutputVariableToCategoryString = string
+
+end function OutputVariableToCategoryString
 
 ! ************************************************************************** !
 !
