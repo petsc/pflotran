@@ -446,6 +446,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: i
+  PetscReal :: r_norm, x_norm
   PetscErrorCode :: ierr
   
   if (.not.associated(regression)) return
@@ -540,6 +541,44 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   enddo
   
   call VecDestroy(global_vec,ierr)
+  
+102 format(i12)    
+103 format(es20.13)
+
+  ! timestep, newton iteration, solver iteration output
+  if (associated(flow_stepper)) then
+    call VecNorm(realization%field%flow_xx,NORM_2,x_norm,ierr)
+    call VecNorm(realization%field%flow_r,NORM_2,r_norm,ierr)
+    if (option%myrank == option%io_rank) then
+      write(OUTPUT_UNIT,'(''-- Flow Solution --'')')
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_stepper%steps
+      write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
+        flow_stepper%cumulative_newton_iterations
+      write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
+        flow_stepper%cumulative_linear_iterations
+      write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
+        flow_stepper%cumulative_time_step_cuts
+      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es20.13)') x_norm
+      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es20.13)') r_norm
+    endif
+  endif
+  if (associated(tran_stepper)) then
+    call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr)
+    call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
+    if (option%myrank == option%io_rank) then
+      write(OUTPUT_UNIT,'(''-- Transport Solution --'')')
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') tran_stepper%steps
+      write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
+        tran_stepper%cumulative_newton_iterations
+      write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
+        tran_stepper%cumulative_linear_iterations
+      write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
+        tran_stepper%cumulative_time_step_cuts
+      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es20.13)') x_norm
+      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es20.13)') r_norm
+    endif
+  endif
+  
   close(OUTPUT_UNIT)
   
 end subroutine RegressionOutput
