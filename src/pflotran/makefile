@@ -343,7 +343,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          richards.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
-         database_hpt.o init.o output_aux.o
+         database_hpt.o output_aux.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
