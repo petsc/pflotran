@@ -1143,7 +1143,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
 
   use Input_module
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
 
   implicit none
 

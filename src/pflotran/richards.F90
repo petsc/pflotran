@@ -5955,21 +5955,19 @@ subroutine RichardsSetPlotVariables(realization)
   
   type(realization_type) :: realization
   
-  character(len=MAXWORDLENGTH) :: name, name_short, units
+  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
   
   list => realization%output_option%output_variable_list
   
   name = 'Liquid Pressure'
-  name_short = 'P'
   units = 'Pa'
-  call OutputVariableAddToList(list,name,name_short,units, &
+  call OutputVariableAddToList(list,name,units, &
                                LIQUID_PRESSURE)
 
   name = 'Liquid Saturation'
-  name_short = 'sl'
   units = ''
-  call OutputVariableAddToList(list,name,name_short,units, &
+  call OutputVariableAddToList(list,name,units, &
                                LIQUID_SATURATION)
   
 end subroutine RichardsSetPlotVariables

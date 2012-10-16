@@ -2261,7 +2261,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
   use String_module
   use Option_module
   use Logging_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
   use Units_module
 #if defined(PETSC_HAVE_HDF5)
   use hdf5

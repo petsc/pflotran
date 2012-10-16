@@ -6101,6 +6101,7 @@ subroutine OutputHDF5(realization)
 
   use hdf5
   use HDF5_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -6313,7 +6314,12 @@ subroutine OutputHDF5(realization)
     if (.not.associated(cur_variable)) exit
     call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
-    string = trim(cur_variable%name)
+    string = cur_variable%name
+    if (len_trim(cur_variable%units) > 0) then
+      word = cur_variable%units
+      call HDF5MakeStringCompabible(word)
+      string = trim(string) // ' [' // trim(word) // ']'
+    endif
     if (cur_variable%iformat == 0) then
       call HDF5WriteStructDataSetFromVec(string,realization, &
                                          global_vec,grp_id,H5T_NATIVE_DOUBLE)

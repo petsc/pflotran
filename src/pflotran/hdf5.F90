@@ -940,7 +940,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   
   type(option_type) :: option
 
-  character(len=32) :: name
+  character(len=*) :: name
   PetscReal :: array(:)
 
 #if defined(PARALLELIO_LIB_WRITE)    
@@ -990,7 +990,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 !  write(option%io_buffer,'(" HDF_NATIVE_INTEGER is ", i, " and H5T_NATIVE_DOUBLE is ", i, " and H5T_NATIVE_INTEGER is ", i, ".")') HDF_NATIVE_INTEGER, H5T_NATIVE_DOUBLE, H5T_NATIVE_INTEGER
 !  call printMsg(option)
 
-  name = trim(name) //CHAR(0)
+  name = trim(name) // CHAR(0)
   call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
   
   ny_local_X_nz_local = ny_local*nz_local
@@ -2572,7 +2572,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  character(len=32) :: name
+  character(len=*) :: name
   type(realization_type) :: realization
   Vec :: vec
   integer(HID_T) :: file_id
@@ -2589,7 +2589,8 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - Begin
-  call HDF5WriteStructuredDataSet(name,vec_ptr,file_id,data_type,option, &
+  call HDF5WriteStructuredDataSet(trim(name), &
+                                 vec_ptr,file_id,data_type,option, &
                                   grid%structured_grid%nx, &
                                   grid%structured_grid%ny, &
                                   grid%structured_grid%nz, &

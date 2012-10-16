@@ -63,7 +63,6 @@ module Output_Aux_module
   
   type, public :: output_variable_type
     character(len=MAXWORDLENGTH) :: name   ! string that appears in hdf5 file
-    character(len=MAXWORDLENGTH) :: header ! string to appear in header
     character(len=MAXWORDLENGTH) :: units
     PetscBool :: plot_only
     PetscInt :: iformat
@@ -168,7 +167,6 @@ function OutputVariableCreate1()
   
   allocate(output_variable)
   output_variable%name = ''
-  output_variable%header = ''
   output_variable%units = ''
   output_variable%plot_only = PETSC_FALSE
   output_variable%iformat = 0
@@ -188,12 +186,11 @@ end function OutputVariableCreate1
 ! date: 10/15/12
 !
 ! ************************************************************************** !
-function OutputVariableCreate2(name,header_name,units,ivar,isubvar,isubsubvar)
+function OutputVariableCreate2(name,units,ivar,isubvar,isubsubvar)
 
   implicit none
   
   character(len=*) :: name
-  character(len=*) :: header_name
   character(len=*) :: units
   PetscInt :: ivar
   PetscInt, intent(in), optional :: isubvar
@@ -205,7 +202,6 @@ function OutputVariableCreate2(name,header_name,units,ivar,isubvar,isubsubvar)
   
   output_variable => OutputVariableCreate()
   output_variable%name = trim(adjustl(name))
-  output_variable%header = trim(adjustl(header_name))
   output_variable%units = trim(adjustl(units))
   output_variable%ivar = ivar
   if (present(isubvar)) then
@@ -240,7 +236,6 @@ function OutputVariableCreate3(output_variable)
   
   allocate(new_output_variable)
   new_output_variable%name = output_variable%name
-  new_output_variable%header = output_variable%header
   new_output_variable%units = output_variable%units
   new_output_variable%plot_only = output_variable%plot_only
   new_output_variable%iformat = output_variable%iformat
@@ -339,14 +334,13 @@ end subroutine OutputVariableAddToList1
 ! date: 10/15/12
 !
 ! ************************************************************************** !
-subroutine OutputVariableAddToList2(list,name,header_name,units,ivar, &
+subroutine OutputVariableAddToList2(list,name,units,ivar, &
                                     isubvar,isubsubvar)
 
   implicit none
   
   type(output_variable_list_type) :: list
   character(len=*) :: name
-  character(len=*) :: header_name
   character(len=*) :: units
   PetscInt :: ivar
   PetscInt, intent(in), optional :: isubvar
@@ -356,14 +350,14 @@ subroutine OutputVariableAddToList2(list,name,header_name,units,ivar, &
   
   if (present(isubvar)) then
     if (present(isubsubvar)) then
-      variable => OutputVariableCreate(name,header_name,units, &
+      variable => OutputVariableCreate(name,units, &
                                        ivar,isubvar,isubsubvar)
     else
-      variable => OutputVariableCreate(name,header_name,units, &
+      variable => OutputVariableCreate(name,units, &
                                        ivar,isubvar)
     endif
   else
-    variable => OutputVariableCreate(name,header_name,units,ivar)
+    variable => OutputVariableCreate(name,units,ivar)
   endif
   call OutputVariableAddToList1(list,variable)
   
@@ -401,7 +395,7 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
       cur_variable => cur_variable%next
       cycle
     endif
-    variable_name = cur_variable%header
+    variable_name = cur_variable%name
     units = cur_variable%units
     call OutputAppendToHeader(header,variable_name,units,cell_string,icolumn)
     cur_variable => cur_variable%next
