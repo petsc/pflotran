@@ -4508,7 +4508,7 @@ end function THCGetTecplotHeader
 
 ! ************************************************************************** !
 !
-! MphaseSetPlotVariables: Adds variables to be printed to list
+! THCSetPlotVariables: Adds variables to be printed to list
 ! author: Glenn Hammond
 ! date: 10/15/12
 !
