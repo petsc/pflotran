@@ -497,8 +497,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)
     endif
 
-100 format(i9,1x,es20.13)    
-101 format(i9,1x,i9)    
+100 format(i9,': ',es20.13)    
+101 format(i9,': ',i9)    
     
     if (option%myrank == option%io_rank) then
       string = OutputVariableToCategoryString(cur_variable%icategory)
