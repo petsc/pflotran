@@ -1,0 +1,16 @@
+-- GENERIC: pH --
+        1:  4.6763533999171E+00
+-- CONCENTRATION: Total H+ --
+        1:  1.0000000000005E-03
+-- CONCENTRATION: Total HCO3- --
+        1:  1.0000000000005E-03
+-- DISCRETE: Material ID --
+        1:         1
+-- SOLUTION: Transport --
+   Time (seconds):  0.0000000000000E+00
+   Time Steps:            0
+   Newton Iterations:            0
+   Solver Iterations:            0
+   Time Step Cuts:            0
+   Solution 2-Norm:  2.9955518560830E-05
+   Residual 2-Norm:  0.0000000000000E+00

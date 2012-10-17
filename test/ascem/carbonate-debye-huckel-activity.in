@@ -1,5 +1,9 @@
 :Description: Batch carbonate equilibrium speciation reaction
 
+REGRESSION
+  CELLS_PER_PROCESS 1
+END
+
 :=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
@@ -14,6 +18,10 @@ CO2(aq)
 DATABASE ./carbonate.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS TIMESTEP
+
+ OUTPUT
+    ALL
+  /
 /
 
 :=========================== solver options ===================================
