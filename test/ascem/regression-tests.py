@@ -263,7 +263,7 @@ class RegressionTest(object):
         value = criteria.split()[0]
         try:
             value = float(value)
-        except Exception(e):
+        except Exception as e:
             message = "ERROR : Could not convert '{0}' test criteria value '{1}' into a float!".format(key, value)
             raise Exception(message)
 
@@ -541,7 +541,7 @@ if __name__ == "__main__":
     try:
         status = main(options)
         sys.exit(status)
-    except Exception(e):
+    except Exception as e:
         print(str(e))
         if options.backtrace:
             traceback.print_exc()
