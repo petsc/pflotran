@@ -4136,6 +4136,7 @@ subroutine MphaseSetPlotVariables(realization)
   implicit none
 
   type(realization_type) :: realization
+  type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -4210,22 +4211,28 @@ subroutine MphaseSetPlotVariables(realization)
   name = 'Liquid Mole Fraction H2O'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               LIQUID_MOLE_FRACTION,1)
+                               LIQUID_MOLE_FRACTION,ONE_INTEGER)
 
   name = 'Liquid Mole Fraction CO2'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               LIQUID_MOLE_FRACTION,2)
+                               LIQUID_MOLE_FRACTION,TWO_INTEGER)
 
   name = 'Gas Mole Fraction H2O'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               GAS_MOLE_FRACTION,1)
+                               GAS_MOLE_FRACTION,ONE_INTEGER)
 
   name = 'Gas Mole Fraction CO2'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               GAS_MOLE_FRACTION,2)
+                               GAS_MOLE_FRACTION,TWO_INTEGER)
+
+  name = 'Phase'
+  units = ''
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               PHASE)
 
 end subroutine MphaseSetPlotVariables
 
