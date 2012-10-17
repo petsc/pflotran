@@ -447,6 +447,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: i
   PetscReal :: r_norm, x_norm
+  PetscReal :: max, min, mean
   PetscErrorCode :: ierr
   
   if (.not.associated(regression)) return
@@ -473,6 +474,11 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     isubvar = cur_variable%isubvar
   
     call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+    
+    call VecMax(global_vec,PETSC_NULL_INTEGER,max,ierr)
+    call VecMin(global_vec,PETSC_NULL_INTEGER,min,ierr)
+    call VecSum(global_vec,mean,ierr)
+    mean = mean / realization%patch%grid%nmax
     
     ! list of natural ids
     if (associated(regression%natural_cell_ids)) then
@@ -504,6 +510,17 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       string = OutputVariableToCategoryString(cur_variable%icategory)
       write(OUTPUT_UNIT,'(''-- '',a,'': '',a,'' --'')') &
         trim(string), trim(cur_variable%name)
+      
+      ! max, min, mean
+      if (cur_variable%iformat == 0) then
+        write(OUTPUT_UNIT,'(6x,''Max: '',es20.13)') max
+        write(OUTPUT_UNIT,'(6x,''Min: '',es20.13)') min
+      else
+        write(OUTPUT_UNIT,'(6x,''Max: '',i9)') int(max)
+        write(OUTPUT_UNIT,'(6x,''Min: '',i9)') int(min)
+      endif
+      write(OUTPUT_UNIT,'(5x,''Mean: '',es20.13)') mean
+      
       ! natural cell ids
       if (associated(regression%natural_cell_ids)) then
         call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)

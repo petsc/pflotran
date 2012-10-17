@@ -7,7 +7,7 @@
 
 import argparse
 from collections import deque
-import ConfigParser
+
 import difflib
 import math
 import os
@@ -16,6 +16,12 @@ import re
 import subprocess
 import sys
 import traceback
+
+if sys.version_info[0] == 2:
+  import ConfigParser
+else:
+  import configparser
+
 
 class RegressionTest(object):
     """
@@ -75,10 +81,10 @@ class RegressionTest(object):
         if self._output_arg != None:
             command += "{0} {1} ".format(self._output_arg, self._test_name)
         if dry_run:
-            print "    dry run: \"{0}\"".format(command)
+            print("    dry run: \"{0}\"".format(command))
         else:
             if verbose:
-                print "    {0}".format(command)
+                print("    {0}".format(command))
             run_stdout = open(self._test_name + ".stdout", 'w')
             subprocess.Popen(command.split(), 
                              stdout=run_stdout, stderr=subprocess.STDOUT).wait()
@@ -102,7 +108,7 @@ class RegressionTest(object):
             current_output = current_file.readlines()
 
         if verbose:
-            print "    diff {0} {1}".format(current_filename, gold_filename)
+            print("    diff {0} {1}".format(current_filename, gold_filename))
 
         gold_sections = self._get_sections(gold_output)
         current_sections = self._get_sections(current_output)
@@ -112,7 +118,7 @@ class RegressionTest(object):
                 self._num_failed += self._compare_sections(gold_sections[s], current_sections[s])
             else:
                 # what is the correct way to handle this...?
-                print "ERROR: section '{0}' is in the gold output, but not the current output!".format(s)
+                print("ERROR: section '{0}' is in the gold output, but not the current output!".format(s))
         status = 0    
         if self._num_failed > 0:
             status = 1
@@ -166,9 +172,9 @@ class RegressionTest(object):
                 section_status += status
             else:
                 # correct way to handle this?
-                print "ERROR: key '{0}' in gold section '{1}' but not in current section".format(k, gold_section['name'])
+                print("ERROR: key '{0}' in gold section '{1}' but not in current section".format(k, gold_section['name']))
         if self._verbose and False:
-            print "    {0} : status : {1}".format(name, section_status)
+            print("    {0} : status : {1}".format(name, section_status))
         return section_status
 
     def _compare_values(self, name, data_type, previous, current):
@@ -195,9 +201,9 @@ class RegressionTest(object):
         if delta > self._concentration_tolerance:
             status = 1
             if self._verbose:
-                print "    FAILED: {0} : {1} > {2}".format(name, delta, self._concentration_tolerance)
+                print("    FAILED: {0} : {1} > {2}".format(name, delta, self._concentration_tolerance))
         elif self._debug:
-            print "    SUCCESS: {0} : {1} < {2}".format(name, delta, self._concentration_tolerance)
+            print("    SUCCESS: {0} : {1} < {2}".format(name, delta, self._concentration_tolerance))
             
         return status
 
@@ -257,7 +263,7 @@ class RegressionTest(object):
         value = criteria.split()[0]
         try:
             value = float(value)
-        except Exception, e:
+        except Exception(e):
             message = "ERROR : Could not convert '{0}' test criteria value '{1}' into a float!".format(key, value)
             raise Exception(message)
 
@@ -318,30 +324,30 @@ class RegressionTestManager(object):
         self._create_tests(user_suites, user_tests)
 
     def run_tests(self, executable, dry_run, verbose):
-        print 70*"-"
-        print "Running tests:"
+        print(70*"-")
+        print("Running tests:")
         for t in self._tests:
             if verbose:
-                print 40*'-'
-            print "{0}...".format(t._test_name),
+                print(40*'-')
+            print("{0}...".format(t._test_name),)
             if verbose:
-                print
+                print()
             t.run(executable, dry_run, verbose)
             status = t.diff(verbose)
             self._num_failed += status
             if status == 0:
                 if verbose:
-                    print "{0}... passed.".format(t._test_name)
+                    print("{0}... passed.".format(t._test_name))
                 else:
-                    print " passed."
+                    print(" passed.")
             else:
                 if verbose:
-                    print "{0}... failed.".format(t._test_name)
+                    print("{0}... failed.".format(t._test_name))
                 else:
-                    print " failed."
+                    print(" failed.")
 
-        print 70*"-"
-        print "{0} of {1} tests failed".format(self._num_failed, len(self._tests))
+        print(70*"-")
+        print("{0} of {1} tests failed".format(self._num_failed, len(self._tests)))
 
     def update_test_results(self, user_tests):
         pass
@@ -350,16 +356,16 @@ class RegressionTestManager(object):
         return self._num_failed
 
     def display_available_tests(self):
-        print "Available tests: "
+        print("Available tests: ")
         for t in sorted(self._available_tests.keys()):
-            print "    {0}".format(t)
+            print("    {0}".format(t))
 
     def display_available_suites(self):
-        print "Available test suites: "
+        print("Available test suites: ")
         for s in self._available_suites.keys():
-            print "    {0} :".format(s)
+            print("    {0} :".format(s))
             for t in self._available_suites[s].split():
-                print "        {0}".format(t)
+                print("        {0}".format(t))
 
     def _read_config_file(self, config_file):
         """
@@ -509,8 +515,8 @@ def main(options):
                                 options.tests)
 
     if options.debug:
-        print 70*'-'
-        print test_manager
+        print(70*'-')
+        print(test_manager)
 
     if options.list_suites == True:
         test_manager.display_available_suites()
@@ -535,8 +541,8 @@ if __name__ == "__main__":
     try:
         status = main(options)
         sys.exit(status)
-    except Exception, e:
-        print str(e)
+    except Exception(e):
+        print(str(e))
         if options.backtrace:
             traceback.print_exc()
         os._exit(1)
