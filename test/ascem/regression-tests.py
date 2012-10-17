@@ -18,9 +18,9 @@ import sys
 import traceback
 
 if sys.version_info[0] == 2:
-  import ConfigParser
+  import ConfigParser as config_parser
 else:
-  import configparser
+  import configparser as config_parser
 
 
 class RegressionTest(object):
@@ -138,7 +138,7 @@ class RegressionTest(object):
             match = name_re.match(line)
             if match:
                 # save the old section, if any
-                if s.has_key('name'):
+                if 'name' in s:
                     sections[s['name']] = s
                 name = match.group(2).strip()
                 data_type = match.group(1)
@@ -151,7 +151,7 @@ class RegressionTest(object):
                 value = temp[1].strip()
                 s[name] = value
         # add the final section
-        if s.has_key('name'):
+        if 'name' in s:
             sections[s['name']] = s
         if self._debug:
             self._pprint.pprint(sections)
@@ -379,7 +379,7 @@ class RegressionTestManager(object):
         if config_file == None:
             raise Exception("Error, must provide a config filename")
         self._config_filename = config_file
-        config = ConfigParser.SafeConfigParser()
+        config = config_parser.SafeConfigParser()
         config.read(self._config_filename)
 
         if config.has_section("executable"):
@@ -491,9 +491,9 @@ def commandline_options():
     parser.add_argument('--list-tests', action='store_true',
                         help='print the list of tests from the config file and exit')
     parser.add_argument('-s', '--suites', nargs="+", default=[],
-                        help='space seperated list of test suite names')
+                        help='space separated list of test suite names')
     parser.add_argument('-t', '--tests', nargs="+", default=[],
-                        help='space seperated list of test names')
+                        help='space separated list of test names')
     parser.add_argument('-u', '--update',
                         action="store_true", default="store_false",
                         help='update the tests listed by the "--tests" option, with the current output becoming the new gold standard')
@@ -527,7 +527,7 @@ def main(options):
     if options.executable == None:
         options.dry_run = True
 
-    test_manager.run_tests(options.executable[0],
+    test_manager.run_tests(options.executable,
                            options.dry_run,
                            options.verbose)
 
