@@ -323,7 +323,7 @@ class RegressionTestManager(object):
         user_suites, user_names = self._validate_user_lists(user_suites, user_tests)
         self._create_tests(user_suites, user_tests)
 
-    def run_tests(self, executable, dry_run, verbose):
+    def run_tests(self, executable, dry_run, verbose, update):
         print(70*"-")
         print("Running tests:")
         for t in self._tests:
@@ -333,6 +333,9 @@ class RegressionTestManager(object):
             if verbose:
                 print()
             t.run(executable, dry_run, verbose)
+            if update:
+              # geh: if we are updating, skip the diff
+              continue
             status = t.diff(verbose)
             self._num_failed += status
             if status == 0:
@@ -347,7 +350,9 @@ class RegressionTestManager(object):
                     print(" failed.")
 
         print(70*"-")
-        print("{0} of {1} tests failed".format(self._num_failed, len(self._tests)))
+        if not update:
+            # geh: if we are updating, skip reporting the number of failed tests
+            print("{0} of {1} tests failed".format(self._num_failed, len(self._tests)))
 
     def update_test_results(self, user_tests):
         pass
@@ -526,10 +531,14 @@ def main(options):
 
     if options.executable == None:
         options.dry_run = True
+        # geh: kludge to permit call to test_manager.run_tests() below
+        options.executable = []
+        options.executable.append('executable')
 
-    test_manager.run_tests(options.executable,
+    test_manager.run_tests(options.executable[0],
                            options.dry_run,
-                           options.verbose)
+                           options.verbose,
+                           options.update)
 
     if options.update:
         test_manager.update_test_results(options.tests)
