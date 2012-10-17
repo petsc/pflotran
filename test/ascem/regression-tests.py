@@ -442,14 +442,20 @@ class RegressionTestManager(object):
             raise Exception("ERROR : suites contain unknown tests in configuration file '{0}' : {1}".format(self._config_filename, invalid_tests))
 
     def _validate_user_lists(self, user_suites, user_tests):
-        # convert user supplied names to lower case
-        u_suites = []
-        for s in user_suites:
-            u_suites.append(s.lower())
 
-        u_tests = []
-        for t in user_tests:
-            u_tests.append(t.lower())
+        #geh: if no suites or tests is specified, use all suites
+        if len(user_suites) == 0 and len(user_tests) == 0:
+          u_suites = self._available_suites
+          u_tests = []
+        else:
+          # convert user supplied names to lower case
+          u_suites = []
+          for s in user_suites:
+              u_suites.append(s.lower())
+  
+          u_tests = []
+          for t in user_tests:
+              u_tests.append(t.lower())
 
         # now check that the processed user supplied names are valid
         invalid_user_names = []
