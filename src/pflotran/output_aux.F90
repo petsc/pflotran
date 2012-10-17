@@ -408,7 +408,7 @@ function OutputVariableListToHeader(variable_list,cell_string,icolumn, &
   cur_variable => variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    if (.not. plot_file .and. cur_variable%plot_only == PETSC_TRUE) then
+    if (.not. plot_file .and. cur_variable%plot_only) then
       cur_variable => cur_variable%next
       cycle
     endif
