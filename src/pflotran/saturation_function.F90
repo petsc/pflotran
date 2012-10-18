@@ -54,8 +54,9 @@ module Saturation_Function_module
             SatFuncGetCapillaryPressure, &
             SaturationFunctionGetID, &
             SaturationFunctionComputeIce, &
-            CapillaryPressureThreshold
-
+            CapillaryPressureThreshold, &
+            SatFuncComputeIceImplicit
+            
   ! Saturation function 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
@@ -803,6 +804,9 @@ implicit none
   PetscReal, parameter :: interfacial_tensions_ratio = 2.33
   PetscReal, parameter :: T_0 = 273.15d0 !in K
   
+  PetscReal :: dsi_dpl, dsg_dpl, dsl_dpl
+  PetscReal :: dsi_dT, dsg_dT, dsl_dT
+            
   dsl_pl = 0.d0
   dsl_temp = 0.d0
   dsg_pl = 0.d0
@@ -882,25 +886,27 @@ implicit none
 
   if (gas_saturation > 1.d0) then
     print *, option%myrank, 'vG Gas Saturation > 1:', gas_saturation
-  else if (liquid_saturation < 0.d0) then
+  else if (gas_saturation < 0.d0) then
     print *, option%myrank, 'vG Gas Saturation < 0:', gas_saturation
   endif
  
   if (ice_saturation > 1.d0) then
     print *, option%myrank, 'vG Ice Saturation > 1:', ice_saturation
-  else if (liquid_saturation < 0.d0) then
+  else if (ice_saturation < 0.d0) then
     print *, option%myrank, 'vG Ice Saturation < 0:', ice_saturation
   endif
 
   select case(saturation_function%permeability_function_itype)
     case(MUALEM)
-      one_over_m = 1.d0/m
-      liq_sat_one_over_m = liquid_saturation**one_over_m
-      liquid_relative_perm = sqrt(liquid_saturation)* &
-                             (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
       if (liquid_saturation == 1.d0) then
+        liquid_relative_perm = 1.d0
         dkr_ds_liq = 0.d0
       else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = liquid_saturation**one_over_m
+        liquid_relative_perm = sqrt(liquid_saturation)* &
+                               (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
         dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
                      2.d0*liquid_saturation**(one_over_m - 0.5d0)* &
                      (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
@@ -917,9 +923,367 @@ implicit none
 !  'sg:', gas_saturation, 'si:', ice_saturation, 'dsl_pl:', dsl_pl, &
 ! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
 !  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
-!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp
-
+!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp   
+    
+  call CalcPhasePartitionIceDeriv(alpha,m,1.d4,-1.d0,dsg_dpl, &
+                                  dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
+                                  dsl_dT)
+                                  
+  print *, '==================================================='
+   
 end subroutine SaturationFunctionComputeIce
+
+
+! ************************************************************************** !
+!
+! ComputeSatVG: Evaluates van Genunchten saturation function and
+!                      its derivative at given capillary pressure
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine ComputeSatVG(alpha,lambda,Pc,S,dS)
+
+  implicit none
+
+  PetscReal :: alpha, lambda, gamma  
+  PetscReal :: Pc, S, dS
+  
+  gamma = 1.d0/(1.d0 - lambda)
+  if (Pc > 0.d0) then
+    S =  (1.d0 + (alpha*Pc)**gamma)**(-lambda)
+    dS = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
+         (gamma*alpha*(alpha*Pc)**(gamma - 1.d0))
+  else
+    S = 1.d0
+    dS = 0.d0
+  endif
+ 
+end subroutine ComputeSatVG
+
+! ************************************************************************** !
+!
+! ComputeInvSatVG: Evaluates inverse of van Genunchten saturation function 
+!                  and its derivative at given saturation
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine ComputeInvSatVG(alpha,lambda,sat,Sinv,dSinv)
+
+  implicit none
+  
+  PetscReal :: alpha, lambda, gamma
+  PetscReal :: sat, Sinv, dSinv
+  
+  gamma = 1.d0/(1.d0 - lambda)
+  if (sat == 1.d0) then
+    Sinv = 0.d0
+    dSinv = 0.d0
+  else
+    Sinv = 1.d0/alpha*((sat)**(-1.d0/lambda) - 1.d0)**(1.d0/gamma)
+    dSinv = 1.d0/alpha*1.d0/gamma*((sat**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
+      1.d0))*(-1.d0/lambda)*(sat**(-1.d0/lambda - 1.d0))
+  endif
+  
+end subroutine ComputeInvSatVG
+
+! ************************************************************************** !
+!
+! CalculateImplicitIceFunc: Evaluates the value of implicit equation whose
+!                           solution is ice saturation
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val)
+
+  implicit none
+  
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T, s_i, func_val
+  PetscReal :: temp_term, PC 
+  PetscReal :: sat, dsat, sat_term
+  PetscReal :: sat_inv, dsat_inv
+  PetscReal :: sat_PC, dsat_PC
+  PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
+  PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  
+  if (T >= 0.d0) then   ! T is in C
+    temp_term = 0.d0
+  else
+    temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
+  endif
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  sat_term = (s_i + (1.d0 - s_i)*sat)
+  call ComputeInvSatVG(alpha,lambda,sat_term,sat_inv,dsat_inv)
+  PC = temp_term + sat_inv
+  call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
+  func_val = (1.d0 - s_i)*sat - sat_PC
+  
+end subroutine CalculateImplicitIceFunc
+
+! ************************************************************************** !
+!
+! CalcPhasePartitionIceNewt: Solves the implicit constitutive relation
+!                             to calculate saturations of ice, liquid 
+!                             and vapor phases
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+
+  implicit none
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T, s_g, s_i, s_l
+  PetscReal :: func_val, func_val_pert, dfunc_val 
+  PetscReal :: x, x_new, sat, dsat
+  PetscInt :: iter
+  PetscReal, parameter :: delta = 1.d-5
+  PetscReal, parameter :: eps = 1.d-6
+  PetscInt, parameter :: maxit = 100
+  
+  x = 1.d-1          ! Initial guess
+  do iter = 1,maxit
+    call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,func_val)
+    call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,(x+x*delta),func_val_pert)
+    dfunc_val = (func_val_pert - func_val)/(delta*x)
+    ! print *, 'iteration:', iter, 'value:', x, 'inormr:', abs(func_val)
+    if (abs(func_val) < eps) exit
+    x_new = x - func_val/dfunc_val
+    if (x_new >= 1.d0) then
+      x_new = 1.d0 - 1.d-8
+    endif
+    if (x_new <= 0.d0) then
+      x_new = 1.d-8
+    endif
+    x = x_new
+  enddo
+  
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  s_i = x
+  s_l = (1 - x)*sat
+  s_g = 1 - s_l - s_i
+
+end subroutine CalcPhasePartitionIceNewt
+
+! ************************************************************************** !
+!
+! CalcPhasePartitionIceDeriv: Solves the implicit constitutive relation
+!                             to calculate saturations of ice, liquid 
+!                             and vapor phases
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,dsg_dpl, &
+                                      dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
+                                      dsl_dT)
+                                          
+  implicit none
+  
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: s_g, s_i, s_l
+  PetscReal :: sat, dsat
+  PetscReal :: sat_inv, dsat_inv
+  PetscReal :: PC, sat_PC, dsat_PC
+  PetscReal :: G, dS_dpl, temp_term
+  PetscReal :: L, M, N
+  PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
+  PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
+  PetscReal, parameter :: T_0 = 273.15         ! in K
+  PetscReal, parameter :: delta = 1.d-5
+
+#if 0
+  PetscReal :: dsi_dpl_num, dsi_dT_num
+  PetscReal :: dsg_dpl_num, dsg_dT_num
+  PetscReal :: dsl_dpl_num, dsl_dT_num
+  PetscReal :: s_g_pinc, s_i_pinc, s_l_pinc
+  PetscReal :: s_g_Tinc, s_i_Tinc, s_l_Tinc
+#endif
+
+  dsi_dpl = 0.d0
+  dsi_dT = 0.d0
+  dsg_dpl = 0.d0
+  dsg_dT = 0.d0
+  dsl_dpl = 0.d0
+  dsl_dT = 0.d0
+
+#if 0
+  dsi_dpl_num = 0.d0
+  dsg_dpl_num = 0.d0
+  dsl_dpl_num = 0.d0
+  dsi_dT_num = 0.d0
+  dsg_dT_num = 0.d0
+  dsl_dT_num = 0.d0
+#endif
+  
+  ! Calculate the derivatives of saturation with respect to pl
+  call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+  if (T >= 0.d0) then
+    temp_term = 0.d0
+  else
+    temp_term = -beta*rho_i*HEAT_OF_FUSION*T/T_0
+  endif
+  call ComputeInvSatVG(alpha,lambda,(s_i + s_l),sat_inv,dsat_inv)
+  PC = temp_term + sat_inv 
+  call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  G = dsat_PC*dsat_inv
+  dS_dpl = dsat*(-1.d0)
+  dsi_dpl = (1.d0 - s_i)/(G/(1.d0 - G) + sat)*dS_dpl
+  dsl_dpl = dsi_dpl*G/(1.d0 - G)
+  dsg_dpl = -dsi_dpl - dsl_dpl
+
+  
+  ! Calculate the derivatives of saturation with respect to temp
+  L = dsat_PC
+  if (T >= 0.d0) then
+    M = 0.d0
+  else
+    M = temp_term/T
+  endif
+  N = dsat_inv
+  dsi_dT = -L*M/(L*N + (1.d0 - L*N)*sat)
+  dsl_dT = -dsi_dT*sat
+  dsg_dT = -dsi_dT - dsl_dT
+  
+#if 0    
+  ! Numerical derivatives      
+  call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl*(1.d0 + delta),T,s_g_pinc, &
+                                 s_i_pinc,s_l_pinc)
+  call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T*(1.d0 + delta),s_g_Tinc, &
+                                 s_i_Tinc,s_l_Tinc)
+
+  
+  dsi_dT_num = (s_i_Tinc - s_i)/(T*delta)
+  dsg_dT_num = (s_g_Tinc - s_g)/(T*delta)
+  dsl_dT_num = (s_l_Tinc - s_l)/(T*delta)
+  
+                                   
+  dsi_dpl_num = (s_i_pinc - s_i)/(delta*Pcgl)*(-1.d0) ! -1.d0 factor for dPcgl/dpl
+  dsg_dpl_num = (s_g_pinc - s_g)/(delta*Pcgl)*(-1.d0)
+  dsl_dpl_num = (s_l_pinc - s_l)/(delta*Pcgl)*(-1.d0) 
+  
+  print *, 'analytical-press:', 'dsg_dpl:', dsg_dpl, &
+           'dsi_dpl:', dsi_dpl, 'dsl_dpl:' dsl_dpl 
+  print *, 'numerical-press:' , 'dsg_dpl:', dsg_dpl_num, &
+           'dsi_dpl:', dsi_dpl_num, 'dsl_dpl:', dsl_dpl_num
+  
+  print *, 'analytical-temp:', 'dsg_dT:', dsg_dT, &
+           'dsi_dT:', dsi_dT, 'dsl_dT:', dsl_dT
+  print *, 'numerical-temp:', 'dsg_dT:', dsg_dT_num, &
+           'dsi_dT:', dsi_dT_num, 'dsl_dT:', dsl_dT_num
+#endif  
+
+end subroutine CalcPhasePartitionIceDeriv 
+
+! ************************************************************************** !
+!
+! SatFuncComputeIceImplicit: Calculates the saturations of water phases
+!                            and their derivative with respect to liquid
+!                            pressure
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine SatFuncComputeIceImplicit(pl,T,s_i,s_l,s_g,kr,dsl_dpl, & 
+                                     dsl_dT,dsg_dpl,dsg_dT,dsi_dpl, &
+                                     dsi_dT,dkr_dpl,dkr_dT, &
+                                     saturation_function,pth,option)
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: pl, T
+  PetscReal :: s_i, s_g, s_l, kr
+  PetscReal :: dkr_dpl, dkr_dT
+  PetscReal :: dkr_dsl
+  PetscReal :: alpha, m, Pcgl
+  PetscReal :: one_over_m
+  PetscReal :: liq_sat_one_over_m
+  PetscReal :: dsl_dpl, dsl_dT
+  PetscReal :: dsi_dpl, dsi_dT
+  PetscReal :: dsg_dpl, dsg_dT
+  PetscReal :: pth
+  
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      alpha = saturation_function%alpha
+      Pcgl = option%reference_pressure - pl
+      m = saturation_function%m      
+      print *, alpha, m, Pcgl, T
+      call CalcPhasePartitionIceNewt(alpha,m,Pcgl,T,s_g,s_i,s_l)
+      call CalcPhasePartitionIceDeriv(alpha,m,Pcgl,T,dsg_dpl, &
+                                      dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
+                                      dsl_dT)
+    case default  
+      option%io_buffer = 'Only van Genuchten supported with ice'
+      call printErrMsg(option)
+  end select
+ 
+  ! Check for bounds on saturations         
+  if (s_l > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', s_l
+  else if (s_l < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', s_l
+  endif
+
+  if (s_g > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', s_g
+  else if (s_g < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', s_g
+  endif
+ 
+  if (s_i > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', s_i
+  else if (s_i < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', s_i
+  endif
+ 
+  ! Calculate relative permeability
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      if (s_l == 1.d0) then
+        kr = 1.d0
+        dkr_dsl = 0.d0
+      else
+        m = saturation_function%m
+        one_over_m = 1.d0/m
+        liq_sat_one_over_m = s_l**one_over_m
+        kr = sqrt(s_l)*(1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+        dkr_dsl = 0.5d0*kr/s_l + &
+                  2.d0*s_l**(one_over_m - 0.5d0)* &
+                  (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                  (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_dpl = dkr_dsl*dsl_dpl
+        dkr_dT = dkr_dsl*dsl_dT
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select 
+
+#if 0  
+  write(*,*) 'rank:', option%myrank, 'sl:', s_l, &
+  'sg:', s_g, 'si:', s_i, 'dsl_pl:', dsl_dpl, &
+  'dsl_temp:', dsl_dT, 'dsg_pl:', dsg_dpl, 'dsg_temp:', dsg_dT, &
+  'dsi_pl:', dsi_dpl, 'dsi_temp:', dsi_dT, 'kr:', kr, &
+  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT  
+#endif
+
+end subroutine SatFuncComputeIceImplicit
 
 ! ************************************************************************** !
 !
