@@ -924,12 +924,6 @@ implicit none
 ! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
 !  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
 !  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp   
-    
-  call CalcPhasePartitionIceDeriv(alpha,m,1.d4,-1.d0,dsg_dpl, &
-                                  dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
-                                  dsl_dT)
-                                  
-  print *, '==================================================='
    
 end subroutine SaturationFunctionComputeIce
 
@@ -1042,25 +1036,30 @@ subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
   PetscReal :: x, x_new, sat, dsat
   PetscInt :: iter
   PetscReal, parameter :: delta = 1.d-5
-  PetscReal, parameter :: eps = 1.d-6
+  PetscReal, parameter :: eps = 1.d-8
   PetscInt, parameter :: maxit = 100
   
-  x = 1.d-1          ! Initial guess
-  do iter = 1,maxit
-    call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,func_val)
-    call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,(x+x*delta),func_val_pert)
-    dfunc_val = (func_val_pert - func_val)/(delta*x)
-    ! print *, 'iteration:', iter, 'value:', x, 'inormr:', abs(func_val)
-    if (abs(func_val) < eps) exit
-    x_new = x - func_val/dfunc_val
-    if (x_new >= 1.d0) then
-      x_new = 1.d0 - 1.d-8
-    endif
-    if (x_new <= 0.d0) then
-      x_new = 1.d-8
-    endif
-    x = x_new
-  enddo
+  
+  if (T > 0.d0) then
+    x = 0.d0
+  else
+    x = 1.d-1          ! Initial guess
+    do iter = 1,maxit
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,func_val)
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,(x+x*delta),func_val_pert)
+      dfunc_val = (func_val_pert - func_val)/(delta*x)
+      ! print *, 'iteration:', iter, 'value:', x, 'inormr:', abs(func_val)
+      if (abs(func_val) < eps) exit
+      x_new = x - func_val/dfunc_val
+      if (x_new >= 1.d0) then
+        x_new = 1.d0 - 1.d-8
+      endif
+      if (x_new <= 0.d0) then
+        x_new = 1.d-8
+      endif
+      x = x_new
+    enddo
+  endif
   
   call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
   s_i = x
@@ -1078,9 +1077,9 @@ end subroutine CalcPhasePartitionIceNewt
 ! date: 10/16/12
 !
 ! ************************************************************************** !
-subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,dsg_dpl, &
-                                      dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
-                                      dsl_dT)
+subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
+                                      dsg_dpl,dsg_dT,dsi_dpl,dsi_dT, &
+                                      dsl_dpl,dsl_dT)
                                           
   implicit none
   
@@ -1137,8 +1136,13 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,dsg_dpl, &
   call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
   G = dsat_PC*dsat_inv
   dS_dpl = dsat*(-1.d0)
-  dsi_dpl = (1.d0 - s_i)/(G/(1.d0 - G) + sat)*dS_dpl
-  dsl_dpl = dsi_dpl*G/(1.d0 - G)
+  if (G == 1.d0) then
+    dsi_dpl = 0.d0
+    dsl_dpl = (1.d0 - s_i)*dS_dpl
+  else
+    dsi_dpl = (1.d0 - s_i)/(G/(1.d0 - G) + sat)*dS_dpl
+    dsl_dpl = dsi_dpl*G/(1.d0 - G)
+  endif
   dsg_dpl = -dsi_dpl - dsl_dpl
 
   
@@ -1153,8 +1157,8 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,dsg_dpl, &
   dsi_dT = -L*M/(L*N + (1.d0 - L*N)*sat)
   dsl_dT = -dsi_dT*sat
   dsg_dT = -dsi_dT - dsl_dT
-  
-#if 0    
+
+#if 0      
   ! Numerical derivatives      
   call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl*(1.d0 + delta),T,s_g_pinc, &
                                  s_i_pinc,s_l_pinc)
@@ -1170,6 +1174,15 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,dsg_dpl, &
   dsi_dpl_num = (s_i_pinc - s_i)/(delta*Pcgl)*(-1.d0) ! -1.d0 factor for dPcgl/dpl
   dsg_dpl_num = (s_g_pinc - s_g)/(delta*Pcgl)*(-1.d0)
   dsl_dpl_num = (s_l_pinc - s_l)/(delta*Pcgl)*(-1.d0) 
+  
+  dsi_dpl = dsi_dpl_num
+  dsg_dpl = dsg_dpl_num
+  dsl_dpl = dsl_dpl_num
+  
+  dsi_dT = dsi_dT_num
+  dsg_dT = dsg_dT_num
+  dsl_dT = dsl_dT_num
+   
   
   print *, 'analytical-press:', 'dsg_dpl:', dsg_dpl, &
            'dsi_dpl:', dsi_dpl, 'dsl_dpl:' dsl_dpl 
@@ -1223,9 +1236,7 @@ implicit none
       alpha = saturation_function%alpha
       Pcgl = option%reference_pressure - pl
       m = saturation_function%m      
-      print *, alpha, m, Pcgl, T
-      call CalcPhasePartitionIceNewt(alpha,m,Pcgl,T,s_g,s_i,s_l)
-      call CalcPhasePartitionIceDeriv(alpha,m,Pcgl,T,dsg_dpl, &
+      call CalcPhasePartitionIceDeriv(alpha,m,Pcgl,T,s_g,s_i,s_l,dsg_dpl, &
                                       dsg_dT,dsi_dpl,dsi_dT,dsl_dpl, &
                                       dsl_dT)
     case default  
