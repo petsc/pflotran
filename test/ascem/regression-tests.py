@@ -127,13 +127,15 @@ class RegressionTest(object):
         for s in gold_sections:
             if s not in current_sections:
                 self._num_failed += 1
-                print("FAILURE: section '{0}' is in the gold output, but not the current output.".format(s))
+                if self._verbose:
+                    print("FAILURE: section '{0}' is in the gold output, but not the current output.".format(s))
 
         # look for sections that are in current but not gold
         for s in current_sections:
             if s not in gold_sections:
                 self._num_failed += 1
-                print("FAILURE: section '{0}' is in the current output, but not the gold output.".format(s))
+                if self._verbose:
+                    print("FAILURE: section '{0}' is in the current output, but not the gold output.".format(s))
 
         # compare common sections
         for s in gold_sections:
