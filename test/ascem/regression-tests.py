@@ -5,6 +5,8 @@
 #
 #
 
+from __future__ import print_function
+
 import argparse
 from collections import deque
 
@@ -18,9 +20,9 @@ import sys
 import traceback
 
 if sys.version_info[0] == 2:
-  import ConfigParser as config_parser
+    import ConfigParser as config_parser
 else:
-  import configparser as config_parser
+    import configparser as config_parser
 
 
 class RegressionTest(object):
@@ -31,7 +33,7 @@ class RegressionTest(object):
 
     def __init__(self):
         self._pprint = pprint.PrettyPrinter(indent=2)
-        self._debug = None
+        self._debug = False
         self._verbose = None
         self._executable = None
         self._input_arg = None
@@ -72,6 +74,9 @@ class RegressionTest(object):
 
         self._set_test_criteria(default_criteria, test_data)
 
+    def name(self):
+        return self._test_name
+
     def run(self, executable, dry_run, verbose):
         # need some os specific magic here...?
         input_file_name = self._test_name + '.' + self._input_suffix
@@ -95,7 +100,7 @@ class RegressionTest(object):
         Test the output from the run against the known "gold standard"
         output and determine if the test succeeded or failed.
 
-        We return one on success, zero on failure so that the test
+        We return zero on success, one on failure so that the test
         manager can track how many tests succeeded and failed.
         """
         self._verbose = verbose
@@ -108,20 +113,53 @@ class RegressionTest(object):
             current_output = current_file.readlines()
 
         if verbose:
-            print("    diff {0} {1}".format(current_filename, gold_filename))
+            print("    diff {0} {1}".format(gold_filename, current_filename))
 
         gold_sections = self._get_sections(gold_output)
         current_sections = self._get_sections(current_output)
-        for s in gold_sections.keys():
-            # compare sections
-            if s in current_sections.keys():
+        if self._debug:
+            print("--- Gold sections:")
+            self._pprint.pprint(gold_sections)
+            print("--- Current sections:")
+            self._pprint.pprint(current_sections)
+
+        # look for sections that are in gold but not current
+        for s in gold_sections:
+            if s not in current_sections:
+                self._num_failed += 1
+                print("FAILURE: section '{0}' is in the gold output, but not the current output.".format(s))
+
+        # look for sections that are in current but not gold
+        for s in current_sections:
+            if s not in gold_sections:
+                self._num_failed += 1
+                print("FAILURE: section '{0}' is in the current output, but not the gold output.".format(s))
+
+        # compare common sections
+        for s in gold_sections:
+            if s in current_sections:
                 self._num_failed += self._compare_sections(gold_sections[s], current_sections[s])
-            else:
-                # what is the correct way to handle this...?
-                print("ERROR: section '{0}' is in the gold output, but not the current output!".format(s))
+
         status = 0    
         if self._num_failed > 0:
             status = 1
+        return status
+
+    def update(self):
+        status = 0
+        gold_name = self._test_name + ".regression.gold"
+        current_name = self._test_name + ".regression"
+        try:
+            print("  updating test '{0}'... ".format(self._test_name), end='')
+            os.rename(current_name, gold_name)
+            status = 1
+            print("done")
+        except Exception as e:
+            message = "\nERROR : Could not rename '{0}' to '{1}'. Please rename the file manally!".format(current_name, gold_name)
+            message += "    mv {0} {1}".format(current_name, gold_name)
+            print(message)
+            # should we rethrow this exception, or continue?
+            #raise Exception(message)
         return status
 
     def _get_sections(self, output):
@@ -153,43 +191,59 @@ class RegressionTest(object):
         # add the final section
         if 'name' in s:
             sections[s['name']] = s
-        if self._debug:
-            self._pprint.pprint(sections)
+
         return sections
 
     def _compare_sections(self, gold_section, current_section):
         name = gold_section['name']
         data_type = gold_section['type']
         section_status = 0
-        for k in gold_section.keys():
+        # if key in gold but not in current --> failed test
+        for k in gold_section:
+            if k not in current_section:
+                section_status += 1
+                if self._verbose:
+                    print("FAILURE: key '{0}' in section '{1}' found in gold output but not current".format(k, gold_section['name']))
+
+        # if key in current but not gold --> failed test
+        for k in current_section:
+            if k not in gold_section:
+                section_status += 1
+                print("FAILURE: key '{0}' in section '{1}' found in current output but not gold".format(k, current_section['name']))
+
+        # now compare the keys that are in both...
+        for k in gold_section:
             if k == "name" or k == 'type':
-                break
-            if k in current_section.keys():
+                pass
+            elif k in current_section:
                 gold = gold_section[k]
                 current = current_section[k]
                 name_str = name + " --> " + k 
                 status = self._compare_values(name_str, data_type, gold, current)
                 section_status += status
-            else:
-                # correct way to handle this?
-                print("ERROR: key '{0}' in gold section '{1}' but not in current section".format(k, gold_section['name']))
+
         if self._verbose and False:
             print("    {0} : status : {1}".format(name, section_status))
         return section_status
 
     def _compare_values(self, name, data_type, previous, current):
         status = 0
+        #print("compare_values: {0} {1}".format(name, data_type))
         if data_type.lower() == "concentration":
-            status = self._compare_concentration(name, float(previous), float(current))
+            status = self._compare_concentration(name, previous, current)
         elif data_type.lower() == "solution":
             status = self._compare_solution(name, previous, current)
         elif data_type.lower() == "generic":
-            status = self._compare_generic(name, float(previous), float(current))
+            status = self._compare_generic(name, previous, current)
         elif data_type.lower() == "discrete":
-            status = self._compare_discrete(name, int(previous), int(previous))
+            status = self._compare_discrete(name, previous, current)
+        else:
+            print("WARNING: the data type '{0}' for '{1}' is not a known type.".format(data_type, name))
         return status
 
     def _compare_concentration(self, name, previous, current):
+        previous = float(previous)
+        current = float(current)
         if self._concentration_type == "absolute":
             delta = math.fabs(previous - current)
         elif self._concentration_type == "relative":
@@ -201,9 +255,9 @@ class RegressionTest(object):
         if delta > self._concentration_tolerance:
             status = 1
             if self._verbose:
-                print("    FAILED: {0} : {1} > {2}".format(name, delta, self._concentration_tolerance))
+                print("    FAILED: {0} : {1} > {2} [{3}]".format(name, delta, self._concentration_tolerance, self._concentration_type))
         elif self._debug:
-            print("    SUCCESS: {0} : {1} < {2}".format(name, delta, self._concentration_tolerance))
+            print("    SUCCESS: {0} : {1} < {2} [{3}]".format(name, delta, self._concentration_tolerance, self._concentration_type))
             
         return status
 
@@ -211,19 +265,52 @@ class RegressionTest(object):
         return 0
 
     def _compare_generic(self, name, previous, current):
+        previous = float(previous)
+        current = float(current)
         return 0
 
     def _compare_discrete(self, name, previous, current):
-        return 0
+        """ NOTE: discrete values are integers, except when we are
+        looking at the mean of a discrete variable. Then we
+        may(probably) have a floating point value!
+        """
+        mean_re = re.compile("Mean")
+        have_mean = mean_re.search(name)
+        if not have_mean:
+            #print("compare_discrete: converting to int")
+            previous = int(previous)
+            current = int(current)
+        else:
+            #print("compare_discrete: converting to float")
+            previous = float(previous)
+            current = float(current)
+        #print("previous = {0}  current = {1}".format(previous, current))
+
+        if self._discrete_type == "absolute":
+            delta = previous - current
+        elif self._discrete_type == "relative":
+            delta = float(previous - current) / previous
+        elif self._discrete_type == "percent":
+            delta = 100.0 * float(previous - current) / previous
+
+        status = 0
+        if delta > self._discrete_tolerance:
+            status = 1
+            if self._verbose:
+                print("    FAILED: {0} : {1} > {2} [{3}]".format(name, delta, self._discrete_tolerance, self._discrete_type))
+        elif self._debug:
+            print("    SUCCESS: {0} : {1} <= {2} [{3}]".format(name, delta, self._discrete_tolerance, self._discrete_type))
+
+        return status
 
     def _set_executable_args(self, executable_args):
-        if "input arg" in executable_args.keys():
+        if "input arg" in executable_args:
             self._input_arg = executable_args["input arg"]
 
-        if "input suffix" in executable_args.keys():
+        if "input suffix" in executable_args:
             self._input_suffix = executable_args["input suffix"]
 
-        if "output arg" in executable_args.keys():
+        if "output arg" in executable_args:
             self._output_arg = executable_args["output arg"]
         
 
@@ -250,9 +337,9 @@ class RegressionTest(object):
 
     def _get_criteria(self, key, default_criteria, test_data):
         criteria = None
-        if key in test_data.keys():
+        if key in test_data:
             criteria = test_data[key]
-        elif key in default_criteria.keys():
+        elif key in default_criteria:
             criteria = default_criteria[key]
         else:
             raise Exception("ERROR : tolerance for '{0}' must be specified in either the default-test-criteria or test section!".format(key))
@@ -320,7 +407,7 @@ class RegressionTestManager(object):
     def generate_tests(self, config_file, user_suites, user_tests):
         self._read_config_file(config_file)
         self._validate_suites()
-        user_suites, user_names = self._validate_user_lists(user_suites, user_tests)
+        user_suites, user_tests = self._validate_user_lists(user_suites, user_tests)
         self._create_tests(user_suites, user_tests)
 
     def run_tests(self, executable, dry_run, verbose):
@@ -329,7 +416,7 @@ class RegressionTestManager(object):
         for t in self._tests:
             if verbose:
                 print(40*'-')
-            print("{0}...".format(t._test_name),)
+            print("{0}...".format(t._test_name), end='')
             if verbose:
                 print()
             t.run(executable, dry_run, verbose)
@@ -347,10 +434,25 @@ class RegressionTestManager(object):
                     print(" failed.")
 
         print(70*"-")
-        print("{0} of {1} tests failed".format(self._num_failed, len(self._tests)))
+        if self._num_failed > 0:
+            print("{0} of {1} tests failed".format(self._num_failed, len(self._tests)))
+        else:
+            print("{0} tests passed".format(len(self._tests)))
+
 
     def update_test_results(self, user_tests):
-        pass
+        print(70*'-')
+        print("Updating tests:")
+        print("Please document why you modified the gold standard test results in your revision control commit message!")
+        u_suites, u_tests = self._validate_user_lists([], user_tests)
+        num_success = 0
+        for name in u_tests:
+            for t in self._tests:
+                if name == t.name():
+                    num_success += t.update()
+        print(70*'-')
+        print("{0} tests updated.".format(num_success))
+
 
     def status(self):
         return self._num_failed
@@ -362,7 +464,7 @@ class RegressionTestManager(object):
 
     def display_available_suites(self):
         print("Available test suites: ")
-        for s in self._available_suites.keys():
+        for s in self._available_suites:
             print("    {0} :".format(s))
             for t in self._available_suites[s].split():
                 print("        {0}".format(t))
@@ -413,7 +515,7 @@ class RegressionTestManager(object):
 
     def _dict_to_string(self, data):
         temp = ""
-        for k, v in data.iteritems():
+        for k, v in data.items():
             temp += "        {0} : {1}\n".format(k, v)
         return temp
 
@@ -438,10 +540,10 @@ class RegressionTestManager(object):
 
     def _validate_user_lists(self, user_suites, user_tests):
 
-        #geh: if no suites or tests is specified, use all suites
+        # if no suites or tests is specified, use all tests
         if len(user_suites) == 0 and len(user_tests) == 0:
-          u_suites = self._available_suites
-          u_tests = []
+          u_suites = []
+          u_tests = self._available_tests
         else:
           # convert user supplied names to lower case
           u_suites = []
@@ -455,11 +557,11 @@ class RegressionTestManager(object):
         # now check that the processed user supplied names are valid
         invalid_user_names = []
         for s in u_suites:
-            if s.lower() not in self._available_suites.keys():
+            if s.lower() not in self._available_suites:
                 invalid_user_names.append("suite : '{0}'".format(s))
 
         for t in u_tests:
-            if t not in self._available_tests.keys():
+            if t not in self._available_tests:
                 invalid_user_names.append("test : '{0}'".format(t))
 
         if len(invalid_user_names) != 0:
@@ -501,7 +603,7 @@ def commandline_options():
     parser.add_argument('-t', '--tests', nargs="+", default=[],
                         help='space separated list of test names')
     parser.add_argument('-u', '--update',
-                        action="store_true", default="store_false",
+                        action="store_true", default=False,
                         help='update the tests listed by the "--tests" option, with the current output becoming the new gold standard')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='verbose output')
@@ -530,7 +632,7 @@ def main(options):
     if options.list_tests == True:
         test_manager.display_available_tests()
 
-    if options.executable == None:
+    if options.executable == ['executable']:
         options.dry_run = True
 
     test_manager.run_tests(options.executable[0],

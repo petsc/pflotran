@@ -1,10 +1,22 @@
 -- GENERIC: pH --
+      Max:  4.6763533999171E+00
+      Min:  4.6763533999171E+00
+     Mean:  4.6763533999171E+00
         1:  4.6763533999171E+00
 -- CONCENTRATION: Total H+ --
+      Max:  1.0000000000005E-03
+      Min:  1.0000000000005E-03
+     Mean:  1.0000000000005E-03
         1:  1.0000000000005E-03
 -- CONCENTRATION: Total HCO3- --
+      Max:  1.0000000000005E-03
+      Min:  1.0000000000005E-03
+     Mean:  1.0000000000005E-03
         1:  1.0000000000005E-03
 -- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:  1.0000000000000E+00
         1:         1
 -- SOLUTION: Transport --
    Time (seconds):  0.0000000000000E+00
