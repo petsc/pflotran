@@ -1,4 +1,9 @@
 :Description: 1D problem for testing 
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 1
+END
  
 : == debugging ================================================================
 DEBUG
