@@ -79,7 +79,7 @@ module Mineral_Aux_module
     PetscReal, pointer :: mnrl_logKcoef(:,:)
     PetscBool, pointer :: mnrl_print(:)
     
-      ! for kinetic reactions
+    ! for kinetic reactions
     PetscInt :: nkinmnrl
     character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
     PetscBool, pointer :: kinmnrl_print(:)
