@@ -1,23 +1,29 @@
 :Description: Batch carbonate equilibrium speciation reaction
 
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 1
+END
+
 :=========================== chemistry ========================================
 CHEMISTRY
 PRIMARY_SPECIES
-HCO3-
-Ca++
 H+
+HCO3-
 /
 SECONDARY_SPECIES
 OH-
-CO2(aq)
 CO3--
-CaOH+
-CaHCO3+
-CaCO3(aq)
+CO2(aq)
 /
-DATABASE ./ca-carbonate.dat
+DATABASE ./carbonate.dat
 LOG_FORMULATION
 :ACTIVITY_COEFFICIENTS TIMESTEP
+
+OUTPUT
+  ACTIVITY_COEFFICIENTS
+  ALL
+/
 /
 
 :=========================== solver options ===================================
@@ -112,9 +118,8 @@ END
 :=========================== constraints ======================================
 CONSTRAINT initial
 CONCENTRATIONS
-HCO3-  3.d-3      T
-Ca++   1.d-3      T
 H+     1.d-3      T
+HCO3-  1.d-3      T
 /
 /
 

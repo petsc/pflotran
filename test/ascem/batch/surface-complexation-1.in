@@ -1,4 +1,9 @@
-:Description: 1D test problem based on Valocchi et al., 1981
+:Description: equilibrium surface complexation based on Steefel's CrunchFlow Short Course Exercise 4
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 1
+END
 
 :=========================== flow mode ========================================
 : Uniform velocity (see below). No flow mode specified.
@@ -9,33 +14,34 @@ UNIFORM_VELOCITY 0.0 0.d0 0.d0 ! 1. meter/yr
 :=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
+    H+
     Na+
-    Ca++
-    Mg++
-    Cl-
+    NO3-
+    Zn++
   /
-  MINERALS
-    Halite
+
+  SECONDARY_SPECIES
+    OH-
+    Zn(OH)2(aq)
+    Zn(OH)3-
+    Zn(OH)4--
+    ZnOH+
   /
-  MINERAL_KINETICS
-    Halite
-      RATE_CONSTANT 1.d-40
-    /
-  /
+
   SORPTION
-    ION_EXCHANGE_RXN
-:      MINERAL Halite
-      CEC 750. eq/m^3
-      CATIONS
-        Na+   1.
-        Ca++  0.2953  ! 1.84
-        Mg++  0.1666  ! 2.45
+    SURFACE_COMPLEXATION_RXN
+      EQUILIBRIUM
+      SITE >FeOH_w 7.6355e4
+      COMPLEXES
+        >FeOH2+_w
+        >FeO-_w
+	>FeOHZn+_w
       /
     /
   /
-  DATABASE hanford.dat
+  DATABASE surface-complexation.dat
   LOG_FORMULATION
-:  ACTIVITY_COEFFICIENTS OFF
+  ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     all
     TOTAL_SORBED
@@ -54,7 +60,7 @@ END
 :=========================== discretization ===================================
 GRID
   TYPE structured
-  NXYZ 100 1 1
+  NXYZ 1 1 1
   BOUNDS
     0.d0 0.d0 0.d0
     1.d0 1.d0 1.d0
@@ -69,7 +75,7 @@ END
 :=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
-  POROSITY 0.25d0
+  POROSITY 0.9d0
   TORTUOSITY 1.d0
 END
 
@@ -90,7 +96,7 @@ END
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
-    100.d0 1.d0 1.d0
+    1.d0 1.d0 1.d0
   /
 END
 
@@ -105,8 +111,8 @@ END
 REGION east
   FACE east
   COORDINATES
-    100.d0 0.d0 0.d0
-    100.d0 1.d0 1.d0
+    1.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
   /
 END
 
@@ -128,25 +134,19 @@ END
 :=========================== transport constraints ============================
 CONSTRAINT initial
   CONCENTRATIONS
-:    Na+     0.2465  S
-:    Ca++    0.1602  S
-:    Mg++    0.1641  S
-    Na+     8.65d-2 T
-    Ca++    1.82d-2 T
-    Mg++    1.11d-2 T
-    Cl-     2.d-3   Z
-  /
-  MINERALS
-    Halite 1.d-5 1.d0
+    H+     5.0     P
+    Na+    1.0e-5  Z
+    NO3-   1.0e-1  T
+    Zn++   1.0e-7  T
   /
 END
 
 CONSTRAINT inlet
   CONCENTRATIONS
-    Na+     9.4d-3  T
-    Ca++    5.d-4   T 
-    Mg++    2.13d-3 T
-    Cl-     1.d-2  Z
+    H+     1.0e-5  T
+    Na+    1.0e-5  Z
+    NO3-   1.0e-1  T
+    Zn++   1.0e-7  T
   /
 END
 
