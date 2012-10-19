@@ -159,11 +159,17 @@ class RegressionTest(object):
         current_name = self._test_name + ".regression"
         try:
             print("  updating test '{0}'... ".format(self._test_name), end='')
-            os.rename(current_name, gold_name)
-            status = 1
+            #geh: need to catch if the regression file has not been printed.
+            #     e.g. simulation does not complete, regression not turned on
+            #          in input file, etc.
+            if os.path.isfile(current_name):
+                os.rename(current_name, gold_name)
+                status = 1
+            else:
+                print("    file '{0}' not found".format(current_name), end='')
             print("done")
         except Exception as e:
-            message = "\nERROR : Could not rename '{0}' to '{1}'. Please rename the file manally!".format(current_name, gold_name)
+            message = "\nERROR : Could not rename '{0}' to '{1}'. Please rename the file manually!".format(current_name, gold_name)
             message += "    mv {0} {1}".format(current_name, gold_name)
             print(message)
             # should we rethrow this exception, or continue?
@@ -442,6 +448,21 @@ class RegressionTestManager(object):
             if verbose:
                 print()
             t.run(executable, dry_run, verbose)
+        print(50*"-")
+
+    def check_test_results(self, dry_run, verbose):
+        print(50*"-")
+        if not dry_run:
+            print("Checking test results:")
+        else:
+            print("Dry run:")
+
+        for t in self._tests:
+            if verbose:
+                print(40*'-')
+            print("{0}...".format(t._test_name), end='')
+            if verbose:
+                print()
             status = 0
             if not dry_run:
                 status = t.diff(verbose)
@@ -762,12 +783,15 @@ def main(options):
 
         if options.update:
             test_manager.update_test_results(options.tests)
+        else:
+            test_manager.check_test_results(options.dry_run,
+                                            options.verbose)
 
         report[filename] = test_manager.status()
 
     stop = time.time()
     status = 0
-    if not options.dry_run:
+    if not options.dry_run and not options.update:
         print(70*"-")
         print("Regression test summary:")
         print("    Total run time: {0:4g} [s]".format(stop - start))
