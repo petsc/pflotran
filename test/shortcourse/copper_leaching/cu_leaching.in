@@ -131,7 +131,7 @@ CHEMISTRY
       RATE_CONSTANT 1.d-14
     /
   /
-  DATABASE ../../../../database/hanford.dat
+  DATABASE ../../../database/hanford.dat
   LOG_FORMULATION
 :  OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
