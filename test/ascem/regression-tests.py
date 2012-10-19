@@ -596,7 +596,7 @@ class RegressionTestManager(object):
                 invalid_user_names.append("test : '{0}'".format(t))
 
         if len(invalid_user_names) != 0:
-            raise Exception("ERROR : unknown suite or test provided on command line : {0}".format(invalid_user_names))
+            raise Exception("ERROR : {0} : unknown suite or test provided on command line : {0}".format(self._config_filename, invalid_user_names))
 
         return u_suites, u_tests
 
