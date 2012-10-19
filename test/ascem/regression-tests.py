@@ -10,13 +10,14 @@ from __future__ import print_function
 import argparse
 from collections import deque
 
-import difflib
+#import difflib
 import math
 import os
 import pprint
 import re
 import subprocess
 import sys
+import time
 import traceback
 
 if sys.version_info[0] == 2:
@@ -85,8 +86,13 @@ class RegressionTest(object):
             command += "{0} {1} ".format(self._input_arg, input_file_name)
         if self._output_arg != None:
             command += "{0} {1} ".format(self._output_arg, self._test_name)
+
+        if os.path.isfile(self._test_name + ".regression"):
+            os.rename(self._test_name + ".regression",
+                      self._test_name + ".regression.old")
+
         if dry_run:
-            print("    dry run: \"{0}\"".format(command))
+            print("\n    {0}".format(command))
         else:
             if verbose:
                 print("    {0}".format(command))
@@ -128,14 +134,14 @@ class RegressionTest(object):
             if s not in current_sections:
                 self._num_failed += 1
                 if self._verbose:
-                    print("FAILURE: section '{0}' is in the gold output, but not the current output.".format(s))
+                    print("    FAIL: section '{0}' is in the gold output, but not the current output.".format(s))
 
         # look for sections that are in current but not gold
         for s in current_sections:
             if s not in gold_sections:
                 self._num_failed += 1
                 if self._verbose:
-                    print("FAILURE: section '{0}' is in the current output, but not the gold output.".format(s))
+                    print("    FAIL: section '{0}' is in the current output, but not the gold output.".format(s))
 
         # compare common sections
         for s in gold_sections:
@@ -205,13 +211,13 @@ class RegressionTest(object):
             if k not in current_section:
                 section_status += 1
                 if self._verbose:
-                    print("FAILURE: key '{0}' in section '{1}' found in gold output but not current".format(k, gold_section['name']))
+                    print("    FAIL: key '{0}' in section '{1}' found in gold output but not current".format(k, gold_section['name']))
 
         # if key in current but not gold --> failed test
         for k in current_section:
             if k not in gold_section:
                 section_status += 1
-                print("FAILURE: key '{0}' in section '{1}' found in current output but not gold".format(k, current_section['name']))
+                print("    FAIL: key '{0}' in section '{1}' found in current output but not gold".format(k, current_section['name']))
 
         # now compare the keys that are in both...
         for k in gold_section:
@@ -239,6 +245,10 @@ class RegressionTest(object):
             status = self._compare_generic(name, previous, current)
         elif data_type.lower() == "discrete":
             status = self._compare_discrete(name, previous, current)
+        elif data_type.lower() == "rate":
+            status = self._compare_rate(name, previous, current)
+        elif data_type.lower() == "volume_fraction":
+            status = self._compare_volume_fraction(name, previous, current)
         else:
             print("WARNING: the data type '{0}' for '{1}' is not a known type.".format(data_type, name))
         return status
@@ -257,9 +267,9 @@ class RegressionTest(object):
         if delta > self._concentration_tolerance:
             status = 1
             if self._verbose:
-                print("    FAILED: {0} : {1} > {2} [{3}]".format(name, delta, self._concentration_tolerance, self._concentration_type))
+                print("    FAIL: {0} : {1} > {2} [{3}]".format(name, delta, self._concentration_tolerance, self._concentration_type))
         elif self._debug:
-            print("    SUCCESS: {0} : {1} < {2} [{3}]".format(name, delta, self._concentration_tolerance, self._concentration_type))
+            print("    PASS: {0} : {1} < {2} [{3}]".format(name, delta, self._concentration_tolerance, self._concentration_type))
             
         return status
 
@@ -299,11 +309,17 @@ class RegressionTest(object):
         if delta > self._discrete_tolerance:
             status = 1
             if self._verbose:
-                print("    FAILED: {0} : {1} > {2} [{3}]".format(name, delta, self._discrete_tolerance, self._discrete_type))
+                print("    FAIL: {0} : {1} > {2} [{3}]".format(name, delta, self._discrete_tolerance, self._discrete_type))
         elif self._debug:
-            print("    SUCCESS: {0} : {1} <= {2} [{3}]".format(name, delta, self._discrete_tolerance, self._discrete_type))
+            print("    PASS: {0} : {1} <= {2} [{3}]".format(name, delta, self._discrete_tolerance, self._discrete_type))
 
         return status
+
+    def _compare_rate(self, name, previous, current):
+        return 0
+
+    def _compare_volume_fraction(self, name, previous, current):
+        return 0
 
     def _set_executable_args(self, executable_args):
         if "input arg" in executable_args:
@@ -413,8 +429,12 @@ class RegressionTestManager(object):
         self._create_tests(user_suites, user_tests)
 
     def run_tests(self, executable, dry_run, verbose):
-        print(70*"-")
-        print("Running tests:")
+        print(50*"-")
+        if not dry_run:
+            print("Running tests:")
+        else:
+            print("Dry run:")
+
         for t in self._tests:
             if verbose:
                 print(40*'-')
@@ -422,24 +442,33 @@ class RegressionTestManager(object):
             if verbose:
                 print()
             t.run(executable, dry_run, verbose)
-            status = t.diff(verbose)
+            status = 0
+            if not dry_run:
+                status = t.diff(verbose)
             self._num_failed += status
             if status == 0:
-                if verbose:
-                    print("{0}... passed.".format(t._test_name))
-                else:
-                    print(" passed.")
+                if not dry_run:
+                    if verbose:
+                        print("{0}... passed.".format(t._test_name))
+                    else:
+                        print(" passed.")
             else:
                 if verbose:
                     print("{0}... failed.".format(t._test_name))
                 else:
                     print(" failed.")
 
-        print(70*"-")
+        print(50*"-")
         if self._num_failed > 0:
-            print("{0} of {1} tests failed".format(self._num_failed, len(self._tests)))
+            print("{0} : {1} of {2} tests failed".format(self._config_filename,
+                                                         self._num_failed,
+                                                         len(self._tests)))
         else:
-            print("{0} tests passed".format(len(self._tests)))
+            if not dry_run:
+                print("{0} : {1} tests passed".format(self._config_filename,
+                                                len(self._tests)))
+            else:
+                print("{0} : no tests run.".format(self._config_filename))
 
 
     def update_test_results(self, user_tests):
@@ -587,7 +616,7 @@ def commandline_options():
     parser = argparse.ArgumentParser(description='Run a pflotran regression tests or suite of tests.')
     parser.add_argument('--backtrace', action='store_true',
                         help='show exception backtraces as extra debugging output')
-    parser.add_argument('-c', '--config-file', nargs=1, required=True,
+    parser.add_argument('-c', '--config-file', nargs=1, default=None,
                         help='test configuration file to use')
     parser.add_argument('--debug', action='store_true',
                         help='extra debugging output')
@@ -600,6 +629,8 @@ def commandline_options():
                         help='print the list of test suites from the config file and exit')
     parser.add_argument('--list-tests', action='store_true',
                         help='print the list of tests from the config file and exit')
+    parser.add_argument('-r', '--recursive-search', nargs='*', default=None,
+                        help='recursively search the current directory and all sub-directories, using any configuration files in those directories.')
     parser.add_argument('-s', '--suites', nargs="+", default=[],
                         help='space separated list of test suite names')
     parser.add_argument('-t', '--tests', nargs="+", default=[],
@@ -613,38 +644,139 @@ def commandline_options():
     options = parser.parse_args()
     return options
 
+def generate_config_file_list(options):
+    config_file_list = []
+    # search for config files
+    if options.recursive_search is not None:
+        if options.recursive_search == []:
+            # if we have an empty list, use the cwd as the starting point
+            options.recursive_search.append(os.getcwd())
+        for base_dir in options.recursive_search:
+            if not os.path.isabs(base_dir):
+                # if we received a relative path, make it absolute
+                base_dir = os.path.abspath(base_dir)
+
+            if os.path.isdir(base_dir):
+                search_for_config_files(base_dir, config_file_list)
+            else:
+                raise Exception("ERROR: can not search for config files in '{0}' because it is not a directory.".format(base))
+
+    # add the explicitly listed config files
+    if options.config_file is not None:
+        for f in options.config_file:
+            if not os.path.isabs(f):
+                f = os.path.abspath(f)
+            if os.path.isfile(f):
+                config_file_list.append(f)
+            else:
+                raise Exception("ERROR: specified config file '{0}' is not a file!".format(f))
+
+    if options.debug:
+        print("\nKnown config files:")
+        for c in config_file_list:
+            print("    {0}".format(c))
+
+    return config_file_list
+
+def search_for_config_files(base_dir, config_file_list):
+    """
+    recursively search the directory tree, creating a list of all config files
+    """
+    subdirlist = []
+    for entry in os.listdir(base_dir):
+        # append entry to path
+        file_path = os.path.join(base_dir, entry)
+         # determine whether a file or a directory
+        if os.path.isfile(file_path):
+            # is the file a config file?
+            if file_path.endswith('.cfg'):
+                # if it's a config file, add it to the list
+                config_file_list.append(file_path)
+        else:
+            # add path to list of subdirectories
+            subdirlist.append(file_path)
+
+    # recursive search the subdirectories
+    for sub_dir in subdirlist:
+        search_for_config_files(sub_dir, config_file_list)
+    
+
 
 def main(options):
-    test_manager = RegressionTestManager()
-
-    if options.debug:
-        test_manager._debug = True
-
-    test_manager.generate_tests(options.config_file[0],
-                                options.suites,
-                                options.tests)
-
-    if options.debug:
-        print(70*'-')
-        print(test_manager)
-
-    if options.list_suites == True:
-        test_manager.display_available_suites()
-
-    if options.list_tests == True:
-        test_manager.display_available_tests()
-
+    # check the executable
     if options.executable == ['executable']:
         options.dry_run = True
+        executable = "/usr/bin/false"
+    else:
+        # absolute path to the executable
+        executable = os.path.abspath(options.executable[0])
+        # is it a valid file?
+        if not os.path.isfile(executable):
+            raise Exception("ERROR: executable is not a valid file: '{0}'".format(executable))
 
-    test_manager.run_tests(options.executable[0],
-                           options.dry_run,
-                           options.verbose)
+    # config files
+    config_file_list = generate_config_file_list(options)
+    if len(config_file_list) == 0:
+        raise Exception("ERROR: no config files were found. Please specify a config file with '--config' or search for files with '--recursive-search'.")
 
-    if options.update:
-        test_manager.update_test_results(options.tests)
+    start = time.time()
+    report = {}
+    for f in config_file_list:
+        print(70*'-')
+        if options.verbose:
+            print("Running tests from config file:\n    {0}".format(f))
 
-    return test_manager.status()
+        # get the absolute path of the directory
+        test_dir = os.path.dirname(f)
+        # cd into the test directory so that the relative paths in
+        # test files are correct
+        os.chdir(test_dir)
+        if options.debug:
+            print("Changed to working directory: {0}".format(test_dir))
+
+        test_manager = RegressionTestManager()
+
+        if options.debug:
+            test_manager._debug = True
+
+        # get the relative file name
+        filename = os.path.basename(f)
+
+        test_manager.generate_tests(filename,
+                                    options.suites,
+                                    options.tests)
+
+        if options.debug:
+            print(70*'-')
+            print(test_manager)
+
+        if options.list_suites == True:
+            test_manager.display_available_suites()
+
+        if options.list_tests == True:
+            test_manager.display_available_tests()
+        
+        test_manager.run_tests(executable,
+                               options.dry_run,
+                               options.verbose)
+
+        if options.update:
+            test_manager.update_test_results(options.tests)
+
+        report[filename] = test_manager.status()
+
+    stop = time.time()
+    status = 0
+    if not options.dry_run:
+        print(70*"-")
+        print("Regression test summary:")
+        print("    Total run time: {0:4g} [s]".format(stop - start))
+        for t in report:
+            status += report[t]
+            print("    {0}... {1} tests failed".format(t, report[t]))
+
+
+    return status
 
 if __name__ == "__main__":
     options = commandline_options()
@@ -655,4 +787,4 @@ if __name__ == "__main__":
         print(str(e))
         if options.backtrace:
             traceback.print_exc()
-        os._exit(1)
+        sys.exit(1)
