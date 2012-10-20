@@ -812,23 +812,7 @@ subroutine RTUpdateSolutionPatch(realization)
     
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
-        if (patch%imat(ghosted_id) <= 0) cycle
-          ! Update secondary continuum variables
-          if (option%use_mc) then
-            sec_diffusion_coefficient = realization% &
-                                        material_property_array(1)%ptr% &
-                                        secondary_continuum_diff_coeff
-            sec_porosity = realization%material_property_array(1)%ptr% &
-                           secondary_continuum_porosity
-          call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
-                                           rt_aux_vars(ghosted_id), &
-                                           global_aux_vars(ghosted_id), &
-                                           reaction, &
-                                           sec_diffusion_coefficient, &
-                                           sec_porosity, &
-                                           option)
-          endif    
-          
+        if (patch%imat(ghosted_id) <= 0) cycle         
         do imnrl = 1, reaction%mineral%nkinmnrl
           ! rate = mol/m^3/sec
           ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
@@ -901,6 +885,25 @@ subroutine RTUpdateSolutionPatch(realization)
               rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx,ikinrxn)
           enddo
         enddo
+      enddo
+    endif
+    
+    ! update secondary continuum variables
+    if (option%use_mc) then
+      do ghosted_id = 1, grid%ngmax
+        if (patch%imat(ghosted_id) <= 0) cycle
+          sec_diffusion_coefficient = realization% &
+                                      material_property_array(1)%ptr% &
+                                      secondary_continuum_diff_coeff
+          sec_porosity = realization%material_property_array(1)%ptr% &
+                         secondary_continuum_porosity
+          call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
+                                           rt_aux_vars(ghosted_id), &
+                                           global_aux_vars(ghosted_id), &
+                                           reaction, &
+                                           sec_diffusion_coefficient, &
+                                           sec_porosity, &
+                                           option)
       enddo
     endif
 
