@@ -2205,11 +2205,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
-    
-    if (snes_reason >= 0 .and. option%use_mc) then
-      option%sec_vars_update = PETSC_TRUE
-    endif
-    
+      
     if (snes_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1

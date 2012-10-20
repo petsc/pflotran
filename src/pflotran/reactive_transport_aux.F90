@@ -595,11 +595,11 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   if (reaction%mineral%nkinmnrl > 0) then
     kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
     equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
-    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3/mol
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
     rhs_react = diag_react*equil_conc                                ! in mol/L
   endif
- 
+  
   alpha = diffusion_coefficient*option%tran_dt 
   
   ! Setting the coefficients

@@ -751,6 +751,7 @@ subroutine RTUpdateSolutionPatch(realization)
   use Option_module
   use Grid_module
   use Reaction_module
+  use Secondary_Continuum_module
  
   implicit none
 
@@ -762,11 +763,14 @@ subroutine RTUpdateSolutionPatch(realization)
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
   PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   PetscReal :: conc, max_conc, min_conc
   PetscErrorCode :: ierr
+  PetscReal :: sec_diffusion_coefficient
+  PetscReal :: sec_porosity
   
   option => realization%option
   patch => realization%patch
@@ -775,6 +779,7 @@ subroutine RTUpdateSolutionPatch(realization)
 
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
 
   ! update:                             cells      bcs         act. coefs.
   call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
@@ -808,6 +813,22 @@ subroutine RTUpdateSolutionPatch(realization)
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
         if (patch%imat(ghosted_id) <= 0) cycle
+          ! Update secondary continuum variables
+          if (option%use_mc) then
+            sec_diffusion_coefficient = realization% &
+                                        material_property_array(1)%ptr% &
+                                        secondary_continuum_diff_coeff
+            sec_porosity = realization%material_property_array(1)%ptr% &
+                           secondary_continuum_porosity
+          call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
+                                           rt_aux_vars(ghosted_id), &
+                                           global_aux_vars(ghosted_id), &
+                                           reaction, &
+                                           sec_diffusion_coefficient, &
+                                           sec_porosity, &
+                                           option)
+          endif    
+          
         do imnrl = 1, reaction%mineral%nkinmnrl
           ! rate = mol/m^3/sec
           ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
@@ -2988,23 +3009,11 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                            'multiple continuum is implemented'
         call printErrMsg(option)
       endif   
-    
-      sec_diffusion_coefficient = realization%material_property_array(1)%ptr% &
+      sec_diffusion_coefficient = realization% &
+                                  material_property_array(1)%ptr% &
                                   secondary_continuum_diff_coeff
       sec_porosity = realization%material_property_array(1)%ptr% &
                      secondary_continuum_porosity
-                     
-
-      if (option%sec_vars_update) then
-        call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
-                                         rt_aux_vars(ghosted_id), &
-                                         global_aux_vars(ghosted_id), &
-                                         reaction, &
-                                         sec_diffusion_coefficient, &
-                                         sec_porosity, &
-                                         option)
-      endif       
-    
       call RTSecondaryTransport(rt_sec_transport_vars(ghosted_id), &
                                 rt_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
@@ -3015,7 +3024,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                                                         
       r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)*1.d3 ! convert vol to L from m3
     enddo   
-    option%sec_vars_update = PETSC_FALSE
   endif
 #endif
 ! ============== end secondary continuum coupling terms ========================
@@ -5266,7 +5274,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   ! Calculate the coupling term
   res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
-
+                  
 end subroutine RTSecondaryTransport
 
 
@@ -5381,7 +5389,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   ! Calculate the jacobian term
   jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
                   dm_plus(ngcells)*porosity   
-              
+             
 end subroutine RTSecondaryTransportJacobian
 
 
