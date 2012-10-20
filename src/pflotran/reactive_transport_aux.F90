@@ -600,7 +600,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
     rhs_react = diag_react*equil_conc                                ! in mol/L
   endif
  
-  alpha = diffusion_coefficient*option%tran_dt/porosity   
+  alpha = diffusion_coefficient*option%tran_dt 
   
   ! Setting the coefficients
   do i = 2, ngcells-1
