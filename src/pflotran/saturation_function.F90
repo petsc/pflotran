@@ -1296,6 +1296,234 @@ implicit none
 
 end subroutine SatFuncComputeIceImplicit
 
+
+! ************************************************************************** !
+!
+! SatFuncImplicitComputeIce:   Computes the saturation of ice, water vapor 
+!                              and liquid water given the saturation function
+!                              temperature, water vapor pressure and liquid
+!                              water pressure using an implicit relation 
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine SatFuncImplicitComputeIce(liquid_pressure, temperature, &
+                                     ice_saturation, &
+                                     liquid_saturation, gas_saturation, &
+                                     liquid_relative_perm, dsl_pl, & 
+                                     dsl_temp, dsg_pl, dsg_temp, dsi_pl, &
+                                     dsi_temp, dkr_pl, dkr_temp, &
+                                     saturation_function, option)
+
+  use Option_module
+ 
+implicit none
+
+  PetscReal :: liquid_pressure, temperature
+  PetscReal :: ice_saturation, liquid_saturation, gas_saturation
+  PetscReal :: liquid_relative_perm
+  PetscReal :: dsl_pl, dsl_temp
+  PetscReal :: dsg_pl, dsg_temp
+  PetscReal :: dsi_pl, dsi_temp
+  PetscReal :: dkr_pl
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  PetscReal :: alpha, lambda, m, n
+  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dkr_pc
+  PetscReal :: dkr_Se, power
+  PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
+  PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: function_A, function_B
+  PetscReal :: pc_il, gamma, pc_il_alpha, pc_il_alpha_n, Se_temp
+  PetscReal :: one_plus_pc_il_alpha_n
+  PetscReal :: dfunc_A_temp
+  PetscReal :: dfunc_B_pl
+  PetscReal :: liq_sat_one_over_m, dkr_ds_liq, dkr_temp
+  PetscReal :: pth, dSe_pc_at_pth
+  PetscReal, parameter :: den_ice = 9.167d2 !in kg/m3 at 273.15K
+  PetscReal, parameter :: heat_of_fusion = 3.34d5 !in J/kg at 273.15K
+  PetscReal, parameter :: interfacial_tensions_ratio = 2.33
+  PetscReal, parameter :: T_0 = 273.15d0 !in K
+  
+  dsl_pl = 0.d0
+  dsl_temp = 0.d0
+  dsg_pl = 0.d0
+  dsg_temp = 0.d0
+  dsi_pl = 0.d0
+  dsi_temp = 0.d0
+  dkr_pl = 0.d0
+  dkr_temp = 0.d0
+  dkr_ds_liq = 0.d0
+  
+  ! compute saturation
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      if (liquid_pressure >= option%reference_pressure) then
+        function_B = 1.d0
+        dfunc_B_pl = 0.d0
+      else
+        alpha = saturation_function%alpha
+        pc = option%reference_pressure - liquid_pressure
+        m = saturation_function%m
+        n = 1.d0/(1.d0 - m)
+        pc_alpha = pc*alpha
+        pc_alpha_n = pc_alpha**n
+        one_plus_pc_alpha_n = 1.d0 + pc_alpha_n
+        Se = one_plus_pc_alpha_n**(-m)
+        dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
+        if (pc >= pth) then
+          dSe_pc_at_pth = -m*n*(1.d0 + (alpha*pth)**n)**(-1.d0-m)*(alpha**n*pth**(n-1.d0))
+          Se = (pc - 1.d8)*dSe_pc_at_pth
+          dSe_pc = dSe_pc_at_pth
+        ! write (*,*) option%myrank, 'pc:', pc, 'Se:', Se, 'dSe_pc', dSe_pc 
+        endif 
+        function_B = 1.d0/Se
+        dfunc_B_pl = 1.d0/(Se**(2.d0))*dSe_pc        
+      endif
+      if (temperature >= 0.d0) then
+        function_A = 1.d0
+        dfunc_A_temp = 0.d0
+      else
+        gamma = den_ice*heat_of_fusion*interfacial_tensions_ratio
+        pc_il = gamma*(-(temperature))/T_0
+        alpha = saturation_function%alpha
+        m = saturation_function%m
+        n = 1.d0/(1.d0 - m)
+        pc_il_alpha = pc_il*alpha
+        pc_il_alpha_n = pc_il_alpha**n
+        one_plus_pc_il_alpha_n = 1.d0 + pc_il_alpha_n
+        Se_temp = one_plus_pc_il_alpha_n**(-m)
+        function_A = 1.d0/Se_temp
+        dfunc_A_temp = (gamma/T_0)*1.d0/(Se_temp**(2.d0))*(-m)* &
+                       ((one_plus_pc_il_alpha_n)**(-m - 1.d0))*n* &
+                       (pc_il**(n - 1.d0))*(alpha**n)
+      endif           
+    case default
+      option%io_buffer = 'Ice module only supports Van Genuchten'
+      call printErrMsg(option)
+  end select
+  
+  liquid_saturation = 1.d0/(function_A + function_B - 1.d0)
+  gas_saturation = liquid_saturation*(function_B - 1.d0)
+  ice_saturation = liquid_saturation*(function_A - 1.d0)
+
+  dsl_pl = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_B_pl)
+  dsl_temp = - 1.d0/(function_A + function_B - 1.d0)**(2.d0)*(dfunc_A_temp)
+  
+  dsg_pl = dsl_pl*(function_B - 1.d0) + liquid_saturation*dfunc_B_pl
+  dsg_temp = dsl_temp*(function_B - 1.d0)
+  
+  dsi_pl = dsl_pl*(function_A - 1.d0)
+  dsi_temp = dsl_temp*(function_A - 1.d0) + liquid_saturation*dfunc_A_temp
+  
+  if (liquid_saturation > 1.d0) then
+    print *, option%myrank, 'vG Liquid Saturation > 1:', liquid_saturation
+  else if (liquid_saturation < 0.d0) then
+    print *, option%myrank, 'vG Liquid Saturation < 0:', liquid_saturation
+  endif
+
+  if (gas_saturation > 1.d0) then
+    print *, option%myrank, 'vG Gas Saturation > 1:', gas_saturation
+  else if (liquid_saturation < 0.d0) then
+    print *, option%myrank, 'vG Gas Saturation < 0:', gas_saturation
+  endif
+ 
+  if (ice_saturation > 1.d0) then
+    print *, option%myrank, 'vG Ice Saturation > 1:', ice_saturation
+  else if (liquid_saturation < 0.d0) then
+    print *, option%myrank, 'vG Ice Saturation < 0:', ice_saturation
+  endif
+
+  select case(saturation_function%permeability_function_itype)
+    case(MUALEM)
+      one_over_m = 1.d0/m
+      liq_sat_one_over_m = liquid_saturation**one_over_m
+      liquid_relative_perm = sqrt(liquid_saturation)* &
+                             (1.d0 - (1.d0 - liq_sat_one_over_m)**m)**2.d0
+      if (liquid_saturation == 1.d0) then
+        dkr_ds_liq = 0.d0
+      else
+        dkr_ds_liq = 0.5d0*liquid_relative_perm/liquid_saturation + &
+                     2.d0*liquid_saturation**(one_over_m - 0.5d0)* &
+                     (1.d0 - liq_sat_one_over_m)**(m - 1.d0)* &
+                     (1.d0 - (1.d0 - liq_sat_one_over_m)**m)
+      endif
+        dkr_pl = dkr_ds_liq*dsl_pl
+        dkr_temp = dkr_ds_liq*dsl_temp
+    case default
+      option%io_buffer = 'Ice module only supports Mualem' 
+      call printErrMsg(option)
+  end select
+  
+!  write(*,*) 'rank:', option%myrank, 'sl:', liquid_saturation, &
+!  'sg:', gas_saturation, 'si:', ice_saturation, 'dsl_pl:', dsl_pl, &
+! 'dsl_temp:', dsl_temp, 'dsg_pl:', dsg_pl, 'dsg_temp:', dsg_temp, &
+!  'dsi_pl:', dsi_pl, 'dsi_temp:', dsi_temp, 'kr:', liquid_relative_perm, &
+!  'dkr_pl:', dkr_pl, 'dkr_temp:', dkr_temp
+
+end subroutine SatFuncImplicitComputeIce
+
+! ************************************************************************** !
+!
+! SatFromCapPressVG: Evaluates the saturation function for given 
+!                    capillary pressure value for van Genuchten function
+!                    and the derivative
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+
+subroutine SatFromCapPressVG(alpha,lambda,Pc,S,dS)
+
+  implicit none
+  
+  PetscReal ::  alpha, lambda, gamma
+  PetscReal :: Pc, S, dS
+  
+  gamma = 1.d0/(1.d0 - lambda)
+  if (Pc > 0.d0) then
+    S = (1.d0 + (alpha*Pc)**gamma)**(-lambda)
+    dS = (-lambda)*((1.d0 + (alpha*Pc)**gamma)**(-lambda - 1.d0))* &
+         (gamma*alpha*(alpha*Pc)**(gamma - 1.d0))
+  else
+    S = 1.d0
+    dS = 0.d0
+  endif
+   
+end subroutine SatFromCapPressVG
+
+! ************************************************************************** !
+!
+! CapFromSatVG: Evaluates the capillary pressure for given 
+!               saturation value using inverse of van Genuchten function
+!               and the derivative of the inverse function at that value.
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+
+subroutine CapFromSatVG(alpha,lambda,S,Pc,dSinv)
+
+  implicit none
+  
+  PetscReal :: alpha, lambda, gamma
+  PetscReal :: S, Pc, dSinv
+  
+  gamma = 1.d0/(1.d0 - lambda)
+  if (S == 1) then
+    Pc = 0.d0
+    dPc = 0.d0
+  else
+    Pc = 1.d0/alpha*((S)**(-1.d0/lambda) - 1.d0)**(1.d0/gamma)
+    dSinv = 1.d0/alpha*1.d0/gamma*((S**(-1.d0/lambda) - 1.d0)**(1.d0/gamma - &
+            1.d0))*(-1.d0/lambda)*(S**(-1.d0/lambda - 1.d0))
+  endif
+
+end subroutine CapFromSatVG
+
+
+
 ! ************************************************************************** !
 !
 ! SatFuncGetRelPermFromSat: Calculates relative permeability from
