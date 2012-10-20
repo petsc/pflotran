@@ -1,0 +1,43 @@
+-- GENERIC: pH --
+      Max:  8.9770745122836E+00
+      Min:  8.9770745122836E+00
+     Mean:  8.9770745122836E+00
+        1:  8.9770745122836E+00
+-- CONCENTRATION: Total H+ --
+      Max: -1.0049937256527E-05
+      Min: -1.0049937256527E-05
+     Mean: -1.0049937256527E-05
+        1: -1.0049937256527E-05
+-- CONCENTRATION: Total HCO3- --
+      Max:  1.0049937481105E-05
+      Min:  1.0049937481105E-05
+     Mean:  1.0049937481105E-05
+        1:  1.0049937481105E-05
+-- CONCENTRATION: Total Ca++ --
+      Max:  1.0049937500754E-05
+      Min:  1.0049937500754E-05
+     Mean:  1.0049937500754E-05
+        1:  1.0049937500754E-05
+-- VOLUME_FRACTION: Calcite VF --
+      Max:  1.9999999907780E-01
+      Min:  1.9999999907780E-01
+     Mean:  1.9999999907780E-01
+        1:  1.9999999907780E-01
+-- RATE: Calcite Rate --
+      Max: -9.9874100649116E-08
+      Min: -9.9874100649116E-08
+     Mean: -9.9874100649116E-08
+        1: -9.9874100649116E-08
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:  1.0000000000000E+00
+        1:         1
+-- SOLUTION: Transport --
+   Time (seconds):  1.3428869247437E+00
+   Time Steps:          500
+   Newton Iterations:         1000
+   Solver Iterations:         1000
+   Time Step Cuts:            0
+   Solution 2-Norm:  1.3918038420251E-05
+   Residual 2-Norm:  9.9683008738046E-18

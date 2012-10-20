@@ -97,7 +97,7 @@ OUTPUT
 :  FORMAT TECPLOT POINT
   FORMAT TECPLOT BLOCK
   FORMAT HDF5
-  PROCESSOR_ID
+  :PROCESSOR_ID
 /
 
 : == times ====================================================================

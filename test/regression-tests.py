@@ -6,6 +6,7 @@
 #
 
 from __future__ import print_function
+from __future__ import division
 
 import argparse
 from collections import deque
@@ -47,6 +48,10 @@ class RegressionTest(object):
         self._generic_type = None
         self._discrete_tolerance = None
         self._discrete_type = None
+        self._rate_tolerance = None
+        self._rate_type = None
+        self._volume_fraction_tolerance = None
+        self._volume_fraction_type = None
         self._num_failed = 0
 
     def __str__(self):
@@ -79,7 +84,12 @@ class RegressionTest(object):
         return self._test_name
 
     def run(self, executable, dry_run, verbose):
-        # need some os specific magic here...?
+        # TODO(bja) : need to handle parallel runs.... pass platform
+        # dependent mpiexec in from the command line, --mpiexec, but
+        # read np in from the test section of the config file, i.e.:
+        #
+        # [1d-tracer]
+        # np = 4
         input_file_name = self._test_name + '.' + self._input_suffix
         command = "{0} ".format(executable)
         if self._input_arg != None:
@@ -261,60 +271,75 @@ class RegressionTest(object):
         return section_status
 
     def _compare_values(self, name, data_type, previous, current):
+        """
+        NOTE(bja): previous and current come into this function as
+        strings. We don't know if they should be floats or ints (or
+        possibly strings) until we know what the data type is. For
+        'discrete' or 'solution' variables, we have to do further work
+        to figure it out!
+        """
         status = 0
+        comparison_type = None
+        tolerance = None
         #print("compare_values: {0} {1}".format(name, data_type))
         if data_type.lower() == "concentration":
-            status = self._compare_concentration(name, previous, current)
+            comparison_type = self._concentration_type
+            tolerance = self._concentration_tolerance
+        elif data_type.lower() == "generic":
+            comparison_type = self._generic_type
+            tolerance = self._generic_tolerance
+        elif data_type.lower() == "rate":
+            comparison_type = self._rate_type
+            tolerance = self._rate_tolerance
+        elif data_type.lower() == "volume_fraction":
+            comparison_type = self._volume_fraction_type
+            tolerance = self._volume_fraction_tolerance
         elif data_type.lower() == "solution":
             status = self._compare_solution(name, previous, current)
-        elif data_type.lower() == "generic":
-            status = self._compare_generic(name, previous, current)
         elif data_type.lower() == "discrete":
             status = self._compare_discrete(name, previous, current)
-        elif data_type.lower() == "rate":
-            status = self._compare_rate(name, previous, current)
-        elif data_type.lower() == "volume_fraction":
-            status = self._compare_volume_fraction(name, previous, current)
         else:
             print("WARNING: the data type '{0}' for '{1}' is not a known "
                   "type.".format(data_type, name))
-        return status
 
-    def _compare_concentration(self, name, previous, current):
-        previous = float(previous)
-        current = float(current)
-        if self._concentration_type == "absolute":
-            delta = math.fabs(previous - current)
-        elif self._concentration_type == "relative":
-            delta = math.fabs(previous - current) / previous
-        elif self._concentration_type == "percent":
-            delta = 100.0 * math.fabs(previous - current) / previous
-
-        status = 0
-        if delta > self._concentration_tolerance:
-            status = 1
-            if self._verbose:
-                print("    FAIL: {0} : {1} > {2} [{3}]".format(
-                        name, delta, self._concentration_tolerance,
-                        self._concentration_type))
-        elif self._debug:
-            print("    PASS: {0} : {1} < {2} [{3}]".format(
-                    name, delta, self._concentration_tolerance,
-                    self._concentration_type))
+        if comparison_type == None and tolerance == None:
+            # special check was done in another function, we return
+            # the status from that function
+            pass
+        else:
+            # NOTE(bja): is this a safe place to do the string->float
+            # conversion...?
+            previous = float(previous)
+            current = float(current)
+            if comparison_type == "absolute":
+                delta = math.fabs(previous - current)
+            elif comparison_type == "relative":
+                delta = math.fabs(previous - current) / previous
+            elif comparison_type == "percent":
+                delta = 100.0 * math.fabs(previous - current) / previous
+            else:
+                raise Exception("ERROR: unknown comparison type '{0}' for "
+                                "{1}, {2}".format(comparison_type,
+                                                  name, data_type))
+            if delta > tolerance:
+                status = 1
+                if self._verbose:
+                    print("    FAIL: {0} : {1} > {2} [{3}]".format(
+                            name, delta, tolerance,
+                            comparison_type))
+            elif self._debug:
+                print("    PASS: {0} : {1} <= {2} [{3}]".format(
+                        name, delta, tolerance,
+                        comparison_type))
 
         return status
 
     def _compare_solution(self, name, previous, current):
         return 0
 
-    def _compare_generic(self, name, previous, current):
-        previous = float(previous)
-        current = float(current)
-        return 0
-
     def _compare_discrete(self, name, previous, current):
-        """ NOTE: discrete values are integers, except when we are
-        looking at the mean of a discrete variable. Then we
+        """ NOTE(bja): discrete values are integers, except when we
+        are looking at the mean of a discrete variable. Then we
         may(probably) have a floating point value!
         """
         mean_re = re.compile("Mean")
@@ -332,9 +357,9 @@ class RegressionTest(object):
         if self._discrete_type == "absolute":
             delta = previous - current
         elif self._discrete_type == "relative":
-            delta = float(previous - current) / previous
+            delta = abs(previous - current) / previous
         elif self._discrete_type == "percent":
-            delta = 100.0 * float(previous - current) / previous
+            delta = 100.0 * abs(previous - current) / previous
 
         status = 0
         if delta > self._discrete_tolerance:
@@ -348,12 +373,6 @@ class RegressionTest(object):
                     name, delta, self._discrete_tolerance, self._discrete_type))
 
         return status
-
-    def _compare_rate(self, name, previous, current):
-        return 0
-
-    def _compare_volume_fraction(self, name, previous, current):
-        return 0
 
     def _set_executable_args(self, executable_args):
         if "input arg" in executable_args:
@@ -566,7 +585,7 @@ class RegressionTestManager(object):
         Read the configuration file.
 
         Sections : The config file will have know sections:
-        "executable", "suites", "test-criteria".
+        "executable", "suites", "default-test-criteria".
 
         All other sections are assumed to be test names.
         """
