@@ -136,6 +136,7 @@ PetscInt, parameter :: CONDUCTANCE_BC = 13
 PetscInt, parameter :: UNIT_GRADIENT_BC = 14
 PetscInt, parameter :: SATURATION_BC = 15
 PetscInt, parameter :: DISTRIBUTED_VOLUMETRIC_RATE_SS = 16
+PetscInt, parameter :: DISTRIBUTED_MASS_RATE_SS = 17
 PetscInt, parameter :: WELL_SS = 100
 
 ! source/sink scaling options

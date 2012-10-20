@@ -851,8 +851,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
         if (associated(coupler%flow_condition%rate)) then
 
           select case(coupler%flow_condition%rate%itype)
-            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS,DISTRIBUTED_VOLUMETRIC_RATE_SS)
-
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS, &
+                 DISTRIBUTED_VOLUMETRIC_RATE_SS,DISTRIBUTED_MASS_RATE_SS)
               select case(option%iflowmode)
                 case(RICHARDS_MODE)
                   allocate(coupler%flow_aux_real_var(1,num_connections))
@@ -1270,7 +1270,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
                   call PatchScaleSourceSink(patch,coupler,option)
-                case (DISTRIBUTED_VOLUMETRIC_RATE_SS)
+                case (DISTRIBUTED_VOLUMETRIC_RATE_SS,DISTRIBUTED_MASS_RATE_SS)
                   call PatchUpdateDistributedSourceSinkAuxVars(patch,coupler,option)
               end select
             endif
