@@ -261,7 +261,7 @@ class RegressionTest(object):
             elif k in current_section:
                 gold = gold_section[k]
                 current = current_section[k]
-                name_str = name + " --> " + k
+                name_str = name + ":" + k
                 status = self._compare_values(name_str, data_type,
                                               gold, current)
                 section_status += status
@@ -281,98 +281,132 @@ class RegressionTest(object):
         status = 0
         comparison_type = None
         tolerance = None
-        #print("compare_values: {0} {1}".format(name, data_type))
+
         if data_type.lower() == "concentration":
+            previous = float(previous)
+            current = float(current)
             comparison_type = self._concentration_type
             tolerance = self._concentration_tolerance
         elif data_type.lower() == "generic":
+            previous = float(previous)
+            current = float(current)
             comparison_type = self._generic_type
             tolerance = self._generic_tolerance
         elif data_type.lower() == "rate":
+            previous = float(previous)
+            current = float(current)
             comparison_type = self._rate_type
             tolerance = self._rate_tolerance
         elif data_type.lower() == "volume_fraction":
+            previous = float(previous)
+            current = float(current)
             comparison_type = self._volume_fraction_type
             tolerance = self._volume_fraction_tolerance
         elif data_type.lower() == "solution":
-            status = self._compare_solution(name, previous, current)
+            previous, current, comparison_type, tolerance = \
+                self._compare_solution(name, previous, current)
         elif data_type.lower() == "discrete":
-            status = self._compare_discrete(name, previous, current)
+            previous, current, comparison_type, tolerance = \
+                self._compare_discrete(name, previous, current)
         else:
             print("WARNING: the data type '{0}' for '{1}' is not a known "
                   "type.".format(data_type, name))
 
-        if comparison_type == None and tolerance == None:
-            # special check was done in another function, we return
-            # the status from that function
-            pass
-        else:
-            # NOTE(bja): is this a safe place to do the string->float
-            # conversion...?
-            previous = float(previous)
-            current = float(current)
-            if comparison_type == "absolute":
-                delta = math.fabs(previous - current)
-            elif comparison_type == "relative":
-                delta = math.fabs(previous - current) / previous
-            elif comparison_type == "percent":
-                delta = 100.0 * math.fabs(previous - current) / previous
+        if comparison_type == "absolute":
+            delta = previous - current
+        elif comparison_type == "relative" or comparison_type == "percent":
+            if previous != 0:
+                delta = abs(previous - current) / previous
+            elif current != 0:
+                delta = abs(previous - current) / current
             else:
-                raise Exception("ERROR: unknown comparison type '{0}' for "
-                                "{1}, {2}".format(comparison_type,
-                                                  name, data_type))
-            if delta > tolerance:
-                status = 1
-                if self._verbose:
-                    print("    FAIL: {0} : {1} > {2} [{3}]".format(
-                            name, delta, tolerance,
-                            comparison_type))
-            elif self._debug:
-                print("    PASS: {0} : {1} <= {2} [{3}]".format(
+                # both are zero
+                delta = 0.0
+            if comparison_type == "percent":
+                delta *= 100.0
+        else:
+            raise Exception("ERROR: unknown test comparison_type '{0}' for "
+                            "variable '{1}, {2}.'".format(comparison_type,
+                                                          name, data_type))
+        if delta > tolerance:
+            status = 1
+            if self._verbose:
+                print("    FAIL: {0} : {1} > {2} [{3}]".format(
                         name, delta, tolerance,
                         comparison_type))
+        elif self._debug:
+            print("    PASS: {0} : {1} <= {2} [{3}]".format(
+                    name, delta, tolerance,
+                    comparison_type))
 
         return status
 
     def _compare_solution(self, name, previous, current):
-        return 0
+        # NOTE(bja): hard coding this for now until we decide how do
+        # deal with all the different requirements.
+        section = name.split(':')[0]
+        param = name.split(':')[1]
+        param = param.strip()
+        if param == "Time (seconds)":
+            previous = float(previous)
+            current = float(current)
+            tolerance = self._time_tolerance
+            comparison_type = self._time_type
+        elif param == "Time Steps":
+            previous = int(previous)
+            current = int(current)
+            tolerance = self._discrete_tolerance
+            comparison_type = self._discrete_type
+        elif param == "Newton Iterations":
+            previous = int(previous)
+            current = int(current)
+            tolerance = self._discrete_tolerance
+            comparison_type = self._discrete_type
+        elif param == "Solver Iterations":
+            previous = int(previous)
+            current = int(current)
+            tolerance = self._discrete_tolerance
+            comparison_type = self._discrete_type
+        elif param == "Time Step Cuts":
+            previous = int(previous)
+            current = int(current)
+            tolerance = self._discrete_tolerance
+            comparison_type = self._discrete_type
+        elif param == "Solution 2-Norm":
+            previous = float(previous)
+            current = float(current)
+            tolerance = self._generic_tolerance
+            comparison_type = self._generic_type
+        elif param == "Residual 2-Norm":
+            previous = float(previous)
+            current = float(current)
+            tolerance = self._generic_tolerance
+            comparison_type = self._generic_type
+        else:
+            raise Exception("ERROR: unknown variable '{0}' in solution "
+                  "section '{1}'".format(param, section))
+
+        return previous, current, comparison_type, tolerance
 
     def _compare_discrete(self, name, previous, current):
-        """ NOTE(bja): discrete values are integers, except when we
-        are looking at the mean of a discrete variable. Then we
-        may(probably) have a floating point value!
-        """
+        # NOTE(bja): discrete values are integers, except when we are
+        # looking at the mean of a discrete variable. Then we
+        # may(probably) have a floating point value!
+
         mean_re = re.compile("Mean")
         have_mean = mean_re.search(name)
         if not have_mean:
-            #print("compare_discrete: converting to int")
             previous = int(previous)
             current = int(current)
+            tolerance = self._discrete_tolerance
+            comparison_type = self._discrete_type
         else:
-            #print("compare_discrete: converting to float")
             previous = float(previous)
             current = float(current)
-        #print("previous = {0}  current = {1}".format(previous, current))
+            tolerance = self._generic_tolerance
+            comparison_type = self._generic_type
 
-        if self._discrete_type == "absolute":
-            delta = previous - current
-        elif self._discrete_type == "relative":
-            delta = abs(previous - current) / previous
-        elif self._discrete_type == "percent":
-            delta = 100.0 * abs(previous - current) / previous
-
-        status = 0
-        if delta > self._discrete_tolerance:
-            status = 1
-            if self._verbose:
-                print("    FAIL: {0} : {1} > {2} [{3}]".format(
-                        name, delta, self._discrete_tolerance,
-                        self._discrete_type))
-        elif self._debug:
-            print("    PASS: {0} : {1} <= {2} [{3}]".format(
-                    name, delta, self._discrete_tolerance, self._discrete_type))
-
-        return status
+        return previous, current, comparison_type, tolerance
 
     def _set_executable_args(self, executable_args):
         if "input arg" in executable_args:
@@ -404,6 +438,16 @@ class RegressionTest(object):
                                       default_criteria, test_data)
         self._discrete_type = criteria[1]
         self._discrete_tolerance = criteria[0]
+
+        criteria = self._get_criteria("rate",
+                                      default_criteria, test_data)
+        self._rate_type = criteria[1]
+        self._rate_tolerance = criteria[0]
+
+        criteria = self._get_criteria("volume fraction",
+                                      default_criteria, test_data)
+        self._volume_fraction_type = criteria[1]
+        self._volume_fraction_tolerance = criteria[0]
 
     def _get_criteria(self, key, default_criteria, test_data):
         criteria = None
