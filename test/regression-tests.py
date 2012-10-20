@@ -554,7 +554,9 @@ class RegressionTestManager(object):
         # running a large group of tests and the last one causes an
         # exception, then we will exit having run a bunch of tests,
         # but not checked any of them. We have to fix the last test
-        # and then rerun everything before we get any results!
+        # and then rerun everything before we get any results! On
+        # buildbot, we'd have no results to report, even though only a
+        # single test may have failed!
         print(50 * '-')
         if not dry_run:
             print("Checking test results:")
@@ -882,6 +884,9 @@ def main(options):
     start = time.time()
     report = {}
     for f in config_file_list:
+        # TODO(bja): add a try block inside this loop so that if a
+        # single test throws an exception in a large batch of tests,
+        # we can recover and at least try running the other config files.
         print(70 * '-')
         if options.verbose:
             print("Running tests from config file:\n    {0}".format(f))
