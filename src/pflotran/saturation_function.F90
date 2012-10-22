@@ -990,7 +990,7 @@ end subroutine ComputeInvSatVG
 ! date: 10/16/12
 !
 ! ************************************************************************** !
-subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val)
+subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val,dfunc_val)
 
   implicit none
   
@@ -999,7 +999,7 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val)
   PetscReal :: temp_term, PC 
   PetscReal :: sat, dsat, sat_term
   PetscReal :: sat_inv, dsat_inv
-  PetscReal :: sat_PC, dsat_PC
+  PetscReal :: sat_PC, dsat_PC, dfunc_val
   PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
   PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
   PetscReal, parameter :: T_0 = 273.15         ! in K
@@ -1015,6 +1015,7 @@ subroutine CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,s_i,func_val)
   PC = temp_term + sat_inv
   call ComputeSatVG(alpha,lambda,PC,sat_PC,dsat_PC)
   func_val = (1.d0 - s_i)*sat - sat_PC
+  dfunc_val = -sat - dsat_PC*dsat_inv*(1.d0 - sat)
   
 end subroutine CalculateImplicitIceFunc
 
@@ -1032,23 +1033,21 @@ subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
   implicit none
   PetscReal :: alpha, lambda
   PetscReal :: Pcgl, T, s_g, s_i, s_l
-  PetscReal :: func_val, func_val_pert, dfunc_val 
+  PetscReal :: func_val, dfunc_val 
   PetscReal :: x, x_new, sat, dsat
   PetscInt :: iter
-  PetscReal, parameter :: delta = 1.d-5
-  PetscReal, parameter :: eps = 1.d-8
-  PetscInt, parameter :: maxit = 100
+  PetscReal, parameter :: eps = 1.d-12
+  PetscInt, parameter :: maxit = 10
   
   
-  if (T > 0.d0) then
+  if (T >= 0.d0) then
     x = 0.d0
   else
-    x = 1.d-1          ! Initial guess
+    x = 5.d-1          ! Initial guess
     do iter = 1,maxit
-      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,func_val)
-      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,(x+x*delta),func_val_pert)
-      dfunc_val = (func_val_pert - func_val)/(delta*x)
-      ! print *, 'iteration:', iter, 'value:', x, 'inormr:', abs(func_val)
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,func_val,dfunc_val)
+!       print *, 'iteration:', iter, 'value:', x, 'inormr:', abs(func_val), &
+!      'dfunc_val:', dfunc_val, 'dfunc_val_num:', dfunc_val_num
       if (abs(func_val) < eps) exit
       x_new = x - func_val/dfunc_val
       if (x_new >= 1.d0) then
@@ -1063,10 +1062,72 @@ subroutine CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
   
   call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
   s_i = x
-  s_l = (1 - x)*sat
-  s_g = 1 - s_l - s_i
+  s_l = (1.d0 - x)*sat
+  s_g = 1.d0 - s_l - s_i
 
 end subroutine CalcPhasePartitionIceNewt
+
+! ************************************************************************** !
+!
+! CalcPhasePartitionIceBis: Solves the implicit constitutive relation
+!                             to calculate saturations of ice, liquid 
+!                             and vapor phases using bisection method
+! author: Satish Karra
+! date: 10/16/12
+!
+! ************************************************************************** !
+subroutine CalcPhasePartitionIceBis(alpha,lambda,Pcgl,T,s_g,s_i,s_l)
+
+  implicit none
+  
+  PetscReal :: alpha, lambda
+  PetscReal :: Pcgl, T, s_g, s_i, s_l
+  PetscReal :: max_s, min_s
+  PetscReal :: x, F_max_s, F_min_s, sol, F_x
+  PetscReal :: sat, dsat
+  PetscInt :: i
+  PetscReal :: dF_min_s, dF_max_s, dF_x
+  PetscInt, parameter :: maxit = 100
+  PetscReal, parameter :: tol = 1.d-12
+  
+  max_s = 1.d0
+  min_s = 0.d0
+  
+  if (T >= 0.d0) then
+    sol = 0.d0
+  else
+    do i = 1, maxit
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,min_s,F_min_s,dF_min_s)
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,max_s,F_max_s,dF_max_s)
+      if (abs(F_min_s) < tol) then
+        sol = min_s
+        exit
+      endif
+      if (abs(F_max_s) < tol) then
+        sol = max_s
+        exit
+      endif
+      x = min_s + (max_s - min_s)/2.d0
+      call CalculateImplicitIceFunc(alpha,lambda,Pcgl,T,x,F_x,dF_x)
+      ! print *, i, x, F_x, max_s, min_s
+      if (abs(F_x) < tol) then
+        sol = x
+        exit
+      endif
+      if (F_min_s*F_x > 0.d0) then
+        min_s = x
+      else
+        max_s = x
+      endif
+    enddo
+  endif
+    
+  call ComputeSatVG(alpha,lambda,Pcgl,sat,dsat)
+  s_i = sol
+  s_l = (1.d0 - sol)*sat
+  s_g = 1.d0 - s_l - s_i
+
+end subroutine  CalcPhasePartitionIceBis
 
 ! ************************************************************************** !
 !
@@ -1097,7 +1158,6 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   PetscReal, parameter :: beta = 2.33          ! dimensionless -- ratio of surf. tens
   PetscReal, parameter :: rho_i = 9.167d2      ! in kg/m^3
   PetscReal, parameter :: T_0 = 273.15         ! in K
-  PetscReal, parameter :: delta = 1.d-5
 
 #if 0
   PetscReal :: dsi_dpl_num, dsi_dT_num
@@ -1105,6 +1165,7 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   PetscReal :: dsl_dpl_num, dsl_dT_num
   PetscReal :: s_g_pinc, s_i_pinc, s_l_pinc
   PetscReal :: s_g_Tinc, s_i_Tinc, s_l_Tinc
+  PetscReal, parameter :: delta = 1.d-8
 #endif
 
   dsi_dpl = 0.d0
@@ -1158,34 +1219,30 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
   dsl_dT = -dsi_dT*sat
   dsg_dT = -dsi_dT - dsl_dT
 
-#if 0      
+#if 0     
   ! Numerical derivatives      
+  
   call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl*(1.d0 + delta),T,s_g_pinc, &
                                  s_i_pinc,s_l_pinc)
-  call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T*(1.d0 + delta),s_g_Tinc, &
-                                 s_i_Tinc,s_l_Tinc)
-
-  
-  dsi_dT_num = (s_i_Tinc - s_i)/(T*delta)
-  dsg_dT_num = (s_g_Tinc - s_g)/(T*delta)
-  dsl_dT_num = (s_l_Tinc - s_l)/(T*delta)
-  
+                                 
+  if (T >= 0.d0) then
+    dsi_dT_num = 0.d0
+    dsg_dT_num = 0.d0
+    dsl_dT_num = 0.d0 
+  else                                 
+    call CalcPhasePartitionIceNewt(alpha,lambda,Pcgl,T*(1.d0 + delta),s_g_Tinc, &
+                                   s_i_Tinc,s_l_Tinc)
+    dsi_dT_num = (s_i_Tinc - s_i)/(T*delta)
+    dsg_dT_num = (s_g_Tinc - s_g)/(T*delta)
+    dsl_dT_num = (s_l_Tinc - s_l)/(T*delta)
+  endif
                                    
   dsi_dpl_num = (s_i_pinc - s_i)/(delta*Pcgl)*(-1.d0) ! -1.d0 factor for dPcgl/dpl
   dsg_dpl_num = (s_g_pinc - s_g)/(delta*Pcgl)*(-1.d0)
   dsl_dpl_num = (s_l_pinc - s_l)/(delta*Pcgl)*(-1.d0) 
   
-  dsi_dpl = dsi_dpl_num
-  dsg_dpl = dsg_dpl_num
-  dsl_dpl = dsl_dpl_num
-  
-  dsi_dT = dsi_dT_num
-  dsg_dT = dsg_dT_num
-  dsl_dT = dsl_dT_num
-   
-  
   print *, 'analytical-press:', 'dsg_dpl:', dsg_dpl, &
-           'dsi_dpl:', dsi_dpl, 'dsl_dpl:' dsl_dpl 
+           'dsi_dpl:', dsi_dpl, 'dsl_dpl:', dsl_dpl 
   print *, 'numerical-press:' , 'dsg_dpl:', dsg_dpl_num, &
            'dsi_dpl:', dsi_dpl_num, 'dsl_dpl:', dsl_dpl_num
   
@@ -1193,7 +1250,16 @@ subroutine CalcPhasePartitionIceDeriv(alpha,lambda,Pcgl,T,s_g,s_i,s_l, &
            'dsi_dT:', dsi_dT, 'dsl_dT:', dsl_dT
   print *, 'numerical-temp:', 'dsg_dT:', dsg_dT_num, &
            'dsi_dT:', dsi_dT_num, 'dsl_dT:', dsl_dT_num
-#endif  
+ 
+  dsi_dpl = dsi_dpl_num
+  dsg_dpl = dsg_dpl_num
+  dsl_dpl = dsl_dpl_num
+  
+  dsi_dT = dsi_dT_num
+  dsg_dT = dsg_dT_num
+  dsl_dT = dsl_dT_num
+#endif
+   
 
 end subroutine CalcPhasePartitionIceDeriv 
 
@@ -1291,7 +1357,7 @@ implicit none
   'sg:', s_g, 'si:', s_i, 'dsl_pl:', dsl_dpl, &
   'dsl_temp:', dsl_dT, 'dsg_pl:', dsg_dpl, 'dsg_temp:', dsg_dT, &
   'dsi_pl:', dsi_dpl, 'dsi_temp:', dsi_dT, 'kr:', kr, &
-  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT  
+  'dkr_pl:', dkr_dpl, 'dkr_temp:', dkr_dT, 'pl:', pl, 'T:', T  
 #endif
 
 end subroutine SatFuncComputeIceImplicit

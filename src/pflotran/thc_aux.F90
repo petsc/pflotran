@@ -567,7 +567,6 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
                                     saturation_function, p_th, option)
 #endif                                  
 
-
 #if 1
   call SatFuncComputeIceImplicit(global_aux_var%pres(1), & 
                                  global_aux_var%temp(1), ice_saturation, &
