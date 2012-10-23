@@ -313,7 +313,7 @@ class RegressionTest(object):
                   "type.".format(data_type, name))
 
         if comparison_type == "absolute":
-            delta = previous - current
+            delta = abs(previous - current)
         elif comparison_type == "relative" or comparison_type == "percent":
             if previous != 0:
                 delta = abs(previous - current) / previous
@@ -726,7 +726,7 @@ class RegressionTestManager(object):
 
         if len(invalid_user_names) != 0:
             raise Exception("ERROR : {0} : unknown suite or test provided "
-                            "on command line : {0}".format(
+                            "on command line : {1}".format(
                     self._config_filename, invalid_user_names))
 
         return u_suites, u_tests
