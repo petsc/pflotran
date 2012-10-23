@@ -39,6 +39,7 @@ class RegressionTest(object):
         self._input_arg = None
         self._input_suffix = None
         self._output_arg = None
+        self._np = None
         self._test_name = None
         self._time_tolerance = None
         self._time_type = None
@@ -80,18 +81,35 @@ class RegressionTest(object):
 
         self._set_test_criteria(default_criteria, test_data)
 
+        if 'np' in test_data:
+            self._np = test_data['np']
+
     def name(self):
         return self._test_name
 
-    def run(self, executable, dry_run, verbose):
-        # TODO(bja) : need to handle parallel runs.... pass platform
-        # dependent mpiexec in from the command line, --mpiexec, but
-        # read np in from the test section of the config file, i.e.:
-        #
-        # [1d-tracer]
-        # np = 4
+    def run(self, mpiexec, executable, dry_run, verbose):
+        # TODO(bja) : need to think more about the desired behavior if
+        # mpiexec is passed for a serial test or not passed for a
+        # parallel test.
+        command = ""
+        if mpiexec is not None:
+            if self._np is not None:
+                command += "{0} -np {1} ".format(mpiexec, self._np)
+            else:
+                # TODO(bja): should we run as mpiexec -np 1 for this case?
+                if verbose:
+                    print("WARNING : mpiexec specified for test '{0}', "
+                          "but the test section does not specify the number "
+                          "of parallel jobs! Running test as "
+                          "serial.".format(self._test_name))
+        else:
+            if self._np is not None:
+                raise Exception("ERROR : test '{0}' : np was specified in "
+                                "the test data, but mpiexec was not "
+                                "provided.".format(self._test_name))
+
+        command += "{0} ".format(executable)
         input_file_name = self._test_name + '.' + self._input_suffix
-        command = "{0} ".format(executable)
         if self._input_arg != None:
             command += "{0} {1} ".format(self._input_arg, input_file_name)
         if self._output_arg != None:
@@ -529,7 +547,7 @@ class RegressionTestManager(object):
                                                             user_tests)
         self._create_tests(user_suites, user_tests)
 
-    def run_tests(self, executable, dry_run, verbose):
+    def run_tests(self, mpiexec, executable, dry_run, verbose):
         print(50 * '-')
         if not dry_run:
             print("Running tests:")
@@ -542,7 +560,7 @@ class RegressionTestManager(object):
             print("{0}... ".format(t._test_name), end='')
             if verbose:
                 print()
-            t.run(executable, dry_run, verbose)
+            t.run(mpiexec, executable, dry_run, verbose)
             if not verbose:
                 print("done.")
             else:
@@ -774,6 +792,9 @@ def commandline_options():
                         help='print the list of tests from the config file '
                         'and exit')
 
+    parser.add_argument('-m', '--mpiexec', nargs=1, default=None,
+                        help='path to the executable for mpiexec on the current machine.')
+
     parser.add_argument('-r', '--recursive-search', nargs='*', default=None,
                         help='recursively search the current directory and '
                         'all sub-directories, using any configuration files '
@@ -872,6 +893,16 @@ def main(options):
             raise Exception("ERROR: executable is not a valid file: "
                             "'{0}'".format(executable))
 
+    # check for mpiexec
+    mpiexec = None
+    if options.mpiexec is not None:
+        # absolute path to the executable
+        mpiexec = os.path.abspath(options.mpiexec[0])
+        # is it a valid file?
+        if not os.path.isfile(mpiexec):
+            raise Exception("ERROR: mpiexec is not a valid file: "
+                            "'{0}'".format(mpiexec))
+
     # config files
     config_file_list = generate_config_file_list(options)
     if len(config_file_list) == 0:
@@ -921,7 +952,8 @@ def main(options):
         if options.list_tests:
             test_manager.display_available_tests()
 
-        test_manager.run_tests(executable,
+        test_manager.run_tests(mpiexec,
+                               executable,
                                options.dry_run,
                                options.verbose)
 
