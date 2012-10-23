@@ -33,6 +33,7 @@ src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.mode1v3
 src/pflotran/pflotran_xcode/.git/*
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/project.xcworkspace/*
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/xcuserdata/*
+src/pflotran/*xcode/*
 src/pims/*.o
 src/pims/*.MOD
 src/pims/build
