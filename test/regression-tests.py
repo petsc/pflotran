@@ -53,6 +53,10 @@ class RegressionTest(object):
         self._rate_type = None
         self._volume_fraction_tolerance = None
         self._volume_fraction_type = None
+        self._pressure_tolerance = None
+        self._pressure_type = None
+        self._saturation_tolerance = None
+        self._saturation_type = None
         self._num_failed = 0
 
     def __str__(self):
@@ -320,6 +324,18 @@ class RegressionTest(object):
             current = float(current)
             comparison_type = self._volume_fraction_type
             tolerance = self._volume_fraction_tolerance
+        elif data_type.lower() == "pressure":
+            previous = float(previous)
+            current = float(current)
+            comparison_type = self._pressure_type
+            tolerance = self._pressure_tolerance
+        elif data_type.lower() == "saturation":
+            # TODO(bja): how do we want to add checks for things like
+            # max saturation <= 1.0, min saturation >= 0?
+            previous = float(previous)
+            current = float(current)
+            comparison_type = self._saturation_type
+            tolerance = self._saturation_tolerance
         elif data_type.lower() == "solution":
             previous, current, comparison_type, tolerance = \
                 self._compare_solution(name, previous, current)
@@ -327,8 +343,10 @@ class RegressionTest(object):
             previous, current, comparison_type, tolerance = \
                 self._compare_discrete(name, previous, current)
         else:
-            print("WARNING: the data type '{0}' for '{1}' is not a known "
-                  "type.".format(data_type, name))
+            # should be an error? We'll fail anyway in the checks
+            # because nothing is set.
+            print("WARNING: the data caterogy '{0}' for '{1}' is not a known "
+                  "data category.".format(data_type, name))
 
         if comparison_type == "absolute":
             delta = abs(previous - current)
@@ -437,6 +455,9 @@ class RegressionTest(object):
             self._output_arg = executable_args["output arg"]
 
     def _set_test_criteria(self, default_criteria, test_data):
+        """
+        Set the test criteria for different categories of variables. 
+        """
         criteria = self._get_criteria("time",
                                       default_criteria, test_data)
         self._time_type = criteria[1]
@@ -466,6 +487,16 @@ class RegressionTest(object):
                                       default_criteria, test_data)
         self._volume_fraction_type = criteria[1]
         self._volume_fraction_tolerance = criteria[0]
+
+        criteria = self._get_criteria("pressure",
+                                      default_criteria, test_data)
+        self._pressure_type = criteria[1]
+        self._pressure_tolerance = criteria[0]
+
+        criteria = self._get_criteria("saturation",
+                                      default_criteria, test_data)
+        self._saturation_type = criteria[1]
+        self._saturation_tolerance = criteria[0]
 
     def _get_criteria(self, key, default_criteria, test_data):
         criteria = None
@@ -743,6 +774,7 @@ class RegressionTestManager(object):
                 invalid_user_names.append("test : '{0}'".format(t))
 
         if len(invalid_user_names) != 0:
+            # exception or print a warning and continue...?
             raise Exception("ERROR : {0} : unknown suite or test provided "
                             "on command line : {1}".format(
                     self._config_filename, invalid_user_names))
@@ -756,10 +788,15 @@ class RegressionTestManager(object):
                 all_tests.append(t)
 
         for t in all_tests:
-            test = RegressionTest()
-            test.setup(self._executable_args, self._default_test_criteria,
-                       self._available_tests[t])
-            self._tests.append(test)
+            try:
+                test = RegressionTest()
+                test.setup(self._executable_args, self._default_test_criteria,
+                           self._available_tests[t])
+                self._tests.append(test)
+            except Exception as e:
+                raise Exception("ERROR : could not create test '{0}' from "
+                                "config file '{1}'. {2}".format(
+                        t, self._config_filename, str(e)))
 
 
 def commandline_options():
