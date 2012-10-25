@@ -32,49 +32,58 @@ class RegressionTest(object):
     """
 
     def __init__(self):
+        # define some constants
+        self._ABSOLUTE = "absolute"
+        self._RELATIVE = "relative"
+        self._PERCENT = "percent"
+        self._TIME = "time"
+        self._CONCENTRATION = "concentration"
+        self._GENERIC = "generic"
+        self._DISCRETE = "discrete"
+        self._RATE = "rate"
+        self._VOLUME_FRACTION = "volume_fraction"
+        self._PRESSURE = "pressure"
+        self._SATURATION = "saturation"
+        self._SOLUTION = "solution"
+        self._TOL_VALUE = 0
+        self._TOL_TYPE = 1
+        # misc test parameters
         self._pprint = pprint.PrettyPrinter(indent=2)
         self._debug = False
-        self._verbose = None
+        self._verbose = False
         self._executable = None
-        self._input_arg = None
-        self._input_suffix = None
-        self._output_arg = None
+        self._input_arg = "-pflotranin"
+        self._input_suffix = "in"
+        self._output_arg = "-output_prefix"
         self._np = None
-        self._timeout = None
-        self._test_name = None
-        self._time_tolerance = None
-        self._time_type = None
-        self._concentration_tolerance = None
-        self._concentration_type = None
-        self._generic_tolerance = None
-        self._generic_type = None
-        self._discrete_tolerance = None
-        self._discrete_type = None
-        self._rate_tolerance = None
-        self._rate_type = None
-        self._volume_fraction_tolerance = None
-        self._volume_fraction_type = None
-        self._pressure_tolerance = None
-        self._pressure_type = None
-        self._saturation_tolerance = None
-        self._saturation_type = None
+        self._timeout = 60.0
         self._num_failed = 0
+        self._test_name = None
+        # assign default tolerances for different classes of variables
+        self._tolerance = {}
+        self._tolerance[self._TIME] = [5.0, self._PERCENT]
+        self._tolerance[self._CONCENTRATION] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._GENERIC] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._DISCRETE] = [0, self._ABSOLUTE]
+        self._tolerance[self._RATE] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._VOLUME_FRACTION] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._PRESSURE] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._SATURATION] = [1.0e-12, self._ABSOLUTE]
 
     def __str__(self):
-        message = "  {0} :\n".format(self._test_name)
-        message += "    test criteria :\n"
-        message += "        time : {0} [{1}]\n".format(
-            self._time_tolerance, self._time_type)
-        message += "        concentration : {0} [{1}]\n".format(
-            self._concentration_tolerance, self._concentration_type)
-        message += "        generic : {0} [{1}]\n".format(
-            self._generic_tolerance, self._generic_type)
-        message += "        discrete : {0} [{1}]\n".format(
-            self._discrete_tolerance, self._discrete_type)
+        message = "  {0} :\n".format(self.name())
+        message += "    timeout = {0}\n".format(self._timeout)
+        message += "    np = {0}\n".format(self._np)
         message += "    executable args :\n"
         message += "        input arg : {0}\n".format(self._input_arg)
         message += "        input suffix : {0}\n".format(self._input_suffix)
         message += "        output arg : {0}\n".format(self._output_arg)
+        message += "    test criteria :\n"
+        for k in self._tolerance:
+            message += "        {0} : {1} [{2}]\n".format(
+                k,
+                self._tolerance[k][self._TOL_VALUE],
+                self._tolerance[k][self._TOL_TYPE])
 
         return message
 
@@ -84,14 +93,7 @@ class RegressionTest(object):
         if executable_args is not None:
             self._set_executable_args(executable_args)
 
-        self._set_test_criteria(default_criteria, test_data)
-
-        if 'np' in test_data:
-            self._np = test_data['np']
-
-        self._timeout = float(timeout[0])
-        if 'timeout' in test_data:
-            self._timeout = float(test_data['timeout'][0])
+        self._set_test_data(default_criteria, test_data, timeout)
 
     def name(self):
         return self._test_name
@@ -121,26 +123,26 @@ class RegressionTest(object):
                     print("WARNING : mpiexec specified for test '{0}', "
                           "but the test section does not specify the number "
                           "of parallel jobs! Running test as "
-                          "serial.".format(self._test_name))
+                          "serial.".format(self.name()))
             command.append(self._np)
         else:
             if self._np is not None:
                 raise Exception("ERROR : test '{0}' : np was specified in "
                                 "the test data, but mpiexec was not "
-                                "provided.".format(self._test_name))
+                                "provided.".format(self.name()))
 
         command.append(executable)
-        input_file_name = self._test_name + '.' + self._input_suffix
+        input_file_name = self.name() + '.' + self._input_suffix
         if self._input_arg != None:
             command.append(self._input_arg)
             command.append(input_file_name)
         if self._output_arg != None:
             command.append(self._output_arg)
-            command.append(self._test_name)
+            command.append(self.name())
 
-        if os.path.isfile(self._test_name + ".regression"):
-            os.rename(self._test_name + ".regression",
-                      self._test_name + ".regression.old")
+        if os.path.isfile(self.name() + ".regression"):
+            os.rename(self.name() + ".regression",
+                      self.name() + ".regression.old")
 
         status = 0
         if dry_run:
@@ -148,7 +150,7 @@ class RegressionTest(object):
         else:
             if verbose:
                 print("    {0}".format(" ".join(command)))
-            run_stdout = open(self._test_name + ".stdout", 'w')
+            run_stdout = open(self.name() + ".stdout", 'w')
             start = time.time()
             proc = subprocess.Popen(command,
                                     shell=False,
@@ -160,7 +162,7 @@ class RegressionTest(object):
                     proc.terminate()
                     time.sleep(0.1)
                     print("ERROR: job '{0}' has exceeded timeout limit of "
-                          "{1} seconds.".format(self._test_name, self._timeout))
+                          "{1} seconds.".format(self.name(), self._timeout))
             status = abs(proc.returncode)
             run_stdout.close()
         return status
@@ -174,7 +176,7 @@ class RegressionTest(object):
         manager can track how many tests succeeded and failed.
         """
         self._verbose = verbose
-        gold_filename = self._test_name + ".regression.gold"
+        gold_filename = self.name() + ".regression.gold"
         if not os.path.isfile(gold_filename):
             print("ERROR: could not find regression test gold file "
                   "'{0}'. If this is a new test, please create "
@@ -184,7 +186,7 @@ class RegressionTest(object):
             with open(gold_filename, 'rU') as gold_file:
                 gold_output = gold_file.readlines()
 
-        current_filename = self._test_name + ".regression"
+        current_filename = self.name() + ".regression"
         if not os.path.isfile(current_filename):
             print("ERROR: could not find regression test file '{0}'."
                   " Please check the standard output file for "
@@ -239,24 +241,24 @@ class RegressionTest(object):
         must exist.
         """
         status = 0
-        gold_name = self._test_name + ".regression.gold"
-        current_name = self._test_name + ".regression"
+        gold_name = self.name() + ".regression.gold"
+        current_name = self.name() + ".regression"
 
         # verify that the gold file exists
         if not os.path.isfile(gold_name):
             raise Exception("ERROR: test '{0}' results can not be updated "
                             "because a gold file does not "
-                            "exist!".format(self._test_name))
+                            "exist!".format(self.name()))
 
         # verify that the regression file exists
         if not os.path.isfile(current_name):
             raise Exception("ERROR: test '{0}' results can not be updated "
                             "because no regression file "
-                            "exists!".format(self._test_name))
+                            "exists!".format(self.name()))
 
         try:
             if verbose:
-                print("  updating test '{0}'... ".format(self._test_name),
+                print("  updating test '{0}'... ".format(self.name()),
                       end='')
             os.rename(current_name, gold_name)
             if verbose:
@@ -281,24 +283,24 @@ class RegressionTest(object):
         file to gold.
         """
         status = 0
-        gold_name = self._test_name + ".regression.gold"
-        current_name = self._test_name + ".regression"
+        gold_name = self.name() + ".regression.gold"
+        current_name = self.name() + ".regression"
 
         # check if the gold file exists already
         if os.path.isfile(gold_name):
             raise Exception("ERROR: test '{0}' was classified as new, "
                             "but a gold file already "
-                            "exists!".format(self._test_name))
+                            "exists!".format(self.name()))
 
         # check that the regression file was created.
         if not os.path.isfile(current_name):
             raise Exception("ERROR: could not create new gold file for "
                             "test '{0}' because no regression file "
-                            "exists!".format(self._test_name))
+                            "exists!".format(self.name()))
 
         try:
             if verbose:
-                print("  creating gold file '{0}'... ".format(self._test_name),
+                print("  creating gold file '{0}'... ".format(self.name()),
                       end='')
 
             os.rename(current_name, gold_name)
@@ -384,7 +386,7 @@ class RegressionTest(object):
             print("    {0} : status : {1}".format(name, section_status))
         return section_status
 
-    def _compare_values(self, name, data_type, previous, current):
+    def _compare_values(self, name, key, previous, current):
         """
         NOTE(bja): previous and current come into this function as
         strings. We don't know if they should be floats or ints (or
@@ -393,56 +395,35 @@ class RegressionTest(object):
         to figure it out!
         """
         status = 0
-        comparison_type = None
+        tolerance_type = None
         tolerance = None
-
-        if data_type.lower() == "concentration":
+        key = key.lower()
+        if (key == self._CONCENTRATION or
+            key == self._GENERIC or
+            key == self._RATE or
+            key == self._VOLUME_FRACTION or
+            key == self._PRESSURE or
+            key == self._SATURATION):
             previous = float(previous)
             current = float(current)
-            comparison_type = self._concentration_type
-            tolerance = self._concentration_tolerance
-        elif data_type.lower() == "generic":
-            previous = float(previous)
-            current = float(current)
-            comparison_type = self._generic_type
-            tolerance = self._generic_tolerance
-        elif data_type.lower() == "rate":
-            previous = float(previous)
-            current = float(current)
-            comparison_type = self._rate_type
-            tolerance = self._rate_tolerance
-        elif data_type.lower() == "volume_fraction":
-            previous = float(previous)
-            current = float(current)
-            comparison_type = self._volume_fraction_type
-            tolerance = self._volume_fraction_tolerance
-        elif data_type.lower() == "pressure":
-            previous = float(previous)
-            current = float(current)
-            comparison_type = self._pressure_type
-            tolerance = self._pressure_tolerance
-        elif data_type.lower() == "saturation":
-            # TODO(bja): how do we want to add checks for things like
-            # max saturation <= 1.0, min saturation >= 0?
-            previous = float(previous)
-            current = float(current)
-            comparison_type = self._saturation_type
-            tolerance = self._saturation_tolerance
-        elif data_type.lower() == "solution":
-            previous, current, comparison_type, tolerance = \
+            tolerance_type = self._tolerance[key][self._TOL_TYPE]
+            tolerance = self._tolerance[key][self._TOL_VALUE]
+        elif key.lower() == self._SOLUTION:
+            previous, current, tolerance_type, tolerance = \
                 self._compare_solution(name, previous, current)
-        elif data_type.lower() == "discrete":
-            previous, current, comparison_type, tolerance = \
+        elif key.lower() == self._DISCRETE:
+            previous, current, tolerance_type, tolerance = \
                 self._compare_discrete(name, previous, current)
         else:
             # should be an error? We'll fail anyway in the checks
             # because nothing is set.
             print("WARNING: the data caterogy '{0}' for '{1}' is not a known "
-                  "data category.".format(data_type, name))
+                  "data category.".format(key, name))
 
-        if comparison_type == "absolute":
+        if tolerance_type == self._ABSOLUTE:
             delta = abs(previous - current)
-        elif comparison_type == "relative" or comparison_type == "percent":
+        elif (tolerance_type == self._RELATIVE or
+              tolerance_type == self._PERCENT):
             if previous != 0:
                 delta = abs(previous - current) / previous
             elif current != 0:
@@ -450,22 +431,22 @@ class RegressionTest(object):
             else:
                 # both are zero
                 delta = 0.0
-            if comparison_type == "percent":
+            if tolerance_type == self._PERCENT:
                 delta *= 100.0
         else:
-            raise Exception("ERROR: unknown test comparison_type '{0}' for "
-                            "variable '{1}, {2}.'".format(comparison_type,
-                                                          name, data_type))
+            raise Exception("ERROR: unknown test tolerance_type '{0}' for "
+                            "variable '{1}, {2}.'".format(tolerance_type,
+                                                          name, key))
         if delta > tolerance:
             status = 1
             if self._verbose:
                 print("    FAIL: {0} : {1} > {2} [{3}]".format(
                         name, delta, tolerance,
-                        comparison_type))
+                        tolerance_type))
         elif self._debug:
             print("    PASS: {0} : {1} <= {2} [{3}]".format(
                     name, delta, tolerance,
-                    comparison_type))
+                    tolerance_type))
 
         return status
 
@@ -478,43 +459,43 @@ class RegressionTest(object):
         if param == "Time (seconds)":
             previous = float(previous)
             current = float(current)
-            tolerance = self._time_tolerance
-            comparison_type = self._time_type
+            tolerance = self._tolerance[self._TIME][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._TIME][self._TOL_TYPE]
         elif param == "Time Steps":
             previous = int(previous)
             current = int(current)
-            tolerance = self._discrete_tolerance
-            comparison_type = self._discrete_type
+            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
         elif param == "Newton Iterations":
             previous = int(previous)
             current = int(current)
-            tolerance = self._discrete_tolerance
-            comparison_type = self._discrete_type
+            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
         elif param == "Solver Iterations":
             previous = int(previous)
             current = int(current)
-            tolerance = self._discrete_tolerance
-            comparison_type = self._discrete_type
+            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
         elif param == "Time Step Cuts":
             previous = int(previous)
             current = int(current)
-            tolerance = self._discrete_tolerance
-            comparison_type = self._discrete_type
+            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
         elif param == "Solution 2-Norm":
             previous = float(previous)
             current = float(current)
-            tolerance = self._generic_tolerance
-            comparison_type = self._generic_type
+            tolerance = self._tolerance[self._GENERIC][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._GENERIC][self._TOL_TYPE]
         elif param == "Residual 2-Norm":
             previous = float(previous)
             current = float(current)
-            tolerance = self._generic_tolerance
-            comparison_type = self._generic_type
+            tolerance = self._tolerance[self._GENERIC][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._GENERIC][self._TOL_TYPE]
         else:
             raise Exception("ERROR: unknown variable '{0}' in solution "
                   "section '{1}'".format(param, section))
 
-        return previous, current, comparison_type, tolerance
+        return previous, current, tolerance_type, tolerance
 
     def _compare_discrete(self, name, previous, current):
         # NOTE(bja): discrete values are integers, except when we are
@@ -526,15 +507,15 @@ class RegressionTest(object):
         if not have_mean:
             previous = int(previous)
             current = int(current)
-            tolerance = self._discrete_tolerance
-            comparison_type = self._discrete_type
+            tolerance = self._tolerance[self._DISCRETE][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._DISCRETE][self._TOL_TYPE]
         else:
             previous = float(previous)
             current = float(current)
-            tolerance = self._generic_tolerance
-            comparison_type = self._generic_type
+            tolerance = self._tolerance[self._GENERIC][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._GENERIC][self._TOL_TYPE]
 
-        return previous, current, comparison_type, tolerance
+        return previous, current, tolerance_type, tolerance
 
     def _set_executable_args(self, executable_args):
         if "input arg" in executable_args:
@@ -546,62 +527,53 @@ class RegressionTest(object):
         if "output arg" in executable_args:
             self._output_arg = executable_args["output arg"]
 
-    def _set_test_criteria(self, default_criteria, test_data):
+    def _set_test_data(self, default_criteria, test_data, timeout):
         """
         Set the test criteria for different categories of variables.
         """
-        criteria = self._get_criteria("time",
-                                      default_criteria, test_data)
-        self._time_type = criteria[1]
-        self._time_tolerance = criteria[0]
+        self._np = test_data.pop('np', None)
 
-        criteria = self._get_criteria("concentration",
-                                      default_criteria, test_data)
-        self._concentration_type = criteria[1]
-        self._concentration_tolerance = criteria[0]
+        # timeout : preference (1) command line (2) test data (3) class default
+        self._timeout = float(test_data.pop('timeout', self._timeout))
+        if timeout:
+            self._timeout = float(timeout[0])
 
-        criteria = self._get_criteria("generic",
-                                      default_criteria, test_data)
-        self._generic_type = criteria[1]
-        self._generic_tolerance = criteria[0]
+        self._set_criteria(self._TIME, default_criteria, test_data)
 
-        criteria = self._get_criteria("discrete",
-                                      default_criteria, test_data)
-        self._discrete_type = criteria[1]
-        self._discrete_tolerance = criteria[0]
+        self._set_criteria(self._CONCENTRATION, default_criteria, test_data)
 
-        criteria = self._get_criteria("rate",
-                                      default_criteria, test_data)
-        self._rate_type = criteria[1]
-        self._rate_tolerance = criteria[0]
+        self._set_criteria(self._GENERIC, default_criteria, test_data)
 
-        criteria = self._get_criteria("volume fraction",
-                                      default_criteria, test_data)
-        self._volume_fraction_type = criteria[1]
-        self._volume_fraction_tolerance = criteria[0]
+        self._set_criteria(self._DISCRETE, default_criteria, test_data)
 
-        criteria = self._get_criteria("pressure",
-                                      default_criteria, test_data)
-        self._pressure_type = criteria[1]
-        self._pressure_tolerance = criteria[0]
+        self._set_criteria(self._RATE, default_criteria, test_data)
 
-        criteria = self._get_criteria("saturation",
-                                      default_criteria, test_data)
-        self._saturation_type = criteria[1]
-        self._saturation_tolerance = criteria[0]
+        self._set_criteria(self._VOLUME_FRACTION, default_criteria, test_data)
 
-    def _get_criteria(self, key, default_criteria, test_data):
-        criteria = None
+        self._set_criteria(self._PRESSURE, default_criteria, test_data)
+
+        self._set_criteria(self._SATURATION, default_criteria, test_data)
+
+    def _set_criteria(self, key, default_criteria, test_data):
+        """
+        Our prefered order for selecting test criteria is:
+        (1) test data section of the config file
+        (2) config-file wide defaults
+        (3) hard coded class default
+        """
         if key in test_data:
-            criteria = test_data[key]
+            self._tolerance[key] = \
+                self._validate_criteria(key, test_data[key])
         elif key in default_criteria:
-            criteria = default_criteria[key]
+            self._tolerance[key] = \
+                self._validate_criteria(key, default_criteria[key])
+        elif key in self._tolerance:
+            # already a correctly formatted list and stored
+            pass
         else:
-            raise Exception("ERROR : tolerance for '{0}' must be specified "
-                            "in either the default-test-criteria or test "
-                            "section!".format(key))
-
-        return self._validate_criteria(key, criteria)
+            raise Exception("ERROR : tolerance for data type '{0}' could "
+                            "not be determined from the config file or "
+                            "default values!".format(key))
 
     def _validate_criteria(self, key, criteria):
         value = criteria.split()[0]
@@ -612,12 +584,12 @@ class RegressionTest(object):
                             "value '{1}' into a float!".format(key, value))
 
         criteria_type = criteria.split()[1]
-        if (criteria_type.lower() != "percent" and
-            criteria_type.lower() != "absolute" and
-            criteria_type.lower() != "relative"):
+        if (criteria_type.lower() != self._PERCENT and
+            criteria_type.lower() != self._ABSOLUTE and
+            criteria_type.lower() != self._RELATIVE):
             raise Exception("ERROR : invalid test criteria string '{0}' "
                             "for '{1}'".format(criteria_type, key))
-        return (value, criteria_type)
+        return [value, criteria_type]
 
 
 class RegressionTestManager(object):
@@ -704,7 +676,7 @@ class RegressionTestManager(object):
         print(50 * '-')
 
         for t in self._tests:
-            self._test_header(t._test_name, verbose)
+            self._test_header(t.name(), verbose)
 
             t.run(mpiexec, executable, dry_run, verbose)
 
@@ -714,7 +686,7 @@ class RegressionTestManager(object):
 
             self._num_failed += status
 
-            self._test_summary(t._test_name, status, verbose, dry_run,
+            self._test_summary(t.name(), status, verbose, dry_run,
                                "passed", "failed")
 
         self._print_file_summary(dry_run, "passed", "failed")
@@ -727,7 +699,7 @@ class RegressionTestManager(object):
         print(50 * '-')
 
         for t in self._tests:
-            self._test_header(t._test_name, verbose)
+            self._test_header(t.name(), verbose)
 
             t.run(mpiexec, executable, dry_run, verbose)
 
@@ -735,7 +707,7 @@ class RegressionTestManager(object):
             if not dry_run:
                 status = t.new_test(verbose)
             self._num_failed += status
-            self._test_summary(t._test_name, status, verbose, dry_run,
+            self._test_summary(t.name(), status, verbose, dry_run,
                                "created", "error creating new test files.")
 
         self._print_file_summary(dry_run, "created", "could not be created")
@@ -748,14 +720,14 @@ class RegressionTestManager(object):
         print(50 * '-')
 
         for t in self._tests:
-            self._test_header(t._test_name, verbose)
+            self._test_header(t.name(), verbose)
             t.run(mpiexec, executable, dry_run, verbose)
 
             status = 0
             if not dry_run:
                 status = t.update(verbose)
             self._num_failed += status
-            self._test_summary(t._test_name, status, verbose, dry_run,
+            self._test_summary(t.name(), status, verbose, dry_run,
                                "updated", "error updating test.")
 
         self._print_file_summary(dry_run, "updated", "could not be updated")
@@ -767,7 +739,7 @@ class RegressionTestManager(object):
         if verbose:
             print()
 
-    def _test_summary(self, name, status, verbose, dry_run, 
+    def _test_summary(self, name, status, verbose, dry_run,
                       success_message, fail_message):
         if status == 0:
             if not dry_run:
@@ -990,7 +962,7 @@ def commandline_options():
     parser.add_argument('-t', '--tests', nargs="+", default=[],
                         help='space separated list of test names')
 
-    parser.add_argument('--timeout', nargs=1, default=['60.0'],
+    parser.add_argument('--timeout', nargs=1, default=None,
                         help="test timeout (for assuming a job has hung and "
                         "needs to be killed)")
 
@@ -1076,6 +1048,7 @@ def search_for_config_files(base_dir, config_file_list):
     for sub_dir in subdirlist:
         search_for_config_files(sub_dir, config_file_list)
 
+
 def check_options(options):
     """
     Run some sanity checks on the commandline options.
@@ -1090,6 +1063,7 @@ def check_options(options):
     if options.update and options.new_tests:
         raise Exception("ERROR: can not create new tests and update gold "
                         "regression files at the same time.")
+
 
 def check_for_executable(options):
     """
@@ -1108,6 +1082,7 @@ def check_for_executable(options):
                             "'{0}'".format(executable))
     return executable
 
+
 def check_for_mpiexec(options):
     """
     Try to verify that we have something reasonable for the mpiexec executable
@@ -1123,8 +1098,8 @@ def check_for_mpiexec(options):
                             "'{0}'".format(mpiexec))
     return mpiexec
 
+
 def main(options):
-    print(options.timeout)
     check_options(options)
     executable = check_for_executable(options)
     mpiexec = check_for_mpiexec(options)
@@ -1191,7 +1166,6 @@ def main(options):
                 traceback.print_exc()
             report[filename] = -1
 
-
     stop = time.time()
     status = 0
     if not options.dry_run and not options.update:
@@ -1203,7 +1177,7 @@ def main(options):
             if report[t] >= 0:
                 print("    {0}... {1} tests failed".format(t, report[t]))
             else:
-                print("    {0}... could not be run.".format(t, report[t]))                
+                print("    {0}... could not be run.".format(t, report[t]))
 
     if options.update:
         print("\nTest results were updated!\n"
