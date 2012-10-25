@@ -60,20 +60,20 @@ class RegressionTest(object):
         self._num_failed = 0
 
     def __str__(self):
-        message = "    {0} :\n".format(self._test_name)
-        message += "        test criteria :\n"
-        message += "            time : {0} [{1}]\n".format(
+        message = "  {0} :\n".format(self._test_name)
+        message += "    test criteria :\n"
+        message += "        time : {0} [{1}]\n".format(
             self._time_tolerance, self._time_type)
-        message += "            concentration : {0} [{1}]\n".format(
+        message += "        concentration : {0} [{1}]\n".format(
             self._concentration_tolerance, self._concentration_type)
-        message += "            generic : {0} [{1}]\n".format(
+        message += "        generic : {0} [{1}]\n".format(
             self._generic_tolerance, self._generic_type)
-        message += "            discrete : {0} [{1}]\n".format(
+        message += "        discrete : {0} [{1}]\n".format(
             self._discrete_tolerance, self._discrete_type)
-        message += "        executable args :\n"
-        message += "            input arg : {0}\n".format(self._input_arg)
-        message += "            input suffix : {0}\n".format(self._input_suffix)
-        message += "            output arg : {0}\n".format(self._output_arg)
+        message += "    executable args :\n"
+        message += "        input arg : {0}\n".format(self._input_arg)
+        message += "        input suffix : {0}\n".format(self._input_suffix)
+        message += "        output arg : {0}\n".format(self._output_arg)
 
         return message
 
@@ -96,16 +96,16 @@ class RegressionTest(object):
         # mpiexec is passed for a serial test or not passed for a
         # parallel test.
         command = ""
-        if mpiexec is not None:
-            if self._np is not None:
-                command += "{0} -np {1} ".format(mpiexec, self._np)
-            else:
-                # TODO(bja): should we run as mpiexec -np 1 for this case?
+        if mpiexec:
+            if self._np is None:
+                self._np = 1
                 if verbose:
                     print("WARNING : mpiexec specified for test '{0}', "
                           "but the test section does not specify the number "
                           "of parallel jobs! Running test as "
                           "serial.".format(self._test_name))
+
+            command += "{0} -np {1} ".format(mpiexec, self._np)
         else:
             if self._np is not None:
                 raise Exception("ERROR : test '{0}' : np was specified in "
@@ -133,7 +133,7 @@ class RegressionTest(object):
                              stdout=run_stdout, stderr=subprocess.STDOUT).wait()
             run_stdout.close()
 
-    def diff(self, verbose):
+    def check(self, verbose):
         """
         Test the output from the run against the known "gold standard"
         output and determine if the test succeeded or failed.
@@ -146,7 +146,7 @@ class RegressionTest(object):
         if not os.path.isfile(gold_filename):
             raise Exception("ERROR: could not find regression test gold file "
                             "'{0}'. If this is a new test, please create "
-                            "it.".format(gold_filename))
+                            "it with '--new-test'.".format(gold_filename))
         else:
             with open(gold_filename, 'rU') as gold_file:
                 gold_output = gold_file.readlines()
@@ -198,22 +198,80 @@ class RegressionTest(object):
             status = 1
         return status
 
-    def update(self):
+    def update(self, verbose):
+        """
+        Update the gold standard test results to the current
+        output. Both the current regression output and a gold file
+        must exist.
+        """
         status = 0
         gold_name = self._test_name + ".regression.gold"
         current_name = self._test_name + ".regression"
+
+        # verify that the gold file exists
+        if not os.path.isfile(gold_name):
+            raise Exception("ERROR: test '{0}' results can not be updated "
+                            "because a gold file does not "
+                            "exist!".format(self._test_name))
+
+        # verify that the regression file exists
+        if not os.path.isfile(current_name):
+            raise Exception("ERROR: test '{0}' results can not be updated "
+                            "because no regression file "
+                            "exists!".format(self._test_name))
+
         try:
-            print("  updating test '{0}'... ".format(self._test_name), end='')
-            #geh: need to catch if the regression file has not been printed.
-            #     e.g. simulation does not complete, regression not turned on
-            #          in input file, etc.
-            if os.path.isfile(current_name):
-                os.rename(current_name, gold_name)
-                status = 1
-            else:
-                print("    file '{0}' not found".format(current_name), end='')
-            print("done")
+            if verbose:
+                print("  updating test '{0}'... ".format(self._test_name),
+                      end='')
+            os.rename(current_name, gold_name)
+            if verbose:
+                print("done")
         except Exception as e:
+            status = 1
+            message = str(e)
+            message += "\nERROR : Could not rename '{0}' to '{1}'. "
+            message += "Please rename the file manually!".format(current_name,
+                                                                 gold_name)
+            message += "    mv {0} {1}".format(current_name, gold_name)
+            print(message)
+            # should we rethrow this exception, or continue?
+            #raise Exception(message)
+        return status
+
+    def new_test(self, verbose):
+        """
+        A new test does not have a gold standard regression test. We
+        will check to see if a gold standard file exists (an error),
+        then create the gold file by copying the current regression
+        file to gold.
+        """
+        status = 0
+        gold_name = self._test_name + ".regression.gold"
+        current_name = self._test_name + ".regression"
+
+        # check if the gold file exists already
+        if os.path.isfile(gold_name):
+            raise Exception("ERROR: test '{0}' was classified as new, "
+                            "but a gold file already "
+                            "exists!".format(self._test_name))
+
+        # check that the regression file was created.
+        if not os.path.isfile(current_name):
+            raise Exception("ERROR: could not create new gold file for "
+                            "test '{0}' because no regression file "
+                            "exists!".format(self._test_name))
+
+        try:
+            if verbose:
+                print("  creating gold file '{0}'... ".format(self._test_name),
+                      end='')
+
+            os.rename(current_name, gold_name)
+            if verbose:
+                print("done")
+        except Exception as e:
+            status = 1
             message = str(e)
             message += "\nERROR : Could not rename '{0}' to '{1}'. "
             message += "Please rename the file manually!".format(current_name,
@@ -456,7 +514,7 @@ class RegressionTest(object):
 
     def _set_test_criteria(self, default_criteria, test_data):
         """
-        Set the test criteria for different categories of variables. 
+        Set the test criteria for different categories of variables.
         """
         criteria = self._get_criteria("time",
                                       default_criteria, test_data)
@@ -578,87 +636,133 @@ class RegressionTestManager(object):
                                                             user_tests)
         self._create_tests(user_suites, user_tests)
 
-    def run_tests(self, mpiexec, executable, dry_run, verbose):
-        print(50 * '-')
-        if not dry_run:
-            print("Running tests:")
+    def run_tests(self, mpiexec, executable, verbose,
+                  dry_run, update, new_test):
+        """
+        Run the tests specified in the config file.
+
+        * dry_run - flag indicates that the test is setup then print
+          the command that would be used, but don't actually run
+          anything or compare results.
+
+        * new_test - flag indicates that the test is a new test, and
+          there should not be a gold standard regression file
+          present. Run the executable and create the gold file.
+
+        * update - flag indicates that the output from pflotran has
+          changed, and we want to update the gold standard regression
+          file to reflect this. Run the executable and replace the
+          gold file.
+        """
+
+        if new_test:
+            self._run_new(mpiexec, executable, dry_run, verbose)
+        elif update:
+            self._run_update(mpiexec, executable, dry_run, verbose)
         else:
+            self._run_check(mpiexec, executable, dry_run, verbose)
+
+    def _run_check(self, mpiexec, executable, dry_run, verbose):
+        if dry_run:
             print("Dry run:")
+        else:
+            print("Running tests from '{0}':".format(self._config_filename))
+        print(50 * '-')
 
         for t in self._tests:
-            if verbose:
-                print(40 * '-')
-            print("{0}... ".format(t._test_name), end='')
-            if verbose:
-                print()
+            self._test_header(t._test_name, verbose)
+
             t.run(mpiexec, executable, dry_run, verbose)
-            if not verbose:
-                print("done.")
-            else:
-                print("{0}... done".format(t._test_name))
 
-    def check_test_results(self, dry_run, verbose):
-        # NOTE(bja) : seperating running the test from checking the
-        # results is probably not what we want. Consider: If we are
-        # running a large group of tests and the last one causes an
-        # exception, then we will exit having run a bunch of tests,
-        # but not checked any of them. We have to fix the last test
-        # and then rerun everything before we get any results! On
-        # buildbot, we'd have no results to report, even though only a
-        # single test may have failed!
-        print(50 * '-')
-        if not dry_run:
-            print("Checking test results:")
-        else:
-            print("Dry run:")
-
-        for t in self._tests:
-            if verbose:
-                print(40 * '-')
-            print("{0}...".format(t._test_name), end='')
-            if verbose:
-                print()
             status = 0
             if not dry_run:
-                status = t.diff(verbose)
-            self._num_failed += status
-            if status == 0:
-                if not dry_run:
-                    if verbose:
-                        print("{0}... passed.".format(t._test_name))
-                    else:
-                        print(" passed.")
-            else:
-                if verbose:
-                    print("{0}... failed.".format(t._test_name))
-                else:
-                    print(" failed.")
+                status = t.check(verbose)
 
+            self._num_failed += status
+
+            self._test_summary(t._test_name, status, verbose, dry_run,
+                               "passed", "failed")
+
+        self._print_file_summary(dry_run, "passed", "failed")
+
+    def _run_new(self, mpiexec, executable, dry_run, verbose):
+        if dry_run:
+            print("Dry run:")
+        else:
+            print("New tests from '{0}':".format(self._config_filename))
+        print(50 * '-')
+
+        for t in self._tests:
+            self._test_header(t._test_name, verbose)
+
+            t.run(mpiexec, executable, dry_run, verbose)
+
+            status = 0
+            if not dry_run:
+                status = t.new_test(verbose)
+            self._num_failed += status
+            self._test_summary(t._test_name, status, verbose, dry_run,
+                               "created", "error creating new test files.")
+
+        self._print_file_summary(dry_run, "created", "could not be created")
+
+    def _run_update(self, mpiexec, executable, dry_run, verbose):
+        if dry_run:
+            print("Dry run:")
+        else:
+            print("Updating tests from '{0}':".format(self._config_filename))
+        print(50 * '-')
+
+        for t in self._tests:
+            self._test_header(t._test_name, verbose)
+            t.run(mpiexec, executable, dry_run, verbose)
+
+            status = 0
+            if not dry_run:
+                status = t.update(verbose)
+            self._num_failed += status
+            self._test_summary(t._test_name, status, verbose, dry_run,
+                               "updated", "error updating test.")
+
+        self._print_file_summary(dry_run, "updated", "could not be updated")
+
+    def _test_header(self, name, verbose):
+        if verbose:
+            print(40 * '-')
+        print("{0}... ".format(name), end='')
+        if verbose:
+            print()
+
+    def _test_summary(self, name, status, verbose, dry_run, 
+                      success_message, fail_message):
+        if status == 0:
+            if not dry_run:
+                if verbose:
+                    print("{0}... {1}.".format(name, success_message))
+                else:
+                    print(" {0}.".format(success_message))
+            else:
+                print(" skipped.")
+        else:
+            if verbose:
+                print("{0}... {1}.".format(name, fail_message))
+            else:
+                print(" {0}.".format(fail_message))
+
+    def _print_file_summary(self, dry_run, success_message, fail_message):
+        # print a summary of the results for this config file
         print(50 * '-')
         if self._num_failed > 0:
-            print("{0} : {1} of {2} tests failed".format(self._config_filename,
-                                                         self._num_failed,
-                                                         len(self._tests)))
+            print("{0} : {1} of {2} tests {3}".format(
+                    self._config_filename, self._num_failed, len(self._tests),
+                    fail_message))
         else:
             if not dry_run:
-                print("{0} : {1} tests passed".format(self._config_filename,
-                                                len(self._tests)))
+                print("{0} : {1} tests {2}".format(self._config_filename,
+                                                   len(self._tests),
+                                                   success_message))
             else:
                 print("{0} : no tests run.".format(self._config_filename))
-
-    def update_test_results(self, user_tests):
-        print(70 * '-')
-        print("Updating tests:")
-        print("Please document why you modified the gold standard test "
-              "results in your revision control commit message!")
-        u_suites, u_tests = self._validate_user_lists([], user_tests)
-        num_success = 0
-        for name in u_tests:
-            for t in self._tests:
-                if name == t.name():
-                    num_success += t.update()
-        print(70 * '-')
-        print("{0} tests updated.".format(num_success))
 
     def status(self):
         return self._num_failed
@@ -807,6 +911,9 @@ def commandline_options():
                         help='show exception backtraces as extra debugging '
                         'output')
 
+    parser.add_argument('--advanced', action='store_true',
+                        help="enable advanced options for developers")
+
     parser.add_argument('-c', '--config-file', nargs=1, default=None,
                         help='test configuration file to use')
 
@@ -830,7 +937,13 @@ def commandline_options():
                         'and exit')
 
     parser.add_argument('-m', '--mpiexec', nargs=1, default=None,
-                        help='path to the executable for mpiexec on the current machine.')
+                        help="path to the executable for mpiexec (mpirun, etc)"
+                        "on the current machine.")
+
+    parser.add_argument('-n', '--new-tests',
+                        action="store_true", default=False,
+                        help="indicate that there are new tests being run. "
+                        "Skips the output check and creates a new gold file.")
 
     parser.add_argument('-r', '--recursive-search', nargs='*', default=None,
                         help='recursively search the current directory and '
@@ -857,6 +970,10 @@ def commandline_options():
 
 
 def generate_config_file_list(options):
+    """
+    Try to generate a list of configuration files from the commandline
+    options.
+    """
     config_file_list = []
     # search for config files
     if options.recursive_search is not None:
@@ -891,6 +1008,11 @@ def generate_config_file_list(options):
         for c in config_file_list:
             print("    {0}".format(c))
 
+    if len(config_file_list) == 0:
+        raise Exception("ERROR: no config files were found. Please specify a "
+                        "config file with '--config' or search for files "
+                        "with '--recursive-search'.")
+
     return config_file_list
 
 
@@ -916,8 +1038,25 @@ def search_for_config_files(base_dir, config_file_list):
     for sub_dir in subdirlist:
         search_for_config_files(sub_dir, config_file_list)
 
+def check_options(options):
+    """
+    Run some sanity checks on the commandline options.
+    """
+    # prevent the user from updating regression output during a
+    # recursive search for config files
+    if options.update and options.recursive_search is not None:
+        if not options.advanced:
+            raise Exception("ERROR: can not update gold regression files "
+                            "during a recursive search for config files.")
 
-def main(options):
+    if options.update and options.new_tests:
+        raise Exception("ERROR: can not create new tests and update gold "
+                        "regression files at the same time.")
+
+def check_for_executable(options):
+    """
+    Try to verify that we have something reasonable for the executable
+    """
     # check the executable
     if options.executable == ['executable']:
         options.dry_run = True
@@ -929,7 +1068,12 @@ def main(options):
         if not os.path.isfile(executable):
             raise Exception("ERROR: executable is not a valid file: "
                             "'{0}'".format(executable))
+    return executable
 
+def check_for_mpiexec(options):
+    """
+    Try to verify that we have something reasonable for the mpiexec executable
+    """
     # check for mpiexec
     mpiexec = None
     if options.mpiexec is not None:
@@ -939,68 +1083,74 @@ def main(options):
         if not os.path.isfile(mpiexec):
             raise Exception("ERROR: mpiexec is not a valid file: "
                             "'{0}'".format(mpiexec))
+    return mpiexec
 
-    # config files
+def main(options):
+    check_options(options)
+    executable = check_for_executable(options)
+    mpiexec = check_for_mpiexec(options)
     config_file_list = generate_config_file_list(options)
-    if len(config_file_list) == 0:
-        raise Exception("ERROR: no config files were found. Please specify a "
-                        "config file with '--config' or search for files "
-                        "with '--recursive-search'.")
 
     # loop through config files, cd into the appropriate directory,
     # read the appropriate config file and run the various tests.
     start = time.time()
     report = {}
     for f in config_file_list:
-        # TODO(bja): add a try block inside this loop so that if a
-        # single test throws an exception in a large batch of tests,
-        # we can recover and at least try running the other config files.
-        print(70 * '-')
-        if options.verbose:
-            print("Running tests from config file:\n    {0}".format(f))
-
-        # get the absolute path of the directory
-        test_dir = os.path.dirname(f)
-        # cd into the test directory so that the relative paths in
-        # test files are correct
-        os.chdir(test_dir)
-        if options.debug:
-            print("Changed to working directory: {0}".format(test_dir))
-
-        test_manager = RegressionTestManager()
-
-        if options.debug:
-            test_manager._debug = True
-
-        # get the relative file name
-        filename = os.path.basename(f)
-
-        test_manager.generate_tests(filename,
-                                    options.suites,
-                                    options.tests)
-
-        if options.debug:
+        try:
+            # NOTE(bja): the try block is inside this loop so that if
+            # a single test throws an exception in a large batch of
+            # tests, we can recover and at least try running the other
+            # config files.
             print(70 * '-')
-            print(test_manager)
 
-        if options.list_suites:
-            test_manager.display_available_suites()
+            # get the absolute path of the directory
+            test_dir = os.path.dirname(f)
+            # cd into the test directory so that the relative paths in
+            # test files are correct
+            os.chdir(test_dir)
+            if options.debug:
+                print("Changed to working directory: {0}".format(test_dir))
 
-        if options.list_tests:
-            test_manager.display_available_tests()
+            test_manager = RegressionTestManager()
 
-        test_manager.run_tests(mpiexec,
-                               executable,
-                               options.dry_run,
-                               options.verbose)
+            if options.debug:
+                test_manager._debug = True
 
-        if options.update:
-            test_manager.update_test_results(options.tests)
-        else:
-            test_manager.check_test_results(options.dry_run,
-                                            options.verbose)
+            # get the relative file name
+            filename = os.path.basename(f)
 
-        report[filename] = test_manager.status()
+            test_manager.generate_tests(filename,
+                                        options.suites,
+                                        options.tests)
+
+            if options.debug:
+                print(70 * '-')
+                print(test_manager)
+
+            if options.list_suites:
+                test_manager.display_available_suites()
+
+            if options.list_tests:
+                test_manager.display_available_tests()
+
+            test_manager.run_tests(mpiexec,
+                                   executable,
+                                   options.verbose,
+                                   options.dry_run,
+                                   options.update,
+                                   options.new_tests)
+
+            report[filename] = test_manager.status()
+        except Exception as e:
+            message = ("\nERROR: a problem occured in file '{0}'.\n  This is "
+                       "probably an error with commandline options, the "
+                       "configuration file, or an enternal error.\n  The "
+                       "error is:\n{1}".format(f, str(e)))
+            print(message)
+            if options.backtrace:
+                traceback.print_exc()
+            report[filename] = -1
+
 
     stop = time.time()
     status = 0
@@ -1010,7 +1160,15 @@ def main(options):
         print("    Total run time: {0:4g} [s]".format(stop - start))
         for t in report:
             status += report[t]
-            print("    {0}... {1} tests failed".format(t, report[t]))
+            if report[t] >= 0:
+                print("    {0}... {1} tests failed".format(t, report[t]))
+            else:
+                print("    {0}... could not be run.".format(t, report[t]))                
+
+    if options.update:
+        print("\nTest results were updated!\n"
+              "Please document why you modified the gold standard test "
+              "results in your revision control commit message!\n")
 
     return status
 
