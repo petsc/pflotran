@@ -40,6 +40,7 @@ class RegressionTest(object):
         self._input_suffix = None
         self._output_arg = None
         self._np = None
+        self._timeout = None
         self._test_name = None
         self._time_tolerance = None
         self._time_type = None
@@ -77,7 +78,7 @@ class RegressionTest(object):
 
         return message
 
-    def setup(self, executable_args, default_criteria, test_data):
+    def setup(self, executable_args, default_criteria, test_data, timeout):
         self._test_name = test_data["name"]
 
         if executable_args is not None:
@@ -88,50 +89,81 @@ class RegressionTest(object):
         if 'np' in test_data:
             self._np = test_data['np']
 
+        self._timeout = float(timeout[0])
+        if 'timeout' in test_data:
+            self._timeout = float(test_data['timeout'][0])
+
     def name(self):
         return self._test_name
 
     def run(self, mpiexec, executable, dry_run, verbose):
+        """
+        Build up the run command, including mpiexec, np, pflotran,
+        input file, output file. Then run the job as a subprocess.
+
+        * NOTE(bja) - starting in python 3.3, we can use:
+
+          subprocess.Popen(...).wait(timeout)
+
+          to catch hanging jobs, but for python < 3.3 we have to
+          manually manage the timeout...?
+        """
         # TODO(bja) : need to think more about the desired behavior if
         # mpiexec is passed for a serial test or not passed for a
         # parallel test.
-        command = ""
+        command = []
         if mpiexec:
+            command.append(mpiexec)
+            command.append("-np")
             if self._np is None:
-                self._np = 1
+                self._np = '1'
                 if verbose:
                     print("WARNING : mpiexec specified for test '{0}', "
                           "but the test section does not specify the number "
                           "of parallel jobs! Running test as "
                           "serial.".format(self._test_name))
-
-            command += "{0} -np {1} ".format(mpiexec, self._np)
+            command.append(self._np)
         else:
             if self._np is not None:
                 raise Exception("ERROR : test '{0}' : np was specified in "
                                 "the test data, but mpiexec was not "
                                 "provided.".format(self._test_name))
 
-        command += "{0} ".format(executable)
+        command.append(executable)
         input_file_name = self._test_name + '.' + self._input_suffix
         if self._input_arg != None:
-            command += "{0} {1} ".format(self._input_arg, input_file_name)
+            command.append(self._input_arg)
+            command.append(input_file_name)
         if self._output_arg != None:
-            command += "{0} {1} ".format(self._output_arg, self._test_name)
+            command.append(self._output_arg)
+            command.append(self._test_name)
 
         if os.path.isfile(self._test_name + ".regression"):
             os.rename(self._test_name + ".regression",
                       self._test_name + ".regression.old")
 
+        status = 0
         if dry_run:
-            print("\n    {0}".format(command))
+            print("\n    {0}".format(" ".join(command)))
         else:
             if verbose:
-                print("    {0}".format(command))
+                print("    {0}".format(" ".join(command)))
             run_stdout = open(self._test_name + ".stdout", 'w')
-            subprocess.Popen(command.split(),
-                             stdout=run_stdout, stderr=subprocess.STDOUT).wait()
+            start = time.time()
+            proc = subprocess.Popen(command,
+                                    shell=False,
+                                    stdout=run_stdout,
+                                    stderr=subprocess.STDOUT)
+            while proc.poll() is None:
+                time.sleep(0.1)
+                if time.time() - start > self._timeout:
+                    proc.terminate()
+                    time.sleep(0.1)
+                    print("ERROR: job '{0}' has exceeded timeout limit of "
+                          "{1} seconds.".format(self._test_name, self._timeout))
+            status = abs(proc.returncode)
             run_stdout.close()
+        return status
 
     def check(self, verbose):
         """
@@ -144,18 +176,20 @@ class RegressionTest(object):
         self._verbose = verbose
         gold_filename = self._test_name + ".regression.gold"
         if not os.path.isfile(gold_filename):
-            raise Exception("ERROR: could not find regression test gold file "
-                            "'{0}'. If this is a new test, please create "
-                            "it with '--new-test'.".format(gold_filename))
+            print("ERROR: could not find regression test gold file "
+                  "'{0}'. If this is a new test, please create "
+                  "it with '--new-test'.".format(gold_filename))
+            return 1
         else:
             with open(gold_filename, 'rU') as gold_file:
                 gold_output = gold_file.readlines()
 
         current_filename = self._test_name + ".regression"
         if not os.path.isfile(current_filename):
-            raise Exception("ERROR: could not find regression test file '{0}'."
-                            " Please check the standard output file for "
-                            "errors.".format(current_filename))
+            print("ERROR: could not find regression test file '{0}'."
+                  " Please check the standard output file for "
+                  "errors.".format(current_filename))
+            return 1
         else:
             with open(current_filename, 'rU') as current_file:
                 current_output = current_file.readlines()
@@ -629,12 +663,12 @@ class RegressionTestManager(object):
 
         return data
 
-    def generate_tests(self, config_file, user_suites, user_tests):
+    def generate_tests(self, config_file, user_suites, user_tests, timeout):
         self._read_config_file(config_file)
         self._validate_suites()
         user_suites, user_tests = self._validate_user_lists(user_suites,
                                                             user_tests)
-        self._create_tests(user_suites, user_tests)
+        self._create_tests(user_suites, user_tests, timeout)
 
     def run_tests(self, mpiexec, executable, verbose,
                   dry_run, update, new_test):
@@ -885,7 +919,7 @@ class RegressionTestManager(object):
 
         return u_suites, u_tests
 
-    def _create_tests(self, user_suites, user_tests):
+    def _create_tests(self, user_suites, user_tests, timeout):
         all_tests = user_tests
         for s in user_suites:
             for t in self._available_suites[s].split():
@@ -895,7 +929,7 @@ class RegressionTestManager(object):
             try:
                 test = RegressionTest()
                 test.setup(self._executable_args, self._default_test_criteria,
-                           self._available_tests[t])
+                           self._available_tests[t], timeout)
                 self._tests.append(test)
             except Exception as e:
                 raise Exception("ERROR : could not create test '{0}' from "
@@ -955,6 +989,10 @@ def commandline_options():
 
     parser.add_argument('-t', '--tests', nargs="+", default=[],
                         help='space separated list of test names')
+
+    parser.add_argument('--timeout', nargs=1, default=['60.0'],
+                        help="test timeout (for assuming a job has hung and "
+                        "needs to be killed)")
 
     parser.add_argument('-u', '--update',
                         action="store_true", default=False,
@@ -1086,6 +1124,7 @@ def check_for_mpiexec(options):
     return mpiexec
 
 def main(options):
+    print(options.timeout)
     check_options(options)
     executable = check_for_executable(options)
     mpiexec = check_for_mpiexec(options)
@@ -1121,7 +1160,8 @@ def main(options):
 
             test_manager.generate_tests(filename,
                                         options.suites,
-                                        options.tests)
+                                        options.tests,
+                                        options.timeout)
 
             if options.debug:
                 print(70 * '-')
