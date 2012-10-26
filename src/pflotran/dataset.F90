@@ -81,7 +81,14 @@ subroutine DatasetLoad(dataset,option)
     call printErrMsg(option)
   endif
 #else
-    call HDF5ReadDataset(dataset,option)
+    if(.not.associated(dataset%dataset_map)) then
+      call HDF5ReadDataset(dataset,option)
+    else
+      call HDF5ReadDataset(dataset,option)
+      if(dataset%dataset_map%first_time) then
+        call HDF5ReadDatasetMap(dataset,option)
+      endif
+    endif
     call DatasetReorder(dataset,option)
     if (associated(dataset%buffer)) then
       interpolate_dataset = PETSC_TRUE ! just to be sure

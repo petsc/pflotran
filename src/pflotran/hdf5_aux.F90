@@ -31,6 +31,7 @@ module HDF5_aux_module
 #else
   public :: HDF5ReadNDimRealArray, &
             HDF5ReadDataset, &
+            HDF5ReadDatasetMap, &
             HDF5GroupExists  
 #endif ! PARALLELIO_LIB
 
@@ -467,6 +468,150 @@ subroutine HDF5ReadDataset(dataset,option)
                           
 end subroutine HDF5ReadDataset
 
+! ************************************************************************** !
+!
+!
+! ************************************************************************** !
+subroutine HDF5ReadDatasetMap(dataset,option)
+
+  use hdf5
+  use Dataset_Aux_module
+  use Option_module
+  use Units_module
+  
+  implicit none
+  
+  type(dataset_type) :: dataset
+  type(option_type) :: option
+
+  integer(HID_T) :: file_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: dataset_id
+  integer(HID_T) :: prop_id
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: attribute_id
+  integer(HID_T) :: ndims_hdf5
+  integer(HID_T) :: atype_id
+  integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
+  integer(HSIZE_T) :: attribute_dim(3)
+  integer(HSIZE_T) :: offset(2), length(2), stride(2)
+  integer(HSIZE_T) :: num_data_values
+  integer(SIZE_T) size_t_int
+  PetscInt :: i, temp_int, temp_array(4)
+  PetscInt :: num_spatial_dims, time_dim, num_times
+  PetscMPIInt :: array_rank_mpi
+  PetscBool :: attribute_exists
+  PetscBool :: read_times
+  PetscReal :: units_conversion
+  character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
+
+  PetscInt :: nids_local,istart,iend
+  PetscInt :: remainder
+
+  ! open the file
+  call h5open_f(hdf5_err)
+  option%io_buffer = 'Opening hdf5 file: ' // trim(dataset%dataset_map%filename)
+  call printMsg(option)
+  
+  ! set read file access property
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  call h5fopen_f(dataset%dataset_map%filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  ! Open group
+  option%io_buffer = 'Opening group: ' // trim(dataset%dataset_map%h5_dataset_map_name)
+  call printMsg(option)  
+  call h5gopen_f(file_id,dataset%dataset_map%h5_dataset_map_name,grp_id,hdf5_err)
+
+  ! Open the "data" dataset
+  dataset_name = 'data'
+  call h5dopen_f(grp_id,dataset_name,dataset_id,hdf5_err)
+  call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
+
+  ! Get number of dimensions and check
+  call h5sget_simple_extent_ndims_f(file_space_id,ndims_hdf5,hdf5_err)
+  if (ndims_hdf5 /= 2) then
+    option%io_buffer='Dimension of '// trim(dataset%dataset_map%h5_dataset_map_name) // &
+      '/Data dataset in ' // trim(dataset%dataset_map%filename) // ' is not equal to 2.'
+    call printErrMsg(option)
+  endif
+
+  ! Get dimensions of dataset
+  allocate(dims_h5(ndims_hdf5))
+  allocate(max_dims_h5(ndims_hdf5))
+  call h5sget_simple_extent_dims_f(file_space_id,dims_h5,max_dims_h5,hdf5_err)
+  
+  nids_local=dims_h5(2)/option%mycommsize
+  remainder =dims_h5(2)-nids_local*option%mycommsize
+  if(option%myrank<remainder) nids_local=nids_local+1
+
+  ! Find istart and iend
+  istart = 0
+  iend   = 0
+  call MPI_Exscan(nids_local, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  call MPI_Scan(nids_local, iend, ONE_INTEGER_MPI, &
+                MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+  
+  ! Determine the length and offset of data to be read by each processor
+  length(1) = dims_h5(1)
+  length(2) = iend-istart
+  offset(1) = 0
+  offset(2) = istart
+
+  ! TOdo: Only read part of data
+  option%io_buffer='Gautam: Modify code for reading HDF5 to generate mapping '//&
+   'of dataset'
+  call printMsg(option)
+  nids_local=dims_h5(2)
+  length(:) = dims_h5(:)
+  offset(:) = 0
+  
+  ! Save dimension size
+  dataset%dataset_map%map_dims_global(:) = dims_h5(:)
+  dataset%dataset_map%map_dims_local(:) = length(:)
+  
+  ! Create data space for dataset
+  array_rank_mpi=2
+  call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err)
+
+  ! Create property list
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, hdf5_err)
+#endif
+
+  ! Select hyperslab
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset,length, &
+                             hdf5_err)
+  
+  ! Initialize data buffer
+  allocate(dataset%dataset_map%map(length(1), length(2)))
+
+  ! Read the dataset collectively
+  call h5dread_f(dataset_id, H5T_NATIVE_INTEGER, dataset%dataset_map%map, &
+                 dims_h5, hdf5_err, memory_space_id, file_space_id,prop_id)
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(dataset_id,hdf5_err)  
+
+  option%io_buffer = 'Closing group: ' // trim(dataset%dataset_map%h5_dataset_map_name)
+  call printMsg(option)  
+  call h5gclose_f(grp_id,hdf5_err)  
+  option%io_buffer = 'Closing hdf5 file: ' // trim(dataset%filename)
+  call printMsg(option)  
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+
+end subroutine HDF5ReadDatasetMap
 
 #if defined(PARALLELIO_LIB)
 

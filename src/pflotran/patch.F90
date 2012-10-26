@@ -959,12 +959,13 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   
-  PetscInt :: idof, num_connections
+  PetscInt :: idof, num_connections,sum_connection
   
 
   if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
+  sum_connection=0
   
   do
     if (.not.associated(coupler)) exit
@@ -1271,13 +1272,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
                   call PatchScaleSourceSink(patch,coupler,option)
                 case (DISTRIBUTED_VOLUMETRIC_RATE_SS,DISTRIBUTED_MASS_RATE_SS)
-                  call PatchUpdateDistributedSourceSinkAuxVars(patch,coupler,option)
+                  call PatchUpdateDistributedSourceSinkAuxVars(patch,coupler,sum_connection,option)
               end select
             endif
           
           case default
       
         end select
+      sum_connection=sum_connection+num_connections
       endif
     endif
       
@@ -1438,7 +1440,7 @@ end subroutine PatchScaleSourceSink
 !!
 !! date: 10/03/2012
 ! ************************************************************************** !
-subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
+subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,sum_connection,option)
 
   use Option_module
   use Field_module
@@ -1460,16 +1462,15 @@ subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
   type(option_type) :: option
 
   type(connection_set_type), pointer :: cur_connection_set
+  type(grid_type),pointer :: grid
   PetscErrorCode :: ierr
-  PetscInt       :: iconn
+  PetscInt       :: iconn,sum_connection
+  PetscInt :: ghosted_id,local_id
+  PetscInt,pointer::cell_ids_nat(:)
 
   type(dataset_type), pointer :: dataset
 
-  if(option%mycommsize>1) then
-    option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
-      ' for single processor runs.'
-    call printErrMsg(option)
-  endif
+  grid => patch%grid
 
   if(option%iflowmode/=RICHARDS_MODE) then
     option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
@@ -1486,17 +1487,176 @@ subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
   dataset => source_sink%flow_condition%rate%flow_dataset%dataset
   cur_connection_set => source_sink%connection_set
 
-  if(size(dataset%rarray)/=cur_connection_set%num_connections) then
-    option%io_buffer='Length of array in dataset does not match no. of connection '// &
-      ' sets.'
-    call printErrMsg(option)
+  if(.not.associated(dataset%dataset_map)) then
+    !
+    ! Older scheme: Only works on a single proc run and assumes SS values are
+    ! prescribed in the dataset at each CV
+    !
+    if(option%mycommsize>1) then
+      option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
+        ' for single processor runs.'
+      call printErrMsg(option)
+    endif
+
+    if(size(dataset%rarray)/=cur_connection_set%num_connections) then
+      option%io_buffer='Length of array in dataset does not match no. of connection '// &
+        ' sets.'
+      call printErrMsg(option)
+    endif
+
+    do iconn=1,cur_connection_set%num_connections
+      source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
+    enddo
+
+  else
+    ! New scheme: Mapping data is provided in HDF file
+    !
+    
+    ! If called for the first time, create the map
+    if (dataset%dataset_map%first_time) then
+      allocate(cell_ids_nat(cur_connection_set%num_connections))
+      do iconn=1,cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        cell_ids_nat(iconn)=grid%nG2A(ghosted_id)
+      enddo
+
+      call PatchCreateFlowConditionDatasetMap(patch%grid,dataset%dataset_map,&
+              cell_ids_nat,cur_connection_set%num_connections,option)
+
+      dataset%dataset_map%first_time = PETSC_FALSE
+      deallocate(cell_ids_nat)
+
+    endif
+    
+    ! Save the data in the array
+    do iconn=1,cur_connection_set%num_connections
+      source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+        dataset%rarray(dataset%dataset_map%datatocell_ids(iconn))
+    enddo
+
   endif
-
-  do iconn=1,cur_connection_set%num_connections
-    source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
-  enddo
-
+  
 end subroutine PatchUpdateDistributedSourceSinkAuxVars
+
+! ************************************************************************** !
+!> This routine creates dataset-map for flow condition
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 10/26/12
+! ************************************************************************** !
+subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map,cell_ids,ncells,option)
+
+  use Grid_module
+  use Dataset_module
+  use Option_module
+  
+  implicit none
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+
+  type(grid_type) :: grid
+  type(dataset_map_type) :: dataset_map
+  type(option_type):: option
+  PetscInt,pointer :: cell_ids(:)
+  PetscInt :: ncells
+  
+  PetscInt, allocatable :: int_array(:)
+  PetscInt :: ghosted_id,local_id
+  PetscInt :: ii,count
+  PetscReal, pointer :: vec_ptr(:)  
+  PetscErrorCode :: ierr
+  
+  IS :: is_from, is_to
+  Vec:: map_ids_1, map_ids_2,map_ids_3
+  VecScatter::vec_scatter
+  
+  ! Step-1: Rearrange map dataset
+  allocate(int_array(dataset_map%map_dims_global(2)))
+  do ii=1,dataset_map%map_dims_global(2)
+    int_array(ii)=ii
+  enddo
+  int_array=int_array-1
+  
+  call ISCreateBlock(PETSC_COMM_SELF,1,dataset_map%map_dims_global(2), &
+                     int_array,PETSC_COPY_VALUES,is_from,ierr)
+  deallocate(int_array)
+  
+  allocate(int_array(dataset_map%map_dims_global(2)))
+  do ii=1,dataset_map%map_dims_global(2)
+    int_array(ii)=dataset_map%map(2,ii)
+  enddo
+  int_array=int_array-1
+
+  call ISCreateBlock(PETSC_COMM_SELF,1,dataset_map%map_dims_global(2), &
+                     int_array,PETSC_COPY_VALUES,is_to,ierr)
+  deallocate(int_array)
+
+  call VecCreateSeq(PETSC_COMM_SELF,dataset_map%map_dims_global(2),map_ids_1,ierr)
+  call VecCreateSeq(PETSC_COMM_SELF,maxval(dataset_map%map(2,:)),map_ids_2,ierr)
+  call VecSet(map_ids_2,0,ierr)
+
+  call VecScatterCreate(map_ids_1,is_from,map_ids_2,is_to,vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  call VecGetArrayF90(map_ids_1,vec_ptr,ierr)
+  do ii=1,dataset_map%map_dims_global(2)
+    vec_ptr(ii)=dataset_map%map(1,ii)
+  enddo
+  call VecRestoreArrayF90(map_ids_1,vec_ptr,ierr)
+
+  call VecScatterBegin(vec_scatter,map_ids_1,map_ids_2, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,map_ids_1,map_ids_2, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+
+
+  ! Step-2: Get ids in map dataset for cells
+  allocate(int_array(ncells))
+  allocate(dataset_map%cell_ids_local(ncells))
+  int_array=cell_ids-1
+
+  call ISCreateBlock(PETSC_COMM_SELF,1,ncells,int_array,PETSC_COPY_VALUES,is_from,ierr)
+    
+  do local_id=1,ncells
+    int_array(local_id)=local_id
+  enddo
+  int_array=int_array-1
+  
+  call ISCreateBlock(PETSC_COMM_SELF,1,ncells,int_array,PETSC_COPY_VALUES,is_to,ierr)
+  deallocate(int_array)
+  
+  call VecCreateSeq(PETSC_COMM_SELF,ncells,map_ids_3,ierr)
+  call VecScatterCreate(map_ids_2,is_from,map_ids_3,is_to,vec_scatter,ierr)
+  call ISDestroy(is_from,ierr)
+  call ISDestroy(is_to,ierr)
+
+  call VecScatterBegin(vec_scatter,map_ids_2,map_ids_3, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(vec_scatter,map_ids_2,map_ids_3, &
+                     INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+
+  ! Step-3: Save the datatocell_ids
+  allocate(dataset_map%datatocell_ids(ncells))
+  call VecGetArrayF90(map_ids_3,vec_ptr,ierr)
+  do local_id=1,ncells
+    dataset_map%datatocell_ids(local_id) = int(vec_ptr(local_id))
+  enddo
+  call VecRestoreArrayF90(map_ids_3,vec_ptr,ierr)
+  
+  call VecDestroy(map_ids_1,ierr)
+  call VecDestroy(map_ids_2,ierr)
+  call VecDestroy(map_ids_3,ierr)
+
+end subroutine PatchCreateFlowConditionDatasetMap
 
 ! ************************************************************************** !
 !
