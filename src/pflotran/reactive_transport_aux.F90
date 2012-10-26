@@ -565,7 +565,9 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
   PetscInt :: sec_zeta(sec_transport_vars%ncells)
   PetscReal :: diag_react, rhs_react
-  
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
+
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -594,6 +596,13 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   
   if (reaction%mineral%nkinmnrl > 0) then
     kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    ! Arrhenius factor
+    arrhenius_factor = 1.d0
+    if (reaction%mineral%kinmnrl_activation_energy(1) > 0.d0) then
+      arrhenius_factor = exp(reaction%mineral%kinmnrl_activation_energy(1)/rgas &
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
+    endif    
+    kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
     equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3/mol
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3

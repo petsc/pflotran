@@ -3656,6 +3656,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                        secondary_continuum_porosity
         call RTSecondaryTransportJacobian(rt_aux_vars(ghosted_id), &
                                           rt_sec_transport_vars(ghosted_id), &
+                                          global_aux_vars(ghosted_id), &
                                           sec_diffusion_coefficient, &
                                           sec_porosity, &
                                           reaction, &
@@ -5204,6 +5205,8 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
   PetscInt :: sec_zeta(sec_transport_vars%ncells)
   PetscReal :: diag_react, rhs_react
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
 
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -5232,6 +5235,13 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   
   if (reaction%mineral%nkinmnrl > 0) then
     kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    ! Arrhenius factor
+    arrhenius_factor = 1.d0
+    if (reaction%mineral%kinmnrl_activation_energy(1) > 0.d0) then
+      arrhenius_factor = exp(reaction%mineral%kinmnrl_activation_energy(1)/rgas &
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
+    endif    
+    kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
     equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
@@ -5296,6 +5306,7 @@ end subroutine RTSecondaryTransport
 !
 ! ************************************************************************** !
 subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
+                                        global_aux_vars, &
                                         diffusion_coefficient, &
                                         porosity, &
                                         reaction, &
@@ -5310,6 +5321,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   
   type(sec_transport_type) :: sec_transport_vars
   type(reactive_transport_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_vars
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: coeff_left(sec_transport_vars%ncells)
@@ -5332,7 +5344,9 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
   PetscInt :: sec_zeta(sec_transport_vars%ncells)
   PetscReal :: diag_react
-  
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
+    
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
   vol = sec_transport_vars%vol
@@ -5357,6 +5371,13 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   
   if (reaction%mineral%nkinmnrl > 0) then
     kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    ! Arrhenius factor
+    arrhenius_factor = 1.d0
+    if (reaction%mineral%kinmnrl_activation_energy(1) > 0.d0) then
+      arrhenius_factor = exp(reaction%mineral%kinmnrl_activation_energy(1)/rgas &
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_vars%temp(1)+273.15d0)))
+    endif    
+    kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
     equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
