@@ -58,6 +58,8 @@ module Material_module
     PetscReal :: secondary_continuum_diff_coeff
     PetscReal :: secondary_continuum_mnrl_volfrac
     PetscReal :: secondary_continuum_mnrl_area 
+    PetscBool :: secondary_continuum_log_spacing
+    PetscReal :: secondary_continuum_outer_spacing
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
     character(len=MAXSTRINGLENGTH), pointer :: subcontinuum_type_name(:)
@@ -141,6 +143,8 @@ function MaterialPropertyCreate()
   material_property%secondary_continuum_mnrl_volfrac = 0.d0
   material_property%secondary_continuum_mnrl_area = 0.d0
   material_property%secondary_continuum_ncells = 0
+  material_property%secondary_continuum_log_spacing = PETSC_FALSE
+  material_property%secondary_continuum_outer_spacing = 1.d-3
 #ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
   nullify(material_property%subcontinuum_type_count)
@@ -464,6 +468,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputReadDouble(input,option, &
                              material_property%secondary_continuum_mnrl_area)
               call InputErrorMsg(input,option,'secondary cont. mnrl area', &
+                           'MATERIAL_PROPERTY')
+            case('LOG_GRID_SPACING')
+              material_property%secondary_continuum_log_spacing = PETSC_TRUE
+            case('OUTER_SPACING')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_outer_spacing)
+              call InputErrorMsg(input,option,'secondary cont. outer spacing', &
                            'MATERIAL_PROPERTY')
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &

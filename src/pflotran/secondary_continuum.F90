@@ -30,34 +30,38 @@ module Secondary_Continuum_module
   end type sec_continuum_type
 
   type, public :: sec_heat_type  
-    PetscBool :: sec_temp_update              ! flag to check if the temp is updated
-    PetscInt :: ncells                        ! number of secondary grid cells
-    PetscReal :: aperture                     ! fracture aperture
-    PetscReal :: epsilon                      ! vol. frac. of primary continuum
+    PetscBool :: sec_temp_update               ! flag to check if the temp is updated
+    PetscInt :: ncells                         ! number of secondary grid cells
+    PetscReal :: aperture                      ! fracture aperture
+    PetscReal :: epsilon                       ! vol. frac. of primary continuum
     type(sec_continuum_type) :: sec_continuum
     PetscReal, pointer :: sec_temp(:)          ! array of temp. at secondary grid cells
     PetscReal, pointer :: area(:)              ! surface area
     PetscReal, pointer :: vol(:)               ! volume     face      node       face
     PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
     PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
-    PetscReal :: interfacial_area             ! interfacial area between prim. and sec. per unit volume of prim.+sec.
+    PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
+    PetscBool :: log_spacing                   ! flag to check if log spacing is set
+    PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
   end type sec_heat_type  
   
   type, public :: sec_transport_type  
-    PetscBool :: sec_conc_update              ! flag to check if the temp is updated
-    PetscInt :: ncells                        ! number of secondary grid cells
-    PetscReal :: aperture                     ! fracture aperture
-    PetscReal :: epsilon                      ! vol. frac. of primary continuum
+    PetscBool :: sec_conc_update               ! flag to check if the temp is updated
+    PetscInt :: ncells                         ! number of secondary grid cells
+    PetscReal :: aperture                      ! fracture aperture
+    PetscReal :: epsilon                       ! vol. frac. of primary continuum
     type(sec_continuum_type) :: sec_continuum
     PetscReal, pointer :: sec_conc(:)          ! array of aqueous species conc. at secondary grid cells
     PetscReal, pointer :: sec_mnrl_volfrac(:)  ! array of mineral vol fraction at secondary grid cells
-    PetscInt, pointer :: sec_zeta(:)          ! array of zetas at secondary grid cells
+    PetscInt, pointer :: sec_zeta(:)           ! array of zetas at secondary grid cells
     PetscReal, pointer :: area(:)              ! surface area
     PetscReal, pointer :: vol(:)               ! volume     face      node       face
     PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
     PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
     PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
     PetscReal :: sec_mnrl_area                 ! secondary mineral surface area
+    PetscBool :: log_spacing                   ! flag to check if log spacing is set
+    PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
   end type sec_transport_type  
 
 
@@ -75,7 +79,8 @@ module Secondary_Continuum_module
 !
 ! ************************************************************************** !
 subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
-            volm,dm1,dm2,aperture,epsilon,interfacial_area,option)
+            volm,dm1,dm2,aperture,epsilon,log_spacing,outer_spacing, &
+            interfacial_area,option)
 
   use Option_module
 
@@ -90,7 +95,10 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   PetscInt :: igeom, nmat, m
   PetscReal :: aream(nmat), volm(nmat), dm1(nmat), dm2(nmat)
   PetscReal :: dy, r0, r1, aream0, am0, vm0, interfacial_area
-  PetscReal :: num_density, aperture, epsilon, fracture_spacing, matrix_block_size
+  PetscReal :: num_density, aperture, epsilon, fracture_spacing
+  PetscReal :: outer_spacing, matrix_block_size
+  PetscReal :: grid_spacing(nmat)
+  PetscBool :: log_spacing
 
   PetscInt, save :: icall
 
@@ -149,7 +157,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
           r0 = fracture_spacing*(1.d0-epsilon)**(1.d0/3.d0)
           aperture = r0*((1.d0-epsilon)**(-1.d0/3.d0)-1.d0)
         endif
-
+                                            
       else if (sec_continuum%nested_cube%matrix_block_size > 0.d0) then
 
         r0 = sec_continuum%nested_cube%matrix_block_size
@@ -163,31 +171,58 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
           aperture = fracture_spacing - r0
         endif
       endif
-
-      dy = r0/nmat/2.d0
-     
-      r0 = 2.d0*dy
-      volm(1) = r0**3
-      do m = 2, nmat
-        r1 = r0 + 2.d0*dy
-        volm(m) = r1**3 - r0**3
-        r0 = r1
-      enddo
       
-      r0 = 2.d0*dy
-      aream(1) = 6.d0*r0**2
-      dm1(1) = 0.5d0*dy
-      dm2(1) = 0.5d0*dy
-      do m = 2, nmat
-        dm1(m) = 0.5d0*dy
-        dm2(m) = 0.5d0*dy
-        r0 = r0 + 2.d0*dy
-        aream(m) = 6.d0*r0**2
-      enddo
-      r0 = real(2*nmat)*dy
-      am0 = 6.d0*r0**2
-      vm0 = r0**3
-      interfacial_area = am0/vm0
+      if (log_spacing) then 
+        
+        matrix_block_size = r0
+        call SecondaryContinuumCalcLogSpacing(matrix_block_size,outer_spacing, &
+                                              nmat,grid_spacing,option)
+        
+        
+        r0 = 2*grid_spacing(1)                                                                                                                                  
+        dm1(1) = 0.5*grid_spacing(1)
+        dm2(1) = 0.5*grid_spacing(1)
+        volm(1) = r0**3
+        aream(1) = 6.d0*r0**2         
+        do m = 2, nmat
+          dm1(m) = 0.5*grid_spacing(m)
+          dm2(m) = 0.5*grid_spacing(m)
+          r1 = r0 + 2*(dm1(m) + dm2(m))
+          volm(m) = r1**3 - r0**3
+          aream(m) = 6.d0*r1**2
+          r0 = r1
+        enddo
+        r0 = matrix_block_size
+        am0 = 6.d0*r0**2
+        vm0 = r0**3
+        interfacial_area = am0/vm0
+
+      else
+        dy = r0/nmat/2.d0
+     
+        r0 = 2.d0*dy
+        volm(1) = r0**3
+        do m = 2, nmat
+          r1 = r0 + 2.d0*dy
+          volm(m) = r1**3 - r0**3
+          r0 = r1
+        enddo
+      
+        r0 = 2.d0*dy
+        aream(1) = 6.d0*r0**2
+        dm1(1) = 0.5d0*dy
+        dm2(1) = 0.5d0*dy
+        do m = 2, nmat
+          dm1(m) = 0.5d0*dy
+          dm2(m) = 0.5d0*dy
+          r0 = r0 + 2.d0*dy
+          aream(m) = 6.d0*r0**2
+        enddo
+        r0 = real(2*nmat)*dy
+        am0 = 6.d0*r0**2
+        vm0 = r0**3
+        interfacial_area = am0/vm0
+      endif
 
       if (icall == 0 .and. OptionPrintToFile(option)) then
         icall = 1
@@ -317,6 +352,63 @@ subroutine SecondaryContinuumSetProperties(sec_continuum, &
   end select
       
 end subroutine SecondaryContinuumSetProperties  
+
+! ************************************************************************** !
+!
+! SecondaryContinuumCalcLogSpacing: Given the matrix block size and the 
+! grid spacing of the outer mode secondary continuum cell, a geometric
+! series is assumed and the grid spacing of the rest of the cells is 
+! calculated
+! author: Satish Karra, LANL
+! date: 07/17/12
+!
+! ************************************************************************** !
+
+subroutine SecondaryContinuumCalcLogSpacing(matrix_size,outer_grid_size, &
+                                            sec_num_cells,grid_spacing,option)
+                                              
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  PetscReal :: matrix_size, outer_grid_size
+  PetscInt :: sec_num_cells
+  PetscReal :: grid_spacing(sec_num_cells)
+  PetscReal :: delta, delta_new, inner_grid_size
+  PetscReal :: F, dF
+  PetscReal, parameter :: tol = 1.d-12
+  PetscInt, parameter :: maxit = 50
+  PetscInt :: i 
+  
+  
+  if (mod(sec_num_cells,2) /= 0) then
+     option%io_buffer = 'NUM_CELLS under SECONDARY_CONTINUUM has to be' // &
+                        ' even for logarithmic grid spacing'
+      call printErrMsg(option)
+  endif
+  
+  delta = 0.85d0
+  
+  do i = 1, maxit
+    F = (1.d0 - delta)/(1.d0 - delta**sec_num_cells)*delta**(sec_num_cells-1) - &
+        2.d0*outer_grid_size/matrix_size
+    dF = (1.d0 + sec_num_cells*(delta - 1.d0) - delta**sec_num_cells)/ &
+         (delta**sec_num_cells - 1.d0)**2*delta**(sec_num_cells - 2) 
+    delta_new = delta + F/dF
+    if ((abs(F) < tol)) exit
+    delta = delta_new
+    if (delta < 0.d0) delta = 0.5d0
+    if (delta > 1.d0) delta = 0.9d0
+  enddo
+
+  inner_grid_size = outer_grid_size/delta**(sec_num_cells - 1)
+  
+  do i = 1, sec_num_cells
+    grid_spacing(i) = inner_grid_size*delta**(i-1)
+  enddo
+    
+end subroutine SecondaryContinuumCalcLogSpacing
 
 end module Secondary_Continuum_module
             

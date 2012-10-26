@@ -256,6 +256,11 @@ subroutine MphaseSetupPatch(realization)
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
       mphase_sec_heat_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
+      mphase_sec_heat_vars(ghosted_id)%log_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+      mphase_sec_heat_vars(ghosted_id)%outer_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
+        
 
       allocate(mphase_sec_heat_vars(ghosted_id)%area(mphase_sec_heat_vars(ghosted_id)%ncells))
       allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
@@ -271,6 +276,8 @@ subroutine MphaseSetupPatch(realization)
                               mphase_sec_heat_vars(ghosted_id)%dm_plus, &
                               mphase_sec_heat_vars(ghosted_id)%aperture, &
                               mphase_sec_heat_vars(ghosted_id)%epsilon, &
+                              mphase_sec_heat_vars(ghosted_id)%log_spacing, &
+                              mphase_sec_heat_vars(ghosted_id)%outer_spacing, &
                               area_per_vol,option)
                                 
       mphase_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &

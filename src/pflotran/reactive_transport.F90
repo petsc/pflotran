@@ -198,6 +198,10 @@ subroutine RTSetupPatch(realization)
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
       rt_sec_transport_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon 
+      rt_sec_transport_vars(ghosted_id)%log_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+      rt_sec_transport_vars(ghosted_id)%outer_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing    
         
       allocate(rt_sec_transport_vars(ghosted_id)%area(rt_sec_transport_vars(ghosted_id)%ncells))
       allocate(rt_sec_transport_vars(ghosted_id)%vol(rt_sec_transport_vars(ghosted_id)%ncells))
@@ -213,6 +217,8 @@ subroutine RTSetupPatch(realization)
                               rt_sec_transport_vars(ghosted_id)%dm_plus, &
                               rt_sec_transport_vars(ghosted_id)%aperture, &
                               rt_sec_transport_vars(ghosted_id)%epsilon, &
+                              rt_sec_transport_vars(ghosted_id)%log_spacing, &
+                              rt_sec_transport_vars(ghosted_id)%outer_spacing, &
                               area_per_vol,option)                                
       rt_sec_transport_vars(ghosted_id)%interfacial_area = area_per_vol* &
           (1.d0 - rt_sec_transport_vars(ghosted_id)%epsilon)
