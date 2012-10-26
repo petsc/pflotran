@@ -1486,16 +1486,25 @@ subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
   dataset => source_sink%flow_condition%rate%flow_dataset%dataset
   cur_connection_set => source_sink%connection_set
 
-  if(size(dataset%rarray)/=cur_connection_set%num_connections) then
-    option%io_buffer='Length of array in dataset does not match no. of connection '// &
-      ' sets.'
-    call printErrMsg(option)
+  if(associated(dataset)) then
+
+    if(size(dataset%rarray)/=cur_connection_set%num_connections) then
+      option%io_buffer='Length of array in dataset does not match no. of connection '// &
+        ' sets.'
+      call printErrMsg(option)
+    endif
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
+    enddo
+  else
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    enddo
+
   endif
-
-  do iconn=1,cur_connection_set%num_connections
-    source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
-  enddo
-
 end subroutine PatchUpdateDistributedSourceSinkAuxVars
 
 ! ************************************************************************** !
