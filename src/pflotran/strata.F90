@@ -23,9 +23,6 @@ module Strata_module
     PetscInt :: imaterial_property                       ! id of material in material array/list
     PetscInt :: iregion                                  ! id of region in region array/list
     type(material_property_type), pointer :: material_property ! pointer to material in material array/list
-#ifdef SUBCONTINUUM_MODEL
-    type(subcontinuum_property_type), pointer :: subcontinuum_property(:) ! pointer to subcontinuum in subcontinuum array/list
-#endif
     type(region_type), pointer :: region                ! pointer to region in region array/list
 #ifdef SURFACE_FLOW
     type(surface_material_property_type),pointer :: surf_material_property
@@ -84,9 +81,7 @@ function StrataCreate1()
 
   nullify(strata%region)
   nullify(strata%material_property)
-#ifdef SUBCONTINUUM_MODEL
-  nullify(strata%subcontinuum_property)
-#endif
+
 #ifdef SURFACE_FLOW
   nullify(strata%surf_material_property)
   strata%isurf_material_property = 0
