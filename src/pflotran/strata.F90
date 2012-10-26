@@ -117,14 +117,10 @@ function StrataCreateFromStrata(strata)
   new_strata%realization_dependent = strata%realization_dependent
   new_strata%region_name = strata%region_name
   new_strata%iregion = strata%iregion
-
   ! keep these null
   nullify(new_strata%region)
   nullify(new_strata%material_property)
 
-#ifdef SUBCONTINUUM_MODEL
-  nullify(new_strata%subcontinuum_property)
-#endif
 #ifdef SURFACE_FLOW
   nullify(new_strata%surf_material_property)
 #endif
