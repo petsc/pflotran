@@ -103,7 +103,8 @@ module Output_module
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
-            OutputPermeability, OutputPrintCouplers
+            OutputPermeability, OutputPrintCouplers, &
+            OutputGetCellCenteredVelocities
 
 contains
 
@@ -799,28 +800,28 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
   endif
   
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
   if (option%nphase > 1) then
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
   endif
@@ -1363,9 +1364,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vz,GLOBAL, &
                                   option)  
   
-  call GetCellCenteredVelocities(realization,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
-  call GetCellCenteredVelocities(realization,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
-  call GetCellCenteredVelocities(realization,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
 
   call GridVecGetArrayF90(grid,global_vec_vx,vec_ptr_vx,ierr)
   call GridVecGetArrayF90(grid,global_vec_vy,vec_ptr_vy,ierr)
@@ -4335,33 +4336,33 @@ subroutine OutputVelocitiesVTK(realization)
   call WriteVTKGrid(OUTPUT_UNIT,realization)
 
   word = 'Vlx'
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
   word = 'Vly'
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
   word = 'Vlz'
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
   if (option%nphase > 1) then
     word = 'Vgx'
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
     word = 'Vgy'
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
     word = 'Vgz'
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
   endif
@@ -5012,32 +5013,32 @@ subroutine OutputHDF5(realization)
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
     call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
     call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
     call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
         string = "Gas X-Velocity"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
@@ -5964,13 +5965,13 @@ end subroutine OutputGetVarFromArray1
 
 ! ************************************************************************** !
 !
-! GetCellCenteredVelocities: Computes the cell-centered velocity component 
+! OutputGetCellCenteredVelocities: Computes the cell-centered velocity component 
 !                            as an averages of cell face velocities
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
+subroutine OutputGetCellCenteredVelocities(realization,vec,iphase,direction)
 
   use Realization_module
   use Grid_module
@@ -6079,7 +6080,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
   call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
-end subroutine GetCellCenteredVelocities
+end subroutine OutputGetCellCenteredVelocities
 
 ! ************************************************************************** !
 !
@@ -8109,32 +8110,32 @@ subroutine OutputHDF5UGrid(realization)
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
     call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
     call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
     call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
         string = "Gas X-Velocity"
         call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
         call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
         call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)

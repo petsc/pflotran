@@ -441,11 +441,14 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
+  Vec :: x_vel_natural, y_vel_natural, z_vel_natural
+  Vec :: x_vel_process, y_vel_process, z_vel_process
   PetscInt :: ivar, isubvar
   type(option_type), pointer :: option
   type(output_variable_type), pointer :: cur_variable
-  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:), y_ptr(:), z_ptr(:)
   PetscInt :: i
+  PetscInt :: iphase
   PetscReal :: r_norm, x_norm
   PetscReal :: max, min, mean
   PetscErrorCode :: ierr
@@ -558,6 +561,149 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   
     cur_variable => cur_variable%next
   enddo
+  
+  ! velocities
+  if ((realization%output_option%print_tecplot_velocities .or. &
+       realization%output_option%print_hdf5_velocities) .and. &
+      option%nflowdof > 0) then
+    if (associated(regression%natural_cell_ids)) then
+      call VecDuplicate(regression%natural_cell_id_vec,x_vel_natural,ierr)
+      call VecDuplicate(regression%natural_cell_id_vec,y_vel_natural,ierr)
+      call VecDuplicate(regression%natural_cell_id_vec,z_vel_natural,ierr)
+      call VecZeroEntries(x_vel_natural,ierr)
+      call VecZeroEntries(y_vel_natural,ierr)
+      call VecZeroEntries(z_vel_natural,ierr)
+    endif
+    if (regression%num_cells_per_process > 0) then
+      call VecDuplicate(regression%cells_per_process_vec,x_vel_process,ierr)
+      call VecDuplicate(regression%cells_per_process_vec,y_vel_process,ierr)
+      call VecDuplicate(regression%cells_per_process_vec,z_vel_process,ierr)
+      call VecZeroEntries(x_vel_process,ierr)
+      call VecZeroEntries(y_vel_process,ierr)
+      call VecZeroEntries(z_vel_process,ierr)
+    endif
+
+    do iphase = 1, option%nphase
+      if (associated(regression%natural_cell_ids) .or. &
+          regression%num_cells_per_process > 0) then
+    
+        if (iphase == 1) then
+          string = 'LIQUID'
+        else
+          string = 'GAS'
+        endif
+        if (option%myrank == option%io_rank) then
+          write(OUTPUT_UNIT,'(''-- GENERIC: '',a,'' VELOCITY ['',a, &
+                              &''] --'')') &
+            trim(string), 'm/' // trim(realization%output_option%tunit)
+        endif
+    
+        ! X
+        call OutputGetCellCenteredVelocities(realization,global_vec,iphase, &
+                                             X_DIRECTION)
+        if (associated(regression%natural_cell_ids)) then
+          call VecScatterBegin(regression%scatter_natural_cell_id_gtos, &
+                               global_vec,x_vel_natural,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr)
+          call VecScatterEnd(regression%scatter_natural_cell_id_gtos, &
+                             global_vec,x_vel_natural,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr)
+        endif
+        if (regression%num_cells_per_process > 0) then
+          call VecScatterBegin(regression%scatter_cells_per_process_gtos, &
+                               global_vec,x_vel_process,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr)
+          call VecScatterEnd(regression%scatter_cells_per_process_gtos, &
+                             global_vec,x_vel_process,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr)
+        endif
+        ! Y
+        call OutputGetCellCenteredVelocities(realization,global_vec,iphase, &
+                                             Y_DIRECTION)
+        if (associated(regression%natural_cell_ids)) then
+          call VecScatterBegin(regression%scatter_natural_cell_id_gtos, &
+                               global_vec,y_vel_natural,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr)
+          call VecScatterEnd(regression%scatter_natural_cell_id_gtos, &
+                             global_vec,y_vel_natural,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr)
+        endif
+        if (regression%num_cells_per_process > 0) then
+          call VecScatterBegin(regression%scatter_cells_per_process_gtos, &
+                               global_vec,y_vel_process,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr)
+          call VecScatterEnd(regression%scatter_cells_per_process_gtos, &
+                             global_vec,y_vel_process,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr)
+        endif
+        ! Z
+        call OutputGetCellCenteredVelocities(realization,global_vec,iphase, &
+                                             Z_DIRECTION)
+        if (associated(regression%natural_cell_ids)) then
+          call VecScatterBegin(regression%scatter_natural_cell_id_gtos, &
+                               global_vec,z_vel_natural,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr)
+          call VecScatterEnd(regression%scatter_natural_cell_id_gtos, &
+                             global_vec,z_vel_natural,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr)
+        endif
+        if (regression%num_cells_per_process > 0) then
+          call VecScatterBegin(regression%scatter_cells_per_process_gtos, &
+                               global_vec,z_vel_process,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr)
+          call VecScatterEnd(regression%scatter_cells_per_process_gtos, &
+                             global_vec,z_vel_process,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr)
+        endif
+      
+  104 format(i9,': ',3es20.13) 
+
+        ! natural cell ids
+        if (associated(regression%natural_cell_ids)) then
+          call VecGetArrayF90(x_vel_natural,vec_ptr,ierr)
+          call VecGetArrayF90(y_vel_natural,y_ptr,ierr)
+          call VecGetArrayF90(z_vel_natural,z_ptr,ierr)
+          if (option%myrank == option%io_rank) then
+            do i = 1, size(regression%natural_cell_ids)
+              write(OUTPUT_UNIT,104) &
+                regression%natural_cell_ids(i),vec_ptr(i),y_ptr(i),z_ptr(i)
+            enddo
+          endif
+          call VecRestoreArrayF90(x_vel_natural,vec_ptr,ierr)
+          call VecRestoreArrayF90(y_vel_natural,y_ptr,ierr)
+          call VecRestoreArrayF90(z_vel_natural,z_ptr,ierr)
+        endif
+      
+        ! cell ids per process
+        if (regression%num_cells_per_process > 0) then
+          call VecGetArrayF90(x_vel_process,vec_ptr,ierr)
+          call VecGetArrayF90(y_vel_process,y_ptr,ierr)
+          call VecGetArrayF90(z_vel_process,z_ptr,ierr)
+          if (option%myrank == option%io_rank) then
+            do i = 1, regression%num_cells_per_process*option%mycommsize
+              write(OUTPUT_UNIT,104) &
+                regression%cells_per_process_natural_ids(i),vec_ptr(i), &
+                  y_ptr(i),z_ptr(i)
+            enddo
+          endif
+          call VecRestoreArrayF90(x_vel_process,vec_ptr,ierr)
+          call VecRestoreArrayF90(y_vel_process,y_ptr,ierr)
+          call VecRestoreArrayF90(z_vel_process,z_ptr,ierr)
+        endif
+      endif
+    enddo
+
+    if (associated(regression%natural_cell_ids)) then
+      call VecDestroy(x_vel_natural,ierr)
+      call VecDestroy(y_vel_natural,ierr)
+      call VecDestroy(z_vel_natural,ierr)
+    endif
+    if (regression%num_cells_per_process > 0) then
+      call VecDestroy(x_vel_process,ierr)
+      call VecDestroy(y_vel_process,ierr)
+      call VecDestroy(z_vel_process,ierr)
+    endif
+  endif ! option%nflowdof > 0
   
   call VecDestroy(global_vec,ierr)
   
