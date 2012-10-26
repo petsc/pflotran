@@ -377,12 +377,21 @@ class RegressionTest(object):
             if k == "name" or k == 'type':
                 pass
             elif k in current_section:
-                gold = gold_section[k]
-                current = current_section[k]
                 name_str = name + ":" + k
-                status = self._compare_values(name_str, data_type,
-                                              gold, current)
-                section_status += status
+                # the data may be vector
+                gold = gold_section[k].split()
+                current = current_section[k].split()
+                if len(gold) != len(current):
+                    status = 1
+                    if self._verbose:
+                        print("    FAIL: {0} : {1} : vector lengths not "
+                              "equal. gold {2}, current {3}".format(
+                                name, k, len(gold), len(current)))
+                else:
+                    for i in range(len(gold)):
+                        status = self._compare_values(name_str, data_type,
+                                                      gold[i], current[i])
+                        section_status += status
 
         if self._verbose and False:
             print("    {0} : status : {1}".format(name, section_status))
