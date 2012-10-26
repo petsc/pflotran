@@ -86,12 +86,12 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Alunite
-      RATE_CONSTANT 1.d-11
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
     /
     Chrysocolla2
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
       PREFACTOR
-        RATE_CONSTANT 1.d-10
+        RATE_CONSTANT 1.d-10 mol/cm^2-sec
         PREFACTOR_SPECIES H+
           ALPHA 0.39
         /
@@ -99,31 +99,31 @@ CHEMISTRY
     /
     Goethite
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
-      RATE_CONSTANT 1.d-11
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
     /
     Gypsum
-      RATE_CONSTANT 1.d-10
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
     /
     Jarosite
-      RATE_CONSTANT 1.d-11
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
     /
     Jurbanite
-      RATE_CONSTANT 1.d-11
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
     /
     Kaolinite
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
-      RATE_CONSTANT 1.d-13
+      RATE_CONSTANT 1.d-13 mol/cm^2-sec
     /
     Muscovite
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
-      RATE_CONSTANT 1.d-13
+      RATE_CONSTANT 1.d-13 mol/cm^2-sec
     /
     SiO2(am)
-      RATE_CONSTANT 1.d-11
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
     /
     Quartz
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
-      RATE_CONSTANT 1.d-14
+      RATE_CONSTANT 1.d-14 mol/cm^2-sec
     /
   /
   DATABASE ../../../database/hanford.dat
@@ -286,16 +286,16 @@ CONSTRAINT initial
     O2(aq)     -0.699d0 G O2(g)
   /
   MINERALS
-    Alunite       0.d0    1.d0
-    Chrysocolla2  5.0d-3  1.d0
-    Goethite      2.5d-2  1.d0
-    Gypsum        0.d0    1.d0
-    Jarosite      0.d0    1.d0
-    Jurbanite     0.d0    1.d0
-    Kaolinite     5.0d-2  1.d0
-    Muscovite     5.0d-2  1.d0
-    SiO2(am)      0.d0    1.d0
-    Quartz        8.2d-1  1.d0
+    Alunite       0.d0    1.d0 cm^2/cm^3
+    Chrysocolla2  5.0d-3  1.d0 cm^2/cm^3
+    Goethite      2.5d-2  1.d0 cm^2/cm^3
+    Gypsum        0.d0    1.d0 cm^2/cm^3
+    Jarosite      0.d0    1.d0 cm^2/cm^3
+    Jurbanite     0.d0    1.d0 cm^2/cm^3
+    Kaolinite     5.0d-2  1.d0 cm^2/cm^3
+    Muscovite     5.0d-2  1.d0 cm^2/cm^3
+    SiO2(am)      0.d0    1.d0 cm^2/cm^3
+    Quartz        8.2d-1  1.d0 cm^2/cm^3
   /
 END
 

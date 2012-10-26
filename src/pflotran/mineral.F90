@@ -80,6 +80,7 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
   use Input_module
   use String_module  
   use Option_module
+  use Units_module
   
   implicit none
   
@@ -101,6 +102,7 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                                               cur_prefactor_species
   PetscBool :: found
   PetscInt :: imnrl,icount
+  PetscReal :: temp_real
 
   cur_mineral => mineral_reaction%mineral_list
   do 
@@ -145,6 +147,14 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                 tstrxn%rate = 10.d0**tstrxn%rate
               endif
               call InputErrorMsg(input,option,'rate',error_string)
+              ! read units if they exist
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (InputError(input)) then
+                input%err_buf = trim(cur_mineral%name) // 'RATE UNITS'
+                call InputDefaultMsg(input,option)
+              else
+                tstrxn%rate = tstrxn%rate * UnitsConvertToInternal(word,option)
+              endif
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
               call InputReadDouble(input,option,tstrxn%activation_energy)
@@ -199,6 +209,16 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                     call InputErrorMsg(input,option,'rate',error_string)
                     if (prefactor%rate < 0.d0) then
                       prefactor%rate = 10.d0**prefactor%rate
+                    endif
+                    ! read units if they exist
+                    call InputReadWord(input,option,word,PETSC_TRUE)
+                    if (InputError(input)) then
+                      input%err_buf = trim(cur_mineral%name) // &
+                                      'PREFACTOR RATE UNITS'
+                      call InputDefaultMsg(input,option)
+                    else
+                      prefactor%rate = prefactor%rate * &
+                                       UnitsConvertToInternal(word,option)
                     endif
                   case('ACTIVATION_ENERGY')
                     ! read activation energy for Arrhenius law
@@ -654,17 +674,15 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       endif
 
       ! compute rate
-      ! rate: mol/cm^2 mnrl/sec
-      ! area: cm^2 mnrl/cm^3 bulk
+      ! rate: mol/m^2 mnrl/sec
+      ! area: m^2 mnrl/m^3 bulk
       ! volume: m^3 bulk
-      
-      ! convert cm^2 mnrl/cm^3 bulk -> cm^2 mnrl/m^3 bulk
-      Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 
+      Im_const = -rt_auxvar%mnrl_area(imnrl)
 
       ! units: mol/sec/m^3 bulk
       if (associated(mineral_reaction%kinmnrl_affinity_power)) then
-        ! Im_const: cm^2 mnrl/m^3 bulk
-        ! sum_prefactor_rate: mol/cm^2 mnrl/sec
+        ! Im_const: m^2 mnrl/m^3 bulk
+        ! sum_prefactor_rate: mol/m^2 mnrl/sec
         Im = Im_const*sign_* &
              abs(affinity_factor)**mineral_reaction%kinmnrl_affinity_power(imnrl)* &
              sum_prefactor_rate
@@ -680,7 +698,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 #endif
 
     ! scale Im_const by volume for calculating derivatives below
-    ! units: cm^2 mnrl
+    ! units: m^2 mnrl
     Im_const = Im_const*volume
 
     ! convert rate from volumetric (mol/sec/m^3 bulk) to mol/sec
@@ -988,17 +1006,15 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
     endif
 
     ! compute rate
-    ! rate: mol/cm^2 mnrl/sec
-    ! area: cm^2 mnrl/cm^3 bulk
+    ! rate: mol/m^2 mnrl/sec
+    ! area: m^2 mnrl/m^3 bulk
     ! volume: m^3 bulk
-      
-    ! convert cm^2 mnrl/cm^3 bulk -> cm^2 mnrl/m^3 bulk
-    Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 
+    Im_const = -rt_auxvar%mnrl_area(imnrl)
 
     ! units: mol/sec/m^3 bulk
     if (associated(mineral_reaction%kinmnrl_affinity_power)) then
-      ! Im_const: cm^2 mnrl/m^3 bulk
-      ! sum_prefactor_rate: mol/cm^2 mnrl/sec
+      ! Im_const: m^2 mnrl/m^3 bulk
+      ! sum_prefactor_rate: mol/m^2 mnrl/sec
       Im = Im_const*sign_* &
             abs(affinity_factor)**mineral_reaction%kinmnrl_affinity_power(imnrl)* &
             sum_prefactor_rate

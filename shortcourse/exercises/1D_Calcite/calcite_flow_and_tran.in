@@ -26,7 +26,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite
-      RATE_CONSTANT 1.d-12
+      RATE_CONSTANT 1.d-6
     /
   /
   DATABASE ../../../database/hanford.dat
