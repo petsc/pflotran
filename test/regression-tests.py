@@ -45,6 +45,7 @@ class RegressionTest(object):
         self._PRESSURE = "pressure"
         self._SATURATION = "saturation"
         self._SOLUTION = "solution"
+        self._RESIDUAL = "residual"
         self._TOL_VALUE = 0
         self._TOL_TYPE = 1
         # misc test parameters
@@ -69,6 +70,7 @@ class RegressionTest(object):
         self._tolerance[self._VOLUME_FRACTION] = [1.0e-12, self._ABSOLUTE]
         self._tolerance[self._PRESSURE] = [1.0e-12, self._ABSOLUTE]
         self._tolerance[self._SATURATION] = [1.0e-12, self._ABSOLUTE]
+        self._tolerance[self._RESIDUAL] = [1.0e-12, self._ABSOLUTE]
 
     def __str__(self):
         message = "  {0} :\n".format(self.name())
@@ -287,10 +289,10 @@ class RegressionTest(object):
         current_name = self.name() + ".regression"
 
         # check if the gold file exists already
-        if os.path.isfile(gold_name):
-            raise Exception("ERROR: test '{0}' was classified as new, "
-                            "but a gold file already "
-                            "exists!".format(self.name()))
+#        if os.path.isfile(gold_name):
+#            raise Exception("ERROR: test '{0}' was classified as new, "
+#                            "but a gold file already "
+#                            "exists!".format(self.name()))
 
         # check that the regression file was created.
         if not os.path.isfile(current_name):
@@ -489,8 +491,8 @@ class RegressionTest(object):
         elif param == "Residual 2-Norm":
             previous = float(previous)
             current = float(current)
-            tolerance = self._tolerance[self._GENERIC][self._TOL_VALUE]
-            tolerance_type = self._tolerance[self._GENERIC][self._TOL_TYPE]
+            tolerance = self._tolerance[self._RESIDUAL][self._TOL_VALUE]
+            tolerance_type = self._tolerance[self._RESIDUAL][self._TOL_TYPE]
         else:
             raise Exception("ERROR: unknown variable '{0}' in solution "
                   "section '{1}'".format(param, section))
