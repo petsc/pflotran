@@ -88,7 +88,7 @@ REGION west
 END 
 
 REGION center_of_13
-  COORDINATE 1.25d0 2.91667 1.25d0
+  FILE 13.txt
 END 
 
 REGION middle
