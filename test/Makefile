@@ -43,8 +43,10 @@ ifneq ($(strip $(MPIEXEC)),)
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
 		--mpiexec $(MPIEXEC) -r ascem/1d --suite parallel
 else
-	@echo "Could not find mpiexec."
-	@echo "Skipping parallel tests."
+	@echo "********************************************************"
+	@echo "  Could not find mpiexec."
+	@echo "  Skipping parallel tests."
+	@echo "********************************************************"
 endif
 
 default-discretization-umesh :
@@ -52,8 +54,10 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
 		-r default/discretization --suite mixed
 else
-	@echo "PFloTran does not appear to be compiled with Parmetis."
-	@echo "Skipping unstructured mesh tests."
+	@echo "********************************************************"
+	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  Skipping unstructured mesh tests."
+	@echo "********************************************************"
 endif
 
 
