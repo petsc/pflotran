@@ -382,16 +382,23 @@ class RegressionTest(object):
                 gold = gold_section[k].split()
                 current = current_section[k].split()
                 if len(gold) != len(current):
-                    status = 1
+                    section_status += 1
                     if self._verbose:
                         print("    FAIL: {0} : {1} : vector lengths not "
                               "equal. gold {2}, current {3}".format(
                                 name, k, len(gold), len(current)))
                 else:
                     for i in range(len(gold)):
-                        status = self._compare_values(name_str, data_type,
-                                                      gold[i], current[i])
-                        section_status += status
+                        try:
+                            status = self._compare_values(name_str, data_type,
+                                                          gold[i], current[i])
+                            section_status += status
+                        except Exception as e:
+                            section_status += 1
+                            if self._verbose:
+                                print("ERROR: {0} : {1}.\n  {2}".format(
+                                        self.name(), k, str(e)))
+
 
         if self._verbose and False:
             print("    {0} : status : {1}".format(name, section_status))
