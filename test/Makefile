@@ -23,6 +23,7 @@ endif
 # tests that are run to verify pflotran is built correctly
 STANDARD_TESTS = \
 	ascem-geochemistry \
+	ascem-geochemistry-parallel \
 	default-discretization-umesh
 
 # regression tests for developers changing pflotran
@@ -37,6 +38,15 @@ ascem-geochemistry :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
 		-r ascem --suite geochemistry 
 
+ascem-geochemistry-parallel :
+ifneq ($(strip $(MPIEXEC)),)
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
+		--mpiexec $(MPIEXEC) -r ascem/1d --suite parallel
+else
+	@echo "Could not find mpiexec."
+	@echo "Skipping parallel tests."
+endif
+
 default-discretization-umesh :
 ifneq ($(strip $(PARMETIS_LIB)),)
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
@@ -45,6 +55,7 @@ else
 	@echo "PFloTran does not appear to be compiled with Parmetis."
 	@echo "Skipping unstructured mesh tests."
 endif
+
 
 cu-leaching :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
