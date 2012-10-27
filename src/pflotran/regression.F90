@@ -506,7 +506,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr)
     endif
 
-100 format(i9,': ',es20.13)    
+100 format(i9,': ',es21.13)    
 101 format(i9,': ',i9)    
     
     if (option%myrank == option%io_rank) then
@@ -516,13 +516,13 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       
       ! max, min, mean
       if (cur_variable%iformat == 0) then
-        write(OUTPUT_UNIT,'(6x,''Max: '',es20.13)') max
-        write(OUTPUT_UNIT,'(6x,''Min: '',es20.13)') min
+        write(OUTPUT_UNIT,'(6x,''Max: '',es21.13)') max
+        write(OUTPUT_UNIT,'(6x,''Min: '',es21.13)') min
       else
         write(OUTPUT_UNIT,'(6x,''Max: '',i9)') int(max)
         write(OUTPUT_UNIT,'(6x,''Min: '',i9)') int(min)
       endif
-      write(OUTPUT_UNIT,'(5x,''Mean: '',es20.13)') mean
+      write(OUTPUT_UNIT,'(5x,''Mean: '',es21.13)') mean
       
       ! natural cell ids
       if (associated(regression%natural_cell_ids)) then
@@ -656,7 +656,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
                              SCATTER_FORWARD,ierr)
         endif
       
-  104 format(i9,': ',3es20.13) 
+  104 format(i9,': ',3es21.13) 
 
         ! natural cell ids
         if (associated(regression%natural_cell_ids)) then
@@ -708,7 +708,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   call VecDestroy(global_vec,ierr)
   
 102 format(i12)    
-103 format(es20.13)
+103 format(es21.13)
 
   ! timestep, newton iteration, solver iteration output
   if (associated(flow_stepper)) then
@@ -716,7 +716,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     call VecNorm(realization%field%flow_r,NORM_2,r_norm,ierr)
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- SOLUTION: Flow --'')')
-      write(OUTPUT_UNIT,'(''   Time (seconds): '',es20.13)') &
+      write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
         flow_stepper%cumulative_solver_time
       write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_stepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
@@ -725,8 +725,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
         flow_stepper%cumulative_linear_iterations
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
         flow_stepper%cumulative_time_step_cuts
-      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es20.13)') x_norm
-      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es20.13)') r_norm
+      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
+      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
     endif
   endif
   if (associated(tran_stepper)) then
@@ -734,7 +734,7 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
     call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr)
     if (option%myrank == option%io_rank) then
       write(OUTPUT_UNIT,'(''-- SOLUTION: Transport --'')')
-      write(OUTPUT_UNIT,'(''   Time (seconds): '',es20.13)') &
+      write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
         tran_stepper%cumulative_solver_time
       write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') tran_stepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
@@ -743,8 +743,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
         tran_stepper%cumulative_linear_iterations
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
         tran_stepper%cumulative_time_step_cuts
-      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es20.13)') x_norm
-      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es20.13)') r_norm
+      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
+      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
     endif
   endif
   
