@@ -1487,55 +1487,66 @@ subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,sum_connect
   dataset => source_sink%flow_condition%rate%flow_dataset%dataset
   cur_connection_set => source_sink%connection_set
 
-  if(.not.associated(dataset%dataset_map)) then
-    !
-    ! Older scheme: Only works on a single proc run and assumes SS values are
-    ! prescribed in the dataset at each CV
-    !
-    if(option%mycommsize>1) then
-      option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
-        ' for single processor runs.'
-      call printErrMsg(option)
-    endif
+  if(associated(dataset)) then
 
-    if(size(dataset%rarray)/=cur_connection_set%num_connections) then
-      option%io_buffer='Length of array in dataset does not match no. of connection '// &
-        ' sets.'
-      call printErrMsg(option)
-    endif
+    if(.not.associated(dataset%dataset_map)) then
+      !
+      ! Older scheme: Only works on a single proc run and assumes SS values are
+      ! prescribed in the dataset at each CV
+      !
+      if(option%mycommsize>1) then
+        option%io_buffer='PatchUpdateDistributedSourceSinkAuxVars only implemented '// &
+          ' for single processor runs.'
+        call printErrMsg(option)
+      endif
 
-    do iconn=1,cur_connection_set%num_connections
-      source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
-    enddo
+      if(size(dataset%rarray)/=cur_connection_set%num_connections) then
+        option%io_buffer='Length of array in dataset does not match no. of connection '// &
+          ' sets.'
+        call printErrMsg(option)
+      endif
 
-  else
-    ! New scheme: Mapping data is provided in HDF file
-    !
-    
-    ! If called for the first time, create the map
-    if (dataset%dataset_map%first_time) then
-      allocate(cell_ids_nat(cur_connection_set%num_connections))
       do iconn=1,cur_connection_set%num_connections
-        sum_connection = sum_connection + 1
-        local_id = cur_connection_set%id_dn(iconn)
-        ghosted_id = grid%nL2G(local_id)
-        cell_ids_nat(iconn)=grid%nG2A(ghosted_id)
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
       enddo
 
-      call PatchCreateFlowConditionDatasetMap(patch%grid,dataset%dataset_map,&
-              cell_ids_nat,cur_connection_set%num_connections,option)
+    else !if(.not.associated(dataset%dataset_map))
 
-      dataset%dataset_map%first_time = PETSC_FALSE
-      deallocate(cell_ids_nat)
-
-    endif
+      ! New scheme: Mapping data is provided in HDF file
+      !
     
-    ! Save the data in the array
-    do iconn=1,cur_connection_set%num_connections
-      source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
-        dataset%rarray(dataset%dataset_map%datatocell_ids(iconn))
-    enddo
+      ! If called for the first time, create the map
+      if (dataset%dataset_map%first_time) then
+        allocate(cell_ids_nat(cur_connection_set%num_connections))
+        do iconn=1,cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+          cell_ids_nat(iconn)=grid%nG2A(ghosted_id)
+        enddo
 
+        call PatchCreateFlowConditionDatasetMap(patch%grid,dataset%dataset_map,&
+                cell_ids_nat,cur_connection_set%num_connections,option)
+
+        dataset%dataset_map%first_time = PETSC_FALSE
+        deallocate(cell_ids_nat)
+
+      endif
+    
+      ! Save the data in the array
+      do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          dataset%rarray(dataset%dataset_map%datatocell_ids(iconn))
+      enddo
+
+    endif !if(.not.associated(dataset%dataset_map))
+
+  else ! if(associated(dataset)) 
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    enddo
   endif
   
 end subroutine PatchUpdateDistributedSourceSinkAuxVars
