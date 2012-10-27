@@ -1903,6 +1903,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
 
   use Option_module
   use Input_module
+  use Units_module
   use String_module
   use Logging_module
  
@@ -2113,12 +2114,31 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                                'CONSTRAINT, MINERALS')   
           endif
 
-          ! specific surface area
-          call InputReadDouble(input,option, &
-                               mineral_constraint%constraint_area(imnrl))
-          call InputErrorMsg(input,option,'area', &
-                          'CONSTRAINT, MINERALS')          
-        
+          string = trim(input%buf)
+          call InputReadWord(string,word,PETSC_TRUE,ierr)
+          ! if a dataset
+          if (StringCompareIgnoreCase(word,'DATASET')) then
+            option%io_buffer = 'DATASETs not yet supported for specific ' // &
+                               'mineral surface area.'
+            call printErrMsg(option)
+          else
+            ! specific surface area
+            call InputReadDouble(input,option, &
+                                 mineral_constraint%constraint_area(imnrl))
+            call InputErrorMsg(input,option,'area', &
+                               'CONSTRAINT, MINERALS')          
+            ! read units if they exist
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (InputError(input)) then
+              input%err_buf = trim(mineral_constraint%names(imnrl)) // &
+                               ' SPECIFIC SURFACE_AREA UNITS'
+              call InputDefaultMsg(input,option)
+            else
+              mineral_constraint%constraint_area(imnrl) = &
+                mineral_constraint%constraint_area(imnrl) * &
+                UnitsConvertToInternal(word,option)
+            endif
+          endif
         enddo  
         
         if (imnrl < reaction%mineral%nkinmnrl) then
@@ -2265,7 +2285,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,flow_dataset, &
   use String_module
   use Option_module
   use Logging_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
   use Units_module
 #if defined(PETSC_HAVE_HDF5)
   use hdf5

@@ -92,7 +92,8 @@ module Discretization_module
             DiscretizNaturalToGlobalEnd, &
             DiscretizationCreateDMs,&
             DiscretizationGetDMPtrFromIndex, &
-            DiscretizationUpdateTVDGhosts
+            DiscretizationUpdateTVDGhosts, &
+            DiscretAOApplicationToPetsc
   
 contains
 
@@ -733,13 +734,17 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       ! this function must be called to set up str_grid%lxs, etc.
       call StructGridComputeLocalBounds(discretization%grid%structured_grid, &
-                                        discretization%dm_1dof%sgdm)    
+                                        discretization%dm_1dof%sgdm,option)    
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%structured_grid%ngmax
+      discretization%grid%global_offset = &
+        discretization%grid%structured_grid%global_offset
     case(UNSTRUCTURED_GRID)
       discretization%grid%nmax = discretization%grid%unstructured_grid%nmax
       discretization%grid%nlmax = discretization%grid%unstructured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%unstructured_grid%ngmax
+      discretization%grid%global_offset = &
+        discretization%grid%unstructured_grid%global_offset
   end select
 
 end subroutine DiscretizationCreateDMs
@@ -1870,6 +1875,35 @@ subroutine DiscretizationUpdateTVDGhosts(discretization,global_vec, &
                        tvd_ghost_vec,INSERT_VALUES,SCATTER_FORWARD,ierr)
   
 end subroutine DiscretizationUpdateTVDGhosts
+
+! ************************************************************************** !
+!
+! DiscretAOApplicationToPetsc: Maps application ordering to petsc
+! author: Glenn Hammond
+! date: 10/12/12
+!
+! ************************************************************************** !
+subroutine DiscretAOApplicationToPetsc(discretization,int_array)
+
+  implicit none
+  
+#include "finclude/petscao.h"  
+  
+  type(discretization_type) :: discretization
+  PetscInt :: int_array(:)
+  PetscErrorCode :: ierr
+  
+  AO :: ao
+  
+  select case(discretization%itype)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      call DMDAGetAO(discretization%dm_1dof,ao,ierr)
+    case(UNSTRUCTURED_GRID)
+      ao = discretization%grid%unstructured_grid%ao_natural_to_petsc
+  end select
+  call AOApplicationToPetsc(ao,size(int_array),int_array,ierr)
+  
+end subroutine DiscretAOApplicationToPetsc
 
 ! ************************************************************************** !
 !

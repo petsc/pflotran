@@ -1312,11 +1312,11 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
       endif
 
       ! compute rate
-      ! rate = mol/cm^2 mnrl/sec
-      ! area = cm^2 mnrl/cm^3 bulk
+      ! rate = mol/m^2 mnrl/sec
+      ! area = m^2 mnrl/m^3 bulk
       ! volume = m^3 bulk
-      ! units = cm^2 mnrl/m^3 bulk
-      Im_const = -auxvar%mnrl_area(ichunk,ithread,imnrl)*1.d6 ! convert cm^3->m^3
+      ! units = m^2 mnrl/m^3 bulk
+      Im_const = -auxvar%mnrl_area(ichunk,ithread,imnrl)
       ! units = mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
         Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
@@ -1329,7 +1329,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,vector_length,
       cycle
     endif
     
-    ! units = cm^2 mnrl
+    ! units = m^2 mnrl
     Im_const = Im_const*auxvar%vol(ichunk,ithread)
     ! units = mol/sec
     Im = Im*auxvar%vol(ichunk,ithread)
