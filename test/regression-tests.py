@@ -1093,11 +1093,13 @@ def check_for_mpiexec(options):
     mpiexec = None
     if options.mpiexec is not None:
         # absolute path to the executable
-        mpiexec = os.path.abspath(options.mpiexec[0])
+#geh: need to add code to determine full path of mpiexec if not specified
+#        mpiexec = os.path.abspath(options.mpiexec[0])
+        mpiexec = options.mpiexec[0]
         # is it a valid file?
-        if not os.path.isfile(mpiexec):
-            raise Exception("ERROR: mpiexec is not a valid file: "
-                            "'{0}'".format(mpiexec))
+#        if not os.path.isfile(mpiexec):
+#            raise Exception("ERROR: mpiexec is not a valid file: "
+#                            "'{0}'".format(mpiexec))
     return mpiexec
 
 
