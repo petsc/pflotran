@@ -626,15 +626,15 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
     do iconn = 1, size(unstructured_grid%explicit_grid%connections,2)
       id_up = unstructured_grid%explicit_grid%connections(1,iconn)
       id_dn = unstructured_grid%explicit_grid%connections(2,iconn)
-      if (id_up > 0) then
-        if (id_dn > 0) then
+      if (id_up <= unstructured_grid%nlmax) then ! local
+        if (id_dn <= unstructured_grid%nlmax) then
           d_nnz(id_up) = d_nnz(id_up) + 1
         else
           o_nnz(id_up) = o_nnz(id_up) + 1
         endif
       endif
-      if (id_dn > 0) then
-        if (id_up > 0) then
+      if (id_dn <= unstructured_grid%nlmax) then ! local
+        if (id_up <= unstructured_grid%nlmax) then
           d_nnz(id_dn) = d_nnz(id_dn) + 1
         else
           o_nnz(id_dn) = o_nnz(id_dn) + 1
@@ -643,8 +643,10 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
     enddo
   else
     do local_id = 1, unstructured_grid%nlmax
-      do ineighbor = 1, unstructured_grid%cell_neighbors_local_ghosted(0,local_id)
-        neighbor_id = unstructured_grid%cell_neighbors_local_ghosted(ineighbor,local_id)
+      do ineighbor = 1, unstructured_grid% &
+                          cell_neighbors_local_ghosted(0,local_id)
+        neighbor_id = unstructured_grid% &
+                        cell_neighbors_local_ghosted(ineighbor,local_id)
         if (neighbor_id > 0) then
           d_nnz(local_id) = d_nnz(local_id) + 1
         else
@@ -927,7 +929,7 @@ end subroutine UGridPartition
 !
 ! ************************************************************************** !
 subroutine UGridCreateOldVec(ugrid,option,elements_old, &
-                             num_cells_local_old,num_cells_local_new, &
+                             num_cells_local_old, &
                              is_new,is_scatter,stride)
   use Option_module                  
 
@@ -940,7 +942,7 @@ subroutine UGridCreateOldVec(ugrid,option,elements_old, &
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
   Vec :: elements_old
-  PetscInt :: num_cells_local_old, num_cells_local_new
+  PetscInt :: num_cells_local_old
   IS :: is_new 
   IS :: is_scatter
   PetscInt :: stride
@@ -995,7 +997,7 @@ end subroutine UGridCreateOldVec
 ! ************************************************************************** !
 subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
                                num_cells_local_new,stride,dual_offset, &
-                               is_scatter)
+                               natural_id_offset,is_scatter)
 
   use Option_module
   use Utility_module, only: reallocateIntArray  
@@ -1014,9 +1016,10 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   PetscInt :: num_cells_local_new
   PetscInt :: stride
   PetscInt :: dual_offset
+  PetscInt :: natural_id_offset
   IS :: is_scatter  
   
-  Vec :: elements_petsc, elements_new
+  Vec :: elements_petsc, elements_natural
   PetscViewer :: viewer
   VecScatter :: vec_scatter
   IS :: is_gather  
@@ -1043,11 +1046,11 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 
   ! create a petsc vec to store all the information for each element
   ! based on the stride calculated above.  
-  call VecCreate(option%mycomm,elements_new,ierr)
-  call VecSetSizes(elements_new, &
+  call VecCreate(option%mycomm,elements_natural,ierr)
+  call VecSetSizes(elements_natural, &
                    stride*num_cells_local_new, &
                    PETSC_DECIDE,ierr)
-  call VecSetFromOptions(elements_new,ierr)  
+  call VecSetFromOptions(elements_natural,ierr)  
   
 #if UGRID_DEBUG
   call printMsg(option,'Before element scatter')
@@ -1055,12 +1058,12 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 
   ! scatter all the cell data from the old decomposition (as read in in 
   ! parallel) to the more parmetis-calculated decomposition
-  call VecScatterCreate(elements_old,PETSC_NULL,elements_new,is_scatter, &
+  call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter, &
                         vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
-  call VecScatterBegin(vec_scatter,elements_old,elements_new, &
+  call VecScatterBegin(vec_scatter,elements_old,elements_natural, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr)
-  call VecScatterEnd(vec_scatter,elements_old,elements_new, &
+  call VecScatterEnd(vec_scatter,elements_old,elements_natural, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
 
@@ -1079,11 +1082,11 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 
 #if UGRID_DEBUG
   if (ugrid%grid_type == THREE_DIM_GRID) then
-    call PetscViewerASCIIOpen(option%mycomm,'elements_new_subsurf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'elements_natural_subsurf.out',viewer,ierr)
   else
-    call PetscViewerASCIIOpen(option%mycomm,'elements_new_surf.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'elements_natural_surf.out',viewer,ierr)
   endif
-  call VecView(elements_new,viewer,ierr)
+  call VecView(elements_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
   
@@ -1091,14 +1094,15 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   global_offset_new = 0
   call MPI_Exscan(num_cells_local_new,global_offset_new, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  ugrid%global_offset = global_offset_new
 
   allocate(ugrid%cell_ids_natural(num_cells_local_new))
   ugrid%cell_ids_natural = 0
   
   ! look at all connections and determine how many are non-local, and create
   !  a listof indices
-  call VecDuplicate(elements_new,elements_petsc,ierr)
-  call VecCopy(elements_new,elements_petsc,ierr)
+  call VecDuplicate(elements_natural,elements_petsc,ierr)
+  call VecCopy(elements_natural,elements_petsc,ierr)
 
 #if UGRID_DEBUG
   call printMsg(option,'Lists of ids')
@@ -1108,15 +1112,25 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   
   ! store the natural grid cell id for each local cell as read from the grid 
   ! file
-  call VecGetArrayF90(elements_new,vec_ptr,ierr)
+  call VecGetArrayF90(elements_natural,vec_ptr,ierr)
   do local_id = 1, num_cells_local_new
     ! Cell id read from explicit grid input file is second entry in block
     ! It may match the first entry (the calculated natural id based on the
     ! order that cells were read), but it need not.
     ugrid%cell_ids_natural(local_id) = &
-      abs(vec_ptr((local_id-1)*stride+2))
+      abs(vec_ptr((local_id-1)*stride+natural_id_offset))
   enddo
-  call VecRestoreArrayF90(elements_new,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
+
+#if UGRID_DEBUG
+  write(string,*) option%myrank
+  string = 'natural_ids' // trim(adjustl(string)) // '.out'
+  open(unit=86,file=trim(string))
+  do local_id = 1, num_cells_local_new
+    write(86,'(i5)') ugrid%cell_ids_natural(local_id)
+  enddo
+  close(86)
+#endif     
 
   ! make a list of petsc ids for each local cell (you simply take the global 
   ! offset and add it to the local contiguous cell ids on each processor
@@ -1150,7 +1164,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   ! to petsc ordering   
   
   ! count the number of cells and their duals  
-  call VecGetArrayF90(elements_new,vec_ptr,ierr)
+  call VecGetArrayF90(elements_natural,vec_ptr,ierr)
   count = 0
   do local_id=1, num_cells_local_new
     count = count + 1
@@ -1174,7 +1188,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
       int_array(count) = dual_id
     enddo
   enddo
-  call VecRestoreArrayF90(elements_new,vec_ptr,ierr)
+  call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
 
 #if UGRID_DEBUG
   call printMsg(option,'Application ordering')
@@ -1194,8 +1208,8 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   ! exactly the opposite operation of when we loaded the temporary int_array
   ! vector
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
-!geh: do not believe that we need elements_new here
-!  call VecGetArrayF90(elements_new,vec_ptr2,ierr)
+!geh: do not believe that we need elements_natural here
+!  call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
   allocate(ugrid%cell_ids_petsc(num_cells_local_new))
   count = 0
   do local_id=1, num_cells_local_new
@@ -1214,7 +1228,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     enddo
   enddo                
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
-!geh  call VecRestoreArrayF90(elements_new,vec_ptr2,ierr)
+!geh  call VecRestoreArrayF90(elements_natural,vec_ptr2,ierr)
   deallocate(int_array)
 
 #if UGRID_DEBUG
@@ -1391,7 +1405,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   ugrid%cell_ids_natural(1:ugrid%nlmax) = int_array(:)
   deallocate(int_array)
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
-  call VecGetArrayF90(elements_new,vec_ptr2,ierr)
+  call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
   do local_id=1, ugrid%nlmax
     do idual = 1, ugrid%max_ndual_per_cell
       dual_id = vec_ptr(idual + dual_offset + (local_id-1)*stride)
@@ -1408,8 +1422,8 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
     call printErrMsgByRank(option)
   endif
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
-  call VecRestoreArrayF90(elements_new,vec_ptr2,ierr)
-  call VecDestroy(elements_new,ierr)  
+  call VecRestoreArrayF90(elements_natural,vec_ptr2,ierr)
+  call VecDestroy(elements_natural,ierr)  
   
   ! NOW START ON GHOSTING CELLS
 

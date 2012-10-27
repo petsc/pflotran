@@ -292,8 +292,9 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
   coupler => coupler_list%first
   do
     if (.not.associated(coupler)) exit 
-    if ((grid%itype == STRUCTURED_GRID_MIMETIC).and.&
-          ((coupler%itype == INITIAL_COUPLER_TYPE).or.(coupler%itype == BOUNDARY_COUPLER_TYPE))) then  
+    if (grid%itype == STRUCTURED_GRID_MIMETIC .and. &
+        (coupler%itype == INITIAL_COUPLER_TYPE .or. &
+         coupler%itype == BOUNDARY_COUPLER_TYPE)) then  
        call CouplerComputeConnections(grid,option,coupler)
        call CouplerComputeConnectionsFaces(grid,option,coupler)      
        call CouplerAssignBCtoCells(grid,option,coupler)
