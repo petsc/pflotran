@@ -575,6 +575,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   dm_plus = sec_transport_vars%dm_plus
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
+  sec_zeta = sec_transport_vars%sec_zeta
   
   coeff_left = 0.d0
   coeff_diag = 0.d0
