@@ -138,7 +138,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
         do m = 1, nmat
           if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
-          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
+          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0 !*(1.d0 - epsilon)
         enddo
 !       aperture = r0*(1.d0/(1.d0-epsilon)**(1.d0/3.d0)-1.d0)
 !       write(option%fid_out,'(2x,"aperture: ",17x,1pe12.4," m")') aperture
@@ -177,7 +177,6 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         matrix_block_size = r0
         call SecondaryContinuumCalcLogSpacing(matrix_block_size,outer_spacing, &
                                               nmat,grid_spacing,option)
-        
         
         r0 = 2*grid_spacing(1)                                                                                                                                  
         dm1(1) = 0.5*grid_spacing(1)
@@ -237,9 +236,16 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         write(option%fid_out,'(2x,"specific interfacial area: ",1pe12.4," m^(-1)")') interfacial_area
         write(option%fid_out,'(2x,"fracture aperture: ",8x,1pe12.4," m")') aperture
         write(option%fid_out,'(2x,"fracture spacing: ",9x,1pe12.4," m")') fracture_spacing
+        write(option%fid_out,'(/,2x,"node  vol. frac.      dm1         dm2         aream       dy          y")')
+        r0 = 0.d0
         do m = 1, nmat
-          if (m == 1) write(option%fid_out,'(/,2x,"node matrix volume fraction")') 
-          write(option%fid_out,'(2x,i3,3x,1pe12.4)') m,volm(m)/vm0*(1.d0 - epsilon)
+          if (m == 1) then
+            r0 = r0 + dm1(m)
+          else
+            r0 = r0 + dm2(m-1)+dm1(m)
+          endif
+          write(option%fid_out,'(2x,i3,3x,1p6e12.4)') m,volm(m)/vm0,dm1(m),dm2(m),aream(m), &
+          dm1(m)+dm2(m),r0
         enddo
       endif
 
