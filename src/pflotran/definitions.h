@@ -136,6 +136,7 @@ PetscInt, parameter :: CONDUCTANCE_BC = 13
 PetscInt, parameter :: UNIT_GRADIENT_BC = 14
 PetscInt, parameter :: SATURATION_BC = 15
 PetscInt, parameter :: DISTRIBUTED_VOLUMETRIC_RATE_SS = 16
+PetscInt, parameter :: DISTRIBUTED_MASS_RATE_SS = 17
 PetscInt, parameter :: WELL_SS = 100
 
 ! source/sink scaling options
@@ -273,6 +274,9 @@ PetscInt, parameter :: ICE_SATURATION =          50
 PetscInt, parameter :: TOTAL_BULK =              51
 PetscInt, parameter :: ICE_DENSITY =             52
 PetscInt, parameter :: GAS_PRESSURE =            53
+PetscInt, parameter :: SECONDARY_TEMPERATURE =   54
+PetscInt, parameter :: SECONDARY_CONCENTRATION = 55
+PetscInt, parameter :: SEC_MIN_VOLFRAC =         56
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
@@ -365,4 +369,9 @@ PetscInt, parameter :: DIFFUSION_WAVE = 2
 
 PetscInt, parameter :: TWO_POINT_FLUX = 0
 PetscInt, parameter :: LSM_FLUX       = 1
+
+! print secondary continuum variable ids
+PetscInt, parameter :: PRINT_SEC_TEMP =           0
+PetscInt, parameter :: PRINT_SEC_CONC =           1
+PetscInt, parameter :: PRINT_SEC_MIN_VOLFRAC =    2
 #define HASH

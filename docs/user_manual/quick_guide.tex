@@ -352,9 +352,9 @@ p_c \eq p_c^0 \left(s_e^{-1/m}-1\right)^{1/n}.
 \EN
 The quantities $m$, $n$ and $p_c^0$ are impirical constants determined by fitting to experimental data.
 
-\subsubsection{Brook-Corey Saturation Function} 
+\subsubsection{Brooks-Corey Saturation Function} 
 
-The Brook-Corey saturation function is a limiting form of the van Genuchten relation for $p_c/p_c^0 \gg 1$, with the form
+The Brooks-Corey saturation function is a limiting form of the van Genuchten relation for $p_c/p_c^0 \gg 1$, with the form
 \EQ
 s_e \eq \left(\frac{p_c}{p_c^0}\right)^{-\lambda},
 \EN
@@ -386,7 +386,7 @@ k_{r} \eq \sqrt{s_e} \left\{1 - \left[1- \left( s_e \right)^{1/m} \right]^m \rig
 %k_{rg} \eq 1 - k_{rl}. 
 %\EN 
 
-The Mualem relative permeability function based on the Brook-Corey saturation function is defined by 
+The Mualem relative permeability function based on the Brooks-Corey saturation function is defined by 
 \BA
 k_r &\eq \big(s_e\big)^{5/2+2/\lambda},\\
 &\eq \big(p_c/p_c^0\big)^{-(5\lambda/2+2)}.
@@ -1181,7 +1181,7 @@ Q_i\eq\prod_j\big(\gamma_jC_j\big)^{\nu_{ji}}.
 \EN
 The site concentration $\omega_\a$ satisfies the relation
 \EQ\label{totsite}
-\omega_\a \eq S_\a + \sum_i S_{i\a}.
+\omega_\a \eq S_\a + \sum_i S_{i\a},
 \EN
 and is constant.
 The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
@@ -3889,6 +3889,7 @@ The user must specify either a region or boundary condition to which the observa
 \item[REGION] \ {\tt region name}
 \item[VELOCITY]
 \item[AT\_CELL\_CENTER]
+\item[SECONDARY\_TEMPERATURE]
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}
@@ -3899,6 +3900,7 @@ The user must specify either a region or boundary condition to which the observa
 \item[Keyword REGION] (optional) defines the name of the region (usually a point in space) to which the observation point is linked.
 \item[Keyword BOUNDARY\_CONDITION] (optional) specifies the name of a boundary condition to which the observation point is tied (e.g. to monitor fluxes across a boundary face).
 \item[Keyword VELOCITY] (optional) toggles on the printing of Darcy velocities at the observation point.
+\item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodal) temperatures.
 \end{description}
 
 {\noindent\bf Examples:}

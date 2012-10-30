@@ -290,6 +290,14 @@ function RegionCreateWithRegion(region)
                size(region%explicit_faceset%face_centroids)))
     new_region%explicit_faceset%face_centroids = &
       region%explicit_faceset%face_centroids
+    do icount = 1, size(region%explicit_faceset%face_centroids)
+      new_region%explicit_faceset%face_centroids(icount)%x = &
+        region%explicit_faceset%face_centroids(icount)%x
+      new_region%explicit_faceset%face_centroids(icount)%y = &
+        region%explicit_faceset%face_centroids(icount)%y
+      new_region%explicit_faceset%face_centroids(icount)%z = &
+        region%explicit_faceset%face_centroids(icount)%z
+    enddo
     allocate(new_region%explicit_faceset%face_areas( &
                size(region%explicit_faceset%face_areas)))
     new_region%explicit_faceset%face_areas = &

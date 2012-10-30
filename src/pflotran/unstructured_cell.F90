@@ -155,7 +155,7 @@ function UCellComputeVolume(cell_type,vertices,option)
                                         vertices(3),vertices(7))
       UCellComputeVolume = &
         UCellComputeVolume + &
-        UCellComputeVolumeOfTetrahedron(vertices(2),vertices(3), &
+        UCellComputeVolumeOfTetrahedron(vertices(1),vertices(3), &
                                         vertices(4),vertices(8))
 #if 0
      ! assume orthogonal grid

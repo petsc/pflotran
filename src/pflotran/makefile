@@ -23,8 +23,7 @@ endif
 
 ifdef glenn
   #MYFLAGS += -DGLENN -DUGRID_DEBUG
-  #MYFLAGS += -DUGRID_DEBUG
-  MYFLAGS += -DREGRESSION_DEBUG -DGLENN_NEW_IO
+  MYFLAGS += -DUGRID_DEBUG -UGRID_NEW
   #MYFLAGS += -DGLENN -DTVD_DEBUG
 endif
 
@@ -189,12 +188,12 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}material_aux.o\
 	${common_src}matrix_block_aux.o\
 	${common_src}database_aux.o\
+	${common_src}secondary_continuum.o\
 	${common_src}surface_complexation_aux.o\
 	${common_src}mineral_aux.o\
 	${common_src}solid_solution_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
-	${common_src}secondary_continuum.o\
 	${common_src}thc_aux.o\
 	${common_src}thmc_aux.o\
 	${common_src}richards_aux.o\
@@ -328,7 +327,7 @@ global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
            option.o coupler.o
 global_aux.o : option.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-         input.o mfd_aux.o unstructured_grid_aux.o
+         input.o mfd_aux.o unstructured_grid_aux.o unstructured_explicit.o
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
@@ -438,10 +437,10 @@ time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
 unstructured_cell.o : option.o utility.o 
-unstructured_explicit.o : geometry.o
+unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
                       unstructured_grid_aux.o geometry.o
-unstructured_grid_aux.o : unstructured_cell.o unstructured_explicit.o
+unstructured_grid_aux.o : unstructured_cell.o
 utility.o : string.o input.o option.o
 velocity.o : option.o input.o string.o logging.o units.o
 waypoint.o : option.o output_aux.o

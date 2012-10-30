@@ -53,6 +53,11 @@ module Material_module
     PetscReal :: secondary_continuum_epsilon
     PetscReal :: secondary_continuum_aperture
     PetscReal :: secondary_continuum_init_temp
+    PetscReal :: secondary_continuum_init_conc
+    PetscReal :: secondary_continuum_porosity
+    PetscReal :: secondary_continuum_diff_coeff
+    PetscReal :: secondary_continuum_mnrl_volfrac
+    PetscReal :: secondary_continuum_mnrl_area 
 #ifdef SUBCONTINUUM_MODEL
     PetscInt, pointer :: subcontinuum_property_id(:)
     character(len=MAXSTRINGLENGTH), pointer :: subcontinuum_type_name(:)
@@ -130,6 +135,11 @@ function MaterialPropertyCreate()
   material_property%secondary_continuum_epsilon = 1.d0
   material_property%secondary_continuum_aperture = 0.d0
   material_property%secondary_continuum_init_temp = 100.d0
+  material_property%secondary_continuum_init_conc = 0.d0
+  material_property%secondary_continuum_porosity = 0.5d0
+  material_property%secondary_continuum_diff_coeff = 1.d-9
+  material_property%secondary_continuum_mnrl_volfrac = 0.d0
+  material_property%secondary_continuum_mnrl_area = 0.d0
   material_property%secondary_continuum_ncells = 0
 #ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
@@ -429,6 +439,32 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call InputErrorMsg(input,option,'secondary continuum init temp', &
                            'MATERIAL_PROPERTY')
               option%set_secondary_init_temp = PETSC_TRUE
+            case('CONCENTRATION')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_init_conc)
+              call InputErrorMsg(input,option,'secondary continuum init conc', &
+                           'MATERIAL_PROPERTY')
+              option%set_secondary_init_conc = PETSC_TRUE
+            case('POROSITY')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_porosity)
+              call InputErrorMsg(input,option,'secondary continuum porosity', &
+                           'MATERIAL_PROPERTY')
+            case('DIFFUSION_COEFFICIENT')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_diff_coeff)
+              call InputErrorMsg(input,option,'secondary continuum diff coeff', &
+                           'MATERIAL_PROPERTY')
+            case('MINERAL_VOLFRAC')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_mnrl_volfrac)
+              call InputErrorMsg(input,option,'secondary cont. mnrl volfrac.', &
+                           'MATERIAL_PROPERTY')  
+            case('MINERAL_AREA')
+              call InputReadDouble(input,option, &
+                             material_property%secondary_continuum_mnrl_area)
+              call InputErrorMsg(input,option,'secondary cont. mnrl area', &
+                           'MATERIAL_PROPERTY')
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &
                                  ') not recognized in MATERIAL_PROPERTY,' // &

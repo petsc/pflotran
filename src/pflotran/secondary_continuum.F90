@@ -42,6 +42,24 @@ module Secondary_Continuum_module
     PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
     PetscReal :: interfacial_area             ! interfacial area between prim. and sec. per unit volume of prim.+sec.
   end type sec_heat_type  
+  
+  type, public :: sec_transport_type  
+    PetscBool :: sec_conc_update              ! flag to check if the temp is updated
+    PetscInt :: ncells                        ! number of secondary grid cells
+    PetscReal :: aperture                     ! fracture aperture
+    PetscReal :: epsilon                      ! vol. frac. of primary continuum
+    type(sec_continuum_type) :: sec_continuum
+    PetscReal, pointer :: sec_conc(:)          ! array of aqueous species conc. at secondary grid cells
+    PetscReal, pointer :: sec_mnrl_volfrac(:)  ! array of mineral vol fraction at secondary grid cells
+    PetscInt, pointer :: sec_zeta(:)          ! array of zetas at secondary grid cells
+    PetscReal, pointer :: area(:)              ! surface area
+    PetscReal, pointer :: vol(:)               ! volume     face      node       face
+    PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
+    PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
+    PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
+    PetscReal :: sec_mnrl_area                 ! secondary mineral surface area
+  end type sec_transport_type  
+
 
   public :: SecondaryContinuumType, &
             SecondaryContinuumSetProperties
@@ -79,6 +97,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
   data icall/0/
 
   igeom = sec_continuum%itype
+  option%nsec_cells = nmat
     
   select case (igeom)      
     case(0) ! 1D Slab

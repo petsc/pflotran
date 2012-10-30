@@ -2967,7 +2967,7 @@ end subroutine RJumpStartKineticSorption
 !
 ! ************************************************************************** !
 subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
-                  num_iterations_,reaction,option)
+                  num_iterations_,reaction,option,vol_frac_prim)
 
   use Option_module
   
@@ -2997,6 +2997,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   PetscReal :: ratio, min_ratio
   
   PetscInt, parameter :: iphase = 1
+  PetscReal :: vol_frac_prim
 
   one_over_dt = 1.d0/option%tran_dt
   num_iterations = 0
@@ -3018,7 +3019,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   
   ! still need code to overwrite other phases
   call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
-                      option,fixed_accum)
+                      option,vol_frac_prim,fixed_accum)
   if (reaction%neqsorb > 0) then
     call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
                            option,fixed_accum)  
@@ -3041,12 +3042,12 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
     call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
-                        option,residual)
+                        option,vol_frac_prim,residual)
     residual = residual-fixed_accum
 
     ! J is overwritten in RTAccumulationDerivative()
     call RTAccumulationDerivative(rt_auxvar,global_auxvar,porosity,volume, &
-                                  reaction,option,J)
+                                  reaction,option,vol_frac_prim,J)
 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
@@ -4584,7 +4585,8 @@ end subroutine RTAuxVarCompute
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option,Res)
+subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
+                          vol_frac_prim,Res)
 
   use Option_module
 
@@ -4605,6 +4607,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option,Res)
   PetscInt :: iaqcomp
   PetscReal :: psv_t
   PetscReal :: v_t
+  PetscReal :: vol_frac_prim
   
   iphase = 1
   ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
@@ -4614,7 +4617,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option,Res)
   psv_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt  
   istart = 1
   iend = reaction%naqcomp
-  Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
+  Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase)*vol_frac_prim 
 
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
@@ -4639,7 +4642,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option,Res)
 ! super critical CO2 phase
     if (iphase == 2) then
       psv_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt 
-      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase) 
+      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)* &
+                         vol_frac_prim 
       ! should sum over gas component only need more implementations
     endif 
 ! add code for other phases here
@@ -4657,7 +4661,8 @@ end subroutine RTAccumulation
 !
 ! ************************************************************************** !
 subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
-                                    por,vol,reaction,option,J)
+                                    por,vol,reaction,option, &
+                                    vol_frac_prim,J)
 
   use Option_module
 
@@ -4675,6 +4680,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   PetscInt :: idof
   PetscInt :: icoll
   PetscReal :: psvd_t, v_t
+  PetscReal :: vol_frac_prim
 
   iphase = 1
   istart = 1
@@ -4684,11 +4690,11 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   ! all Jacobian entries should be in kg water/sec
   J = 0.d0
   if (associated(rt_auxvar%aqueous%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt
+    psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt*vol_frac_prim
     J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
   else
     psvd_t = por*global_auxvar%sat(iphase)* &
-             global_auxvar%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
+             global_auxvar%den_kg(iphase)*vol/option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
     do icomp=istart,iendaq
       J(icomp,icomp) = psvd_t
     enddo
@@ -4718,12 +4724,13 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
 ! super critical CO2 phase
     if (iphase == 2) then
       if (associated(rt_auxvar%aqueous%dtotal)) then
-        psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt  
+        psvd_t = por*global_auxvar%sat(iphase)*1000.d0*vol/option%tran_dt* &
+                 vol_frac_prim  
         J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
       else
         psvd_t = por*global_auxvar%sat(iphase)* &
-          global_auxvar%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
+          global_auxvar%den_kg(iphase)*vol/option%tran_dt*vol_frac_prim ! units of den = kg water/m^3 water
         do icomp=istart,iendaq
           J(icomp,icomp) = J(icomp,icomp) + psvd_t
         enddo
@@ -4769,7 +4776,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
 
   call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
   call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
-                                por,vol,reaction,option,J)
+                                por,vol,reaction,option,1.d0,J)
     
   do jj = 1, reaction%ncomp
     do i = 1, reaction%ncomp

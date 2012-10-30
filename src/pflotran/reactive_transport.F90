@@ -128,6 +128,7 @@ subroutine RTSetupPatch(realization)
   use Connection_module
   use Fluid_module
   use Material_module
+  use Secondary_Continuum_module
  
   implicit none
 
@@ -140,9 +141,14 @@ subroutine RTSetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
   type(fluid_property_type), pointer :: cur_fluid_property
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  type(coupler_type), pointer :: initial_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: iphase
+  PetscReal :: area_per_vol
+  PetscReal :: equil_conc
+  
   
   option => realization%option
   patch => realization%patch
@@ -166,6 +172,97 @@ subroutine RTSetupPatch(realization)
     patch%aux%RT%rt_parameter%coll_spec_to_pri_spec = &
       reaction%coll_spec_to_pri_spec
   endif
+  
+  
+  
+!============== Create secondary continuum variables - SK 10/8/12 ==============
+
+  if (option%use_mc) then
+    initial_condition => patch%initial_conditions%first
+    allocate(rt_sec_transport_vars(grid%ngmax))  
+    do ghosted_id = 1, grid%ngmax
+    ! Assuming the same secondary continuum for all regions (need to make it an array)
+      call SecondaryContinuumSetProperties( &
+        rt_sec_transport_vars(ghosted_id)%sec_continuum, &
+        realization%material_property_array(1)%ptr%secondary_continuum_name, &
+        realization%material_property_array(1)%ptr%secondary_continuum_length, &
+        realization%material_property_array(1)%ptr%secondary_continuum_matrix_block_size, &
+        realization%material_property_array(1)%ptr%secondary_continuum_fracture_spacing, &
+        realization%material_property_array(1)%ptr%secondary_continuum_radius, &
+        realization%material_property_array(1)%ptr%secondary_continuum_area, &
+        option)
+        
+      rt_sec_transport_vars(ghosted_id)%ncells = &
+        realization%material_property_array(1)%ptr%secondary_continuum_ncells
+      rt_sec_transport_vars(ghosted_id)%aperture = &
+        realization%material_property_array(1)%ptr%secondary_continuum_aperture
+      rt_sec_transport_vars(ghosted_id)%epsilon = &
+        realization%material_property_array(1)%ptr%secondary_continuum_epsilon 
+        
+      allocate(rt_sec_transport_vars(ghosted_id)%area(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)%vol(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)%dm_minus(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)%dm_plus(rt_sec_transport_vars(ghosted_id)%ncells))
+    
+      call SecondaryContinuumType(&
+                              rt_sec_transport_vars(ghosted_id)%sec_continuum, &
+                              rt_sec_transport_vars(ghosted_id)%ncells, &
+                              rt_sec_transport_vars(ghosted_id)%area, &
+                              rt_sec_transport_vars(ghosted_id)%vol, &
+                              rt_sec_transport_vars(ghosted_id)%dm_minus, &
+                              rt_sec_transport_vars(ghosted_id)%dm_plus, &
+                              rt_sec_transport_vars(ghosted_id)%aperture, &
+                              rt_sec_transport_vars(ghosted_id)%epsilon, &
+                              area_per_vol,option)                                
+      rt_sec_transport_vars(ghosted_id)%interfacial_area = area_per_vol* &
+          (1.d0 - rt_sec_transport_vars(ghosted_id)%epsilon)
+    ! Setting the initial values of all secondary node concentrations same as
+    ! primary nodal concentration values
+      allocate(rt_sec_transport_vars(ghosted_id)%sec_conc(rt_sec_transport_vars(ghosted_id)%ncells))
+      allocate(rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(rt_sec_transport_vars(ghosted_id)%ncells)) 
+      allocate(rt_sec_transport_vars(ghosted_id)%sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
+      
+      if (reaction%mineral%nkinmnrl > 0) then 
+        equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/L
+      else
+        equil_conc = initial_condition%tran_condition% &
+        cur_constraint_coupler%aqueous_species%constraint_conc(1)
+      endif  
+        
+      if (option%set_secondary_init_conc) then
+        rt_sec_transport_vars(ghosted_id)%sec_conc = &
+          realization%material_property_array(1)%ptr%secondary_continuum_init_conc
+      else
+        rt_sec_transport_vars(ghosted_id)%sec_conc = equil_conc
+      endif  
+      
+      ! Assuming only one mineral
+      rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = 0.d0
+      rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = 0.d0
+      rt_sec_transport_vars(ghosted_id)%sec_zeta = 0
+      
+      if (reaction%mineral%nkinmnrl > 0) then
+        rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac = &
+          realization%material_property_array(1)%ptr%secondary_continuum_mnrl_volfrac
+        rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = &
+          realization%material_property_array(1)%ptr%secondary_continuum_mnrl_area        
+                   
+        if (rt_sec_transport_vars(ghosted_id)%sec_conc(1) > equil_conc) then 
+          rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
+        else
+          if (rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(1) > 0.d0) then
+            rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
+          else
+            rt_sec_transport_vars(ghosted_id)%sec_zeta = 0
+          endif      
+        endif
+      endif         
+      rt_sec_transport_vars(ghosted_id)%sec_conc_update = PETSC_FALSE
+    enddo      
+    patch%aux%RT%sec_transport_vars => rt_sec_transport_vars      
+  endif
+
+!===============================================================================   
     
   ! allocate aux_var data structures for all grid cells
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
@@ -225,6 +322,7 @@ subroutine RTSetupPatch(realization)
   enddo
   
 end subroutine RTSetupPatch
+
 
 ! ************************************************************************** !
 !
@@ -808,7 +906,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   use Reactive_Transport_Aux_module
   use Option_module
   use Field_module  
-  use Grid_module  
+  use Grid_module
+  use Secondary_Continuum_module  
 
   implicit none
   
@@ -821,12 +920,14 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), tor_loc_p(:), &
                         volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: dof_offset, istart, iendaq, iendall
   PetscInt :: istartcoll, iendcoll
   PetscErrorCode :: ierr
+  PetscReal :: vol_frac_prim
   
   option => realization%option
   field => realization%field
@@ -835,6 +936,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   global_aux_vars => patch%aux%Global%aux_vars
   grid => patch%grid
   reaction => realization%reaction
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
 
   ! cannot use tran_xx_loc vector here as it has not yet been updated.
   call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr)
@@ -843,7 +945,9 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
-
+  
+  vol_frac_prim = 1.d0
+  
 ! Do not use RTUpdateAuxVarsPatch() as it loops over ghosted ids
 
   do local_id = 1, grid%nlmax
@@ -869,6 +973,10 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
         global_aux_vars(ghosted_id)%den_kg(1)*1.d-3
     endif
     
+    if (option%use_mc) then
+      vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+    endif
+    
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_aux_vars(ghosted_id), &
@@ -878,7 +986,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
                         global_aux_vars(ghosted_id), &
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
-                        reaction,option,accum_p(istart:iendall)) 
+                        reaction,option,vol_frac_prim, &
+                        accum_p(istart:iendall)) 
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                              global_aux_vars(ghosted_id), &
@@ -1913,6 +2022,7 @@ subroutine RTReactPatch(realization)
   use Option_module
   use Field_module  
   use Grid_module  
+  use Secondary_Continuum_module
   
 !$ use omp_lib
      
@@ -1927,6 +2037,7 @@ subroutine RTReactPatch(realization)
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend
   PetscInt :: iphase
@@ -1951,6 +2062,7 @@ subroutine RTReactPatch(realization)
 #endif
   PetscInt :: icount
   PetscErrorCode :: ierr
+  PetscReal :: vol_frac_prim
 
   option => realization%option
   field => realization%field
@@ -1959,6 +2071,7 @@ subroutine RTReactPatch(realization)
   rt_aux_vars => patch%aux%RT%aux_vars
   grid => patch%grid
   reaction => realization%reaction
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
@@ -1969,6 +2082,7 @@ subroutine RTReactPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
       
+  vol_frac_prim = 1.d0    
   iphase = 1
   ithread = 1
 #ifdef OS_STATISTICS
@@ -2047,10 +2161,14 @@ subroutine RTReactPatch(realization)
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
     
+    if (option%use_mc) then
+      vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+    endif
+    
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                 tran_xx_p(istart:iend),volume_p(local_id), &
                 porosity_loc_p(ghosted_id), &
-                num_iterations,reaction,option)
+                num_iterations,reaction,option,vol_frac_prim)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
 #ifdef OS_STATISTICS
@@ -2428,6 +2546,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   use Connection_module
   use Coupler_module  
   use Debug_module
+  use Secondary_Continuum_module
   
   implicit none
 
@@ -2467,6 +2586,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscReal :: vol_frac_prim
+  
 #ifdef CENTRAL_DIFFERENCE  
   PetscReal :: T_11(realization%option%nphase)
   PetscReal :: T_12(realization%option%nphase)
@@ -2495,6 +2617,8 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
+
   
   if (.not.patch%aux%RT%aux_vars_up_to_date) then
     if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
@@ -2518,6 +2642,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
 
   r_p = 0.d0
+  vol_frac_prim = 1.d0
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -2540,18 +2665,27 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       ! TFluxCoef will eventually be moved to another routine where it should be
       ! called only once per flux interface at the beginning of a transport
       ! time step.
+      
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
+      endif  
+      
+      
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                      patch%internal_velocities(:,sum_connection), &
-                      patch%internal_tran_coefs(:,sum_connection), &
-                      cur_connection_set%dist(-1,iconn), &
-                      coef_up,coef_dn)
+                patch%internal_velocities(:,sum_connection), &
+                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                cur_connection_set%dist(-1,iconn), &
+                coef_up,coef_dn)
+                      
       call TFlux(rt_parameter, &
                   rt_aux_vars(ghosted_id_up), &
                   global_aux_vars(ghosted_id_up), &
                   rt_aux_vars(ghosted_id_dn), &
                   global_aux_vars(ghosted_id_dn), &
                   coef_up,coef_dn,option,Res)
+
+
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
@@ -2576,17 +2710,17 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       endif
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                    patch%internal_velocities(:,sum_connection), &
-                    patch%internal_tran_coefs(:,sum_connection), &
-                    cur_connection_set%dist(-1,iconn), &
-                    T_11,T_12,T_21,T_22)
+                 patch%internal_velocities(:,sum_connection), &
+                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                 cur_connection_set%dist(-1,iconn), &
+                 T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
                   rt_aux_vars(ghosted_id_up), &
                   global_aux_vars(ghosted_id_up), &
                   rt_aux_vars(ghosted_id_dn), &
                   global_aux_vars(ghosted_id_dn), &
                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
-                   
+                             
       if (local_id_up>0) then
         iend = local_id_up*reaction%ncomp
         istart = iend-reaction%ncomp+1
@@ -2620,13 +2754,17 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      endif  
+      
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                      patch%boundary_velocities(:,sum_connection), &
-                      patch%boundary_tran_coefs(:,sum_connection), &
-                      0.5d0, &
-                      coef_up,coef_dn)
+                  patch%boundary_velocities(:,sum_connection), &
+                  patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                  0.5d0, &
+                  coef_up,coef_dn)
       ! TFlux accomplishes the same as what TBCFlux would
       call TFlux(rt_parameter, &
                   rt_aux_vars_bc(sum_connection), &
@@ -2634,7 +2772,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                   rt_aux_vars(ghosted_id), &
                   global_aux_vars(ghosted_id), &
                   coef_up,coef_dn,option,Res)
- 
+                  
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
@@ -2655,10 +2793,10 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                        patch%boundary_velocities(:,sum_connection), &
-                        patch%boundary_tran_coefs(:,sum_connection), &
-                        0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
-                        T_11,T_12,T_21,T_22)
+                patch%boundary_velocities(:,sum_connection), &
+                patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
+                T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
                   rt_aux_vars_bc(sum_connection), &
                   global_aux_vars_bc(sum_connection), &
@@ -2716,6 +2854,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module
+  use Secondary_Continuum_module
   
   implicit none
 
@@ -2761,6 +2900,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   PetscInt :: icomp, ieqgas
 #endif
 
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscReal :: vol_frac_prim
+  PetscReal :: sec_diffusion_coefficient
+  PetscReal :: sec_porosity
+  PetscReal :: res_sec_transport
+
   option => realization%option
   field => realization%field
   patch => realization%patch
@@ -2771,6 +2916,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   rt_aux_vars_ss => patch%aux%RT%aux_vars_ss
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
   
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,r, r_p, ierr)
@@ -2778,6 +2924,8 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
  
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  
+  vol_frac_prim = 1.d0
 
   if (.not.option%steady_state) then
     r_p = r_p - accum_p
@@ -2792,11 +2940,15 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       istartall = offset + 1
       iendall = offset + reaction%ncomp
 
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      endif  
+        
       call RTAccumulation(rt_aux_vars(ghosted_id), &
                           global_aux_vars(ghosted_id), &
                           porosity_loc_p(ghosted_id), &
                           volume_p(local_id), &
-                          reaction,option,Res)
+                          reaction,option,vol_frac_prim,Res)
       if (reaction%neqsorb > 0) then
         call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
@@ -2818,6 +2970,57 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   endif
 #endif
 #if 1
+
+
+! ================== Secondary continuum transport source terms =====================
+#if 1
+  if (option%use_mc) then
+  ! Secondary continuum contribution (SK 10/08/2012)
+  ! only one secondary continuum for now for each primary continuum node
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      
+      if (reaction%ncomp > 1) then
+        option%io_buffer = 'Currently only single component system with ' // &
+                           'multiple continuum is implemented'
+        call printErrMsg(option)
+      endif   
+    
+      sec_diffusion_coefficient = realization%material_property_array(1)%ptr% &
+                                  secondary_continuum_diff_coeff
+      sec_porosity = realization%material_property_array(1)%ptr% &
+                     secondary_continuum_porosity
+                     
+
+      if (option%sec_vars_update) then
+        call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
+                                         rt_aux_vars(ghosted_id), &
+                                         global_aux_vars(ghosted_id), &
+                                         reaction, &
+                                         sec_diffusion_coefficient, &
+                                         sec_porosity, &
+                                         option)
+      endif       
+    
+      call RTSecondaryTransport(rt_sec_transport_vars(ghosted_id), &
+                                rt_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id), &
+                                reaction, &
+                                sec_diffusion_coefficient, &
+                                sec_porosity, &
+                                option,res_sec_transport)
+                                                        
+      r_p(local_id) = r_p(local_id) - res_sec_transport*volume_p(local_id)*1.d3 ! convert vol to L from m3
+    enddo   
+    option%sec_vars_update = PETSC_FALSE
+  endif
+#endif
+! ============== end secondary continuum coupling terms ========================
+
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
   sum_connection = 0
@@ -2850,6 +3053,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
+                                   
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif 
+      
       if (reaction%ncoll > 0) then
         Res(istartcoll:iendcoll) = coef_in*rt_aux_vars(ghosted_id)%colloid%conc_mob(:) + &
                                    coef_out*source_sink%tran_condition%cur_constraint_coupler% &
@@ -2933,6 +3142,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                      global_aux_vars(ghosted_id), &
                      porosity_loc_p(ghosted_id), &
                      volume_p(local_id),reaction,option)
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Res = Res*vol_frac_prim
+      endif 
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                    
 
     enddo
@@ -3071,6 +3284,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module  
+  use Secondary_Continuum_module
   
   implicit none
 
@@ -3101,6 +3315,9 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
+  
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscReal :: vol_frac_prim
 
 #ifdef CENTRAL_DIFFERENCE
   PetscReal :: T_11(realization%option%nphase)
@@ -3130,11 +3347,14 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
 
 
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+  
+  vol_frac_prim = 1.d0
 
   ! Interior Flux Terms -----------------------------------
   ! must zero out Jacobian blocks
@@ -3158,12 +3378,16 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
+      endif 
+
 #ifndef CENTRAL_DIFFERENCE
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                     patch%internal_velocities(:,sum_connection), &
-                     patch%internal_tran_coefs(:,sum_connection), &
-                     cur_connection_set%dist(-1,iconn), &
-                     coef_up,coef_dn)
+                patch%internal_velocities(:,sum_connection), &
+                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                cur_connection_set%dist(-1,iconn), &
+                coef_up,coef_dn)
       call TFluxDerivative(rt_parameter, &
                            rt_aux_vars(ghosted_id_up), &
                            global_aux_vars(ghosted_id_up), &
@@ -3188,10 +3412,10 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                     patch%internal_velocities(:,sum_connection), &
-                     patch%internal_tran_coefs(:,sum_connection), &
-                     cur_connection_set%dist(-1,iconn), &
-                     T_11,T_12,T_21,T_22)
+                patch%internal_velocities(:,sum_connection), &
+                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                cur_connection_set%dist(-1,iconn), &
+                T_11,T_12,T_21,T_22)
       call TFluxDerivative_CD(rt_parameter, &
                            rt_aux_vars(ghosted_id_up), &
                            global_aux_vars(ghosted_id_up), &
@@ -3240,14 +3464,18 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
 
       if (patch%imat(ghosted_id) <= 0) cycle
+    
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      endif 
 
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
-                     patch%boundary_velocities(:,sum_connection), &
-                     patch%boundary_tran_coefs(:,sum_connection), &
-                     0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
-                     coef_up,coef_dn)
+                patch%boundary_velocities(:,sum_connection), &
+                patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
+                coef_up,coef_dn)
       ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
       call TFluxDerivative(rt_parameter, &
                            rt_aux_vars_bc(sum_connection), &
@@ -3263,10 +3491,10 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
  
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
-                     patch%boundary_velocities(:,sum_connection), &
-                     patch%boundary_tran_coefs(:,sum_connection), &
-                     0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
-                     T_11,T_12,T_21,T_22)
+                 patch%boundary_velocities(:,sum_connection), &
+                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
+                 T_11,T_12,T_21,T_22)
       call TFluxDerivative_CD(rt_parameter, &
                            rt_aux_vars_bc(sum_connection), &
                            global_aux_vars_bc(sum_connection), &
@@ -3307,6 +3535,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module
+  use Secondary_Continuum_module
+
   
   implicit none
 
@@ -3345,6 +3575,13 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: coef_in, coef_out
   PetscReal :: scale
   
+  ! secondary continuum variables
+  type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
+  PetscReal :: vol_frac_prim
+  PetscReal :: sec_diffusion_coefficient
+  PetscReal :: sec_porosity
+  PetscReal :: jac_transport
+  
   option => realization%option
   field => realization%field
   patch => realization%patch  
@@ -3355,8 +3592,10 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  rt_sec_transport_vars => patch%aux%RT%sec_transport_vars
 
-
+  vol_frac_prim = 1.d0
+  
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
  
@@ -3370,16 +3609,44 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
+      
+      if (option%use_mc) then    
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+      endif      
+      
       call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
                                     global_aux_vars(ghosted_id), &
                                     porosity_loc_p(ghosted_id), &
-                                    volume_p(local_id),reaction,option,Jup) 
+                                    volume_p(local_id),reaction,option, &
+                                    vol_frac_prim,Jup) 
+                                    
       if (reaction%neqsorb > 0) then
         call RAccumulationSorbDerivative(rt_aux_vars(ghosted_id), &
                                          global_aux_vars(ghosted_id), &
                                          volume_p(local_id),reaction, &
                                          option,Jup)
       endif
+      
+      if (option%use_mc) then
+        if (reaction%ncomp > 1) then
+          option%io_buffer = 'Currently only single component system with ' // &
+                             'multiple continuum is implemented'
+          call printErrMsg(option)
+        endif 
+        sec_diffusion_coefficient = realization%material_property_array(1)% &
+                                    ptr%secondary_continuum_diff_coeff
+        sec_porosity = realization%material_property_array(1)%ptr% &
+                       secondary_continuum_porosity
+        call RTSecondaryTransportJacobian(rt_aux_vars(ghosted_id), &
+                                          rt_sec_transport_vars(ghosted_id), &
+                                          sec_diffusion_coefficient, &
+                                          sec_porosity, &
+                                          reaction, &
+                                          option,jac_transport)
+                                                                                
+        Jup = Jup - jac_transport*volume_p(local_id)*1.d3     ! convert m3 to L
+      endif
+
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
 #endif
@@ -3416,6 +3683,10 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       ! coef_in is non-zero
       if (dabs(coef_in-1.d20) > 0.d0) then
         Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)
+        if (option%use_mc) then
+          vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+          Jup = Jup*vol_frac_prim
+        endif         
         if (reaction%ncoll > 0) then
           option%io_buffer = 'Source/sink not yet implemented for colloids'
           call printErrMsg(option)
@@ -3446,6 +3717,10 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                global_aux_vars(ghosted_id), &
                                porosity_loc_p(ghosted_id), &
                                volume_p(local_id),reaction,option)
+      if (option%use_mc) then
+        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+        Jup = Jup*vol_frac_prim
+      endif
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1, &
                                     Jup,ADD_VALUES,ierr)                        
     enddo
@@ -4805,6 +5080,249 @@ subroutine RTAppendToHeader(header,variable_string,cell_string,icolumn)
   header = trim(header) // trim(string)
 
 end subroutine RTAppendToHeader
+
+! ************************************************************************** !
+!
+! RTSecondaryTransport: Calculates the source term contribution due to secondary
+! continuum in the primary continuum residual 
+! author: Satish Karra
+! date: 10/08/12
+!
+! ************************************************************************** !
+subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
+                               reaction,diffusion_coefficient, &
+                               porosity,option,res_transport)
+                               
+                            
+  use Option_module 
+  use Global_Aux_module
+  use Secondary_Continuum_module
+
+  implicit none
+  
+  type(sec_transport_type) :: sec_transport_vars
+  type(reactive_transport_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  PetscReal :: coeff_left(sec_transport_vars%ncells)
+  PetscReal :: coeff_diag(sec_transport_vars%ncells)
+  PetscReal :: coeff_right(sec_transport_vars%ncells)
+  PetscReal :: rhs(sec_transport_vars%ncells)
+  PetscReal :: area(sec_transport_vars%ncells)
+  PetscReal :: vol(sec_transport_vars%ncells)
+  PetscReal :: dm_plus(sec_transport_vars%ncells)
+  PetscReal :: dm_minus(sec_transport_vars%ncells)
+  PetscInt :: i, ngcells
+  PetscReal :: area_fm
+  PetscReal :: alpha, diffusion_coefficient, porosity
+  PetscReal :: conc_primary_node
+  PetscReal :: m
+  PetscReal :: conc_current_N
+  PetscReal :: res_transport
+  PetscReal :: kin_mnrl_rate
+  PetscReal :: mnrl_area, mnrl_molar_vol
+  PetscReal :: equil_conc
+  PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
+  PetscInt :: sec_zeta(sec_transport_vars%ncells)
+  PetscReal :: diag_react, rhs_react
+
+  ngcells = sec_transport_vars%ncells
+  area = sec_transport_vars%area
+  vol = sec_transport_vars%vol          
+  dm_plus = sec_transport_vars%dm_plus
+  dm_minus = sec_transport_vars%dm_minus
+  area_fm = sec_transport_vars%interfacial_area
+  sec_zeta = sec_transport_vars%sec_zeta
+  
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  rhs = 0.d0
+  diag_react = 0.d0
+  rhs_react = 0.d0
+  
+  if (reaction%naqcomp > 1 .or. reaction%mineral%nkinmnrl > 1) then
+    option%io_buffer = 'Currently only single component system with ' // &
+                       'multiple continuum is implemented'
+    call printErrMsg(option)
+  endif
+
+  conc_primary_node = aux_var%total(1,1)                             ! in mol/L 
+  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac             ! dimensionless
+  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/cm
+  
+  if (reaction%mineral%nkinmnrl > 0) then
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+    rhs_react = diag_react*equil_conc                                ! in mol/L
+  endif
+ 
+  alpha = diffusion_coefficient*option%tran_dt/porosity   
+        
+  ! Setting the coefficients
+  do i = 2, ngcells-1
+    coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0 &
+                    + diag_react*sec_zeta(i)
+    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
+  enddo
+  
+  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0 &
+                  + diag_react*sec_zeta(1)
+  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
+  
+  coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
+  coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
+                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
+                       + 1.d0 + diag_react*sec_zeta(ngcells)
+                        
+  do i = 1, ngcells
+    rhs(i) = sec_transport_vars%sec_conc(i) + rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
+  enddo
+  
+  rhs(ngcells) = rhs(ngcells) + & 
+                 alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
+                 conc_primary_node 
+                
+  ! Thomas algorithm for tridiagonal system
+  ! Forward elimination
+  do i = 2, ngcells
+    m = coeff_left(i)/coeff_diag(i-1)
+    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
+    rhs(i) = rhs(i) - m*rhs(i-1)
+  enddo
+
+  ! Back substitution
+  conc_current_N = rhs(ngcells)/coeff_diag(ngcells)
+
+  
+  ! Calculate the coupling term
+  res_transport = area_fm*diffusion_coefficient*porosity* &
+                  (conc_current_N - conc_primary_node)/dm_plus(ngcells)
+
+end subroutine RTSecondaryTransport
+
+
+! ************************************************************************** !
+!
+! RTSecondaryTransportJacobian: Calculates the source term jacobian contribution 
+! due to secondary continuum in the primary continuum residual 
+! author: Satish Karra
+! date: 10/8/12
+!
+! ************************************************************************** !
+subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
+                                        diffusion_coefficient, &
+                                        porosity, &
+                                        reaction, &
+                                        option,jac_transport)
+                                        
+                                    
+  use Option_module 
+  use Global_Aux_module
+  use Secondary_Continuum_module
+
+  implicit none
+  
+  type(sec_transport_type) :: sec_transport_vars
+  type(reactive_transport_auxvar_type) :: aux_var
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: coeff_left(sec_transport_vars%ncells)
+  PetscReal :: coeff_diag(sec_transport_vars%ncells)
+  PetscReal :: coeff_right(sec_transport_vars%ncells)
+  PetscReal :: area(sec_transport_vars%ncells)
+  PetscReal :: vol(sec_transport_vars%ncells)
+  PetscReal :: dm_plus(sec_transport_vars%ncells)
+  PetscReal :: dm_minus(sec_transport_vars%ncells)
+  PetscInt :: i, ngcells
+  PetscReal :: area_fm
+  PetscReal :: alpha, diffusion_coefficient
+  PetscReal :: porosity
+  PetscReal :: m
+  PetscReal :: Dconc_N_Dconc_prim
+  PetscReal :: jac_transport
+  PetscReal :: kin_mnrl_rate
+  PetscReal :: mnrl_area, mnrl_molar_vol
+  PetscReal :: equil_conc
+  PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
+  PetscInt :: sec_zeta(sec_transport_vars%ncells)
+  PetscReal :: diag_react
+  
+  ngcells = sec_transport_vars%ncells
+  area = sec_transport_vars%area
+  vol = sec_transport_vars%vol
+  dm_plus = sec_transport_vars%dm_plus
+  area_fm = sec_transport_vars%interfacial_area
+  dm_minus = sec_transport_vars%dm_minus
+  sec_zeta = sec_transport_vars%sec_zeta
+  
+  coeff_left = 0.d0
+  coeff_diag = 0.d0
+  coeff_right = 0.d0
+  diag_react = 0.d0
+  
+  if (reaction%naqcomp > 1 .or. reaction%mineral%nkinmnrl > 1) then
+    option%io_buffer = 'Currently only single component system with ' // &
+                       'multiple continuum is implemented'
+    call printErrMsg(option)
+  endif
+
+  sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac           ! dimensionless
+  mnrl_area = sec_transport_vars%sec_mnrl_area                     ! in 1/cm
+  
+  if (reaction%mineral%nkinmnrl > 0) then
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+  endif
+ 
+  alpha = diffusion_coefficient*option%tran_dt/porosity   
+
+  ! Setting the coefficients
+  do i = 2, ngcells-1
+    coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
+    coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
+                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0 &
+                    + diag_react*sec_zeta(i)
+    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
+  enddo
+  
+  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0 &
+                  + diag_react*sec_zeta(1)
+  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
+  
+  coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
+  coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
+                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
+                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
+                       + 1.d0 + diag_react*sec_zeta(ngcells)
+                
+  ! Thomas algorithm for tridiagonal system
+  ! Forward elimination
+  do i = 2, ngcells
+    m = coeff_left(i)/coeff_diag(i-1)
+    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
+  enddo
+
+  ! We need the concentration derivative at the outer-most node (closest to primary node)
+  Dconc_N_Dconc_prim = 1.d0/coeff_diag(ngcells)*alpha*area(ngcells)/ &
+                       (dm_plus(ngcells)*vol(ngcells))
+  
+  ! Calculate the jacobian term
+  jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
+                  dm_plus(ngcells)*porosity   
+              
+end subroutine RTSecondaryTransportJacobian
+
 
 ! ************************************************************************** !
 !

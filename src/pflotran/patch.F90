@@ -851,8 +851,8 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
         if (associated(coupler%flow_condition%rate)) then
 
           select case(coupler%flow_condition%rate%itype)
-            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS,DISTRIBUTED_VOLUMETRIC_RATE_SS)
-
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS, &
+                 DISTRIBUTED_VOLUMETRIC_RATE_SS,DISTRIBUTED_MASS_RATE_SS)
               select case(option%iflowmode)
                 case(RICHARDS_MODE)
                   allocate(coupler%flow_aux_real_var(1,num_connections))
@@ -1270,7 +1270,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(flow_condition%rate%itype)
                 case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
                   call PatchScaleSourceSink(patch,coupler,option)
-                case (DISTRIBUTED_VOLUMETRIC_RATE_SS)
+                case (DISTRIBUTED_VOLUMETRIC_RATE_SS,DISTRIBUTED_MASS_RATE_SS)
                   call PatchUpdateDistributedSourceSinkAuxVars(patch,coupler,option)
               end select
             endif
@@ -1486,16 +1486,25 @@ subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
   dataset => source_sink%flow_condition%rate%flow_dataset%dataset
   cur_connection_set => source_sink%connection_set
 
-  if(size(dataset%rarray)/=cur_connection_set%num_connections) then
-    option%io_buffer='Length of array in dataset does not match no. of connection '// &
-      ' sets.'
-    call printErrMsg(option)
+  if(associated(dataset)) then
+
+    if(size(dataset%rarray)/=cur_connection_set%num_connections) then
+      option%io_buffer='Length of array in dataset does not match no. of connection '// &
+        ' sets.'
+      call printErrMsg(option)
+    endif
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
+    enddo
+  else
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    enddo
+
   endif
-
-  do iconn=1,cur_connection_set%num_connections
-    source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
-  enddo
-
 end subroutine PatchUpdateDistributedSourceSinkAuxVars
 
 ! ************************************************************************** !
@@ -2602,7 +2611,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
          LIQUID_SATURATION,GAS_SATURATION,ICE_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,LIQUID_VISCOSITY,GAS_VISCOSITY, &
-         LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY)
+         LIQUID_MOBILITY,GAS_MOBILITY,SC_FUGA_COEFF,STATE,ICE_DENSITY, &
+         SECONDARY_TEMPERATURE)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -2636,6 +2646,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
             value = patch%aux%THC%aux_vars(ghosted_id)%u
+          case(SECONDARY_TEMPERATURE)
+            value = patch%aux%THC%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
         end select
      else if (associated(patch%aux%THMC)) then
         select case(ivar)
@@ -2764,6 +2776,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
             value = patch%aux%Global%aux_vars(ghosted_id)%den(2)
           case(SC_FUGA_COEFF)
             value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
+          case(SECONDARY_TEMPERATURE)
+            value = patch%aux%Mphase%sec_heat_vars(ghosted_id)%sec_temp(isubvar)
         end select
       else if (associated(patch%aux%Immis)) then
         select case(ivar)
@@ -2999,6 +3013,11 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       value = patch%imat(ghosted_id)
     case(PROCESSOR_ID)
       value = option%myrank
+    case(SECONDARY_CONCENTRATION)
+      value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
+    case(SEC_MIN_VOLFRAC)
+      value = patch%aux%RT%sec_transport_vars(ghosted_id)% &
+              sec_mnrl_volfrac(isubvar)
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchGetDatasetValueAtCell'')') &

@@ -67,10 +67,12 @@ module Option_module
     PetscInt :: nflowspec
     PetscInt :: rt_idof
     PetscInt :: nmechdof
+    PetscInt :: nsec_cells
 #ifdef SURFACE_FLOW
     PetscInt :: nsurfflowdof
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
+    PetscReal :: surf_flow_time, surf_flow_dt
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -102,7 +104,8 @@ module Option_module
     
     PetscBool :: use_isothermal
     PetscBool :: use_mc           ! If true, multiple continuum formulation is used.
-    PetscBool :: set_secondary_init_temp
+    PetscBool :: set_secondary_init_temp  ! If true, then secondary init temp is different from prim. init temp
+    PetscBool :: set_secondary_init_conc  ! If true, then secondary init conc is different from prim. init conc.
     
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscBool :: use_generalized_grid
@@ -386,10 +389,13 @@ subroutine OptionInitRealization(option)
   option%iflowmode = NULL_MODE
   option%nflowdof = 0
   option%nmechdof = 0
+  option%nsec_cells = 0
 #ifdef SURFACE_FLOW
    option%nsurfflowdof = 0
    option%subsurf_surf_coupling = DECOUPLED
    option%surface_flow_formulation = KINEMATIC_WAVE
+   option%surf_flow_dt = 0.d0
+   option%surf_flow_time =0.d0
 #endif
 
   option%tranmode = ""

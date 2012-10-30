@@ -319,9 +319,14 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
           endif
           grid%unstructured_grid => un_str_grid
         case(EXPLICIT_UNSTRUCTURED_GRID)
-          un_str_grid%explicit_grid => ExplicitUGridCreate()
+          un_str_grid%explicit_grid => UGridExplicitCreate()
+#if 0          
           call ExplicitUGridRead(un_str_grid%explicit_grid, &
                                  discretization%filename,option)
+#else          
+          call ExplicitUGridReadInParallel(un_str_grid%explicit_grid, &
+                                 discretization%filename,option)
+#endif          
           grid%unstructured_grid => un_str_grid
       end select
       grid%itype = unstructured_grid_itype
@@ -683,6 +688,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
           endif
         case(EXPLICIT_UNSTRUCTURED_GRID)
           ugrid => discretization%grid%unstructured_grid
+#if 0          
           call ExplicitUGridDecompose(ugrid%explicit_grid, &
                                       ugrid%num_ghost_cells, &
                                       ugrid%global_offset, &
@@ -694,6 +700,9 @@ subroutine DiscretizationCreateDMs(discretization,option)
                                       ugrid%ghost_cell_ids_petsc, &
                                       ugrid%ao_natural_to_petsc, &
                                       option)
+#else
+          call ExplicitUGridDecomposeNew(ugrid,option)
+#endif
       end select
   end select
 

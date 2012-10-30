@@ -1032,6 +1032,10 @@ subroutine Init(simulation)
         option%io_buffer = 'For surface-flow on RICHARDS mode is implemented'
         call printErrMsgByRank(option)
     end select
+    if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
+      call SurfaceRealizationCreateSurfaceSubsurfaceVec( &
+                      simulation%realization, simulation%surf_realization)
+    endif
   endif ! option%nsurfflowdof > 0
 #endif
 
@@ -2313,7 +2317,10 @@ subroutine InitReadInput(simulation)
 #ifdef SURFACE_FLOW
 !.....................
       case ('SURFACE_FLOW')
-        call SurfaceFlowRead(simulation%surf_realization,simulation%surf_flow_stepper%solver,input,option)
+        call SurfaceFlowRead(simulation%surf_realization, &
+                             simulation%surf_flow_stepper%solver,input,option)
+        simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
+        simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
 #endif
 
 !....................

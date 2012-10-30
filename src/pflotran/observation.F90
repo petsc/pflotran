@@ -14,6 +14,7 @@ module Observation_module
     PetscInt :: id
     PetscInt :: itype
     PetscBool :: print_velocities
+    PetscBool :: print_secondary_data(3)          ! first entry is for temp., second is for conc. and third is for mineral vol frac.
     PetscBool :: at_cell_center
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: linkage_name
@@ -64,6 +65,7 @@ function ObservationCreate1()
   observation%print_velocities = PETSC_FALSE
 !  observation%at_cell_center = PETSC_FALSE
   observation%at_cell_center = PETSC_TRUE
+  observation%print_secondary_data = PETSC_FALSE
   nullify(observation%region)
   nullify(observation%next)
   
@@ -95,6 +97,8 @@ function ObservationCreateFromObservation(observation)
   new_observation%itype = observation%itype
   new_observation%print_velocities = observation%print_velocities
   new_observation%at_cell_center = observation%at_cell_center
+  new_observation%print_secondary_data = &
+       observation%print_secondary_data
   ! keep these null for now to catch bugs
   nullify(new_observation%region)
   nullify(new_observation%next)
@@ -147,6 +151,31 @@ subroutine ObservationRead(observation,input,option)
         observation%itype = OBSERVATION_SCALAR
       case('VELOCITY')
         observation%print_velocities = PETSC_TRUE
+      case('SECONDARY_TEMPERATURE')
+      if (option%use_mc) then
+        observation%print_secondary_data(1) = PETSC_TRUE
+      else
+        option%io_buffer = 'Keyword SECONDARY_TEMPERATURE can only be used' // &
+                           ' MULTIPLE_CONTINUUM keyword'
+        call printErrMsg(option)
+      endif
+      case('SECONDARY_CONCENTRATION')
+      if (option%use_mc) then
+        observation%print_secondary_data(2) = PETSC_TRUE
+      else
+        option%io_buffer = 'Keyword SECONDARY_CONCENTRATION can only be used' // &
+                           ' MULTIPLE_CONTINUUM keyword'
+        call printErrMsg(option)
+      endif
+      case('SECONDARY_MINERAL_VOLFRAC')
+      if (option%use_mc) then
+        observation%print_secondary_data(3) = PETSC_TRUE
+      else
+        option%io_buffer = 'Keyword SECONDARY_MINERAL_VOLFRAC can only be used' // &
+                           ' MULTIPLE_CONTINUUM keyword'
+        call printErrMsg(option)
+      endif
+
       case('AT_CELL_CENTER')
         observation%at_cell_center = PETSC_TRUE
       case default
