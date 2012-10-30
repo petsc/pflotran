@@ -765,7 +765,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   character(len=MAXWORDLENGTH) :: mnrl_constraint_aux_string(reaction%mineral%nkinmnrl)
   PetscBool :: mnrl_external_dataset(reaction%mineral%nkinmnrl)
   
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   
   mineral_reaction => reaction%mineral
   
@@ -1024,7 +1024,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: constraint_type(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
   type(surface_complexation_type), pointer :: surface_complexation
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
 
   PetscReal :: Res(reaction%naqcomp)
   PetscReal :: update(reaction%naqcomp)
@@ -1776,7 +1776,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(surface_complexation_type), pointer :: surface_complexation
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i, icomp, irxn, j, jj, ncomp, ncplx, ieqrxn
   PetscInt :: icplx, icplx2
@@ -2737,7 +2737,7 @@ subroutine ReactionReadOutput(reaction,input,option)
 
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(surface_complex_type), pointer :: cur_srfcplx
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   

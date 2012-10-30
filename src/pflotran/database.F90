@@ -42,13 +42,13 @@ subroutine DatabaseRead(reaction,option)
   
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
-  type(mineral_type), pointer :: cur_mineral, cur_mineral2
+  type(mineral_rxn_type), pointer :: cur_mineral, cur_mineral2
   type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
                                          cur_srfcplx_in_master_list
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -692,7 +692,7 @@ subroutine BasisInit(reaction,option)
   type(aq_species_type), pointer :: cur_pri_aq_spec
   type(aq_species_type), pointer :: cur_sec_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(aq_species_type), pointer :: cur_sec_aq_spec1
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1
@@ -710,7 +710,7 @@ subroutine BasisInit(reaction,option)
   type(transition_state_rxn_type), pointer :: tstrxn
   type(transition_state_prefactor_type), pointer :: cur_prefactor
   type(ts_prefactor_species_type), pointer :: cur_prefactor_species
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -3500,7 +3500,7 @@ subroutine BasisPrint(reaction,title,option)
   
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx_in_rxn
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn

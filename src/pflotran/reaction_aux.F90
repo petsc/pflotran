@@ -166,7 +166,7 @@ module Reaction_Aux_module
     
     ! new reaction objects
     type(surface_complexation_type), pointer :: surface_complexation
-    type(mineral_rxn_type), pointer :: mineral
+    type(mineral_type), pointer :: mineral
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
 #endif    
@@ -1637,7 +1637,7 @@ subroutine ReactionDestroy(reaction)
   
   type(aq_species_type), pointer :: aq_species, prev_aq_species
   type(gas_species_type), pointer :: gas_species, prev_gas_species
-  type(mineral_type), pointer :: mineral, prev_mineral
+  type(mineral_rxn_type), pointer :: mineral, prev_mineral
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn

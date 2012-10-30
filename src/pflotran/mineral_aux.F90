@@ -8,7 +8,7 @@ module Mineral_Aux_module
 
 #include "definitions.h"
   
-  type, public :: mineral_type
+  type, public :: mineral_rxn_type
     PetscInt :: id
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: name
@@ -17,8 +17,8 @@ module Mineral_Aux_module
     PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(transition_state_rxn_type), pointer :: tstrxn
-    type(mineral_type), pointer :: next
-  end type mineral_type
+    type(mineral_rxn_type), pointer :: next
+  end type mineral_rxn_type
 
   type, public :: transition_state_rxn_type
     PetscReal :: affinity_factor_sigma
@@ -63,12 +63,12 @@ module Mineral_Aux_module
     PetscBool, pointer :: external_dataset(:)
   end type mineral_constraint_type
   
-  type, public :: mineral_rxn_type
+  type, public :: mineral_type
 
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
     
-    type(mineral_type), pointer :: mineral_list
+    type(mineral_rxn_type), pointer :: mineral_list
 
     ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -108,7 +108,7 @@ module Mineral_Aux_module
     PetscReal, pointer :: kinmnrl_surf_area_porosity_pwr(:)
     PetscInt, pointer :: kinmnrl_irreversible(:)
    
-  end type mineral_rxn_type
+  end type mineral_type
 
   public :: MineralReactionCreate, &
             GetMineralCount, &
@@ -137,9 +137,9 @@ function MineralReactionCreate()
 
   implicit none
   
-  type(mineral_rxn_type), pointer :: MineralReactionCreate
+  type(mineral_type), pointer :: MineralReactionCreate
   
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
 
   allocate(mineral_reaction)  
     
@@ -202,9 +202,9 @@ function MineralCreate()
 
   implicit none
   
-  type(mineral_type), pointer :: MineralCreate
+  type(mineral_rxn_type), pointer :: MineralCreate
   
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: mineral
 
   allocate(mineral)  
   mineral%id = 0
@@ -320,7 +320,7 @@ function MineralConstraintCreate(mineral_reaction,option)
   
   implicit none
   
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
   type(option_type) :: option
   type(mineral_constraint_type), pointer :: MineralConstraintCreate
 
@@ -358,11 +358,11 @@ function GetMineralNames(mineral_reaction)
   implicit none
   
   character(len=MAXWORDLENGTH), pointer :: GetMineralNames(:)
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
 
   PetscInt :: count
   character(len=MAXWORDLENGTH), pointer :: names(:)
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: mineral
 
   count = GetMineralCount(mineral_reaction)
   allocate(names(count))
@@ -392,9 +392,9 @@ function GetMineralCount(mineral_reaction)
   implicit none
   
   PetscInt :: GetMineralCount
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
 
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: mineral
 
   GetMineralCount = 0
   mineral => mineral_reaction%mineral_list
@@ -419,11 +419,11 @@ function GetMineralIDFromName(mineral_reaction,name)
   
   implicit none
   
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
   character(len=MAXWORDLENGTH) :: name
 
   PetscInt :: GetMineralIDFromName
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: mineral
 
   GetMineralIDFromName = -1
  
@@ -450,7 +450,7 @@ subroutine MineralDestroy(mineral)
 
   implicit none
     
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: mineral
 
   if (associated(mineral%dbaserxn)) &
     call DatabaseRxnDestroy(mineral%dbaserxn)
@@ -586,9 +586,9 @@ subroutine MineralReactionDestroy(mineral_reaction)
 
   implicit none
 
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   
-  type(mineral_type), pointer :: mineral, prev_mineral
+  type(mineral_rxn_type), pointer :: mineral, prev_mineral
 
   if (.not.associated(mineral_reaction)) return
   
