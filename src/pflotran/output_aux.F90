@@ -44,6 +44,8 @@ module Output_Aux_module
     
     PetscBool :: print_permeability
     PetscBool :: print_porosity
+
+    PetscInt :: xmf_vert_len
     
     type(output_variable_list_type), pointer :: output_variable_list
     
