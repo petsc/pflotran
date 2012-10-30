@@ -143,8 +143,8 @@ END
 
 :=========================== solver options ===================================
 TIMESTEPPER FLOW
-  INITIALIZE_TO_STEADY_STATE
-  RUN_AS_STEADY_STATE
+:  INITIALIZE_TO_STEADY_STATE
+:  RUN_AS_STEADY_STATE
 END
 
 TIMESTEPPER TRANSPORT
