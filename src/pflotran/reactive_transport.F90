@@ -777,6 +777,7 @@ subroutine RTUpdateSolutionPatch(realization)
   PetscErrorCode :: ierr
   PetscReal :: sec_diffusion_coefficient
   PetscReal :: sec_porosity
+  PetscReal :: vol_frac_prim
   
   option => realization%option
   patch => realization%patch
@@ -812,6 +813,8 @@ subroutine RTUpdateSolutionPatch(realization)
   endif
 #endif
 
+  vol_frac_prim = 1.d0
+
   if (.not.option%init_stage) then
     ! update mineral volume fractions
     if (reaction%mineral%nkinmnrl > 0) then
@@ -823,11 +826,14 @@ subroutine RTUpdateSolutionPatch(realization)
           ! rate = mol/m^3/sec
           ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
           !                                mol_vol (m^3 mnrl/mol mnrl)
+          if (option%use_mc) then
+            vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
+          endif
           rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
             rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
             reaction%mineral%kinmnrl_molar_vol(imnrl)* &
-            option%tran_dt
+            option%tran_dt*vol_frac_prim
           if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
 
@@ -5288,12 +5294,11 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
 
   ! Back substitution
   conc_current_N = rhs(ngcells)/coeff_diag(ngcells)
-
-  
+ 
   ! Calculate the coupling term
   res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
-                  
+  
 end subroutine RTSecondaryTransport
 
 
@@ -5419,7 +5424,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
   ! Calculate the jacobian term
   jac_transport = area_fm*diffusion_coefficient*(Dconc_N_Dconc_prim - 1.d0)/ &
                   dm_plus(ngcells)*porosity   
-             
+   
 end subroutine RTSecondaryTransportJacobian
 
 
