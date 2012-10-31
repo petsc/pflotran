@@ -2700,13 +2700,11 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         vol_frac_prim = rt_sec_transport_vars(ghosted_id_up)%epsilon
       endif  
       
-      patch%internal_tran_coefs(:,sum_connection) = &
-        patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim
-
+      
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                 patch%internal_velocities(:,sum_connection), &
-                patch%internal_tran_coefs(:,sum_connection), &
+                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
                       
@@ -2743,7 +2741,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
                  patch%internal_velocities(:,sum_connection), &
-                 patch%internal_tran_coefs(:,sum_connection), &
+                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                  cur_connection_set%dist(-1,iconn), &
                  T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
@@ -2789,8 +2787,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       if (option%use_mc) then
         vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
       endif  
-      patch%boundary_tran_coefs(:,sum_connection) = &
-        patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim
       
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
