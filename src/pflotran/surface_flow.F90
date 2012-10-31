@@ -667,6 +667,12 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','TIME')
               surf_realization%dt_max = temp_real*UnitsConvertToInternal(word,option)
+            case('COUPLING_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Coupling Timestep Size','TIME') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Coupling Timestep Size Time Units','TIME')
+              surf_realization%dt_coupling = temp_real*UnitsConvertToInternal(word,option)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in TIME.'

@@ -53,6 +53,7 @@ private
     
     PetscReal :: dt_max
     PetscReal :: dt_min
+    PetscReal :: dt_coupling
     
     PetscInt :: iter_count
     PetscBool :: first_time
@@ -124,6 +125,7 @@ function SurfaceRealizationCreate(option)
   surf_realization%iter_count = 0
   surf_realization%dt_min = 1.d0
   surf_realization%dt_max = 1.d0
+  surf_realization%dt_coupling = 0.d0
   
   surf_realization%first_time = PETSC_TRUE
   SurfaceRealizationCreate => surf_realization
@@ -1134,7 +1136,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   end select
   call VecScatterDestroy(scatter,ierr)
 
-!#if UGRID_DEBUG
+#if UGRID_DEBUG
   if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
   if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
@@ -1142,12 +1144,12 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call VecView(corr_dest_ids_vec,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-!#endif
+#endif
 
   call VecDestroy(corr_dest_ids_vec,ierr)
   if(option%mycommsize>1) call MatDestroy(prod_loc_mat,ierr)
 
-!#if UGRID_DEBUG
+#if UGRID_DEBUG
   if(source_grid_flag==TWO_DIM_GRID) write(string,*) 'surf'
   if(source_grid_flag==THREE_DIM_GRID) write(string,*) 'subsurf'
   string = adjustl(string)
@@ -1155,7 +1157,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   call PetscViewerASCIIOpen(option%mycomm,string,viewer,ierr)
   call VecScatterView(dm_ptr%ugdm%scatter_bet_grids,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-!#endif
+#endif
 
 end subroutine SurfaceRealizationMapSurfSubsurfaceGrid
 
@@ -1350,7 +1352,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
 
   if(.not.coupler_found) then
     option%io_buffer = 'Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_bc.'
+      'boundary condition named from_surface_ss.'
     call printErrMsg(option)
   endif
   
@@ -1910,7 +1912,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
 
   if(.not.coupler_found) then
     option%io_buffer = 'Missing within the input deck for subsurface ' // &
-      'boundary condition named from_surface_bc.'
+      'boundary condition named from_surface_ss.'
     call printErrMsg(option)
   endif
 
