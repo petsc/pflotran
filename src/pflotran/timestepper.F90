@@ -306,6 +306,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Realization_module
 
   use Option_module
+  use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
                             OutputPermeability, OutputPrintCouplers
   use Logging_module  
@@ -2655,6 +2656,7 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   use Realization_module
 
   use Option_module
+  use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputVectorTecplot
   use Logging_module
   use Discretization_module
@@ -3611,6 +3613,7 @@ end subroutine TimestepperCheckCFLLimit
 subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
 
   use Option_module
+  use Output_Aux_module
 
   implicit none
 

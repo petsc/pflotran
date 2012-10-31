@@ -48,8 +48,44 @@ subroutine SurfaceFlowSetup(surf_realization)
   use Surface_Realization_module
   
   type(surface_realization_type) :: surf_realization
+
+  call SurfaceFlowSetPlotVariables(surf_realization)
   
 end subroutine SurfaceFlowSetup
+
+! ************************************************************************** !
+!> This routine adds variables to be printed to list
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/30/12
+! ************************************************************************** !
+subroutine SurfaceFlowSetPlotVariables(surf_realization)
+  
+  use Surface_Realization_module
+  use Output_Aux_module
+    
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_list_type), pointer :: list
+  
+  list => surf_realization%output_option%output_variable_list
+  
+  name = 'P'
+  units = 'm'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               SURFACE_FLOW_PRESSURE)
+
+  name = 'Material ID'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_DISCRETE,units, &
+                               MATERIAL_ID)
+  
+end subroutine SurfaceFlowSetPlotVariables
 
 ! ************************************************************************** !
 !> This routine reads required surface flow data from the input file
@@ -194,6 +230,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   use Waypoint_module
   use Patch_module
   use Solver_module
+  use Output_Aux_module
 
   implicit none
 
@@ -224,11 +261,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   PetscBool :: continuation_flag
   type(waypoint_type), pointer :: waypoint
   PetscReal :: temp_real, temp_real2
-
-  character(len=MAXWORDLENGTH) :: plot_variables(100)
-  PetscInt :: num_plot_variables
-
-  num_plot_variables = 0
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -606,9 +638,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-            case('PROCESSOR_ID')
-              num_plot_variables = num_plot_variables + 1
-              plot_variables(num_plot_variables) = trim(word)
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
             case default
@@ -618,11 +647,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
           end select
         enddo
 
-        if (num_plot_variables > 0) then
-          allocate(output_option%plot_variables(num_plot_variables))
-          output_option%plot_variables(1:num_plot_variables) = &
-                                           plot_variables(1:num_plot_variables)
-        endif
         if (velocities) then
           if (output_option%print_tecplot) &
             output_option%print_tecplot_velocities = PETSC_TRUE

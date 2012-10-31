@@ -20,15 +20,18 @@ def get_full_paths(paths,filenames):
   return full_paths
 
 def get_tec_filenames(ids):
+  return get_tec_filenames('pflotran',ids)
+      
+def get_tec_filenames(prefix,ids):
   filenames = []
   for i in range(len(ids)):
     ifile = ids[i]
     if ifile < 10:
-      filename = 'pflotran-00%d.tec' % ifile
+      filename = '%s-00%d.tec' % (prefix,ifile)
     elif ifile < 100:
-      filename = 'pflotran-0%d.tec' % ifile
+      filename = '%s-0%d.tec' % (prefix,ifile)
     elif ifile < 1000:
-      filename = 'pflotran-%d.tec' % ifile
+      filename = '%s-%d.tec' % (prefix,ifile)
     else:
       print('File numbers greater than 999 not handled')
       exit(0)

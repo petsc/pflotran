@@ -1,0 +1,343 @@
+:Description: 5 Spot Copper Leaching problem
+
+:=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== checkpointing ====================================
+
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Na+
+    K+
+    Ca++
+    H+
+    Cu++
+    Al+++
+    Fe++
+    SiO2(aq)
+    HCO3-
+    SO4--
+    Cl-
+    O2(aq)
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaOH+
+    CaHCO3+
+    CaCO3(aq)
+    CaSO4(aq)
+    Cu+
+    CuOH+
+    CuO2--
+    CuCl+
+    CuCl2(aq)
+    CuCl2-
+    CuCl3--
+    CuCl4--
+    CuSO4(aq)
+    HSO4-
+    AlOH++
+    Al(OH)2+
+    Al(OH)3(aq)
+    Al(OH)4-
+    Al(SO4)2-
+    AlSO4+
+    Fe+++
+    Fe(OH)2(aq)
+    Fe(OH)2+
+    Fe(OH)3(aq)
+    Fe(OH)3-
+    Fe(OH)4-
+    FeSO4(aq)
+    FeSO4+
+    Fe(SO4)2-
+  /
+  GAS_SPECIES
+    CO2(g)
+    O2(g)
+  /
+  MINERALS
+    Albite
+    Alunite
+    Anorthite
+    Antlerite
+    Aragonite
+    Brochantite
+    Calcite
+    Chalcanthite
+    Chalcedony
+    Chrysocolla2
+    Cuprite
+    Gibbsite
+    Goethite
+    Gypsum
+    Jarosite
+    Jurbanite
+    K-Feldspar
+    Kaolinite
+    Malachite
+    Muscovite
+    SiO2(am)
+    Tenorite
+    Quartz
+  /
+  MINERAL_KINETICS
+    Alunite
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
+    /
+    Chrysocolla2
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      PREFACTOR
+        RATE_CONSTANT 1.d-10 mol/cm^2-sec
+        PREFACTOR_SPECIES H+
+          ALPHA 0.39
+        /
+      /
+    /
+    Goethite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
+    /
+    Gypsum
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Jarosite
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
+    /
+    Jurbanite
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
+    /
+    Kaolinite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-13 mol/cm^2-sec
+    /
+    Muscovite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-13 mol/cm^2-sec
+    /
+    SiO2(am)
+      RATE_CONSTANT 1.d-11 mol/cm^2-sec
+    /
+    Quartz
+      SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
+      RATE_CONSTANT 1.d-14 mol/cm^2-sec
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+  LOG_FORMULATION
+:  OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP
+  OUTPUT
+    PH
+    all
+  /
+END
+
+:=========================== solver options ===================================
+TIMESTEPPER FLOW
+  INITIALIZE_TO_STEADY_STATE
+  RUN_AS_STEADY_STATE
+END
+
+TIMESTEPPER TRANSPORT
+  TS_ACCELERATION 32
+END
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 8 8 1
+  BOUNDS
+    0.d0 16.d0
+    0.d0 16.d0
+    0.d0 128.d0
+  /
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY oxide-ore
+  ID 1
+  POROSITY 0.05d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.5d-13
+  /
+  SATURATION_FUNCTION default
+END
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+END
+
+:=========================== output options ===================================
+OUTPUT
+  PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT TECPLOT BLOCK
+  VELOCITIES
+  PRINT_COLUMN_IDS
+  SCREEN PERIODIC 10
+END
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 0.25d0 y
+  INITIAL_TIMESTEP_SIZE 1.d-3 s
+  MAXIMUM_TIMESTEP_SIZE 0.01 y
+END
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    16.d0 16.d0 128.d0
+  /
+END
+
+REGION inlet
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 0.d0 128.d0
+  /
+END
+
+REGION outlet
+  COORDINATES
+    16.d0 16.d0 0.d0
+    16.d0 16.d0 128.d0
+  /
+END
+
+REGION obs_outlet
+  COORDINATE 16.d0 16.d0 64.d0
+END
+
+:=========================== observation points ===============================
+OBSERVATION
+  REGION obs_outlet
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  PRESSURE 201325.d0
+  DATUM 0.d0 0.d0 128.d0
+END
+
+! Note: Do not use scaled_volumetric_rate below.  The mass balance blows up.
+
+FLOW_CONDITION inlet
+  TYPE
+    RATE scaled_mass_rate
+  /
+  RATE 0.68 kg/s
+END
+
+FLOW_CONDITION outlet
+  TYPE
+    RATE scaled_mass_rate
+  /
+  RATE -0.68 kg/s
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION inlet
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 inlet
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    Na+        5.0d-3   T
+    K+         2.5d-5   M Muscovite
+    Ca++       6.5d-4   M Calcite
+    H+         8.d0    pH
+    Cu++       6.4d-9   M Chrysocolla2
+    Al+++      2.8d-17  M Kaolinite
+    Fe++       1.2d-23  M Goethite
+    SiO2(aq)   1.8d-4   M Chalcedony
+    HCO3-      -3.d0    G CO2(g)
+    SO4--      5.0d-4   T
+    Cl-        3.7d-3   Z
+    O2(aq)     -0.699d0 G O2(g)
+  /
+  MINERALS
+    Alunite       0.d0    1.d0 cm^2/cm^3
+    Chrysocolla2  5.0d-3  1.d0 cm^2/cm^3
+    Goethite      2.5d-2  1.d0 cm^2/cm^3
+    Gypsum        0.d0    1.d0 cm^2/cm^3
+    Jarosite      0.d0    1.d0 cm^2/cm^3
+    Jurbanite     0.d0    1.d0 cm^2/cm^3
+    Kaolinite     5.0d-2  1.d0 cm^2/cm^3
+    Muscovite     5.0d-2  1.d0 cm^2/cm^3
+    SiO2(am)      0.d0    1.d0 cm^2/cm^3
+    Quartz        8.2d-1  1.d0 cm^2/cm^3
+  /
+END
+
+CONSTRAINT inlet
+  CONCENTRATIONS
+    Na+        5.0d-3   T
+    K+         1.3d-4   M Jarosite
+    Ca++       1.1d-2   M Gypsum
+    H+         1.d0    pH
+    Cu++       1.0d-8   T 
+    Al+++      2.5d-2   T 
+    Fe++       3.4d-9   M Goethite
+    SiO2(aq)   1.9d-3   M SiO2(am)
+    HCO3-      -2.d0    G CO2(g)
+    SO4--      6.1d-2   Z
+    Cl-        5.0d-3   T
+    O2(aq)     -0.699d0 G O2(g)
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+SOURCE_SINK inlet
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION inlet
+END
+
+SOURCE_SINK outlet
+  FLOW_CONDITION outlet
+  TRANSPORT_CONDITION initial
+  REGION outlet
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL oxide-ore
+END

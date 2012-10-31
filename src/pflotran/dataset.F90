@@ -24,7 +24,7 @@ contains
 subroutine DatasetLoad(dataset,option)
 
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
   use Utility_module, only : Equal
 
   implicit none
@@ -81,7 +81,14 @@ subroutine DatasetLoad(dataset,option)
     call printErrMsg(option)
   endif
 #else
-    call HDF5ReadDataset(dataset,option)
+    if(.not.associated(dataset%dataset_map)) then
+      call HDF5ReadDataset(dataset,option)
+    else
+      call HDF5ReadDataset(dataset,option)
+      if(dataset%dataset_map%first_time) then
+        call HDF5ReadDatasetMap(dataset,option)
+      endif
+    endif
     call DatasetReorder(dataset,option)
     if (associated(dataset%buffer)) then
       interpolate_dataset = PETSC_TRUE ! just to be sure
@@ -139,7 +146,7 @@ end subroutine DatasetProcessDatasets
 function DatasetIsCellIndexed(dataset,option)
 
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
 
   implicit none
   
