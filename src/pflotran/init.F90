@@ -3541,7 +3541,6 @@ subroutine readFlowInitialCondition(realization,filename)
         endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
-        write(*,*) vec_p(local_id)
       enddo
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
