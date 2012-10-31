@@ -156,6 +156,8 @@ function UnitsConvert(unit,option)
     case('mm')
       UnitsConvert = 1.d-3
     ! convert mass to kg
+    case('mol','mole','moles')
+      UnitsConvert = 1.d0
     case('ug')
       UnitsConvert = 1.d-9
     case('mg')

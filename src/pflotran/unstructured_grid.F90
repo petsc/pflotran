@@ -1143,7 +1143,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
 
   use Input_module
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
 
   implicit none
 
@@ -1275,6 +1275,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   
   PetscInt :: vertex_ids_offset
   PetscInt :: dual_offset
+  PetscInt :: natural_id_offset
 
   PetscInt :: max_int_count
   PetscInt :: temp_int
@@ -1282,7 +1283,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: num_cells_local_new
   PetscInt :: num_cells_local_old  
   PetscInt :: global_offset_old
-  PetscInt :: global_offset_new
   PetscInt, allocatable :: int_array(:)
   PetscInt, allocatable :: int_array2(:)
   PetscInt, allocatable :: int_array3(:)
@@ -1294,9 +1294,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: iflag
   PetscBool :: found
 
+#define UGRID_NEW  
 #ifndef UGRID_NEW
   PetscInt, pointer :: index_ptr(:)
   Vec :: elements_petsc
+  PetscInt :: global_offset_new
   IS :: is_num
   PetscInt :: ghost_cell_count
   PetscInt :: max_ghost_cell_count
@@ -1545,6 +1547,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   vertex_ids_offset = 1 + 1 ! +1 for -777
   dual_offset = vertex_ids_offset + unstructured_grid%max_nvert_per_cell + 1 ! +1 for -888
   stride = dual_offset+ unstructured_grid%max_ndual_per_cell + 1 ! +1 for -999999
+  natural_id_offset = 1
 
   ! Information for each cell is packed in a strided petsc vec
   ! The information is ordered within each stride as follows:
@@ -1567,7 +1570,7 @@ subroutine UGridDecompose(unstructured_grid,option)
 #ifdef UGRID_NEW
   
   call UGridCreateOldVec(unstructured_grid,option,elements_old, &
-                                num_cells_local_old,num_cells_local_new, &
+                                num_cells_local_old, &
                                 is_new,is_scatter,stride)
 
 #else
@@ -1678,7 +1681,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call UGridNaturalToPetsc(unstructured_grid,option, &
                            elements_old,elements_local, &
                            num_cells_local_new,stride,dual_offset, &
-                           is_scatter)
+                           natural_id_offset,is_scatter)
   
 #else  
 !----------  
@@ -2418,8 +2421,10 @@ subroutine UGridDecompose(unstructured_grid,option)
       option%io_buffer = 'Grid type not recognized: '
       call printErrMsg(option)
   end select
-        
+
+#ifndef UGRID_NEW  
   unstructured_grid%global_offset = global_offset_new
+#endif
 
 end subroutine UGridDecompose
 

@@ -1,4 +1,4 @@
-module HDF5_aux_module
+module HDF5_Aux_module
 
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
@@ -24,16 +24,16 @@ module HDF5_aux_module
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
 
+  public :: HDF5ReadNDimRealArray, &
 #ifdef PARALLELIO_LIB
-  public :: HDF5ReadNDimRealArray, &
             HDF5ReadDatasetInteger2D, &
-            HDF5ReadDatasetReal2D
+            HDF5ReadDatasetReal2D, &
 #else
-  public :: HDF5ReadNDimRealArray, &
             HDF5ReadDataset, &
             HDF5ReadDatasetMap, &
-            HDF5GroupExists  
+            HDF5GroupExists, &
 #endif ! PARALLELIO_LIB
+            HDF5MakeStringCompabible
 
 contains
 
@@ -469,8 +469,12 @@ subroutine HDF5ReadDataset(dataset,option)
 end subroutine HDF5ReadDataset
 
 ! ************************************************************************** !
-!
-!
+!> This routine reads mapping data associated with dataset.
+!!
+!> @author
+!! Gautam Bisht, LBL
+!!
+!! date: 10/26/12
 ! ************************************************************************** !
 subroutine HDF5ReadDatasetMap(dataset,option)
 
@@ -845,4 +849,30 @@ end function HDF5GroupExists
 
 #endif ! defined(PETSC_HAVE_HDF5)
 
-end module HDF5_aux_module
+! ************************************************************************** !
+!
+! HDF5MakeStringCompabible: Replaces '/' in string with '_' for hdf5 names
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine HDF5MakeStringCompabible(name)
+
+  implicit none
+  
+  character(len=*) :: name
+  
+  PetscInt :: len, ichar
+  
+  len = len_trim(name)
+  do ichar = 1, len
+    if (name(ichar:ichar) == '/') then
+      name(ichar:ichar) = '_'
+    endif
+  enddo
+  
+  name = trim(name)
+
+end subroutine HDF5MakeStringCompabible
+
+end module HDF5_Aux_module

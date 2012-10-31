@@ -15,6 +15,7 @@ module Surface_Realization_module
   use Waypoint_module
   use Dataset_Aux_module
   use Reaction_Aux_module
+  use Output_Aux_module
   
   implicit none
   

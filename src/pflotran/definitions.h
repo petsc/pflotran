@@ -278,6 +278,8 @@ PetscInt, parameter :: SECONDARY_TEMPERATURE =   54
 PetscInt, parameter :: SECONDARY_CONCENTRATION = 55
 PetscInt, parameter :: SEC_MIN_VOLFRAC =         56
 
+PetscInt, parameter :: SURFACE_FLOW_PRESSURE =   57
+
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
 PetscInt, parameter :: ACT_COEF_FREQUENCY_TIMESTEP = 1
