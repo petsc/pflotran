@@ -51,7 +51,7 @@ subroutine MineralRead(mineral_reaction,input,option)
           
     mineral_reaction%nmnrl = mineral_reaction%nmnrl + 1
           
-    mineral => MineralCreate()
+    mineral => MineralRxnCreate()
     call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
     call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
     if (.not.associated(mineral_reaction%mineral_list)) then

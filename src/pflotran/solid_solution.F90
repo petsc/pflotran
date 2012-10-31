@@ -242,7 +242,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
         nullify(prev_stoich_solid)
         nullify(prev_end_member)
       case('STOICHIOMETRIC_SOLID','END_MEMBER')
-        mineral => MineralCreate()
+        mineral => MineralRxnCreate()
         call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
         call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
         call MineralReadFromDatabase(mineral, &

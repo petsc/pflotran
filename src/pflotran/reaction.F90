@@ -6,9 +6,11 @@ module Reaction_module
   
   use Surface_Complexation_module
   use Mineral_module
+  use Microbial_module
 
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+  use Microbial_Aux_module
 
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
@@ -253,12 +255,12 @@ subroutine ReactionRead(reaction,input,option)
 #endif                
             case('FORWARD_RATE')
               call InputReadDouble(input,option,general_rxn%forward_rate)  
-              call InputDefaultMsg(input,option, &
-                                   'CHEMISTRY,GENERAL_REACTION,FORWARD_RATE') 
+              call InputErrorMsg(input,option,'forward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
             case('BACKWARD_RATE')
               call InputReadDouble(input,option,general_rxn%backward_rate)  
-              call InputDefaultMsg(input,option, &
-                                   'CHEMISTRY,GENERAL_REACTION,BACKWARD_RATE') 
+              call InputErrorMsg(input,option,'backward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
           end select
         enddo   
         if (.not.associated(reaction%general_rxn_list)) then
@@ -272,6 +274,8 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
+      case('MICROBIAL_REACTION')
+        call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
         call MineralRead(reaction%mineral,input,option)
       case('MINERAL_KINETICS') ! mineral kinetics read on second round
@@ -646,9 +650,9 @@ subroutine ReactionRead(reaction,input,option)
     endif
   endif
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
-      reaction%ngeneral_rxn > 0) then
+      reaction%ngeneral_rxn + reaction%microbial%nrxn > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
-      endif
+  endif
       
   ! ensure that update porosity is ON if update of tortuosity, permeability or
   ! mineral surface area are ON

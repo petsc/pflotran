@@ -19,6 +19,7 @@ module Database_Aux_module
             BasisSubSpeciesInGasOrSecRxn, &
             BasisSubSpeciesinMineralRxn, &
             DatabaseRxnCreate, &
+            DatabaseRxnCreateFromRxnString, &
             DatabaseRxnDestroy
             
 contains
@@ -48,6 +49,190 @@ function DatabaseRxnCreate()
   DatabaseRxnCreate => dbaserxn
   
 end function DatabaseRxnCreate
+
+! ************************************************************************** !
+!
+! DatabaseRxnCreateFromRxnString: Creates a database reaction given a
+!                                 reaction string
+! author: Glenn Hammond
+! date: 10/30/12
+!
+! ************************************************************************** !
+function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
+                                        primary_species_names,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: reaction_string
+  PetscInt :: ncomp
+  character(len=MAXWORDLENGTH) :: primary_species_names(ncomp)
+  type(option_type) :: option
+    
+  type(database_rxn_type), pointer :: DatabaseRxnCreateFromRxnString
+
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word, word2
+  PetscInt :: icount
+  PetscInt :: midpoint
+  PetscInt :: i, j, idum
+  PetscReal :: value
+  PetscBool :: negative_flag
+  PetscBool :: found
+  PetscErrorCode :: ierr
+  type(database_rxn_type), pointer :: dbaserxn
+  
+  
+  dbaserxn => DatabaseRxnCreate()
+
+  icount = 0
+  ! Be sure to copy as words are removed when read.  Need to full string for 
+  ! later below
+  string = reaction_string
+  do
+    ierr = 0
+    call InputReadWord(string,word,PETSC_TRUE,ierr)
+    if (InputError(ierr)) exit
+
+    select case(word)
+      case('+')
+      case('-')
+      case('=','<=>','<->')
+      case default
+      ! try reading as double precision
+      string2 = word
+      if (.not.StringStartsWithAlpha(string2)) then
+        ! the word is the stoichiometry value
+      else
+        ! check water
+        word2 = 'H2O'
+        if (.not.StringCompareIgnoreCase(word,word2)) then
+          ! the word is the species name
+          icount = icount + 1
+        endif
+      endif
+    end select
+
+  enddo
+      
+  ! load species into database format
+  dbaserxn%nspec = icount
+  allocate(dbaserxn%spec_name(icount))
+  dbaserxn%spec_name = ''
+  allocate(dbaserxn%stoich(icount))
+  dbaserxn%stoich = -999.
+  allocate(dbaserxn%spec_ids(icount))
+  dbaserxn%spec_ids = 0
+
+  string = reaction_string
+  icount = 1
+  ! midpoint points to the first product species, as in
+  ! reactant1 + reactant2 <-> product1 + product2
+  midpoint = 0
+  negative_flag = PETSC_FALSE
+  do
+    !geh: This conditional ensures that if water is at the end of
+    !     the reaction expression, it is skipped.
+    if (icount > dbaserxn%nspec) exit
+        
+    ierr = 0
+    call InputReadWord(string,word,PETSC_TRUE,ierr)
+    if (InputError(ierr)) exit
+
+    select case(word)
+      case('+')
+      case('-')
+        ! toggle negative flag
+        if (negative_flag) then
+          negative_flag = PETSC_FALSE
+        else
+          negative_flag = PETSC_TRUE
+        endif
+      case('=','<=>','<->')
+        midpoint = icount
+      case default
+        ! try reading as double precision
+        string2 = word
+        if (.not.StringStartsWithAlpha(string2)) then
+          ! negate if a product
+          call InputReadDouble(string2,option,value,ierr)
+          ! negate if negative stoichiometry
+          if (negative_flag) value = -1.0*value
+          dbaserxn%stoich(icount) = value
+        else
+          dbaserxn%spec_name(icount) = word
+          if (negative_flag .and. &
+              (dbaserxn%stoich(icount) + 999.d0) < 1.d-10) then
+            dbaserxn%stoich(icount) = -1.d0
+          endif
+
+          ! set the primary species id
+          found = PETSC_FALSE
+          do i = 1, ncomp
+            if (StringCompare(word,primary_species_names(i), &
+                              MAXWORDLENGTH)) then
+              dbaserxn%spec_ids(icount) = i
+              found = PETSC_TRUE
+              exit      
+            endif
+          enddo
+          ! check water
+          word2 = 'H2O'
+          if (StringCompareIgnoreCase(word,word2)) then
+            ! set stoichiometry back to uninitialized
+            dbaserxn%stoich(icount) = -999.d0
+            ! don't increment icount
+          else if (.not.found) then
+            option%io_buffer = 'Species ' // trim(word) // &
+                      ' in microbial reaction' // &
+                      ' not found among primary species list.'
+            call printErrMsg(option)     
+          else
+            icount = icount + 1
+          endif
+        endif
+        negative_flag = PETSC_FALSE
+    end select
+  enddo
+      
+  ! if no stoichiometry specified, default = 1.
+  do i = 1, dbaserxn%nspec
+    if ((dbaserxn%stoich(i) + 999.d0) < 1.d-10) dbaserxn%stoich(i) = 1.d0
+  enddo
+  ! negate stoichiometries after midpoint
+  do i = midpoint, dbaserxn%nspec
+    dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
+  enddo
+  ! now negate all stoichiometries to have - for reactants; + for products
+  do i = 1, dbaserxn%nspec
+    dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
+  enddo
+  ! reorder species ids in ascending order
+  do i = 1, dbaserxn%nspec
+    do j = i+1, dbaserxn%nspec
+      if (dbaserxn%spec_ids(i) > dbaserxn%spec_ids(j)) then
+        ! swap ids
+        idum = dbaserxn%spec_ids(j)
+        dbaserxn%spec_ids(j) = dbaserxn%spec_ids(i)
+        dbaserxn%spec_ids(i) = idum
+        ! swap stoichiometry
+        value = dbaserxn%stoich(j)
+        dbaserxn%stoich(j) = dbaserxn%stoich(i)
+        dbaserxn%stoich(i) = value
+        ! swap names
+        word = dbaserxn%spec_name(j)
+        dbaserxn%spec_name(j) = dbaserxn%spec_name(i)
+        dbaserxn%spec_name(i) = word
+      endif
+    enddo
+  enddo
+  
+  DatabaseRxnCreateFromRxnString => dbaserxn
+  
+end function DatabaseRxnCreateFromRxnString
 
 ! ************************************************************************** !
 !
