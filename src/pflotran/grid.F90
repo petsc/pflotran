@@ -1807,11 +1807,14 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
   ! if petsc ids are below global_offset or above global_offset + nlmax, 
   ! they are off processor; otherwise, local
 
-  ! negate off processor ids
   allocate(int_array(size(region%cell_ids)))
-  allocate(real_array_2d(4,size(region%cell_ids)))
+  ! negate off processor ids
   int_array = -999
-  real_array_2d = -999.d0
+  ! only if faceset exists
+  if (associated(faceset)) then
+    allocate(real_array_2d(4,size(region%cell_ids)))
+    real_array_2d = -999.d0
+  endif
   count = 0
   do icell = 1, size(region%cell_ids)
     if (region%cell_ids(icell) > ugrid%global_offset .and. &
@@ -1819,44 +1822,50 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
       count = count + 1
       ! local cell id
       int_array(count) = region%cell_ids(icell) - ugrid%global_offset
-      real_array_2d(1,count) = faceset%face_centroids(icell)%x
-      real_array_2d(2,count) = faceset%face_centroids(icell)%y
-      real_array_2d(3,count) = faceset%face_centroids(icell)%z
-      real_array_2d(4,count) = faceset%face_areas(icell)
+      if (associated(faceset)) then
+        real_array_2d(1,count) = faceset%face_centroids(icell)%x
+        real_array_2d(2,count) = faceset%face_centroids(icell)%y
+        real_array_2d(3,count) = faceset%face_centroids(icell)%z
+        real_array_2d(4,count) = faceset%face_areas(icell)
+      endif
     endif
   enddo
   
   deallocate(region%cell_ids)
-  deallocate(faceset%face_centroids)
-  deallocate(faceset%face_areas)
-
   allocate(region%cell_ids(count))
-  allocate(faceset%face_centroids(count))
-  allocate(faceset%face_areas(count))
-  
   region%cell_ids = int_array(1:count)
-  do icell = 1, count
-    faceset%face_centroids(icell)%x = real_array_2d(1,icell)
-    faceset%face_centroids(icell)%y = real_array_2d(2,icell)
-    faceset%face_centroids(icell)%z = real_array_2d(3,icell)
-    faceset%face_areas(icell) = real_array_2d(4,icell)
-  enddo
-  
   deallocate(int_array)
-  deallocate(real_array_2d)
+
+  if (associated(faceset)) then
+    deallocate(faceset%face_centroids)
+    deallocate(faceset%face_areas)
+    allocate(faceset%face_centroids(count))
+    allocate(faceset%face_areas(count))
+  
+    do icell = 1, count
+      faceset%face_centroids(icell)%x = real_array_2d(1,icell)
+      faceset%face_centroids(icell)%y = real_array_2d(2,icell)
+      faceset%face_centroids(icell)%z = real_array_2d(3,icell)
+      faceset%face_areas(icell) = real_array_2d(4,icell)
+    enddo
+    deallocate(real_array_2d)
+  endif
+  
 
   region%num_cells = count
   
   if (region%num_cells == 0) then
     deallocate(region%cell_ids)
     nullify(region%cell_ids)
-    deallocate(faceset%face_centroids)
-    nullify(faceset%face_centroids)
-    deallocate(faceset%face_areas)
-    nullify(faceset%face_areas)
-    ! note that have to use full reference
-    deallocate(region%explicit_faceset)
-    nullify(region%explicit_faceset)
+    if (associated(faceset)) then
+      deallocate(faceset%face_centroids)
+      nullify(faceset%face_centroids)
+      deallocate(faceset%face_areas)
+      nullify(faceset%face_areas)
+      ! note that have to use full reference
+      deallocate(region%explicit_faceset)
+      nullify(region%explicit_faceset)
+    endif
   endif
 
 #if UGRID_DEBUG
@@ -1864,13 +1873,19 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
     write(string,*) option%myrank
     string = 'region_faceset_' // trim(region%name) // trim(adjustl(string)) // '.out'
     open(unit=86,file=trim(string))
-    do icell = 1, region%num_cells
-      write(86,'(i5,4f7.3)') region%cell_ids(icell), &
-                  faceset%face_centroids(icell)%x, &
-                  faceset%face_centroids(icell)%y, &
-                  faceset%face_centroids(icell)%z, &
-                  faceset%face_areas(icell)
-    enddo
+    if (associated(faceset)) then
+      do icell = 1, region%num_cells
+        write(86,'(i5,4f7.3)') region%cell_ids(icell), &
+                    faceset%face_centroids(icell)%x, &
+                    faceset%face_centroids(icell)%y, &
+                    faceset%face_centroids(icell)%z, &
+                    faceset%face_areas(icell)
+      enddo
+    else
+      do icell = 1, region%num_cells
+        write(86,'(i5)') region%cell_ids(icell)
+      enddo
+    endif
     close(86)
   endif
 #endif  

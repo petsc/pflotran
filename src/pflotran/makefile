@@ -5,6 +5,7 @@ srcdir = ./
 pflotran_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
+pflotran_test_dir = ../../test
 
 MYFLAGS = -I${objdir} 
 
@@ -279,8 +280,9 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
 	$(LIBS)
 
-test: functions.o test.o
-	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
+# do these files exist anymore?
+#test: functions.o test.o
+#	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
 
 # Should add this to default PETSc targets as well?
 %.mod : %.F90
@@ -442,3 +444,20 @@ unstructured_grid_aux.o : unstructured_cell.o
 utility.o : string.o input.o option.o
 velocity.o : option.o input.o string.o logging.o units.o
 waypoint.o : option.o output_aux.o
+
+
+# developer level regression testing
+test : FORCE
+	@if [ -d $(pflotran_test_dir) ]; then \
+		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	fi
+
+# user lever tests to verify pflotran is built correctly
+check : FORCE
+	@if [ -d $(pflotran_test_dir) ]; then \
+		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	fi
+
+# null rule to force things to happen
+FORCE :
+

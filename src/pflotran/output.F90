@@ -190,7 +190,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   if (plot_flag) then
   
     if (realization%output_option%print_hdf5) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscGetTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       call OutputHDF5(realization)
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
@@ -473,6 +473,236 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
   write(fid,'(a)') trim(string)
 
 end subroutine OutputTecplotHeader1
+
+! ************************************************************************** !
+!> This subroutine writes header to a .xmf file
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/12
+! ************************************************************************** !
+subroutine OutputXMFHeader(fid,realization,filename)
+
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  PetscInt :: fid, vert_count
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  output_option => realization%output_option
+
+  string="<?xml version=""1.0"" ?>"
+  write(fid,'(a)') trim(string)
+  
+  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
+  write(fid,'(a)') trim(string)
+
+  string="<Xdmf>"
+  write(fid,'(a)') trim(string)
+
+  string="  <Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="    <Grid Name=""Mesh"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) grid%nmax
+  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
+    trim(adjustl(string2)) // """ >"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) realization%output_option%xmf_vert_len
+  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
+    trim(adjustl(string2)) // """>"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Cells"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Topology>"
+  write(fid,'(a)') trim(string)
+
+  string="      <Geometry GeometryType=""XYZ"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) grid%unstructured_grid%num_vertices_global
+  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Vertices"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Geometry>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFHeader
+
+! ************************************************************************** !
+!> This subroutine writes footer to a .xmf file
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/12
+! ************************************************************************** !
+subroutine OutputXMFFooter(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: icolumn
+  
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  output_option => realization%output_option
+
+  string="    </Grid>"
+  write(fid,'(a)') trim(string)
+
+  string="  </Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="</Xdmf>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFFooter
+
+! ************************************************************************** !
+!> This subroutine writes an attribute to a .xmf file
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/12
+! ************************************************************************** !
+subroutine OutputXMFAttribute(fid,realization,attname,att_datasetname)
+
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: icolumn
+  
+  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+
+  patch => realization%patch
+  grid => patch%grid
+
+  string="      <Attribute Name=""" // trim(attname) // &
+    """ AttributeType=""Scalar""  Center=""Cell"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) grid%nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(att_datasetname)
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFAttribute
 
 ! ************************************************************************** !
 !
@@ -4980,7 +5210,8 @@ subroutine OutputHDF5(realization)
   output_option => realization%output_option
 
   if (realization%discretization%itype == UNSTRUCTURED_GRID) then
-    call OutputHDF5UGrid(realization)
+    !call OutputHDF5UGrid(realization)
+    call OutputHDF5UGridXDMF(realization)
     return
   endif
   
@@ -8335,9 +8566,238 @@ subroutine OutputHDF5UGrid(realization)
 
 end subroutine OutputHDF5UGrid
 
+
+! ************************************************************************** !
+!> This routine writes unstructured grid data in HDF5 XDMF format.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/2012
+! ************************************************************************** !
+subroutine OutputHDF5UGridXDMF(realization)
+
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Reaction_Aux_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call printMsg(realization%option,'')
+  write(realization%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(realization%option)
+#endif
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use hdf5
+  use HDF5_module
+  use HDF5_Aux_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  PetscMPIInt :: rank
+  integer :: rank_mpi,file_space_rank_mpi
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+#endif
+
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
+
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscReal, pointer :: v_ptr
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
+  PetscInt :: nviz_flow, nviz_tran, nviz_dof
+  PetscInt :: current_component
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscFortranAddr :: app_ptr
+  PetscBool :: first
+  PetscInt :: ivar, isubvar, var_type
+  PetscInt :: vert_count
+
+  discretization => realization%discretization
+  patch => realization%patch
+  option => realization%option
+  field => realization%field
+  reaction => realization%reaction
+  output_option => realization%output_option
+
+  xmf_filename = OutputFilename(output_option,option,'xmf','')
+
+  if (output_option%print_single_h5_file) then
+    first = hdf5_first
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
+  else
+    string = OutputFilenameID(output_option,option)
+    first = PETSC_TRUE
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // '.h5'
+  endif
+
+  grid => patch%grid
+
+#ifdef PARALLELIO_LIB_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with PARALLELIO_LIB_WRITE'
+   call printErrMsg(option)
+#endif
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                     H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // filename
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+  endif
+  call printMsg(option)
+
+  if (first) then
+    ! create a group for the coordinates data set
+    string = "Domain"
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+    call WriteHDF5CoordinatesUGridXDMF(realization,option,grp_id)
+    call h5gclose_f(grp_id,hdf5_err)
+  endif
+
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write xmf output file: ' // trim(filename)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
+    call OutputXMFHeader(OUTPUT_UNIT,realization,filename)
+  endif
+
+  ! create a group for the data set
+  write(string,'(''Time'',es13.5,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  group_name=string
+  if (hdf5_err /= 0) then
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+  endif
+  call h5eset_auto_f(ON,hdf5_err)
+
+  ! write out data sets 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    string = cur_variable%name
+    if (len_trim(cur_variable%units) > 0) then
+      word = cur_variable%units
+      call HDF5MakeStringCompabible(word)
+      string = trim(string) // ' [' // trim(word) // ']'
+    endif
+    if (cur_variable%iformat == 0) then
+      call HDF5WriteUnstructuredDataSetFromVec(string,realization, &
+                                          global_vec,grp_id,H5T_NATIVE_DOUBLE)
+    else
+      call HDF5WriteUnstructuredDataSetFromVec(string,realization, &
+                                          global_vec,grp_id,H5T_NATIVE_INTEGER)
+    endif
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    call OutputXMFAttribute(OUTPUT_UNIT,realization,string,att_datasetname)
+    cur_variable => cur_variable%next
+  enddo
+
+  call VecDestroy(global_vec,ierr)
+  call h5gclose_f(grp_id,hdf5_err)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+  if (option%myrank == option%io_rank) then
+    call OutputXMFFooter(OUTPUT_UNIT,realization)
+    close(OUTPUT_UNIT)
+  endif
+
+  hdf5_first = PETSC_FALSE
+
+end subroutine OutputHDF5UGridXDMF
+
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
-!> This subroutine writes structured coordinates to HDF5 file
+!> This subroutine writes unstructured coordinates to HDF5 file
 !!
 !> @author
 !! Gautam Bisht, ORNL
@@ -8640,6 +9100,312 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 
 
 end subroutine WriteHDF5CoordinatesUGrid
+
+
+! ************************************************************************** !
+!> This routine writes unstructured coordinates to HDF5 file in XDMF format
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/2012
+! ************************************************************************** !
+subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
+
+  use hdf5
+  use HDF5_module
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  type(option_type), pointer :: option
+
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(grid_type), pointer :: grid
+  character(len=MAXSTRINGLENGTH) :: string
+
+  PetscInt :: local_size,vert_count,nverts
+  PetscInt :: i,j
+  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
+  PetscReal, pointer :: double_array(:)
+  Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
+
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec, natural_vec
+  PetscInt, pointer :: int_array(:)
+  type(ugdm_type),pointer :: ugdm_element
+
+  PetscInt :: TET_ID_XDMF = 6
+  PetscInt :: PYR_ID_XDMF = 7
+  PetscInt :: WED_ID_XDMF = 8
+  PetscInt :: HEX_ID_XDMF = 9
+
+  grid => realization%patch%grid
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_x_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_y_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_z_vertex_vec,ierr)
+
+  call VecGetLocalSize(global_x_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_y_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_z_vertex_vec,local_size,ierr)
+
+  call GetVertexCoordinates(grid, global_x_vertex_vec,X_COORDINATE,option)
+  call GetVertexCoordinates(grid, global_y_vertex_vec,Y_COORDINATE,option)
+  call GetVertexCoordinates(grid, global_z_vertex_vec,Z_COORDINATE,option)
+
+  call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+#if defined(PARALLELIO_LIB_WRITE)
+  write(*,*),'PARALLELIO_LIB_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+  call printErrMsg(option)
+#endif
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size * 3
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 3D block
+  rank_mpi = 2
+  dims = 0
+  dims(2) = grid%unstructured_grid%num_vertices_global
+  dims(1) = 3
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Vertices" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(2) = istart
+  start(1) = 0
+  
+  length(2) = local_size
+  length(1) = 3
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+
+  allocate(double_array(local_size*3))
+  do i=1,local_size
+    double_array((i-1)*3+1) = vec_x_ptr(i)
+    double_array((i-1)*3+2) = vec_y_ptr(i)
+    double_array((i-1)*3+3) = vec_z_ptr(i)
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(double_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+#endif
+
+  call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+
+  call VecDestroy(global_x_vertex_vec,ierr)
+  call VecDestroy(global_y_vertex_vec,ierr)
+  call VecDestroy(global_z_vertex_vec,ierr)
+
+  !
+  !  Write elements
+  !
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option)
+  call GetCellConnections(grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+
+  local_size = grid%unstructured_grid%nlmax
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size*NINE_INTEGER
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  vert_count=0
+  do i=1,local_size*EIGHT_INTEGER
+    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+  enddo
+  vert_count=vert_count+grid%nlmax
+
+  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  realization%output_option%xmf_vert_len=dims(1)
+
+  ! file space which is a 3D block
+  rank_mpi = 1
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Cells" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_INTEGER,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(vert_count, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(1) = istart
+  length(1) = vert_count
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+  else
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err)
+  endif
+#endif
+
+  allocate(int_array(vert_count))
+
+  vert_count=0
+  do i=1,local_size
+    nverts=0
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+    enddo
+    vert_count=vert_count+1
+    select case (nverts)
+      case (4) ! Tetrahedron
+        int_array(vert_count) = TET_ID_XDMF
+      case (5) ! Pyramid
+        int_array(vert_count) = PYR_ID_XDMF
+      case (6) ! Wedge
+        int_array(vert_count) = WED_ID_XDMF
+      case (8) ! Hexahedron
+        int_array(vert_count) = HEX_ID_XDMF
+    end select
+
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) then
+        vert_count=vert_count+1
+        int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
+      endif
+    enddo
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
+                  hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(int_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine WriteHDF5CoordinatesUGridXDMF
+
+
 #endif
 
 #ifdef SURFACE_FLOW
@@ -9528,7 +10294,7 @@ end subroutine OutputGetVarFromArray2
 !> This routine outputs hydrograph fluxes.
 !!
 !> @author
-!! Gautam Bisht, LBL
+!! Gautam Bisht, LBNL
 !!
 !! date:
 ! ************************************************************************** !
