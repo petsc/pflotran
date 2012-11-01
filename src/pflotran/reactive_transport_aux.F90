@@ -604,7 +604,8 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
           *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
     endif    
     kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
-    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/kg
+    equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3/mol
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
     rhs_react = diag_react*equil_conc                                ! in mol/L

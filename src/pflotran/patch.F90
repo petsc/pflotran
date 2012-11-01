@@ -2956,7 +2956,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     case(PROCESSOR_ID)
       value = option%myrank
     case(SECONDARY_CONCENTRATION)
-      value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
+      value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)/&
+              patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)/1.d-3
     case(SEC_MIN_VOLFRAC)
       value = patch%aux%RT%sec_transport_vars(ghosted_id)% &
               sec_mnrl_volfrac(isubvar)

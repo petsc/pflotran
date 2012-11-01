@@ -229,7 +229,7 @@ subroutine RTSetupPatch(realization)
       allocate(rt_sec_transport_vars(ghosted_id)%sec_zeta(rt_sec_transport_vars(ghosted_id)%ncells))
       
       if (reaction%mineral%nkinmnrl > 0) then 
-        equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/L
+        equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))       ! in mol/kg
       else
         equil_conc = initial_condition%tran_condition% &
         cur_constraint_coupler%aqueous_species%constraint_conc(1)
@@ -253,7 +253,7 @@ subroutine RTSetupPatch(realization)
         rt_sec_transport_vars(ghosted_id)%sec_mnrl_area = &
           realization%material_property_array(1)%ptr%secondary_continuum_mnrl_area        
                    
-        if (rt_sec_transport_vars(ghosted_id)%sec_conc(1) > equil_conc) then 
+        if (rt_sec_transport_vars(ghosted_id)%sec_conc(1)/equil_conc > 1.d0) then 
           rt_sec_transport_vars(ghosted_id)%sec_zeta = 1
         else
           if (rt_sec_transport_vars(ghosted_id)%sec_mnrl_volfrac(1) > 0.d0) then
@@ -5242,7 +5242,8 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
           *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
     endif    
     kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
-    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/kg --> Note!
+    equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
     rhs_react = diag_react*equil_conc                                ! in mol/L
@@ -5292,7 +5293,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
   ! Calculate the coupling term
   res_transport = area_fm*diffusion_coefficient*porosity* &
                   (conc_current_N - conc_primary_node)/dm_plus(ngcells)
-  
+                    
 end subroutine RTSecondaryTransport
 
 
@@ -5377,7 +5378,8 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
           *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_vars%temp(1)+273.15d0)))
     endif    
     kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
-    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/kg
+    equil_conc = equil_conc*global_aux_vars%den_kg(1)*1.d-3          ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
     diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
   endif
