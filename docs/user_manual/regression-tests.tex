@@ -147,9 +147,13 @@ The steps for creating new regression tests are:
   correctly.
 
 \item Tell PFLOTRAN to generate a regression file by adding a
-  regression block to the input file:
+  regression block to the input file, e.g.:
 \begin{verbatim}
 REGRESSION
+  CELLS 
+    1
+    3978
+  /
   CELLS_PER_PROCESS 4
 END
 \end{verbatim}
