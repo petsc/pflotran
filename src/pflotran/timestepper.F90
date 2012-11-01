@@ -592,18 +592,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     
 #ifdef SURFACE_FLOW
 
-    ! Update model coupling time
-    option%surf_subsurf_coupling_time=option%surf_subsurf_coupling_time + &
-                                      option%surf_subsurf_coupling_flow_dt
-
     if (associated(flow_stepper) .and. .not.run_flow_as_steady_state) then
 
       ! Solve surface-flow model
       if (associated(surf_flow_stepper) .and. .not.run_flow_as_steady_state) then
 
-        ! Set new target time for surface model
-        call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
-             plot_flag,transient_plot_flag)
+        ! Update model coupling time
+        call SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
+                            option,plot_flag,transient_plot_flag)
 
         ! Update subsurface pressure of top soil layer for surface flow model
         if (surf_realization%option%subsurf_surf_coupling == SEQ_COUPLED) then
@@ -645,18 +641,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       if (associated(surf_flow_stepper).and. &
           (surf_realization%option%subsurf_surf_coupling==SEQ_COUPLED)) then
 
-        ! Set new target time for subsurface model
-        call StepperSetTargetTimes(flow_stepper,tran_stepper, &
-                                   surf_flow_stepper, &
-                                   option,plot_flag, &
-                                   transient_plot_flag)
-
         flow_t0 = option%flow_time
         call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
 
         ! Update source/sink condition for subsurface flow model
         call SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization, &
-              option%surf_subsurf_coupling_flow_dt)
+              option%surf_subsurf_coupling_time-option%flow_time)
 
         do
           ! Solve subsurface flow
@@ -1190,6 +1180,7 @@ end subroutine StepperUpdateDT
 !!
 !! date: 10/31/12
 ! ************************************************************************** !
+#ifdef SURFACE_FLOW
 subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
 
   use Option_module
@@ -1259,7 +1250,7 @@ subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
   endif
 
 end subroutine StepperUpdateSurfaceFlowDT
-
+#endif
 ! ************************************************************************** !
 !
 ! StepperUpdateDTMax: Updates maximum time step specified by the current
@@ -1412,10 +1403,12 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 
 #ifdef SURFACE_FLOW
   if(associated(surf_flow_stepper)) then
-    if((target_time-option%surf_subsurf_coupling_time) &
-      /option%flow_dt>1.d-10) then
-      dt=option%surf_subsurf_coupling_time-option%flow_time
-      target_time=option%surf_subsurf_coupling_time
+    if (option%surf_subsurf_coupling_flow_dt>0.d0) then
+      if((target_time-option%surf_subsurf_coupling_time) &
+        /option%flow_dt>1.d-10) then
+        dt=option%surf_subsurf_coupling_time-option%flow_time
+        target_time=option%surf_subsurf_coupling_time
+      endif
     endif
   endif
 #endif
@@ -1501,6 +1494,7 @@ end subroutine StepperSetTargetTimes
 !!
 !! date: 10/31/12
 ! ************************************************************************** !
+#ifdef SURFACE_FLOW
 subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
                                  option,plot_flag, &
                                  transient_plot_flag)
@@ -1523,14 +1517,96 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
   surf_flow_stepper%target_time = target_time
 
   ! Cut timestep to avoid going pass the surface-subsurface coupling time
-  if((surf_flow_stepper%target_time-option%surf_subsurf_coupling_time) &
-      /option%surf_flow_dt>1.d-10) then
-    option%surf_flow_dt=option%surf_subsurf_coupling_time-option%surf_flow_time
-    surf_flow_stepper%target_time=option%surf_subsurf_coupling_time
+  if(option%subsurf_surf_coupling==SEQ_COUPLED) then
+    if((surf_flow_stepper%target_time-option%surf_subsurf_coupling_time) &
+        /option%surf_flow_dt>1.d-10) then
+      option%surf_flow_dt=option%surf_subsurf_coupling_time-option%surf_flow_time
+      surf_flow_stepper%target_time=option%surf_subsurf_coupling_time
+    endif
   endif
 
 end subroutine StepperSetSurfaceFlowTargetTimes
+#endif
 
+! ************************************************************************** !
+!> This subroutine sets target time for model coupling.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/31/12
+! ************************************************************************** !
+#ifdef SURFACE_FLOW
+subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_stepper, &
+                                        option,plot_flag,transient_plot_flag)
+
+  use Option_module
+
+  implicit none
+
+  type(stepper_type), pointer :: surf_flow_stepper
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+  type(option_type) :: option
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
+
+  if(option%surf_subsurf_coupling_flow_dt>0.d0) then
+    ! Case-I: Coupling time is specified in the input deck, so use it
+    option%surf_subsurf_coupling_time=option%surf_subsurf_coupling_time + &
+                                      option%surf_subsurf_coupling_flow_dt
+
+    ! Set new target time for surface model
+    call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
+              plot_flag,transient_plot_flag)
+
+    if (option%subsurf_surf_coupling==SEQ_COUPLED) then
+      ! Set new target time for subsurface model
+      call StepperSetTargetTimes(flow_stepper,tran_stepper, &
+                                surf_flow_stepper, &
+                                option,plot_flag, &
+                                transient_plot_flag)
+    else
+      option%io_buffer='Coupling time specified for a DECOUPLED system. '
+      call printErrMsg(option)
+    endif
+  else
+    if(option%subsurf_surf_coupling==SEQ_COUPLED) then
+      ! Case-II: Coupling time not explicitly specified in the input deck, but
+      !          the simulation is for a sequentially coupled surface-subsurface
+      !          model. Model coupling will be performed at each subsurface
+      !          time step.
+
+      ! Set new target time for subsurface model
+      call StepperSetTargetTimes(flow_stepper,tran_stepper, &
+                                surf_flow_stepper, &
+                                option,plot_flag, &
+                                transient_plot_flag)
+
+      ! Set coupling time to be subsurface target time
+      option%surf_subsurf_coupling_time=flow_stepper%target_time
+
+      ! Set new target time for surface model
+      call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
+                plot_flag,transient_plot_flag)
+
+    else
+      ! Case-III: Coupling time not explicitly specified in the input deck, with
+      !          only surface simulation 
+      ! Set new target time for surface model
+      call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper,option, &
+                plot_flag,transient_plot_flag)
+
+      option%surf_subsurf_coupling_time=surf_flow_stepper%target_time
+    endif
+  endif
+
+  write(*,*),'coupling  : ',option%surf_subsurf_coupling_time
+  write(*,*),'surface   : ',surf_flow_stepper%target_time,option%surf_flow_dt
+  write(*,*),'subsurface: ',flow_stepper%target_time,option%flow_dt
+
+end subroutine SetSurfaceSubsurfaceCouplingTime
+#endif
 
 ! ************************************************************************** !
 !
