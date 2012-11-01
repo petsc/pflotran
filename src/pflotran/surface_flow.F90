@@ -1776,7 +1776,7 @@ subroutine SurfaceFlowDiffusion(hw_up, &
       if (hw_dn*Cd>hw_up) then
         hw_half = 0.5d0*(hw_up+hw_dn)
       else
-        hw_half = hw_up
+        hw_half = hw_dn
       endif
     else
       hw_half = 0.d0
@@ -1856,8 +1856,8 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
         dhw_half_dhw_up = 0.5d0
         dhw_half_dhw_dn = 0.5d0
       else
-        hw_half = hw_up
-        dhw_half_dhw_up = 1.d0
+        hw_half = hw_dn
+        dhw_half_dhw_dn = 1.d0
       endif
     else
       hw_half = 0.d0
@@ -1866,8 +1866,8 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
 
   !
   term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
-          (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
-
+          (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
+          dhw_half_dhw_up
   !
   term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
   term2 = term2 *(-(head_dn-head_up))/2.d0/ &
@@ -1876,6 +1876,10 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   Jup = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
           
   !
+  term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
+          (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
+          dhw_half_dhw_dn
+
   term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
   term2 = term2 *((head_dn-head_up))/2.d0/ &
           (abs((head_dn-head_up) + eps)**(3.d0/2.d0))

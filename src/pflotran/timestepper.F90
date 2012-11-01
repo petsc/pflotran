@@ -825,12 +825,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     transient_plot_flag_surf = transient_plot_flag
 #endif
     call Output(realization,plot_flag,transient_plot_flag)
-#ifdef SURFACE_FLOW
-    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
-#endif
     
     call StepperUpdateDTMax(flow_stepper,tran_stepper,option)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
+
+#ifdef SURFACE_FLOW
+    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+    if(associated(surf_flow_stepper)) then
+      call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+    endif
+#endif
 
     ! if a simulation wallclock duration time is set, check to see that the
     ! next time step will not exceed that value.  If it does, print the
@@ -1409,6 +1413,11 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
         dt=option%surf_subsurf_coupling_time-option%flow_time
         target_time=option%surf_subsurf_coupling_time
       endif
+    endif
+
+    if(option%subsurf_surf_coupling==DECOUPLED) then
+      target_time=surf_flow_stepper%target_time
+      dt = option%surf_flow_dt
     endif
   endif
 #endif
