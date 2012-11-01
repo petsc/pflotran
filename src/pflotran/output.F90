@@ -9653,7 +9653,7 @@ subroutine OutputTecplotHeader2(fid,surf_realization,icolumn)
   ! write header
   ! write title
   write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
-                option%time/output_option%tconv,output_option%tunit
+                option%surf_flow_time/output_option%tconv,output_option%tunit
 
   ! initial portion of header
   header = 'VARIABLES=' // &
@@ -10383,7 +10383,7 @@ subroutine OutputHydrograph(surf_realization)
 
     ! write time
     if (option%myrank == option%io_rank) then
-      write(fid,100,advance="no") option%time/output_option%tconv
+      write(fid,100,advance="no") option%surf_flow_time/output_option%tconv
     endif
   
     if (option%nflowdof > 0) then

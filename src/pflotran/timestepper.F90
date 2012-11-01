@@ -1598,6 +1598,13 @@ subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_
                 plot_flag,transient_plot_flag)
 
       option%surf_subsurf_coupling_time=surf_flow_stepper%target_time
+
+      ! Set new target time for subsurface model
+      call StepperSetTargetTimes(flow_stepper,tran_stepper, &
+                                surf_flow_stepper, &
+                                option,plot_flag, &
+                                transient_plot_flag)
+
     endif
   endif
 
