@@ -633,6 +633,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
           ! if still stepping, update solution
           call StepperUpdateSurfaceFlowSolution(surf_realization)
+          call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
 
           ! Set new target time for surface model
           call StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
@@ -689,7 +690,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                      option,plot_flag, &
                                      transient_plot_flag)
           call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-          write(*,*),'call StepperStepFlowDT() '
           call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
                                 failure)
           call PetscLogStagePop(ierr)
@@ -1183,6 +1183,84 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
 end subroutine StepperUpdateDT
 
 ! ************************************************************************** !
+!> This subroutine sets updates dt for surface flow.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/31/12
+! ************************************************************************** !
+subroutine StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(stepper_type), pointer :: surf_flow_stepper
+  type(option_type) :: option
+
+  PetscReal :: time, dt
+  PetscReal :: fac,dtt,up,utmp,uc,ut,uus,dt_tfac,dt_p
+  PetscBool :: update_time_step
+  PetscInt :: ifac
+
+  ! FLOW
+  update_time_step = PETSC_TRUE
+
+  ! if the time step was cut, set number of constant time steps to 1
+  if(surf_flow_stepper%time_step_cut_flag) then
+    surf_flow_stepper%time_step_cut_flag=PETSC_FALSE
+    surf_flow_stepper%num_constant_time_steps=1
+  ! otherwise, only increment if the constant time step counter was
+  ! initialized to 1
+  else if (surf_flow_stepper%num_constant_time_steps > 0) then
+    surf_flow_stepper%num_constant_time_steps = &
+      surf_flow_stepper%num_constant_time_steps + 1
+  endif
+
+  ! num_constant_time_steps = 0: normal time stepping with growing steps
+  ! num_constant_time_steps > 0: restriction of constant time steps until
+  !                              constant_time_step_threshold is met
+  if (surf_flow_stepper%num_constant_time_steps > &
+      surf_flow_stepper%constant_time_step_threshold) then
+    surf_flow_stepper%num_constant_time_steps = 0
+  else if (surf_flow_stepper%num_constant_time_steps > 0) then
+    ! do not increase time step size
+    update_time_step = PETSC_FALSE
+  endif
+
+  if(update_time_step) then
+
+    time=option%surf_flow_time
+    dt=option%surf_flow_dt
+
+    if(surf_flow_stepper%iaccel==0) return
+    
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        fac=0.5d0
+        if(surf_flow_stepper%num_newton_iterations>=surf_flow_stepper%iaccel) then
+          fac=0.33d0
+          ut=0.d0
+        else
+          !up = option%dpmxe/(option%dpmax+0.1)
+          up = 2.d0
+          ut = up
+        endif
+        dtt = fac * dt * (1.d0 + ut)
+    end select
+
+    if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
+    if (dtt > surf_flow_stepper%dt_max) dtt = surf_flow_stepper%dt_max
+
+    dt = dtt
+    option%surf_flow_dt = dt
+
+  endif
+
+end subroutine StepperUpdateSurfaceFlowDT
+
+! ************************************************************************** !
 !
 ! StepperUpdateDTMax: Updates maximum time step specified by the current
 !                     waypoint after the completion of a time step
@@ -1440,7 +1518,6 @@ subroutine StepperSetSurfaceFlowTargetTimes(surf_flow_stepper, &
   PetscReal :: dt
   PetscReal :: dt_max
 
-  option%surf_flow_dt = surf_flow_stepper%dt_max
   dt = option%surf_flow_dt
   target_time = surf_flow_stepper%target_time + option%surf_flow_dt
   surf_flow_stepper%target_time = target_time
@@ -1966,6 +2043,7 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   use Solver_module
   use Surface_Field_module
   use Grid_module
+  use Output_module, only : Output
   
   implicit none
   
@@ -2055,8 +2133,44 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
 
     if (snes_reason <= 0 .or. update_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
-      option%io_buffer = 'Newton solver diverged for SURFACE-FLOW. Add code'
-      call printErrMsg(option)
+      icut=icut+1
+      stepper%time_step_cut_flag=PETSC_TRUE
+
+      if (icut > stepper%max_time_step_cuts .or. option%flow_dt<1.d-20) then
+        if (option%print_screen_flag) then
+          print *,"--> max_time_step_cuts exceeded: icut/icutmax= ",icut, &
+                  stepper%max_time_step_cuts, "t= ", &
+                  stepper%target_time/surf_realization%output_option%tconv, " dt= ", &
+                  option%flow_dt/surf_realization%output_option%tconv
+          print *,"Stopping execution!"
+        endif
+        surf_realization%output_option%plot_name = 'flow_cut_to_failure'
+        !call Output(surf_realization,PETSC_TRUE,PETSC_FALSE)
+        failure = PETSC_TRUE
+        return
+      endif
+
+      ! Revert back the target time and decrease the time step
+      stepper%target_time = stepper%target_time - option%flow_dt
+      option%surf_flow_dt = 0.5d0 * option%surf_flow_dt
+
+      if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
+        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.5, '' dt= '', &
+        &   1pe12.5)')  snes_reason,icut,stepper%cumulative_time_step_cuts, &
+            option%surf_flow_time/surf_realization%output_option%tconv, &
+            option%surf_flow_dt/surf_realization%output_option%tconv
+
+      ! Set new target time
+      stepper%target_time = stepper%target_time + option%surf_flow_dt
+
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          call SurfaceFlowTimeCut(surf_realization)
+        case default
+          option%io_buffer = 'ERROR: TimeCut for this iflowmode in SurfaceFlow ' // &
+            ' not incorporated.'
+          call printErrMsg(option)
+      end select
     else
       ! The Newton solver converged, so we can exit.
       exit
@@ -2073,15 +2187,6 @@ subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
 
   stepper%num_newton_iterations_surf_flow = num_newton_iterations
   stepper%num_linear_iterations_surf_flow = num_linear_iterations
-
-#if 0
-  write(string,*)stepper%steps_surf_flow
-  string = 'Surf_Rxx_' // trim(adjustl(string)) // '.bin'
-  call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
-                             FILE_MODE_WRITE,viewer,ierr)
-  call VecView(surf_field%flow_xx,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
 
 ! print screen output
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)

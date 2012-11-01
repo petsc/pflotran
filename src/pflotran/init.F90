@@ -2326,6 +2326,7 @@ subroutine InitReadInput(simulation)
         simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
         option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
+        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
 #endif
 
 !....................

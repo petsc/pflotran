@@ -24,6 +24,7 @@ module Surface_Flow_module
   PetscReal, parameter :: eps       = 1.D-8
 
   public SurfaceFlowSetup, &
+         SurfaceFlowTimeCut, &
          SurfaceFlowInitializeTimestep, &
          SurfaceFlowReadRequiredCardsFromInput, &
          SurfaceFlowRead, &
@@ -1883,8 +1884,39 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
 end subroutine SurfaceFlowDiffusionDerivative
 
 ! ************************************************************************** !
-!
-!
+!> This routine resets arrays for time step cut.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/31/12
+! ************************************************************************** !
+subroutine SurfaceFlowTimeCut(surf_realization)
+ 
+  use Surface_Realization_module
+  use Surface_Field_module
+ 
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  type(surface_field_type), pointer :: surf_field
+  
+  PetscErrorCode :: ierr
+
+  surf_field => surf_realization%surf_field
+
+  call VecCopy(surf_field%flow_yy,surf_field%flow_xx,ierr)
+  call SurfaceFlowInitializeTimestep(surf_realization)
+ 
+end subroutine SurfaceFlowTimeCut
+
+! ************************************************************************** !
+!> This routine updates the data prior to time step.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowInitializeTimestep(surf_realization)
 
@@ -1961,7 +1993,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
   type(surface_field_type),pointer   :: surf_field
   
   PetscInt             :: local_id, ghosted_id
-  PetscReal, pointer   :: accum_p(:),area_p(:),xx_loc_p(:)
+  PetscReal, pointer   :: accum_p(:),area_p(:),xx_p(:)
   PetscReal            :: rho          ! density      [kg/m^3]
   PetscReal            :: head         ! [m]
 
@@ -1973,7 +2005,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
   call GridVecGetArrayF90(grid, surf_field%flow_accum, accum_p, ierr)
   call GridVecGetArrayF90(grid, surf_field%area, area_p,ierr)
-  call GridVecGetArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid, surf_field%flow_xx, xx_p, ierr)
 
   call density(option%reference_temperature,option%reference_pressure,rho)
 
@@ -1981,11 +2013,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
     ghosted_id = grid%nL2G(local_id)
     
-#if 0
-    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
-    if(head < 1.D-8) head = 0.d0
-#endif    
-    head = xx_loc_p(ghosted_id)
+    head = xx_p(local_id)
     call SurfaceFlowAccumulation(head,area_p(local_id),option, &
                                  accum_p(local_id:local_id))
     call SurfaceFlowAccumulation(head,area_p(1),option, &
@@ -1995,7 +2023,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
   call GridVecRestoreArrayF90(grid ,surf_field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%area, area_p,ierr)
-  call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_p, ierr)
 
 end subroutine SurfaceFlowUpdateFixedAccumPatch
 
