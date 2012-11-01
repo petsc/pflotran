@@ -1601,10 +1601,6 @@ subroutine SetSurfaceSubsurfaceCouplingTime(flow_stepper,tran_stepper,surf_flow_
     endif
   endif
 
-  write(*,*),'coupling  : ',option%surf_subsurf_coupling_time
-  write(*,*),'surface   : ',surf_flow_stepper%target_time,option%surf_flow_dt
-  write(*,*),'subsurface: ',flow_stepper%target_time,option%flow_dt
-
 end subroutine SetSurfaceSubsurfaceCouplingTime
 #endif
 
