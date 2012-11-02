@@ -9209,7 +9209,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
   dims(1) = local_size * 3
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
    
-  ! file space which is a 3D block
+  ! file space which is a 2D block
   rank_mpi = 2
   dims = 0
   dims(2) = grid%unstructured_grid%num_vertices_global
@@ -9302,12 +9302,6 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
 
   local_size = grid%unstructured_grid%nlmax
 
-  ! memory space which is a 1D vector
-  rank_mpi = 1
-  dims = 0
-  dims(1) = local_size*NINE_INTEGER
-  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
-
   vert_count=0
   do i=1,local_size*EIGHT_INTEGER
     if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
@@ -9317,7 +9311,12 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
   call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
   realization%output_option%xmf_vert_len=dims(1)
 
-  ! file space which is a 3D block
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  ! file space which is a 2D block
   rank_mpi = 1
   call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
 
