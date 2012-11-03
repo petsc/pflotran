@@ -356,7 +356,7 @@ material_aux.o : option.o
 matrix_buffer.o : grid.o structured_grid.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
-microbial.o : microtial_aux.o reaction_aux.o reactive_transport_aux.o \
+microbial.o : microbial_aux.o reaction_aux.o reactive_transport_aux.o \
               global_aux.o option.o string.o input.o utility.o
 microbial_aux.o : database_aux.o utility.o
 mineral.o : mineral_aux.o reaction_aux.o reactive_transport_aux.o global_aux.o \
