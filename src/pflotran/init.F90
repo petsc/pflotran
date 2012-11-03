@@ -1455,7 +1455,7 @@ subroutine InitReadInput(simulation)
           call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS','GENERAL_REACTION')
+                 'MINERALS','COLLOIDS','GENERAL_REACTION','MICROBIAL_REACTION')
               call InputSkipToEND(input,option,card)
             case('REDOX_SPECIES')
               call ReactionReadRedoxSpecies(reaction,input,option)
@@ -3537,7 +3537,6 @@ subroutine readFlowInitialCondition(realization,filename)
         endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
-        write(*,*) vec_p(local_id)
       enddo
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 

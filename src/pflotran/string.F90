@@ -16,7 +16,8 @@ module String_module
             StringStartswithAlpha, &
             StringStartsWith, &
             StringAdjustl, &
-            StringNull
+            StringNull, &
+            StringFindEntryInList
   
   interface StringCompare
     module procedure StringCompare1
@@ -398,5 +399,34 @@ function StringNull(string)
   endif
 
 end function StringNull
+
+! ************************************************************************** !
+!
+! StringFindEntryInList: Returns the index of a string if found in a list
+!                        of strings
+! author: Glenn Hammond
+! date: 10/30/13
+!
+! ************************************************************************** !
+function StringFindEntryInList(string,string_array)
+      
+  implicit none
+
+  character(len=*) :: string
+  character(len=*) :: string_array(:)
+
+  PetscInt :: StringFindEntryInList
+  PetscInt :: i
+
+  StringFindEntryInList = 0
+  
+  do i = 1, size(string_array)
+    if (StringCompare(string,string_array(i))) then
+      StringFindEntryInList = i
+      exit
+    endif
+  enddo
+  
+end function StringFindEntryInList
 
 end module String_module

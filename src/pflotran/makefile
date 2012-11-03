@@ -191,6 +191,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}secondary_continuum.o\
 	${common_src}surface_complexation_aux.o\
 	${common_src}mineral_aux.o\
+	${common_src}microbial_aux.o\
 	${common_src}solid_solution_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
@@ -248,6 +249,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}transport.o\
 	${common_src}surface_complexation.o\
 	${common_src}mineral.o\
+	${common_src}microbial.o\
 	${common_src}solid_solution.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
@@ -304,7 +306,8 @@ convergence.o : option.o solver.o grid.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
             auxilliary.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
-             database_aux.o surface_complexation_aux.o string.o mineral_aux.o
+             database_aux.o surface_complexation_aux.o string.o mineral_aux.o \
+             microbial_aux.o
 database_aux.o : option.o string.o
 database_hpt.o : database.o reaction.o database_aux.o mineral_aux.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
@@ -353,6 +356,9 @@ material_aux.o : option.o
 matrix_buffer.o : grid.o structured_grid.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
+microbial.o : microbial_aux.o reaction_aux.o reactive_transport_aux.o \
+              global_aux.o option.o string.o input.o utility.o
+microbial_aux.o : database_aux.o utility.o
 mineral.o : mineral_aux.o reaction_aux.o reactive_transport_aux.o global_aux.o \
             option.o string.o input.o utility.o solid_solution_aux.o database_aux.o
 mineral_aux.o : database_aux.o option.o string.o
@@ -377,10 +383,12 @@ pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
-             surface_complexation.o mineral.o solid_solution.o option.o string.o \
-             input.o condition.o co2eos.o water_eos.o
+             surface_complexation.o mineral.o solid_solution.o option.o \
+             string.o input.o condition.o co2eos.o water_eos.o microbial.o \
+             microbial_aux.o
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
-                 surface_complexation_aux.o solid_solution_aux.o utility.o
+                 surface_complexation_aux.o solid_solution_aux.o utility.o \
+                 microbial_aux.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \

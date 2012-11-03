@@ -37,7 +37,7 @@ subroutine DatabaseRead_hpt(reaction,option)
   
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
-  type(mineral_type), pointer :: cur_mineral, cur_mineral2
+  type(mineral_rxn_type), pointer :: cur_mineral, cur_mineral2
   type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2
@@ -671,7 +671,7 @@ subroutine BasisInit_hpt(reaction,option)
   type(aq_species_type), pointer :: cur_pri_aq_spec
   type(aq_species_type), pointer :: cur_sec_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(aq_species_type), pointer :: cur_sec_aq_spec1
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1

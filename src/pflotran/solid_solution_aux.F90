@@ -22,8 +22,8 @@ module Solid_Solution_Aux_module
 
 #if 0
   type, public :: stoichiometric_solid_type
-    type(mineral_type), pointer :: mineral ! stoichiometric solid
-    type(mineral_type), pointer :: end_members
+    type(mineral_rxn_type), pointer :: mineral ! stoichiometric solid
+    type(mineral_rxn_type), pointer :: end_members
     type(stoichiometric_solid_type), pointer :: next
   end type stoichiometric_solid_type
     
@@ -32,7 +32,7 @@ module Solid_Solution_Aux_module
     PetscInt :: num_dbase_temperatures
     PetscReal, pointer :: dbase_temperatures(:)
     type(solid_solution_type), pointer :: list
-    type(mineral_rxn_type), pointer :: mineral
+    type(mineral_type), pointer :: mineral
   end type solid_solution_rxn_type
 #endif
   
@@ -143,7 +143,7 @@ subroutine StoichiometricSolidDestroy(stoich_solid)
   
   type(stoichiometric_solid_type), pointer :: stoich_solid
   
-  type(mineral_type), pointer :: cur_mineral, prev_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral, prev_mineral
 
   if (.not.associated(stoich_solid)) return
   
