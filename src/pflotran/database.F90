@@ -2828,6 +2828,10 @@ subroutine BasisInit(reaction,option)
     enddo
     nullify(cur_microbial_rxn)
 
+    ! rate constant
+    allocate(microbial%rate_constant(microbial%nrxn))
+    microbial%rate_constant = 0.d0
+    
     ! species ids and stoichiometry
     allocate(microbial%specid(0:max_species_count,microbial%nrxn))
     microbial%specid = 0
@@ -2865,6 +2869,8 @@ subroutine BasisInit(reaction,option)
       
       irxn = irxn + 1
      
+      microbial%rate_constant(irxn) = cur_microbial_rxn%rate_constant
+      
       microbial%specid(0,irxn) = dbaserxn%nspec
       do i = 1, dbaserxn%nspec
         microbial%specid(i,irxn) = dbaserxn%spec_ids(i)
