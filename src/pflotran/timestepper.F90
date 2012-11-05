@@ -1408,6 +1408,16 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper, &
 #ifdef SURFACE_FLOW
   if(associated(surf_flow_stepper)) then
     if (option%surf_subsurf_coupling_flow_dt>0.d0) then
+
+      !if next waypoint is a very close, increase the timestep to match it
+      if(cur_waypoint%print_output) then
+        if(cur_waypoint%time>target_time.and.(cur_waypoint%time-target_time)/dt<0.2) then
+          dt=dt+(cur_waypoint%time-target_time)
+          target_time=cur_waypoint%time
+        endif
+      endif
+
+      ! if target time exceed model coupling time, shrink it back
       if((target_time-option%surf_subsurf_coupling_time) &
         /option%flow_dt>1.d-10) then
         dt=option%surf_subsurf_coupling_time-option%flow_time

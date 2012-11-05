@@ -21,7 +21,8 @@ module Surface_Flow_module
 
 
 ! Cutoff parameters
-  PetscReal, parameter :: eps       = 1.D-8
+  PetscReal, parameter :: eps       = 1.D-10
+  PetscReal, parameter :: perturbation_tolerance = 1.d-6
 
   public SurfaceFlowSetup, &
          SurfaceFlowTimeCut, &
@@ -1751,6 +1752,7 @@ subroutine SurfaceFlowDiffusion(hw_up, &
   PetscReal :: Cd
   PetscReal :: hw_half
   PetscReal :: mannings_half
+  PetscReal :: dhead
 
   ! initialize
   flux = 0.d0
@@ -1762,30 +1764,39 @@ subroutine SurfaceFlowDiffusion(hw_up, &
   if (head_up>head_dn) then
     mannings_half = mannings_up
     if (hw_up>0.d0) then
-      if (hw_up*Cd>hw_dn) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-      else
+      !if (hw_up*Cd>hw_dn) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !else
         hw_half = hw_up
-      endif
+      !endif
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
     if (hw_dn>0.d0) then
-      if (hw_dn*Cd>hw_up) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-      else
+      !if (hw_dn*Cd>hw_up) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !else
         hw_half = hw_dn
-      endif
+      !endif
     else
       hw_half = 0.d0
     endif
   endif
 
-  vel = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
-            (hw_half**(2.d0/3.d0))* &
-            (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
+  !vel = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
+  !          (hw_half**(2.d0/3.d0))* &
+  !          (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
+  dhead=head_up-head_dn
+  if(abs(dhead)<eps*100.d0) then
+    dhead=0.d0
+  endif
+
+  vel = (dhead)/mannings_half/(dist**(1.d0/2.d0))* &
+        (hw_half**(2.d0/3.d0))* &
+        1.d0/(abs(dhead+eps)**(1.d0/2.d0))
+
   flux = hw_half*vel
   Res(1) = flux*length
 
@@ -1820,8 +1831,13 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   PetscReal :: Cd
   PetscReal :: mannings_half,hw_half
   PetscReal :: dhw_half_dhw_dn,dhw_half_dhw_up
-  PetscReal :: term1, term2
-  PetscReal :: head_up, head_dn
+  PetscReal :: term0,term1,term2,term3,term4
+  PetscReal :: head_up, head_dn, dhead
+  PetscReal :: Jup_new(option%nflowdof,option%nflowdof), &
+               Jdn_new(option%nflowdof,option%nflowdof)
+  PetscReal :: res_pert_up(1),res_pert_dn(1),vel,J_pert_up, J_pert_dn
+  PetscReal :: res(1:option%nflowdof)   ! units: m^3/s
+  PetscReal :: dhead_dn_dhw_dn, dhead_up_dhw_up
 
   flux_dh_up = 0.d0
   flux_dh_dn = 0.d0
@@ -1830,6 +1846,8 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   Cd = 1.0d0
   dhw_half_dhw_up = 0.d0
   dhw_half_dhw_dn = 0.d0
+  dhead_up_dhw_up = 0.d0
+  dhead_dn_dhw_dn = 0.d0
 
   head_up = hw_up + zc_up
   head_dn = hw_dn + zc_dn
@@ -1837,33 +1855,36 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   if (head_up>head_dn) then
     mannings_half = mannings_up
     if (hw_up>0.d0) then
-      if (hw_up*Cd>hw_dn) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-        dhw_half_dhw_dn = 0.5d0
-        dhw_half_dhw_up = 0.5d0
-      else
+      !if (hw_up*Cd>hw_dn) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !  dhw_half_dhw_dn = 0.5d0
+      !  dhw_half_dhw_up = 0.5d0
+      !else
         hw_half         = hw_up
         dhw_half_dhw_up = 1.d0
-      endif
+        dhead_up_dhw_up = 1.d0
+      !endif
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
     if (hw_dn>0.d0) then
-      if (hw_dn*Cd>hw_up) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-        dhw_half_dhw_up = 0.5d0
-        dhw_half_dhw_dn = 0.5d0
-      else
+      !if (hw_dn*Cd>hw_up) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !  dhw_half_dhw_up = 0.5d0
+      !  dhw_half_dhw_dn = 0.5d0
+      !else
         hw_half = hw_dn
         dhw_half_dhw_dn = 1.d0
-      endif
+        dhead_dn_dhw_dn = 1.d0
+      !endif
     else
       hw_half = 0.d0
     endif
   endif
 
+#if 0
   !
   term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
           (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
@@ -1884,6 +1905,59 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   term2 = term2 *((head_dn-head_up))/2.d0/ &
           (abs((head_dn-head_up) + eps)**(3.d0/2.d0))
   Jdn = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
+
+  call SurfaceFlowDiffusion(hw_up,zc_up,mannings_up, &
+                            hw_dn,zc_dn,mannings_dn, &
+                            dist,length,option,vel,res)
+
+  call SurfaceFlowDiffusion(hw_up+perturbation_tolerance,zc_up,mannings_up, &
+                            hw_dn,zc_dn,mannings_dn, &
+                            dist,length,option,vel,res_pert_up)
+
+  call SurfaceFlowDiffusion(hw_up,zc_up,mannings_up, &
+                            hw_dn+perturbation_tolerance,zc_dn,mannings_dn, &
+                            dist,length,option,vel,res_pert_dn)
+  J_pert_up=(res_pert_up(1)-res(1))/perturbation_tolerance
+  J_pert_dn=(res_pert_dn(1)-res(1))/perturbation_tolerance
+#endif
+
+  dhead = head_up-head_dn
+
+  term0 = (2.0d0*dhead**2.d0 - head_dn**2.d0 - head_up**2.d0 + 2*head_dn*head_up)
+  term0 = term0/(2.d0*((dhead+eps)**2.d0)*(abs(dhead+eps)**(1.d0/2.d0)))
+
+  if(abs(dhead)<eps*100.d0) then
+    dhw_half_dhw_up=0.d0
+    dhw_half_dhw_dn=0.d0
+    dhead=0.d0
+    term0=0.d0
+  endif
+
+  term1 = (5.d0/3.d0)/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(2.d0/3.d0))
+  term1 = term1*dhead/(abs(dhead+eps)**(1.d0/2.d0))*dhw_half_dhw_up
+
+  term2 = 1.d0/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(5.d0/3.d0))
+  term2 = term0*term2
+
+  Jup_new = (term1+term2)*length
+
+  term1 = (5.d0/3.d0)/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(2.d0/3.d0))
+  term1 = term1*dhead/(abs(dhead+eps)**(1.d0/2.d0))*dhw_half_dhw_dn
+
+  term2 = 1.d0/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(5.d0/3.d0))
+  term2 = -term0*term2
+
+  Jdn_new = (term1+term2)*length
+  Jup=Jup_new
+  Jdn=Jdn_new
+
+  !write(*,*),'Jup_new: ',term0,term1,term2,Jup_new
+  !write(*,*),'Jdn_new: ',term0,term1,term2,Jdn_new
+  !write(*,*)
+  !write(*,*),' '
+  !
+  !Jup=J_pert_up
+  !Jdn=J_pert_dn
 
 end subroutine SurfaceFlowDiffusionDerivative
 
