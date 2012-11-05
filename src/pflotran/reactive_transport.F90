@@ -3696,11 +3696,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
       ! coef_in is non-zero
       if (dabs(coef_in-1.d20) > 0.d0) then
-        Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)
-        if (option%use_mc) then
-          vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
-          Jup = Jup*vol_frac_prim
-        endif         
+        Jup = coef_in*rt_aux_vars(ghosted_id)%aqueous%dtotal(:,:,option%liquid_phase)         
         if (reaction%ncoll > 0) then
           option%io_buffer = 'Source/sink not yet implemented for colloids'
           call printErrMsg(option)
