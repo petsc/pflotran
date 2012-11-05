@@ -3067,14 +3067,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       call TSrcSinkCoef(option,qsrc,source_sink%tran_condition%itype, &
                         coef_in,coef_out)
 
+      
       Res(istartaq:iendaq) = coef_in*rt_aux_vars(ghosted_id)%total(:,iphase) + &
                              coef_out*source_sink%tran_condition%cur_constraint_coupler% &
                                         rt_auxvar%total(:,iphase)
-                                   
-      if (option%use_mc) then
-        vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
-        Res = Res*vol_frac_prim
-      endif 
       
       if (reaction%ncoll > 0) then
         Res(istartcoll:iendcoll) = coef_in*rt_aux_vars(ghosted_id)%colloid%conc_mob(:) + &
