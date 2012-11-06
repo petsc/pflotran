@@ -8382,6 +8382,8 @@ subroutine OutputHDF5UGridXDMF1(realization)
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)
 
   ! loop over variables and write to file
   cur_variable => output_option%output_variable_list%first
@@ -8389,6 +8391,8 @@ subroutine OutputHDF5UGridXDMF1(realization)
     if (.not.associated(cur_variable)) exit
     call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                        natural_vec,ONEDOF)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
@@ -8397,10 +8401,10 @@ subroutine OutputHDF5UGridXDMF1(realization)
     endif
     if (cur_variable%iformat == 0) then
       call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                          global_vec,grp_id,H5T_NATIVE_DOUBLE)
+                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
     else
       call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                          global_vec,grp_id,H5T_NATIVE_INTEGER)
+                                          natural_vec,grp_id,H5T_NATIVE_INTEGER)
     endif
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
     call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
@@ -8408,6 +8412,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
   enddo
 
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
   call h5gclose_f(grp_id,hdf5_err)
 
   call h5fclose_f(file_id,hdf5_err)
@@ -10231,6 +10236,8 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
   ! write out data sets 
   call DiscretizationCreateVector(surf_discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
+  call DiscretizationCreateVector(surf_discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)
 
   ! loop over variables and write to file
   cur_variable => output_option%output_variable_list%first
@@ -10238,6 +10245,8 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
     if (.not.associated(cur_variable)) exit
     call OutputGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(surf_discretization,global_vec, &
+                                        natural_vec,ONEDOF)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
@@ -10246,10 +10255,10 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
     endif
     if (cur_variable%iformat == 0) then
       call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                          global_vec,grp_id,H5T_NATIVE_DOUBLE)
+                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
     else
       call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                          global_vec,grp_id,H5T_NATIVE_INTEGER)
+                                          natural_vec,grp_id,H5T_NATIVE_INTEGER)
     endif
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
     call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string,att_datasetname)
