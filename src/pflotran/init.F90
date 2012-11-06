@@ -1459,7 +1459,7 @@ subroutine InitReadInput(simulation)
           call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS','GENERAL_REACTION')
+                 'MINERALS','COLLOIDS','GENERAL_REACTION','MICROBIAL_REACTION')
               call InputSkipToEND(input,option,card)
             case('REDOX_SPECIES')
               call ReactionReadRedoxSpecies(reaction,input,option)

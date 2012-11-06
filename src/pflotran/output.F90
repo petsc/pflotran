@@ -9249,13 +9249,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
     ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  if (trick_hdf5) then
     call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
                             hdf5_err)
-  else
-    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
-                            hdf5_err)
-  endif
+#endif
 
   allocate(double_array(local_size*3))
   do i=1,local_size
@@ -9274,7 +9270,6 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
 
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
-#endif
 
   call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
   call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
@@ -9308,13 +9303,13 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
   enddo
   vert_count=vert_count+grid%nlmax
 
-  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
-  realization%output_option%xmf_vert_len=dims(1)
-
   ! memory space which is a 1D vector
   rank_mpi = 1
-  dims = 0
+  dims(1) = vert_count
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  realization%output_option%xmf_vert_len=dims(1)
 
   ! file space which is a 2D block
   rank_mpi = 1
@@ -9349,13 +9344,8 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
     ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  if (trick_hdf5) then
     call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
                             hdf5_err)
-  else
-    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
-                            hdf5_err)
-  endif
 #endif
 
   allocate(int_array(vert_count))
@@ -9388,7 +9378,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
 
   call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
-                  hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
   call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
 
   deallocate(int_array)
