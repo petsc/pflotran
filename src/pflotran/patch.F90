@@ -4412,7 +4412,7 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
   iphase = 1
   
   select case(ivar)
-    case(LIQUID_PRESSURE)
+    case(SURFACE_FLOW_PRESSURE)
       call GridVecGetArrayF90(grid,surf_field%flow_xx_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
         ! gb: grid%nL2G(local_id)
