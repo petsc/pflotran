@@ -5,6 +5,7 @@ srcdir = ./
 pflotran_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
+pflotran_test_dir = ../../test
 
 MYFLAGS = -I${objdir} 
 
@@ -181,6 +182,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}geometry.o\
 	${common_src}units.o\
 	${common_src}logging.o \
+	${common_src}output_aux.o \
 	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
 	${common_src}material_aux.o\
@@ -189,6 +191,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}secondary_continuum.o\
 	${common_src}surface_complexation_aux.o\
 	${common_src}mineral_aux.o\
+	${common_src}microbial_aux.o\
 	${common_src}solid_solution_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
@@ -246,6 +249,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}transport.o\
 	${common_src}surface_complexation.o\
 	${common_src}mineral.o\
+	${common_src}microbial.o\
 	${common_src}solid_solution.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
@@ -267,6 +271,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}surface_material.o \
 	${common_src}surface_realization.o \
 	${common_src}output.o \
+	${common_src}regression.o \
 	${common_src}init.o
 #	${common_src}reaction_chunk.o\
 
@@ -277,8 +282,9 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
 	$(LIBS)
 
-test: functions.o test.o
-	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
+# do these files exist anymore?
+#test: functions.o test.o
+#	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
 
 # Should add this to default PETSc targets as well?
 %.mod : %.F90
@@ -289,7 +295,7 @@ test: functions.o test.o
 auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
                miscible_aux.o
-checkpoint.o : realization.o logging.o
+checkpoint.o : realization.o logging.o output_aux.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.F90 dataset.o time_series.o \
               reactive_transport_aux.o
@@ -300,7 +306,8 @@ convergence.o : option.o solver.o grid.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
             auxilliary.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
-             database_aux.o surface_complexation_aux.o string.o mineral_aux.o
+             database_aux.o surface_complexation_aux.o string.o mineral_aux.o \
+             microbial_aux.o
 database_aux.o : option.o string.o
 database_hpt.o : database.o reaction.o database_aux.o mineral_aux.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
@@ -340,7 +347,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          richards.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
-        database_hpt.o
+         database_hpt.o output_aux.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -349,6 +356,9 @@ material_aux.o : option.o
 matrix_buffer.o : grid.o structured_grid.o
 mfd.o     : option.o mfd_aux.o grid.o
 mfd_aux.o : connection.o
+microbial.o : microbial_aux.o reaction_aux.o reactive_transport_aux.o \
+              global_aux.o option.o string.o input.o utility.o
+microbial_aux.o : database_aux.o utility.o
 mineral.o : mineral_aux.o reaction_aux.o reactive_transport_aux.o global_aux.o \
             option.o string.o input.o utility.o solid_solution_aux.o database_aux.o
 mineral_aux.o : database_aux.o option.o string.o
@@ -365,42 +375,47 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
            reactive_transport.o immis.o miscible.o \
            thc.o thmc.o richards.o mphase.o flash2.o general.o \
            discretization.o logging.o unstructured_grid_aux.o \
-           surface_realization.o surface_flow.o
+           surface_realization.o surface_flow.o output_aux.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
-          field.o saturation.o surface_field.o mineral.o
+          field.o saturation.o surface_field.o mineral.o output_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
-             stochastic_aux.o stochastic.o surface_flow_aux.o
+             stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
-             surface_complexation.o mineral.o solid_solution.o option.o string.o \
-             input.o condition.o co2eos.o water_eos.o
+             surface_complexation.o mineral.o solid_solution.o option.o \
+             string.o input.o condition.o co2eos.o water_eos.o microbial.o \
+             microbial_aux.o
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
-                 surface_complexation_aux.o solid_solution_aux.o utility.o
+                 surface_complexation_aux.o solid_solution_aux.o utility.o \
+                 microbial_aux.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-                       reactive_transport_aux.o fluid.o logging.o global.o
-reactive_transport_aux.o : option.o matrix_block_aux.o secondary_continuum.o\
-						   mineral_aux.o
+                       reactive_transport_aux.o fluid.o logging.o global.o \
+                       output_aux.o
+reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
+                           matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
                 observation.o velocity.o patch.o level.o discretization.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
-                dataset.o surface_field.o surface_material.o
+                dataset.o surface_field.o surface_material.o output_aux.o
 region.o : input.o utility.o logging.o string.o geometry.o
+regression.o : realization.o discretization.o timestepper.o option.o string.o \
+               utility.o grid.o output.o output_aux.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o logging.o
+             matrix_buffer.o logging.o output_aux.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
-simulation.o : timestepper.o realization.o 
+simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o
 solid_solution_aux.o : mineral_aux.o
 solver.o : option.o field.o input.o string.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
-               init.o logging.o
+               init.o logging.o regression.o
 stochastic_aux.o : simulation.o input.o option.o
 strata.o : input.o region.o material.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
@@ -425,7 +440,7 @@ timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 input.o string.o reactive_transport.o condition_control.o \
-                surface_flow.o 
+                surface_flow.o output_aux.o
 time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o
@@ -436,4 +451,21 @@ unstructured_grid.o : option.o connection.o unstructured_cell.o \
 unstructured_grid_aux.o : unstructured_cell.o
 utility.o : string.o input.o option.o
 velocity.o : option.o input.o string.o logging.o units.o
-waypoint.o : option.o 
+waypoint.o : option.o output_aux.o
+
+
+# developer level regression testing
+test : FORCE
+	@if [ -d $(pflotran_test_dir) ]; then \
+		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	fi
+
+# user lever tests to verify pflotran is built correctly
+check : FORCE
+	@if [ -d $(pflotran_test_dir) ]; then \
+		$(MAKE) --directory=$(pflotran_test_dir) $(MAKECMDGOALS); \
+	fi
+
+# null rule to force things to happen
+FORCE :
+

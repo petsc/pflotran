@@ -142,7 +142,7 @@ subroutine SolidSolutionLinkNamesToIDs(solid_solution_list, &
   implicit none
   
   type(solid_solution_type), pointer :: solid_solution_list
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   type(option_type) :: option
   
   type(solid_solution_type), pointer :: cur_solid_soln
@@ -195,7 +195,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
   type(input_type), pointer :: input
   type(solid_solution_type), pointer :: solid_solution, prev_solid_solution
   type(stoichiometric_solid_type), pointer :: stoich_solid, prev_stoich_solid
-  type(mineral_type), pointer :: mineral, prev_end_member
+  type(mineral_rxn_type), pointer :: mineral, prev_end_member
   PetscInt :: itemp
   PetscBool :: found
            
@@ -242,7 +242,7 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
         nullify(prev_stoich_solid)
         nullify(prev_end_member)
       case('STOICHIOMETRIC_SOLID','END_MEMBER')
-        mineral => MineralCreate()
+        mineral => MineralRxnCreate()
         call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
         call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
         call MineralReadFromDatabase(mineral, &

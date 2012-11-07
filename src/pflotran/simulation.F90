@@ -3,6 +3,7 @@ module Simulation_module
   use Realization_module
   use Timestepper_module
   use Solver_module
+  use Regression_module
 
 #ifdef SURFACE_FLOW
   use Surface_Realization_module
@@ -24,6 +25,7 @@ module Simulation_module
 #ifdef SURFACE_FLOW
     type(surface_realization_type), pointer :: surf_realization
 #endif
+    type(regression_type), pointer :: regression
   end type simulation_type
   
   interface SimulationCreate
@@ -88,6 +90,7 @@ function SimulationCreate2(option)
   simulation%surf_flow_stepper => TimestepperCreate()
   simulation%surf_realization => SurfaceRealizationCreate(option)
 #endif
+  nullify(simulation%regression)
   
   SimulationCreate2 => simulation
   
@@ -256,6 +259,8 @@ subroutine SimulationDestroy(simulation)
 #ifdef SURFACE_FLOW
   call SurfaceRealizationDestroy(simulation%surf_realization)
 #endif
+
+  call RegressionDestroy(simulation%regression)
 
   deallocate(simulation)
   nullify(simulation)

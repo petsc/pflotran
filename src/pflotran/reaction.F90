@@ -6,9 +6,11 @@ module Reaction_module
   
   use Surface_Complexation_module
   use Mineral_module
+  use Microbial_module
 
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+  use Microbial_Aux_module
 
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
@@ -253,12 +255,12 @@ subroutine ReactionRead(reaction,input,option)
 #endif                
             case('FORWARD_RATE')
               call InputReadDouble(input,option,general_rxn%forward_rate)  
-              call InputDefaultMsg(input,option, &
-                                   'CHEMISTRY,GENERAL_REACTION,FORWARD_RATE') 
+              call InputErrorMsg(input,option,'forward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
             case('BACKWARD_RATE')
               call InputReadDouble(input,option,general_rxn%backward_rate)  
-              call InputDefaultMsg(input,option, &
-                                   'CHEMISTRY,GENERAL_REACTION,BACKWARD_RATE') 
+              call InputErrorMsg(input,option,'backward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
           end select
         enddo   
         if (.not.associated(reaction%general_rxn_list)) then
@@ -272,6 +274,8 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
+      case('MICROBIAL_REACTION')
+        call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
         call MineralRead(reaction%mineral,input,option)
       case('MINERAL_KINETICS') ! mineral kinetics read on second round
@@ -646,9 +650,9 @@ subroutine ReactionRead(reaction,input,option)
     endif
   endif
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
-      reaction%ngeneral_rxn > 0) then
+      reaction%ngeneral_rxn + reaction%microbial%nrxn > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
-      endif
+  endif
       
   ! ensure that update porosity is ON if update of tortuosity, permeability or
   ! mineral surface area are ON
@@ -765,7 +769,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   character(len=MAXWORDLENGTH) :: mnrl_constraint_aux_string(reaction%mineral%nkinmnrl)
   PetscBool :: mnrl_external_dataset(reaction%mineral%nkinmnrl)
   
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   
   mineral_reaction => reaction%mineral
   
@@ -1024,7 +1028,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: constraint_type(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
   type(surface_complexation_type), pointer :: surface_complexation
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
 
   PetscReal :: Res(reaction%naqcomp)
   PetscReal :: update(reaction%naqcomp)
@@ -1776,7 +1780,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(surface_complexation_type), pointer :: surface_complexation
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i, icomp, irxn, j, jj, ncomp, ncplx, ieqrxn
   PetscInt :: icplx, icplx2
@@ -2737,7 +2741,7 @@ subroutine ReactionReadOutput(reaction,input,option)
 
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(surface_complex_type), pointer :: cur_srfcplx
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   
@@ -3163,7 +3167,12 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
   endif
   
-  ! add new reactions here
+  if (reaction%microbial%nrxn > 0) then
+    call RMicrobial(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                    volume,reaction,option)
+  endif
+  
+  ! add new reactions here and in RReactionDerivative
 
 end subroutine RReaction
 
@@ -3218,9 +3227,13 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     if (reaction%ngeneral_rxn > 0) then
       call RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
                     global_auxvar,porosity,volume,reaction,option)
+    endif
+    if (reaction%microbial%nrxn > 0) then
+      call RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
+                      global_auxvar,volume,reaction,option)
     endif    
 
-    ! #1: add new reactions here
+   ! add new reactions here and in RReaction
 
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
@@ -3228,24 +3241,9 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     option%iflag = 0 ! be sure not to allocate mass_balance array
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
-    if (reaction%mineral%nkinmnrl > 0) then
-      call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                           global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-      call RMultiRateSorption(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                              global_auxvar,volume,reaction,option)
-    endif     
-    if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-      call RKineticSurfCplx(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                            global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%ngeneral_rxn > 0) then
-      call RGeneral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                    global_auxvar,porosity,volume,reaction,option)
-    endif    
 
-    ! #2: add new reactions here
+    call RReaction(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
+                   global_auxvar,porosity,volume,reaction,option)     
 
     do jcomp = 1, reaction%ncomp
       Res_pert = 0.d0
@@ -3257,24 +3255,8 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
                                                 reaction,option)
 
-      if (reaction%mineral%nkinmnrl > 0) then
-        call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                             global_auxvar,volume,reaction,option)
-      endif
-      if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-        call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                                global_auxvar,volume,reaction,option)
-      endif      
-      if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-        call RKineticSurfCplx(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                              global_auxvar,volume,reaction,option)
-      endif
-      if (reaction%ngeneral_rxn > 0) then
-        call RGeneral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                      global_auxvar,porosity,volume,reaction,option)
-      endif  
-      
-      ! #3: add new reactions here
+      call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
+                     global_auxvar,porosity,volume,reaction,option)    
 
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert

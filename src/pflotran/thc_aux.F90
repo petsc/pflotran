@@ -558,24 +558,23 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   call CapillaryPressureThreshold(saturation_function,p_th,option)
 
 
-#if 0
-  call SaturationFunctionComputeIce(global_aux_var%pres(1), & 
-                                    global_aux_var%temp(1), ice_saturation, &
-                                    global_aux_var%sat(1), gas_saturation, &
-                                    kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
-                                    dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
-                                    saturation_function, p_th, option)
-#endif                                  
-
-#if 1
-  call SatFuncComputeIceImplicit(global_aux_var%pres(1), & 
+  if (option%use_ice_new) then
+    ! New water phase partitioning
+    call SatFuncComputeIceImplicit(global_aux_var%pres(1), & 
                                  global_aux_var%temp(1), ice_saturation, &
                                  global_aux_var%sat(1), gas_saturation, &
                                  kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
                                  dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
                                  saturation_function, p_th, option)
-                                    
-#endif 
+  else
+    ! Old water phase partitioning
+    call SaturationFunctionComputeIce(global_aux_var%pres(1), & 
+                                    global_aux_var%temp(1), ice_saturation, &
+                                    global_aux_var%sat(1), gas_saturation, &
+                                    kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
+                                    dsi_pl, dsi_temp, dkr_dp, dkr_dt, &
+                                    saturation_function, p_th, option)
+  endif                                  
 
 
   call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &

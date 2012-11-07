@@ -24,7 +24,7 @@ contains
 subroutine DatasetLoad(dataset,option)
 
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
   use Utility_module, only : Equal
 
   implicit none
@@ -139,7 +139,7 @@ end subroutine DatasetProcessDatasets
 function DatasetIsCellIndexed(dataset,option)
 
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
 
   implicit none
   

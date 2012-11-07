@@ -1,6 +1,7 @@
 module Waypoint_module
  
   use Option_module
+  use Output_Aux_module
   
   implicit none
   
@@ -13,7 +14,7 @@ module Waypoint_module
     PetscReal :: time
     PetscBool :: print_output
     PetscBool :: print_tr_output
-    type(output_option_type), pointer :: output_option
+!    type(output_option_type), pointer :: output_option
     PetscBool :: update_conditions
     PetscReal :: dt_max
     PetscBool :: final  ! any waypoint after this will be deleted
@@ -61,8 +62,6 @@ function WaypointCreate()
   waypoint%print_output = PETSC_FALSE
   waypoint%print_tr_output = PETSC_FALSE
   waypoint%final = PETSC_FALSE
-!  waypoint%output_option => OutputOptionCreate()
-  nullify(waypoint%output_option)
   waypoint%update_conditions = PETSC_FALSE
   waypoint%dt_max = 0.d0
   nullify(waypoint%next)
@@ -498,6 +497,7 @@ end function WaypointSkipToTime
 subroutine WaypointListPrint(list,option,output_option)
 
   use Option_module
+  use Output_Aux_module
 
   implicit none
   
@@ -620,8 +620,6 @@ subroutine WaypointDestroy(waypoint)
 
   nullify(waypoint%prev)
   nullify(waypoint%next)
-  if (associated(waypoint%output_option)) &
-    call OutputOptionDestroy(waypoint%output_option)
   deallocate(waypoint)
   nullify(waypoint)
   

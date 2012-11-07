@@ -107,6 +107,7 @@ module Option_module
     PetscBool :: set_secondary_init_temp  ! If true, then secondary init temp is different from prim. init temp
     PetscBool :: set_secondary_init_conc  ! If true, then secondary init conc is different from prim. init conc.
     
+    PetscBool :: use_ice_new      ! use new formulation for ice partitioning
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscBool :: use_generalized_grid
       
@@ -196,59 +197,6 @@ module Option_module
     
   end type option_type
   
-  type, public :: output_option_type
-
-    character(len=2) :: tunit
-    PetscReal :: tconv
-
-    PetscBool :: print_initial
-    PetscBool :: print_final
-  
-    PetscBool :: print_hdf5
-    PetscBool :: print_hdf5_velocities
-    PetscBool :: print_hdf5_flux_velocities
-    PetscBool :: print_single_h5_file
-
-    PetscBool :: print_tecplot 
-    PetscInt :: tecplot_format
-    PetscBool :: print_tecplot_velocities
-    PetscBool :: print_tecplot_flux_velocities
-    
-    PetscBool :: print_vtk 
-    PetscBool :: print_vtk_velocities
-
-    PetscBool :: print_observation 
-    PetscBool :: print_column_ids
-
-    PetscBool :: print_mad 
-
-    PetscInt :: screen_imod
-    PetscInt :: output_file_imod
-    
-    PetscInt :: periodic_output_ts_imod
-    PetscInt :: periodic_tr_output_ts_imod
-    
-    PetscReal :: periodic_output_time_incr
-    PetscReal :: periodic_tr_output_time_incr
-    
-    PetscBool :: print_permeability
-    PetscBool :: print_porosity
-    
-    PetscInt :: plot_number
-    character(len=MAXWORDLENGTH) :: plot_name
-
-    character(len=MAXWORDLENGTH), pointer :: plot_variables(:)
-#ifdef GLENN_NEW_IO
-    PetscInt, pointer :: plot_variable_ids(:,:)
-    PetscInt :: num_plot_variables
-#endif
-
-#ifdef SURFACE_FLOW
-    PetscBool :: print_hydrograph
-#endif
-
-  end type output_option_type
-
   interface printMsg
     module procedure printMsg1
     module procedure printMsg2
@@ -280,7 +228,6 @@ module Option_module
   end interface
 
   public :: OptionCreate, &
-            OutputOptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
             printErrMsgByRank, &
@@ -291,15 +238,9 @@ module Option_module
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
-            OutputOptionDestroy, &
             OptionInitRealization, &
             OptionMeanVariance, &
             OptionMaxMinMeanVariance, &
-#ifdef GLENN_NEW_IO
-            OutputOptionPlotVariablesInit, &
-            OutputOptionPlotVarFinalize, &
-            OutputOptionAddPlotVariable, &
-#endif
             OptionDestroy
 
 contains
@@ -440,6 +381,7 @@ subroutine OptionInitRealization(option)
   option%use_matrix_free = PETSC_FALSE
   option%use_mc = PETSC_FALSE
   option%set_secondary_init_temp = PETSC_FALSE
+  option%use_ice_new = PETSC_FALSE
   
   option%flowmode = ""
   option%iflowmode = NULL_MODE
@@ -587,65 +529,6 @@ subroutine OptionInitRealization(option)
   option%variables_swapped = PETSC_FALSE
   
 end subroutine OptionInitRealization
-
-! ************************************************************************** !
-!
-! OutputOptionCreate: Creates output options object
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
-function OutputOptionCreate()
-
-  implicit none
-  
-  type(output_option_type), pointer :: OutputOptionCreate
-
-  type(output_option_type), pointer :: output_option
-  
-  allocate(output_option)
-  output_option%print_hdf5 = PETSC_FALSE
-  output_option%print_hdf5_velocities = PETSC_FALSE
-  output_option%print_hdf5_flux_velocities = PETSC_FALSE
-  output_option%print_single_h5_file = PETSC_TRUE
-  output_option%print_tecplot = PETSC_FALSE
-  output_option%tecplot_format = 0
-  output_option%print_tecplot_velocities = PETSC_FALSE
-  output_option%print_tecplot_flux_velocities = PETSC_FALSE
-  output_option%print_vtk = PETSC_FALSE
-  output_option%print_vtk_velocities = PETSC_FALSE
-  output_option%print_observation = PETSC_FALSE
-  output_option%print_column_ids = PETSC_FALSE
-  output_option%print_mad = PETSC_FALSE
-  output_option%print_initial = PETSC_TRUE
-  output_option%print_final = PETSC_TRUE
-  output_option%plot_number = 0
-  output_option%screen_imod = 1
-  output_option%output_file_imod = 1
-  output_option%periodic_output_ts_imod  = 100000000
-  output_option%periodic_output_time_incr = 0.d0
-  output_option%periodic_tr_output_ts_imod = 100000000
-  output_option%periodic_tr_output_time_incr = 0.d0
-  output_option%plot_name = ""
-  output_option%print_permeability = PETSC_FALSE
-  output_option%print_porosity = PETSC_FALSE
-  
-  output_option%tconv = 1.d0
-  output_option%tunit = 's'
-  
-  nullify(output_option%plot_variables)
-#ifdef GLENN_NEW_IO
-  nullify(output_option%plot_variable_ids)
-  output_option%num_plot_variables = 0
-#endif
-
-#ifdef SURFACE_FLOW
-  output_option%print_hydrograph = PETSC_FALSE
-#endif
-
-  OutputOptionCreate => output_option
-  
-end function OutputOptionCreate
 
 ! ************************************************************************** !
 !
@@ -1091,125 +974,6 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
   endif
   
 end subroutine OptionMeanVariance
-
-#ifdef GLENN_NEW_IO
-! ************************************************************************** !
-!
-! OutputOptionPlotVariablesInit: initializes plot variables array
-! author: Glenn Hammond
-! date: 12/03/11
-!
-! ************************************************************************** !
-subroutine OutputOptionPlotVariablesInit(output_option)
-
-  implicit none
-  
-  type(output_option_type) :: output_option
-  
-  if (associated(output_option%plot_variable_ids)) then
-    deallocate(output_option%plot_variable_ids)
-  endif
-  output_option%num_plot_variables = 0
-  allocate(output_option%plot_variable_ids(3,100))
-  output_option%plot_variable_ids = 0
-  
-end subroutine OutputOptionPlotVariablesInit
-
-! ************************************************************************** !
-!
-! OutputOptionAddPlotVariable: Appends ids for output variables to array
-! author: Glenn Hammond
-! date: 12/03/11
-!
-! ************************************************************************** !
-subroutine OutputOptionAddPlotVariable(output_option,ivar,isubvar,isubsubvar)
-
-  implicit none
-  
-  type(output_option_type) :: output_option
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt :: isubsubvar
-  
-  PetscInt :: num_variables
-
-  ! output_option%num_plot_variables: # of variables (if negative, addition 
-  !                                   of plot variables is not complete
-  
-  ! this is a flag indicating that variable addition has not completed
-  if (output_option%num_plot_variables <= 0) then
-    output_option%num_plot_variables = output_option%num_plot_variables - 1
-    num_variables = abs(output_option%num_plot_variables)
-    if (num_variables > 100) then
-      print *, 'Number of plot variables exceeds 100'
-      stop
-    endif
-    output_option%plot_variable_ids(1,num_variables) = ivar
-    if (isubvar > 0) then
-      output_option%plot_variable_ids(2,num_variables) = isubvar
-      if (isubsubvar > 0) then
-        output_option%plot_variable_ids(3,num_variables) = isubsubvar
-      endif
-    endif
-  endif
-  
-end subroutine OutputOptionAddPlotVariable
-
-! ************************************************************************** !
-!
-! OutputOptionPlotVarFinalize: finalizes plot variables array
-! author: Glenn Hammond
-! date: 12/03/11
-!
-! ************************************************************************** !
-subroutine OutputOptionPlotVarFinalize(output_option)
-
-  implicit none
-  
-  type(output_option_type) :: output_option
-  
-  PetscInt, allocatable :: temp_array(:,:)
-
-  if (output_option%num_plot_variables < 0) then
-    output_option%num_plot_variables = abs(output_option%num_plot_variables)
-    allocate(temp_array(3,output_option%num_plot_variables))
-    temp_array = &
-      output_option%plot_variable_ids(:,1:output_option%num_plot_variables)
-    deallocate(output_option%plot_variable_ids)
-    allocate(output_option%plot_variable_ids(3,output_option%num_plot_variables))
-    output_option%plot_variable_ids = temp_array
-    deallocate(temp_array)
-  endif
-  
-end subroutine OutputOptionPlotVarFinalize
-#endif
-
-! ************************************************************************** !
-!
-! OutputOptionDestroy: Deallocates an output option
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
-subroutine OutputOptionDestroy(output_option)
-
-  implicit none
-  
-  type(output_option_type), pointer :: output_option
-  
-  if (associated(output_option%plot_variables)) &
-    deallocate(output_option%plot_variables)
-  nullify(output_option%plot_variables)
-#ifdef GLENN_NEW_IO  
-  if (associated(output_option%plot_variable_ids)) &
-    deallocate(output_option%plot_variable_ids)
-  nullify(output_option%plot_variable_ids)
-#endif
-
-  deallocate(output_option)
-  nullify(output_option)
-  
-end subroutine OutputOptionDestroy
 
 ! ************************************************************************** !
 !

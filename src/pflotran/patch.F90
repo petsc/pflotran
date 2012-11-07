@@ -1486,16 +1486,25 @@ subroutine PatchUpdateDistributedSourceSinkAuxVars(patch,source_sink,option)
   dataset => source_sink%flow_condition%rate%flow_dataset%dataset
   cur_connection_set => source_sink%connection_set
 
-  if(size(dataset%rarray)/=cur_connection_set%num_connections) then
-    option%io_buffer='Length of array in dataset does not match no. of connection '// &
-      ' sets.'
-    call printErrMsg(option)
+  if(associated(dataset)) then
+
+    if(size(dataset%rarray)/=cur_connection_set%num_connections) then
+      option%io_buffer='Length of array in dataset does not match no. of connection '// &
+        ' sets.'
+      call printErrMsg(option)
+    endif
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
+    enddo
+  else
+
+    do iconn=1,cur_connection_set%num_connections
+        source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+          source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
+    enddo
+
   endif
-
-  do iconn=1,cur_connection_set%num_connections
-    source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = dataset%rarray(iconn)
-  enddo
-
 end subroutine PatchUpdateDistributedSourceSinkAuxVars
 
 ! ************************************************************************** !
@@ -1764,6 +1773,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use Reactive_Transport_Aux_module  
   use Reaction_module
   use Mineral_module
+  use Output_Aux_module
   
   implicit none
 
@@ -2556,6 +2566,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Reactive_Transport_Aux_module  
   use Reaction_module
   use Mineral_module
+  use Output_Aux_module
 
   implicit none
 
@@ -4195,6 +4206,7 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
 
   use Grid_module
   use Option_module
+  use Output_Aux_module
   use Surface_Field_module
   
   use Immis_Aux_module

@@ -566,7 +566,7 @@ end subroutine SurfaceComplexConstraintDestroy
 ! ************************************************************************** !
 subroutine SurfaceComplexationDestroy(surface_complexation)
 
-  use Utility_module
+  use Utility_module, only: DeallocateArray 
   
   implicit none
 

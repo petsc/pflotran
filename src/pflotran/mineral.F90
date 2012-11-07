@@ -37,11 +37,11 @@ subroutine MineralRead(mineral_reaction,input,option)
   
   implicit none
   
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
   type(input_type) :: input
   type(option_type) :: option
   
-  type(mineral_type), pointer :: mineral, prev_mineral
+  type(mineral_rxn_type), pointer :: mineral, prev_mineral
            
   nullify(prev_mineral)
   do
@@ -51,7 +51,7 @@ subroutine MineralRead(mineral_reaction,input,option)
           
     mineral_reaction%nmnrl = mineral_reaction%nmnrl + 1
           
-    mineral => MineralCreate()
+    mineral => MineralRxnCreate()
     call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
     call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
     if (.not.associated(mineral_reaction%mineral_list)) then
@@ -80,10 +80,11 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
   use Input_module
   use String_module  
   use Option_module
+  use Units_module
   
   implicit none
   
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
   type(input_type) :: input
   type(option_type) :: option
   
@@ -93,7 +94,7 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
   
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(transition_state_rxn_type), pointer :: tstrxn, cur_tstrxn
   type(transition_state_prefactor_type), pointer :: prefactor, &
                                                     cur_prefactor
@@ -101,6 +102,7 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                                               cur_prefactor_species
   PetscBool :: found
   PetscInt :: imnrl,icount
+  PetscReal :: temp_real
 
   cur_mineral => mineral_reaction%mineral_list
   do 
@@ -145,6 +147,14 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                 tstrxn%rate = 10.d0**tstrxn%rate
               endif
               call InputErrorMsg(input,option,'rate',error_string)
+              ! read units if they exist
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (InputError(input)) then
+                input%err_buf = trim(cur_mineral%name) // 'RATE UNITS'
+                call InputDefaultMsg(input,option)
+              else
+                tstrxn%rate = tstrxn%rate * UnitsConvertToInternal(word,option)
+              endif
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
               call InputReadDouble(input,option,tstrxn%activation_energy)
@@ -199,6 +209,16 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
                     call InputErrorMsg(input,option,'rate',error_string)
                     if (prefactor%rate < 0.d0) then
                       prefactor%rate = 10.d0**prefactor%rate
+                    endif
+                    ! read units if they exist
+                    call InputReadWord(input,option,word,PETSC_TRUE)
+                    if (InputError(input)) then
+                      input%err_buf = trim(cur_mineral%name) // &
+                                      'PREFACTOR RATE UNITS'
+                      call InputDefaultMsg(input,option)
+                    else
+                      prefactor%rate = prefactor%rate * &
+                                       UnitsConvertToInternal(word,option)
                     endif
                   case('ACTIVATION_ENERGY')
                     ! read activation energy for Arrhenius law
@@ -369,7 +389,7 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
   
   implicit none
   
-  type(mineral_type) :: mineral
+  type(mineral_rxn_type) :: mineral
   PetscInt :: num_dbase_temperatures
   type(input_type) :: input
   type(option_type) :: option
@@ -474,7 +494,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: istoich_solid
 #endif  
 
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
 
   PetscInt, parameter :: needs_to_be_fixed = 1
   
@@ -654,17 +674,15 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       endif
 
       ! compute rate
-      ! rate: mol/cm^2 mnrl/sec
-      ! area: cm^2 mnrl/cm^3 bulk
+      ! rate: mol/m^2 mnrl/sec
+      ! area: m^2 mnrl/m^3 bulk
       ! volume: m^3 bulk
-      
-      ! convert cm^2 mnrl/cm^3 bulk -> cm^2 mnrl/m^3 bulk
-      Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 
+      Im_const = -rt_auxvar%mnrl_area(imnrl)
 
       ! units: mol/sec/m^3 bulk
       if (associated(mineral_reaction%kinmnrl_affinity_power)) then
-        ! Im_const: cm^2 mnrl/m^3 bulk
-        ! sum_prefactor_rate: mol/cm^2 mnrl/sec
+        ! Im_const: m^2 mnrl/m^3 bulk
+        ! sum_prefactor_rate: mol/m^2 mnrl/sec
         Im = Im_const*sign_* &
              abs(affinity_factor)**mineral_reaction%kinmnrl_affinity_power(imnrl)* &
              sum_prefactor_rate
@@ -680,7 +698,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 #endif
 
     ! scale Im_const by volume for calculating derivatives below
-    ! units: cm^2 mnrl
+    ! units: m^2 mnrl
     Im_const = Im_const*volume
 
     ! convert rate from volumetric (mol/sec/m^3 bulk) to mol/sec
@@ -860,7 +878,7 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
   
   type(option_type) :: option
   type(reaction_type) :: reaction
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral_reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   PetscReal :: ln_act(reaction%ncomp)
@@ -988,17 +1006,15 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
     endif
 
     ! compute rate
-    ! rate: mol/cm^2 mnrl/sec
-    ! area: cm^2 mnrl/cm^3 bulk
+    ! rate: mol/m^2 mnrl/sec
+    ! area: m^2 mnrl/m^3 bulk
     ! volume: m^3 bulk
-      
-    ! convert cm^2 mnrl/cm^3 bulk -> cm^2 mnrl/m^3 bulk
-    Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 
+    Im_const = -rt_auxvar%mnrl_area(imnrl)
 
     ! units: mol/sec/m^3 bulk
     if (associated(mineral_reaction%kinmnrl_affinity_power)) then
-      ! Im_const: cm^2 mnrl/m^3 bulk
-      ! sum_prefactor_rate: mol/cm^2 mnrl/sec
+      ! Im_const: m^2 mnrl/m^3 bulk
+      ! sum_prefactor_rate: mol/m^2 mnrl/sec
       Im = Im_const*sign_* &
             abs(affinity_factor)**mineral_reaction%kinmnrl_affinity_power(imnrl)* &
             sum_prefactor_rate
@@ -1037,7 +1053,7 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: i, icomp
   PetscReal :: lnQK
   PetscInt, parameter :: iphase = 1
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   
   mineral_reaction => reaction%mineral
 

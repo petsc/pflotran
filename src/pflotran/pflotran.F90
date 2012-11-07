@@ -47,7 +47,8 @@
   use Init_module
   use Logging_module
   use Stochastic_module
-  use Stochastic_Aux_module  
+  use Stochastic_Aux_module
+  use Regression_module
   
   implicit none
 
@@ -165,6 +166,9 @@
     call StepperRun(simulation%realization,simulation%flow_stepper, &
                     simulation%tran_stepper)
 #endif
+
+    call RegressionOutput(simulation%regression,simulation%realization, &
+                          simulation%flow_stepper,simulation%tran_stepper)
 
   ! Clean things up.
     call SimulationDestroy(simulation)
