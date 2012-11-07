@@ -180,12 +180,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
 
-! Checking if norm exceeds divergence tolerance
-!geh: inorm_residual is being used without being calculated.
-!      if (fnorm > solver%max_norm .or. pnorm > solver%max_norm .or. &
-!        inorm_residual > solver%max_norm) then
-
-  
+ 
   if (option%check_stomp_norm .and. &
       option%stomp_norm < solver%newton_stomp_tol) then
     reason = 12
@@ -194,6 +189,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   
   if (option%out_of_table) then
     reason = -9
+    option%out_of_table = PETSC_FALSE
   endif
   
 !  if (reason <= 0 .and. solver%check_infinity_norm) then

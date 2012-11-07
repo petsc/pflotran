@@ -580,12 +580,12 @@ subroutine THCAuxVarComputeIce(x, aux_var, global_aux_var, iphase, &
   call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
               option%scale,ierr)
 
-!  call wateos_flag (global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
-!                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
+  call wateos_flag (global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
+                     hw_dp,hw_dt,option%scale,out_of_table_flag,ierr)
   
-!  if (out_of_table_flag) then  
-!    option%out_of_table = PETSC_TRUE                 
-!  endif
+  if (out_of_table_flag) then  
+    option%out_of_table = PETSC_TRUE                 
+  endif
 
 !  call wateos_simple(global_aux_var%temp(1), pw, dw_kg, dw_mol, dw_dp, &
 !                         dw_dt, hw, hw_dp, hw_dt, ierr)
