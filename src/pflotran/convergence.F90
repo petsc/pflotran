@@ -186,12 +186,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     reason = 12
   endif
   
-  
-  if (option%out_of_table) then
-    reason = -9
-    option%out_of_table = PETSC_FALSE
-  endif
-  
 !  if (reason <= 0 .and. solver%check_infinity_norm) then
   if (solver%check_infinity_norm) then
   
