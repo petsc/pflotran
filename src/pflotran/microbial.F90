@@ -146,7 +146,9 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   
-  PetscInt :: irxn, i, j, ii, icomp, jcomp, ncomp
+  PetscInt, parameter :: iphase = 1
+  PetscReal :: por_sat_vol
+  PetscInt :: irxn, i, ii, icomp, jcomp, ncomp
   PetscInt :: imonod, iinhibition
   PetscReal :: Im
   PetscReal :: rate_constant
@@ -187,6 +189,13 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
       Im = Im*inhibition(ii)
     enddo
     
+    ! por_sat_vol units: m^3 water
+    por_sat_vol = porosity*global_auxvar%sat(iphase)*volume
+
+    ! Im units (before): mol/L-sec
+    Im = Im * 1.d3*por_sat_vol
+    ! Im units (after): mol/sec
+    
     ncomp = microbial%specid(0,irxn)
     do i = 1, ncomp
       icomp = microbial%specid(i,irxn)
@@ -195,57 +204,52 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     
     if (.not. compute_derivative) cycle
     
-    do j = 1, ncomp
-
-      ! monod expressions
-      do ii = 1, microbial%monodid(0,irxn)
-        imonod = microbial%monodid(ii,irxn)
-        jcomp = microbial%monod_specid(imonod)
-        act_coef = rt_auxvar%pri_act_coef(jcomp)
-        activity = rt_auxvar%pri_molal(jcomp)*act_coef
+    ! monod expressions
+    do ii = 1, microbial%monodid(0,irxn)
+      imonod = microbial%monodid(ii,irxn)
+      jcomp = microbial%monod_specid(imonod)
+      act_coef = rt_auxvar%pri_act_coef(jcomp)
+      activity = rt_auxvar%pri_molal(jcomp)*act_coef
         
-        dR_dX = Im / monod(ii)
+      dR_dX = Im / monod(ii)
         
-        denominator = microbial%monod_K(imonod) + activity
+      denominator = microbial%monod_K(imonod) + activity
         
-        dX_dc = act_coef / denominator - &
-                act_coef * activity / (denominator*denominator)
+      dX_dc = act_coef / denominator - &
+              act_coef * activity / (denominator*denominator)
         
-        dR_dc = -1.d0*dR_dX*dX_dc
-        do i = 1, ncomp
-          icomp = microbial%specid(i,irxn)
-          ! units = (mol/sec)*(kg water/mol) = kg water/sec
-          Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                             microbial%stoich(i,irxn)*dR_dc
-        enddo
+      dR_dc = -1.d0*dR_dX*dX_dc
+      do i = 1, ncomp
+        icomp = microbial%specid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                            microbial%stoich(i,irxn)*dR_dc
       enddo
-
-      ! inhibition expressions
-      do ii = 1, microbial%inhibitionid(0,irxn)
-        iinhibition = microbial%inhibitionid(ii,irxn)
-        jcomp = microbial%inhibition_specid(iinhibition)
-        act_coef = rt_auxvar%pri_act_coef(jcomp)
-        activity = rt_auxvar%pri_molal(jcomp)*act_coef
-
-        
-        dR_dX = Im / inhibition(ii)
-        
-        denominator = microbial%inhibition_C(iinhibition) + activity
-        
-        dX_dc = -1.d0 * act_coef *microbial%inhibition_C(iinhibition) / &
-                (denominator*denominator)
-        
-        dR_dc = -1.d0*dR_dX*dX_dc
-        do i = 1, ncomp
-          icomp = microbial%specid(i,irxn)
-          ! units = (mol/sec)*(kg water/mol) = kg water/sec
-          Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                             microbial%stoich(i,irxn)*dR_dc
-        enddo
-      enddo
-
     enddo
-  
+
+    ! inhibition expressions
+    do ii = 1, microbial%inhibitionid(0,irxn)
+      iinhibition = microbial%inhibitionid(ii,irxn)
+      jcomp = microbial%inhibition_specid(iinhibition)
+      act_coef = rt_auxvar%pri_act_coef(jcomp)
+      activity = rt_auxvar%pri_molal(jcomp)*act_coef
+
+      dR_dX = Im / inhibition(ii)
+        
+      denominator = microbial%inhibition_C(iinhibition) + activity
+        
+      dX_dc = -1.d0 * act_coef *microbial%inhibition_C(iinhibition) / &
+              (denominator*denominator)
+        
+      dR_dc = -1.d0*dR_dX*dX_dc
+      do i = 1, ncomp
+        icomp = microbial%specid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                            microbial%stoich(i,irxn)*dR_dc
+      enddo
+    enddo
+
   enddo
     
 end subroutine RMicrobial
