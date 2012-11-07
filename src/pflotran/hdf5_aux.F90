@@ -568,12 +568,12 @@ subroutine HDF5ReadDatasetMap(dataset,option)
   offset(2) = istart
 
   ! TOdo: Only read part of data
-  option%io_buffer='Gautam: Modify code for reading HDF5 to generate mapping '//&
-   'of dataset'
-  call printMsg(option)
-  nids_local=dims_h5(2)
-  length(:) = dims_h5(:)
-  offset(:) = 0
+!  option%io_buffer='Gautam: Modify code for reading HDF5 to generate mapping '//&
+!   'of dataset'
+!  call printMsg(option)
+!  nids_local=dims_h5(2)
+!  length(:) = dims_h5(:)
+!  offset(:) = 0
   
   ! Save dimension size
   dataset%dataset_map%map_dims_global(:) = dims_h5(:)
