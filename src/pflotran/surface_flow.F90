@@ -2100,7 +2100,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
   call GridVecRestoreArrayF90(grid ,surf_field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%area, area_p,ierr)
-  call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_p, ierr)
+  call GridVecRestoreArrayF90(grid, surf_field%flow_xx, xx_p, ierr)
 
 end subroutine SurfaceFlowUpdateFixedAccumPatch
 
