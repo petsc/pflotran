@@ -102,22 +102,6 @@ PetscInt, parameter :: THMC_MODE = 9
 ! transport modes
 PetscInt, parameter :: EXPLICIT_ADVECTION = 1
 
-! grid types
-!geh: moved to grid.F90
-!PetscInt, parameter :: NULL_GRID = 0
-!PetscInt, parameter :: STRUCTURED_GRID = 1
-!PetscInt, parameter :: UNSTRUCTURED_GRID = 2
-!geh: moved to structured_grid.F90 and renumbered
-!PetscInt, parameter :: CARTESIAN_GRID = 3
-!PetscInt, parameter :: CYLINDRICAL_GRID = 4
-!PetscInt, parameter :: SPHERICAL_GRID = 5
-!geh: moved to grid.F90 and renumbered
-!PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 6
-!PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 7
-!geh: moved to unstructured_grid_aux.F90 and renumbered
-!PetscInt, parameter :: TWO_DIM_GRID = 8
-!PetscInt, parameter :: THREE_DIM_GRID = 9
-
 ! condition types
 PetscInt, parameter :: NULL_CONDITION = 0
 PetscInt, parameter :: DIRICHLET_BC = 1
@@ -218,65 +202,6 @@ PetscInt, parameter :: GENERAL_MOLE_FRACTION_DOF = 2
 PetscInt, parameter :: GENERAL_LIQUID_CONDUCTANCE_DOF = -1
 PetscInt, parameter :: GENERAL_GAS_CONDUCTANCE_DOF = -2
 PetscInt, parameter :: GENERAL_FLUX_DOF = 4
-
-! output definitions
-PetscInt, parameter :: X_COORDINATE =             1
-PetscInt, parameter :: Y_COORDINATE =             2
-PetscInt, parameter :: Z_COORDINATE =             3
-PetscInt, parameter :: TEMPERATURE =              4
-PetscInt, parameter :: LIQUID_PRESSURE =          5
-PetscInt, parameter :: LIQUID_SATURATION =        6
-PetscInt, parameter :: GAS_SATURATION =           7
-PetscInt, parameter :: LIQUID_DENSITY =           8
-PetscInt, parameter :: LIQUID_DENSITY_MOL =       9
-PetscInt, parameter :: GAS_DENSITY =             10
-PetscInt, parameter :: GAS_DENSITY_MOL =         11
-PetscInt, parameter :: LIQUID_ENERGY =           12
-PetscInt, parameter :: GAS_ENERGY =              13
-PetscInt, parameter :: LIQUID_VISCOSITY =        14
-PetscInt, parameter :: GAS_VISCOSITY =           15
-PetscInt, parameter :: LIQUID_MOBILITY =         16
-PetscInt, parameter :: GAS_MOBILITY =            17
-PetscInt, parameter :: LIQUID_MOLE_FRACTION =    18
-PetscInt, parameter :: GAS_MOLE_FRACTION =       19
-PetscInt, parameter :: POROSITY =                20
-PetscInt, parameter :: PHASE =                   21
-PetscInt, parameter :: MATERIAL_ID =             22
-
-PetscInt, parameter :: PRIMARY_MOLALITY =        23
-PetscInt, parameter :: SECONDARY_MOLALITY =      24
-PetscInt, parameter :: TOTAL_MOLALITY =          25
-PetscInt, parameter :: PRIMARY_MOLARITY =        26
-PetscInt, parameter :: SECONDARY_MOLARITY =      27
-PetscInt, parameter :: TOTAL_MOLARITY =          28
-PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 29
-PetscInt, parameter :: MINERAL_RATE =            30
-PetscInt, parameter :: MINERAL_SURFACE_AREA =    31
-PetscInt, parameter :: MINERAL_SATURATION_INDEX =32
-PetscInt, parameter :: PH =                      33
-PetscInt, parameter :: SURFACE_CMPLX =           34
-PetscInt, parameter :: SURFACE_CMPLX_FREE =      35
-PetscInt, parameter :: SURFACE_SITE_DENSITY =    36
-PetscInt, parameter :: KIN_SURFACE_CMPLX =       37
-PetscInt, parameter :: KIN_SURFACE_CMPLX_FREE =  38
-PetscInt, parameter :: PRIMARY_ACTIVITY_COEF =   39
-PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 40
-PetscInt, parameter :: SC_FUGA_COEFF =           41
-PetscInt, parameter :: PRIMARY_KD =              42
-PetscInt, parameter :: TOTAL_SORBED =            43
-PetscInt, parameter :: TOTAL_SORBED_MOBILE =     44
-PetscInt, parameter :: COLLOID_MOBILE =          45
-PetscInt, parameter :: COLLOID_IMMOBILE =        46
-PetscInt, parameter :: AGE =                     47
-PetscInt, parameter :: STATE =                   48
-PetscInt, parameter :: PROCESSOR_ID =            49
-PetscInt, parameter :: ICE_SATURATION =          50
-PetscInt, parameter :: TOTAL_BULK =              51
-PetscInt, parameter :: ICE_DENSITY =             52
-PetscInt, parameter :: GAS_PRESSURE =            53
-PetscInt, parameter :: SECONDARY_TEMPERATURE =   54
-PetscInt, parameter :: SECONDARY_CONCENTRATION = 55
-PetscInt, parameter :: SEC_MIN_VOLFRAC =         56
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

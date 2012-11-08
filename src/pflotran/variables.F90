@@ -1,0 +1,68 @@
+module Variables_module
+
+  implicit none
+
+  private
+  
+#include "finclude/petscsys.h"
+  
+  ! variables definitions
+  PetscInt, parameter, public :: X_COORDINATE =             1
+  PetscInt, parameter, public :: Y_COORDINATE =             2
+  PetscInt, parameter, public :: Z_COORDINATE =             3
+  PetscInt, parameter, public :: TEMPERATURE =              4
+  PetscInt, parameter, public :: LIQUID_PRESSURE =          5
+  PetscInt, parameter, public :: LIQUID_SATURATION =        6
+  PetscInt, parameter, public :: GAS_SATURATION =           7
+  PetscInt, parameter, public :: LIQUID_DENSITY =           8
+  PetscInt, parameter, public :: LIQUID_DENSITY_MOL =       9
+  PetscInt, parameter, public :: GAS_DENSITY =             10
+  PetscInt, parameter, public :: GAS_DENSITY_MOL =         11
+  PetscInt, parameter, public :: LIQUID_ENERGY =           12
+  PetscInt, parameter, public :: GAS_ENERGY =              13
+  PetscInt, parameter, public :: LIQUID_VISCOSITY =        14
+  PetscInt, parameter, public :: GAS_VISCOSITY =           15
+  PetscInt, parameter, public :: LIQUID_MOBILITY =         16
+  PetscInt, parameter, public :: GAS_MOBILITY =            17
+  PetscInt, parameter, public :: LIQUID_MOLE_FRACTION =    18
+  PetscInt, parameter, public :: GAS_MOLE_FRACTION =       19
+  PetscInt, parameter, public :: POROSITY =                20
+  PetscInt, parameter, public :: PHASE =                   21
+  PetscInt, parameter, public :: MATERIAL_ID =             22
+
+  PetscInt, parameter, public :: PRIMARY_MOLALITY =        23
+  PetscInt, parameter, public :: SECONDARY_MOLALITY =      24
+  PetscInt, parameter, public :: TOTAL_MOLALITY =          25
+  PetscInt, parameter, public :: PRIMARY_MOLARITY =        26
+  PetscInt, parameter, public :: SECONDARY_MOLARITY =      27
+  PetscInt, parameter, public :: TOTAL_MOLARITY =          28
+  PetscInt, parameter, public :: MINERAL_VOLUME_FRACTION = 29
+  PetscInt, parameter, public :: MINERAL_RATE =            30
+  PetscInt, parameter, public :: MINERAL_SURFACE_AREA =    31
+  PetscInt, parameter, public :: MINERAL_SATURATION_INDEX =32
+  PetscInt, parameter, public :: PH =                      33
+  PetscInt, parameter, public :: SURFACE_CMPLX =           34
+  PetscInt, parameter, public :: SURFACE_CMPLX_FREE =      35
+  PetscInt, parameter, public :: SURFACE_SITE_DENSITY =    36
+  PetscInt, parameter, public :: KIN_SURFACE_CMPLX =       37
+  PetscInt, parameter, public :: KIN_SURFACE_CMPLX_FREE =  38
+  PetscInt, parameter, public :: PRIMARY_ACTIVITY_COEF =   39
+  PetscInt, parameter, public :: SECONDARY_ACTIVITY_COEF = 40
+  PetscInt, parameter, public :: SC_FUGA_COEFF =           41
+  PetscInt, parameter, public :: PRIMARY_KD =              42
+  PetscInt, parameter, public :: TOTAL_SORBED =            43
+  PetscInt, parameter, public :: TOTAL_SORBED_MOBILE =     44
+  PetscInt, parameter, public :: COLLOID_MOBILE =          45
+  PetscInt, parameter, public :: COLLOID_IMMOBILE =        46
+  PetscInt, parameter, public :: AGE =                     47
+  PetscInt, parameter, public :: STATE =                   48
+  PetscInt, parameter, public :: PROCESSOR_ID =            49
+  PetscInt, parameter, public :: ICE_SATURATION =          50
+  PetscInt, parameter, public :: TOTAL_BULK =              51
+  PetscInt, parameter, public :: ICE_DENSITY =             52
+  PetscInt, parameter, public :: GAS_PRESSURE =            53
+  PetscInt, parameter, public :: SECONDARY_TEMPERATURE =   54
+  PetscInt, parameter, public :: SECONDARY_CONCENTRATION = 55
+  PetscInt, parameter, public :: SEC_MIN_VOLFRAC =         56
+
+end module Variables_module

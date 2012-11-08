@@ -62,7 +62,7 @@ subroutine Init(simulation)
   use Reactive_Transport_module
   
   use Global_module
-
+  use Variables_module
   use water_eos_module
 !  use Utility_module
   use Output_module
@@ -75,6 +75,7 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
   use Surface_Realization_module
 #endif
+
   implicit none
   
   type(simulation_type) :: simulation
@@ -1455,7 +1456,8 @@ subroutine InitReadInput(simulation)
           call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS','GENERAL_REACTION','MICROBIAL_REACTION')
+                 'MINERALS','COLLOIDS','GENERAL_REACTION', &
+                 'MICROBIAL_REACTION','REACTION_SANDBOX')
               call InputSkipToEND(input,option,card)
             case('REDOX_SPECIES')
               call ReactionReadRedoxSpecies(reaction,input,option)

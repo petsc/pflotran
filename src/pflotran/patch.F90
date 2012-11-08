@@ -1774,6 +1774,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
   use Reaction_module
   use Mineral_module
   use Output_Aux_module
+  use Variables_module
   
   implicit none
 
@@ -2567,6 +2568,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
   use Reaction_module
   use Mineral_module
   use Output_Aux_module
+  use Variables_module
 
   implicit none
 
@@ -3041,6 +3043,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   use Grid_module
   use Option_module
   use Field_module
+  use Variables_module
 
   implicit none
 
@@ -4055,6 +4058,7 @@ end function PatchGetVarNameFromKeyword
 subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
  
   use Option_module
+  use Variables_module
 
   implicit none
 

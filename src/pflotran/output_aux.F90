@@ -6,7 +6,6 @@ module Output_Aux_module
 
 #include "definitions.h"
 
-
   type, public :: output_option_type
 
     character(len=2) :: tunit
@@ -94,7 +93,7 @@ module Output_Aux_module
   PetscInt, parameter, public :: OUTPUT_RATE = 4
   PetscInt, parameter, public :: OUTPUT_VOLUME_FRACTION = 5
   PetscInt, parameter, public :: OUTPUT_DISCRETE = 6
-    
+  
   public :: OutputOptionCreate, &
             OutputVariableCreate, &
             OutputVariableListCreate, &
