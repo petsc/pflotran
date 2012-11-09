@@ -129,76 +129,55 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   discretization => surf_realization%discretization
 
   input%ierr = 0
-! we initialize the word to blanks to avoid error reported by valgrind
+  ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
 
-  do
-    call InputReadFlotranString(input,option)
-    if (InputCheckExit(input,option)) exit
+  call InputReadFlotranString(input,option)
+  !if (InputCheckExit(input,option)) exit    
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
+  call StringToUpper(word)
     
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
-    call StringToUpper(word)
-    
-    select case(trim(word))
-      !.........................................................................
-      ! Read surface grid information
-      case ('SURF_GRID')
-        call InputReadFlotranString(input,option)
-        if (InputCheckExit(input,option)) exit
+  select case(trim(word))
+    case ('TYPE')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'keyword','TYPE')
+      call StringToUpper(word)
 
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'keyword','SURF_GRID')
-        call StringToUpper(word)
-        select case(trim(word))
-          case ('TYPE')
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','TYPE')
-            call StringToUpper(word)
+      select case(trim(word))
+        case ('UNSTRUCTURED')
+          unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
+          unstructured_grid_ctype = 'implicit unstructured'
+          discretization%itype = UNSTRUCTURED_GRID
+          call InputReadNChars(input,option, &
+                               discretization%filename, &
+                               MAXSTRINGLENGTH, &
+                               PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','filename')
 
-            select case(trim(word))
-              case ('UNSTRUCTURED')
-                unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
-                unstructured_grid_ctype = 'implicit unstructured'
-                discretization%itype = UNSTRUCTURED_GRID
-                call InputReadNChars(input,option, &
-                                     discretization%filename, &
-                                     MAXSTRINGLENGTH, &
-                                     PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword','filename')
-
-                grid => GridCreate()
-                un_str_sfgrid => UGridCreate()
-                un_str_sfgrid%grid_type = TWO_DIM_GRID
-                if (index(discretization%filename,'.h5') > 0) then
-                  call UGridReadHDF5SurfGrid( un_str_sfgrid, &
-                                              !surf_realization%subsurf_filename, &
-                                              discretization%filename, &
-                                              option)
-                else
-                  call UGridReadSurfGrid(un_str_sfgrid, &
-                                        surf_realization%subsurf_filename, &
+          grid => GridCreate()
+          un_str_sfgrid => UGridCreate()
+          un_str_sfgrid%grid_type = TWO_DIM_GRID
+          if (index(discretization%filename,'.h5') > 0) then
+            call UGridReadHDF5SurfGrid( un_str_sfgrid, &
                                         discretization%filename, &
                                         option)
-                endif
-                grid%unstructured_grid => un_str_sfgrid
-                discretization%grid => grid
-                grid%itype = unstructured_grid_itype
-                grid%ctype = unstructured_grid_ctype
+          else
+            call UGridReadSurfGrid(un_str_sfgrid, &
+                                   surf_realization%subsurf_filename, &
+                                   discretization%filename, &
+                                   option)
+          endif
+          grid%unstructured_grid => un_str_sfgrid
+          discretization%grid => grid
+          grid%itype = unstructured_grid_itype
+          grid%ctype = unstructured_grid_ctype
 
-              case default
-              option%io_buffer = 'Surface-flow supports only unstructured grid'
-              call printErrMsg(option)
-            end select
-          case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-              ' not recognized in SURF_GRID '
-            call printErrMsg(option)
-        end select
-        call InputSkipToEND(input,option,trim(word))
-
-    end select
-  enddo
+        case default
+          option%io_buffer = 'Surface-flow supports only unstructured grid'
+          call printErrMsg(option)
+      end select
+  end select
 
 end subroutine SurfaceFlowReadRequiredCardsFromInput
 
@@ -285,6 +264,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
     call StringToUpper(word)
+    write(*,*),'word :: ',trim(word)
 
     select case(trim(word))
       !.........................................................................
