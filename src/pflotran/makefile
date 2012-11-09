@@ -179,6 +179,7 @@ util_obj  = ${common_src}input.o \
 	${common_src}utility.o
 
 pflotran_obj = ${common_src}option.o \
+	${common_src}variables.o\
 	${common_src}geometry.o\
 	${common_src}units.o\
 	${common_src}logging.o \
@@ -247,6 +248,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}miscible.o\
 	${common_src}flash2.o\
 	${common_src}transport.o\
+	${common_src}reaction_sandbox.o\
 	${common_src}surface_complexation.o\
 	${common_src}mineral.o\
 	${common_src}microbial.o\
@@ -295,7 +297,7 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
                miscible_aux.o
-checkpoint.o : realization.o logging.o output_aux.o
+checkpoint.o : realization.o logging.o output_aux.o variables.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.F90 dataset.o time_series.o \
               reactive_transport_aux.o
@@ -314,7 +316,7 @@ dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
 dataset_aux.o : string.o utility.o option.o input.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    input.o string.o mfd_aux.o mfd.o unstructured_grid_aux.o
-flash2.o : flash2_aux.o realization.o fluid.o global_aux.o
+flash2.o : flash2_aux.o realization.o fluid.o global_aux.o variables.o
 flash2_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
                co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
                saturation_function.o
@@ -327,7 +329,7 @@ general_aux.o : option.o water_eos.o gaseos_mod.o saturation_function.o \
 general_grid.o : grid.o realization.o hdf5.o logging.o
 geometry.o : input.o option.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
-           option.o coupler.o
+           option.o coupler.o variables.o
 global_aux.o : option.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
          input.o mfd_aux.o unstructured_grid_aux.o unstructured_explicit.o
@@ -335,7 +337,7 @@ hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o dataset.o time_series.o
-immis.o : immis_aux.o realization.o  global_aux.o
+immis.o : immis_aux.o realization.o global_aux.o variables.o
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
               co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
               saturation_function.o
@@ -347,7 +349,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          richards.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
-         database_hpt.o output_aux.o
+         database_hpt.o output_aux.o variables.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -362,10 +364,10 @@ microbial_aux.o : database_aux.o utility.o
 mineral.o : mineral_aux.o reaction_aux.o reactive_transport_aux.o global_aux.o \
             option.o string.o input.o utility.o solid_solution_aux.o database_aux.o
 mineral_aux.o : database_aux.o option.o string.o
-miscible.o : miscible_aux.o realization.o  global_aux.o
+miscible.o : miscible_aux.o realization.o global_aux.o variables.o
 miscible_aux.o : option.o material.o
 mphase.o : mphase_aux.o realization.o fluid.o global_aux.o \
-           secondary_continuum.o
+           secondary_continuum.o variables.o
 mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
                co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
                fluid.o saturation_function.o secondary_continuum.o
@@ -375,24 +377,25 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
            reactive_transport.o immis.o miscible.o \
            thc.o thmc.o richards.o mphase.o flash2.o general.o \
            discretization.o logging.o unstructured_grid_aux.o \
-           surface_realization.o surface_flow.o output_aux.o
+           surface_realization.o surface_flow.o output_aux.o variables.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
-          field.o saturation.o surface_field.o mineral.o output_aux.o
+          field.o saturation.o surface_field.o mineral.o output_aux.o \
+          variables.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o condition.o co2eos.o water_eos.o microbial.o \
-             microbial_aux.o
+             microbial_aux.o variables.o reaction_sandbox.o
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
                  microbial_aux.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
-                       output_aux.o
+                       output_aux.o variables.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -404,7 +407,7 @@ region.o : input.o utility.o logging.o string.o geometry.o
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
                utility.o grid.o output.o output_aux.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o logging.o output_aux.o
+             matrix_buffer.o logging.o output_aux.o variables.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
@@ -431,7 +434,8 @@ surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         surface_material.o waypoint.o dataset_aux.o coupler.o \
                         string.o grid.o strata.o unstructured_grid.o dataset.o \
                         unstructured_grid_aux.o
-thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o
+thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \
+        variables.o
 thc_aux.o : secondary_continuum.o option.o material.o water_eos.o \
             saturation_function.o grid.o
 thmc.o : thmc_aux.o realization.o saturation_function.o

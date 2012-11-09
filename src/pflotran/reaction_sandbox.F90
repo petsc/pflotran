@@ -1,5 +1,6 @@
 module Reaction_Sandbox_module
 
+#ifdef FORTRAN_2003_COMPLIANT
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
@@ -278,5 +279,6 @@ subroutine RSandboxDestroy()
   implicit none
 
 end subroutine RSandboxDestroy
+#endif
 
 end module Reaction_Sandbox_module
