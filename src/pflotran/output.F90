@@ -8421,7 +8421,9 @@ subroutine OutputHDF5UGridXDMF1(realization)
                                           natural_vec,grp_id,H5T_NATIVE_INTEGER)
     endif
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
-    call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
     cur_variable => cur_variable%next
   enddo
 
@@ -10279,7 +10281,9 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
                                           natural_vec,grp_id,H5T_NATIVE_INTEGER)
     endif
     att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
-    call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string,att_datasetname)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string,att_datasetname)
+    endif
     cur_variable => cur_variable%next
   enddo
 
