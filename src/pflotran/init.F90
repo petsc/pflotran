@@ -3929,7 +3929,8 @@ subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
   if(InputError(input)) return
   option%nsurfflowdof = 1
   
-  call InputFindStringErrorMsg(input,option,string)
+  string = "SURF_GRID"
+  call InputFindStringInFile(input,option,string)
   call SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
 
   select case(discretization%itype)
