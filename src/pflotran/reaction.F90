@@ -1,7 +1,7 @@
 module Reaction_module
 
   use Reaction_Aux_module
-  use Reactive_Transport_Aux_module
+  use Reactive_Transport_Aux_module  
   use Global_Aux_module
   
   use Surface_Complexation_module
@@ -16,10 +16,12 @@ module Reaction_module
   use Solid_Solution_module
   use Solid_Solution_Aux_module
 #endif  
+
+  use Reaction_Sandbox_module
   
   implicit none
  
-  private 
+  private
 
 #include "definitions.h"
 
@@ -67,6 +69,9 @@ subroutine ReactionRead(reaction,input,option)
   use String_module
   use Input_module
   use Utility_module
+  use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
+                               TOTAL_MOLALITY, TOTAL_MOLARITY, &
+                               SECONDARY_MOLALITY, SECONDARY_MOLARITY
   
   implicit none
   
@@ -274,6 +279,11 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
+      case('REACTION_SANDBOX')
+        !TODO(geh): there has to be a better place to put this....
+        reaction%use_sandbox = PETSC_TRUE
+        call RSandBoxInit()
+        call RSandboxRead(input,option)
       case('MICROBIAL_REACTION')
         call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
@@ -2726,7 +2736,8 @@ subroutine ReactionReadOutput(reaction,input,option)
   use Input_module
   use String_module  
   use Option_module
-  
+  use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
+                               TOTAL_MOLALITY, TOTAL_MOLARITY  
   implicit none
   
   type(reaction_type) :: reaction
@@ -3168,8 +3179,13 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
   endif
   
   if (reaction%microbial%nrxn > 0) then
-    call RMicrobial(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+    call RMicrobial(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                     volume,reaction,option)
+  endif
+  
+  if (reaction%use_sandbox) then
+    call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+                  volume,reaction,option)
   endif
   
   ! add new reactions here and in RReactionDerivative
@@ -3230,10 +3246,14 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     endif
     if (reaction%microbial%nrxn > 0) then
       call RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
-                      global_auxvar,volume,reaction,option)
+                      global_auxvar,porosity,volume,reaction,option)
     endif    
+    if (reaction%use_sandbox) then
+      call RSandbox(Res,Jac,compute_derivative,rt_auxvar, &
+                    global_auxvar,porosity,volume,reaction,option)
+    endif
 
-   ! add new reactions here and in RReaction
+    ! add new reactions here and in RReaction
 
   else ! numerical derivative
     compute_derivative = PETSC_FALSE

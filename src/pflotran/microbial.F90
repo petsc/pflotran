@@ -1,9 +1,6 @@
 module Microbial_module
 
   use Microbial_Aux_module
-  use Reaction_Aux_module
-  use Reactive_Transport_Aux_module
-  use Global_Aux_module
   
   implicit none
   
@@ -101,6 +98,10 @@ subroutine MicrobialRead(microbial,input,option)
         endif
         prev_inhibition => inhibition
         nullify(inhibition)
+      case default
+        option%io_buffer = 'CHEMISTRY,MICROBIAL_REACTION keyword: ' // &
+          trim(word) // ' not recognized.'
+        call printErrMsg(option)
     end select
   enddo   
   
@@ -131,9 +132,12 @@ end subroutine MicrobialRead
 !
 ! ************************************************************************** !
 subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
-                      global_auxvar,volume,reaction,option)
+                      global_auxvar,porosity,volume,reaction,option)
 
-  use Option_module
+  use Option_module, only : option_type
+  use Reactive_Transport_Aux_module, only : reactive_transport_auxvar_type
+  use Global_Aux_module, only : global_auxvar_type
+  use Reaction_Aux_module, only : reaction_type
   
   implicit none
   
@@ -142,6 +146,7 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
   PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar

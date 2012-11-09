@@ -124,6 +124,9 @@ subroutine Checkpoint(realization, &
   use MPHASE_module
   use Immis_module
   use Miscible_module
+  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+                               SECONDARY_ACTIVITY_COEF, &
+                               MINERAL_VOLUME_FRACTION
 
   use Reactive_Transport_module, only : RTCheckpointKineticSorption
 
@@ -539,6 +542,9 @@ subroutine Restart(realization, &
   use MPHASE_module
   use Immis_module
   use Miscible_module
+  use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
+                               SECONDARY_ACTIVITY_COEF, &
+                               MINERAL_VOLUME_FRACTION
   
   use Reactive_Transport_module, only: RTCheckpointKineticSorption
 

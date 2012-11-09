@@ -4800,7 +4800,8 @@ subroutine Flash2SetPlotVariables(realization)
   
   use Realization_module
   use Output_Aux_module
-
+  use Variables_module
+  
   implicit none
 
   type(realization_type) :: realization
