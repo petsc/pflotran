@@ -279,11 +279,13 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
+#ifdef FORTRAN_2003_COMPLIANT
       case('REACTION_SANDBOX')
         !TODO(geh): there has to be a better place to put this....
         reaction%use_sandbox = PETSC_TRUE
         call RSandBoxInit()
         call RSandboxRead(input,option)
+#endif
       case('MICROBIAL_REACTION')
         call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
@@ -3183,10 +3185,12 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                     volume,reaction,option)
   endif
   
+#ifdef FORTRAN_2003_COMPLIANT
   if (reaction%use_sandbox) then
     call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
   endif
+#endif
   
   ! add new reactions here and in RReactionDerivative
 
@@ -3248,10 +3252,12 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       call RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                       global_auxvar,porosity,volume,reaction,option)
     endif    
+#ifdef FORTRAN_2003_COMPLIANT
     if (reaction%use_sandbox) then
       call RSandbox(Res,Jac,compute_derivative,rt_auxvar, &
                     global_auxvar,porosity,volume,reaction,option)
     endif
+#endif
 
     ! add new reactions here and in RReaction
 
