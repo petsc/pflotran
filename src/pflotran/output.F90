@@ -10316,6 +10316,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF2(surf_realization,realization,option,fi
   use Grid_module
   use Option_module
   use Unstructured_Grid_Aux_module
+  use Variables_module
   
   implicit none
   

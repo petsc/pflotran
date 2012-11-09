@@ -67,6 +67,7 @@ subroutine SurfaceFlowSetPlotVariables(surf_realization)
   
   use Surface_Realization_module
   use Output_Aux_module
+  use Variables_module
     
   implicit none
   

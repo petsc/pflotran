@@ -4403,6 +4403,7 @@ subroutine PatchGetDataset2(patch,surf_field,option,output_option,vec,ivar, &
   use Richards_Aux_module
   use Reactive_Transport_Aux_module  
   use Reaction_module
+  use Variables_module
   
   implicit none
 

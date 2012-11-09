@@ -65,6 +65,6 @@ module Variables_module
   PetscInt, parameter, public :: SECONDARY_CONCENTRATION = 55
   PetscInt, parameter, public :: SEC_MIN_VOLFRAC =         56
 
-  PetscInt, parameter :: SURFACE_FLOW_PRESSURE =           57
+  PetscInt, parameter, public :: SURFACE_FLOW_PRESSURE =   57
 
 end module Variables_module

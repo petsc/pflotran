@@ -4106,7 +4106,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
           surf_material_property => &
             surf_realization%surf_material_property_array(surf_material_id)%ptr
           if (.not.associated(surf_material_property)) then
-            write(dataset_name,*) material_id
+            write(dataset_name,*) surf_material_id
             option%io_buffer = 'No material property for surface material id ' // &
                                trim(adjustl(dataset_name)) &
                                //  ' defined in input file.'
@@ -4118,7 +4118,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
                              trim(adjustl(dataset_name))
           call printErrMsgByRank(option)
         else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
-          write(option%io_buffer,*) material_id
+          write(option%io_buffer,*) surf_material_id
           option%io_buffer = 'Unmatched surface material id in patch:' // &
             adjustl(trim(option%io_buffer))
           call printErrMsgByRank(option)
