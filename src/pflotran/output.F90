@@ -10266,6 +10266,7 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
   enddo
 
   call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
   call h5gclose_f(grp_id,hdf5_err)
 
   call h5fclose_f(file_id,hdf5_err)
