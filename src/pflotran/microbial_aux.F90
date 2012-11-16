@@ -286,9 +286,9 @@ recursive subroutine MicrobialMonodDestroy(monod)
     
   type(monod_type), pointer :: monod
 
-  if (associated(monod%next)) then
-    call MicrobialMonodDestroy(monod%next)
-  endif
+  if (.not.associated(monod)) return
+  
+  call MicrobialMonodDestroy(monod%next)
   
   deallocate(monod)
   nullify(monod)
@@ -308,9 +308,9 @@ recursive subroutine MicrobialInhibitionDestroy(inhibition)
     
   type(inhibition_type), pointer :: inhibition
 
-  if (associated(inhibition%next)) then
-    call MicrobialInhibitionDestroy(inhibition%next)
-  endif
+  if (.not. associated(inhibition)) return
+
+  call MicrobialInhibitionDestroy(inhibition%next)
   
   deallocate(inhibition)
   nullify(inhibition)
