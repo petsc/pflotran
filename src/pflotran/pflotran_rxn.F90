@@ -37,7 +37,7 @@
 ! Richland, WA
 
 !=======================================================================
-  program pflotran_rxn
+program pflotran_rxn
   
   use Reaction_module
   use Reaction_Aux_module
@@ -70,4 +70,4 @@
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)
 
-  end program pflotran_rxn
+end program pflotran_rxn
