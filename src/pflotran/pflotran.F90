@@ -37,7 +37,7 @@
 ! Richland, WA
 
 !=======================================================================
-  program pflotran
+program pflotran
   
   use Simulation_module
   use Realization_module
@@ -208,4 +208,4 @@
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)
 
-  end program pflotran
+end program pflotran
