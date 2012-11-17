@@ -227,6 +227,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
+	${common_src}constraint.o \
 	${common_src}condition.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
@@ -300,11 +301,15 @@ auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
 checkpoint.o : realization.o logging.o output_aux.o variables.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.F90 dataset.o time_series.o \
-              reactive_transport_aux.o
+              reactive_transport_aux.o constraint.o
 condition_control.o : realization.o discretization.o region.o option.o grid.o \
                       field.o coupler.o condition.o connection.o reaction.o \
-                      hdf5.o mfd.o dataset_aux.o surface_realization.o
+                      hdf5.o mfd.o dataset_aux.o surface_realization.o \
+                      constraint.o
 convergence.o : option.o solver.o grid.o
+constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
+               surface_complexation_aux.o mineral_aux.o option.o input.o \
+               units.o string.o logging.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
             auxilliary.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
@@ -349,7 +354,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
          richards.o thc.o thmc.o discretization.o logging.o \
          database.o reaction_aux.o string.o units.o stochastic_aux.o \
          velocity.o dataset.o condition_control.o surface_flow.o \
-         database_hpt.o output_aux.o variables.o
+         database_hpt.o output_aux.o variables.o constraint.o
 input.o : string.o option.o
 level.o : patch.o option.o
 material.o : option.o input.o string.o dataset_aux.o material_aux.o \
@@ -381,14 +386,14 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
           field.o saturation.o surface_field.o mineral.o output_aux.o \
-          variables.o
+          variables.o constraint.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
              string.o input.o condition.o co2eos.o water_eos.o microbial.o \
-             microbial_aux.o variables.o reaction_sandbox.o
+             microbial_aux.o variables.o reaction_sandbox.o constraint.o
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
                  microbial_aux.o
@@ -402,7 +407,8 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
                 observation.o velocity.o patch.o level.o discretization.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
-                dataset.o surface_field.o surface_material.o output_aux.o
+                dataset.o surface_field.o surface_material.o output_aux.o \
+                constraint.o
 region.o : input.o utility.o logging.o string.o geometry.o
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
                utility.o grid.o output.o output_aux.o

@@ -3,7 +3,9 @@ module Reactive_Transport_Aux_module
   ! this module cannot depend on any other modules besides Option_module
   ! and Matrix_Block_Aux_module
   use Matrix_Block_Aux_module
+#ifndef PFLOTRAN_RXN
   use Secondary_Continuum_module
+#endif
 
   implicit none
   
@@ -164,7 +166,9 @@ module Reactive_Transport_Aux_module
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_ss(:)
+#ifndef PFLOTRAN_RXN    
     type(sec_transport_type), pointer :: sec_transport_vars(:)
+#endif
 #ifdef CHUNK
     type(react_tran_auxvar_chunk_type), pointer :: aux_var_chunk
 #endif
@@ -177,8 +181,10 @@ module Reactive_Transport_Aux_module
   
   public :: RTAuxCreate, RTAuxDestroy, &
             RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy, &
-            RTAuxVarChunkDestroy, RTAuxVarStrip, &
-            RTSecTransportAuxVarCompute
+#ifndef PFLOTRAN_RXN    
+            RTSecTransportAuxVarCompute, &
+#endif
+            RTAuxVarChunkDestroy, RTAuxVarStrip
             
 contains
 
@@ -240,7 +246,9 @@ function RTAuxCreate(option)
   aux%rt_parameter%max_newton_iterations = 0
   aux%rt_parameter%overall_max_newton_iterations = 0
 #endif   
+#ifndef PFLOTRAN_RXN    
   nullify(aux%sec_transport_vars)
+#endif
   RTAuxCreate => aux
   
 end function RTAuxCreate
@@ -521,6 +529,7 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine RTAuxVarCopy
 
+#ifndef PFLOTRAN_RXN    
 ! ************************************************************************** !
 ! 
 ! RTSecTransportAuxVarCompute: Computes secondary auxillary variables in each
@@ -674,7 +683,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   sec_transport_vars%sec_zeta = sec_zeta
 
 end subroutine RTSecTransportAuxVarCompute
-
+#endif
 
 ! ************************************************************************** !
 !
@@ -906,10 +915,12 @@ subroutine RTAuxDestroy(aux)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)
-  
+
+#ifndef PFLOTRAN_RXN    
   if (associated(aux%sec_transport_vars)) deallocate (aux%sec_transport_vars)
   nullify (aux%sec_transport_vars)
-  
+#endif
+
   deallocate(aux)
   nullify(aux)  
 

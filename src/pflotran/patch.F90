@@ -328,6 +328,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Option_module
   use Material_module
   use Condition_module
+  use Constraint_module
   use Connection_module
 
 #ifdef SUBCONTINUUM_MODEL
@@ -763,6 +764,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Condition_module
+  use Constraint_module
   use Dataset_Aux_module
   
   implicit none
@@ -1549,7 +1551,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
-  use Condition_module
+  use Constraint_module
   use water_eos_module
     
   implicit none
