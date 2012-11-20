@@ -1809,18 +1809,14 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
         call VISW(option%reference_temperature,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr)
 
         v_darcy = Dq_p(local_id)*kr/visl*dphi
-        if (v_darcy<0.d0) then
+        if (v_darcy<=0.d0) then
           ! Flow is happening from surface to subsurface
           if ( abs(v_darcy) > hw_p(local_id)/option%surf_flow_dt ) then
             v_darcy = hw_p(local_id)/option%surf_flow_dt
             v_darcy_limit=PETSC_TRUE
           endif
-          if(local_id==5.or.local_id==10.or.local_id==15.or.local_id==20) then
-          !write(*,*),'infil: ',local_id,v_darcy
-          endif
         else
           ! Exfiltration is occuring
-          !write(*,*),'exfil: ',local_id,v_darcy
         endif
         vol_p(local_id)=vol_p(local_id)+v_darcy*area_p(local_id)*option%surf_flow_dt
         coupler%flow_aux_real_var(ONE_INTEGER,local_id)=v_darcy
@@ -1832,7 +1828,6 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
     coupler => coupler%next
   enddo
   
-!  write(*,*),'Abs Maximum darcy velocity: ',v_darcy_max,v_darcy_limit
   call GridVecRestoreArrayF90(grid,surf_field%area,area_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%vol_subsurf_2_surf,vol_p,ierr)
   call GridVecRestoreArrayF90(surf_grid,surf_field%Dq,Dq_p,ierr)  
