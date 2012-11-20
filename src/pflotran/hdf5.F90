@@ -2614,7 +2614,8 @@ end subroutine HDF5WriteStructDataSetFromVec
 !!
 !! date: 05/31/12
 ! ************************************************************************** !
-subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data_type)
+!subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data_type)
+subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type)
 
   use hdf5
   use Realization_module
@@ -2651,9 +2652,9 @@ subroutine HDF5WriteUnstructuredDataSetFromVec(name,realization,vec,file_id,data
   PetscInt, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
 
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
+!  patch => realization%patch
+!  grid => patch%grid
+!  option => realization%option
   
   call VecGetLocalSize(vec,local_size,ierr)
   call VecGetSize(vec,global_size,ierr)

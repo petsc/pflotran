@@ -194,6 +194,10 @@ subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
   use Realization_module
   use Option_module
   use Patch_module
+  use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
+                               LIQUID_DENSITY, GAS_PRESSURE, &
+                               GAS_DENSITY, GAS_SATURATION, &
+                               TEMPERATURE
   
   implicit none
 
@@ -299,6 +303,10 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
   use Patch_module
   use Grid_module
   use Option_module
+  use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
+                               LIQUID_DENSITY, GAS_PRESSURE, &
+                               GAS_DENSITY, GAS_SATURATION, &
+                               TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
   
   implicit none
 
@@ -616,6 +624,10 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
   use Field_module
   use Option_module
   use Discretization_module
+  use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
+                               LIQUID_DENSITY, GAS_PRESSURE, &
+                               GAS_DENSITY, GAS_SATURATION, &
+                               TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
   
   type(realization_type) :: realization
   PetscInt :: time_level
