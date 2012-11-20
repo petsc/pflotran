@@ -219,6 +219,7 @@
 \begin{document}
 
 %begin title page
+\begin{comment}
 \noindent
 {\large\sffamily LA-UR-06-7048}
 
@@ -228,6 +229,7 @@
 \scriptsize
 {\em Approved for public release;}\\
 {\em distribution is unlimited.}
+\end{comment}
 
 \normalsize
 
@@ -240,15 +242,17 @@
 ~ & {\sl Reactive Transport Code}\\
 ~ & ~\\
 ~ & ~\\
-{\em Author(s):} & SciDAC-2 Project (PI: Peter C. Lichtner, lichtner@lanl.gov)\\
+{\em Author(s):} & Peter C. Lichtner (peter.lichtner@gmail.com)\\
 ~  & Glenn Hammond (glenn.hammond@pnnl.gov)\\
 ~ & ~\\
 ~ & ~\\
 {\em Contacts:}  & Richard Mills (rmills@ornl.gov)\\
 ~ & Chuan Lu (Chuan.Lu@inl.gov)\\
 %~ & %David Moulton (moulton@lanl.gov)\\
-~ & Bobby Philip (bphilip@lanl.gov)\\
-~ & Barry Smith (bsmith@anl.gov)\\
+%~ & Bobby Philip (bphilip@lanl.gov)\\
+~ & Satish Karra (satkarra@lanl.gov)\\
+~ & Jitendra Kumar (jitu1503@gmail.com)\\
+%~ & Barry Smith (bsmith@anl.gov)\\
 ~ & \\%Albert Valocchi (clu@lanl.gov)\\
 ~ & ~\\
 %{\em Submitted to:} & \\
@@ -256,13 +260,14 @@
 {\em Date:} & \today \\
 ~ & ~\\
 ~ & ~\\
-~ & {\bf \huge DRAFT}\\
+~ & {\bf \large Work in Progress}\\
 ~ & ~\\
 \end{tabular}
 \ec
 
 \vfill
 
+\begin{comment}
 \noindent
 {\Huge\sffamily Los Alamos}
 
@@ -284,6 +289,7 @@ Laboratory strongly supports academic freedom and a researcher�s right to publ
 endorse the viewpoint of a publication or guarantee its technical correctness.
 
 \hfill Form 836 (7/06)
+\end{comment}
 
 \normalsize
 
@@ -1514,7 +1520,7 @@ make install
 
 \subsubsection{PETSc}
 
-The PETSc {\tt ./configure} script can be used not only to install PETSc but also MPI, HDF5, ParMetis/Metis, and various solvers such as the sparse direct solver Mumps and the Trilinos multilevel solver ML. PFLOTRAN requires the PETSc developer version petsc-dev which can be either downloaded from the PETSc web page 
+The PETSc {\tt ./configure} script can be used not only to install PETSc but also MPI, HDF5, ParMETIS/METIS, and various solvers such as the sparse direct solver Mumps and the Trilinos multilevel solver ML. PFLOTRAN requires the PETSc developer version petsc-dev which can be either downloaded from the PETSc web page 
 
 http://www.mcs.anl.gov/petsc/developers/index.html, 
 
@@ -1524,9 +1530,9 @@ or installed using Mercurial following instructions on the PETSc developer web p
 Define environment variables $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the directory where the libraries for the particular architecture are stored after compiling and installing PETSc.
 
 \paragraph{MacOSX}
-To install ParMetis/Metis on MacOSX it is necessary to first install CMAKE from e.g. MacPorts or Fink.
+To install ParMETIS/METIS on MacOSX it is necessary to first install CMAKE from e.g. MacPorts or Fink.
 
-To install PETSc, MPI using openmpi, HDF5, and ParMetis/Metis with debugging turned off configure PETSc using:
+To install PETSc, MPI using openmpi, HDF5, and ParMETIS/METIS with debugging turned off configure PETSc using:
 
 \begin{verbatim}
 ./config/configure.py --with-debugging=0 --with-shared-libraries=0 
@@ -1544,7 +1550,7 @@ and
 
 $\verb|make test|$
 
-Note that ParMetis/Metis is only needed for using the unstructured grid capability in PFLOTRAN. HDF5 is recommended for large problems for use with Visit for (parallel) visualization.
+Note that ParMETIS/METIS is only needed for using the unstructured grid capability in PFLOTRAN. HDF5 is recommended for large problems for use with Visit for (parallel) visualization.
 
 \paragraph{Windows}
 To install PETSc and PFLOTRAN on Windows see instructions on the PFLOTRAN wiki (https://software.lanl.gov/pflotran/trac).
@@ -3436,6 +3442,8 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 
 \noindent
 {\bf Format of unstructured grid file:}
+
+Implicitly defined grid:
 \begin{verbatim}
 ! 
 ! type: H=hexahedron, T=tetrahedron, W=wedge, P=pyramid
@@ -3456,6 +3464,37 @@ DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 ! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
 ! -----------------------------------------------------------------
 \end{verbatim}
+
+Explicitly defined grid:
+  
+\begin{verbatim}
+! Format of explicit unstructured grid file
+! id_, id_up_, id_dn_ = integer
+! x_, y_, z_, area_, volume_ = real
+! definitions
+! id_ = id of grid cell
+! id_up_ = id of upwind grid cell in connection
+! id_dn_ = id of downwind grid cell in connection
+! x_ = x coordinate of cell center
+! y_ = y coordinate of cell center
+! z_ = z coordinate of cell center
+! volume_ = volume of grid cell
+! -----------------------------------------------------------------
+! CELLS <integer>    integer = # cells (N)
+! id_1 x_1 y_1 z_1 volume_1
+! id_2 x_2 y_2 z_2 volume_2
+! ...
+! ...
+! id_N x_N y_N z_N volume_N
+! CONNECTIONS <integer>   integer = # connections (M)
+! id_up_1 id_dn_1 x_1 y_1 z_1 area_1
+! id_up_2 id_dn_2 x_2 y_2 z_2 area_2
+! ...
+! ...
+! id_up_M id_dn_M x_M y_M z_M area_M
+! -----------------------------------------------------------------
+\end{verbatim}
+
 \noindent
 {\bf Examples:}
 \begin{verbatim}
