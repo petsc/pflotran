@@ -4192,7 +4192,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   
-  PetscInt :: i, icomp, irxn, ncomp
+  PetscInt :: i, icomp, jcomp, irxn, ncomp
   PetscReal :: tempreal, L_water, sum, rate
 
   PetscInt, parameter :: iphase = 1
@@ -4208,7 +4208,9 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
 
     ! sum total moles of component in aqueous and sorbed phases
     sum = rt_auxvar%total(icomp,iphase)*L_water
-    sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    if (associated(rt_auxvar%total_sorb_eq)) then
+      sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    endif
     
     rate = sum*reaction%general_kf(irxn)
     
@@ -4223,15 +4225,27 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
     if (.not. compute_derivative) cycle   
 
     tempreal = -1.d0*reaction%general_kf(irxn)
-    do i = 1, ncomp
-      icomp = reaction%generalspecid(i,irxn)
-      ! units = (mol/sec)*(kg water/mol) = kg water/sec
-      Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
-        tempreal * &
-        reaction%generalstoich(i,irxn) * &
-        (rt_auxvar%aqueous%dtotal(icomp,1:reaction%naqcomp,iphase)*L_water + &
-         rt_auxvar%dtotal_sorb_eq(icomp,1:reaction%naqcomp)*volume)
-    enddo
+    jcomp = reaction%generalforwardspecid(1,irxn)
+    if (associated(rt_auxvar%dtotal_sorb_eq)) then
+      do i = 1, ncomp
+        icomp = reaction%generalspecid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+          tempreal * &
+          reaction%generalstoich(i,irxn) * &
+          (rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water + &
+           rt_auxvar%dtotal_sorb_eq(jcomp,1:reaction%naqcomp)*volume)
+      enddo
+    else ! no sorption
+      do i = 1, ncomp
+        icomp = reaction%generalspecid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+          tempreal * &
+          reaction%generalstoich(i,irxn) * &
+          rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water
+      enddo
+    endif
     
   enddo  ! loop over reactions
     
