@@ -2521,6 +2521,6 @@ subroutine StructGridComputeNeighbors(structured_grid,option)
     structured_grid%cell_neighbors(1:ncount,ghosted_id) = ghosted_neighbors(1:ncount)
   enddo
   
-end subroutine
+end subroutine StructGridComputeNeighbors
 
 end module Structured_Grid_module

@@ -739,6 +739,9 @@ subroutine Init(simulation)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call assignMaterialPropToRegions(realization)
+  if(realization%discretization%lsm_flux_method) &
+    call GridComputeMinv(realization%discretization%grid, &
+                         realization%discretization%stencil_width,option)
 
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)

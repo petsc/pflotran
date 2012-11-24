@@ -74,12 +74,6 @@ module Grid_module
     Vec :: e2f             ! global vector to establish connection between global face_id and cell_id
     Vec :: e2n, e2n_LP     ! global cell connectivity vector
 
-    ! This vector has information regarding how far away a ghost cell is from
-    ! a local cell.
-    ! 1) Zero-value represent a local cell.
-    ! 2) If SNES stencil_width = 2, the maximum value of this vector can be 2.
-    PetscInt,pointer :: ghosted_level(:)
-    
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
     PetscReal :: x_min_global, y_min_global, z_min_global
@@ -107,6 +101,22 @@ module Grid_module
     ! Second column = offset to access subcontinuum_grid for the cell
     PetscInt, pointer :: subcontinuum_grid_offset(:,:)
 #endif
+
+    ! For "Least Square Method" to compute flux
+    ! This vector has information regarding how far away a ghost cell is from
+    ! a local cell.
+    ! 1) Zero-value represent a local cell.
+    ! 2) If SNES stencil_width = 2, the maximum value of this vector can be 2.
+    PetscInt,pointer :: ghosted_level(:)
+
+    ! Displacement: i-th row entry = (x_i-x_0, y_i-y_0, z_i-z_0)
+    ! Minv = inverse(disp^T * disp).
+    ! These quantities depends on grid.
+    !
+    ! TODO[GB]: Create one sparse matrix for the local part, rather than
+    !          individual matrix for each control volume.
+    Mat,pointer      :: disp(:)
+    Mat,pointer      :: Minv(:)
 
   end type grid_type
   
@@ -141,7 +151,8 @@ module Grid_module
             GridComputeGlobalCell2FaceConnectivity, &
             GridGetGhostedNeighbors, &
             GridGetGhostedNeighborsWithCorners, &
-            GridComputeNeighbors
+            GridComputeNeighbors, &
+            GridComputeMinv
   
 contains
 
@@ -177,6 +188,8 @@ function GridCreate()
   nullify(grid%nG2A)
   nullify(grid%nG2P)
   nullify(grid%ghosted_level)
+  nullify(grid%Minv)
+  nullify(grid%disp)
 
 #ifdef DASVYAT
   nullify(grid%fL2G)
@@ -2336,6 +2349,7 @@ subroutine GridDestroy(grid)
   
   type(grid_type), pointer :: grid
   PetscErrorCode :: ierr
+  PetscInt :: ghosted_id
     
   if (.not.associated(grid)) return
       
@@ -2347,6 +2361,25 @@ subroutine GridDestroy(grid)
   nullify(grid%nG2A)
   if (associated(grid%nG2P)) deallocate(grid%nG2P)
   nullify(grid%nG2P)
+
+  !Note: Destroying for ghosted_level<TWO_INTEGER assumes that max_stencil_width
+  !      was TWO_INTEGER.
+  if (associated(grid%disp)) then
+    do ghosted_id=1,grid%ngmax
+      if(grid%ghosted_level(ghosted_id)<TWO_INTEGER) then
+        call MatDestroy(grid%disp(ghosted_id),ierr)
+      endif
+    enddo
+  endif
+  nullify(grid%disp)
+  if (associated(grid%Minv)) then
+    do ghosted_id=1,grid%ngmax
+      if(grid%ghosted_level(ghosted_id)<TWO_INTEGER) then
+        call MatDestroy(grid%Minv(ghosted_id),ierr)
+      endif
+    enddo
+  endif
+  nullify(grid%Minv)
   if (associated(grid%ghosted_level)) deallocate(grid%ghosted_level)
   nullify(grid%ghosted_level)
 
@@ -2993,5 +3026,119 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
   endif
 
 end subroutine GridLocalizeRegionFromCoordinates
+
+! ************************************************************************** !
+!> This routine computes the following:
+!! - Displacement matrix (D), and
+!! - Inverse of D^T*D
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 11/20/12
+! ************************************************************************** !
+subroutine GridComputeMinv(grid,max_stencil_width,option)
+
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  type(grid_type) :: grid
+  type(option_type) :: option
+  PetscInt :: max_stencil_width
+
+  PetscInt, pointer :: cell_neighbors(:,:)
+  PetscInt :: ghosted_id,nid
+  PetscReal :: dx,dy,dz
+  PetscErrorCode :: ierr
+  Mat :: A,B,M
+  PetscScalar, pointer :: xx_v(:,:)
+  PetscScalar :: b_v(3)
+  PetscInt :: cols(3), ncol
+  PetscInt :: INDX(3)
+  PetscInt :: D,ii,jj
+  PetscReal :: M_inv(3,3), disp_mat(3,3)
+  PetscReal :: identity(3)
+  PetscReal :: iden(3)
+  PetscReal,pointer :: data(:)
+
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
+      cell_neighbors => grid%structured_grid%cell_neighbors
+    case(UNSTRUCTURED_GRID)
+      option%io_buffer='GridComputeMinv() not implemented for unstructured grid.'
+      call printErrMsg(option)
+  end select
+
+  allocate(grid%disp(grid%ngmax))
+  allocate(grid%Minv(grid%ngmax))
+
+  do ghosted_id = 1,grid%ngmax
+
+    if(grid%ghosted_level(ghosted_id)<max_stencil_width) then
+
+      allocate(data(cell_neighbors(0,ghosted_id)*3))
+      ! Set values in the disp matrix
+      do nid = 1,cell_neighbors(0,ghosted_id)
+        dx = grid%x(cell_neighbors(nid,ghosted_id)) - grid%x(ghosted_id)
+        dy = grid%y(cell_neighbors(nid,ghosted_id)) - grid%y(ghosted_id)
+        dz = grid%z(cell_neighbors(nid,ghosted_id)) - grid%z(ghosted_id)
+        data((nid-1)*3 + 1) = dx
+        data((nid-1)*3 + 2) = dy
+        data((nid-1)*3 + 3) = dz
+      enddo
+
+      ! Create the disp matrix
+      call MatCreateSeqDense(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),THREE_INTEGER, &
+                            data,grid%disp(ghosted_id),ierr)
+      deallocate(data)
+
+      call MatAssemblyBegin(grid%disp(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
+      call MatAssemblyEnd(  grid%disp(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
+
+      ! Compute transpose of disp matrix
+      call MatTranspose(grid%disp(ghosted_id),MAT_INITIAL_MATRIX, &
+                        A,ierr)
+
+      ! B = disp_mat^T * disp_mat
+      call MatMatMult(A,grid%disp(ghosted_id), &
+                  MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,B,ierr)
+
+      ! Pack the values of B in disp_mat for obtaining the inverse of matrix
+      do ii=0,2
+        call MatGetRow(B,ii,ncol,cols,b_v,ierr)
+        disp_mat(ii+1,:) = b_v(:)
+        call MatRestoreRow(B,ii,ncol,cols,b_v,ierr)
+      enddo
+
+      ! LU decomposition of disp_mat
+      call ludcmp(disp_mat,THREE_INTEGER,INDX,D)
+
+      ! Find inverse matrix column-by-column
+      do ii=1,3
+        identity = 0
+        identity(ii) = 1
+        call lubksb(disp_mat,THREE_INTEGER,INDX,identity)
+        M_inv(:,ii)=identity(:)
+      enddo
+
+      ! Save the inverse matrix
+      allocate(data(9))
+      do ii=1,3
+        do jj=1,3
+          data((ii-1)*3+jj) = M_inv(ii,jj)
+        enddo
+      enddo
+      call MatCreateSeqDense(PETSC_COMM_SELF,3,3, &
+                            data,grid%Minv(ghosted_id),ierr)
+
+      call MatDestroy(A,ierr)
+      call MatDestroy(B,ierr)
+
+    endif
+  enddo
+
+end subroutine GridComputeMinv
 
 end module Grid_module
