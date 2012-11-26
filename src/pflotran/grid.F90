@@ -115,7 +115,7 @@ module Grid_module
     !
     ! TODO[GB]: Create one sparse matrix for the local part, rather than
     !          individual matrix for each control volume.
-    Mat,pointer      :: disp(:)
+    Mat,pointer      :: dispT(:)
     Mat,pointer      :: Minv(:)
 
   end type grid_type
@@ -189,7 +189,7 @@ function GridCreate()
   nullify(grid%nG2P)
   nullify(grid%ghosted_level)
   nullify(grid%Minv)
-  nullify(grid%disp)
+  nullify(grid%dispT)
 
 #ifdef DASVYAT
   nullify(grid%fL2G)
@@ -2364,14 +2364,14 @@ subroutine GridDestroy(grid)
 
   !Note: Destroying for ghosted_level<TWO_INTEGER assumes that max_stencil_width
   !      was TWO_INTEGER.
-  if (associated(grid%disp)) then
+  if (associated(grid%dispT)) then
     do ghosted_id=1,grid%ngmax
       if(grid%ghosted_level(ghosted_id)<TWO_INTEGER) then
-        call MatDestroy(grid%disp(ghosted_id),ierr)
+        call MatDestroy(grid%dispT(ghosted_id),ierr)
       endif
     enddo
   endif
-  nullify(grid%disp)
+  nullify(grid%dispT)
   if (associated(grid%Minv)) then
     do ghosted_id=1,grid%ngmax
       if(grid%ghosted_level(ghosted_id)<TWO_INTEGER) then
@@ -3052,16 +3052,14 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
   PetscInt :: ghosted_id,nid
   PetscReal :: dx,dy,dz
   PetscErrorCode :: ierr
-  Mat :: A,B,M
+  Mat :: A,B,M,Z
   PetscScalar, pointer :: xx_v(:,:)
   PetscScalar :: b_v(3)
   PetscInt :: cols(3), ncol
   PetscInt :: INDX(3)
   PetscInt :: D,ii,jj
-  PetscReal :: M_inv(3,3), disp_mat(3,3)
+  PetscReal :: disp_mat(3,3)
   PetscReal :: identity(3)
-  PetscReal :: iden(3)
-  PetscReal,pointer :: data(:)
 
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -3071,38 +3069,35 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
       call printErrMsg(option)
   end select
 
-  allocate(grid%disp(grid%ngmax))
+  allocate(grid%dispT(grid%ngmax))
   allocate(grid%Minv(grid%ngmax))
 
   do ghosted_id = 1,grid%ngmax
 
     if(grid%ghosted_level(ghosted_id)<max_stencil_width) then
 
-      allocate(data(cell_neighbors(0,ghosted_id)*3))
-      ! Set values in the disp matrix
+      ! Create the disp matrix
+      call MatCreate(MPI_COMM_SELF,grid%dispT(ghosted_id),ierr)
+      call MatSetSizes(grid%dispT(ghosted_id),3,cell_neighbors(0,ghosted_id),3,cell_neighbors(0,ghosted_id),ierr)
+      call MatSetType(grid%dispT(ghosted_id),MATSEQDENSE,ierr)
+      call MatSetUp(grid%dispT(ghosted_id),ierr)
       do nid = 1,cell_neighbors(0,ghosted_id)
         dx = grid%x(cell_neighbors(nid,ghosted_id)) - grid%x(ghosted_id)
         dy = grid%y(cell_neighbors(nid,ghosted_id)) - grid%y(ghosted_id)
         dz = grid%z(cell_neighbors(nid,ghosted_id)) - grid%z(ghosted_id)
-        data((nid-1)*3 + 1) = dx
-        data((nid-1)*3 + 2) = dy
-        data((nid-1)*3 + 3) = dz
+        call MatSetValue(grid%dispT(ghosted_id),0,nid-1,dx,INSERT_VALUES,ierr)
+        call MatSetValue(grid%dispT(ghosted_id),1,nid-1,dy,INSERT_VALUES,ierr)
+        call MatSetValue(grid%dispT(ghosted_id),2,nid-1,dz,INSERT_VALUES,ierr)
       enddo
-
-      ! Create the disp matrix
-      call MatCreateSeqDense(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),THREE_INTEGER, &
-                            data,grid%disp(ghosted_id),ierr)
-      deallocate(data)
-
-      call MatAssemblyBegin(grid%disp(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
-      call MatAssemblyEnd(  grid%disp(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
+      call MatAssemblyBegin(grid%dispT(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
+      call MatAssemblyEnd(  grid%dispT(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
 
       ! Compute transpose of disp matrix
-      call MatTranspose(grid%disp(ghosted_id),MAT_INITIAL_MATRIX, &
+      call MatTranspose(grid%dispT(ghosted_id),MAT_INITIAL_MATRIX, &
                         A,ierr)
 
       ! B = disp_mat^T * disp_mat
-      call MatMatMult(A,grid%disp(ghosted_id), &
+      call MatMatMult(grid%dispT(ghosted_id),A, &
                   MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,B,ierr)
 
       ! Pack the values of B in disp_mat for obtaining the inverse of matrix
@@ -3115,23 +3110,24 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
       ! LU decomposition of disp_mat
       call ludcmp(disp_mat,THREE_INTEGER,INDX,D)
 
+      ! Save the inverse matrix
+      call MatCreate(MPI_COMM_SELF,grid%Minv(ghosted_id),ierr)
+      call MatSetSizes(grid%Minv(ghosted_id),3,3,3,3,ierr)
+      call MatSetType(grid%Minv(ghosted_id),MATSEQDENSE,ierr)
+      call MatSetUp(grid%Minv(ghosted_id),ierr)
+
       ! Find inverse matrix column-by-column
       do ii=1,3
         identity = 0
         identity(ii) = 1
         call lubksb(disp_mat,THREE_INTEGER,INDX,identity)
-        M_inv(:,ii)=identity(:)
+        call MatSetValue(grid%Minv(ghosted_id),0,ii-1,identity(1),INSERT_VALUES,ierr)
+        call MatSetValue(grid%Minv(ghosted_id),1,ii-1,identity(2),INSERT_VALUES,ierr)
+        call MatSetValue(grid%Minv(ghosted_id),2,ii-1,identity(3),INSERT_VALUES,ierr)
       enddo
 
-      ! Save the inverse matrix
-      allocate(data(9))
-      do ii=1,3
-        do jj=1,3
-          data((ii-1)*3+jj) = M_inv(ii,jj)
-        enddo
-      enddo
-      call MatCreateSeqDense(PETSC_COMM_SELF,3,3, &
-                            data,grid%Minv(ghosted_id),ierr)
+      call MatAssemblyBegin(grid%Minv(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
+      call MatAssemblyEnd(  grid%Minv(ghosted_id),MAT_FINAL_ASSEMBLY,ierr)
 
       call MatDestroy(A,ierr)
       call MatDestroy(B,ierr)
