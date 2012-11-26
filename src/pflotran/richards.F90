@@ -868,6 +868,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
+  Vec :: phi
   
   call PetscLogEventBegin(logging%event_r_auxvars,ierr)
 
@@ -898,14 +899,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
                        global_aux_vars(ghosted_id), &
                        patch%saturation_function_array(patch%sat_func_id(ghosted_id))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
-                       option)
-#if 0
-    if (ghosted_id == 96911) then
-      call RichardsPrintAuxVars(rich_aux_vars(ghosted_id), &
-                                global_aux_vars(ghosted_id),ghosted_id)
-    endif
-#endif
-   
+                       option)   
   enddo
 
   call PetscLogEventEnd(logging%event_r_auxvars,ierr)
@@ -966,12 +960,134 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
-  
+
+  ! Compute gradient using a least squares approach at each control volume
+  if(realization%discretization%lsm_flux_method) then
+    call RichardsUpdateLSMAuxVarsPatch(realization)
+  endif
+
   patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
 
   call PetscLogEventEnd(logging%event_r_auxvars_bc,ierr)
 
 end subroutine RichardsUpdateAuxVarsPatch
+
+! ************************************************************************** !
+!> This routine computes the following:
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 11/24/12
+! ************************************************************************** !
+subroutine RichardsUpdateLSMAuxVarsPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use Material_module
+  use Logging_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:) 
+  type(richards_auxvar_type), pointer :: rich_aux_vars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_aux_vars_ss(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)  
+  type(global_auxvar_type), pointer :: global_aux_vars_ss(:)  
+  PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
+  PetscInt :: iphasebc, iphase, i
+  PetscReal, pointer :: xx_loc_p(:), xx_p(:)
+  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)  
+  PetscReal :: xxbc(realization%option%nflowdof)
+  PetscErrorCode :: ierr
+  PetscInt :: max_stencil_width
+  PetscInt :: nid
+  Vec :: phi,A,B
+  PetscReal, pointer :: phi_p(:), b_p(:)
+  PetscInt, pointer :: cell_neighbors(:,:)
+  PetscReal :: distance_gravity
+
+  max_stencil_width = 2
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  rich_aux_vars => patch%aux%Richards%aux_vars
+  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  rich_aux_vars_ss => patch%aux%Richards%aux_vars_ss
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  global_aux_vars_ss => patch%aux%Global%aux_vars_ss
+    
+  call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
+
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
+      cell_neighbors => grid%structured_grid%cell_neighbors
+    case(UNSTRUCTURED_GRID)
+      option%io_buffer='GridComputeMinv() not implemented for unstructured grid.'
+      call printErrMsg(option)
+  end select
+
+  do ghosted_id=1,grid%ngmax
+    if(grid%ghosted_level(ghosted_id)<max_stencil_width) then
+      call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),phi,ierr)
+      call VecGetArrayF90(phi,phi_p,ierr)
+      do nid=1,cell_neighbors(0,ghosted_id)
+        distance_gravity = option%gravity(1)*grid%x(cell_neighbors(nid,ghosted_id)) + &
+                           option%gravity(2)*grid%y(cell_neighbors(nid,ghosted_id)) + &
+                           option%gravity(3)*grid%z(cell_neighbors(nid,ghosted_id))
+        phi_p(nid) = xx_loc_p(cell_neighbors(nid,ghosted_id)) + &
+                     global_aux_vars(cell_neighbors(nid,ghosted_id))%den(1) * &
+                     FMWH2O * distance_gravity
+      enddo
+      distance_gravity = option%gravity(1)*grid%x(ghosted_id) + &
+                         option%gravity(2)*grid%y(ghosted_id) + &
+                         option%gravity(3)*grid%z(ghosted_id)
+      phi_p = phi_p(:) - xx_loc_p(ghosted_id) - &
+              global_aux_vars(ghosted_id)%den(1)*FMWH2O*distance_gravity
+
+      call VecRestoreArrayF90(phi,phi_p,ierr)
+
+      call VecCreateSeq(PETSC_COMM_SELF,3,A,ierr)
+      call MatMult(grid%dispT(ghosted_id),phi,A,ierr)
+
+      call VecCreateSeq(PETSC_COMM_SELF,3,B,ierr)
+      call MatMult(grid%Minv(ghosted_id),A,B,ierr)
+      call VecGetArrayF90(B,b_p,ierr)
+      global_aux_vars(ghosted_id)%dphi(:,1) = b_p(:)
+      call VecRestoreArrayF90(B,b_p,ierr)
+
+      call VecDestroy(phi,ierr)
+      call VecDestroy(A,ierr)
+      call VecDestroy(B,ierr)
+    endif
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
+
+end subroutine RichardsUpdateLSMAuxVarsPatch
 
 ! ! ************************************************************************** !
 ! !
