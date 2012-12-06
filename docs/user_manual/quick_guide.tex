@@ -2554,15 +2554,15 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 {\noindent\bf Examples:}
 \begin{verbatim}
 BOUNDARY_CONDITION river
-FLOW_CONDITION river_stage
-TRANSPORT_CONDITION river_chemistry
-REGION river_bank
+  FLOW_CONDITION river_stage
+  TRANSPORT_CONDITION river_chemistry
+  REGION river_bank
 END
 
 BOUNDARY_CONDITION recharge
-FLOW_CONDITION infiltration_flux
-TRANSPORT_CONDITION infiltration_chemistry
-REGION ground_surface
+  FLOW_CONDITION infiltration_flux
+  TRANSPORT_CONDITION infiltration_chemistry
+  REGION ground_surface
 END
 \end{verbatim}
 
@@ -2924,7 +2924,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite
-      RATE_CONSTANT 1.d-12
+      RATE_CONSTANT 1.d-12 mol/cm^2-sec
     /
   /
   OUTPUT
@@ -2954,34 +2954,34 @@ END
 {\bf PREFACTOR (see Eqn.\eqref{prefactor}):}
 \begin{verbatim}
 MINERAL_KINETICS
-Quartz 
-  RATE_CONSTANT -17.99d0
-  ACTIVATION_ENERGY 87.7d0
-/
-Albite 
-  PREFACTOR
-    RATE_CONSTANT -16.56d0
-    ACTIVATION_ENERGY 69.8d0
+  Quartz 
+    RATE_CONSTANT -17.99d0 mol/cm^2-sec
+    ACTIVATION_ENERGY 87.7d0
   /
-  PREFACTOR
-    RATE_CONSTANT -14.16d0
-    ACTIVATION_ENERGY 65.0d0
-    PREFACTOR_SPECIES H+
-      ALPHA           0.457d0
-    : BETA
-    : ATTENUATION_COEF
+  Albite 
+    PREFACTOR
+      RATE_CONSTANT -16.56d0 mol/cm^2-sec
+      ACTIVATION_ENERGY 69.8d0
+    /
+    PREFACTOR
+      RATE_CONSTANT -14.16d0 mol/cm^2-sec
+      ACTIVATION_ENERGY 65.0d0
+      PREFACTOR_SPECIES H+
+        ALPHA           0.457d0
+      : BETA
+      : ATTENUATION_COEF
+      /
+    /
+    PREFACTOR
+      RATE_CONSTANT -19.6d0 mol/cm^2-sec
+      ACTIVATION_ENERGY 71.0d0
+      PREFACTOR_SPECIES H+
+        ALPHA           -0.572d0
+      : BETA
+      : ATTENUATION_COEF
+      /
     /
   /
-  PREFACTOR
-    RATE_CONSTANT -19.6d0
-    ACTIVATION_ENERGY 71.0d0
-    PREFACTOR_SPECIES H+
-      ALPHA           -0.572d0
-    : BETA
-    : ATTENUATION_COEF
-    /
-  /
-/
 END
 \end{verbatim}
 
@@ -3068,32 +3068,32 @@ Z, \ CHG & --Charge balance
 {\bf Example:}
 \begin{verbatim}
 CONSTRAINT initial
-CONCENTRATIONS
-H+       7.3             pH
-O2(aq)   1.78132e-4       T
-Al+++    1.e-9            M K-Feldspar
-Ca++     1.20644e-3       M Calcite
-Cu++     1.e-6            T
-Fe++     1.e-9            M Ferrihydrite
-Mg++     5.09772e-4       T
-UO2++    2.34845e-7       T
-K+       1.54789e-4       T
-Na+      2.03498e-3       T
-HCO3-    2.57305e-3       T
-Cl-      6.97741e-4       T
-F-       2.09491e-5       T
-HPO4--   1.e-6            T
-NO3-     4.69979e-3       T
-SO4--    6.37961e-4       T
-SiO2(aq) 5.36989e-4       T
-Tracer   2.34845e-7       F
-/
-MINERALS
-Quartz         0.35  1.
-Calcite        0.    1.
-Metatorbernite 0.    1.
-/
-/
+  CONCENTRATIONS
+    H+       7.3              P
+    O2(aq)   1.78132e-4       T
+    Al+++    1.e-9            M K-Feldspar
+    Ca++     1.20644e-3       M Calcite
+    Cu++     1.e-6            T
+    Fe++     1.e-9            M Ferrihydrite
+    Mg++     5.09772e-4       T
+    UO2++    2.34845e-7       T
+    K+       1.54789e-4       T
+    Na+      2.03498e-3       T
+    HCO3-    2.57305e-3       T
+    Cl-      6.97741e-4       T
+    F-       2.09491e-5       T
+    HPO4--   1.e-6            T
+    NO3-     4.69979e-3       T
+    SO4--    6.37961e-4       T
+    SiO2(aq) 5.36989e-4       T
+    Tracer   2.34845e-7       F
+  /
+  MINERALS
+    Quartz         0.35  1. cm^2/cm^3
+    Calcite        0.    1. cm^2/cm^3
+    Metatorbernite 0.    1. cm^2/cm^3
+  /
+END
 \end{verbatim}
 
 \hyperlink{target_key}{\return}
@@ -3147,6 +3147,10 @@ VIEW\_JACOBIAN\_DETAILED]
 \bigskip
 
 {\noindent\bf Examples:}
+DEBUG
+  PRINT_RESIDUAL
+  PRINT_JACOBIAN
+END
 
 \hyperlink{target_key}{\return}
 
@@ -3293,45 +3297,46 @@ IPHASE & Phases present & CO$_2$ concentration\\
 {\noindent\bf Examples:}
 \begin{verbatim}
 FLOW_CONDITION initial
-TYPE
-PRESSURE hydrostatic
-/
-PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
-/
+  TYPE
+    PRESSURE hydrostatic
+  /
+  PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
+END
 
 FLOW_CONDITION source
-TYPE
-RATE volumetric_rate
-/
-RATE 2.77777778d-3  ! 10 m^3/hr
-/
+  TYPE
+    RATE volumetric_rate
+  /
+  RATE 10. m^3/hr
+END
 
 TRANSPORT_CONDITION initial
-TYPE zero_gradient
-CONSTRAINT_LIST
-0.d0 initial
-/
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
 END
 
 TRANSPORT_CONDITION source
-TYPE dirichlet
-CONSTRAINT_LIST
-0.d0 well
-/
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 well
+  /
+END
 
 FLOW_CONDITION East
-TYPE
-:PRESSURE seepage
-PRESSURE conductance
-/
-CYCLIC
-DATUM file ../../river_scope3.datum
-GRADIENT
-PRESSURE file ../../river_scope3.gradient
-/
-CONDUCTANCE 1.d-12
-PRESSURE 101325.d0
-/
+  TYPE
+    :PRESSURE seepage
+    PRESSURE conductance
+  /
+  CYCLIC
+  DATUM file ../../river_scope3.datum
+  GRADIENT
+    PRESSURE file ../../river_scope3.gradient
+  /
+  CONDUCTANCE 1.d-12
+  PRESSURE 101325.d0
+END
 \end{verbatim}
 
 \hyperlink{target_key}{\return}
@@ -3365,8 +3370,8 @@ where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 2
 \noindent{\bf Example:}
 \begin{verbatim}
 FLUID_PROPERTY
-DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
-DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
+  DIFFUSION_COEFFICIENT 1.d-9      ! m^2/s
+  DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 /
 \end{verbatim}
 
@@ -3499,30 +3504,24 @@ Explicitly defined grid:
 {\bf Examples:}
 \begin{verbatim}
 GRID
-TYPE structured cylindrical
-NXYZ 512  1  32
-DXYZ
-2.d0
-1.d0
-2.d0
+  TYPE structured cylindrical
+  NXYZ 512  1  32
+  DXYZ
+    2.d0
+    1.d0
+    2.d0
+  /
 END
 \end{verbatim}
 
 \begin{verbatim}
-BOUNDS
-0. 1024.
-0.    1.
-0.   64.
-END
-\end{verbatim}
-
-\noindent
-or, equivalently
-
-\begin{verbatim}
-BOUNDS
-0. 0. 0.
-1024. 1. 64.
+GRID
+  TYPE structured
+  NXYZ 512 1 32
+  BOUNDS
+    0. 0. 0.
+    1024. 1. 64.
+  /
 END
 \end{verbatim}
 
@@ -3564,9 +3563,9 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 :=========== condition couplers ==============
 : initial condition
 INITIAL_CONDITION
-FLOW_CONDITION gradient-north
-TRANSPORT_CONDITION Initial
-REGION all
+  FLOW_CONDITION gradient-north
+  TRANSPORT_CONDITION Initial
+  REGION all
 END
 \end{verbatim}
 
@@ -3728,35 +3727,35 @@ END
 \noindent{\bf Example:}
 \begin{verbatim}
 MATERIAL_PROPERTY  Hanford
-ID 1
-SATURATION_FUNCTION sf1
-POROSITY 0.332
-TORTUOSITY 1.
-PERMEABILITY
-PERM_X 1.d-12
-PERM_Y 1.d-12
-PERM_Z 1.d-12
-/
-/
+  ID 1
+  SATURATION_FUNCTION sf1
+  POROSITY 0.332
+  TORTUOSITY 1.
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
 =============
 MATERIAL_PROPERTY soil1
-ID 1 
-SATURATION_FUNCTION sf1
-POROSITY 0.1
-TORTUOSITY 1.
-PERMEABILITY
-PERM_X 1.d-13
-PERM_Y 1.d-13
-PERM_Z 1.d-13
-/
-SECONDARY_CONTINUUM
-TYPE  SLAB
-LENGTH 50
-AREA 2500
-NUM_CELLS 10
-EPSILON 0.02
-/
-/
+  ID 1 
+  SATURATION_FUNCTION sf1
+  POROSITY 0.1
+  TORTUOSITY 1.
+  PERMEABILITY
+    PERM_X 1.d-13
+    PERM_Y 1.d-13
+    PERM_Z 1.d-13
+  /
+  SECONDARY_CONTINUUM
+    TYPE  SLAB
+    LENGTH 50
+    AREA 2500
+    NUM_CELLS 10
+    EPSILON 0.02
+  /
+END
 \end{verbatim}
 
 \hyperlink{target_key}{\return}
@@ -4348,12 +4347,23 @@ REGION Well_2-9_1
 \noindent{\bf Example:}
 \begin{verbatim}
 TIME
-FINAL_TIME 100. h
-INITIAL_TIMESTEP_SIZE 1.d-3 h
-MAXIMUM_TIMESTEP_SIZE 1.d0 h
-/
+  FINAL_TIME 100. h
+  INITIAL_TIMESTEP_SIZE 1.d-3 h
+  MAXIMUM_TIMESTEP_SIZE 1.d0 h
+END
 \end{verbatim}
 
+\begin{verbatim}
+! Ability to change maximum time step size at select times 
+! during simulation.
+TIME
+  FINAL_TIME 100. y
+  INITIAL_TIMESTEP_SIZE 1. s
+  MAXIMUM_TIMESTEP_SIZE 1. y
+  MAXIMUM_TIMESTEP_SIZE 1. d at 10. y
+  MAXIMUM_TIMESTEP_SIZE 10. y at 11. y
+END
+\end{verbatim}
 \hyperlink{target_key}{\return}
 
 %================================================================
