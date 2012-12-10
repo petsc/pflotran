@@ -1779,7 +1779,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   use Option_module
   use Input_module
   use String_module
-  use Condition_module
+  use Constraint_module
 
   implicit none
   
@@ -2485,7 +2485,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   use Option_module
   use Input_module
   use String_module
-  use Condition_module
+  use Constraint_module
 
   implicit none
   
@@ -3297,7 +3297,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   endif
 
 end subroutine RReactionDerivative
-                               
+
 ! ************************************************************************** !
 !
 ! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
@@ -3308,8 +3308,10 @@ end subroutine RReactionDerivative
 subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
     
   use Option_module
+#ifndef PFLOTRAN_RXN  
   use co2eos_module
- 
+#endif
+
   implicit none
 
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -3333,8 +3335,10 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
      m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
+#ifndef PFLOTRAN_RXN  
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
+#endif
          
   rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact 
  ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
@@ -3597,8 +3601,10 @@ end subroutine RActivityCoefficients
 subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
+#ifndef PFLOTRAN_RXN  
   use co2eos_module, only: Henry_duan_sun
   use water_eos_module
+#endif  
   
   implicit none
   
@@ -4186,7 +4192,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   
-  PetscInt :: i, icomp, irxn, ncomp
+  PetscInt :: i, icomp, jcomp, irxn, ncomp
   PetscReal :: tempreal, L_water, sum, rate
 
   PetscInt, parameter :: iphase = 1
@@ -4202,7 +4208,9 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
 
     ! sum total moles of component in aqueous and sorbed phases
     sum = rt_auxvar%total(icomp,iphase)*L_water
-    sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    if (associated(rt_auxvar%total_sorb_eq)) then
+      sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    endif
     
     rate = sum*reaction%general_kf(irxn)
     
@@ -4217,15 +4225,27 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
     if (.not. compute_derivative) cycle   
 
     tempreal = -1.d0*reaction%general_kf(irxn)
-    do i = 1, ncomp
-      icomp = reaction%generalspecid(i,irxn)
-      ! units = (mol/sec)*(kg water/mol) = kg water/sec
-      Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
-        tempreal * &
-        reaction%generalstoich(i,irxn) * &
-        (rt_auxvar%aqueous%dtotal(icomp,1:reaction%naqcomp,iphase)*L_water + &
-         rt_auxvar%dtotal_sorb_eq(icomp,1:reaction%naqcomp)*volume)
-    enddo
+    jcomp = reaction%generalforwardspecid(1,irxn)
+    if (associated(rt_auxvar%dtotal_sorb_eq)) then
+      do i = 1, ncomp
+        icomp = reaction%generalspecid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+          tempreal * &
+          reaction%generalstoich(i,irxn) * &
+          (rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water + &
+           rt_auxvar%dtotal_sorb_eq(jcomp,1:reaction%naqcomp)*volume)
+      enddo
+    else ! no sorption
+      do i = 1, ncomp
+        icomp = reaction%generalspecid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+          tempreal * &
+          reaction%generalstoich(i,irxn) * &
+          rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water
+      enddo
+    endif
     
   enddo  ! loop over reactions
     

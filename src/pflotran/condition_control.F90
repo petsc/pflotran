@@ -435,6 +435,7 @@ subroutine CondControlAssignTranInitCond(realization)
   use Field_module
   use Coupler_module
   use Condition_module
+  use Constraint_module
   use Grid_module
   use Dataset_Aux_module
   use Level_module

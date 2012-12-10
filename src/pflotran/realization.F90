@@ -5,6 +5,7 @@ module Realization_module
   use Input_module
   use Region_module
   use Condition_module
+  use Constraint_module
   use Material_module
 #ifdef SUBCONTINUUM_MODEL
   use Subcontinuum_module
@@ -1094,6 +1095,7 @@ subroutine RealProcessTranConditions(realization)
 
   use String_module
   use Reaction_module
+  use Constraint_module
   
   implicit none
   

@@ -1313,6 +1313,7 @@ subroutine InitReadInput(simulation)
   use Timestepper_module
   use Region_module
   use Condition_module
+  use Constraint_module
   use Coupler_module
   use Strata_module
   use Observation_module

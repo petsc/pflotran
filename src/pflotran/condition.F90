@@ -1,13 +1,14 @@
 module Condition_module
  
-  use Reaction_Aux_module
-  use Reactive_Transport_Aux_module
+!  use Reaction_Aux_module
+!  use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Dataset_Aux_module
   use Time_Series_module
   
-  use Surface_Complexation_Aux_module  
-  use Mineral_Aux_module
+  use Constraint_module
+!  use Surface_Complexation_Aux_module  
+!  use Mineral_Aux_module
   
   implicit none
 
@@ -107,42 +108,6 @@ module Condition_module
     type(tran_condition_ptr_type), pointer :: array(:)    
   end type tran_condition_list_type
   
-  type, public :: tran_constraint_type
-    PetscInt :: id
-    character(len=MAXWORDLENGTH) :: name         
-    type(aq_species_constraint_type), pointer :: aqueous_species
-    type(mineral_constraint_type), pointer :: minerals
-    type(srfcplx_constraint_type), pointer :: surface_complexes
-    type(colloid_constraint_type), pointer :: colloids
-    PetscBool :: requires_equilibration
-    type(tran_constraint_type), pointer :: next    
-  end type tran_constraint_type
-  
-  type, public :: tran_constraint_ptr_type
-    type(tran_constraint_type), pointer :: ptr
-  end type tran_constraint_ptr_type
-  
-  type, public :: tran_constraint_list_type
-    PetscInt :: num_constraints
-    type(tran_constraint_type), pointer :: first
-    type(tran_constraint_type), pointer :: last
-    type(tran_constraint_ptr_type), pointer :: array(:)    
-  end type tran_constraint_list_type
-  
-  type, public :: tran_constraint_coupler_type
-    character(len=MAXWORDLENGTH) :: constraint_name   
-    PetscReal :: time
-    PetscInt :: num_iterations
-    character(len=MAXWORDLENGTH) :: time_units
-    type(aq_species_constraint_type), pointer :: aqueous_species
-    type(mineral_constraint_type), pointer :: minerals
-    type(srfcplx_constraint_type), pointer :: surface_complexes
-    type(colloid_constraint_type), pointer :: colloids
-    type(global_auxvar_type), pointer :: global_auxvar
-    type(reactive_transport_auxvar_type), pointer :: rt_auxvar
-    type(tran_constraint_coupler_type), pointer :: next   
-  end type tran_constraint_coupler_type
-      
   public :: FlowConditionCreate, FlowConditionDestroy, FlowConditionRead, &
             FlowConditionGeneralRead, &
             FlowConditionAddToList, FlowConditionInitList, FlowConditionDestroyList, &
@@ -1726,6 +1691,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   use String_module
   use Logging_module  
   use Units_module
+  use Reaction_Aux_module
   
   implicit none
   
@@ -1891,385 +1857,6 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   call PetscLogEventEnd(logging%event_tran_condition_read,ierr)
 
 end subroutine TranConditionRead
-
-! ************************************************************************** !
-!
-! TranConstraintRead: Reads a transport constraint from the input file
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine TranConstraintRead(constraint,reaction,input,option)
-
-  use Option_module
-  use Input_module
-  use Units_module
-  use String_module
-  use Logging_module
- 
-  implicit none
-  
-  type(tran_constraint_type) :: constraint
-  type(reaction_type) :: reaction
-  type(input_type) :: input
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  PetscInt :: icomp, imnrl
-  PetscInt :: isrfcplx
-  PetscInt :: length
-  type(aq_species_constraint_type), pointer :: aq_species_constraint
-  type(mineral_constraint_type), pointer :: mineral_constraint
-  type(srfcplx_constraint_type), pointer :: srfcplx_constraint
-  type(colloid_constraint_type), pointer :: colloid_constraint
-  PetscErrorCode :: ierr
-  PetscReal :: tempreal
-
-  call PetscLogEventBegin(logging%event_tran_constraint_read,ierr)
-
-  ! read the constraint
-  input%ierr = 0
-  do
-  
-    call InputReadFlotranString(input,option)
-    call InputReadStringErrorMsg(input,option,'CONSTRAINT')
-        
-    if (InputCheckExit(input,option)) exit  
-
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','CONSTRAINT')   
-      
-    select case(trim(word))
-
-      case('CONC','CONCENTRATIONS')
-
-        aq_species_constraint => &
-          AqueousSpeciesConstraintCreate(reaction,option)
-
-        icomp = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option, &
-                                       'CONSTRAINT, CONCENTRATIONS')
-          
-          if (InputCheckExit(input,option)) exit  
-          
-          icomp = icomp + 1        
-          
-          if (icomp > reaction%naqcomp) then
-            option%io_buffer = 'Number of concentration constraints ' // &
-                               'exceeds number of primary chemical ' // &
-                               'components in constraint: ' // &
-                                trim(constraint%name)
-            call printErrMsg(option)
-          endif
-          
-          call InputReadWord(input,option,aq_species_constraint%names(icomp), &
-                          PETSC_TRUE)
-          call InputErrorMsg(input,option,'aqueous species name', &
-                          'CONSTRAINT, CONCENTRATIONS') 
-          option%io_buffer = 'Constraint Species: ' // &
-                             trim(aq_species_constraint%names(icomp))
-          call printMsg(option)
-          
-          call InputReadDouble(input,option, &
-                               aq_species_constraint%constraint_conc(icomp))
-          call InputErrorMsg(input,option,'concentration', &
-                          'CONSTRAINT, CONCENTRATIONS')          
-          
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputDefaultMsg(input,option, &
-                            'CONSTRAINT, CONCENTRATION, constraint_type')
-          length = len_trim(word)
-          if (length > 0) then
-            call StringToUpper(word)
-            select case(word)
-              case('F','FREE')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
-              case('T','TOTAL')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
-              case('TOTAL_SORB')
-                aq_species_constraint%constraint_type(icomp) = &
-                  CONSTRAINT_TOTAL_SORB
-              case('S')
-                aq_species_constraint%constraint_type(icomp) = &
-                  CONSTRAINT_TOTAL_SORB_AQ_BASED
-              case('P','PH')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_PH
-              case('L','LOG')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
-              case('M','MINERAL','MNRL') 
-                aq_species_constraint%constraint_type(icomp) = &
-                  CONSTRAINT_MINERAL
-              case('G','GAS') 
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_GAS
-              case('SC','CONSTRAINT_SUPERCRIT_CO2') 
-                aq_species_constraint%constraint_type(icomp) = &
-                  CONSTRAINT_SUPERCRIT_CO2
-              case('Z','CHG') 
-                aq_species_constraint%constraint_type(icomp) = &
-                  CONSTRAINT_CHARGE_BAL
-              case default
-                option%io_buffer = 'Keyword: ' // trim(word) // &
-                         ' not recognized in constraint,concentration'
-                call printErrMsg(option)
-            end select 
-            
-            if (aq_species_constraint%constraint_type(icomp) == &
-                  CONSTRAINT_MINERAL .or. &
-                aq_species_constraint%constraint_type(icomp) == &
-                  CONSTRAINT_GAS .or.&
-                aq_species_constraint%constraint_type(icomp) == &
-                  CONSTRAINT_SUPERCRIT_CO2) then
-              call InputReadWord(input,option,aq_species_constraint% &
-                                 constraint_aux_string(icomp), &
-                                 PETSC_TRUE)
-              call InputErrorMsg(input,option,'constraint name', &
-                              'CONSTRAINT, CONCENTRATIONS') 
-            else
-              call InputReadWord(input,option,word,PETSC_FALSE)
-              if (input%ierr == 0) then
-                call StringToUpper(word)
-                select case(word)
-                  case('DATASET')
-                    call InputReadWord(input,option,aq_species_constraint% &
-                                       constraint_aux_string(icomp),PETSC_TRUE)
-                    call InputErrorMsg(input,option,'dataset name', &
-                                    'CONSTRAINT, CONCENTRATIONS,')
-                    aq_species_constraint%external_dataset(icomp) = PETSC_TRUE
-                end select
-              endif
-            endif
-          else
-            aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
-          endif  
-        
-        enddo  
-        
-        if (icomp < reaction%naqcomp) then
-          option%io_buffer = &
-                   'Number of concentration constraints is less than ' // &
-                   'number of primary species in aqueous constraint.'
-          call printErrMsg(option)        
-        endif
-        if (icomp > reaction%naqcomp) then
-          option%io_buffer = &
-                   'Number of concentration constraints is greater than ' // &
-                   'number of primary species in aqueous constraint.'
-          call printWrnMsg(option)        
-        endif
-        
-        if (associated(constraint%aqueous_species)) &
-          call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
-        constraint%aqueous_species => aq_species_constraint 
-        
-      case('MNRL','MINERALS')
-
-        mineral_constraint => MineralConstraintCreate(reaction%mineral,option)
-
-        imnrl = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'CONSTRAINT, MINERALS')
-          
-          if (InputCheckExit(input,option)) exit          
-          
-          imnrl = imnrl + 1
-
-          if (imnrl > reaction%mineral%nkinmnrl) then
-            option%io_buffer = &
-                     'Number of mineral constraints exceeds number of ' // &
-                     'kinetic minerals in constraint: ' // &
-                      trim(constraint%name)
-            call printErrMsg(option)
-          endif
-          
-          call InputReadWord(input,option,mineral_constraint%names(imnrl), &
-                             PETSC_TRUE)
-          call InputErrorMsg(input,option,'mineral name', &
-                             'CONSTRAINT, MINERALS')  
-          option%io_buffer = 'Constraint Minerals: ' // &
-                             trim(mineral_constraint%names(imnrl))
-          call printMsg(option)
-
-          ! volume fraction
-          string = trim(input%buf)
-          call InputReadWord(string,word,PETSC_TRUE,ierr)
-          ! if a dataset
-          if (StringCompareIgnoreCase(word,'DATASET')) then
-            input%buf = trim(string)
-            call InputReadWord(input,option,mineral_constraint% &
-                                constraint_aux_string(imnrl),PETSC_TRUE)
-            call InputErrorMsg(input,option,'dataset name', &
-                            'CONSTRAINT, MINERALS, VOL FRAC')
-            mineral_constraint%external_dataset(imnrl) = PETSC_TRUE
-            ! set vol frac to NaN to catch bugs
-            tempreal = -1.d0
-            mineral_constraint%constraint_vol_frac(imnrl) = sqrt(tempreal)
-          else
-            call InputReadDouble(input,option, &
-                                 mineral_constraint%constraint_vol_frac(imnrl))
-            call InputErrorMsg(input,option,'volume fraction', &
-                               'CONSTRAINT, MINERALS')   
-          endif
-
-          string = trim(input%buf)
-          call InputReadWord(string,word,PETSC_TRUE,ierr)
-          ! if a dataset
-          if (StringCompareIgnoreCase(word,'DATASET')) then
-            option%io_buffer = 'DATASETs not yet supported for specific ' // &
-                               'mineral surface area.'
-            call printErrMsg(option)
-          else
-            ! specific surface area
-            call InputReadDouble(input,option, &
-                                 mineral_constraint%constraint_area(imnrl))
-            call InputErrorMsg(input,option,'area', &
-                               'CONSTRAINT, MINERALS')          
-            ! read units if they exist
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (InputError(input)) then
-              input%err_buf = trim(mineral_constraint%names(imnrl)) // &
-                               ' SPECIFIC SURFACE_AREA UNITS'
-              call InputDefaultMsg(input,option)
-            else
-              mineral_constraint%constraint_area(imnrl) = &
-                mineral_constraint%constraint_area(imnrl) * &
-                UnitsConvertToInternal(word,option)
-            endif
-          endif
-        enddo  
-        
-        if (imnrl < reaction%mineral%nkinmnrl) then
-          option%io_buffer = &
-                   'Mineral lists in constraints must provide a volume ' // &
-                   'fraction and surface area for all kinetic minerals ' // &
-                   '(listed under MINERAL_KINETICS card in CHEMISTRY), ' // &
-                   'regardless of whether or not they are present (just ' // &
-                   'assign a zero volume fraction if not present).'
-          call printErrMsg(option)        
-        endif
-        
-        if (associated(constraint%minerals)) then
-          call MineralConstraintDestroy(constraint%minerals)
-        endif
-        constraint%minerals => mineral_constraint 
-                            
-      case('SURFACE_COMPLEXES')
-      
-        srfcplx_constraint => &
-          SurfaceComplexConstraintCreate(reaction%surface_complexation,option)
-
-        isrfcplx = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option, &
-                                       'CONSTRAINT, SURFACE_COMPLEXES')
-          
-          if (InputCheckExit(input,option)) exit          
-          
-          isrfcplx = isrfcplx + 1
-
-          if (isrfcplx > reaction%surface_complexation%nkinsrfcplx) then
-            option%io_buffer = &
-                     'Number of surface complex constraints exceeds ' // &
-                     'number of kinetic surface complexes in constraint: ' // &
-                      trim(constraint%name)
-            call printErrMsg(option)
-          endif
-          
-          call InputReadWord(input,option,srfcplx_constraint%names(isrfcplx), &
-                          PETSC_TRUE)
-          call InputErrorMsg(input,option,'surface complex name', &
-                          'CONSTRAINT, SURFACE COMPLEX')  
-          option%io_buffer = 'Constraint Surface Complex: ' // &
-                             trim(srfcplx_constraint%names(isrfcplx))
-          call printMsg(option)
-          call InputReadDouble(input,option, &
-                               srfcplx_constraint%constraint_conc(isrfcplx))
-          call InputErrorMsg(input,option,'concentration', &
-                          'CONSTRAINT, SURFACE COMPLEX')          
-        enddo  
-        
-        if (isrfcplx < reaction%surface_complexation%nkinsrfcplx) then
-          option%io_buffer = &
-                   'Number of surface complex constraints is less than ' // &
-                   'number of kinetic surface complexes in surface ' // &
-                   'complex constraint.'
-          call printErrMsg(option)        
-        endif
-        
-        if (associated(constraint%surface_complexes)) then
-          call SurfaceComplexConstraintDestroy(constraint%surface_complexes)
-        endif
-        constraint%surface_complexes => srfcplx_constraint
-         
-      case('COLL','COLLOIDS')
-
-        colloid_constraint => ColloidConstraintCreate(reaction,option)
-
-        icomp = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'CONSTRAINT, COLLOIDS')
-          
-          if (InputCheckExit(input,option)) exit          
-          
-          icomp = icomp + 1
-
-          if (icomp > reaction%ncoll) then
-            option%io_buffer = &
-                     'Number of colloid constraints exceeds number of ' // &
-                     'colloids in constraint: ' // &
-                      trim(constraint%name)
-            call printErrMsg(option)
-          endif
-          
-          call InputReadWord(input,option,colloid_constraint%names(icomp), &
-                          PETSC_TRUE)
-          call InputErrorMsg(input,option,'colloid name', &
-                          'CONSTRAINT, COLLOIDS')  
-          option%io_buffer = 'Constraint Colloids: ' // &
-                             trim(colloid_constraint%names(icomp))
-          call printMsg(option)
-          call InputReadDouble(input,option, &
-                               colloid_constraint%constraint_conc_mob(icomp))
-          call InputErrorMsg(input,option,'mobile concentration', &
-                          'CONSTRAINT, COLLOIDS')          
-          call InputReadDouble(input,option, &
-                               colloid_constraint%constraint_conc_imb(icomp))
-          call InputErrorMsg(input,option,'immobile concentration', &
-                          'CONSTRAINT, COLLOIDS')          
-        
-        enddo  
-        
-        if (icomp < reaction%ncoll) then
-          option%io_buffer = &
-                   'Colloid lists in constraints must provide mobile ' // &
-                   'and immobile concentrations for all colloids ' // &
-                   '(listed under the COLLOIDS card in CHEMISTRY), ' // &
-                   'regardless of whether or not they are present (just ' // &
-                   'assign a small value (e.g. 1.d-40) if not present).'
-          call printErrMsg(option)        
-        endif
-        
-        if (associated(constraint%colloids)) then
-          call ColloidConstraintDestroy(constraint%colloids)
-        endif
-        constraint%colloids => colloid_constraint 
-                                         
-      case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                 ' not recognized in transport constraint'
-        call printErrMsg(option)
-    end select 
-  
-  enddo  
-  
-  call PetscLogEventEnd(logging%event_tran_constraint_read,ierr)
-
-end subroutine TranConstraintRead
 
 ! ************************************************************************** !
 !
@@ -3120,26 +2707,6 @@ end subroutine TranConditionInitList
 
 ! ************************************************************************** !
 !
-! TranConstraintInitList: Initializes a transport constraint list
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine TranConstraintInitList(list)
-
-  implicit none
-
-  type(tran_constraint_list_type) :: list
-  
-  nullify(list%first)
-  nullify(list%last)
-  nullify(list%array)
-  list%num_constraints = 0
-
-end subroutine TranConstraintInitList
-
-! ************************************************************************** !
-!
 ! TranConditionAddToList: Adds a new condition to a transport condition list
 ! author: Glenn Hammond
 ! date: 10/13/08
@@ -3159,29 +2726,6 @@ subroutine TranConditionAddToList(new_condition,list)
   list%last => new_condition
   
 end subroutine TranConditionAddToList
-
-! ************************************************************************** !
-!
-! TranConstraintAddToList: Adds a new constraint to a transport constraint
-!                          list
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine TranConstraintAddToList(new_constraint,list)
-
-  implicit none
-  
-  type(tran_constraint_type), pointer :: new_constraint
-  type(tran_constraint_list_type) :: list
-  
-  list%num_constraints = list%num_constraints + 1
-  new_constraint%id = list%num_constraints
-  if (.not.associated(list%first)) list%first => new_constraint
-  if (associated(list%last)) list%last%next => new_constraint
-  list%last => new_constraint
-  
-end subroutine TranConstraintAddToList
 
 ! ************************************************************************** !
 !
@@ -3220,44 +2764,6 @@ function TranConditionGetPtrFromList(condition_name,condition_list)
   enddo
   
 end function TranConditionGetPtrFromList
-
-! ************************************************************************** !
-!
-! TranConstraintGetPtrFromList: Returns a pointer to the constraint matching
-!                               constraint_name
-! author: Glenn Hammond
-! date: 10/13/08
-!
-! ************************************************************************** !
-function TranConstraintGetPtrFromList(constraint_name,constraint_list)
-
-  use String_module
-
-  implicit none
-  
-  type(tran_constraint_type), pointer :: TranConstraintGetPtrFromList
-  character(len=MAXWORDLENGTH) :: constraint_name
-  type(tran_constraint_list_type) :: constraint_list
- 
-  PetscInt :: length
-  type(tran_constraint_type), pointer :: constraint
-    
-  nullify(TranConstraintGetPtrFromList)
-  constraint => constraint_list%first
-  
-  do 
-    if (.not.associated(constraint)) exit
-    length = len_trim(constraint_name)
-    if (length == len_trim(constraint%name) .and. &
-        StringCompare(constraint%name,constraint_name, &
-                        length)) then
-      TranConstraintGetPtrFromList => constraint
-      return
-    endif
-    constraint => constraint%next
-  enddo
-  
-end function TranConstraintGetPtrFromList
 
 ! ************************************************************************** !
 !
@@ -3547,75 +3053,6 @@ end subroutine TranConditionDestroyList
 
 ! ************************************************************************** !
 !
-! TranConstraintDestroy: Deallocates a constraint
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine TranConstraintDestroy(constraint)
-
-  implicit none
-  
-  type(tran_constraint_type), pointer :: constraint
-  
-  if (.not.associated(constraint)) return
-
-  if (associated(constraint%aqueous_species)) &
-    call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
-  nullify(constraint%aqueous_species)
-  if (associated(constraint%minerals)) &
-    call MineralConstraintDestroy(constraint%minerals)
-  nullify(constraint%minerals)
-  if (associated(constraint%surface_complexes)) &
-    call SurfaceComplexConstraintDestroy(constraint%surface_complexes)
-  nullify(constraint%surface_complexes)
-  if (associated(constraint%colloids)) &
-    call ColloidConstraintDestroy(constraint%colloids)
-  nullify(constraint%colloids)
-
-  deallocate(constraint)
-  nullify(constraint)
-
-end subroutine TranConstraintDestroy
-
-! ************************************************************************** !
-!
-! TranConstraintDestroyList: Deallocates a list of constraints
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine TranConstraintDestroyList(constraint_list)
-
-  implicit none
-  
-  type(tran_constraint_list_type), pointer :: constraint_list
-  
-  type(tran_constraint_type), pointer :: constraint, prev_constraint
-  
-  if (.not.associated(constraint_list)) return
-  
-  constraint => constraint_list%first
-  do 
-    if (.not.associated(constraint)) exit
-    prev_constraint => constraint
-    constraint => constraint%next
-    call TranConstraintDestroy(prev_constraint)
-  enddo
-  
-  constraint_list%num_constraints = 0
-  nullify(constraint_list%first)
-  nullify(constraint_list%last)
-  if (associated(constraint_list%array)) deallocate(constraint_list%array)
-  nullify(constraint_list%array)
-  
-  deallocate(constraint_list)
-  nullify(constraint_list)
-
-end subroutine TranConstraintDestroyList
-
-! ************************************************************************** !
-!
 ! TranConditionDestroy: Deallocates a condition
 ! author: Glenn Hammond
 ! date: 10/23/07
@@ -3636,48 +3073,5 @@ subroutine TranConditionDestroy(condition)
   nullify(condition)
 
 end subroutine TranConditionDestroy
-
-! ************************************************************************** !
-!
-! TranConstraintCouplerDestroy: Destroys a constraint coupler linked list
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-subroutine TranConstraintCouplerDestroy(coupler_list)
-
-  use Option_module
-  
-  implicit none
-  
-  type(tran_constraint_coupler_type), pointer :: coupler_list
-  
-  type(tran_constraint_coupler_type), pointer :: cur_coupler, prev_coupler
-  
-  cur_coupler => coupler_list
-  
-  do
-    if (.not.associated(cur_coupler)) exit
-    prev_coupler => cur_coupler
-    cur_coupler => cur_coupler%next
-    if (associated(prev_coupler%rt_auxvar)) then
-      call RTAuxVarDestroy(prev_coupler%rt_auxvar)
-    endif
-    nullify(prev_coupler%rt_auxvar)
-    if (associated(prev_coupler%global_auxvar)) then
-      call GlobalAuxVarDestroy(prev_coupler%global_auxvar)
-    endif
-    nullify(prev_coupler%global_auxvar)
-    nullify(prev_coupler%aqueous_species)
-    nullify(prev_coupler%minerals)
-    nullify(prev_coupler%surface_complexes)
-    nullify(prev_coupler%next)
-    deallocate(prev_coupler)
-    nullify(prev_coupler)
-  enddo
-  
-  nullify(coupler_list)
-  
-end subroutine TranConstraintCouplerDestroy
 
 end module Condition_module
