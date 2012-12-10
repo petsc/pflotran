@@ -19,7 +19,7 @@ def get_full_paths(paths,filenames):
       full_paths.append(full_path)
   return full_paths
 
-def get_tec_filenames(ids):
+def get_default_tec_filenames(ids):
   return get_tec_filenames('pflotran',ids)
       
 def get_tec_filenames(prefix,ids):

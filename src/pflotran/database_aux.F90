@@ -202,10 +202,12 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
   do i = 1, dbaserxn%nspec
     if ((dbaserxn%stoich(i) + 999.d0) < 1.d-10) dbaserxn%stoich(i) = 1.d0
   enddo
-  ! negate stoichiometries after midpoint
-  do i = midpoint, dbaserxn%nspec
-    dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
-  enddo
+  if (midpoint > 0) then
+    ! negate stoichiometries after midpoint
+    do i = midpoint, dbaserxn%nspec
+      dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
+    enddo
+  endif
   ! now negate all stoichiometries to have - for reactants; + for products
   do i = 1, dbaserxn%nspec
     dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
