@@ -73,6 +73,8 @@ module Option_module
     PetscInt :: subsurf_surf_coupling
     PetscInt :: surface_flow_formulation
     PetscReal :: surf_flow_time, surf_flow_dt
+    PetscReal :: surf_subsurf_coupling_time
+    PetscReal :: surf_subsurf_coupling_flow_dt
 #endif
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -394,6 +396,8 @@ subroutine OptionInitRealization(option)
    option%surface_flow_formulation = KINEMATIC_WAVE
    option%surf_flow_dt = 0.d0
    option%surf_flow_time =0.d0
+   option%surf_subsurf_coupling_time = 0.d0
+   option%surf_subsurf_coupling_flow_dt = 0.d0
 #endif
 
   option%tranmode = ""

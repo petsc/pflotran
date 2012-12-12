@@ -201,6 +201,14 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
 ! x_, y_, z_, area_, volume_ = real
+! definitions
+! id_ = id of grid cell
+! id_up_ = id of upwind grid cell in connection
+! id_dn_ = id of downwind grid cell in connection
+! x_ = x coordinate of cell center
+! y_ = y coordinate of cell center
+! z_ = z coordinate of cell center
+! volume_ = volume of grid cell
 ! -----------------------------------------------------------------
 ! CELLS <integer>    integer = # cells (N)
 ! id_1 x_1 y_1 z_1 volume_1

@@ -5,6 +5,17 @@ module Dataset_Aux_module
   private
 
 #include "definitions.h"
+
+  type, public :: dataset_map_type
+    character(len=MAXWORDLENGTH) :: h5_dataset_map_name
+    character(len=MAXSTRINGLENGTH) :: filename
+    PetscInt,pointer :: map(:,:)
+    PetscInt         :: map_dims_global(2)
+    PetscInt         :: map_dims_local(2)
+    PetscInt,pointer :: datatocell_ids(:)
+    PetscInt,pointer :: cell_ids_local(:)
+    PetscBool        :: first_time
+  end type dataset_map_type
  
   type, public :: dataset_type
     character(len=MAXWORDLENGTH) :: name
@@ -29,6 +40,7 @@ module Dataset_Aux_module
     PetscReal, pointer :: discretization(:)
     type(dataset_buffer_type), pointer :: buffer
     type(dataset_type), pointer :: next
+    type(dataset_map_type), pointer :: dataset_map
   end type dataset_type
   
   ! the dataset buffer is designed to hold multiple times
@@ -112,6 +124,7 @@ function DatasetCreate()
   nullify(dataset%origin)
   nullify(dataset%buffer)
   nullify(dataset%next)
+  nullify(dataset%dataset_map)
 
   DatasetCreate => dataset
 
@@ -196,16 +209,34 @@ subroutine DatasetRead(dataset,input,option)
       case('MAX_BUFFER_SIZE') 
         call InputReadInt(input,option,dataset%max_buffer_size)
         call InputErrorMsg(input,option,'max_buffer_size','DATASET')
+      case('MAP_HDF5_DATASET_NAME')
+        if(.not.associated(dataset%dataset_map)) then
+          allocate(dataset%dataset_map)
+          dataset%dataset_map%h5_dataset_map_name=''
+          dataset%dataset_map%filename=''
+          dataset%dataset_map%first_time=PETSC_TRUE
+          nullify(dataset%dataset_map%map)
+          nullify(dataset%dataset_map%datatocell_ids)
+          nullify(dataset%dataset_map%cell_ids_local)
+        endif
+        call InputReadWord(input,option,dataset%dataset_map%h5_dataset_map_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'MAP_HDF5_DATASET_NAME','DATASET')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in dataset'    
         call printErrMsg(option)
-    end select 
+    end select  
   
   enddo
   
   if (len_trim(dataset%h5_dataset_name) < 1) then
     dataset%h5_dataset_name = dataset%name
+  endif
+
+  if (associated(dataset%dataset_map)) then
+    if(len_trim(dataset%dataset_map%filename)<1) then
+      dataset%dataset_map%filename=dataset%filename
+    endif
   endif
 
 end subroutine DatasetRead
@@ -821,6 +852,19 @@ recursive subroutine DatasetDestroy(dataset)
   if (associated(dataset%buffer)) then 
     call DatasetBufferDestroy(dataset%buffer)
   endif
+  if (associated(dataset%dataset_map)) then
+    if(associated(dataset%dataset_map%datatocell_ids)) &
+      deallocate(dataset%dataset_map%datatocell_ids)
+    if(associated(dataset%dataset_map%cell_ids_local)) &
+      deallocate(dataset%dataset_map%cell_ids_local)
+    if(associated(dataset%dataset_map%map)) &
+      deallocate(dataset%dataset_map%map)
+    nullify(dataset%dataset_map%map)
+    nullify(dataset%dataset_map%datatocell_ids)
+    nullify(dataset%dataset_map%cell_ids_local)
+    deallocate(dataset%dataset_map)
+  endif
+  nullify(dataset%dataset_map)
   
   deallocate(dataset)
   nullify(dataset)
