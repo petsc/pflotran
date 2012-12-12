@@ -548,7 +548,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       strata%region => RegionGetPtrFromList(strata%region_name, &
                                                   patch%regions)
       if (.not.associated(strata%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
+        option%io_buffer = 'Region ' // trim(strata%region_name) // &
                  '" in strata not found in region list'
         call printErrMsg(option)
       endif
