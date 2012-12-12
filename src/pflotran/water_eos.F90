@@ -724,7 +724,6 @@ subroutine wateos_flag (t,p,dw,dwmol,dwp,dwt,hw,hwp,hwt,scale,flag,ierr)
     xx = a3*yy*yy-two*(a4*theta-a5*beta)
     
 !   Note: xx may become negative near the critical point-pcl.
-    flag = PETSC_FALSE
     if (xx.gt.zero) then
       xx = sqrt(xx)
     else
