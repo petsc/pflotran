@@ -128,7 +128,7 @@ ifdef dasvyat_test_cut
 endif
 
 ifdef gautam
-  MYFLAGS += -w -g #-DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
+  MYFLAGS += -w -g -DMUALEM_SPLINE -DSURFACE_FLOW #-DUGRID_DEBUG #-DPARALLELIO_LIB -DOS_STATISTICS 
 endif
 
 ifdef surface_flow
@@ -255,6 +255,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}microbial.o\
 	${common_src}solid_solution.o\
 	${common_src}reaction.o\
+	${common_src}reaction_sandbox.o\
 	${common_src}reactive_transport.o\
 	${common_src}thc.o\
 	${common_src}thmc.o\

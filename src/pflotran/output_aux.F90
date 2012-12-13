@@ -53,6 +53,7 @@ module Output_Aux_module
 
 #ifdef SURFACE_FLOW
     PetscBool :: print_hydrograph
+    PetscInt  :: surf_xmf_vert_len
 #endif
 
   end type output_option_type

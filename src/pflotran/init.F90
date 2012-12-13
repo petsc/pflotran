@@ -1006,6 +1006,10 @@ subroutine Init(simulation)
     call SurfaceRealizationInitAllCouplerAuxVars(simulation%surf_realization)
     !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
 
+    ! initialize plot variables
+    simulation%surf_realization%output_option%output_variable_list => OutputVariableListCreate()
+    call SurfaceFlowSetup(simulation%surf_realization)
+
     !call GlobalSetup(simulation%surf_realization)
     ! initialize FLOW
     ! set up auxillary variable arrays
@@ -2324,6 +2328,8 @@ subroutine InitReadInput(simulation)
                              simulation%surf_flow_stepper%solver,input,option)
         simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
+        option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
+        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
 #endif
 
 !....................
@@ -3926,7 +3932,8 @@ subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
   if(InputError(input)) return
   option%nsurfflowdof = 1
   
-  call InputFindStringErrorMsg(input,option,string)
+  string = "SURF_GRID"
+  call InputFindStringInFile(input,option,string)
   call SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
 
   select case(discretization%itype)
@@ -4100,7 +4107,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
           surf_material_property => &
             surf_realization%surf_material_property_array(surf_material_id)%ptr
           if (.not.associated(surf_material_property)) then
-            write(dataset_name,*) material_id
+            write(dataset_name,*) surf_material_id
             option%io_buffer = 'No material property for surface material id ' // &
                                trim(adjustl(dataset_name)) &
                                //  ' defined in input file.'
@@ -4112,7 +4119,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
                              trim(adjustl(dataset_name))
           call printErrMsgByRank(option)
         else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
-          write(option%io_buffer,*) material_id
+          write(option%io_buffer,*) surf_material_id
           option%io_buffer = 'Unmatched surface material id in patch:' // &
             adjustl(trim(option%io_buffer))
           call printErrMsgByRank(option)
