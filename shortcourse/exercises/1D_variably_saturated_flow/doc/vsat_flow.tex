@@ -402,7 +402,7 @@ END
 \end{itemize}
 
 \begin{semiverbatim}
-FLOW_CONDITION initial   \bluecomment{! named \greencomment{initial}}
+FLOW_CONDITION initial_pressure \bluecomment{! named \greencomment{initial_pressure}}
   TYPE
     PRESSURE hydrostatic \bluecomment{! type is \redcomment{hydrostatic}}
   /                      \bluecomment{!   for pressure}
@@ -426,13 +426,13 @@ END
 \begin{frame}[fragile]\frametitle{INITIAL\_CONDITION}
 
 \begin{itemize}
-\item Couple the \greencomment{initial} flow condition with region \greencomment{all} for the initial condition
+\item Couple the \greencomment{initial\_pressure} flow condition with region \greencomment{all} for the initial condition
 \end{itemize}
 
 \begin{semiverbatim}
 
 INITIAL_CONDITION           \bluecomment{! notice no name}
-  FLOW_CONDITION initial
+  FLOW_CONDITION initial_pressure
   REGION all
 END
 
@@ -447,13 +447,13 @@ END
 
 \begin{itemize}
 \item Couple the \greencomment{inlet} flow condition with region \greencomment{top} for the \redcomment{inlet} boundary condition.
-\item Couple the \greencomment{initial} flow condition with region \greencomment{bottom} for the \redcomment{outlet} boundary condition.
+\item Couple the \greencomment{initial\_pressure} flow condition with region \greencomment{bottom} for the \redcomment{outlet} boundary condition.
 \end{itemize}
 
 \begin{semiverbatim}
 
-BOUNDARY_CONDITION outlet     \bluecomment{! name is optional,}
-  FLOW_CONDITION initial      \bluecomment{!   but recommended}
+BOUNDARY_CONDITION outlet          \bluecomment{! name is optional,}
+  FLOW_CONDITION initial_pressure  \bluecomment{!   but recommended}
   REGION bottom
 END
 
