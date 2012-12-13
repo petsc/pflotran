@@ -400,7 +400,7 @@ subroutine TFlux(rt_parameter, &
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
       Res(idof) = &
        ! conc_mob = mol/L water
         coef_up(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)+ &
@@ -481,7 +481,7 @@ subroutine TFlux_CD(rt_parameter, &
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
        ! conc_mob = mol/L water
       Res_1(idof) = coef_11(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)+ &
                     coef_12(iphase)*rt_aux_var_dn%colloid%conc_mob(icoll)
@@ -574,7 +574,7 @@ subroutine TFluxDerivative(rt_parameter, &
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
       J_up(idof,idof) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_dn(idof,idof) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
     enddo
@@ -682,7 +682,7 @@ subroutine TFluxDerivative_CD(rt_parameter, &
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
-      idof = rt_parameter%offset_coll + icoll
+      idof = rt_parameter%offset_colloid + icoll
       J_11(idof,idof) = coef_11(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_12(idof,idof) = coef_12(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
       J_21(idof,idof) = coef_21(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3

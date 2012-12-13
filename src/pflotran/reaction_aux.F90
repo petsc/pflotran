@@ -179,11 +179,13 @@ module Reaction_Aux_module
     PetscInt :: ncomp
     PetscInt :: naqcomp
     PetscInt :: ncollcomp
+    PetscInt :: nimcomp
     
     ! offsets
-    PetscInt :: offset_aq
-    PetscInt :: offset_coll
+    PetscInt :: offset_aqueous
+    PetscInt :: offset_colloid
     PetscInt :: offset_collcomp
+    PetscInt :: offset_immobile
     
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscBool, pointer :: primary_species_print(:)
@@ -433,9 +435,11 @@ function ReactionCreate()
   reaction%naqcomp = 0
   reaction%ncoll = 0
   reaction%ncollcomp = 0
-  reaction%offset_aq = 0
-  reaction%offset_coll = 0
+  reaction%nimcomp = 0
+  reaction%offset_aqueous = 0
+  reaction%offset_colloid = 0
   reaction%offset_collcomp = 0
+  reaction%offset_immobile = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)

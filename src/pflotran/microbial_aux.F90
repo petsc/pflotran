@@ -40,6 +40,20 @@ module Microbial_Aux_module
     PetscReal :: concentration_threshold
     type(inhibition_type), pointer :: next
   end type inhibition_type
+
+  
+  type, public :: microbe_constraint_type
+    ! Any changes here must be incorporated within ReactionProcessConstraint()
+    ! where constraints are reordered
+!TODO(geh): set up constraints for microbial life
+!    character(len=MAXWORDLENGTH), pointer :: names(:)
+!    PetscReal, pointer :: constraint_vol_frac(:)
+!    PetscReal, pointer :: constraint_area(:)
+!    PetscReal, pointer :: basis_vol_frac(:)
+!    PetscReal, pointer :: basis_area(:)
+!    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
+!    PetscBool, pointer :: external_dataset(:)
+  end type microbe_constraint_type
   
   type, public :: microbial_type
 

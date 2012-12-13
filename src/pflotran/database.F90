@@ -898,9 +898,9 @@ subroutine BasisInit(reaction,option)
   reaction%ngas = GetGasCount(reaction)
 
   reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
-  reaction%offset_aq = 0
-  reaction%offset_coll = reaction%offset_aq + reaction%naqcomp
-  reaction%offset_collcomp = reaction%offset_coll + reaction%ncoll
+  reaction%offset_aqueous = 0
+  reaction%offset_colloid = reaction%offset_aqueous + reaction%naqcomp
+  reaction%offset_collcomp = reaction%offset_colloid + reaction%ncoll
 
   ! account for H2O in the basis by adding 1
   ncomp_h2o = reaction%naqcomp+1

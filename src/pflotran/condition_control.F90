@@ -633,7 +633,7 @@ subroutine CondControlAssignTranInitCond(realization)
             ave_num_iterations = ave_num_iterations + &
               constraint_coupler%num_iterations
           endif
-          offset = ibegin + reaction%offset_aq - 1
+          offset = ibegin + reaction%offset_aqueous - 1
           do idof = 1, reaction%naqcomp ! primary aqueous concentrations
             xx_p(offset+idof) = &
               constraint_coupler%aqueous_species%basis_molarity(idof) / &
@@ -641,7 +641,7 @@ subroutine CondControlAssignTranInitCond(realization)
           enddo
           ! colloids fractions
           if (associated(constraint_coupler%colloids)) then
-            offset = ibegin + reaction%offset_coll - 1
+            offset = ibegin + reaction%offset_colloid - 1
             do idof = 1, reaction%ncoll ! primary aqueous concentrations
               xx_p(offset+idof) = &
                 constraint_coupler%colloids%basis_conc_mob(idof) / &

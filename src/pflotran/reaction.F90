@@ -1090,8 +1090,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   constraint_id = aq_species_constraint%constraint_spec_id
   conc = aq_species_constraint%constraint_conc
 
-  istartaq = reaction%offset_aq
-  iendaq = reaction%offset_aq + reaction%naqcomp    
+  istartaq = reaction%offset_aqueous
+  iendaq = reaction%offset_aqueous + reaction%naqcomp    
 
   iphase = 1
   
@@ -4649,7 +4649,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
 
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
-      idof = reaction%offset_coll + icoll
+      idof = reaction%offset_colloid + icoll
       Res(idof) = psv_t*rt_auxvar%colloid%conc_mob(icoll)
     enddo
   endif
@@ -4730,7 +4730,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
 
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
-      idof = reaction%offset_coll + icoll
+      idof = reaction%offset_colloid + icoll
       ! shouldn't have to sum a this point
       J(idof,idof) = psvd_t
     enddo

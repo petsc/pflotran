@@ -158,11 +158,12 @@ subroutine RTSetupPatch(realization)
   patch%aux%RT => RTAuxCreate(option)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
-  patch%aux%RT%rt_parameter%nimcomp = 0
-  patch%aux%RT%rt_parameter%offset_aq = reaction%offset_aq
+  patch%aux%RT%rt_parameter%offset_aqueous = reaction%offset_aqueous
+  patch%aux%RT%rt_parameter%nimcomp = reaction%nimcomp
+  patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   if (reaction%ncollcomp > 0) then
     patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
-    patch%aux%RT%rt_parameter%offset_coll = reaction%offset_coll
+    patch%aux%RT%rt_parameter%offset_colloid  = reaction%offset_colloid 
     patch%aux%RT%rt_parameter%ncollcomp = reaction%ncollcomp
     patch%aux%RT%rt_parameter%offset_collcomp = reaction%offset_collcomp
     allocate(patch%aux%RT%rt_parameter%pri_spec_to_coll_spec(reaction%naqcomp))
@@ -967,8 +968,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iendaq)
     
     if (reaction%ncoll > 0) then
-      istartcoll = dof_offset + reaction%offset_coll + 1
-      iendcoll = dof_offset + reaction%offset_coll + reaction%ncoll
+      istartcoll = dof_offset + reaction%offset_colloid + 1
+      iendcoll = dof_offset + reaction%offset_colloid + reaction%ncoll
       rt_aux_vars(ghosted_id)%colloid%conc_mob = xx_p(istartcoll:iendcoll)* &
         global_aux_vars(ghosted_id)%den_kg(1)*1.d-3
     endif
@@ -1488,12 +1489,12 @@ subroutine RTCalculateRHS_t1Patch(realization)
 
       if (patch%imat(ghosted_id) <= 0) cycle
       
-      istartaq = reaction%offset_aq + 1
-      iendaq = reaction%offset_aq + reaction%naqcomp
+      istartaq = reaction%offset_aqueous + 1
+      iendaq = reaction%offset_aqueous + reaction%naqcomp
       
       if (reaction%ncoll > 0) then
-        istartcoll = reaction%offset_coll + 1
-        iendcoll = reaction%offset_coll + reaction%ncoll
+        istartcoll = reaction%offset_colloid + 1
+        iendcoll = reaction%offset_colloid + reaction%ncoll
       endif
 
       qsrc = patch%ss_fluid_fluxes(1,sum_connection)
@@ -3038,12 +3039,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
       
-      istartaq = reaction%offset_aq + 1
-      iendaq = reaction%offset_aq + reaction%naqcomp
+      istartaq = reaction%offset_aqueous + 1
+      iendaq = reaction%offset_aqueous + reaction%naqcomp
       
       if (reaction%ncoll > 0) then
-        istartcoll = reaction%offset_coll + 1
-        iendcoll = reaction%offset_coll + reaction%ncoll
+        istartcoll = reaction%offset_colloid + 1
+        iendcoll = reaction%offset_colloid + reaction%ncoll
       endif
 
       qsrc = patch%ss_fluid_fluxes(1,sum_connection)
@@ -3669,12 +3670,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      istartaq = reaction%offset_aq + 1
-      iendaq = reaction%offset_aq + reaction%naqcomp
+      istartaq = reaction%offset_aqueous + 1
+      iendaq = reaction%offset_aqueous + reaction%naqcomp
       
       if (reaction%ncoll > 0) then
-        istartcoll = reaction%offset_coll + 1
-        iendcoll = reaction%offset_coll + reaction%ncoll
+        istartcoll = reaction%offset_colloid + 1
+        iendcoll = reaction%offset_colloid + reaction%ncoll
       endif
 
       qsrc = patch%ss_fluid_fluxes(1,sum_connection)
@@ -3735,11 +3736,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
     do ghosted_id = 1, grid%ngmax  ! For each local node do...
       offset = (ghosted_id-1)*reaction%ncomp
-      istartaq = offset + reaction%offset_aq + 1
-      iendaq = offset + reaction%offset_aq + reaction%naqcomp
+      istartaq = offset + reaction%offset_aqueous + 1
+      iendaq = offset + reaction%offset_aqueous + reaction%naqcomp
       if (reaction%ncoll > 0) then
-        istartcoll = offset + reaction%offset_coll + 1
-        iendcoll = offset + reaction%offset_coll + reaction%ncoll
+        istartcoll = offset + reaction%offset_colloid + 1
+        iendcoll = offset + reaction%offset_colloid + reaction%ncoll
       endif
       if (patch%imat(ghosted_id) <= 0) then
         work_loc_p(istartaq:iendaq) = 1.d0
@@ -3875,13 +3876,13 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       if (patch%imat(ghosted_id) <= 0) cycle
 
       offset = (ghosted_id-1)*reaction%ncomp
-      istartaq = offset + reaction%offset_aq + 1
-      iendaq = offset + reaction%offset_aq + reaction%naqcomp
+      istartaq = offset + reaction%offset_aqueous + 1
+      iendaq = offset + reaction%offset_aqueous + reaction%naqcomp
       
       patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
       if (reaction%ncoll > 0) then
-        istartcoll = offset + reaction%offset_coll + 1
-        iendcoll = offset + reaction%offset_coll + reaction%ncoll
+        istartcoll = offset + reaction%offset_colloid + 1
+        iendcoll = offset + reaction%offset_colloid + reaction%ncoll
         patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
           patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
@@ -3942,14 +3943,14 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         if (patch%imat(ghosted_id) <= 0) cycle
 
         offset = (ghosted_id-1)*reaction%ncomp
-        istartaq_loc = reaction%offset_aq + 1
-        iendaq_loc = reaction%offset_aq + reaction%naqcomp
+        istartaq_loc = reaction%offset_aqueous + 1
+        iendaq_loc = reaction%offset_aqueous + reaction%naqcomp
         istartaq = offset + istartaq_loc
         iendaq = offset + iendaq_loc
     
         if (reaction%ncoll > 0) then
-          istartcoll_loc = reaction%offset_coll + 1
-          iendcoll_loc = reaction%offset_coll + reaction%ncoll
+          istartcoll_loc = reaction%offset_colloid + 1
+          iendcoll_loc = reaction%offset_colloid + reaction%ncoll
           istartcoll = offset + istartcoll_loc
           iendcoll = offset + iendcoll_loc
         endif
