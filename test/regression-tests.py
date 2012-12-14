@@ -59,7 +59,7 @@ class RegressionTest(object):
         self._output_arg = "-output_prefix"
         self._np = None
         self._timeout = 60.0
-        self._check_time = False
+        self._check_performance = False
         self._num_failed = 0
         self._test_name = None
         # assign default tolerances for different classes of variables
@@ -92,14 +92,14 @@ class RegressionTest(object):
         return message
 
     def setup(self, executable_args, default_criteria, test_data,
-              timeout, check_time):
+              timeout, check_performance):
         self._test_name = test_data["name"]
 
         if executable_args is not None:
             self._set_executable_args(executable_args)
 
         self._set_test_data(default_criteria, test_data,
-                            timeout, check_time)
+                            timeout, check_performance)
 
     def name(self):
         return self._test_name
@@ -360,51 +360,55 @@ class RegressionTest(object):
         name = gold_section['name']
         data_type = gold_section['type']
         section_status = 0
-        # if key in gold but not in current --> failed test
-        for k in gold_section:
-            if k not in current_section:
-                section_status += 1
-                if self._verbose:
-                    print("    FAIL: key '{0}' in section '{1}' found in gold "
-                          "output but not current".format(
-                            k, gold_section['name']))
-
-        # if key in current but not gold --> failed test
-        for k in current_section:
-            if k not in gold_section:
-                section_status += 1
-                print("    FAIL: key '{0}' in section '{1}' found in current "
-                      "output but not gold".format(k, current_section['name']))
-
-        # now compare the keys that are in both...
-        for k in gold_section:
-            if k == "name" or k == 'type':
-                pass
-            elif self._wall_time_re.match(k) and self._check_time == False:
-                # we skip wall time checks by default.
-                pass
-            elif k in current_section:
-                name_str = name + ":" + k
-                # the data may be vector
-                gold = gold_section[k].split()
-                current = current_section[k].split()
-                if len(gold) != len(current):
+        if self._check_performance == False and data_type.lower() == self._SOLUTION:
+            # solution blocks contain platform dependent performance
+            # metrics. We skip them unless they are explicitly
+            # requested.
+            if self._verbose:
+                print("    Skipping {0} : {1}".format(data_type, name))
+        else:
+            # if key in gold but not in current --> failed test
+            for k in gold_section:
+                if k not in current_section:
                     section_status += 1
                     if self._verbose:
-                        print("    FAIL: {0} : {1} : vector lengths not "
-                              "equal. gold {2}, current {3}".format(
-                                name, k, len(gold), len(current)))
-                else:
-                    for i in range(len(gold)):
-                        try:
-                            status = self._compare_values(name_str, data_type,
-                                                          gold[i], current[i])
-                            section_status += status
-                        except Exception as e:
-                            section_status += 1
-                            if self._verbose:
-                                print("ERROR: {0} : {1}.\n  {2}".format(
-                                        self.name(), k, str(e)))
+                        print("    FAIL: key '{0}' in section '{1}' found in gold "
+                              "output but not current".format(
+                                k, gold_section['name']))
+
+            # if key in current but not gold --> failed test
+            for k in current_section:
+                if k not in gold_section:
+                    section_status += 1
+                    print("    FAIL: key '{0}' in section '{1}' found in current "
+                          "output but not gold".format(k, current_section['name']))
+
+            # now compare the keys that are in both...
+            for k in gold_section:
+                if k == "name" or k == 'type':
+                    pass
+                elif k in current_section:
+                    name_str = name + ":" + k
+                    # the data may be vector
+                    gold = gold_section[k].split()
+                    current = current_section[k].split()
+                    if len(gold) != len(current):
+                        section_status += 1
+                        if self._verbose:
+                            print("    FAIL: {0} : {1} : vector lengths not "
+                                  "equal. gold {2}, current {3}".format(
+                                    name, k, len(gold), len(current)))
+                    else:
+                        for i in range(len(gold)):
+                            try:
+                                status = self._compare_values(name_str, data_type,
+                                                              gold[i], current[i])
+                                section_status += status
+                            except Exception as e:
+                                section_status += 1
+                                if self._verbose:
+                                    print("ERROR: {0} : {1}.\n  {2}".format(
+                                            self.name(), k, str(e)))
 
 
         if self._verbose and False:
@@ -552,13 +556,13 @@ class RegressionTest(object):
         if "output arg" in executable_args:
             self._output_arg = executable_args["output arg"]
 
-    def _set_test_data(self, default_criteria, test_data, timeout, check_time):
+    def _set_test_data(self, default_criteria, test_data, timeout, check_performance):
         """
         Set the test criteria for different categories of variables.
         """
         self._np = test_data.pop('np', None)
 
-        self._check_time = check_time
+        self._check_performance = check_performance
 
         # timeout : preference (1) command line (2) test data (3) class default
         self._timeout = float(test_data.pop('timeout', self._timeout))
@@ -663,12 +667,12 @@ class RegressionTestManager(object):
         return data
 
     def generate_tests(self, config_file, user_suites, user_tests,
-                       timeout, check_time):
+                       timeout, check_performance):
         self._read_config_file(config_file)
         self._validate_suites()
         user_suites, user_tests = self._validate_user_lists(user_suites,
                                                             user_tests)
-        self._create_tests(user_suites, user_tests, timeout, check_time)
+        self._create_tests(user_suites, user_tests, timeout, check_performance)
 
     def run_tests(self, mpiexec, executable, verbose,
                   dry_run, update, new_test, check_only):
@@ -945,7 +949,7 @@ class RegressionTestManager(object):
 
         return u_suites, u_tests
 
-    def _create_tests(self, user_suites, user_tests, timeout, check_time):
+    def _create_tests(self, user_suites, user_tests, timeout, check_performance):
         all_tests = user_tests
         for s in user_suites:
             for t in self._available_suites[s].split():
@@ -955,7 +959,7 @@ class RegressionTestManager(object):
             try:
                 test = RegressionTest()
                 test.setup(self._executable_args, self._default_test_criteria,
-                           self._available_tests[t], timeout, check_time)
+                           self._available_tests[t], timeout, check_performance)
                 self._tests.append(test)
             except Exception as e:
                 raise Exception("ERROR : could not create test '{0}' from "
@@ -981,8 +985,9 @@ def commandline_options():
                         help="diff the existing regression files without "
                         "running pflotran again.")
 
-    parser.add_argument('--check-time', action='store_true', default=False,
-                        help="include the wall time in regression checks.")
+    parser.add_argument('--check-performance', action='store_true', default=False,
+                        help="include the performance metrics ('SOLUTION' blocks)"
+                        "in regression checks.")
 
     parser.add_argument('--debug', action='store_true',
                         help='extra debugging output')
@@ -1200,7 +1205,7 @@ def main(options):
                                         options.suites,
                                         options.tests,
                                         options.timeout,
-                                        options.check_time)
+                                        options.check_performance)
 
             if options.debug:
                 print(70 * '-')
@@ -1239,10 +1244,13 @@ def main(options):
         print("    Total run time: {0:4g} [s]".format(stop - start))
         for t in report:
             status += report[t]
-            if report[t] >= 0:
+            if report[t] > 0:
                 print("    {0}... {1} tests failed".format(t, report[t]))
+            elif report[t] == 0:
+                print("    {0}... all tests passed".format(t))
             else:
                 print("    {0}... could not be run.".format(t, report[t]))
+        print("\n\n")
 
     if options.update:
         print("\nTest results were updated!\n"
