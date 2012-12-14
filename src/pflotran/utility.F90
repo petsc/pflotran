@@ -18,6 +18,7 @@ module Utility_module
   end interface
 
   interface DeallocateArray
+    ! TODO(geh) replace deallocations with the below
     module procedure DeallocateArray1DInteger
     module procedure DeallocateArray2DInteger
     module procedure DeallocateArray3DInteger
@@ -28,6 +29,7 @@ module Utility_module
     module procedure DeallocateArray2DLogical
     module procedure DeallocateArray3DLogical
     module procedure DeallocateArray1DString
+    module procedure DeallocateArray2DString
   end interface
   
 contains
@@ -1474,5 +1476,23 @@ subroutine DeallocateArray1DString(array)
   nullify(array)
 
 end subroutine DeallocateArray1DString
+
+! ************************************************************************** !
+!
+! DeallocateArray2DString: Deallocates a 2D array of character strings
+! author: Glenn Hammond
+! date: 10/30/12
+!
+! ************************************************************************** !
+subroutine DeallocateArray2DString(array)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: array(:,:)
+  
+  if (associated(array)) deallocate(array)
+  nullify(array)
+
+end subroutine DeallocateArray2DString
 
 end module Utility_module

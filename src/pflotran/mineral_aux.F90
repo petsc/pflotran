@@ -8,7 +8,7 @@ module Mineral_Aux_module
 
 #include "definitions.h"
   
-  type, public :: mineral_type
+  type, public :: mineral_rxn_type
     PetscInt :: id
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: name
@@ -17,8 +17,8 @@ module Mineral_Aux_module
     PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(transition_state_rxn_type), pointer :: tstrxn
-    type(mineral_type), pointer :: next
-  end type mineral_type
+    type(mineral_rxn_type), pointer :: next
+  end type mineral_rxn_type
 
   type, public :: transition_state_rxn_type
     PetscReal :: affinity_factor_sigma
@@ -63,12 +63,12 @@ module Mineral_Aux_module
     PetscBool, pointer :: external_dataset(:)
   end type mineral_constraint_type
   
-  type, public :: mineral_rxn_type
+  type, public :: mineral_type
 
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
     
-    type(mineral_type), pointer :: mineral_list
+    type(mineral_rxn_type), pointer :: mineral_list
 
     ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -108,9 +108,9 @@ module Mineral_Aux_module
     PetscReal, pointer :: kinmnrl_surf_area_porosity_pwr(:)
     PetscInt, pointer :: kinmnrl_irreversible(:)
    
-  end type mineral_rxn_type
+  end type mineral_type
 
-  public :: MineralReactionCreate, &
+  public :: MineralCreate, &
             GetMineralCount, &
             GetMineralNames, &
             GetMineralIDFromName, &
@@ -118,84 +118,19 @@ module Mineral_Aux_module
             TransitionStatePrefactorCreate, &
             TSPrefactorSpeciesCreate, &
             TransitionStateTheoryRxnDestroy, &
-            MineralCreate, &
-            MineralDestroy, &
+            MineralRxnCreate, &
+            MineralRxnDestroy, &
             MineralConstraintCreate, &
             MineralConstraintDestroy, &
-            MineralReactionDestroy
+            MineralDestroy
              
 contains
 
 ! ************************************************************************** !
 !
-! MineralReactionCreate: Allocate and initialize mineral reaction object
+! MineralCreate: Allocate and initialize mineral reaction object
 ! author: Glenn Hammond
 ! date: 08/16/12
-!
-! ************************************************************************** !
-function MineralReactionCreate()
-
-  implicit none
-  
-  type(mineral_rxn_type), pointer :: MineralReactionCreate
-  
-  type(mineral_rxn_type), pointer :: mineral_reaction
-
-  allocate(mineral_reaction)  
-    
-  nullify(mineral_reaction%mineral_list)
-  
-  ! for saturation states
-  mineral_reaction%nmnrl = 0  
-  nullify(mineral_reaction%mineral_names)
-  nullify(mineral_reaction%mnrl_print)
-  nullify(mineral_reaction%mnrlspecid)
-  nullify(mineral_reaction%mnrlh2oid)
-  nullify(mineral_reaction%mnrlstoich)
-  nullify(mineral_reaction%mnrlh2ostoich)
-  nullify(mineral_reaction%mnrl_logK)
-  nullify(mineral_reaction%mnrl_logKcoef)
-  
-  ! for kinetic mineral reactions
-  mineral_reaction%nkinmnrl = 0  
-  nullify(mineral_reaction%kinmnrl_names)
-  nullify(mineral_reaction%kinmnrl_print)
-  nullify(mineral_reaction%kinmnrlspecid)
-  nullify(mineral_reaction%kinmnrlstoich)
-  nullify(mineral_reaction%kinmnrlh2oid)
-  nullify(mineral_reaction%kinmnrlh2ostoich)
-  nullify(mineral_reaction%kinmnrl_logK)
-  nullify(mineral_reaction%kinmnrl_logKcoef)
-  nullify(mineral_reaction%kinmnrl_rate)
-  nullify(mineral_reaction%kinmnrl_activation_energy)
-  nullify(mineral_reaction%kinmnrl_molar_vol)
-  nullify(mineral_reaction%kinmnrl_molar_wt)
-
-  nullify(mineral_reaction%kinmnrl_num_prefactors)
-  nullify(mineral_reaction%kinmnrl_prefactor_id)
-  nullify(mineral_reaction%kinmnrl_pref_alpha)
-  nullify(mineral_reaction%kinmnrl_pref_beta)
-  nullify(mineral_reaction%kinmnrl_pref_atten_coef)
-  nullify(mineral_reaction%kinmnrl_pref_rate)
-  nullify(mineral_reaction%kinmnrl_pref_activation_energy)
-
-  nullify(mineral_reaction%kinmnrl_Tempkin_const)
-  nullify(mineral_reaction%kinmnrl_affinity_power)
-  nullify(mineral_reaction%kinmnrl_affinity_threshold)
-  nullify(mineral_reaction%kinmnrl_irreversible)
-  nullify(mineral_reaction%kinmnrl_rate_limiter)
-  nullify(mineral_reaction%kinmnrl_surf_area_vol_frac_pwr)
-  nullify(mineral_reaction%kinmnrl_surf_area_porosity_pwr)
-
-  MineralReactionCreate => mineral_reaction
-  
-end function MineralReactionCreate
-
-! ************************************************************************** !
-!
-! MineralCreate: Allocate and initialize a mineral object
-! author: Glenn Hammond
-! date: 05/02/08
 !
 ! ************************************************************************** !
 function MineralCreate()
@@ -207,6 +142,71 @@ function MineralCreate()
   type(mineral_type), pointer :: mineral
 
   allocate(mineral)  
+    
+  nullify(mineral%mineral_list)
+  
+  ! for saturation states
+  mineral%nmnrl = 0  
+  nullify(mineral%mineral_names)
+  nullify(mineral%mnrl_print)
+  nullify(mineral%mnrlspecid)
+  nullify(mineral%mnrlh2oid)
+  nullify(mineral%mnrlstoich)
+  nullify(mineral%mnrlh2ostoich)
+  nullify(mineral%mnrl_logK)
+  nullify(mineral%mnrl_logKcoef)
+  
+  ! for kinetic mineral reactions
+  mineral%nkinmnrl = 0  
+  nullify(mineral%kinmnrl_names)
+  nullify(mineral%kinmnrl_print)
+  nullify(mineral%kinmnrlspecid)
+  nullify(mineral%kinmnrlstoich)
+  nullify(mineral%kinmnrlh2oid)
+  nullify(mineral%kinmnrlh2ostoich)
+  nullify(mineral%kinmnrl_logK)
+  nullify(mineral%kinmnrl_logKcoef)
+  nullify(mineral%kinmnrl_rate)
+  nullify(mineral%kinmnrl_activation_energy)
+  nullify(mineral%kinmnrl_molar_vol)
+  nullify(mineral%kinmnrl_molar_wt)
+
+  nullify(mineral%kinmnrl_num_prefactors)
+  nullify(mineral%kinmnrl_prefactor_id)
+  nullify(mineral%kinmnrl_pref_alpha)
+  nullify(mineral%kinmnrl_pref_beta)
+  nullify(mineral%kinmnrl_pref_atten_coef)
+  nullify(mineral%kinmnrl_pref_rate)
+  nullify(mineral%kinmnrl_pref_activation_energy)
+
+  nullify(mineral%kinmnrl_Tempkin_const)
+  nullify(mineral%kinmnrl_affinity_power)
+  nullify(mineral%kinmnrl_affinity_threshold)
+  nullify(mineral%kinmnrl_irreversible)
+  nullify(mineral%kinmnrl_rate_limiter)
+  nullify(mineral%kinmnrl_surf_area_vol_frac_pwr)
+  nullify(mineral%kinmnrl_surf_area_porosity_pwr)
+
+  MineralCreate => mineral
+  
+end function MineralCreate
+
+! ************************************************************************** !
+!
+! MineralRxnCreate: Allocate and initialize a mineral object
+! author: Glenn Hammond
+! date: 05/02/08
+!
+! ************************************************************************** !
+function MineralRxnCreate()
+
+  implicit none
+  
+  type(mineral_rxn_type), pointer :: MineralRxnCreate
+  
+  type(mineral_rxn_type), pointer :: mineral
+
+  allocate(mineral)  
   mineral%id = 0
   mineral%itype = 0
   mineral%name = ''
@@ -216,9 +216,9 @@ function MineralCreate()
   nullify(mineral%tstrxn)
   nullify(mineral%next)
   
-  MineralCreate => mineral
+  MineralRxnCreate => mineral
   
-end function MineralCreate
+end function MineralRxnCreate
 
 ! ************************************************************************** !
 !
@@ -314,32 +314,32 @@ end function TSPrefactorSpeciesCreate
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-function MineralConstraintCreate(mineral_reaction,option)
+function MineralConstraintCreate(mineral,option)
 
   use Option_module
   
   implicit none
   
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral
   type(option_type) :: option
   type(mineral_constraint_type), pointer :: MineralConstraintCreate
 
   type(mineral_constraint_type), pointer :: constraint  
 
   allocate(constraint)
-  allocate(constraint%names(mineral_reaction%nkinmnrl))
+  allocate(constraint%names(mineral%nkinmnrl))
   constraint%names = ''
-  allocate(constraint%constraint_vol_frac(mineral_reaction%nkinmnrl))
+  allocate(constraint%constraint_vol_frac(mineral%nkinmnrl))
   constraint%constraint_vol_frac = 0.d0
-  allocate(constraint%constraint_area(mineral_reaction%nkinmnrl))
+  allocate(constraint%constraint_area(mineral%nkinmnrl))
   constraint%constraint_area = 0.d0
-  allocate(constraint%basis_vol_frac(mineral_reaction%nkinmnrl))
+  allocate(constraint%basis_vol_frac(mineral%nkinmnrl))
   constraint%basis_vol_frac = 0.d0
-  allocate(constraint%basis_area(mineral_reaction%nkinmnrl))
+  allocate(constraint%basis_area(mineral%nkinmnrl))
   constraint%basis_area = 0.d0
-  allocate(constraint%constraint_aux_string(mineral_reaction%nkinmnrl))
+  allocate(constraint%constraint_aux_string(mineral%nkinmnrl))
   constraint%constraint_aux_string = ''
-  allocate(constraint%external_dataset(mineral_reaction%nkinmnrl))
+  allocate(constraint%external_dataset(mineral%nkinmnrl))
   constraint%external_dataset = PETSC_FALSE
 
   MineralConstraintCreate => constraint
@@ -353,27 +353,27 @@ end function MineralConstraintCreate
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-function GetMineralNames(mineral_reaction)
+function GetMineralNames(mineral)
 
   implicit none
   
   character(len=MAXWORDLENGTH), pointer :: GetMineralNames(:)
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral
 
   PetscInt :: count
   character(len=MAXWORDLENGTH), pointer :: names(:)
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
 
-  count = GetMineralCount(mineral_reaction)
+  count = GetMineralCount(mineral)
   allocate(names(count))
   
   count = 1
-  mineral => mineral_reaction%mineral_list
+  cur_mineral => mineral%mineral_list
   do
-    if (.not.associated(mineral)) exit
-    names(count) = mineral%name
+    if (.not.associated(cur_mineral)) exit
+    names(count) = cur_mineral%name
     count = count + 1
-    mineral => mineral%next
+    cur_mineral => cur_mineral%next
   enddo
 
   GetMineralNames => names
@@ -387,21 +387,21 @@ end function GetMineralNames
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetMineralCount(mineral_reaction)
+function GetMineralCount(mineral)
 
   implicit none
   
   PetscInt :: GetMineralCount
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral
 
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
 
   GetMineralCount = 0
-  mineral => mineral_reaction%mineral_list
+  cur_mineral => mineral%mineral_list
   do
-    if (.not.associated(mineral)) exit
+    if (.not.associated(cur_mineral)) exit
     GetMineralCount = GetMineralCount + 1
-    mineral => mineral%next
+    cur_mineral => cur_mineral%next
   enddo
 
 end function GetMineralCount
@@ -413,44 +413,44 @@ end function GetMineralCount
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-function GetMineralIDFromName(mineral_reaction,name)
+function GetMineralIDFromName(mineral,name)
 
   use String_module
   
   implicit none
   
-  type(mineral_rxn_type) :: mineral_reaction
+  type(mineral_type) :: mineral
   character(len=MAXWORDLENGTH) :: name
 
   PetscInt :: GetMineralIDFromName
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
 
   GetMineralIDFromName = -1
  
-  mineral => mineral_reaction%mineral_list
+  cur_mineral => mineral%mineral_list
   do
-    if (.not.associated(mineral)) exit
-    if (StringCompare(name,mineral%name,MAXWORDLENGTH)) then
-      GetMineralIDFromName = mineral%id
+    if (.not.associated(cur_mineral)) exit
+    if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
+      GetMineralIDFromName = cur_mineral%id
       exit
     endif
-    mineral => mineral%next
+    cur_mineral => cur_mineral%next
   enddo
 
 end function GetMineralIDFromName
 
 ! ************************************************************************** !
 !
-! MineralDestroy: Deallocates a mineral
+! MineralDestroy: Deallocates a mineral rxn object
 ! author: Glenn Hammond
 ! date: 05/29/08
 !
 ! ************************************************************************** !
-subroutine MineralDestroy(mineral)
+subroutine MineralRxnDestroy(mineral)
 
   implicit none
     
-  type(mineral_type), pointer :: mineral
+  type(mineral_rxn_type), pointer :: mineral
 
   if (associated(mineral%dbaserxn)) &
     call DatabaseRxnDestroy(mineral%dbaserxn)
@@ -460,7 +460,7 @@ subroutine MineralDestroy(mineral)
   deallocate(mineral)  
   nullify(mineral)
 
-end subroutine MineralDestroy
+end subroutine MineralRxnDestroy
 
 ! ************************************************************************** !
 !
@@ -577,142 +577,73 @@ end subroutine MineralConstraintDestroy
 
 ! ************************************************************************** !
 !
-! MineralReactionDestroy: Deallocates a mineral reaction object
+! MineralDestroy: Deallocates a mineral object
 ! author: Glenn Hammond
 ! date: 05/29/08
 !
 ! ************************************************************************** !
-subroutine MineralReactionDestroy(mineral_reaction)
+subroutine MineralDestroy(mineral)
 
+  use Utility_module, only: DeallocateArray
+  
   implicit none
 
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral
   
-  type(mineral_type), pointer :: mineral, prev_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral, prev_mineral
 
-  if (.not.associated(mineral_reaction)) return
+  if (.not.associated(mineral)) return
   
   ! mineral species
-  mineral => mineral_reaction%mineral_list
+  cur_mineral => mineral%mineral_list
   do
-    if (.not.associated(mineral)) exit
-    prev_mineral => mineral
-    mineral => mineral%next
-    call MineralDestroy(prev_mineral)
+    if (.not.associated(cur_mineral)) exit
+    prev_mineral => cur_mineral
+    cur_mineral => cur_mineral%next
+    call MineralRxnDestroy(prev_mineral)
   enddo    
-  nullify(mineral_reaction%mineral_list)
+  nullify(mineral%mineral_list)
   
-  if (associated(mineral_reaction%mineral_names)) &
-    deallocate(mineral_reaction%mineral_names)
-  nullify(mineral_reaction%mineral_names)
-  if (associated(mineral_reaction%kinmnrl_names)) &
-    deallocate(mineral_reaction%kinmnrl_names)
-  nullify(mineral_reaction%kinmnrl_names)
-
-  if (associated(mineral_reaction%mnrl_print)) &
-    deallocate(mineral_reaction%mnrl_print)
-  nullify(mineral_reaction%mnrl_print)
-  if (associated(mineral_reaction%kinmnrl_print)) &
-    deallocate(mineral_reaction%kinmnrl_print)
-  nullify(mineral_reaction%kinmnrl_print)
-
-  if (associated(mineral_reaction%mnrlspecid)) &
-    deallocate(mineral_reaction%mnrlspecid)
-  nullify(mineral_reaction%mnrlspecid)
-  if (associated(mineral_reaction%mnrlstoich)) &
-    deallocate(mineral_reaction%mnrlstoich)
-  nullify(mineral_reaction%mnrlstoich)
-  if (associated(mineral_reaction%mnrlh2oid)) &
-    deallocate(mineral_reaction%mnrlh2oid)
-  nullify(mineral_reaction%mnrlh2oid)
-  if (associated(mineral_reaction%mnrlh2ostoich)) &
-    deallocate(mineral_reaction%mnrlh2ostoich)
-  nullify(mineral_reaction%mnrlh2ostoich)
-  if (associated(mineral_reaction%mnrl_logK)) &
-    deallocate(mineral_reaction%mnrl_logK)
-  nullify(mineral_reaction%mnrl_logK)
-  if (associated(mineral_reaction%mnrl_logKcoef)) &
-    deallocate(mineral_reaction%mnrl_logKcoef)
-  nullify(mineral_reaction%mnrl_logKcoef)
+  call DeallocateArray(mineral%mineral_names)
+  call DeallocateArray(mineral%kinmnrl_names)
+  call DeallocateArray(mineral%mnrl_print)
+  call DeallocateArray(mineral%mnrlspecid)
+  call DeallocateArray(mineral%mnrlstoich)
+  call DeallocateArray(mineral%mnrlh2oid)
+  call DeallocateArray(mineral%mnrlh2ostoich)
+  call DeallocateArray(mineral%mnrl_logK)
+  call DeallocateArray(mineral%mnrl_logKcoef)
   
-  if (associated(mineral_reaction%kinmnrlspecid)) &
-    deallocate(mineral_reaction%kinmnrlspecid)
-  nullify(mineral_reaction%kinmnrlspecid)
-  if (associated(mineral_reaction%kinmnrlstoich)) &
-    deallocate(mineral_reaction%kinmnrlstoich)
-  nullify(mineral_reaction%kinmnrlstoich)
-  if (associated(mineral_reaction%kinmnrlh2oid)) &
-    deallocate(mineral_reaction%kinmnrlh2oid)
-  nullify(mineral_reaction%kinmnrlh2oid)
-  if (associated(mineral_reaction%kinmnrlh2ostoich)) &
-    deallocate(mineral_reaction%kinmnrlh2ostoich)
-  nullify(mineral_reaction%kinmnrlh2ostoich)
-  if (associated(mineral_reaction%kinmnrl_logK)) &
-    deallocate(mineral_reaction%kinmnrl_logK)
-  nullify(mineral_reaction%kinmnrl_logK)
-  if (associated(mineral_reaction%kinmnrl_logKcoef)) &
-    deallocate(mineral_reaction%kinmnrl_logKcoef)
-  nullify(mineral_reaction%kinmnrl_logKcoef)
-  if (associated(mineral_reaction%kinmnrl_rate)) &
-    deallocate(mineral_reaction%kinmnrl_rate)
-  nullify(mineral_reaction%kinmnrl_rate)
-  if (associated(mineral_reaction%kinmnrl_molar_vol)) &
-    deallocate(mineral_reaction%kinmnrl_molar_vol)
-  nullify(mineral_reaction%kinmnrl_molar_vol)  
-   if (associated(mineral_reaction%kinmnrl_molar_wt)) &
-    deallocate(mineral_reaction%kinmnrl_molar_wt)
-  nullify(mineral_reaction%kinmnrl_molar_wt)  
+  call DeallocateArray(mineral%kinmnrlspecid)
+  call DeallocateArray(mineral%kinmnrlstoich)
+  call DeallocateArray(mineral%kinmnrlh2oid)
+  call DeallocateArray(mineral%kinmnrlh2ostoich)
+  call DeallocateArray(mineral%kinmnrl_logK)
+  call DeallocateArray(mineral%kinmnrl_logKcoef)
+  call DeallocateArray(mineral%kinmnrl_rate)
+  call DeallocateArray(mineral%kinmnrl_molar_vol)
+  call DeallocateArray(mineral%kinmnrl_molar_wt)
 
-  if (associated(mineral_reaction%kinmnrl_num_prefactors)) &
-    deallocate(mineral_reaction%kinmnrl_num_prefactors)
-  nullify(mineral_reaction%kinmnrl_num_prefactors)
-  if (associated(mineral_reaction%kinmnrl_prefactor_id)) &
-    deallocate(mineral_reaction%kinmnrl_prefactor_id)
-  nullify(mineral_reaction%kinmnrl_prefactor_id)
-  if (associated(mineral_reaction%kinmnrl_pref_alpha)) &
-    deallocate(mineral_reaction%kinmnrl_pref_alpha)
-  nullify(mineral_reaction%kinmnrl_pref_alpha)
-  if (associated(mineral_reaction%kinmnrl_pref_beta)) &
-    deallocate(mineral_reaction%kinmnrl_pref_beta)
-  nullify(mineral_reaction%kinmnrl_pref_beta)
-  if (associated(mineral_reaction%kinmnrl_pref_atten_coef)) &
-    deallocate(mineral_reaction%kinmnrl_pref_atten_coef)
-  nullify(mineral_reaction%kinmnrl_pref_atten_coef)
-  if (associated(mineral_reaction%kinmnrl_pref_rate)) &
-    deallocate(mineral_reaction%kinmnrl_pref_rate)
-  nullify(mineral_reaction%kinmnrl_pref_rate)
-  if (associated(mineral_reaction%kinmnrl_pref_activation_energy)) &
-    deallocate(mineral_reaction%kinmnrl_pref_activation_energy)
-  nullify(mineral_reaction%kinmnrl_pref_activation_energy)
+  call DeallocateArray(mineral%kinmnrl_num_prefactors)
+  call DeallocateArray(mineral%kinmnrl_prefactor_id)
+  call DeallocateArray(mineral%kinmnrl_pref_alpha)
+  call DeallocateArray(mineral%kinmnrl_pref_beta)
+  call DeallocateArray(mineral%kinmnrl_pref_atten_coef)
+  call DeallocateArray(mineral%kinmnrl_pref_rate)
+  call DeallocateArray(mineral%kinmnrl_pref_activation_energy)
+  
+  call DeallocateArray(mineral%kinmnrl_Tempkin_const)
+  call DeallocateArray(mineral%kinmnrl_affinity_power)
+  call DeallocateArray(mineral%kinmnrl_affinity_threshold)
+  call DeallocateArray(mineral%kinmnrl_activation_energy)
+  call DeallocateArray(mineral%kinmnrl_rate_limiter)
+  call DeallocateArray(mineral%kinmnrl_surf_area_vol_frac_pwr)
+  call DeallocateArray(mineral%kinmnrl_surf_area_porosity_pwr)
+  call DeallocateArray(mineral%kinmnrl_irreversible)
+  
+  deallocate(mineral)
+  nullify(mineral)
 
-  if (associated(mineral_reaction%kinmnrl_Tempkin_const)) &
-    deallocate(mineral_reaction%kinmnrl_Tempkin_const)
-  nullify(mineral_reaction%kinmnrl_Tempkin_const)
-  if (associated(mineral_reaction%kinmnrl_affinity_power)) &
-    deallocate(mineral_reaction%kinmnrl_affinity_power)
-  nullify(mineral_reaction%kinmnrl_affinity_power)
-  if (associated(mineral_reaction%kinmnrl_affinity_threshold)) &
-    deallocate(mineral_reaction%kinmnrl_affinity_threshold)
-  nullify(mineral_reaction%kinmnrl_affinity_threshold)
-  if (associated(mineral_reaction%kinmnrl_activation_energy)) &
-    deallocate(mineral_reaction%kinmnrl_activation_energy)
-  nullify(mineral_reaction%kinmnrl_activation_energy)
-  if (associated(mineral_reaction%kinmnrl_rate_limiter)) &
-    deallocate(mineral_reaction%kinmnrl_rate_limiter)
-  nullify(mineral_reaction%kinmnrl_rate_limiter)
-  if (associated(mineral_reaction%kinmnrl_surf_area_vol_frac_pwr)) &
-    deallocate(mineral_reaction%kinmnrl_surf_area_vol_frac_pwr)
-  nullify(mineral_reaction%kinmnrl_surf_area_vol_frac_pwr)
-  if (associated(mineral_reaction%kinmnrl_surf_area_porosity_pwr)) &
-    deallocate(mineral_reaction%kinmnrl_surf_area_porosity_pwr)
-  nullify(mineral_reaction%kinmnrl_surf_area_porosity_pwr)
-  if (associated(mineral_reaction%kinmnrl_irreversible)) &
-    deallocate(mineral_reaction%kinmnrl_irreversible)
-  nullify(mineral_reaction%kinmnrl_irreversible)
-
-  deallocate(mineral_reaction)
-  nullify(mineral_reaction)
-
-end subroutine MineralReactionDestroy
+end subroutine MineralDestroy
 
 end module Mineral_Aux_module

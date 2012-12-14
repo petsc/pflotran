@@ -672,7 +672,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
                                    hdf5_err)
   
   ! Determine the number of cells each that will be saved on each processor
-  unstructured_grid%nmax = dims_h5(2)
+  unstructured_grid%nmax = INT(dims_h5(2))
   num_cells_local = unstructured_grid%nmax/option%mycommsize 
   num_cells_local_save = num_cells_local
   remainder = unstructured_grid%nmax - &
@@ -689,7 +689,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
                 MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
   
   ! Determine the length and offset of data to be read by each processor
-  length(1) = dims_h5(1)
+  length(1) = INT(dims_h5(1))
   length(2) = iend-istart
   offset(1) = 0
   offset(2) = istart
@@ -762,7 +762,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
                                    hdf5_err)
   
   ! Determine the number of cells each that will be saved on each processor
-  unstructured_grid%num_vertices_global = dims_h5(2)
+  unstructured_grid%num_vertices_global = INT(dims_h5(2))
   num_vertices_local  = &
                                        unstructured_grid%num_vertices_global/ &
                                        option%mycommsize 
@@ -841,7 +841,8 @@ end subroutine UGridReadHDF5SurfGrid
 ! End PETSC_HAVE_HDF5
 
 
-#endif !SURFACE_FLOW
+#endif
+!SURFACE_FLOW
 
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
@@ -948,7 +949,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
                                    hdf5_err)
   
   ! Determine the number of cells each that will be saved on each processor
-  unstructured_grid%nmax = dims_h5(2)
+  unstructured_grid%nmax = INT(dims_h5(2))
   num_cells_local = unstructured_grid%nmax/option%mycommsize 
   num_cells_local_save = num_cells_local
   remainder = unstructured_grid%nmax - &
@@ -1038,7 +1039,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
                                    hdf5_err)
   
   ! Determine the number of cells each that will be saved on each processor
-  unstructured_grid%num_vertices_global = dims_h5(2)
+  unstructured_grid%num_vertices_global = INT(dims_h5(2))
   num_vertices_local  = &
                                        unstructured_grid%num_vertices_global/ &
                                        option%mycommsize 
@@ -1143,7 +1144,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
 
   use Input_module
   use Option_module
-  use HDF5_aux_module
+  use HDF5_Aux_module
 
   implicit none
 
@@ -1275,6 +1276,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   
   PetscInt :: vertex_ids_offset
   PetscInt :: dual_offset
+  PetscInt :: natural_id_offset
 
   PetscInt :: max_int_count
   PetscInt :: temp_int
@@ -1282,7 +1284,6 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: num_cells_local_new
   PetscInt :: num_cells_local_old  
   PetscInt :: global_offset_old
-  PetscInt :: global_offset_new
   PetscInt, allocatable :: int_array(:)
   PetscInt, allocatable :: int_array2(:)
   PetscInt, allocatable :: int_array3(:)
@@ -1294,9 +1295,11 @@ subroutine UGridDecompose(unstructured_grid,option)
   PetscInt :: iflag
   PetscBool :: found
 
+#define UGRID_NEW  
 #ifndef UGRID_NEW
   PetscInt, pointer :: index_ptr(:)
   Vec :: elements_petsc
+  PetscInt :: global_offset_new
   IS :: is_num
   PetscInt :: ghost_cell_count
   PetscInt :: max_ghost_cell_count
@@ -1545,6 +1548,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   vertex_ids_offset = 1 + 1 ! +1 for -777
   dual_offset = vertex_ids_offset + unstructured_grid%max_nvert_per_cell + 1 ! +1 for -888
   stride = dual_offset+ unstructured_grid%max_ndual_per_cell + 1 ! +1 for -999999
+  natural_id_offset = 1
 
   ! Information for each cell is packed in a strided petsc vec
   ! The information is ordered within each stride as follows:
@@ -1567,7 +1571,7 @@ subroutine UGridDecompose(unstructured_grid,option)
 #ifdef UGRID_NEW
   
   call UGridCreateOldVec(unstructured_grid,option,elements_old, &
-                                num_cells_local_old,num_cells_local_new, &
+                                num_cells_local_old, &
                                 is_new,is_scatter,stride)
 
 #else
@@ -1678,7 +1682,7 @@ subroutine UGridDecompose(unstructured_grid,option)
   call UGridNaturalToPetsc(unstructured_grid,option, &
                            elements_old,elements_local, &
                            num_cells_local_new,stride,dual_offset, &
-                           is_scatter)
+                           natural_id_offset,is_scatter)
   
 #else  
 !----------  
@@ -2418,8 +2422,10 @@ subroutine UGridDecompose(unstructured_grid,option)
       option%io_buffer = 'Grid type not recognized: '
       call printErrMsg(option)
   end select
-        
+
+#ifndef UGRID_NEW  
   unstructured_grid%global_offset = global_offset_new
+#endif
 
 end subroutine UGridDecompose
 
@@ -4595,7 +4601,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
 
   allocate(int_array(ngmax_new))
   do jj=1,ngmax_new
-    int_array(jj)=jj+offset
+    int_array(jj)=INT(jj+offset)
   enddo
   int_array=int_array-1
   
@@ -4628,7 +4634,7 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   allocate(cids_new(ngmax_new))
   call VecGetArrayF90(Vec_cids_ghosted,vec_ptr,ierr)
   do jj=1,ngmax_new
-    cids_new(jj) = vec_ptr(jj)
+    cids_new(jj) = INT(vec_ptr(jj))
   enddo
   call VecRestoreArrayF90(Vec_cids_ghosted,vec_ptr,ierr)
   
@@ -4715,7 +4721,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   call VecAssemblyEnd(cells_on_proc,ierr)
   
   allocate(int_array1(ngmax_new))
-  int_array1=cids_new-1.d0
+  int_array1=cids_new-1
   call ISCreateGeneral(option%mycomm,ngmax_new, &
                        int_array1,PETSC_COPY_VALUES,is_from,ierr)
   deallocate(int_array1)
@@ -4848,7 +4854,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   call VecCreateMPI(option%mycomm,nghost_new,PETSC_DETERMINE,ghosts_petsc,ierr)
   allocate(int_array1(nghost_new))
 
-  int_array1=ghost_cids_new-1.d0
+  int_array1=ghost_cids_new-1
   call ISCreateGeneral(option%mycomm,nghost_new, &
                        int_array1,PETSC_COPY_VALUES,is_from,ierr)
 
@@ -4876,7 +4882,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   allocate(ghost_cids_new_petsc(nghost_new))
   call VecGetArrayF90(ghosts_petsc,vec_ptr,ierr)
   do ii=1,nghost_new
-    ghost_cids_new_petsc(ii)=vec_ptr(ii)
+    ghost_cids_new_petsc(ii)=INT(vec_ptr(ii))
   enddo
   call VecRestoreArrayF90(ghosts_petsc,vec_ptr,ierr)
 
@@ -5048,7 +5054,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
     do jj=1,unstructured_grid%max_nvert_per_cell
       if(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)/=-9999) then
         count=count+1
-        int_array1(count)=vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj)
+        int_array1(count)=INT(vec_ptr((ii-1)*unstructured_grid%max_nvert_per_cell+jj))
         int_array2(count)=count
       endif
     enddo

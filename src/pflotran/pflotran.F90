@@ -32,12 +32,12 @@
 ! Pacific Northwest National Laboratory
 ! Energy and Environment Directorate
 ! MSIN K9-36
-! (509) 395-3895
-! glenn.hammond@pnl.gov
+! (509) 375-3875
+! glenn.hammond@pnnl.gov
 ! Richland, WA
 
 !=======================================================================
-  program pflotran
+program pflotran
   
   use Simulation_module
   use Realization_module
@@ -47,7 +47,8 @@
   use Init_module
   use Logging_module
   use Stochastic_module
-  use Stochastic_Aux_module  
+  use Stochastic_Aux_module
+  use Regression_module
   
   implicit none
 
@@ -166,6 +167,9 @@
                     simulation%tran_stepper)
 #endif
 
+    call RegressionOutput(simulation%regression,simulation%realization, &
+                          simulation%flow_stepper,simulation%tran_stepper)
+
   ! Clean things up.
     call SimulationDestroy(simulation)
 
@@ -204,4 +208,4 @@
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)
 
-  end program pflotran
+end program pflotran

@@ -290,6 +290,14 @@ function RegionCreateWithRegion(region)
                size(region%explicit_faceset%face_centroids)))
     new_region%explicit_faceset%face_centroids = &
       region%explicit_faceset%face_centroids
+    do icount = 1, size(region%explicit_faceset%face_centroids)
+      new_region%explicit_faceset%face_centroids(icount)%x = &
+        region%explicit_faceset%face_centroids(icount)%x
+      new_region%explicit_faceset%face_centroids(icount)%y = &
+        region%explicit_faceset%face_centroids(icount)%y
+      new_region%explicit_faceset%face_centroids(icount)%z = &
+        region%explicit_faceset%face_centroids(icount)%z
+    enddo
     allocate(new_region%explicit_faceset%face_areas( &
                size(region%explicit_faceset%face_areas)))
     new_region%explicit_faceset%face_areas = &
@@ -1019,6 +1027,12 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
 ! Format of explicit unstructured grid file
 ! id_ = integer
 ! x_, y_, z_, area_ = real
+! definitions
+! id_ = id of grid cell
+! x_ = x coordinate of cell face
+! y_ = y coordinate of cell face
+! z_ = z coordinate of cell face
+! area_ = area of grid cell face
 ! -----------------------------------------------------------------
 ! CONNECTIONS <integer>   integer = # connections (M)
 ! id_1 x_1 y_1 z_1 area_1

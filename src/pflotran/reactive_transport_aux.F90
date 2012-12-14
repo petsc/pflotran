@@ -3,7 +3,9 @@ module Reactive_Transport_Aux_module
   ! this module cannot depend on any other modules besides Option_module
   ! and Matrix_Block_Aux_module
   use Matrix_Block_Aux_module
+#ifndef PFLOTRAN_RXN
   use Secondary_Continuum_module
+#endif
 
   implicit none
   
@@ -164,7 +166,9 @@ module Reactive_Transport_Aux_module
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_ss(:)
+#ifndef PFLOTRAN_RXN    
     type(sec_transport_type), pointer :: sec_transport_vars(:)
+#endif
 #ifdef CHUNK
     type(react_tran_auxvar_chunk_type), pointer :: aux_var_chunk
 #endif
@@ -177,8 +181,10 @@ module Reactive_Transport_Aux_module
   
   public :: RTAuxCreate, RTAuxDestroy, &
             RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy, &
-            RTAuxVarChunkDestroy, RTAuxVarStrip, &
-            RTSecTransportAuxVarCompute
+#ifndef PFLOTRAN_RXN    
+            RTSecTransportAuxVarCompute, &
+#endif
+            RTAuxVarChunkDestroy, RTAuxVarStrip
             
 contains
 
@@ -240,7 +246,9 @@ function RTAuxCreate(option)
   aux%rt_parameter%max_newton_iterations = 0
   aux%rt_parameter%overall_max_newton_iterations = 0
 #endif   
+#ifndef PFLOTRAN_RXN    
   nullify(aux%sec_transport_vars)
+#endif
   RTAuxCreate => aux
   
 end function RTAuxCreate
@@ -521,6 +529,7 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine RTAuxVarCopy
 
+#ifndef PFLOTRAN_RXN    
 ! ************************************************************************** !
 ! 
 ! RTSecTransportAuxVarCompute: Computes secondary auxillary variables in each
@@ -685,7 +694,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   sec_transport_vars%sec_zeta = sec_zeta
 
 end subroutine RTSecTransportAuxVarCompute
-
+#endif
 
 ! ************************************************************************** !
 !
@@ -822,84 +831,50 @@ end subroutine RTAuxVarArrayDestroy
 ! ************************************************************************** !
 subroutine RTAuxVarStrip(aux_var)
 
+  use Utility_module, only: DeallocateArray
+
   implicit none
 
   type(reactive_transport_auxvar_type) :: aux_var
   
-  if (associated(aux_var%pri_molal)) deallocate(aux_var%pri_molal)
-  nullify(aux_var%pri_molal)
-
-  if (associated(aux_var%total)) deallocate(aux_var%total)
-  nullify(aux_var%total)
-
+  call DeallocateArray(aux_var%pri_molal)  
+  call DeallocateArray(aux_var%total)  
+  
   call MatrixBlockAuxVarDestroy(aux_var%aqueous)
-  
-  if (associated(aux_var%sec_molal))deallocate(aux_var%sec_molal)
-  nullify(aux_var%sec_molal)
-  
-  if (associated(aux_var%gas_molal))deallocate(aux_var%gas_molal)
-  nullify(aux_var%gas_molal)
-  
-  if (associated(aux_var%total_sorb_eq)) deallocate(aux_var%total_sorb_eq)
-  nullify(aux_var%total_sorb_eq)
-  if (associated(aux_var%dtotal_sorb_eq))deallocate(aux_var%dtotal_sorb_eq)
-  nullify(aux_var%dtotal_sorb_eq)
 
-  if (associated(aux_var%eqsrfcplx_conc)) deallocate(aux_var%eqsrfcplx_conc)
-  nullify(aux_var%eqsrfcplx_conc)
-  if (associated(aux_var%srfcplxrxn_free_site_conc)) &
-    deallocate(aux_var%srfcplxrxn_free_site_conc)
-  nullify(aux_var%srfcplxrxn_free_site_conc)
+  call DeallocateArray(aux_var%sec_molal)
+  call DeallocateArray(aux_var%gas_molal)
+  call DeallocateArray(aux_var%total_sorb_eq)
+  call DeallocateArray(aux_var%dtotal_sorb_eq)
   
-  if (associated(aux_var%kinsrfcplx_conc)) deallocate(aux_var%kinsrfcplx_conc)
-  nullify(aux_var%kinsrfcplx_conc)
+  call DeallocateArray(aux_var%eqsrfcplx_conc)
+  call DeallocateArray(aux_var%srfcplxrxn_free_site_conc)
+  call DeallocateArray(aux_var%kinsrfcplx_conc)
+  call DeallocateArray(aux_var%kinsrfcplx_conc_kp1)
+  call DeallocateArray(aux_var%kinsrfcplx_free_site_conc)
   
-  if (associated(aux_var%kinsrfcplx_conc_kp1)) deallocate(aux_var%kinsrfcplx_conc_kp1)
-  nullify(aux_var%kinsrfcplx_conc_kp1)
+  call DeallocateArray(aux_var%eqionx_ref_cation_sorbed_conc)
+  call DeallocateArray(aux_var%eqionx_conc)
   
-  if (associated(aux_var%kinsrfcplx_free_site_conc)) &
-    deallocate(aux_var%kinsrfcplx_free_site_conc)
-  nullify(aux_var%kinsrfcplx_free_site_conc)
+  call DeallocateArray(aux_var%mnrl_volfrac0)
+  call DeallocateArray(aux_var%mnrl_volfrac)
+  call DeallocateArray(aux_var%mnrl_area0)
+  call DeallocateArray(aux_var%mnrl_area)
+  call DeallocateArray(aux_var%mnrl_rate)
   
-  if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) &
-    deallocate(aux_var%eqionx_ref_cation_sorbed_conc)
-  nullify(aux_var%eqionx_ref_cation_sorbed_conc)
-  if (associated(aux_var%eqionx_conc)) deallocate(aux_var%eqionx_conc)
-  nullify(aux_var%eqionx_conc)
+  call DeallocateArray(aux_var%pri_act_coef)
+  call DeallocateArray(aux_var%sec_act_coef)
   
-  if (associated(aux_var%mnrl_volfrac0))deallocate(aux_var%mnrl_volfrac0)
-  nullify(aux_var%mnrl_volfrac0)
-  if (associated(aux_var%mnrl_volfrac))deallocate(aux_var%mnrl_volfrac)
-  nullify(aux_var%mnrl_volfrac)
-  if (associated(aux_var%mnrl_area0))deallocate(aux_var%mnrl_area0)
-  nullify(aux_var%mnrl_area0)
-  if (associated(aux_var%mnrl_area))deallocate(aux_var%mnrl_area)
-  nullify(aux_var%mnrl_area)
-  if (associated(aux_var%mnrl_rate))deallocate(aux_var%mnrl_rate)
-  nullify(aux_var%mnrl_rate)
+  call DeallocateArray(aux_var%mass_balance)
+  call DeallocateArray(aux_var%mass_balance_delta)
   
-  if (associated(aux_var%pri_act_coef))deallocate(aux_var%pri_act_coef)
-  nullify(aux_var%pri_act_coef)
-  if (associated(aux_var%sec_act_coef))deallocate(aux_var%sec_act_coef)
-  nullify(aux_var%sec_act_coef)
-
-  if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
-  nullify(aux_var%mass_balance)
-  if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
-  nullify(aux_var%mass_balance_delta)
-
-  if (associated(aux_var%kinmr_total_sorb)) deallocate(aux_var%kinmr_total_sorb)
-  nullify(aux_var%kinmr_total_sorb)
+  call DeallocateArray(aux_var%kinmr_total_sorb)
   
   if (associated(aux_var%colloid)) then
-    if (associated(aux_var%colloid%conc_mob)) deallocate(aux_var%colloid%conc_mob)
-    nullify(aux_var%colloid%conc_mob)
-    if (associated(aux_var%colloid%conc_imb)) deallocate(aux_var%colloid%conc_imb)
-    nullify(aux_var%colloid%conc_imb)
-    if (associated(aux_var%colloid%total_eq_mob)) deallocate(aux_var%colloid%total_eq_mob)
-    nullify(aux_var%colloid%total_eq_mob)
-    if (associated(aux_var%colloid%total_kin)) deallocate(aux_var%colloid%total_kin)
-    nullify(aux_var%colloid%total_kin)
+    call DeallocateArray(aux_var%colloid%conc_mob)
+    call DeallocateArray(aux_var%colloid%conc_imb)
+    call DeallocateArray(aux_var%colloid%total_eq_mob)
+    call DeallocateArray(aux_var%colloid%total_kin)
     ! dRj/dCj
     call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dCj)
     ! dRj/dSic
@@ -908,6 +883,8 @@ subroutine RTAuxVarStrip(aux_var)
     call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dCj)
     ! dRic/dSic
     call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dSic)
+    deallocate(aux_var%colloid)
+    nullify(aux_var%colloid)
   endif
   
 end subroutine RTAuxVarStrip
@@ -921,6 +898,8 @@ end subroutine RTAuxVarStrip
 ! ************************************************************************** !
 subroutine RTAuxDestroy(aux)
 
+  use Utility_module, only: DeallocateArray
+  
   implicit none
 
   type(reactive_transport_type), pointer :: aux
@@ -935,31 +914,24 @@ subroutine RTAuxDestroy(aux)
   if (associated(aux%aux_var_chunk)) then
     call RTAuxVarChunkDestroy(aux%aux_var_chunk)
   endif
-#endif  
-  if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
-  nullify(aux%zero_rows_local)
-  if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
-  nullify(aux%zero_rows_local_ghosted)
+#endif
+  call DeallocateArray(aux%zero_rows_local)
+  call DeallocateArray(aux%zero_rows_local_ghosted)
+
   if (associated(aux%rt_parameter)) then
-    if (associated(aux%rt_parameter%diffusion_coefficient)) &
-      deallocate(aux%rt_parameter%diffusion_coefficient)
-    nullify(aux%rt_parameter%diffusion_coefficient)
-    if (associated(aux%rt_parameter%diffusion_activation_energy)) &
-      deallocate(aux%rt_parameter%diffusion_activation_energy)
-    nullify(aux%rt_parameter%diffusion_activation_energy)
-    if (associated(aux%rt_parameter%pri_spec_to_coll_spec)) &
-      deallocate(aux%rt_parameter%pri_spec_to_coll_spec)
-    nullify(aux%rt_parameter%pri_spec_to_coll_spec)
-    if (associated(aux%rt_parameter%coll_spec_to_pri_spec)) &
-      deallocate(aux%rt_parameter%coll_spec_to_pri_spec)
-    nullify(aux%rt_parameter%coll_spec_to_pri_spec)
+    call DeallocateArray(aux%rt_parameter%diffusion_coefficient)
+    call DeallocateArray(aux%rt_parameter%diffusion_activation_energy)
+    call DeallocateArray(aux%rt_parameter%pri_spec_to_coll_spec)
+    call DeallocateArray(aux%rt_parameter%coll_spec_to_pri_spec)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)
-  
+
+#ifndef PFLOTRAN_RXN    
   if (associated(aux%sec_transport_vars)) deallocate (aux%sec_transport_vars)
   nullify (aux%sec_transport_vars)
-  
+#endif
+
   deallocate(aux)
   nullify(aux)  
 

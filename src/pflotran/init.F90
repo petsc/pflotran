@@ -62,10 +62,12 @@ subroutine Init(simulation)
   use Reactive_Transport_module
   
   use Global_module
-
+  use Variables_module
   use water_eos_module
 !  use Utility_module
   use Output_module
+  use Output_Aux_module
+  use Regression_module
     
 #ifdef SURFACE_FLOW
   use Surface_Field_module
@@ -73,6 +75,7 @@ subroutine Init(simulation)
   use Unstructured_Grid_module
   use Surface_Realization_module
 #endif
+
   implicit none
   
   type(simulation_type) :: simulation
@@ -91,6 +94,7 @@ subroutine Init(simulation)
   type(flow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   type(input_type), pointer :: input
+  type(output_variable_type), pointer :: output_variable
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   PetscInt :: temp_int
@@ -263,11 +267,8 @@ subroutine Init(simulation)
     call SurfaceRealizationCreateDiscretization(simulation%surf_realization)
   endif
 #endif  
-! deprecated - geh
-!  if (option%compute_mass_balance) then
-!    call MassBalanceCreate(realization)
-!  endif  
-  
+
+  call RegressionCreateMapping(simulation%regression,realization)
 
   if (realization%discretization%itype == STRUCTURED_GRID .or. &
       realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
@@ -770,6 +771,10 @@ subroutine Init(simulation)
   if (associated(tran_stepper)) then
     tran_stepper%cur_waypoint => realization%waypoints%first
   endif
+  
+  ! initialize plot variables
+  realization%output_option%output_variable_list => OutputVariableListCreate()
+  
   ! initialize global auxilliary variable object
   call GlobalSetup(realization)
   ! initialize FLOW
@@ -867,6 +872,23 @@ subroutine Init(simulation)
       call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
     endif
   endif
+  
+  ! Add plot variables that are not mode specific
+  if (realization%output_option%print_porosity) then
+    ! add porosity to header
+    call OutputVariableAddToList( &
+           realization%output_option%output_variable_list, &
+           'Porosity',OUTPUT_GENERIC,'-',POROSITY)  
+  endif
+
+  ! write material ids
+  output_variable => OutputVariableCreate('Material ID',OUTPUT_DISCRETE,'', &
+                                          MATERIAL_ID)
+  output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList( &
+         realization%output_option%output_variable_list,output_variable)  
+
   
   ! print info
   if (associated(flow_stepper)) then
@@ -972,6 +994,10 @@ subroutine Init(simulation)
     call assignSurfaceMaterialPropToRegions(simulation%surf_realization)
     call SurfaceRealizationInitAllCouplerAuxVars(simulation%surf_realization)
     !call SurfaceRealizationPrintCouplers(simulation%surf_realization)
+
+    ! initialize plot variables
+    simulation%surf_realization%output_option%output_variable_list => OutputVariableListCreate()
+    call SurfaceFlowSetup(simulation%surf_realization)
 
     !call GlobalSetup(simulation%surf_realization)
     ! initialize FLOW
@@ -1273,6 +1299,7 @@ subroutine InitReadInput(simulation)
   use Timestepper_module
   use Region_module
   use Condition_module
+  use Constraint_module
   use Coupler_module
   use Strata_module
   use Observation_module
@@ -1287,6 +1314,9 @@ subroutine InitReadInput(simulation)
   use Units_module
   use Velocity_module
   use Mineral_module
+  use Regression_module
+  use Output_Aux_module
+  
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
 #endif
@@ -1344,11 +1374,6 @@ subroutine InitReadInput(simulation)
   type(dataset_type), pointer :: dataset
   type(input_type), pointer :: input
 
-  character(len=MAXWORDLENGTH) :: plot_variables(100)
-  PetscInt :: num_plot_variables
-
-  plot_variables = ''
-  num_plot_variables = 0
   nullify(flow_stepper)
   nullify(tran_stepper)
   nullify(flow_solver)
@@ -1419,7 +1444,8 @@ subroutine InitReadInput(simulation)
           call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS','GENERAL_REACTION')
+                 'MINERALS','COLLOIDS','GENERAL_REACTION', &
+                 'MICROBIAL_REACTION','REACTION_SANDBOX')
               call InputSkipToEND(input,option,card)
             case('REDOX_SPECIES')
               call ReactionReadRedoxSpecies(reaction,input,option)
@@ -2172,20 +2198,12 @@ subroutine InitReadInput(simulation)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-            case('PROCESSOR_ID')
-              num_plot_variables = num_plot_variables + 1
-              plot_variables(num_plot_variables) = trim(word)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
               call printErrMsg(option)              
           end select
         enddo
-        if (num_plot_variables > 0) then
-          allocate(output_option%plot_variables(num_plot_variables))
-          output_option%plot_variables(1:num_plot_variables) = &
-                                           plot_variables(1:num_plot_variables)
-        endif
         if (velocities) then
           if (output_option%print_tecplot) &
             output_option%print_tecplot_velocities = PETSC_TRUE
@@ -2200,7 +2218,11 @@ subroutine InitReadInput(simulation)
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
         endif
-            
+
+!.....................
+      case ('REGRESSION')
+        call RegressionRead(simulation%regression,input,option)
+
 !.....................
       case ('TIME')
         do
@@ -2278,6 +2300,8 @@ subroutine InitReadInput(simulation)
                              simulation%surf_flow_stepper%solver,input,option)
         simulation%surf_flow_stepper%dt_min = simulation%surf_realization%dt_min
         simulation%surf_flow_stepper%dt_max = simulation%surf_realization%dt_max
+        option%surf_subsurf_coupling_flow_dt = simulation%surf_realization%dt_coupling
+        option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
 #endif
 
 !....................
@@ -3327,7 +3351,6 @@ subroutine readFlowInitialCondition(realization,filename)
         endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
-        write(*,*) vec_p(local_id)
       enddo
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
@@ -3714,7 +3737,8 @@ subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
   if(InputError(input)) return
   option%nsurfflowdof = 1
   
-  call InputFindStringErrorMsg(input,option,string)
+  string = "SURF_GRID"
+  call InputFindStringInFile(input,option,string)
   call SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
 
   select case(discretization%itype)
@@ -3888,7 +3912,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
           surf_material_property => &
             surf_realization%surf_material_property_array(surf_material_id)%ptr
           if (.not.associated(surf_material_property)) then
-            write(dataset_name,*) material_id
+            write(dataset_name,*) surf_material_id
             option%io_buffer = 'No material property for surface material id ' // &
                                trim(adjustl(dataset_name)) &
                                //  ' defined in input file.'
@@ -3900,7 +3924,7 @@ subroutine assignSurfaceMaterialPropToRegions(surf_realization)
                              trim(adjustl(dataset_name))
           call printErrMsgByRank(option)
         else if (surf_material_id > size(surf_realization%surf_material_property_array)) then
-          write(option%io_buffer,*) material_id
+          write(option%io_buffer,*) surf_material_id
           option%io_buffer = 'Unmatched surface material id in patch:' // &
             adjustl(trim(option%io_buffer))
           call printErrMsgByRank(option)

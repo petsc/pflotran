@@ -2,6 +2,7 @@ module Reaction_Aux_module
   
   use Database_Aux_module
   use Mineral_Aux_module
+  use Microbial_Aux_module
   use Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
@@ -166,7 +167,9 @@ module Reaction_Aux_module
     
     ! new reaction objects
     type(surface_complexation_type), pointer :: surface_complexation
-    type(mineral_rxn_type), pointer :: mineral
+    type(mineral_type), pointer :: mineral
+    type(microbial_type), pointer :: microbial
+    
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
 #endif    
@@ -286,6 +289,8 @@ module Reaction_Aux_module
     PetscBool :: update_mineral_surface_area
     PetscBool :: update_mnrl_surf_with_porosity
     
+    PetscBool :: use_sandbox
+    
   end type reaction_type
 
   public :: ReactionCreate, &
@@ -293,6 +298,7 @@ module Reaction_Aux_module
             GasSpeciesCreate, &
             GetPrimarySpeciesCount, &
             GetPrimarySpeciesNames, &
+            GetPrimarySpeciesIDFromName, &
             GetSecondarySpeciesCount, &
             GetSecondarySpeciesNames, &
             GetGasCount, &
@@ -317,8 +323,6 @@ module Reaction_Aux_module
             AqueousSpeciesDestroy, &
             AqueousSpeciesConstraintCreate, &
             AqueousSpeciesConstraintDestroy, &
-            MineralCreate, &
-            MineralDestroy, &
             MineralConstraintCreate, &
             MineralConstraintDestroy, &
             GeneralRxnCreate, &
@@ -403,7 +407,8 @@ function ReactionCreate()
   
   ! new reaction objects
   reaction%surface_complexation => SurfaceComplexationCreate()
-  reaction%mineral => MineralReactionCreate()
+  reaction%mineral => MineralCreate()
+  reaction%microbial => MicrobialCreate()
 #ifdef SOLID_SOLUTION  
   nullify(reaction%solid_solution_list)
 #endif
@@ -509,6 +514,7 @@ function ReactionCreate()
   reaction%minimum_porosity = 0.d0
   reaction%update_mineral_surface_area = PETSC_FALSE
   reaction%update_mnrl_surf_with_porosity = PETSC_FALSE
+  reaction%use_sandbox = PETSC_FALSE
 
   ReactionCreate => reaction
   
@@ -884,6 +890,62 @@ function GetPrimarySpeciesCount(reaction)
   enddo
 
 end function GetPrimarySpeciesCount
+
+! ************************************************************************** !
+!
+! GetPrimarySpeciesIDFromName: Returns the id of named primary species
+! author: Glenn Hammond
+! date: 10/30/12
+!
+! ************************************************************************** !
+function GetPrimarySpeciesIDFromName(name,reaction,option)
+
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: name
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  PetscInt :: GetPrimarySpeciesIDFromName
+
+  type(aq_species_type), pointer :: species
+  PetscInt :: i
+
+  GetPrimarySpeciesIDFromName = -999
+  
+  ! if the primary species name list exists
+  if (associated(reaction%primary_species_names)) then
+    do i = 1, size(reaction%primary_species_names)
+      if (StringCompare(name,reaction%primary_species_names(i), &
+                        MAXWORDLENGTH)) then
+        GetPrimarySpeciesIDFromName = i
+        exit
+      endif
+    enddo
+  else
+    species => reaction%primary_species_list
+    i = 0
+    do
+      if (.not.associated(species)) exit
+      i = i + 1
+      if (StringCompare(name,species%name,MAXWORDLENGTH)) then
+        GetPrimarySpeciesIDFromName = i
+        exit
+      endif
+      species => species%next
+    enddo
+  endif
+
+  if (GetPrimarySpeciesIDFromName <= 0) then
+    option%io_buffer = 'Species "' // trim(name) // &
+      '" not founds among primary species.'
+    call printErrMsg(option)
+  endif
+  
+end function GetPrimarySpeciesIDFromName
 
 ! ************************************************************************** !
 !
@@ -1631,13 +1693,15 @@ end subroutine ColloidConstraintDestroy
 ! ************************************************************************** !
 subroutine ReactionDestroy(reaction)
 
+  use Utility_module, only: DeallocateArray
+  
   implicit none
 
   type(reaction_type), pointer :: reaction
   
   type(aq_species_type), pointer :: aq_species, prev_aq_species
   type(gas_species_type), pointer :: gas_species, prev_gas_species
-  type(mineral_type), pointer :: mineral, prev_mineral
+  type(mineral_rxn_type), pointer :: mineral, prev_mineral
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
@@ -1710,7 +1774,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kd_rxn_list)
   
   call SurfaceComplexationDestroy(reaction%surface_complexation)
-  call MineralReactionDestroy(reaction%mineral)
+  call MineralDestroy(reaction%mineral)
+  call MicrobialDestroy(reaction%microbial)
 #ifdef SOLID_SOLUTION  
   call SolidSolutionDestroy(reaction%solid_solution_list)
 #endif  
@@ -1724,201 +1789,77 @@ subroutine ReactionDestroy(reaction)
     call AqueousSpeciesListDestroy(reaction%redox_species_list)
   nullify(reaction%redox_species_list)
 
-  if (associated(reaction%primary_species_names)) &
-    deallocate(reaction%primary_species_names)
-  nullify(reaction%primary_species_names)
-  if (associated(reaction%secondary_species_names)) &
-    deallocate(reaction%secondary_species_names)
-  nullify(reaction%secondary_species_names)
-  if (associated(reaction%secondary_species_names)) &
-    deallocate(reaction%secondary_species_names)
-  nullify(reaction%secondary_species_names)
-  if (associated(reaction%gas_species_names)) &
-    deallocate(reaction%gas_species_names)
-  nullify(reaction%gas_species_names)
-  if (associated(reaction%eqcplx_basis_names)) &
-    deallocate(reaction%eqcplx_basis_names)
-  nullify(reaction%eqcplx_basis_names)
-  if (associated(reaction%colloid_names)) &
-    deallocate(reaction%colloid_names)
-  nullify(reaction%colloid_names)
-  if (associated(reaction%colloid_species_names)) &
-    deallocate(reaction%colloid_species_names)
-  nullify(reaction%colloid_species_names)
-
-  if (associated(reaction%primary_species_print)) &
-    deallocate(reaction%primary_species_print)
-  nullify(reaction%primary_species_print)
-  if (associated(reaction%secondary_species_print)) &
-    deallocate(reaction%secondary_species_print)
-  nullify(reaction%secondary_species_print)
-  if (associated(reaction%eqcplx_basis_print)) &
-    deallocate(reaction%eqcplx_basis_print)
-  nullify(reaction%eqcplx_basis_print)
-  if (associated(reaction%gas_species_print)) &
-    deallocate(reaction%gas_species_print)
-  nullify(reaction%gas_species_print)
-  if (associated(reaction%kd_print)) &
-    deallocate(reaction%kd_print)
-  nullify(reaction%kd_print)
-  if (associated(reaction%total_sorb_print)) &
-    deallocate(reaction%total_sorb_print)
-  nullify(reaction%total_sorb_print)
-  if (associated(reaction%total_sorb_mobile_print)) &
-    deallocate(reaction%total_sorb_mobile_print)
-  nullify(reaction%total_sorb_mobile_print)
-  if (associated(reaction%colloid_print)) &
-    deallocate(reaction%colloid_print)
-  nullify(reaction%colloid_print)
-    
-    
-  if (associated(reaction%primary_spec_a0)) &
-    deallocate(reaction%primary_spec_a0)
-  nullify(reaction%primary_spec_a0)
-  if (associated(reaction%primary_spec_Z)) &
-    deallocate(reaction%primary_spec_Z)
-  nullify(reaction%primary_spec_Z)
-  if (associated(reaction%primary_spec_molar_wt)) &
-    deallocate(reaction%primary_spec_molar_wt)
-  nullify(reaction%primary_spec_molar_wt)
+  call DeallocateArray(reaction%primary_species_names)
+  call DeallocateArray(reaction%secondary_species_names)
+  call DeallocateArray(reaction%gas_species_names)
+  call DeallocateArray(reaction%eqcplx_basis_names)
+  call DeallocateArray(reaction%colloid_names)
+  call DeallocateArray(reaction%colloid_species_names)  
   
-  if (associated(reaction%eqcplxspecid)) &
-    deallocate(reaction%eqcplxspecid)
-  nullify(reaction%eqcplxspecid)
-  if (associated(reaction%eqcplxstoich)) &
-    deallocate(reaction%eqcplxstoich)
-  nullify(reaction%eqcplxstoich)
-  if (associated(reaction%eqcplxh2oid)) &
-    deallocate(reaction%eqcplxh2oid)
-  nullify(reaction%eqcplxh2oid)
-  if (associated(reaction%eqcplxh2ostoich)) &
-    deallocate(reaction%eqcplxh2ostoich)
-  nullify(reaction%eqcplxh2ostoich)
-  if (associated(reaction%eqcplx_a0)) &
-    deallocate(reaction%eqcplx_a0)
-  nullify(reaction%eqcplx_a0)
-  if (associated(reaction%eqcplx_Z)) &
-    deallocate(reaction%eqcplx_Z)
-  nullify(reaction%eqcplx_Z)
-  if (associated(reaction%eqcplx_molar_wt)) &
-    deallocate(reaction%eqcplx_molar_wt)
-  nullify(reaction%eqcplx_molar_wt)
-  if (associated(reaction%eqcplx_logK)) &
-    deallocate(reaction%eqcplx_logK)
-  nullify(reaction%eqcplx_logK)
-  if (associated(reaction%eqcplx_logKcoef)) &
-    deallocate(reaction%eqcplx_logKcoef)
-  nullify(reaction%eqcplx_logKcoef)
+  call DeallocateArray(reaction%primary_species_print)
+  call DeallocateArray(reaction%secondary_species_print)
+  call DeallocateArray(reaction%gas_species_print)
+  call DeallocateArray(reaction%eqcplx_basis_print)
+  call DeallocateArray(reaction%kd_print)
+  call DeallocateArray(reaction%total_sorb_print)
+  call DeallocateArray(reaction%total_sorb_mobile_print)
+  call DeallocateArray(reaction%colloid_print)
   
-  if (associated(reaction%eqgasspecid)) &
-    deallocate(reaction%eqgasspecid)
-  nullify(reaction%eqgasspecid)
-  if (associated(reaction%eqgasstoich)) &
-    deallocate(reaction%eqgasstoich)
-  nullify(reaction%eqgasstoich)
-  if (associated(reaction%eqgash2oid)) &
-    deallocate(reaction%eqgash2oid)
-  nullify(reaction%eqgash2oid)
-  if (associated(reaction%eqgash2ostoich)) &
-    deallocate(reaction%eqgash2ostoich)
-  nullify(reaction%eqgash2ostoich)
-  if (associated(reaction%eqgas_logK)) &
-    deallocate(reaction%eqgas_logK)
-  nullify(reaction%eqgas_logK)
-  if (associated(reaction%eqgas_logKcoef)) &
-    deallocate(reaction%eqgas_logKcoef)
-  nullify(reaction%eqgas_logKcoef)
+  call DeallocateArray(reaction%primary_spec_a0)
+  call DeallocateArray(reaction%primary_spec_Z)
+  call DeallocateArray(reaction%primary_spec_molar_wt)
   
-  if (associated(reaction%eqionx_rxn_Z_flag)) &
-    deallocate(reaction%eqionx_rxn_Z_flag)
-  nullify(reaction%eqionx_rxn_Z_flag)
-  if (associated(reaction%eqionx_rxn_cation_X_offset)) &
-    deallocate(reaction%eqionx_rxn_cation_X_offset)
-  nullify(reaction%eqionx_rxn_cation_X_offset)
-  if (associated(reaction%eqionx_rxn_to_surf)) &
-    deallocate(reaction%eqionx_rxn_to_surf)
-  nullify(reaction%eqionx_rxn_to_surf)
-  if (associated(reaction%eqionx_rxn_CEC)) &
-    deallocate(reaction%eqionx_rxn_CEC)
-  nullify(reaction%eqionx_rxn_CEC)
-  if (associated(reaction%eqionx_rxn_k)) &
-    deallocate(reaction%eqionx_rxn_k)
-  nullify(reaction%eqionx_rxn_k)
-  if (associated(reaction%eqionx_rxn_cationid)) &
-    deallocate(reaction%eqionx_rxn_cationid)
-  nullify(reaction%eqionx_rxn_cationid)
-
+  call DeallocateArray(reaction%eqcplxspecid)
+  call DeallocateArray(reaction%eqcplxstoich)
+  call DeallocateArray(reaction%eqcplxh2oid)
+  call DeallocateArray(reaction%eqcplxh2ostoich)
+  call DeallocateArray(reaction%eqcplx_a0)
+  call DeallocateArray(reaction%eqcplx_Z)
+  call DeallocateArray(reaction%eqcplx_molar_wt)
+  call DeallocateArray(reaction%eqcplx_logK)
+  call DeallocateArray(reaction%eqcplx_logKcoef)
+  
+  call DeallocateArray(reaction%eqgasspecid)
+  call DeallocateArray(reaction%eqgasstoich)
+  call DeallocateArray(reaction%eqgash2oid)
+  call DeallocateArray(reaction%eqgash2ostoich)
+  call DeallocateArray(reaction%eqgas_logK)
+  call DeallocateArray(reaction%eqgas_logKcoef)
+  
+  call DeallocateArray(reaction%eqionx_rxn_Z_flag)
+  call DeallocateArray(reaction%eqionx_rxn_cation_X_offset)
+  call DeallocateArray(reaction%eqionx_rxn_to_surf)
+  call DeallocateArray(reaction%eqionx_rxn_CEC)
+  call DeallocateArray(reaction%eqionx_rxn_k)
+  call DeallocateArray(reaction%eqionx_rxn_cationid)
+  
 #if 0  
-  if (associated(reaction%kinionx_CEC)) &
-    deallocate(reaction%kinionx_CEC)
-  nullify(reaction%kinionx_CEC)
-  if (associated(reaction%kinionx_k)) &
-    deallocate(reaction%kinionx_k)
-  nullify(reaction%kinionx_k)
-  if (associated(reaction%kinionx_cationid)) &
-    deallocate(reaction%kinionx_cationid)
-  nullify(reaction%kinionx_cationid)
+  call DeallocateArray(reaction%kinionx_CEC)
+  call DeallocateArray(reaction%kinionx_k)
+  call DeallocateArray(reaction%kinionx_cationid)
 #endif
   
-  if (associated(reaction%pri_spec_to_coll_spec)) &
-    deallocate(reaction%pri_spec_to_coll_spec)
-  nullify(reaction%pri_spec_to_coll_spec)
-  if (associated(reaction%coll_spec_to_pri_spec)) &
-    deallocate(reaction%coll_spec_to_pri_spec)
-  nullify(reaction%coll_spec_to_pri_spec)
-  if (associated(reaction%colloid_mobile_fraction)) &
-    deallocate(reaction%colloid_mobile_fraction)
-  nullify(reaction%colloid_mobile_fraction)
+  call DeallocateArray(reaction%pri_spec_to_coll_spec)
+  call DeallocateArray(reaction%coll_spec_to_pri_spec)
+  call DeallocateArray(reaction%colloid_mobile_fraction)
   
-  if (associated(reaction%generalspecid)) &
-    deallocate(reaction%generalspecid)
-  nullify(reaction%generalspecid)
-  if (associated(reaction%generalstoich)) &
-    deallocate(reaction%generalstoich)
-  nullify(reaction%generalstoich)
-  if (associated(reaction%generalforwardspecid)) &
-    deallocate(reaction%generalforwardspecid)
-  nullify(reaction%generalforwardspecid)
-  if (associated(reaction%generalforwardstoich)) &
-    deallocate(reaction%generalforwardstoich)
-  nullify(reaction%generalforwardstoich)
-  if (associated(reaction%generalbackwardspecid)) &
-    deallocate(reaction%generalbackwardspecid)
-  nullify(reaction%generalbackwardspecid)
-  if (associated(reaction%generalbackwardstoich)) &
-    deallocate(reaction%generalbackwardstoich)
-  nullify(reaction%generalbackwardstoich)
-  if (associated(reaction%generalh2oid)) &
-    deallocate(reaction%generalh2oid)
-  nullify(reaction%generalh2oid)
-  if (associated(reaction%generalh2ostoich)) &
-    deallocate(reaction%generalh2ostoich)
-  nullify(reaction%generalh2ostoich)
-  if (associated(reaction%general_kf)) &
-    deallocate(reaction%general_kf)
-  nullify(reaction%general_kf)
-  if (associated(reaction%general_kr)) &
-    deallocate(reaction%general_kr)
-  nullify(reaction%general_kr)
+  call DeallocateArray(reaction%generalspecid)
+  call DeallocateArray(reaction%generalstoich)
+  call DeallocateArray(reaction%generalforwardspecid)
+  call DeallocateArray(reaction%generalforwardstoich)
+  call DeallocateArray(reaction%generalbackwardspecid)
+  call DeallocateArray(reaction%generalbackwardstoich)
+  call DeallocateArray(reaction%generalh2oid)
+  call DeallocateArray(reaction%generalh2ostoich)
+  call DeallocateArray(reaction%general_kf)
+  call DeallocateArray(reaction%general_kr)
   
-  if (associated(reaction%eqkdspecid)) &
-    deallocate(reaction%eqkdspecid)
-  nullify(reaction%eqkdspecid)
-  if (associated(reaction%eqkdtype)) &
-    deallocate(reaction%eqkdtype)
-  nullify(reaction%eqkdtype)
-  if (associated(reaction%eqkdspecid)) &
-    deallocate(reaction%eqkdspecid)
-  nullify(reaction%eqkdspecid)
-  if (associated(reaction%eqkddistcoef)) &
-    deallocate(reaction%eqkddistcoef)
-  nullify(reaction%eqkddistcoef)
-  if (associated(reaction%eqkdlangmuirb)) &
-    deallocate(reaction%eqkdlangmuirb)
-  nullify(reaction%eqkdlangmuirb)
-  if (associated(reaction%eqkdfreundlichn)) &
-    deallocate(reaction%eqkdfreundlichn)
-  nullify(reaction%eqkdfreundlichn)
+  call DeallocateArray(reaction%eqkdspecid)
+  call DeallocateArray(reaction%eqkdtype)
+  call DeallocateArray(reaction%eqkdspecid)
+  call DeallocateArray(reaction%eqkddistcoef)
+  call DeallocateArray(reaction%eqkdlangmuirb)
+  call DeallocateArray(reaction%eqkdfreundlichn)
   
   deallocate(reaction)
   nullify(reaction)

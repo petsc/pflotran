@@ -21,9 +21,11 @@ module Surface_Flow_module
 
 
 ! Cutoff parameters
-  PetscReal, parameter :: eps       = 1.D-8
+  PetscReal, parameter :: eps       = 1.D-10
+  PetscReal, parameter :: perturbation_tolerance = 1.d-6
 
   public SurfaceFlowSetup, &
+         SurfaceFlowTimeCut, &
          SurfaceFlowInitializeTimestep, &
          SurfaceFlowReadRequiredCardsFromInput, &
          SurfaceFlowRead, &
@@ -48,8 +50,45 @@ subroutine SurfaceFlowSetup(surf_realization)
   use Surface_Realization_module
   
   type(surface_realization_type) :: surf_realization
+
+  call SurfaceFlowSetPlotVariables(surf_realization)
   
 end subroutine SurfaceFlowSetup
+
+! ************************************************************************** !
+!> This routine adds variables to be printed to list
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/30/12
+! ************************************************************************** !
+subroutine SurfaceFlowSetPlotVariables(surf_realization)
+  
+  use Surface_Realization_module
+  use Output_Aux_module
+  use Variables_module
+    
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_list_type), pointer :: list
+  
+  list => surf_realization%output_option%output_variable_list
+  
+  name = 'P'
+  units = 'm'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               SURFACE_FLOW_PRESSURE)
+
+  name = 'Material ID'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_DISCRETE,units, &
+                               MATERIAL_ID)
+  
+end subroutine SurfaceFlowSetPlotVariables
 
 ! ************************************************************************** !
 !> This routine reads required surface flow data from the input file
@@ -91,76 +130,55 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   discretization => surf_realization%discretization
 
   input%ierr = 0
-! we initialize the word to blanks to avoid error reported by valgrind
+  ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
 
-  do
-    call InputReadFlotranString(input,option)
-    if (InputCheckExit(input,option)) exit
+  call InputReadFlotranString(input,option)
+  !if (InputCheckExit(input,option)) exit    
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
+  call StringToUpper(word)
     
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
-    call StringToUpper(word)
-    
-    select case(trim(word))
-      !.........................................................................
-      ! Read surface grid information
-      case ('SURF_GRID')
-        call InputReadFlotranString(input,option)
-        if (InputCheckExit(input,option)) exit
+  select case(trim(word))
+    case ('TYPE')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'keyword','TYPE')
+      call StringToUpper(word)
 
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'keyword','SURF_GRID')
-        call StringToUpper(word)
-        select case(trim(word))
-          case ('TYPE')
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','TYPE')
-            call StringToUpper(word)
+      select case(trim(word))
+        case ('UNSTRUCTURED')
+          unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
+          unstructured_grid_ctype = 'implicit unstructured'
+          discretization%itype = UNSTRUCTURED_GRID
+          call InputReadNChars(input,option, &
+                               discretization%filename, &
+                               MAXSTRINGLENGTH, &
+                               PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','filename')
 
-            select case(trim(word))
-              case ('UNSTRUCTURED')
-                unstructured_grid_itype = IMPLICIT_UNSTRUCTURED_GRID
-                unstructured_grid_ctype = 'implicit unstructured'
-                discretization%itype = UNSTRUCTURED_GRID
-                call InputReadNChars(input,option, &
-                                     discretization%filename, &
-                                     MAXSTRINGLENGTH, &
-                                     PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword','filename')
-
-                grid => GridCreate()
-                un_str_sfgrid => UGridCreate()
-                un_str_sfgrid%grid_type = TWO_DIM_GRID
-                if (index(discretization%filename,'.h5') > 0) then
-                  call UGridReadHDF5SurfGrid( un_str_sfgrid, &
-                                              !surf_realization%subsurf_filename, &
-                                              discretization%filename, &
-                                              option)
-                else
-                  call UGridReadSurfGrid(un_str_sfgrid, &
-                                        surf_realization%subsurf_filename, &
+          grid => GridCreate()
+          un_str_sfgrid => UGridCreate()
+          un_str_sfgrid%grid_type = TWO_DIM_GRID
+          if (index(discretization%filename,'.h5') > 0) then
+            call UGridReadHDF5SurfGrid( un_str_sfgrid, &
                                         discretization%filename, &
                                         option)
-                endif
-                grid%unstructured_grid => un_str_sfgrid
-                discretization%grid => grid
-                grid%itype = unstructured_grid_itype
-                grid%ctype = unstructured_grid_ctype
+          else
+            call UGridReadSurfGrid(un_str_sfgrid, &
+                                   surf_realization%subsurf_filename, &
+                                   discretization%filename, &
+                                   option)
+          endif
+          grid%unstructured_grid => un_str_sfgrid
+          discretization%grid => grid
+          grid%itype = unstructured_grid_itype
+          grid%ctype = unstructured_grid_ctype
 
-              case default
-              option%io_buffer = 'Surface-flow supports only unstructured grid'
-              call printErrMsg(option)
-            end select
-          case default
-            option%io_buffer = 'Keyword: ' // trim(word) // &
-              ' not recognized in SURF_GRID '
-            call printErrMsg(option)
-        end select
-        call InputSkipToEND(input,option,trim(word))
-
-    end select
-  enddo
+        case default
+          option%io_buffer = 'Surface-flow supports only unstructured grid'
+          call printErrMsg(option)
+      end select
+  end select
 
 end subroutine SurfaceFlowReadRequiredCardsFromInput
 
@@ -194,6 +212,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   use Waypoint_module
   use Patch_module
   use Solver_module
+  use Output_Aux_module
 
   implicit none
 
@@ -225,11 +244,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   type(waypoint_type), pointer :: waypoint
   PetscReal :: temp_real, temp_real2
 
-  character(len=MAXWORDLENGTH) :: plot_variables(100)
-  PetscInt :: num_plot_variables
-
-  num_plot_variables = 0
-
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
 
@@ -251,6 +265,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','SURFACE_FLOW')
     call StringToUpper(word)
+    write(*,*),'word :: ',trim(word)
 
     select case(trim(word))
       !.........................................................................
@@ -606,9 +621,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-            case('PROCESSOR_ID')
-              num_plot_variables = num_plot_variables + 1
-              plot_variables(num_plot_variables) = trim(word)
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
             case default
@@ -618,11 +630,6 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
           end select
         enddo
 
-        if (num_plot_variables > 0) then
-          allocate(output_option%plot_variables(num_plot_variables))
-          output_option%plot_variables(1:num_plot_variables) = &
-                                           plot_variables(1:num_plot_variables)
-        endif
         if (velocities) then
           if (output_option%print_tecplot) &
             output_option%print_tecplot_velocities = PETSC_TRUE
@@ -667,6 +674,12 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','TIME')
               surf_realization%dt_max = temp_real*UnitsConvertToInternal(word,option)
+            case('COUPLING_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Coupling Timestep Size','TIME') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Coupling Timestep Size Time Units','TIME')
+              surf_realization%dt_coupling = temp_real*UnitsConvertToInternal(word,option)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in TIME.'
@@ -1720,6 +1733,7 @@ subroutine SurfaceFlowDiffusion(hw_up, &
   PetscReal :: Cd
   PetscReal :: hw_half
   PetscReal :: mannings_half
+  PetscReal :: dhead
 
   ! initialize
   flux = 0.d0
@@ -1731,30 +1745,39 @@ subroutine SurfaceFlowDiffusion(hw_up, &
   if (head_up>head_dn) then
     mannings_half = mannings_up
     if (hw_up>0.d0) then
-      if (hw_up*Cd>hw_dn) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-      else
+      !if (hw_up*Cd>hw_dn) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !else
         hw_half = hw_up
-      endif
+      !endif
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
     if (hw_dn>0.d0) then
-      if (hw_dn*Cd>hw_up) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-      else
-        hw_half = hw_up
-      endif
+      !if (hw_dn*Cd>hw_up) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !else
+        hw_half = hw_dn
+      !endif
     else
       hw_half = 0.d0
     endif
   endif
 
-  vel = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
-            (hw_half**(2.d0/3.d0))* &
-            (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
+  !vel = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
+  !          (hw_half**(2.d0/3.d0))* &
+  !          (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
+  dhead=head_up-head_dn
+  if(abs(dhead)<eps*100.d0) then
+    dhead=0.d0
+  endif
+
+  vel = (dhead)/mannings_half/(dist**(1.d0/2.d0))* &
+        (hw_half**(2.d0/3.d0))* &
+        1.d0/(abs(dhead+eps)**(1.d0/2.d0))
+
   flux = hw_half*vel
   Res(1) = flux*length
 
@@ -1789,8 +1812,13 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   PetscReal :: Cd
   PetscReal :: mannings_half,hw_half
   PetscReal :: dhw_half_dhw_dn,dhw_half_dhw_up
-  PetscReal :: term1, term2
-  PetscReal :: head_up, head_dn
+  PetscReal :: term0,term1,term2,term3,term4
+  PetscReal :: head_up, head_dn, dhead
+  PetscReal :: Jup_new(option%nflowdof,option%nflowdof), &
+               Jdn_new(option%nflowdof,option%nflowdof)
+  PetscReal :: res_pert_up(1),res_pert_dn(1),vel,Jup_pert,Jdn_pert
+  PetscReal :: res(1:option%nflowdof)   ! units: m^3/s
+  PetscReal :: dhead_dn_dhw_dn, dhead_up_dhw_up
 
   flux_dh_up = 0.d0
   flux_dh_dn = 0.d0
@@ -1799,6 +1827,8 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   Cd = 1.0d0
   dhw_half_dhw_up = 0.d0
   dhw_half_dhw_dn = 0.d0
+  dhead_up_dhw_up = 0.d0
+  dhead_dn_dhw_dn = 0.d0
 
   head_up = hw_up + zc_up
   head_dn = hw_dn + zc_dn
@@ -1806,37 +1836,40 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   if (head_up>head_dn) then
     mannings_half = mannings_up
     if (hw_up>0.d0) then
-      if (hw_up*Cd>hw_dn) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-        dhw_half_dhw_dn = 0.5d0
-        dhw_half_dhw_up = 0.5d0
-      else
+      !if (hw_up*Cd>hw_dn) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !  dhw_half_dhw_dn = 0.5d0
+      !  dhw_half_dhw_up = 0.5d0
+      !else
         hw_half         = hw_up
         dhw_half_dhw_up = 1.d0
-      endif
+        dhead_up_dhw_up = 1.d0
+      !endif
     else
       hw_half = 0.d0
     endif
   else
     mannings_half = mannings_dn
     if (hw_dn>0.d0) then
-      if (hw_dn*Cd>hw_up) then
-        hw_half = 0.5d0*(hw_up+hw_dn)
-        dhw_half_dhw_up = 0.5d0
-        dhw_half_dhw_dn = 0.5d0
-      else
-        hw_half = hw_up
-        dhw_half_dhw_up = 1.d0
-      endif
+      !if (hw_dn*Cd>hw_up) then
+      !  hw_half = 0.5d0*(hw_up+hw_dn)
+      !  dhw_half_dhw_up = 0.5d0
+      !  dhw_half_dhw_dn = 0.5d0
+      !else
+        hw_half = hw_dn
+        dhw_half_dhw_dn = 1.d0
+        dhead_dn_dhw_dn = 1.d0
+      !endif
     else
       hw_half = 0.d0
     endif
   endif
 
+#if 0
   !
   term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
-          (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
-
+          (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
+          dhw_half_dhw_up
   !
   term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
   term2 = term2 *(-(head_dn-head_up))/2.d0/ &
@@ -1845,16 +1878,103 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   Jup = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
           
   !
+  term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
+          (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
+          dhw_half_dhw_dn
+
   term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
   term2 = term2 *((head_dn-head_up))/2.d0/ &
           (abs((head_dn-head_up) + eps)**(3.d0/2.d0))
   Jdn = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
 
+#endif
+
+  dhead = head_up-head_dn
+
+  term0 = (2.0d0*dhead**2.d0 - head_dn**2.d0 - head_up**2.d0 + 2*head_dn*head_up)
+  term0 = term0/(2.d0*((dhead+eps)**2.d0)*(abs(dhead+eps)**(1.d0/2.d0)))
+
+  if(abs(dhead)<eps*100.d0) then
+    dhw_half_dhw_up=0.d0
+    dhw_half_dhw_dn=0.d0
+    dhead=0.d0
+    term0=0.d0
+  endif
+
+  term1 = (5.d0/3.d0)/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(2.d0/3.d0))
+  term1 = term1*dhead/(abs(dhead+eps)**(1.d0/2.d0))*dhw_half_dhw_up
+
+  term2 = 1.d0/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(5.d0/3.d0))
+  term2 = term0*term2
+
+  Jup_new = (term1+term2)*length
+
+  term1 = (5.d0/3.d0)/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(2.d0/3.d0))
+  term1 = term1*dhead/(abs(dhead+eps)**(1.d0/2.d0))*dhw_half_dhw_dn
+
+  term2 = 1.d0/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(5.d0/3.d0))
+  term2 = -term0*term2
+
+  Jdn_new = (term1+term2)*length
+  Jup=Jup_new
+  Jdn=Jdn_new
+
+  if(option%numerical_derivatives_flow) then
+    call SurfaceFlowDiffusion(hw_up,zc_up,mannings_up, &
+                              hw_dn,zc_dn,mannings_dn, &
+                              dist,length,option,vel,res)
+
+    call SurfaceFlowDiffusion(hw_up+perturbation_tolerance,zc_up,mannings_up, &
+                              hw_dn,zc_dn,mannings_dn, &
+                              dist,length,option,vel,res_pert_up)
+
+    call SurfaceFlowDiffusion(hw_up,zc_up,mannings_up, &
+                              hw_dn+perturbation_tolerance,zc_dn,mannings_dn, &
+                              dist,length,option,vel,res_pert_dn)
+    Jup_pert=(res_pert_up(1)-res(1))/perturbation_tolerance
+    Jdn_pert=(res_pert_dn(1)-res(1))/perturbation_tolerance
+
+    Jup=Jup_pert
+    Jdn=Jdn_pert
+  endif
+
+
 end subroutine SurfaceFlowDiffusionDerivative
 
 ! ************************************************************************** !
-!
-!
+!> This routine resets arrays for time step cut.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/31/12
+! ************************************************************************** !
+subroutine SurfaceFlowTimeCut(surf_realization)
+ 
+  use Surface_Realization_module
+  use Surface_Field_module
+ 
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  type(surface_field_type), pointer :: surf_field
+  
+  PetscErrorCode :: ierr
+
+  surf_field => surf_realization%surf_field
+
+  call VecCopy(surf_field%flow_yy,surf_field%flow_xx,ierr)
+  call SurfaceFlowInitializeTimestep(surf_realization)
+ 
+end subroutine SurfaceFlowTimeCut
+
+! ************************************************************************** !
+!> This routine updates the data prior to time step.
+!!
+!> @author
+!! Gautam Bisht, ORNL
+!!
+!! date: 05/21/12
 ! ************************************************************************** !
 subroutine SurfaceFlowInitializeTimestep(surf_realization)
 
@@ -1931,7 +2051,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
   type(surface_field_type),pointer   :: surf_field
   
   PetscInt             :: local_id, ghosted_id
-  PetscReal, pointer   :: accum_p(:),area_p(:),xx_loc_p(:)
+  PetscReal, pointer   :: accum_p(:),area_p(:),xx_p(:)
   PetscReal            :: rho          ! density      [kg/m^3]
   PetscReal            :: head         ! [m]
 
@@ -1943,7 +2063,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
   call GridVecGetArrayF90(grid, surf_field%flow_accum, accum_p, ierr)
   call GridVecGetArrayF90(grid, surf_field%area, area_p,ierr)
-  call GridVecGetArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid, surf_field%flow_xx, xx_p, ierr)
 
   call density(option%reference_temperature,option%reference_pressure,rho)
 
@@ -1951,11 +2071,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
     ghosted_id = grid%nL2G(local_id)
     
-#if 0
-    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
-    if(head < 1.D-8) head = 0.d0
-#endif    
-    head = xx_loc_p(ghosted_id)
+    head = xx_p(local_id)
     call SurfaceFlowAccumulation(head,area_p(local_id),option, &
                                  accum_p(local_id:local_id))
     call SurfaceFlowAccumulation(head,area_p(1),option, &
@@ -1965,7 +2081,7 @@ subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
   call GridVecRestoreArrayF90(grid ,surf_field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%area, area_p,ierr)
-  call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid, surf_field%flow_xx, xx_p, ierr)
 
 end subroutine SurfaceFlowUpdateFixedAccumPatch
 
@@ -2092,6 +2208,9 @@ subroutine SurfaceBCFluxDerivative(ibndtype,head,slope,mannings, &
 
   PetscInt :: pressure_bc_type
   PetscReal :: flux_dh
+  PetscReal :: J_pert(1:option%nflowdof),vel
+  PetscReal :: res(1)
+  PetscReal :: res_pert(1)
 
   ! Flow  
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
@@ -2108,6 +2227,18 @@ subroutine SurfaceBCFluxDerivative(ibndtype,head,slope,mannings, &
   end select
 
   J(1) = flux_dh*length
+
+  if(option%numerical_derivatives_flow) then
+    call SurfaceBCFlux(ibndtype,head,slope,mannings, &
+                       length,option,vel,res)
+
+    call SurfaceBCFlux(ibndtype,head+perturbation_tolerance,slope,mannings, &
+                       length,option,vel,res_pert)
+
+    J_pert(1)=(res_pert(1)-res(1))/perturbation_tolerance
+    J(1)=J_pert(1)
+  endif
+
 
 end subroutine SurfaceBCFluxDerivative
 

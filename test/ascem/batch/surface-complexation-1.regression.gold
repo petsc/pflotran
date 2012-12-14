@@ -1,0 +1,83 @@
+-- GENERIC: pH --
+      Max:  5.0000000000000E+00
+      Min:  5.0000000000000E+00
+     Mean:  5.0000000000000E+00
+        1:  5.0000000000000E+00
+-- CONCENTRATION: Total H+ --
+      Max:  1.1973159693031E-05
+      Min:  1.1973159693031E-05
+     Mean:  1.1973159693031E-05
+        1:  1.1973159693031E-05
+-- CONCENTRATION: Total Na+ --
+      Max:  9.9987826840307E-02
+      Min:  9.9987826840307E-02
+     Mean:  9.9987826840307E-02
+        1:  9.9987826840307E-02
+-- CONCENTRATION: Total NO3- --
+      Max:  1.0000000000000E-01
+      Min:  1.0000000000000E-01
+     Mean:  1.0000000000000E-01
+        1:  1.0000000000000E-01
+-- CONCENTRATION: Total Zn++ --
+      Max:  1.0000000000000E-07
+      Min:  1.0000000000000E-07
+     Mean:  1.0000000000000E-07
+        1:  1.0000000000000E-07
+-- CONCENTRATION: >FeOH_w Site Density --
+      Max:  7.6355000000000E+04
+      Min:  7.6355000000000E+04
+     Mean:  7.6355000000000E+04
+        1:  7.6355000000000E+04
+-- CONCENTRATION: Free >FeOH_w --
+      Max:  5.0116078057798E+02
+      Min:  5.0116078057798E+02
+     Mean:  5.0116078057798E+02
+        1:  5.0116078057798E+02
+-- CONCENTRATION: >FeOH2+_w --
+      Max:  7.5853753669684E+04
+      Min:  7.5853753669684E+04
+     Mean:  7.5853753669684E+04
+        1:  7.5853753669684E+04
+-- CONCENTRATION: >FeO-_w --
+      Max:  7.5853753674594E-02
+      Min:  7.5853753674594E-02
+     Mean:  7.5853753674594E-02
+        1:  7.5853753674594E-02
+-- CONCENTRATION: >FeOHZn+_w --
+      Max:  9.6959842151303E-03
+      Min:  9.6959842151303E-03
+     Mean:  9.6959842151303E-03
+        1:  9.6959842151303E-03
+-- CONCENTRATION: Total Sorbed H+ --
+      Max:  7.5853668119946E+04
+      Min:  7.5853668119946E+04
+     Mean:  7.5853668119946E+04
+        1:  7.5853668119946E+04
+-- CONCENTRATION: Total Sorbed Na+ --
+      Max:  0.0000000000000E+00
+      Min:  0.0000000000000E+00
+     Mean:  0.0000000000000E+00
+        1:  0.0000000000000E+00
+-- CONCENTRATION: Total Sorbed NO3- --
+      Max:  0.0000000000000E+00
+      Min:  0.0000000000000E+00
+     Mean:  0.0000000000000E+00
+        1:  0.0000000000000E+00
+-- CONCENTRATION: Total Sorbed Zn++ --
+      Max:  9.6959842151303E-03
+      Min:  9.6959842151303E-03
+     Mean:  9.6959842151303E-03
+        1:  9.6959842151303E-03
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:  1.0000000000000E+00
+        1:         1
+-- SOLUTION: Transport --
+   Time (seconds):  0.0000000000000E+00
+   Time Steps:            0
+   Newton Iterations:            0
+   Solver Iterations:            0
+   Time Step Cuts:            0
+   Solution 2-Norm:  1.4181546394152E-01
+   Residual 2-Norm:  0.0000000000000E+00

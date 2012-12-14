@@ -132,6 +132,8 @@ subroutine ImmisSetup(realization)
     cur_level => cur_level%next
   enddo
 
+  call ImmisSetPlotVariables(realization)
+
 end subroutine ImmisSetup
 
 ! ************************************************************************** !
@@ -3106,6 +3108,97 @@ function ImmisGetTecplotHeader(realization, icolumn)
   ImmisGetTecplotHeader = string
 
 end function ImmisGetTecplotHeader
+
+! ************************************************************************** !
+!
+! ImmisSetPlotVariables: Adds variables to be printed to list
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+subroutine ImmisSetPlotVariables(realization)
+  
+  use Realization_module
+  use Output_Aux_module
+  use Variables_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(output_variable_type) :: output_variable
+  
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_list_type), pointer :: list
+  
+  list => realization%output_option%output_variable_list
+  
+  name = 'Temperature'
+  units = 'C'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               TEMPERATURE)
+  
+  name = 'Liquid Pressure'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+                               LIQUID_PRESSURE)
+
+  name = 'Liquid Saturation'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+                               LIQUID_SATURATION)
+
+  name = 'Gas Saturation'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_SATURATION,units, &
+                               GAS_SATURATION)
+
+  name = 'Liquid Density'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_DENSITY)
+
+  name = 'Gas Density'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_DENSITY)
+
+  name = 'Liquid Energy'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_ENERGY)
+
+  name = 'Gas Energy'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_ENERGY)
+
+  name = 'Liquid Viscosity'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_VISCOSITY)
+
+  name = 'Gas Viscosity'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_VISCOSITY)
+
+  name = 'Liquid Mobility'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_MOBILITY)
+
+  name = 'Gas Mobility'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               GAS_MOBILITY)
+
+  name = 'Phase'
+  units = ''
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               PHASE)
+
+end subroutine ImmisSetPlotVariables
 
 ! ************************************************************************** !
 !

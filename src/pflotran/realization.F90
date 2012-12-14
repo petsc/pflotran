@@ -1,9 +1,11 @@
 module Realization_module
 
   use Option_module
+  use Output_Aux_module
   use Input_module
   use Region_module
   use Condition_module
+  use Constraint_module
   use Material_module
   use Saturation_Function_module
   use Dataset_Aux_module
@@ -13,6 +15,7 @@ module Realization_module
   use Debug_module
   use Velocity_module
   use Waypoint_module
+  use Output_Aux_module
   
   use Reaction_Aux_module
   
@@ -1013,6 +1016,7 @@ subroutine RealProcessTranConditions(realization)
 
   use String_module
   use Reaction_module
+  use Constraint_module
   
   implicit none
   
@@ -2332,6 +2336,7 @@ subroutine RealizationDestroy(realization)
   call FieldDestroy(realization%field)
 
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
+  call OutputOptionDestroy(realization%output_option)
   call RegionDestroyList(realization%regions)
   
   call FlowConditionDestroyList(realization%flow_conditions)

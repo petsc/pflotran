@@ -1,6 +1,7 @@
 module Output_module
 
-  use Logging_module  
+  use Logging_module 
+  use Output_Aux_module
   
   implicit none
 
@@ -36,6 +37,9 @@ module Output_module
   PetscBool :: hdf5_first
   PetscBool :: mass_balance_first
   PetscBool :: hydrograph_first
+#ifdef SURFACE_FLOW
+  PetscBool :: surf_hdf5_first
+#endif
 
   interface Output
     module procedure Output1
@@ -100,9 +104,24 @@ module Output_module
 #endif
   end interface
 
+  interface OutputHDF5UGridXDMF
+    module procedure OutputHDF5UGridXDMF1
+#ifdef SURFACE_FLOW
+    module procedure OutputHDF5UGridXDMF2
+#endif
+  end interface
+
+  interface WriteHDF5CoordinatesUGridXDMF
+    module procedure WriteHDF5CoordinatesUGridXDMF1
+#ifdef SURFACE_FLOW
+    module procedure WriteHDF5CoordinatesUGridXDMF2
+#endif
+  end interface
+
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
-            OutputPermeability, OutputPrintCouplers
+            OutputPermeability, OutputPrintCouplers, &
+            OutputGetCellCenteredVelocities
 
 contains
 
@@ -131,16 +150,18 @@ subroutine OutputInit(realization,num_steps)
     hdf5_first = PETSC_TRUE
     mass_balance_first = PETSC_TRUE
     hydrograph_first = PETSC_TRUE
+#ifdef SURFACE_FLOW
+    surf_hdf5_first = PETSC_TRUE
+#endif
   else
     observation_first = PETSC_FALSE
     hdf5_first = PETSC_FALSE
     mass_balance_first = PETSC_FALSE
     hydrograph_first = PETSC_FALSE
-  endif
-
-#ifdef GLENN_NEW_IO
-  call OutputOptionPlotVariablesInit(realization%output_option)
+#ifdef SURFACE_FLOW
+    surf_hdf5_first = PETSC_FALSE
 #endif
+  endif
 
 end subroutine OutputInit
 
@@ -154,8 +175,7 @@ end subroutine OutputInit
 subroutine Output1(realization,plot_flag,transient_plot_flag)
 
   use Realization_module, only : realization_type
-  use Option_module, only : OptionCheckTouch, option_type, &
-                            output_option_type, printMsg
+  use Option_module, only : OptionCheckTouch, option_type, printMsg
   
   implicit none
   
@@ -193,7 +213,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   if (plot_flag) then
   
     if (realization%output_option%print_hdf5) then
-      call PetscGetTime(tstart,ierr) 
+      call PetscGetTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       call OutputHDF5(realization)
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
@@ -216,16 +236,8 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
       select case(realization%output_option%tecplot_format)
         case (TECPLOT_POINT_FORMAT)
           call OutputTecplotPoint(realization)
-        case (TECPLOT_BLOCK_FORMAT)
+        case (TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
           call OutputTecplotBlock(realization)
-        case (TECPLOT_FEBRICK_FORMAT)
-!geh          if(option%mycommsize == 1 ) then
-            call OutputTecplotFEBrick(realization)
-!geh          else
-!geh            option%io_buffer = 'FEBrick output is currently supported for ' //&
-!geh                               ' single proc only'
-!geh            call printMsg(option)
-!geh          endif  
       end select
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
@@ -261,8 +273,6 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
     if (option%compute_statistics) then
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
-!      call OutputMassBalance(realization)
-!      call ComputeFlowMassBalance(realization)
     endif
   
     realization%output_option%plot_number = realization%output_option%plot_number + 1
@@ -271,7 +281,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   
   if (transient_plot_flag) then
     if (option%compute_mass_balance_new) then
-      call OutputMassBalanceNew(realization)
+      call OutputMassBalance(realization)
     endif
     call OutputObservation(realization)
   endif
@@ -458,57 +468,11 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
             '"Y [m]",' // &
             '"Z [m]"'
 
-  ! write flow variables
-  header2 = ''
-  select case(option%iflowmode)
-    case (MIS_MODE)
-      header2 = MiscibleGetTecplotHeader(realization,icolumn)
-    case (IMS_MODE)
-      header2 = ImmisGetTecplotHeader(realization,icolumn)
-    case (MPH_MODE)
-      header2 = MphaseGetTecplotHeader(realization,icolumn)
-    case (FLASH2_MODE)
-      header2 = FLASH2GetTecplotHeader(realization,icolumn)
-    case(THC_MODE)
-      header2 = THCGetTecplotHeader(realization,icolumn)
-    case(THMC_MODE)
-      header2 = THMCGetTecplotHeader(realization,icolumn)
-    case(RICHARDS_MODE)
-      header2 = RichardsGetTecplotHeader(realization,icolumn)
-    case(G_MODE)
-      header2 = GeneralGetTecplotHeader(realization,icolumn)
-  end select
+  header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
+                                      icolumn,PETSC_TRUE)
+
   header = trim(header) // trim(header2)
-
-  ! write transport variables
-  if (option%ntrandof > 0) then
-    string = ''
-    header2 = RTGetTecplotHeader(realization,string,icolumn)
-    header = trim(header) // trim(header2)
-  endif
-
-  ! add porosity to header
-  if (output_option%print_porosity) then
-    header = trim(header) // ',"Porosity"'
-  endif
-
-  ! write material ids
-  header = trim(header) // ',"Material_ID"'
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      header = trim(header) // ',"' // &
-        trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                        option)) // &
-        '"'
-    enddo
-  endif
-
   write(fid,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO
-  call OutputOptionPlotVarFinalize(output_option)
-#endif
 
   ! count vars in header
   quote_count = 0
@@ -532,6 +496,176 @@ subroutine OutputTecplotHeader1(fid,realization,icolumn)
   write(fid,'(a)') trim(string)
 
 end subroutine OutputTecplotHeader1
+
+! ************************************************************************** !
+!> This subroutine writes header to a .xmf file
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/12
+! ************************************************************************** !
+!subroutine OutputXMFHeader(fid,realization,filename)
+subroutine OutputXMFHeader(fid,nmax,xmf_vert_len,ngvert,filename)
+
+  use Realization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+
+  use Mphase_module
+  use Immis_module
+  use THC_module
+  use THMC_module
+  use Richards_module
+  use Flash2_module
+  use Miscible_module
+  use General_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  PetscInt :: fid, vert_count
+!  type(realization_type) :: realization
+  PetscInt :: nmax,xmf_vert_len,ngvert
+  character(len=MAXSTRINGLENGTH) :: filename
+
+  character(len=MAXHEADERLENGTH) :: header, header2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+!  type(output_option_type), pointer :: output_option
+  PetscInt :: comma_count, quote_count, variable_count
+  PetscInt :: i
+  
+!  patch => realization%patch
+!  grid => patch%grid
+!  option => realization%option
+!  output_option => realization%output_option
+
+  string="<?xml version=""1.0"" ?>"
+  write(fid,'(a)') trim(string)
+  
+  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
+  write(fid,'(a)') trim(string)
+
+  string="<Xdmf>"
+  write(fid,'(a)') trim(string)
+
+  string="  <Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="    <Grid Name=""Mesh"">"
+  write(fid,'(a)') trim(string)
+
+!  write(string2,*) grid%nmax
+  write(string2,*) nmax
+  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
+    trim(adjustl(string2)) // """ >"
+  write(fid,'(a)') trim(string)
+
+!  write(string2,*) realization%output_option%xmf_vert_len
+  write(string2,*) xmf_vert_len
+  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
+    trim(adjustl(string2)) // """>"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Cells"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Topology>"
+  write(fid,'(a)') trim(string)
+
+  string="      <Geometry GeometryType=""XYZ"">"
+  write(fid,'(a)') trim(string)
+
+!  write(string2,*) grid%unstructured_grid%num_vertices_global
+  write(string2,*) ngvert
+  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  write(fid,'(a)') trim(string)
+
+  string="          "//trim(filename) //":/Domain/Vertices"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem>"
+  write(fid,'(a)') trim(string)
+
+  string="      </Geometry>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFHeader
+
+! ************************************************************************** !
+!> This subroutine writes footer to a .xmf file
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/12
+! ************************************************************************** !
+subroutine OutputXMFFooter(fid)
+
+  implicit none
+
+  PetscInt :: fid
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  string="    </Grid>"
+  write(fid,'(a)') trim(string)
+
+  string="  </Domain>"
+  write(fid,'(a)') trim(string)
+
+  string="</Xdmf>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFFooter
+
+! ************************************************************************** !
+!> This subroutine writes an attribute to a .xmf file
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/12
+! ************************************************************************** !
+subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
+
+  implicit none
+
+  PetscInt :: fid,nmax
+  
+  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
+  character(len=MAXSTRINGLENGTH) :: string,string2
+  string="      <Attribute Name=""" // trim(attname) // &
+    """ AttributeType=""Scalar""  Center=""Cell"">"
+  write(fid,'(a)') trim(string)
+
+!  write(string2,*) grid%nmax
+  write(string2,*) nmax
+  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(att_datasetname)
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string)
+
+end subroutine OutputXMFAttribute
 
 ! ************************************************************************** !
 !
@@ -659,6 +793,7 @@ subroutine OutputTecplotBlock(realization)
   type(patch_type), pointer :: patch 
   type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec
   Vec :: natural_vec
@@ -696,371 +831,23 @@ subroutine OutputTecplotBlock(realization)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
   endif
 
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
-         FLASH2_MODE,G_MODE)
-
-      ! temperature
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! liquid pressure
-      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-
-      ! gas pressure
-      select case(option%iflowmode)
-        case(MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! state
-      select case(option%iflowmode)
-        case(G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,STATE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-      end select
-      
-      ! liquid saturation
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! gas saturation
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-#ifdef ICE    
-      ! gas saturation
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-      
-      ! ice saturation
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! ice density
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-#endif
-
-      ! liquid density
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas density
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-      ! liquid energy
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas energy
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! liquid viscosity
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas viscosity
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-      ! liquid mobility
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas mobility
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-      select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,MIS_MODE,G_MODE)
-          ! liquid mole fractions
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          enddo
-      end select
-  
-      select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,G_MODE)
-          ! gas mole fractions
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          enddo
-      end select 
-
-      ! phase
-      select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,IMS_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-      end select
-
-#if 0      
-      ! Volume Fraction
-      if (option%rk > 0.d0) then
-        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,ZERO_INTEGER)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      endif
-#endif    
-      
-    case default
-  
-  end select
-  
-  if (option%ntrandof > 0) then
-    if (associated(reaction)) then
-      if (reaction%print_pH .and. associated(reaction%species_idx)) then
-        if (reaction%species_idx%h_ion_id > 0) then
-          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      endif
-      if (reaction%print_total_component) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_free_ion) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_total_bulk) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_act_coefs) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      do i=1,reaction%neqcplx
-        if (reaction%secondary_species_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nmnrl
-        if (reaction%mineral%mnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          !TODO(geh): fix
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          !TODO(geh): fix
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      if (associated(reaction%kd_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%kd_print(i)) then      
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%total_sorb_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_mobile_print)) then
-        do i=1,reaction%ncollcomp
-          if (reaction%total_sorb_mobile_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_colloid) then
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_age) then
-        if (reaction%species_idx%tracer_age_id > 0) then
-          call OutputGetVarFromArray(realization,global_vec,AGE, &
-            reaction%species_idx%tracer_age_id,reaction%species_idx%tracer_aq_id)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      endif
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                        natural_vec,ONEDOF)
+    if (cur_variable%iformat == 0) then
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+                                      TECPLOT_REAL)
+    else
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+                                      TECPLOT_INTEGER)
     endif
-  endif
-
-  ! porosity
-  if (output_option%print_porosity) then
-    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-  endif
-
-  ! material id
-  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-                                    isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-    enddo
-  endif
+    cur_variable => cur_variable%next
+  enddo
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -1109,460 +896,6 @@ subroutine OutputTecplotBlock(realization)
       
 end subroutine OutputTecplotBlock
 
-! **************************************************************************' !
-!
-! OutputTecplotFEBrick: Print to Tecplot file in FEBRICK format
-! author: Gautam Bisht
-! date: 11/01/2011
-!
-! ************************************************************************** !  
-subroutine OutputTecplotFEBrick(realization)
-
-  use Realization_module
-  use Discretization_module
-  use Grid_module
-  use Unstructured_Grid_Aux_module
-  use Option_module
-  use Field_module
-  use Patch_module
-  
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
-  use Reaction_Aux_module
- 
-  implicit none
-
-  type(realization_type) :: realization
-  
-  PetscInt :: i, comma_count, quote_count
-  PetscInt, parameter :: icolumn = -1
-  character(len=MAXSTRINGLENGTH) :: filename, string, string2
-  character(len=MAXHEADERLENGTH) :: header, header2
-  character(len=MAXWORDLENGTH) :: word
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(discretization_type), pointer :: discretization
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch 
-  type(reaction_type), pointer :: reaction 
-  type(output_option_type), pointer :: output_option
-  PetscReal, pointer :: vec_ptr(:)
-  Vec :: global_vertex_vec
-  Vec :: global_cconn_vec
-  Vec :: global_vec
-  Vec :: natural_vec
-  PetscInt :: ivar, isubvar, var_type
-  
-  type(ugdm_type), pointer :: ugdm_element
-  
-  discretization => realization%discretization
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  field => realization%field
-  reaction => realization%reaction
-  output_option => realization%output_option
-
-  filename = OutputFilename(output_option,option,'tec','')
-    
-  if (option%myrank == option%io_rank) then
-    option%io_buffer = '--> write tecplot output file: ' // trim(filename)
-    call printMsg(option)
-    open(unit=OUTPUT_UNIT,file=filename,action="write")
-    call OutputTecplotHeader(OUTPUT_UNIT,realization,icolumn)    
-  endif
-
-  ! write vertices
-  call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
-
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                  option)  
-  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
-                                  option)  
-  
-  select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
-         FLASH2_MODE,G_MODE)
-
-      ! temperature
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! liquid pressure
-      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-
-      ! gas pressure
-      select case(option%iflowmode)
-        case(MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! state
-      select case(option%iflowmode)
-        case(G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,STATE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-      end select
-      
-      ! liquid saturation
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! gas saturation
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-#ifdef ICE
-      ! gas saturation
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-      
-      ! ice saturation
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! ice density
-      select case(option%iflowmode)
-        case(THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-#endif
-
-      ! liquid density
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas density
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-      ! liquid energy
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas energy
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-
-      ! liquid viscosity
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas viscosity
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-      ! liquid mobility
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-     ! gas mobility
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      end select
-    
-      select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          ! liquid mole fractions
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          enddo
-      end select
-  
-      select case(option%iflowmode)
-        case(MPH_MODE,FLASH2_MODE,G_MODE)
-          ! gas mole fractions
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          enddo
-      end select 
-
-      ! phase
-      select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-      end select
-
-#if 0      
-      ! Volume Fraction
-      if (option%rk > 0.d0) then
-        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,ZERO_INTEGER)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-      endif
-#endif    
-      
-    case default
-  
-  end select
-  
-  if (option%ntrandof > 0) then
-    if (associated(reaction)) then
-      if (reaction%print_pH .and. associated(reaction%species_idx)) then
-        if (reaction%species_idx%h_ion_id > 0) then
-          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      endif
-      if (reaction%print_total_component) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_free_ion) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_total_bulk) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_act_coefs) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      do i=1,reaction%neqcplx
-        if (reaction%secondary_species_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%mineral%nmnrl
-        if (reaction%mineral%mnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo      
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-        !TODO(geh): fix
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
-      if (associated(reaction%kd_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%kd_print(i)) then      
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%total_sorb_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_mobile_print)) then
-        do i=1,reaction%ncollcomp
-          if (reaction%total_sorb_mobile_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_colloid) then
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
-            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-            call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-          endif
-        enddo
-      endif
-      if (reaction%print_age) then
-        if (reaction%species_idx%tracer_age_id > 0) then
-          call OutputGetVarFromArray(realization,global_vec,AGE, &
-            reaction%species_idx%tracer_age_id,reaction%species_idx%tracer_aq_id)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-        endif
-      endif
-    endif
-  endif
-
-  ! write out porosity
-  if (output_option%print_porosity) then
-    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
-    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
-  endif
-  
-  ! material id
-  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-                                    isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-    enddo
-  endif
-
-  call VecDestroy(natural_vec,ierr)
-  call VecDestroy(global_vec,ierr)
-  
-  ! write vertices
-  call WriteTecplotUGridElements(OUTPUT_UNIT,realization)
-
-  if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
-
-end subroutine OutputTecplotFEBrick
-
 ! ************************************************************************** !
 !
 ! OutputVelocitiesTecplotBlock: Print velocities to Tecplot file in BLOCK format
@@ -1579,6 +912,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   use Option_module
   use Field_module
   use Patch_module
+  use Variables_module
   
   implicit none
 
@@ -1660,28 +994,28 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
   endif
   
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
   if (option%nphase > 1) then
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
 
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
   endif
@@ -2065,6 +1399,7 @@ subroutine OutputTecplotPoint(realization)
   type(patch_type), pointer :: patch 
   type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -2107,384 +1442,23 @@ subroutine OutputTecplotPoint(realization)
     write(OUTPUT_UNIT,1000,advance='no') grid%y(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') grid%z(ghosted_id)
 
-    select case(option%iflowmode)
-      case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE, &
-           MIS_MODE,G_MODE)
-
-        ! temperature
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,TEMPERATURE, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-        ! liquid pressure
-        value = RealizGetDatasetValueAtCell(realization,LIQUID_PRESSURE, &
-                                            ZERO_INTEGER,ghosted_id)
+    ! loop over variables and write to file
+    cur_variable => output_option%output_variable_list%first
+    do
+      if (.not.associated(cur_variable)) exit
+      value = RealizGetDatasetValueAtCell(realization,cur_variable%ivar, &
+                                          cur_variable%isubvar,ghosted_id)
+      if (cur_variable%iformat == 0) then
         write(OUTPUT_UNIT,1000,advance='no') value
-
-        ! gas pressure
-        select case(option%iflowmode)
-          case(MPH_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_PRESSURE, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-        ! state
-        select case(option%iflowmode)
-          case(G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,STATE, &
-                                                ZERO_INTEGER,ghosted_id)
-           write(OUTPUT_UNIT,1001,advance='no') int(value)
-        end select
-
-        ! liquid saturation
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-        ! gas saturation
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-#ifdef ICE
-        ! gas saturation
-        select case(option%iflowmode)
-          case(THC_MODE,THMC_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-        
-        ! ice saturation
-        select case(option%iflowmode)
-          case(THC_MODE,THMC_MODE)
-            value = RealizGetDatasetValueAtCell(realization,ICE_SATURATION, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-        ! ice density
-        select case(option%iflowmode)
-          case(THC_MODE,THMC_MODE)
-            value = RealizGetDatasetValueAtCell(realization,ICE_DENSITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-#endif      
-
-        ! liquid density
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-      
-       ! gas density
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_DENSITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-        ! liquid energy
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-      
-       ! gas energy
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE,G_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_ENERGY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-
-        ! liquid viscosity
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE)
-            value = RealizGetDatasetValueAtCell(realization,LIQUID_VISCOSITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-      
-       ! gas viscosity
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_VISCOSITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-      
-        ! liquid mobility
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,IMS_MODE)
-            value = RealizGetDatasetValueAtCell(realization,LIQUID_MOBILITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-      
-       ! gas mobility
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE)
-            value = RealizGetDatasetValueAtCell(realization,GAS_MOBILITY, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-        end select
-      
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,THC_MODE,THMC_MODE,MIS_MODE,G_MODE)
-            ! liquid mole fractions
-            do i=1,option%nflowspec
-              value = RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            enddo
-        end select
-    
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,G_MODE)
-            ! gas mole fractions
-            do i=1,option%nflowspec
-              value = RealizGetDatasetValueAtCell(realization,GAS_MOLE_FRACTION, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            enddo
-        end select 
-
-        ! phase
-        select case(option%iflowmode)
-          case(MPH_MODE,FLASH2_MODE,IMS_MODE)
-            value = RealizGetDatasetValueAtCell(realization,PHASE, &
-                                                ZERO_INTEGER,ghosted_id)
-            write(OUTPUT_UNIT,1001,advance='no') int(value)
-        end select
-
-      case default
-    
-    end select
-    
-    if (option%ntrandof > 0) then
-      if (associated(reaction)) then
-        if (reaction%print_pH .and. associated(reaction%species_idx)) then
-          if (reaction%species_idx%h_ion_id > 0) then
-            value = RealizGetDatasetValueAtCell(realization,PH, &
-                                              reaction%species_idx%h_ion_id,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        endif
-        if (reaction%print_total_component) then
-          do i=1,reaction%naqcomp
-            if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        if (reaction%print_free_ion) then
-          do i=1,reaction%naqcomp
-            if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        if (reaction%print_total_bulk) then
-          do i=1,reaction%naqcomp
-            if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,TOTAL_BULK, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        if (reaction%print_act_coefs) then
-          do i=1,reaction%naqcomp
-            if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        do i=1,reaction%neqcplx
-          if (reaction%secondary_species_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,reaction%print_secondary_conc_type, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%mineral%nkinmnrl
-          if (reaction%mineral%kinmnrl_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%mineral%nkinmnrl
-          if (reaction%mineral%kinmnrl_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,MINERAL_RATE, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%mineral%nmnrl
-          if (reaction%mineral%mnrl_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,MINERAL_SATURATION_INDEX, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%surface_complexation%nsrfcplxrxn
-          if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,SURFACE_SITE_DENSITY, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%surface_complexation%nsrfcplxrxn
-          if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%surface_complexation%nsrfcplx
-          if (reaction%surface_complexation%srfcplx_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-          if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          !TODO(geh): fix
-            value = RealizGetDatasetValueAtCell(realization,KIN_SURFACE_CMPLX_FREE, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        do i=1,reaction%surface_complexation%nkinsrfcplx
-          if (reaction%surface_complexation%srfcplx_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,KIN_SURFACE_CMPLX, &
-                                                i,ghosted_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        enddo
-        if (associated(reaction%kd_print)) then
-          do i=1,reaction%naqcomp
-            if (reaction%kd_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,PRIMARY_KD, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        if (associated(reaction%total_sorb_print)) then
-          do i=1,reaction%naqcomp
-            if (reaction%total_sorb_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        if (associated(reaction%total_sorb_mobile_print)) then
-          do i=1,reaction%ncollcomp
-            if (reaction%total_sorb_mobile_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-        endif
-        if (reaction%print_colloid) then
-          do i=1,reaction%ncoll
-            if (reaction%colloid_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,COLLOID_MOBILE, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo
-          do i=1,reaction%ncoll
-            if (reaction%colloid_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE, &
-                                                  i,ghosted_id)
-              write(OUTPUT_UNIT,1000,advance='no') value
-            endif
-          enddo        
-        endif        
-        if (reaction%print_age) then
-          if (reaction%species_idx%tracer_age_id > 0) then
-            value = RealizGetDatasetValueAtCell(realization,AGE, &
-              reaction%species_idx%tracer_age_id,ghosted_id, &
-              reaction%species_idx%tracer_aq_id)
-            write(OUTPUT_UNIT,1000,advance='no') value
-          endif
-        endif
+      else
+        write(OUTPUT_UNIT,1001,advance='no') int(value)
       endif
-    endif
-    
-    ! porosity
-    if (output_option%print_porosity) then
-      value = RealizGetDatasetValueAtCell(realization,POROSITY, &
-                                          ZERO_INTEGER,ghosted_id)
-      write(OUTPUT_UNIT,1000,advance='no') value
-    endif
-    
-    ! material id
-    value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
-                                            ZERO_INTEGER,ghosted_id)
-    write(OUTPUT_UNIT,1001,advance='no') int(value)
-
-    if (associated(output_option%plot_variables)) then
-      do i = 1, size(output_option%plot_variables)
-        call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-                                      isubvar,var_type,option)
-        value = RealizGetDatasetValueAtCell(realization,ivar, &
-                                            isubvar,ghosted_id)
-        if (var_type == INT_VAR) then
-          if (abs(value) < 1.d1) then
-            write(OUTPUT_UNIT,'(i3,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d2) then
-            write(OUTPUT_UNIT,'(i4,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d3) then
-            write(OUTPUT_UNIT,'(i5,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d4) then
-            write(OUTPUT_UNIT,'(i6,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d5) then
-            write(OUTPUT_UNIT,'(i7,1x)',advance='no') int(value)
-          else if (abs(value) < 1.d6) then
-            write(OUTPUT_UNIT,'(i8,1x)',advance='no') int(value)
-          else
-            write(OUTPUT_UNIT,'(i9,1x)',advance='no') int(value)
-          endif
-        else
-          write(OUTPUT_UNIT,1000,advance='no') value
-        endif
-      enddo
-    endif
+      cur_variable => cur_variable%next
+    enddo
 
     write(OUTPUT_UNIT,1009) 
 
   enddo
-  
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
@@ -2509,6 +1483,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   use Option_module
   use Field_module
   use Patch_module
+  use Variables_module
   
   implicit none
 
@@ -2584,9 +1559,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vz,GLOBAL, &
                                   option)  
   
-  call GetCellCenteredVelocities(realization,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
-  call GetCellCenteredVelocities(realization,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
-  call GetCellCenteredVelocities(realization,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
 
   call GridVecGetArrayF90(grid,global_vec_vx,vec_ptr_vx,ierr)
   call GridVecGetArrayF90(grid,global_vec_vy,vec_ptr_vy,ierr)
@@ -2645,6 +1620,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   use Grid_module
   use Unstructured_Grid_Aux_module
   use Patch_module
+  use Variables_module
   
   implicit none
 
@@ -2775,6 +1751,7 @@ subroutine WriteTecplotUGridVertices1(fid,realization)
   use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
+  use Variables_module
 
   implicit none
 
@@ -3546,6 +2523,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   use Realization_module
   use Grid_module
   use Option_module
+  use Output_Aux_module
   use Patch_module
   use Region_module
   use Utility_module, only : BestFloat
@@ -3664,126 +2642,10 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   option => realization%option
   output_option => realization%output_option
   
-  header = ''
-
-  select case(option%iflowmode)
-    case (IMS_MODE)
-      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
-    case (MPH_MODE)
-      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Pl','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Pg','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'kvrg','[1/sPa]',cell_string,icolumn)
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xl(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xg(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-      call OutputAppendToHeader(header,'Phase','',cell_string,icolumn)
-    case (FLASH2_MODE)
-      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sg','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'dl','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'dg','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Ug','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'visl','[sPa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'visg','[sPa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'kvrl','[1/sPa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'kvrg','[1/sPa]',cell_string,icolumn)
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xl(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xg(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-      call OutputAppendToHeader(header,'Phase','',cell_string,icolumn)
-    case (G_MODE)
-      call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'State','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Sat(l)','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Sat(g)','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Rho(l)','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'Rho(g)','[kg/m^3]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'U(l)','[kJ/mol]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'U(g)','[kJ/mol]',cell_string,icolumn)
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xl(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xg(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-    case(THC_MODE,THMC_MODE,RICHARDS_MODE)
-      if (option%iflowmode == THC_MODE .or. option%iflowmode == THMC_MODE) then
-        call OutputAppendToHeader(header,'T','[C]',cell_string,icolumn)
-      endif
-      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'sl','',cell_string,icolumn)
-      if (option%iflowmode == THC_MODE .or. option%iflowmode == THMC_MODE) then
-        call OutputAppendToHeader(header,'Ul','[kJ/mol]',cell_string,icolumn)
-        do i = 1, option%nflowspec
-          write(string,'(i2)') i
-          string = 'Xl(' // trim(adjustl(string)) // ')'
-          call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-        enddo
-      endif
-    case(MIS_MODE)
-      call OutputAppendToHeader(header,'P','[Pa]',cell_string,icolumn)
-      call OutputAppendToHeader(header,'dl [kg/m^3]','',cell_string,icolumn)
-      call OutputAppendToHeader(header,'visl [Pa s]','',cell_string,icolumn)
-      do i = 1, option%nflowspec
-        write(string,'(i2)') i
-        string = 'Xl(' // trim(adjustl(string)) // ')'
-        call OutputAppendToHeader(header,string,'',cell_string,icolumn)
-      enddo
-    case default
-      header = ''
-  end select
+  header = OutputVariableListToHeader(output_option%output_variable_list, &
+                                      cell_string,icolumn,PETSC_FALSE)
   write(fid,'(a)',advance="no") trim(header)
-  
-  ! reactive transport
-  if (option%ntrandof > 0) then
-    header = RTGetTecplotHeader(realization,cell_string,icolumn)
-    write(fid,'(a)',advance="no") trim(header)
-  endif
 
-  ! add porosity to header
-  if (output_option%print_porosity) then
-    header = ''
-    call OutputAppendToHeader(header,'Porosity','',cell_string,icolumn)
-    write(fid,'(a)',advance="no") trim(header)
-  endif
-  
   if (print_velocities) then
     header = ''
     write(string,'(''[m/'',a,'']'')') trim(realization%output_option%tunit)
@@ -3901,7 +2763,8 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   use Field_module
   use Patch_module
   use Reaction_Aux_module
-
+  use Variables_module
+  
   implicit none
   
   PetscInt :: fid, i
@@ -4242,6 +3105,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   use Field_module
   use Patch_module
   use Reaction_Aux_module
+  use Variables_module
   
   use Structured_Grid_module
 
@@ -5212,6 +4076,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
   use Grid_module
   use Field_module
   use Patch_module
+  use Variables_module
 
   implicit none
   
@@ -5296,6 +4161,7 @@ subroutine OutputVTK(realization)
   
   use Reactive_Transport_module
   use Reaction_Aux_module
+  use Variables_module
  
   implicit none
 
@@ -5750,6 +4616,7 @@ subroutine OutputVelocitiesVTK(realization)
   use Option_module
   use Field_module
   use Patch_module
+  use Variables_module
   
   implicit none
 
@@ -5811,33 +4678,33 @@ subroutine OutputVelocitiesVTK(realization)
   call WriteVTKGrid(OUTPUT_UNIT,realization)
 
   word = 'Vlx'
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
   word = 'Vly'
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
   word = 'Vlz'
-  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
   if (option%nphase > 1) then
     word = 'Vgx'
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
     word = 'Vgy'
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
 
     word = 'Vgz'
-    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization,word,natural_vec,VTK_REAL)
   endif
@@ -6257,6 +5124,7 @@ subroutine OutputHDF5(realization)
 
   use hdf5
   use HDF5_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -6287,6 +5155,7 @@ subroutine OutputHDF5(realization)
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   
   Vec :: global_vec
   Vec :: natural_vec
@@ -6313,7 +5182,8 @@ subroutine OutputHDF5(realization)
   output_option => realization%output_option
 
   if (realization%discretization%itype == UNSTRUCTURED_GRID) then
-    call OutputHDF5UGrid(realization)
+    !call OutputHDF5UGrid(realization)
+    call OutputHDF5UGridXDMF(realization)
     return
   endif
   
@@ -6461,407 +5331,57 @@ subroutine OutputHDF5(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
 
-  select case(option%iflowmode)
-  
-    case(FLASH2_MODE,MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,IMS_MODE, &
-         RICHARDS_MODE,G_MODE)
-
-      ! temperature
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
-          string = "Temperature"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-      ! liquid pressure
-      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-      string = "Liquid Pressure"
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
- 
-      ! liquid saturation
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-          string = "Liquid Saturation"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
-      end select
-
-      ! gas pressure and saturation
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
-          string = "Gas Pressure"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          string = "Gas Saturation"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-#ifdef ICE
-      ! ice saturation
-      select case(option%iflowmode)
-        case (THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
-          string = "Ice Saturation"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-      ! ice density
-      select case(option%iflowmode)
-        case (THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
-          string = "Ice Density"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-#endif
-      
-      ! liquid density
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
-          string = "Liquid Density"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas density
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
-          string = "Gas Density"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! liquid viscosity
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
-          string = "Liquid Viscosity"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas viscosity
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
-          string = "Gas Viscosity"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! liquid mobility
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
-          string = "Liquid Mobility"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas mobility
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
-          string = "Gas Mobility"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! liquid energy
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
-          string = "Liquid Energy"
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas energy
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)    
-          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
-          string = "Gas Energy"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-    
-      ! liquid mole fractions
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
-            write(string,'(''Liquid Mole Fraction-'',i1)') i
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          enddo
-      end select
-      
-      ! gas mole fractions
-      select case(option%iflowmode)
-        case (MPH_MODE,FLASH2_MODE,G_MODE)      
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-            write(string,'(''Gas Mole Fraction-'',i1)') i
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          enddo
-      end select
- 
-      ! phase
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          string = "Phase"
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-                
-      end select
-  
-    case default
-
-  end select
-
-  if (option%ntrandof > 0) then
-    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
-      free_mol_char = 'm'
-    else
-      free_mol_char = 'M'
-    endif  
-    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
-      tot_mol_char = 'm'
-    else
-      tot_mol_char = 'M'
-    endif  
-    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
-      tot_mol_char = 'm'
-    else
-      tot_mol_char = 'M'
-    endif  
-    if (associated(reaction)) then
-      if (reaction%print_pH .and. associated(reaction%species_idx)) then
-        if (reaction%species_idx%h_ion_id > 0) then
-          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
-          write(string,'(''pH'')')
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      endif
-      if (reaction%print_total_component) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
-            write(string,'(a,''_tot_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_free_ion) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
-            write(string,'(a,''_free_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif      
-      if (reaction%print_total_bulk) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
-            write(string,'(a,''_total_bulk'')') trim(reaction%primary_species_names(i))
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_act_coefs) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_gam'
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      do i=1,reaction%neqcplx
-        if (reaction%secondary_species_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
-          write(string,'(a,a)') trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%mineral%nmnrl
-        if (reaction%mineral%mnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
-          write(string,'(a)') trim(reaction%mineral%mineral_names(i)) // '_si'
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i) // '_den'
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      
-! Kinetic surface complexes
-
-      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-        !TODO(geh): fix
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      
-! Kd
-
-      if (associated(reaction%kd_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%kd_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%total_sorb_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_mobile_print)) then
-        do i=1,reaction%ncollcomp
-          if (reaction%total_sorb_mobile_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
-            write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_colloid) then
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
-            write(string,'(a,''_col_mob_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
-            write(string,'(a,''_col_imb_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-
-!     Age
-  
-      if (reaction%print_age) then
-        if (reaction%species_idx%tracer_age_id > 0) then
-
-          call OutputGetVarFromArray(realization,global_vec,AGE, &
-            reaction%species_idx%tracer_age_id, &
-            reaction%species_idx%tracer_aq_id)
-            
-          write(string,'(''Tracer_Age'')')
-          
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      endif
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    string = cur_variable%name
+    if (len_trim(cur_variable%units) > 0) then
+      word = cur_variable%units
+      call HDF5MakeStringCompabible(word)
+      string = trim(string) // ' [' // trim(word) // ']'
     endif
-  endif
-  
-  ! porosity
-  if (output_option%print_porosity) then
-    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
-    string = "Porosity"
-    call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                       grp_id,H5T_NATIVE_DOUBLE)
-  endif
-  
-  ! material id
-  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-  string = "Material_ID"
-  call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
+    if (cur_variable%iformat == 0) then
+      call HDF5WriteStructDataSetFromVec(string,realization, &
+                                         global_vec,grp_id,H5T_NATIVE_DOUBLE)
+    else
+      call HDF5WriteStructDataSetFromVec(string,realization, &
+                                         global_vec,grp_id,H5T_NATIVE_INTEGER)
+    endif
+    cur_variable => cur_variable%next
+  enddo
 
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      word = trim(output_option%plot_variables(i))
-      call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      string = PatchGetVarNameFromKeyword(word,option)
-      if (var_type == INT_VAR) then
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,HDF_NATIVE_INTEGER) 
-      else
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,H5T_NATIVE_DOUBLE) 
-      endif
-    enddo
-  endif
-  
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
     call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
     call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
     call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
         string = "Gas X-Velocity"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
@@ -6939,6 +5459,7 @@ subroutine OutputMAD(realization)
   use Field_module
   use Patch_module
   use Reaction_Aux_module
+  use Variables_module
  
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -7356,6 +5877,7 @@ end subroutine WriteHDF5Coordinates
 subroutine GetCoordinates(grid,vec,direction)
 
   use Grid_module
+  use Variables_module
   
   implicit none
   
@@ -7397,6 +5919,7 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
 
   use Grid_module
   use Option_module
+  use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
   
   implicit none
   
@@ -7788,13 +6311,13 @@ end subroutine OutputGetVarFromArray1
 
 ! ************************************************************************** !
 !
-! GetCellCenteredVelocities: Computes the cell-centered velocity component 
+! OutputGetCellCenteredVelocities: Computes the cell-centered velocity component 
 !                            as an averages of cell face velocities
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
+subroutine OutputGetCellCenteredVelocities(realization,vec,iphase,direction)
 
   use Realization_module
   use Grid_module
@@ -7903,7 +6426,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
   call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
-end subroutine GetCellCenteredVelocities
+end subroutine OutputGetCellCenteredVelocities
 
 ! ************************************************************************** !
 !
@@ -7922,6 +6445,7 @@ subroutine ComputeFlowMassBalance(realization)
   use Field_module
   use Patch_module
   use Discretization_module
+  use Variables_module
 
   implicit none
   
@@ -8078,12 +6602,12 @@ end subroutine ComputeFlowMassBalance
 
 ! ************************************************************************** !
 !
-! OutputMassBalanceNew: Print to Tecplot POINT format
+! OutputMassBalance: Print to Tecplot POINT format
 ! author: Glenn Hammond
 ! date: 06/18/08
 !
 ! ************************************************************************** !  
-subroutine OutputMassBalanceNew(realization)
+subroutine OutputMassBalance(realization)
 
   use Realization_module
   use Patch_module
@@ -8867,7 +7391,7 @@ subroutine OutputMassBalanceNew(realization)
   
   mass_balance_first = PETSC_FALSE
 
-end subroutine OutputMassBalanceNew
+end subroutine OutputMassBalance
 
 ! ************************************************************************** !
 !
@@ -9238,65 +7762,6 @@ end subroutine OutputPermeability
 
 ! ************************************************************************** !
 !
-! OutputAppendToHeader: Appends formatted strings to header string
-! author: Glenn Hammond
-! date: 10/27/11
-!
-! ************************************************************************** !
-subroutine OutputAppendToHeader(header,variable_string,units_string, &
-                                cell_string, icolumn)
-
-  character(len=MAXHEADERLENGTH) :: header
-  character(len=*) :: variable_string, units_string, cell_string
-  character(len=MAXWORDLENGTH) :: column_string
-  character(len=MAXWORDLENGTH) :: variable_string_adj, units_string_adj
-  character(len=MAXSTRINGLENGTH) :: cell_string_adj
-  PetscInt :: icolumn, len_cell_string, len_units
-
-  character(len=MAXSTRINGLENGTH) :: string
-
-  variable_string_adj = variable_string
-  units_string_adj = units_string
-  cell_string_adj = cell_string
-
-  !geh: Shift to left.  Cannot perform on same string since len=*
-  variable_string_adj = adjustl(variable_string_adj)
-  units_string_adj = adjustl(units_string_adj)
-  cell_string_adj = adjustl(cell_string_adj)
-
-  if (icolumn > 0) then
-    icolumn = icolumn + 1
-    write(column_string,'(i4,''-'')') icolumn
-    column_string = trim(adjustl(column_string))
-  else
-    column_string = ''
-  endif
-
-  !geh: this is all to remove the lousy spaces
-  len_units = len_trim(units_string)
-  len_cell_string = len_trim(cell_string)
-  if (len_units > 0 .and. len_cell_string > 0) then
-    write(string,'('',"'',a,a,'' '',a,'' '',a,''"'')') trim(column_string), &
-          trim(variable_string_adj), trim(units_string_adj), &
-          trim(cell_string_adj)
-  else if (len_units > 0 .or. len_cell_string > 0) then
-    if (len_units > 0) then
-      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
-            trim(variable_string_adj), trim(units_string_adj)
-    else
-      write(string,'('',"'',a,a,'' '',a,''"'')') trim(column_string), &
-            trim(variable_string_adj), trim(cell_string_adj)
-    endif
-  else
-    write(string,'('',"'',a,a,''"'')') trim(column_string), &
-          trim(variable_string_adj)
-  endif
-  header = trim(header) // trim(string)
-
-end subroutine OutputAppendToHeader
-
-! ************************************************************************** !
-!
 ! OutputPrintCouplers: Prints values of auxilliary variables associated with
 !                      couplers (boundary and initial conditions, source
 !                      sinks).  Note that since multiple connections for
@@ -9420,6 +7885,7 @@ subroutine OutputHDF5UGrid(realization)
   use Field_module
   use Patch_module
   use Reaction_Aux_module
+  use Variables_module
 
 #if  !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -9443,6 +7909,7 @@ subroutine OutputHDF5UGrid(realization)
 
   use hdf5
   use HDF5_module
+  use HDF5_Aux_module
   
   implicit none
 
@@ -9485,6 +7952,7 @@ subroutine OutputHDF5UGrid(realization)
   type(patch_type), pointer :: patch
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   
   Vec :: global_vec
   Vec :: natural_vec
@@ -9567,7 +8035,6 @@ subroutine OutputHDF5UGrid(realization)
   !        not(PARALLELIO_LIB_WRITE)
   !
 
-
   ! initialize fortran interface
   call h5open_f(hdf5_err)
 
@@ -9629,447 +8096,90 @@ subroutine OutputHDF5UGrid(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
 
-  select case(option%iflowmode)
-
-    case(FLASH2_MODE,MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,IMS_MODE, &
-         RICHARDS_MODE,G_MODE)
-
-      ! temperature
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
-          string = "Temperature"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-      ! liquid pressure
-      call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-      string = "Liquid Pressure"
-      call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-
-      ! gas pressure
-      select case(option%iflowmode)
-        case (MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_PRESSURE,ZERO_INTEGER)
-          string = "Gas Pressure"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-      ! liquid saturation
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-          string = "Liquid Saturation"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
-      end select
-
-      ! gas saturation
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE,THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          string = "Gas Saturation"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-#ifdef ICE
-      ! ice saturation
-      select case(option%iflowmode)
-        case (THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_SATURATION,ZERO_INTEGER)
-          string = "Ice Saturation"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-
-      ! ice density
-      select case(option%iflowmode)
-        case (THC_MODE,THMC_MODE)
-          call OutputGetVarFromArray(realization,global_vec,ICE_DENSITY,ZERO_INTEGER)
-          string = "Ice Density"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-      end select
-#endif
-      
-      ! liquid density
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
-          string = "Liquid Density"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas density
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
-          string = "Gas Density"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! liquid viscosity
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_VISCOSITY,ZERO_INTEGER)
-          string = "Liquid Viscosity"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas viscosity
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_VISCOSITY,ZERO_INTEGER)
-          string = "Gas Viscosity"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! liquid mobility
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_MOBILITY,ZERO_INTEGER)
-          string = "Liquid Mobility"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas mobility
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_MOBILITY,ZERO_INTEGER)
-          string = "Gas Mobility"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! liquid energy
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
-          string = "Liquid Energy"
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-      
-      ! gas energy
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
-          string = "Gas Energy"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-      end select
-    
-      ! liquid mole fractions
-      select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,THMC_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
-            write(string,'(''Liquid Mole Fraction-'',i1)') i
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          enddo
-      end select
-      
-      ! gas mole fractions
-      select case(option%iflowmode)
-        case (MPH_MODE,FLASH2_MODE,G_MODE)
-          do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-            write(string,'(''Gas Mole Fraction-'',i1)') i
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
-          enddo
-      end select
- 
-      ! phase
-      select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          string = "Phase"
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-      end select
-  
-    case default
-
-  end select
-
-  if (option%ntrandof > 0) then
-    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
-      free_mol_char = 'm'
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    string = cur_variable%name
+    if (len_trim(cur_variable%units) > 0) then
+      word = cur_variable%units
+      call HDF5MakeStringCompabible(word)
+      string = trim(string) // ' [' // trim(word) // ']'
+    endif
+    if (cur_variable%iformat == 0) then
+      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                         global_vec,grp_id,H5T_NATIVE_DOUBLE)
     else
-      free_mol_char = 'M'
+      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                         global_vec,grp_id,H5T_NATIVE_INTEGER)
     endif
-    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
-      tot_mol_char = 'm'
-    else
-      tot_mol_char = 'M'
-    endif
-    if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
-      tot_mol_char = 'm'
-    else
-      tot_mol_char = 'M'
-    endif
-    if (associated(reaction)) then
-      if (reaction%print_pH .and. associated(reaction%species_idx)) then
-        if (reaction%species_idx%h_ion_id > 0) then
-          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
-          write(string,'(''pH'')')
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      endif
-      if (reaction%print_total_component) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
-            write(string,'(a,''_tot_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_free_ion) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
-            write(string,'(a,''_free_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_total_bulk) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_BULK,i)
-            write(string,'(a,''_total_bulk'')') trim(reaction%primary_species_names(i))
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_act_coefs) then
-        do i=1,reaction%naqcomp
-          if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_gam'
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      do i=1,reaction%neqcplx
-        if (reaction%secondary_species_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,reaction%print_secondary_conc_type,i)
-          write(string,'(a,a)') trim(reaction%secondary_species_names(i)), trim(sec_mol_char)
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_vf'
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%mineral%nkinmnrl
-        if (reaction%mineral%kinmnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-          write(string,'(a)') trim(reaction%mineral%kinmnrl_names(i)) // '_rt'
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%mineral%nmnrl
-        if (reaction%mineral%mnrl_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,MINERAL_SATURATION_INDEX,i)
-          write(string,'(a)') trim(reaction%mineral%mineral_names(i)) // '_si'
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_SITE_DENSITY,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i) // '_den'
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
+    cur_variable => cur_variable%next
+  enddo
 
-      ! Kinetic surface complexes
-
-      do i=1,reaction%surface_complexation%nkinsrfcplxrxn
-        if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplxrxn_site_names(i)
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-      do i=1,reaction%surface_complexation%nkinsrfcplx
-        if (reaction%surface_complexation%srfcplx_print(i)) then
-        !TODO(geh): fix
-          call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
-          write(string,'(a)') reaction%surface_complexation%srfcplx_names(i)
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      enddo
-
-     ! Kd
-
-      if (associated(reaction%kd_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%kd_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%naqcomp
-          if (reaction%total_sorb_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (associated(reaction%total_sorb_mobile_print)) then
-        do i=1,reaction%ncollcomp
-          if (reaction%total_sorb_mobile_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
-            write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-      if (reaction%print_colloid) then
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
-            write(string,'(a,''_col_mob_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-        do i=1,reaction%ncoll
-          if (reaction%colloid_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
-            write(string,'(a,''_col_imb_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
-            call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          endif
-        enddo
-      endif
-
-!     Age
-  
-      if (reaction%print_age) then
-        if (reaction%species_idx%tracer_age_id > 0) then
-
-          call OutputGetVarFromArray(realization,global_vec,AGE, &
-            reaction%species_idx%tracer_age_id, &
-            reaction%species_idx%tracer_aq_id)
-          
-          write(string,'(''Tracer_Age'')')
-          
-          call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        endif
-      endif
-    endif
-  endif
-  
-  ! porosity
-  if (output_option%print_porosity) then
-    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
-    string = "Porosity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec, &
-                                       grp_id,H5T_NATIVE_DOUBLE)
-  endif
-  
-  ! material id
-  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-  string = "Material_ID"
-  call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      word = trim(output_option%plot_variables(i))
-      call PatchGetIvarsFromKeyword(word,ivar,isubvar,var_type,option)
-      call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-      string = PatchGetVarNameFromKeyword(word,option)
-      if (var_type == INT_VAR) then
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,HDF_NATIVE_INTEGER)
-      else
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec, &
-                                            grp_id,H5T_NATIVE_DOUBLE)
-      endif
-    enddo
-  endif
-  
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
-    call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
+    call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
         string = "Gas X-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
-        call HDF5WriteUnstructuredDataSetFromVec(string,realization,global_vec,grp_id, &
+        call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
     endif
   endif
 
   if (output_option%print_hdf5_flux_velocities) then
-  
-    option%io_buffer = 'HDF5 output of Liquid Flux Velocities for ' // &
-      'unstructured grid not supported yet.'
 
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
         string = "Liquid X-Flux Velocities"
-        !call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas X-Flux Velocities"
-          !call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
         endif
     endif
 
     if (grid%structured_grid%ny > 1) then
         string = "Liquid Y-Flux Velocities"
-        !call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas Y-Flux Velocities"
-          !call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
         endif
     endif
 
     if (grid%structured_grid%nz > 1) then
         string = "Liquid Z-Flux Velocities"
-        !call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas Z-Flux Velocities"
-          !call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
         endif
     endif
    
@@ -10093,9 +8203,249 @@ subroutine OutputHDF5UGrid(realization)
 
 end subroutine OutputHDF5UGrid
 
+
+! ************************************************************************** !
+!> This routine writes unstructured grid data in HDF5 XDMF format.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/2012
+! ************************************************************************** !
+subroutine OutputHDF5UGridXDMF1(realization)
+
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Reaction_Aux_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call printMsg(realization%option,'')
+  write(realization%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(realization%option)
+#endif
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use hdf5
+  use HDF5_module
+  use HDF5_Aux_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  PetscMPIInt :: rank
+  integer :: rank_mpi,file_space_rank_mpi
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+#endif
+
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
+
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscReal, pointer :: v_ptr
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
+  PetscInt :: nviz_flow, nviz_tran, nviz_dof
+  PetscInt :: current_component
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscFortranAddr :: app_ptr
+  PetscBool :: first
+  PetscInt :: ivar, isubvar, var_type
+  PetscInt :: vert_count
+
+  discretization => realization%discretization
+  patch => realization%patch
+  option => realization%option
+  field => realization%field
+  reaction => realization%reaction
+  output_option => realization%output_option
+
+  xmf_filename = OutputFilename(output_option,option,'xmf','')
+
+  if (output_option%print_single_h5_file) then
+    first = hdf5_first
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
+  else
+    string = OutputFilenameID(output_option,option)
+    first = PETSC_TRUE
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // '.h5'
+  endif
+
+  grid => patch%grid
+
+#ifdef PARALLELIO_LIB_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with PARALLELIO_LIB_WRITE'
+   call printErrMsg(option)
+#endif
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                     H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // filename
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+  endif
+  call printMsg(option)
+
+  if (first) then
+    ! create a group for the coordinates data set
+    string = "Domain"
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+    call WriteHDF5CoordinatesUGridXDMF(realization,option,grp_id)
+    call h5gclose_f(grp_id,hdf5_err)
+  endif
+
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write xmf output file: ' // trim(filename)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
+    !call OutputXMFHeader(OUTPUT_UNIT,realization,filename)
+    call OutputXMFHeader(OUTPUT_UNIT, &
+                         grid%nmax, &
+                         realization%output_option%xmf_vert_len, &
+                         grid%unstructured_grid%num_vertices_global,filename)
+  endif
+
+  ! create a group for the data set
+  write(string,'(''Time'',es13.5,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  group_name=string
+  if (hdf5_err /= 0) then
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+  endif
+  call h5eset_auto_f(ON,hdf5_err)
+
+  ! write out data sets 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)
+
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                        natural_vec,ONEDOF)
+    string = cur_variable%name
+    if (len_trim(cur_variable%units) > 0) then
+      word = cur_variable%units
+      call HDF5MakeStringCompabible(word)
+      string = trim(string) // ' [' // trim(word) // ']'
+    endif
+    if (cur_variable%iformat == 0) then
+      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+    else
+      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_INTEGER)
+    endif
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+    endif
+    cur_variable => cur_variable%next
+  enddo
+
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call h5gclose_f(grp_id,hdf5_err)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+  if (option%myrank == option%io_rank) then
+    call OutputXMFFooter(OUTPUT_UNIT)
+    close(OUTPUT_UNIT)
+  endif
+
+  hdf5_first = PETSC_FALSE
+
+end subroutine OutputHDF5UGridXDMF1
+
 #if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
-!> This subroutine writes structured coordinates to HDF5 file
+!> This subroutine writes unstructured coordinates to HDF5 file
 !!
 !> @author
 !! Gautam Bisht, ORNL
@@ -10109,6 +8459,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   use Grid_module
   use Option_module
   use Unstructured_Grid_Aux_module
+  use Variables_module
   
   implicit none
   
@@ -10398,6 +8749,302 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
 
 
 end subroutine WriteHDF5CoordinatesUGrid
+
+
+! ************************************************************************** !
+!> This routine writes unstructured coordinates to HDF5 file in XDMF format
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/2012
+! ************************************************************************** !
+subroutine WriteHDF5CoordinatesUGridXDMF1(realization,option,file_id)
+
+  use hdf5
+  use HDF5_module
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Variables_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  type(option_type), pointer :: option
+
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(grid_type), pointer :: grid
+  character(len=MAXSTRINGLENGTH) :: string
+
+  PetscInt :: local_size,vert_count,nverts
+  PetscInt :: i,j
+  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
+  PetscReal, pointer :: double_array(:)
+  Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
+
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec, natural_vec
+  PetscInt, pointer :: int_array(:)
+  type(ugdm_type),pointer :: ugdm_element
+
+  PetscInt :: TET_ID_XDMF = 6
+  PetscInt :: PYR_ID_XDMF = 7
+  PetscInt :: WED_ID_XDMF = 8
+  PetscInt :: HEX_ID_XDMF = 9
+
+  grid => realization%patch%grid
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_x_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_y_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    grid%unstructured_grid%num_vertices_global, &
+                    global_z_vertex_vec,ierr)
+
+  call VecGetLocalSize(global_x_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_y_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_z_vertex_vec,local_size,ierr)
+
+  call GetVertexCoordinates(grid, global_x_vertex_vec,X_COORDINATE,option)
+  call GetVertexCoordinates(grid, global_y_vertex_vec,Y_COORDINATE,option)
+  call GetVertexCoordinates(grid, global_z_vertex_vec,Z_COORDINATE,option)
+
+  call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+#if defined(PARALLELIO_LIB_WRITE)
+  write(*,*),'PARALLELIO_LIB_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+  call printErrMsg(option)
+#endif
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size * 3
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 2
+  dims = 0
+  dims(2) = grid%unstructured_grid%num_vertices_global
+  dims(1) = 3
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Vertices" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(2) = istart
+  start(1) = 0
+  
+  length(2) = local_size
+  length(1) = 3
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(double_array(local_size*3))
+  do i=1,local_size
+    double_array((i-1)*3+1) = vec_x_ptr(i)
+    double_array((i-1)*3+2) = vec_y_ptr(i)
+    double_array((i-1)*3+3) = vec_z_ptr(i)
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(double_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+
+  call VecDestroy(global_x_vertex_vec,ierr)
+  call VecDestroy(global_y_vertex_vec,ierr)
+  call VecDestroy(global_z_vertex_vec,ierr)
+
+  !
+  !  Write elements
+  !
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option)
+  call GetCellConnections(grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+
+  local_size = grid%unstructured_grid%nlmax
+
+  vert_count=0
+  do i=1,local_size*EIGHT_INTEGER
+    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+  enddo
+  vert_count=vert_count+grid%nlmax
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims(1) = vert_count
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  realization%output_option%xmf_vert_len=dims(1)
+
+  ! file space which is a 2D block
+  rank_mpi = 1
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Cells" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_INTEGER,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(vert_count, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(1) = istart
+  length(1) = vert_count
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(int_array(vert_count))
+
+  vert_count=0
+  do i=1,local_size
+    nverts=0
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) nverts=nverts+1
+    enddo
+    vert_count=vert_count+1
+    select case (nverts)
+      case (4) ! Tetrahedron
+        int_array(vert_count) = TET_ID_XDMF
+      case (5) ! Pyramid
+        int_array(vert_count) = PYR_ID_XDMF
+      case (6) ! Wedge
+        int_array(vert_count) = WED_ID_XDMF
+      case (8) ! Hexahedron
+        int_array(vert_count) = HEX_ID_XDMF
+    end select
+
+    do j=1,8
+      if(vec_ptr((i-1)*8+j)>0) then
+        vert_count=vert_count+1
+        int_array(vert_count) = INT(vec_ptr((i-1)*8+j))-1
+      endif
+    enddo
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(int_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine WriteHDF5CoordinatesUGridXDMF1
+
+
 #endif
 
 #ifdef SURFACE_FLOW
@@ -10415,7 +9062,7 @@ subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
   use Surface_Realization_module, only : surface_realization_type
   use Realization_module, only : realization_type
   use Option_module, only : OptionCheckTouch, option_type, &
-                            output_option_type, printMsg, printErrMsg
+                            printMsg, printErrMsg
 
   implicit none
 
@@ -10447,8 +9094,7 @@ subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
 
   if (plot_flag) then
     if (surf_realization%output_option%print_hdf5) then
-      option%io_buffer = 'HDF5 output not supported for surface flow'
-      call printErrMsg(option)
+      call OutputHDF5UGridXDMF(surf_realization,realization)
     endif
   
     if (surf_realization%output_option%print_tecplot) then
@@ -10507,7 +9153,8 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   
   use Reactive_Transport_module
   use Reaction_Aux_module
- 
+  use Variables_module
+  
   implicit none
 
   type(surface_realization_type) :: surf_realization
@@ -10526,6 +9173,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   type(patch_type), pointer :: patch 
   type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vertex_vec
   Vec :: global_cconn_vec
@@ -10565,31 +9213,23 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   !call WriteTecplotUGridVertices(OUTPUT_UNIT,surf_realization)
   call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
 
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      !pressure
-      select case(option%iflowmode)
-        case(RICHARDS_MODE)
-          call OutputGetVarFromArray(surf_realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(OUTPUT_UNIT,surf_realization,natural_vec,TECPLOT_REAL)
-      end select
-  end select
-
-  ! material id
-  call OutputGetVarFromArray(surf_realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,surf_realization,natural_vec,TECPLOT_INTEGER)
-
-  if (associated(output_option%plot_variables)) then
-    !do i = 1, size(output_option%plot_variables)
-    !  call PatchGetIvarsFromKeyword(output_option%plot_variables(i),ivar, &
-    !                                isubvar,var_type,option)
-    !  call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
-    !  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    !  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
-    !enddo
-  endif
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                        natural_vec,ONEDOF)
+    if (cur_variable%iformat == 0) then
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+                                      TECPLOT_REAL)
+    else
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+                                      TECPLOT_INTEGER)
+    endif
+    cur_variable => cur_variable%next
+  enddo
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -10655,51 +9295,19 @@ subroutine OutputTecplotHeader2(fid,surf_realization,icolumn)
   ! write header
   ! write title
   write(fid,'(''TITLE = "'',1es13.5," [",a1,'']"'')') &
-                option%time/output_option%tconv,output_option%tunit
+                option%surf_flow_time/output_option%tconv,output_option%tunit
 
   ! initial portion of header
   header = 'VARIABLES=' // &
             '"X [m]",' // &
             '"Y [m]",' // &
             '"Z [m]"'
+  header2=''
+  header2 = OutputVariableListToHeader(output_option%output_variable_list,'', &
+                                      icolumn,PETSC_TRUE)
 
-  ! write flow variables
-  header2 = ''
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      header2 = SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
-  end select
   header = trim(header) // trim(header2)
-
-  ! write transport variables
-  if (option%ntrandof > 0) then
-    string = ''
-    !header2 = RTGetTecplotHeader(surf_realization,string,icolumn)
-    header = trim(header) // trim(header2)
-  endif
-
-  ! add porosity to header
-  if (output_option%print_porosity) then
-    header = trim(header) // ',"Porosity"'
-  endif
-
-  ! write material ids
-  header = trim(header) // ',"Material_ID"'
-
-  if (associated(output_option%plot_variables)) then
-    do i = 1, size(output_option%plot_variables)
-      header = trim(header) // ',"' // &
-        trim(PatchGetVarNameFromKeyword(output_option%plot_variables(i), &
-                                        option)) // &
-        '"'
-    enddo
-  endif
-
   write(fid,'(a)') trim(header)
-
-#ifdef GLENN_NEW_IO
-  !call OutputOptionPlotVarFinalize(output_option)
-#endif
 
   ! count vars in header
   quote_count = 0
@@ -10821,6 +9429,7 @@ subroutine WriteTecplotUGridVertices2(fid,surf_realization)
   use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
+  use Variables_module
 
   implicit none
 
@@ -11328,7 +9937,7 @@ end subroutine OutputGetVarFromArray2
 !> This routine outputs hydrograph fluxes.
 !!
 !> @author
-!! Gautam Bisht, LBL
+!! Gautam Bisht, LBNL
 !!
 !! date:
 ! ************************************************************************** !
@@ -11417,7 +10026,7 @@ subroutine OutputHydrograph(surf_realization)
 
     ! write time
     if (option%myrank == option%io_rank) then
-      write(fid,100,advance="no") option%time/output_option%tconv
+      write(fid,100,advance="no") option%surf_flow_time/output_option%tconv
     endif
   
     if (option%nflowdof > 0) then
@@ -11449,6 +10058,541 @@ subroutine OutputHydrograph(surf_realization)
   hydrograph_first = PETSC_FALSE
 
 end subroutine OutputHydrograph
+
+! ************************************************************************** !
+!> This routine writes unstructured grid data in HDF5 XDMF format for 
+!! surface flow.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/2012
+! ************************************************************************** !
+subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
+
+  use Surface_Realization_module
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Grid_module
+  use Surface_Field_module
+  use Patch_module
+  use Reaction_Aux_module
+
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  type(realization_type) :: realization
+
+  call printMsg(surf_realization%option,'')
+  write(surf_realization%option%io_buffer, &
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids Darn.")')
+  call printErrMsg(surf_realization%option)
+#endif
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use hdf5
+  use HDF5_module
+  use HDF5_Aux_module
+  
+  implicit none
+
+  type(surface_realization_type) :: surf_realization
+  type(realization_type) :: realization
+
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  PetscMPIInt :: rank
+  integer :: rank_mpi,file_space_rank_mpi
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+#endif
+
+  type(grid_type), pointer :: subsurf_grid
+  type(grid_type), pointer :: surf_grid
+  type(discretization_type), pointer :: surf_discretization
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer :: surf_field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
+
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscReal, pointer :: v_ptr
+
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
+  PetscInt :: nviz_flow, nviz_tran, nviz_dof
+  PetscInt :: current_component
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscFortranAddr :: app_ptr
+  PetscBool :: first
+  PetscInt :: ivar, isubvar, var_type
+  PetscInt :: vert_count
+
+  surf_discretization => surf_realization%discretization
+  patch => surf_realization%patch
+  option => surf_realization%option
+  surf_field => surf_realization%surf_field
+  output_option => surf_realization%output_option
+
+  xmf_filename = OutputFilename(output_option,option,'xmf','surf')
+
+  if (output_option%print_single_h5_file) then
+    first = surf_hdf5_first
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '-surf.h5'
+  else
+    string = OutputFilenameID(output_option,option)
+    first = PETSC_TRUE
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // '-surf.h5'
+  endif
+
+  subsurf_grid => realization%patch%grid
+  surf_grid    => surf_realization%patch%grid
+
+#ifdef PARALLELIO_LIB_WRITE
+   option%io_buffer='OutputHDF5UGridXDMF not supported with PARALLELIO_LIB_WRITE'
+   call printErrMsg(option)
+#endif
+
+    ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                     H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // filename
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+  endif
+  call printMsg(option)
+
+  if (first) then
+    ! create a group for the coordinates data set
+    string = "Domain"
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+    call WriteHDF5CoordinatesUGridXDMF(surf_realization,realization,option,grp_id)
+    call h5gclose_f(grp_id,hdf5_err)
+  endif
+
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write xmf output file: ' // trim(xmf_filename)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
+    call OutputXMFHeader(OUTPUT_UNIT, &
+                         surf_grid%nmax, &
+                         surf_realization%output_option%surf_xmf_vert_len, &
+                         subsurf_grid%unstructured_grid%num_vertices_global,filename)
+
+  endif
+
+  ! create a group for the data set
+  write(string,'(''Time'',es13.5,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  group_name=string
+  if (hdf5_err /= 0) then
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+  endif
+  call h5eset_auto_f(ON,hdf5_err)
+
+  ! write out data sets 
+  call DiscretizationCreateVector(surf_discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+  call DiscretizationCreateVector(surf_discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)
+
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    call OutputGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
+                                cur_variable%isubvar)
+    call DiscretizationGlobalToNatural(surf_discretization,global_vec, &
+                                        natural_vec,ONEDOF)
+    string = cur_variable%name
+    if (len_trim(cur_variable%units) > 0) then
+      word = cur_variable%units
+      call HDF5MakeStringCompabible(word)
+      string = trim(string) // ' [' // trim(word) // ']'
+    endif
+    if (cur_variable%iformat == 0) then
+      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+    else
+      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                          natural_vec,grp_id,H5T_NATIVE_INTEGER)
+    endif
+    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+    if (option%myrank == option%io_rank) then
+      call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string,att_datasetname)
+    endif
+    cur_variable => cur_variable%next
+  enddo
+
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call h5gclose_f(grp_id,hdf5_err)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+
+  if (option%myrank == option%io_rank) then
+    call OutputXMFFooter(OUTPUT_UNIT)
+    close(OUTPUT_UNIT)
+  endif
+
+  surf_hdf5_first = PETSC_FALSE
+
+end subroutine OutputHDF5UGridXDMF2
+
+! ************************************************************************** !
+!> This routine writes unstructured coordinates to HDF5 file in XDMF format
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 10/29/2012
+! ************************************************************************** !
+subroutine WriteHDF5CoordinatesUGridXDMF2(surf_realization,realization,option,file_id)
+
+  use hdf5
+  use HDF5_module
+  use Surface_Realization_module
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Unstructured_Grid_Aux_module
+  use Variables_module
+  
+  implicit none
+  
+  type(surface_realization_type) :: surf_realization
+  type(realization_type) :: realization
+  type(option_type), pointer :: option
+
+#if defined(PARALLELIO_LIB_WRITE)
+  integer:: file_id
+  integer:: data_type
+  integer:: grp_id
+  integer:: file_space_id
+  integer:: memory_space_id
+  integer:: data_set_id
+  integer:: realization_set_id
+  integer:: prop_id
+  integer:: dims(3)
+  integer :: start(3), length(3), stride(3),istart
+  integer :: rank_mpi,file_space_rank_mpi
+  integer :: hdf5_flag
+  integer, parameter :: ON=1, OFF=0
+#else
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
+  PetscMPIInt :: hdf5_flag
+  PetscMPIInt, parameter :: ON=1, OFF=0
+#endif
+
+  type(grid_type), pointer :: surf_grid
+  type(grid_type), pointer :: subsurf_grid
+  character(len=MAXSTRINGLENGTH) :: string
+
+  PetscInt :: local_size,vert_count,nverts
+  PetscInt :: i,j
+  PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
+  PetscReal, pointer :: double_array(:)
+  Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
+
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec, natural_vec
+  PetscInt, pointer :: int_array(:)
+  type(ugdm_type),pointer :: ugdm_element
+
+  PetscInt :: TRI_ID_XDMF = 4
+  PetscInt :: QUA_ID_XDMF = 5
+
+  surf_grid => surf_realization%patch%grid
+  subsurf_grid => realization%patch%grid
+
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    subsurf_grid%unstructured_grid%num_vertices_global, &
+                    global_x_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    subsurf_grid%unstructured_grid%num_vertices_global, &
+                    global_y_vertex_vec,ierr)
+  call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                    subsurf_grid%unstructured_grid%num_vertices_global, &
+                    global_z_vertex_vec,ierr)
+
+  call VecGetLocalSize(global_x_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_y_vertex_vec,local_size,ierr)
+  call VecGetLocalSize(global_z_vertex_vec,local_size,ierr)
+
+  call GetVertexCoordinates(subsurf_grid, global_x_vertex_vec,X_COORDINATE,option)
+  call GetVertexCoordinates(subsurf_grid, global_y_vertex_vec,Y_COORDINATE,option)
+  call GetVertexCoordinates(subsurf_grid, global_z_vertex_vec,Z_COORDINATE,option)
+
+  call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecGetArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+#if defined(PARALLELIO_LIB_WRITE)
+  write(*,*),'PARALLELIO_LIB_WRITE'
+  option%io_buffer = 'WriteHDF5CoordinatesUGrid not supported for PARALLELIO_LIB_WRITE'
+  call printErrMsg(option)
+#endif
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims = 0
+  dims(1) = local_size * 3
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+   
+  ! file space which is a 2D block
+  rank_mpi = 2
+  dims = 0
+  dims(2) = subsurf_grid%unstructured_grid%num_vertices_global
+  dims(1) = 3
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Vertices" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_DOUBLE,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(2) = istart
+  start(1) = 0
+  
+  length(2) = local_size
+  length(1) = 3
+
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(double_array(local_size*3))
+  do i=1,local_size
+    double_array((i-1)*3+1) = vec_x_ptr(i)
+    double_array((i-1)*3+2) = vec_y_ptr(i)
+    double_array((i-1)*3+3) = vec_z_ptr(i)
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(double_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(global_x_vertex_vec,vec_x_ptr,ierr)
+  call VecRestoreArrayF90(global_y_vertex_vec,vec_y_ptr,ierr)
+  call VecRestoreArrayF90(global_z_vertex_vec,vec_z_ptr,ierr)
+
+
+  call VecDestroy(global_x_vertex_vec,ierr)
+  call VecDestroy(global_y_vertex_vec,ierr)
+  call VecDestroy(global_z_vertex_vec,ierr)
+
+  !
+  !  Write elements
+  !
+  call UGridCreateUGDM(surf_grid%unstructured_grid,ugdm_element,FOUR_INTEGER,option)
+  call UGridDMCreateVector(surf_grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option)
+  call UGridDMCreateVector(surf_grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option)
+  call GetCellConnections(surf_grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr)
+
+  local_size = surf_grid%unstructured_grid%nlmax
+
+  vert_count=0
+  do i=1,local_size*FOUR_INTEGER
+    if(int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+  enddo
+  vert_count=vert_count+surf_grid%nlmax
+
+  ! memory space which is a 1D vector
+  rank_mpi = 1
+  dims(1) = vert_count
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+
+  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  surf_realization%output_option%surf_xmf_vert_len=dims(1)
+
+  ! file space which is a 2D block
+  rank_mpi = 1
+  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
+
+  string = "Cells" // CHAR(0)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,string,H5T_NATIVE_INTEGER,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+
+  istart = 0
+  call MPI_Exscan(vert_count, istart, ONE_INTEGER_MPI, &
+                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+
+  start(1) = istart
+  length(1) = vert_count
+  stride = 1
+  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
+                             hdf5_err,stride,stride)
+
+    ! write the data
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err)
+#endif
+
+  allocate(int_array(vert_count))
+
+  vert_count=0
+  do i=1,local_size
+    nverts=0
+    do j=1,FOUR_INTEGER
+      if(vec_ptr((i-1)*FOUR_INTEGER+j)>0) nverts=nverts+1
+    enddo
+    vert_count=vert_count+1
+    select case (nverts)
+      case (3) ! Triangle
+        int_array(vert_count) = TRI_ID_XDMF
+      case (4) ! Quadrilateral
+        int_array(vert_count) = QUA_ID_XDMF
+    end select
+
+    do j=1,FOUR_INTEGER
+      if(vec_ptr((i-1)*FOUR_INTEGER+j)>0) then
+        vert_count=vert_count+1
+        int_array(vert_count) = INT(vec_ptr((i-1)*FOUR_INTEGER+j))-1
+      endif
+    enddo
+  enddo
+
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
+                  hdf5_err,memory_space_id,file_space_id,prop_id)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+
+  deallocate(int_array)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  call h5dclose_f(data_set_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(natural_vec,ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine WriteHDF5CoordinatesUGridXDMF2
 
 #endif SURFACE_FLOW
 

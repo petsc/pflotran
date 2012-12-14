@@ -1,0 +1,26 @@
+The tests in this directory are meant to test the regression test
+manager itself rather than testing pflotran. They should be run
+anytime someone is working on the test manager!
+
+--- expected-fail.cfg ---
+
+One concern is that we want to verify that the regression test manager
+is actually reporting a failed test when it failed. The tests listed
+in expected-fail.cfg are designed with this in mind.
+
+The primary focus of this test suite is to setup tests that we expect
+to fail and verify that the test manager catches the correct
+failure. This is primairly done by modifying the contents of the gold
+standard files to create failures in specific places. These tests are
+name fail-XXXX. These tests should be run in verbose mode, and you
+should verify that the reported failure corresponds to the name of the
+test. For example the solution time test should fail in the wall time,
+while the residual 2-norm shoud fail in the residual 2-norm:
+
+fail-solution-time...
+    FAIL: Transport:Time (seconds) : 99.99999999893264 > 1.0 [percent]
+
+fail-solution-r2norm...
+    FAIL: Transport:Residual 2-Norm : 9.000000000000002 > 0.001 [relative]
+
+

@@ -44,7 +44,7 @@ CHEMISTRY
 :
   MINERAL_KINETICS
     Halite
-      RATE_CONSTANT 1.e-30
+      RATE_CONSTANT 1.e-30 mol/cm^2-sec
     /
     /
     SORPTION
@@ -243,7 +243,7 @@ CONSTRAINT Initial
     Tracer        4.65d-3  T
   /
   MINERALS
-    Halite        0.5 1.
+    Halite        0.5 1. cm^2/cm^3
   /
 END
 

@@ -1,23 +1,27 @@
 module Reaction_module
 
   use Reaction_Aux_module
-  use Reactive_Transport_Aux_module
+  use Reactive_Transport_Aux_module  
   use Global_Aux_module
   
   use Surface_Complexation_module
   use Mineral_module
+  use Microbial_module
 
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
+  use Microbial_Aux_module
 
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
   use Solid_Solution_Aux_module
 #endif  
+
+  use Reaction_Sandbox_module
   
   implicit none
  
-  private 
+  private
 
 #include "definitions.h"
 
@@ -65,6 +69,9 @@ subroutine ReactionRead(reaction,input,option)
   use String_module
   use Input_module
   use Utility_module
+  use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
+                               TOTAL_MOLALITY, TOTAL_MOLARITY, &
+                               SECONDARY_MOLALITY, SECONDARY_MOLARITY
   
   implicit none
   
@@ -253,12 +260,12 @@ subroutine ReactionRead(reaction,input,option)
 #endif                
             case('FORWARD_RATE')
               call InputReadDouble(input,option,general_rxn%forward_rate)  
-              call InputDefaultMsg(input,option, &
-                                   'CHEMISTRY,GENERAL_REACTION,FORWARD_RATE') 
+              call InputErrorMsg(input,option,'forward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
             case('BACKWARD_RATE')
               call InputReadDouble(input,option,general_rxn%backward_rate)  
-              call InputDefaultMsg(input,option, &
-                                   'CHEMISTRY,GENERAL_REACTION,BACKWARD_RATE') 
+              call InputErrorMsg(input,option,'backward rate', &
+                                 'CHEMISTRY,GENERAL_REACTION') 
           end select
         enddo   
         if (.not.associated(reaction%general_rxn_list)) then
@@ -272,6 +279,15 @@ subroutine ReactionRead(reaction,input,option)
         prev_general_rxn => general_rxn
         nullify(general_rxn)
 
+#ifdef FORTRAN_2003_COMPLIANT
+      case('REACTION_SANDBOX')
+        !TODO(geh): there has to be a better place to put this....
+        reaction%use_sandbox = PETSC_TRUE
+        call RSandBoxInit()
+        call RSandboxRead(input,option)
+#endif
+      case('MICROBIAL_REACTION')
+        call MicrobialRead(reaction%microbial,input,option)
       case('MINERALS')
         call MineralRead(reaction%mineral,input,option)
       case('MINERAL_KINETICS') ! mineral kinetics read on second round
@@ -646,9 +662,9 @@ subroutine ReactionRead(reaction,input,option)
     endif
   endif
   if (reaction%neqcplx + reaction%nsorb + reaction%mineral%nmnrl + &
-      reaction%ngeneral_rxn > 0) then
+      reaction%ngeneral_rxn + reaction%microbial%nrxn > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
-      endif
+  endif
       
   ! ensure that update porosity is ON if update of tortuosity, permeability or
   ! mineral surface area are ON
@@ -765,7 +781,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   character(len=MAXWORDLENGTH) :: mnrl_constraint_aux_string(reaction%mineral%nkinmnrl)
   PetscBool :: mnrl_external_dataset(reaction%mineral%nkinmnrl)
   
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   
   mineral_reaction => reaction%mineral
   
@@ -1024,7 +1040,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: constraint_type(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
   type(surface_complexation_type), pointer :: surface_complexation
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
 
   PetscReal :: Res(reaction%naqcomp)
   PetscReal :: update(reaction%naqcomp)
@@ -1763,7 +1779,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   use Option_module
   use Input_module
   use String_module
-  use Condition_module
+  use Constraint_module
 
   implicit none
   
@@ -1776,7 +1792,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(surface_complexation_type), pointer :: surface_complexation
-  type(mineral_rxn_type), pointer :: mineral_reaction
+  type(mineral_type), pointer :: mineral_reaction
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i, icomp, irxn, j, jj, ncomp, ncplx, ieqrxn
   PetscInt :: icplx, icplx2
@@ -2469,7 +2485,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   use Option_module
   use Input_module
   use String_module
-  use Condition_module
+  use Constraint_module
 
   implicit none
   
@@ -2722,7 +2738,8 @@ subroutine ReactionReadOutput(reaction,input,option)
   use Input_module
   use String_module  
   use Option_module
-  
+  use Variables_module, only : PRIMARY_MOLALITY, PRIMARY_MOLARITY, &
+                               TOTAL_MOLALITY, TOTAL_MOLARITY  
   implicit none
   
   type(reaction_type) :: reaction
@@ -2737,7 +2754,7 @@ subroutine ReactionReadOutput(reaction,input,option)
 
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
+  type(mineral_rxn_type), pointer :: cur_mineral
   type(surface_complex_type), pointer :: cur_srfcplx
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   
@@ -3163,7 +3180,19 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
   endif
   
-  ! add new reactions here
+  if (reaction%microbial%nrxn > 0) then
+    call RMicrobial(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+                    volume,reaction,option)
+  endif
+  
+#ifdef FORTRAN_2003_COMPLIANT
+  if (reaction%use_sandbox) then
+    call RSandbox(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+                  volume,reaction,option)
+  endif
+#endif
+  
+  ! add new reactions here and in RReactionDerivative
 
 end subroutine RReaction
 
@@ -3218,9 +3247,19 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     if (reaction%ngeneral_rxn > 0) then
       call RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
                     global_auxvar,porosity,volume,reaction,option)
+    endif
+    if (reaction%microbial%nrxn > 0) then
+      call RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
+                      global_auxvar,porosity,volume,reaction,option)
     endif    
+#ifdef FORTRAN_2003_COMPLIANT
+    if (reaction%use_sandbox) then
+      call RSandbox(Res,Jac,compute_derivative,rt_auxvar, &
+                    global_auxvar,porosity,volume,reaction,option)
+    endif
+#endif
 
-    ! #1: add new reactions here
+    ! add new reactions here and in RReaction
 
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
@@ -3228,24 +3267,9 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
     option%iflag = 0 ! be sure not to allocate mass_balance array
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
-    if (reaction%mineral%nkinmnrl > 0) then
-      call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                           global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-      call RMultiRateSorption(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                              global_auxvar,volume,reaction,option)
-    endif     
-    if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-      call RKineticSurfCplx(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                            global_auxvar,volume,reaction,option)
-    endif
-    if (reaction%ngeneral_rxn > 0) then
-      call RGeneral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                    global_auxvar,porosity,volume,reaction,option)
-    endif    
 
-    ! #2: add new reactions here
+    call RReaction(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
+                   global_auxvar,porosity,volume,reaction,option)     
 
     do jcomp = 1, reaction%ncomp
       Res_pert = 0.d0
@@ -3257,24 +3281,8 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
       if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
                                                 reaction,option)
 
-      if (reaction%mineral%nkinmnrl > 0) then
-        call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                             global_auxvar,volume,reaction,option)
-      endif
-      if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-        call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                                global_auxvar,volume,reaction,option)
-      endif      
-      if (reaction%surface_complexation%nkinsrfcplxrxn > 0) then
-        call RKineticSurfCplx(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                              global_auxvar,volume,reaction,option)
-      endif
-      if (reaction%ngeneral_rxn > 0) then
-        call RGeneral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                      global_auxvar,porosity,volume,reaction,option)
-      endif  
-      
-      ! #3: add new reactions here
+      call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
+                     global_auxvar,porosity,volume,reaction,option)    
 
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
@@ -3289,7 +3297,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   endif
 
 end subroutine RReactionDerivative
-                               
+
 ! ************************************************************************** !
 !
 ! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
@@ -3300,8 +3308,10 @@ end subroutine RReactionDerivative
 subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
     
   use Option_module
+#ifndef PFLOTRAN_RXN  
   use co2eos_module
- 
+#endif
+
   implicit none
 
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -3325,8 +3335,10 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
      m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
+#ifndef PFLOTRAN_RXN  
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
+#endif
          
   rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact 
  ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
@@ -3589,8 +3601,10 @@ end subroutine RActivityCoefficients
 subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
+#ifndef PFLOTRAN_RXN  
   use co2eos_module, only: Henry_duan_sun
   use water_eos_module
+#endif  
   
   implicit none
   
@@ -4178,7 +4192,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   
-  PetscInt :: i, icomp, irxn, ncomp
+  PetscInt :: i, icomp, jcomp, irxn, ncomp
   PetscReal :: tempreal, L_water, sum, rate
 
   PetscInt, parameter :: iphase = 1
@@ -4194,7 +4208,9 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
 
     ! sum total moles of component in aqueous and sorbed phases
     sum = rt_auxvar%total(icomp,iphase)*L_water
-    sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    if (associated(rt_auxvar%total_sorb_eq)) then
+      sum = sum + rt_auxvar%total_sorb_eq(icomp)*volume
+    endif
     
     rate = sum*reaction%general_kf(irxn)
     
@@ -4209,15 +4225,27 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
     if (.not. compute_derivative) cycle   
 
     tempreal = -1.d0*reaction%general_kf(irxn)
-    do i = 1, ncomp
-      icomp = reaction%generalspecid(i,irxn)
-      ! units = (mol/sec)*(kg water/mol) = kg water/sec
-      Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
-        tempreal * &
-        reaction%generalstoich(i,irxn) * &
-        (rt_auxvar%aqueous%dtotal(icomp,1:reaction%naqcomp,iphase)*L_water + &
-         rt_auxvar%dtotal_sorb_eq(icomp,1:reaction%naqcomp)*volume)
-    enddo
+    jcomp = reaction%generalforwardspecid(1,irxn)
+    if (associated(rt_auxvar%dtotal_sorb_eq)) then
+      do i = 1, ncomp
+        icomp = reaction%generalspecid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+          tempreal * &
+          reaction%generalstoich(i,irxn) * &
+          (rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water + &
+           rt_auxvar%dtotal_sorb_eq(jcomp,1:reaction%naqcomp)*volume)
+      enddo
+    else ! no sorption
+      do i = 1, ncomp
+        icomp = reaction%generalspecid(i,irxn)
+        ! units = (mol/sec)*(kg water/mol) = kg water/sec
+        Jac(icomp,1:reaction%naqcomp) = Jac(icomp,1:reaction%naqcomp) + &
+          tempreal * &
+          reaction%generalstoich(i,irxn) * &
+          rt_auxvar%aqueous%dtotal(jcomp,1:reaction%naqcomp,iphase)*L_water
+      enddo
+    endif
     
   enddo  ! loop over reactions
     

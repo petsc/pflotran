@@ -108,7 +108,9 @@ subroutine MiscibleSetup(realization)
     enddo
     cur_level => cur_level%next
   enddo
- 
+
+  call MiscibleSetPlotVariables(realization)
+
 end subroutine MiscibleSetup
 
 ! ************************************************************************** !
@@ -3175,6 +3177,61 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   MiscibleGetTecplotHeader = string
 
 end function MiscibleGetTecplotHeader
+
+! ************************************************************************** !
+!
+! MiscibleSetPlotVariables: Adds variables to be printed to list
+! author: Glenn Hammond
+! date: 10/15/12
+!
+! ************************************************************************** !
+subroutine MiscibleSetPlotVariables(realization)
+  
+  use Realization_module
+  use Output_Aux_module
+  use Variables_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(output_variable_type) :: output_variable
+  
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_list_type), pointer :: list
+  
+  list => realization%output_option%output_variable_list
+  
+  name = 'Temperature'
+  units = 'C'
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               TEMPERATURE)
+  
+  name = 'Liquid Pressure'
+  units = 'Pa'
+  call OutputVariableAddToList(list,name,OUTPUT_PRESSURE,units, &
+                               LIQUID_PRESSURE)
+
+  name = 'Liquid Density'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_DENSITY)
+
+  name = 'Liquid Viscosity'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_VISCOSITY)
+
+  name = 'Liquid Mole Fraction H2O'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_MOLE_FRACTION,ONE_INTEGER)
+
+  name = 'Liquid Mole Fraction CO2'
+  units = ''
+  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                               LIQUID_MOLE_FRACTION,TWO_INTEGER)
+
+end subroutine MiscibleSetPlotVariables
 
 
 end module Miscible_module
