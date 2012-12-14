@@ -49,6 +49,7 @@ class RegressionTest(object):
         self._RESIDUAL = "residual"
         self._TOL_VALUE = 0
         self._TOL_TYPE = 1
+        self._PFLOTRAN_SUCCESS = 86
         # misc test parameters
         self._pprint = pprint.PrettyPrinter(indent=2)
         self._debug = False
@@ -150,7 +151,15 @@ class RegressionTest(object):
             os.rename(self.name() + ".regression",
                       self.name() + ".regression.old")
 
-        status = 0
+        if os.path.isfile(self.name() + ".out"):
+            os.rename(self.name() + ".out",
+                      self.name() + ".out.old")
+
+        if os.path.isfile(self.name() + ".stdout"):
+            os.rename(self.name() + ".stdout",
+                      self.name() + ".stdout.old")
+
+        status = -1
         if dry_run:
             print("\n    {0}".format(" ".join(command)))
         else:
@@ -171,6 +180,14 @@ class RegressionTest(object):
                           "{1} seconds.".format(self.name(), self._timeout))
             status = abs(proc.returncode)
             run_stdout.close()
+        # pflotran returns 0 on an error (e.g. can't find an input
+        # file), 86 on success. 59 for timeout errors?
+        if status != self._PFLOTRAN_SUCCESS:
+            print("\nWARNING : {name} : pflotran return an error "
+                  "code ({status}) indicating the simulation may have "
+                  "failed. Please check '{name}.out' and '{name}.stdout' "
+                  "for error messages.\n".format(
+                    name=self.name(), status=status))
         return status
 
     def check(self, verbose):
