@@ -679,6 +679,7 @@ function OutputTecplotZoneHeader1(realization,variable_count,tecplot_format)
   use Realization_module
   use Grid_module
   use Option_module
+  use Unstructured_Grid_Aux_module
   
   implicit none
 
@@ -725,22 +726,33 @@ function OutputTecplotZoneHeader1(realization,variable_count,tecplot_format)
                   trim(OutputFormatInt(grid%structured_grid%ny+1)) // &
                   ', K=' // &
                   trim(OutputFormatInt(grid%structured_grid%nz+1))
-      else
+      else if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
         string2 = ', N=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%num_vertices_global)) // &
                   ', ELEMENTS=' // &
                   trim(OutputFormatInt(grid%unstructured_grid%nmax))
         string2 = trim(string2) // ', ZONETYPE=FEBRICK'
-      endif  
-  
-      if (variable_count > 4) then
-        string3 = ', VARLOCATION=([4-' // &
-                  trim(OutputFormatInt(variable_count)) // &
-                  ']=CELLCENTERED)'
       else
-        string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+        string2 = ', N=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%nmax)) // &
+                  ', ELEMENTS=' // &
+                  trim(OutputFormatInt(grid%unstructured_grid%explicit_grid%num_elems))
+        string2 = trim(string2) // ', ZONETYPE=FETRIANGLE'
+      endif  
+      
+      if (grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+        string3 = ', VARLOCATION=(NODAL)'
+      else
+        if (variable_count > 4) then
+          string3 = ', VARLOCATION=([4-' // &
+                    trim(OutputFormatInt(variable_count)) // &
+                    ']=CELLCENTERED)'
+        else
+          string3 = ', VARLOCATION=([4]=CELLCENTERED)'
+        endif
       endif
       string2 = trim(string2) // trim(string3) // ', DATAPACKING=BLOCK'
+      
   end select
   
   OutputTecplotZoneHeader1 = trim(string) // string2  
@@ -856,6 +868,10 @@ subroutine OutputTecplotBlock(realization)
       realization%discretization%grid%itype == &
       IMPLICIT_UNSTRUCTURED_GRID)  then
     call WriteTecplotUGridElements(OUTPUT_UNIT,realization)
+  endif
+  
+  if (realization%discretization%grid%itype == EXPLICIT_UNSTRUCTURED_GRID) then
+    call WriteTecplotExpGridElements(OUTPUT_UNIT,realization)
   endif
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
@@ -1795,12 +1811,73 @@ subroutine WriteTecplotUGridVertices1(fid,realization)
 
     call VecDestroy(global_vertex_vec, ierr)
   else
-    if (option%myrank == option%io_rank) then
-      write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
-    endif
+    call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
+                      grid%unstructured_grid%explicit_grid%num_cells_global, &
+                      global_vertex_vec,ierr)
+    call VecGetLocalSize(global_vertex_vec,local_size,ierr)
+    call ExplicitGetCellCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                             local_size)
+    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+    call ExplicitGetCellCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                             local_size)
+    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+    call ExplicitGetCellCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+    call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
+    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+                             local_size)
+    call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
+
+    call VecDestroy(global_vertex_vec, ierr)
   endif
 
 end subroutine WriteTecplotUGridVertices1
+
+! ************************************************************************** !
+!
+! WriteTecplotExpGridElements: Writes unstructured explicit grid elements
+! author: Glenn Hammond
+! date: 12/17/12
+!
+! ************************************************************************** !
+subroutine WriteTecplotExpGridElements(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Unstructured_Grid_Aux_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch 
+  PetscInt :: iconn, num_elems, i
+  PetscErrorCode :: ierr
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  num_elems = grid%unstructured_grid%explicit_grid%num_elems
+  if (option%myrank == option%io_rank) then
+    do iconn = 1, num_elems
+      write(fid,*) (grid%unstructured_grid% &
+                    explicit_grid%cell_connectivity(i,iconn), i = 1,3)
+    enddo
+  endif
+  
+  
+end subroutine WriteTecplotExpGridElements
 
 ! ************************************************************************** !
 !
@@ -5980,6 +6057,81 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
   
   
 end subroutine GetVertexCoordinates
+
+! ************************************************************************** !
+!
+! ExplicitGetCellCoordinates: Extracts cell coordinates for explicit grid
+! into a PetscVec
+! author: Satish Karra, LANL
+! date: 12/11/12
+!
+! ************************************************************************** !
+subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
+
+  use Grid_module
+  use Option_module
+  use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
+  
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: vec
+  PetscInt :: direction
+  type(option_type) :: option
+  
+  PetscInt :: ivertex
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt, allocatable :: indices(:)
+  PetscReal, allocatable :: values(:)
+  
+  if (option%mycommsize == 1) then
+    call VecGetArrayF90(vec,vec_ptr,ierr)
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_global
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_global
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_global
+          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
+        enddo
+    end select
+    call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  else
+    ! initialize to -999 to catch bugs
+    call VecSet(vec,-999.d0,ierr)
+    allocate(values(grid%unstructured_grid%explicit_grid%num_cells_local))
+    allocate(indices(grid%unstructured_grid%explicit_grid%num_cells_local))
+    select case(direction)
+      case(X_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_local
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
+        enddo
+      case(Y_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_local
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
+        enddo
+      case(Z_COORDINATE)
+        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_local
+          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
+        enddo
+    end select
+    indices(:) = grid%unstructured_grid%vertex_ids_natural(:)-1
+    call VecSetValues(vec,grid%unstructured_grid%num_vertices_local, &
+                      indices,values,INSERT_VALUES,ierr)
+    call VecAssemblyBegin(vec,ierr)
+    deallocate(values)
+    deallocate(indices)
+    call VecAssemblyEnd(vec,ierr)
+  endif
+  
+  
+end subroutine ExplicitGetCellCoordinates
+
 
 ! ************************************************************************** !
 !

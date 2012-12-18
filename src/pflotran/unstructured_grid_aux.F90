@@ -76,6 +76,11 @@ module Unstructured_Grid_Aux_module
     PetscInt, pointer :: connections(:,:)
     PetscReal, pointer :: face_areas(:)
     type(point3d_type), pointer :: face_centroids(:)
+    PetscInt :: num_cells_global  ! Number of cells in the entire domain
+    PetscInt :: num_cells_local   ! Number of cells in local domain
+    PetscInt :: num_elems
+    PetscInt, pointer :: cell_connectivity(:,:)   
+    type(point3d_type), pointer :: vertex_coordinates(:)
   end type unstructured_explicit_type
 
   type, public :: ugdm_type

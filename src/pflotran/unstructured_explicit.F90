@@ -54,6 +54,7 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
   
   PetscInt :: num_cells
   PetscInt :: num_connections
+  PetscInt :: num_elems
   
   fileid = 86
   input => InputCreate(fileid,filename,option)
@@ -90,6 +91,7 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
         card = 'Explicit Unstructured Grid CELLS'
         call InputReadInt(input,option,num_cells)
         call InputErrorMsg(input,option,'number of cells',card)
+        explicit_grid%num_cells_global = num_cells
         allocate(explicit_grid%cell_ids(num_cells))
         explicit_grid%cell_ids = 0
         allocate(explicit_grid%cell_volumes(num_cells))
@@ -154,11 +156,54 @@ subroutine ExplicitUGridRead(explicit_grid,filename,option)
                                explicit_grid%face_areas(iconn))
           call InputErrorMsg(input,option,'face area',card)
         enddo
+      case('ELEMENTS')
+        card = 'Explicit Unstructured Grid ELEMENTS'
+        call InputReadInt(input,option,num_elems)
+        call InputErrorMsg(input,option,'number of elements',card)
+        explicit_grid%num_elems = num_elems
+        ! Assuming only triangular elements (which is the dual mesh of the voronoi read) in DFN -- Karra 12/17/12
+        allocate(explicit_grid%cell_connectivity(3,num_elems)) 
+        explicit_grid%cell_connectivity = 0
+        do iconn = 1, num_elems
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadInt(input,option, &
+                            explicit_grid%cell_connectivity(1,iconn))
+          call InputErrorMsg(input,option,'cell vertex 1',card)
+          call InputReadInt(input,option, &
+                            explicit_grid%cell_connectivity(2,iconn))
+          call InputErrorMsg(input,option,'cell vertex 2',card)
+          call InputReadInt(input,option, &
+                            explicit_grid%cell_connectivity(3,iconn))
+          call InputErrorMsg(input,option,'cell vertex 3',card)
+        enddo
+
+      case('VERTICES')
+        card = 'Explicit Unstructured Grid VERTICES'     
+        allocate(explicit_grid%vertex_coordinates(explicit_grid%num_cells_global))
+        do icell = 1, explicit_grid%num_cells_global
+          explicit_grid%vertex_coordinates(icell)%x = 0.d0
+          explicit_grid%vertex_coordinates(icell)%y = 0.d0
+          explicit_grid%vertex_coordinates(icell)%z = 0.d0
+        enddo
+        do icell = 1, explicit_grid%num_cells_global
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)  
+          call InputReadDouble(input,option, &
+                            explicit_grid%vertex_coordinates(icell)%x)
+          call InputErrorMsg(input,option,'vertex 1',card)
+          call InputReadDouble(input,option, &
+                            explicit_grid%vertex_coordinates(icell)%y)
+          call InputErrorMsg(input,option,'vertex 2',card)
+          call InputReadDouble(input,option, &
+                            explicit_grid%vertex_coordinates(icell)%z)
+          call InputErrorMsg(input,option,'vertex 3',card)
+        enddo
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                            ' not recognized while reading explicit ' // &
                            'unstructured grid.'
-        call printErrMsg(option)
+        call printErrMsg(option)        
     end select
   enddo
 
@@ -248,7 +293,8 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%io_rank, &
                  option%mycomm,ierr)
   num_cells = temp_int
-        
+  explicit_grid%num_cells_global = num_cells
+
    ! divide cells across ranks
   num_cells_local = num_cells/option%mycommsize 
   num_cells_local_save = num_cells_local
@@ -257,6 +303,7 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   if (option%myrank < remainder) num_cells_local = &
                                  num_cells_local + 1
 
+  explicit_grid%num_cells_local = num_cells_local
   allocate(explicit_grid%cell_ids(num_cells_local))
   explicit_grid%cell_ids = 0
   allocate(explicit_grid%cell_volumes(num_cells_local))
