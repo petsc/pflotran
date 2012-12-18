@@ -24,3 +24,17 @@ fail-solution-r2norm...
     FAIL: Transport:Residual 2-Norm : 9.000000000000002 > 0.001 [relative]
 
 
+NOTE: because of cross platform differences, performance metrics are
+NOT checked by default. To test these, the test manager should be run
+twice. Once as:
+
+$ python regression-tests.py -e ../src/pflotran/pflotran --verbose -r mtest
+
+In this case, all performance test cases should PASS (because they are
+skipped), even though they are expected fail. Run the test manager a
+second time as:
+
+$ python3 regression-tests.py -e ../src/pflotran/pflotran --verbose -r mtest --check-performance
+
+In this case, all performance tests should fail (because they are
+expected fail).

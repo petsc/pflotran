@@ -7,9 +7,6 @@ module Realization_module
   use Condition_module
   use Constraint_module
   use Material_module
-#ifdef SUBCONTINUUM_MODEL
-  use Subcontinuum_module
-#endif
   use Saturation_Function_module
   use Dataset_Aux_module
   use Fluid_module
@@ -55,11 +52,6 @@ private
     
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
-#ifdef SUBCONTINUUM_MODEL
-    type(subcontinuum_property_type), pointer :: subcontinuum_properties
-    type(subcontinuum_property_ptr_type), pointer ::  &
-                               subcontinuum_property_array(:)
-#endif
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
@@ -97,7 +89,6 @@ private
             RealizationPrintCouplers, &
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
-            RealProcessSubcontinuumProp, &
             RealProcessFluidProperties, &
             RealizationUpdateProperties, &
             RealizationCountCells, &
@@ -173,10 +164,6 @@ function RealizationCreate2(option)
 
   nullify(realization%material_properties)
   nullify(realization%material_property_array)
-#ifdef SUBCONTINUUM_MODEL
-  nullify(realization%subcontinuum_properties)
-  nullify(realization%subcontinuum_property_array)
-#endif
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
@@ -887,72 +874,6 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
   
 end subroutine RealProcessMatPropAndSatFunc
-
-
-! *********************************************************************** !
-!
-! RealProcessSubcontinuumProp: Sets up linkeage between material properties
-!                         and subcontinuum properties and auxilliary arrays
-! author: Jitendra Kumar 
-! date: 10/07/2010 
-!
-! *********************************************************************** !
-subroutine RealProcessSubcontinuumProp(realization)
-
-  use String_module
-  
-  implicit none
-  type(realization_type) :: realization
-#ifdef SUBCONTINUUM_MODEL 
-  
-  PetscBool :: found
-  PetscInt :: i
-  type(option_type), pointer :: option
-  type(material_property_type), pointer :: cur_material_property
-  type(subcontinuum_property_type), pointer :: cur_subcontinuum_property
-  
-  option => realization%option
-  
-  ! organize lists
-  call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array)
-  call SubcontinuumPropConvertListToArray(realization%subcontinuum_properties, &
-                                     realization%subcontinuum_properties_array, &
-                                     option) 
-    
-  cur_material_property => realization%material_properties                            
-  do                                      
-    if (.not.associated(cur_material_property)) exit
-    found = PETSC_FALSE
-    cur_subcontinuum_property => realization%subcontinuum_properties
-    do 
-      if (.not.associated(cur_subcontinuum_property)) exit
-      do i=1,cur_material_property%subcontinuum_type_count
-        if (StringCompare(cur_material_property%subcontinuum_type_name(i), &
-                        cur_subcontinuum_property%name,MAXWORDLENGTH)) then
-          found = PETSC_TRUE
-          cur_material_property%subcontinuum_property_id(i) = &
-            cur_subcontinuum_property%id
-          exit
-        endif
-        ! START TODO(jitu): check if this error check block is at right place. might have
-        ! to push it to upper do loop: Jitu 10/07/2010 
-        if (.not.found) then
-          option%io_buffer = 'Saturation function "' // &
-               trim(cur_material_property%subcontinuum_type_name(i)) // &
-               '" in material property "' // &
-               trim(cur_material_property%name) // &
-               '" not found among available subcontinuum types.'
-          call printErrMsg(realization%option)    
-        endif
-        ! END TODO(jitu)
-      enddo  
-      cur_subcontinuum_property => cur_subcontinuum_property%next
-    enddo
-    cur_material_property => cur_material_property%next
-  enddo
-#endif 
-end subroutine RealProcessSubcontinuumProp
 
 ! ************************************************************************** !
 !

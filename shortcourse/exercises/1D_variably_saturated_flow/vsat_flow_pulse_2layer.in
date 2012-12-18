@@ -115,7 +115,7 @@ REGION bottom
 END
 
 :=========================== flow conditions ==================================
-FLOW_CONDITION initial
+FLOW_CONDITION initial_pressure
   TYPE
     PRESSURE hydrostatic
   /
@@ -138,12 +138,12 @@ END
 :=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
-  FLOW_CONDITION initial
+  FLOW_CONDITION initial_pressure
   REGION all
 END
 
 BOUNDARY_CONDITION outlet
-  FLOW_CONDITION initial
+  FLOW_CONDITION initial_pressure
   REGION bottom
 END
 
