@@ -92,16 +92,6 @@ module Grid_module
     type(face_type), pointer :: faces(:)
     type(mfd_type), pointer :: MFD
 
-#ifdef SUBCONTINUUM_MODEL
-    ! Save no. of subcontinuum subgrids for all subcontinua patched 
-    ! together in one array
-    PetscInt, pointer :: subcontinuum_grid(:)
-    ! Offsets to access subcontinuum_grid array. No. of rows = no. of cells
-    ! in the patch. First column = no. of subcontinua at the cell
-    ! Second column = offset to access subcontinuum_grid for the cell
-    PetscInt, pointer :: subcontinuum_grid_offset(:,:)
-#endif
-
     ! For "Least Square Method" to compute flux
     ! This vector has information regarding how far away a ghost cell is from
     ! a local cell.
@@ -2546,82 +2536,6 @@ subroutine GridComputeNeighbors(grid,is_bnd_vec,option)
   end select
 
 end subroutine GridComputeNeighbors
-
-!! ********************************************************************** !
-!!
-!! GridPopulateSubcontinuum: Populate subcontinuum discretization info in
-!!                           the grid object
-!! author: Jitendra Kumar
-!! date: 11/22/2010
-!!
-!! *********************************************************************** !
-!subroutine GridPopulateSubcontinuum(realization)
-!
-!  use Realization_module
-!  use Discretization_module
-!  use Material_module
-!  use Grid_module
-!  use Patch_module
-!  use Level_module
-!
-!  implicit none
-!
-!  type(realization_type), pointer :: realization
-!  type(grid_type), pointer :: grid
-!  type(discretization_type), pointer :: discretization
-!  type(patch_type), pointer :: patch 
-!  type(level_type), pointer :: cur_level
-!  type(patch_type), pointer :: cur_patch
-!  type(subcontinuum_type), pointer :: subcontinuum_type
-!
-!  PetscInt :: icell, ssub
-!
-!  ! do this only at the last and finest level
-!  cur_level => realization%level_list%last
-!  if (.not.associated(cur_level)) exit
-!  cur_patch => cur_level%patch_list%first
-!  do 
-!    grid => cur_patch%grid
-!    ! Allocate storage for subcontinuum_grid_offset
-!    allocate(cur_patch%grid%subcontinuum_grid_offset(cur_patch%grid%nlmax,2)
-!    
-!    ! Loop through all cells in the patch, copy the no. of subcontinuum 
-!    ! and offset from patch%num_subcontinuum_type into
-!    ! grid%subcontinuum_grid_offset.
-!    ssub = 0
-!    do icell=1, cur_patch%grid%nlmax
-!      cur_patch%grid%subcontinuum_grid_offset(icell,1) =   &
-!                          cur_patch%num_subcontinuum_type(icell,1)
-!      cur_patch%grid%subcontinuum_grid_offset(icell,2) =   &
-!                          cur_patch%num_subcontinuum_type(icell,2)
-!      ssub = ssub + cur_patch%grid%subcontinuum_grid_offset(icell,1)
-!    enddo
-!
-!    ! Allocate storage for grid%subcontinuum_grid and store the subgrid
-!    ! information
-!    allocate(cur_patch%grid%subcontinuum_grid(ssub))
-!    
-!    ! Loop through all the cells-> all subcontinuum and set the subgrid
-!    ! information
-!    do icell=1, cur_patch%grid%nlmax
-!      if (associated(region)) the
-!        local_id = region%cell_ids(icell)
-!      else
-!        local_id = icell
-!      endif
-!
-!      ! Loop over all subcontinua
-!      offset = cur_patch%grid%subcontinuum_grid_offset(icell,2)
-!      do isub = 1, cur_patch%grid%subcontinuum_grid_offset(icell,1)
-!        cur_patch%grid%subcontinuum_grid(offset) =  &
-!        realization%subcontinuum_properties(cur_patch%subcontinuum_type_ids(offset))%num_subgrids
-!        offset = offset + 1
-!      enddo
-!    enddo
-!    cur_patch => cur_patch%next
-!  enddo           
-!end subroutine GridPopulateSubcontinuum
-!
 
 ! ************************************************************************** !
 !> This routine resticts regions to cells local to processor when the region

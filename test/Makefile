@@ -13,11 +13,16 @@ include ${PETSC_DIR}/conf/rules
 TEST_MANAGER = regression-tests.py
 PFLOTRAN = ../src/pflotran/pflotran
 
+TEST_OPTIONS =
+
 # make VERBOSE=true check
 ifdef VERBOSE
-	VERBOSE_FLAG=--verbose
-else
-	VERBOSE_FLAG=
+	TEST_OPTIONS += --verbose
+endif
+
+# make PERFORMANCE=true check
+ifdef PERFORMANCE
+	TEST_OPTIONS += --check-performance
 endif
 
 # tests that are run to verify pflotran is built correctly
@@ -35,12 +40,12 @@ check : $(STANDARD_TESTS)
 test : $(STANDARD_TESTS) $(DEV_TESTS)
 
 ascem-geochemistry : 
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		-r ascem --suite geochemistry 
 
 ascem-geochemistry-parallel :
 ifneq ($(strip $(MPIEXEC)),)
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		--mpiexec $(MPIEXEC) -r ascem/1d --suite parallel
 else
 	@echo "********************************************************"
@@ -51,7 +56,7 @@ endif
 
 default-discretization-umesh :
 ifneq ($(strip $(PARMETIS_LIB)),)
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		-r default/discretization --suite mixed
 else
 	@echo "********************************************************"
@@ -62,5 +67,5 @@ endif
 
 
 cu-leaching :
-	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(VERBOSE_FLAG) \
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		-c shortcourse/copper_leaching/cu_leaching.cfg --test cu_leaching

@@ -1,0 +1,194 @@
+\section{PFLOTRAN regression test manager}
+
+The test manager for PFLOTRAN is a python program that is responsible
+for reading a configuration file, identifying the tests declared in
+the file, running PFLOTRAN on the appropriate input files, and then
+comparing the results to a known "gold standard" output file.
+
+\subsection{Running the test manager}
+The test manager can be run in two ways, either as part of the build
+system using ``make'' or manually.
+
+There are two options for calling the test manager through make,
+``make check'' and ``make test''. The ``check'' target runs a set of
+tests that verify that PFLOTRAN is built and running correctly on a
+given system. This would be run by user to verify that their
+installation of PFLOTRAN is working. The ``test'' target runs a fuller
+set of regression tests intended to identify when changes to the code
+cause significant changes to PFLOTRAN's results.
+
+Calling the test manager through make relies on make variables from
+PETSc to determine the correct version of python to use, if PFLOTRAN
+was build with MPI, and optional configurations such as unstructured
+meshes. The version of python used to call the test manager can be
+changed from the command line by specifying python:
+
+\begin{verbatim}
+$ make PYTHON=/opt/local/bin/python3.3 check
+\end{verbatim}
+
+The test manager produces terse output by default, only reporting the
+test name whether it passed or failed. Verbose output reports the
+reason why a test failed, the call to PFLOTRAN, and ``diff'' command:
+
+\begin{verbatim}
+$ make VERBOSE=true check
+\end{verbatim}
+
+To call the test manager manually:
+\begin{verbatim}
+$ cd pflotran/test
+$ python regression-tests.py --executable ../src/pflotran/pflotran \
+    --config-file shortcourse/copper_leaching/cu_leaching.cfg \
+    --tests cu_leaching --verbose
+\end{verbatim}
+
+Some important command line arguments when running manually are:
+\begin{itemize}
+\item executable : the path to the PFLOTRAN executable
+\item mpiexec : the name of the executable for launching parallel
+  jobs, (mpiexec, mpirun, aprun, etc).
+\item config-file : the path to the configuration file containing the
+  tests you want to run
+\item recursive-search : the path to a directory. The test manager
+  searches the directory and all its sub-directories for configuration
+  files.
+\item tests : a list of test names that should be run
+\item suites : a list of test suites that should be run
+\item verbose : verbose output, includes the command to run PFLOTRAN,
+  the command to diff results, and details about why a test failed.
+\item update : indicate that the the gold standard test file for a
+  given test should be updated to the current output.
+\item new-tests : indicate that the test is new and current output
+  should be used for gold standard test file.
+\end{itemize}
+
+The full list of command line options and a brief description can be
+found by running with the ``--help'' flag:
+\begin{verbatim}
+$ python regression-tests.py --help
+\end{verbatim}
+
+\subsection{Configuration Files}
+The configuration files are in standard ``cfg'' or windows ``ini''
+file format. They consist of a series of sections with key-value pairs:
+\begin{verbatim}
+[section-name]
+key = value
+\end{verbatim}
+Section names should be all lower case, and spaces must be replaced by
+a hyphen or underscore.
+
+A test is declared as a section in the configuration file. It is assumed that
+there will be a PFLOTRAN input file with the same name as the test
+section. The key-value pairs in a test section define how the test is
+run and the output is compared to the gold standard file. 
+\begin{verbatim}
+[calcite-kinetics]
+#look for an input file named `calcite-kinetics.in'
+np = 2
+timeout = 30.0
+concentration = 1.0e-10 absolute
+\end{verbatim}
+
+\begin{itemize}
+\item np = N, (optional), indicates a parallel test run with N processors. Default is serial.
+\item timeout = N, (optional), indicates that the test should be allowed to run
+  for N seconds before it is killed. Default is 60.0 seconds.
+\item TYPE = TOLERANCE COMPARISON, indicates that data in the
+  regression file of type TYPE should be compared using a tolerance of
+  TOLERANCE. Know data types are listed below.
+\end{itemize}
+
+The data types and default tolerances are:
+\begin{itemize}
+\item time = 5 percent
+\item concentration = 1.0e-12 absolute
+\item generic = 1.0e-12 absolute
+\item discrete = 0 absolute
+\item rate = 1.0e-12 absolute
+\item volume\_fraction = 1.0e-12 absolute
+\item pressure = 1.0e-12 absolute
+\item saturation = 1.0e-12 absolute
+\item residual = 1.0e-12 absolute
+\end{itemize}
+The default tolerances are deliberately set very tight, and are
+expected to be overridden on a per-test or per configuration file
+basis.  There are three known comparison: ``absolute'', for absolute
+differences ($\delta=|c-g|$), ``relative'' for relative differences ($\delta=\frac{|c-g|}{g}$), and ``percent''
+for specifying a percent difference ($\delta=100\cdot\frac{|c-g|}{g}$).
+
+In addition there are two optional sections in configuration
+files. The section ``default-test-criteria'' specifies the default
+criteria to be used for all tests in the current file. Criteria
+specified in a test section override these value. A section name
+``suites`` defines aliases for a group of tests.
+\begin{verbatim}
+[suites]
+serial = test-1 test-2 test-3
+parallel = test-4 test-5 test-6
+\end{verbatim}
+
+\subsection{Creating new tests}
+
+We want running tests to become a habit for developers so that "make
+pflotran" is always followed by "make test". With that in mind, ideal
+test cases are small and fast, and operate on a small subsection of
+the code so it is easier to diagnose where a problem has
+occurred. While it may(will) be necessary to create some platform
+specific tests, we want as many tests as possible to be platform
+independent and widely used. There is a real danger in having test
+output become stale if it requires special access to a particular
+piece of hardware, operating system or compiler to run.
+
+The steps for creating new regression tests are:
+\begin{itemize}
+\item Create the PFLOTRAN input file, and get the simulation running
+  correctly.
+
+\item Tell PFLOTRAN to generate a regression file by adding a
+  regression block to the input file, e.g.:
+\begin{verbatim}
+REGRESSION
+  CELLS 
+    1
+    3978
+  /
+  CELLS_PER_PROCESS 4
+END
+\end{verbatim}
+
+\item add the test to the configuration file
+
+\item refine the tolerances so that they will be tight enough to
+  identify problems, but loose enough that they do not create a lot of
+  false positives and discourage users and developers from running the
+  tests.
+
+\item add the test to the appropriate test suite and make rule.
+
+\item add the configuration file, input file and ``gold'' file to revision control.
+
+\end{itemize}
+
+\textbf{Guidelines for setting tolerances go here, once we figure out what to recommend.}
+
+\subsection{Updating test results}
+The output from PFLOTRAN should be fairly stable, and we consider the
+current output to be ``correct''. Changes to regression output should
+be rare, and primarily done for bug fixes. Updating the test results
+is simply a matter of replacing the gold standard file with a new
+file. This can be done with a simple rename in the file system:
+\begin{verbatim}
+mv test_1.regression test_1.regression.gold
+\end{verbatim}
+Or using the regression test manager:
+\begin{verbatim}
+$ python regression-tests.py --executable ../src/pflotran/pflotran \
+    --config-file my_test.cfg --tests test_1 --update
+\end{verbatim}
+Updating through the regression test manager ensures that the output
+is from your current executable rather than a stale file.
+
+Please document why you updated gold standard files in
+your revision control commit message.

@@ -33,18 +33,6 @@ module Patch_module
     PetscInt, pointer :: imat(:)
     PetscInt, pointer :: sat_func_id(:)
 
-#ifdef SUBCONTINUUM_MODEL
-    !These arrays will hold the no. of subcontinuum types at each cell 
-    PetscInt, pointer :: num_subcontinuum_type(:,:)
-    
-    !These arrays will hold the subcontinuum types ids
-    PetscInt, pointer :: subcontinuum_type_ids(:)
-
-    type(subcontinuum_property_ptr_type), pointer ::  &
-                          subcontinuum_property_array(:)
-    type(subcontinuum_field_typep), pointer :: subcontinuum_field_patch
-#endif
-
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
     PetscReal, pointer :: internal_fluxes(:,:,:)    
@@ -146,12 +134,6 @@ function PatchCreate()
   patch%surf_or_subsurf_flag = SUBSURFACE
   nullify(patch%imat)
   nullify(patch%sat_func_id)
-#ifdef SUBCONTINUUM_MODEL
-  nullify(patch%subcontinuum_count)
-  nullify(patch%subcontinnuum_ids)
-  nullify(patch%subcontinuum_property_array)  
-  nullify(patch%subcontinuum_field_patch)  
-#endif
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
@@ -331,16 +313,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Constraint_module
   use Connection_module
 
-#ifdef SUBCONTINUUM_MODEL
-  use Subcontinuum_module
-#endif
-
   implicit none
   
   type(patch_type) :: patch
-#ifdef SUBCONTINUUM_MODEL
-  type(subcontinuum_property_type), pointer :: subcontinuum_properties
-#endif
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
@@ -351,12 +326,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(observation_type), pointer :: observation, next_observation
   
   PetscInt :: temp_int, isub
-  
-#ifdef SUBCONTINUUM_MODEL
-  option%io_buffer = 'Jitu, move the call to SubcontinuumPropConvertListToArray to RealProcessMatPropAndSatFunc -- Glenn'
-  call printErrMsg(option)
-  call SubcontinuumPropConvertListToArray(subcontinuum_properties,patch%subcontinuum_property_array,option)
-#endif
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -548,7 +517,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       strata%region => RegionGetPtrFromList(strata%region_name, &
                                                   patch%regions)
       if (.not.associated(strata%region)) then
-      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
+        option%io_buffer = 'Region ' // trim(strata%region_name) // &
                  '" in strata not found in region list'
         call printErrMsg(option)
       endif
@@ -582,35 +551,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         endif
 #endif
 
-#ifdef SUBCONTINUUM_PROPERTY
-        ! connect subcontinuum properties pointers
-        ! allocate storage to hold subcontinuum pointers
-        if (strata%material_property%num_subcontinuum_type > 0) then
-          allocate(strata%subcontinuum_property( & 
-                      strata%material_property%subcontinuum_type_count))
-          ! loop over each subcontinuum
-          do isub=1,strata%material_property%num_subcontinuum_type
-            strata%subcontinuum_property(isub) => &
-              SubcontinuumPropGetPtrFromArray( & 
-               strata%material_property%subcontinuum_property_name(isub), &
-               patch%subcontinuum_property_array)
-            if (.not.associated(strata%subcontinuum_property(isub))) then
-              option%io_buffer = 'Subcontinuum ' // &
-                trim(strata%material_property%subcontinuum_property_name(isub)) // &
-                             ' not found in subcontinuum list'
-              call printErrMsg(option)
-            endif
-          enddo
-        endif
-#endif
-
       endif
     else
       nullify(strata%region)
       nullify(strata%material_property)
-#ifdef SUBCONTINUUM_MODEL
-      nullify(strata%subcontinuum_property)
-#endif
     endif
     strata => strata%next
   enddo
@@ -3200,7 +3144,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     case(PROCESSOR_ID)
       value = option%myrank
     case(SECONDARY_CONCENTRATION)
-      value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
+      value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)/&
+              patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)/1.d-3
     case(SEC_MIN_VOLFRAC)
       value = patch%aux%RT%sec_transport_vars(ghosted_id)% &
               sec_mnrl_volfrac(isubvar)
