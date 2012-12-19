@@ -117,6 +117,11 @@ module Grid_module
     !          individual matrix for each control volume.
     Mat,pointer      :: dispT(:)
     Mat,pointer      :: Minv(:)
+    PetscReal, pointer :: jacfac(:,:,:)
+    
+    ! PETSC_TRUE -- if a cell is boundary cell,
+    ! PETSC_FALSE -- if a cell is interior cell
+    PetscBool, pointer :: bnd_cell(:)
 
   end type grid_type
   
@@ -152,7 +157,8 @@ module Grid_module
             GridGetGhostedNeighbors, &
             GridGetGhostedNeighborsWithCorners, &
             GridComputeNeighbors, &
-            GridComputeMinv
+            GridComputeMinv, &
+            GridSaveBoundaryCellInfo
   
 contains
 
@@ -190,6 +196,8 @@ function GridCreate()
   nullify(grid%ghosted_level)
   nullify(grid%Minv)
   nullify(grid%dispT)
+  nullify(grid%jacfac)
+  nullify(grid%bnd_cell)
 
 #ifdef DASVYAT
   nullify(grid%fL2G)
@@ -2382,6 +2390,10 @@ subroutine GridDestroy(grid)
   nullify(grid%Minv)
   if (associated(grid%ghosted_level)) deallocate(grid%ghosted_level)
   nullify(grid%ghosted_level)
+  if (associated(grid%jacfac)) deallocate(grid%jacfac)
+  nullify(grid%jacfac)
+  if (associated(grid%bnd_cell)) deallocate(grid%bnd_cell)
+  nullify(grid%bnd_cell)
 
 #ifdef DASVYAT
   if (associated(grid%fL2G)) deallocate(grid%fL2G)
@@ -2514,18 +2526,19 @@ end function GridIndexToCellID
 !!
 !! date: 08/24/12
 ! ************************************************************************** !
-subroutine GridComputeNeighbors(grid,option)
+subroutine GridComputeNeighbors(grid,is_bnd_vec,option)
 
   use Option_module
   
   implicit none
   
   type(grid_type) :: grid
+  Vec :: is_bnd_vec
   type(option_type) :: option
 
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
-      call StructGridComputeNeighbors(grid%structured_grid,option)
+      call StructGridComputeNeighbors(grid%structured_grid,grid%nG2L,is_bnd_vec,option)
     case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID) 
       option%io_buffer = 'GridComputeNeighbors not currently supported for ' // &
         'unstructured grids.'
@@ -3052,7 +3065,7 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
   PetscInt :: ghosted_id,nid
   PetscReal :: dx,dy,dz
   PetscErrorCode :: ierr
-  Mat :: A,B,M,Z
+  Mat :: A,B
   PetscScalar, pointer :: xx_v(:,:)
   PetscScalar :: b_v(3)
   PetscInt :: cols(3), ncol
@@ -3060,6 +3073,9 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
   PetscInt :: D,ii,jj
   PetscReal :: disp_mat(3,3)
   PetscReal :: identity(3)
+  PetscInt :: max_neighbors
+  Vec :: iden_vec,C
+  PetscReal, pointer :: v_p(:)
 
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -3071,6 +3087,11 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
 
   allocate(grid%dispT(grid%ngmax))
   allocate(grid%Minv(grid%ngmax))
+
+  max_neighbors = maxval(cell_neighbors(0,:))
+  allocate(grid%jacfac(grid%ngmax,0:max_neighbors,THREE_INTEGER))
+
+  call VecCreateSeq(PETSC_COMM_SELF,THREE_INTEGER,C,ierr)
 
   do ghosted_id = 1,grid%ngmax
 
@@ -3132,9 +3153,87 @@ subroutine GridComputeMinv(grid,max_stencil_width,option)
       call MatDestroy(A,ierr)
       call MatDestroy(B,ierr)
 
+      ! Save values used in Jacobian computation
+
+      ! Compute Minv * dispT
+      call MatMatMult(grid%Minv(ghosted_id),grid%dispT(ghosted_id), &
+                      MAT_INITIAL_MATRIX,PETSC_DEFAULT_DOUBLE_PRECISION,A,ierr)
+
+      call VecCreateSeq(PETSC_COMM_SELF,cell_neighbors(0,ghosted_id),iden_vec,ierr)
+
+      ! Save for 'ghosted_id'
+      call VecGetArrayF90(iden_vec,v_p,ierr)
+      v_p = -1.d0
+      call VecRestoreArrayF90(iden_vec,v_p,ierr)
+      call MatMult(A,iden_vec,C,ierr)
+
+      call VecGetArrayF90(C,v_p,ierr)
+      grid%jacfac(ghosted_id,0,:) = v_p(:)
+      call VecGetArrayF90(C,v_p,ierr)
+
+      ! Save for neighbors of 'ghosted_id'
+      do nid = 1,cell_neighbors(0,ghosted_id)
+
+        call VecGetArrayF90(iden_vec,v_p,ierr)
+        v_p = 0.d0
+        v_p(nid) = 1.d0
+        call VecRestoreArrayF90(iden_vec,v_p,ierr)
+
+        call MatMult(A,iden_vec,C,ierr)
+
+        call VecGetArrayF90(C,v_p,ierr)
+        grid%jacfac(ghosted_id,nid,:) = v_p(:)
+        call VecGetArrayF90(C,v_p,ierr)
+
+      enddo
+
+      call VecDestroy(iden_vec,ierr)
+      call MatDestroy(A,ierr)
+
     endif
   enddo
 
+  call VecDestroy(C,ierr)
+
 end subroutine GridComputeMinv
+
+! ************************************************************************** !
+!> This routine saves information regarding a cell being boundary or 
+!! interior cell.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 12/19/12
+! ************************************************************************** !
+subroutine GridSaveBoundaryCellInfo(grid,is_bnd_vec,option)
+
+  use Option_module
+
+  implicit none
+
+  type(grid_type) :: grid
+  Vec :: is_bnd_vec
+  type(option_type) :: option
+  
+  PetscInt:: ghosted_id
+  PetscScalar,pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  allocate(grid%bnd_cell(grid%ngmax))
+
+  call VecGetArrayF90(is_bnd_vec,vec_ptr,ierr)
+
+  do ghosted_id=1,grid%ngmax
+    if(vec_ptr(ghosted_id)==0.d0) then
+      grid%bnd_cell(ghosted_id) = PETSC_FALSE
+    else
+      grid%bnd_cell(ghosted_id) = PETSC_TRUE
+    endif
+  enddo
+
+  call VecRestoreArrayF90(is_bnd_vec,vec_ptr,ierr)
+
+end subroutine GridSaveBoundaryCellInfo
 
 end module Grid_module

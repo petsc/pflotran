@@ -213,6 +213,9 @@ subroutine RealizationCreateDiscretization(realization)
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(realization_type) :: realization
   
   type(discretization_type), pointer :: discretization
@@ -226,7 +229,7 @@ subroutine RealizationCreateDiscretization(realization)
   PetscOffset :: i_da
   PetscReal, pointer :: real_tmp(:)
   type(dm_ptr_type), pointer :: dm_ptr
-
+  Vec :: is_bnd_vec
 
 
   option => realization%option
@@ -392,7 +395,14 @@ subroutine RealizationCreateDiscretization(realization)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
-      if (discretization%lsm_flux_method) call GridComputeNeighbors(grid,option)
+      if (discretization%lsm_flux_method) then
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                          is_bnd_vec)
+        call GridComputeNeighbors(grid,field%work_loc,option)
+        call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
+        call GridSaveBoundaryCellInfo(discretization%grid,is_bnd_vec,option)
+        call VecDestroy(is_bnd_vec,ierr)
+      endif
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.

@@ -113,7 +113,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%den_kg_store = 0.d0
   allocate(aux_var%displacement(THREE_INTEGER))
   aux_var%displacement = 0.d0
-  allocate(aux_var%dphi(3,option%nphase))
+  allocate(aux_var%dphi(option%nphase,THREE_INTEGER))
   aux_var%dphi = 0.d0
 
   select case(option%iflowmode)
