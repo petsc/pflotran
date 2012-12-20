@@ -1827,7 +1827,7 @@ subroutine WriteTecplotUGridVertices1(fid,realization)
                              local_size)
     call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
-    call ExplicitGetCellCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+    call ExplicitGetCellCoordinates(grid,global_vertex_vec,Z_COORDINATE,option)
     call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
     call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
                              local_size)
@@ -1868,11 +1868,12 @@ subroutine WriteTecplotExpGridElements(fid,realization)
   grid => patch%grid
   option => realization%option
   
+  
   num_elems = grid%unstructured_grid%explicit_grid%num_elems
   if (option%myrank == option%io_rank) then
     do iconn = 1, num_elems
       write(fid,*) (grid%unstructured_grid% &
-                    explicit_grid%cell_connectivity(i,iconn), i = 1,3)
+                    explicit_grid%cell_connectivity(i,iconn), i = 1,3)   
     enddo
   endif
   
@@ -6120,8 +6121,8 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
           values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
         enddo
     end select
-    indices(:) = grid%unstructured_grid%vertex_ids_natural(:)-1
-    call VecSetValues(vec,grid%unstructured_grid%num_vertices_local, &
+    indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
+    call VecSetValues(vec,grid%unstructured_grid%explicit_grid%num_cells_local, &
                       indices,values,INSERT_VALUES,ierr)
     call VecAssemblyBegin(vec,ierr)
     deallocate(values)

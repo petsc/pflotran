@@ -235,13 +235,15 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   character(len=MAXWORDLENGTH) :: card, word
   PetscInt :: fileid, icell, iconn, irank, remainder, temp_int, num_to_read
   
-  PetscInt :: num_cells, num_connections
+  PetscInt :: num_cells, num_connections, num_elems
   PetscInt :: num_cells_local, num_cells_local_save
   PetscInt :: num_connections_local, num_connections_local_save
+  PetscInt :: num_elems_local, num_elems_local_save
   PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
   PetscMPIInt :: int_mpi
   PetscErrorCode :: ierr
   PetscReal, allocatable :: temp_real_array(:,:)
+  PetscInt, allocatable :: temp_int_array(:,:)
   
 ! Format of explicit unstructured grid file
 ! id_, id_up_, id_dn_ = integer
@@ -518,6 +520,217 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
     
   endif
   deallocate(temp_real_array)  
+
+  if (option%myrank == option%io_rank) then
+  
+ 
+    call InputReadFlotranString(input,option)
+    ! read ELEMENTS card, we only use this for tecplot output
+    ! not used while solving the PDEs
+    call InputReadWord(input,option,card,PETSC_TRUE)
+    word = 'ELEMENTS'
+    call InputErrorMsg(input,option,word,card)
+    if (.not.StringCompare(word,card)) then
+      option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
+        '" in explicit grid file.'
+      call printErrMsgByRank(option)
+    endif
+  
+    card = 'Explicit Unstructured Grid ELEMENTS'
+    call InputReadInt(input,option,temp_int)
+    call InputErrorMsg(input,option,'number of elements',card)
+  endif
+  
+  int_mpi = 1
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%io_rank, &
+                  option%mycomm,ierr)
+  num_elems = temp_int
+  explicit_grid%num_elems = num_elems
+
+  ! divide cells across ranks
+  num_elems_local = num_elems/option%mycommsize 
+  num_elems_local_save = num_elems_local
+  remainder = num_elems - &
+              num_elems_local*option%mycommsize
+  if (option%myrank < remainder) num_elems_local = &
+                                 num_elems_local + 1
+
+  allocate(explicit_grid%cell_connectivity(3,num_elems_local))
+  explicit_grid%cell_connectivity = 0
+ 
+  ! for now, read all cells from ASCII file through io_rank and communicate
+  ! to other ranks
+  if (option%myrank == option%io_rank) then
+    allocate(temp_int_array(3,num_elems_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      temp_int_array = -999
+      num_to_read = num_elems_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+      do iconn = 1, num_to_read
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadInt(input,option,temp_int_array(1,iconn))
+        call InputErrorMsg(input,option,'vertex 1',card)
+        call InputReadInt(input,option,temp_int_array(2,iconn))
+        call InputErrorMsg(input,option,'vertex 2',card)
+        call InputReadInt(input,option,temp_int_array(3,iconn))
+        call InputErrorMsg(input,option,'vertex 3',card)
+      enddo
+      
+      ! if the cells reside on io_rank
+      if (irank == option%io_rank) then
+#if UGRID_DEBUG
+        write(string,*) num_elems_local
+        string = trim(adjustl(string)) // ' elements stored on p0'
+        print *, trim(string)
+#endif
+        do iconn = 1, num_elems_local
+          explicit_grid%cell_connectivity(1,iconn) = temp_int_array(1,iconn)
+          explicit_grid%cell_connectivity(2,iconn) = temp_int_array(2,iconn)
+          explicit_grid%cell_connectivity(3,iconn) = temp_int_array(3,iconn)
+        enddo
+      else
+      ! otherwise communicate to other ranks
+#if UGRID_DEBUG
+        write(string,*) num_to_read
+        write(word,*) irank
+        string = trim(adjustl(string)) // ' elements sent from p0 to p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+        int_mpi = num_to_read*3
+        call MPI_Send(temp_int_array,int_mpi,MPI_INTEGER,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
+    enddo
+  else 
+    ! other ranks post the recv
+#if UGRID_DEBUG
+    write(string,*) num_elems_local
+    write(word,*) option%myrank
+    string = trim(adjustl(string)) // ' connections received from p0 at p' // &
+              trim(adjustl(word))
+    print *, trim(string)
+#endif
+    allocate(temp_int_array(3,num_elems_local))
+    int_mpi = num_elems_local*3
+    call MPI_Recv(temp_int_array,int_mpi, &
+                  MPI_INTEGER,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+    do iconn = 1, num_elems_local
+       explicit_grid%cell_connectivity(1,iconn) = temp_int_array(1,iconn)
+       explicit_grid%cell_connectivity(2,iconn) = temp_int_array(2,iconn)
+       explicit_grid%cell_connectivity(3,iconn) = temp_int_array(3,iconn)
+    enddo
+    
+  endif
+  deallocate(temp_int_array) 
+  
+  if (option%myrank == option%io_rank) then
+  
+    call InputReadFlotranString(input,option)
+    ! read VERTICES card, not used for calcuations, only tecplot output
+    call InputReadWord(input,option,card,PETSC_TRUE)
+    word = 'VERTICES'
+    call InputErrorMsg(input,option,word,card)
+    if (.not.StringCompare(word,card)) then
+      option%io_buffer = 'Unrecognized keyword "' // trim(card) // &
+        '" in explicit grid file.'
+      call printErrMsgByRank(option)
+    endif
+  endif
+  
+  temp_int = explicit_grid%num_cells_global
+  int_mpi = 1
+  call MPI_Bcast(temp_int,ONE_INTEGER_MPI,MPI_INTEGER,option%io_rank, &
+                  option%mycomm,ierr)
+                  
+  num_cells = temp_int
+        
+   ! divide cells across ranks
+  num_cells_local = num_cells/option%mycommsize 
+  num_cells_local_save = num_cells_local
+  remainder = num_cells - &
+              num_cells_local*option%mycommsize
+  if (option%myrank < remainder) num_cells_local = &
+                                 num_cells_local + 1
+
+  allocate(explicit_grid%vertex_coordinates(num_cells_local))
+  do icell = 1, num_cells_local
+    explicit_grid%vertex_coordinates(icell)%x = 0.d0
+    explicit_grid%vertex_coordinates(icell)%y = 0.d0
+    explicit_grid%vertex_coordinates(icell)%z = 0.d0
+  enddo
+
+  ! for now, read all cells from ASCII file through io_rank and communicate
+  ! to other ranks
+  if (option%myrank == option%io_rank) then
+    allocate(temp_real_array(3,num_cells_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      temp_real_array = -999.d0
+      num_to_read = num_cells_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+      do icell = 1, num_to_read
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        call InputReadDouble(input,option,temp_real_array(1,icell))
+        call InputErrorMsg(input,option,'vertex x coordinate',card)
+        call InputReadDouble(input,option,temp_real_array(2,icell))
+        call InputErrorMsg(input,option,'vertex y coordinate',card)
+        call InputReadDouble(input,option,temp_real_array(3,icell))
+        call InputErrorMsg(input,option,'vertex z coordinate',card)
+      enddo
+
+      ! if the cells reside on io_rank
+      if (irank == option%io_rank) then
+#if UGRID_DEBUG
+        write(string,*) num_cells_local
+        string = trim(adjustl(string)) // ' cells stored on p0'
+        print *, trim(string)
+#endif
+        do icell = 1, num_cells_local
+          explicit_grid%vertex_coordinates(icell)%x = temp_real_array(1,icell)
+          explicit_grid%vertex_coordinates(icell)%y = temp_real_array(2,icell)
+          explicit_grid%vertex_coordinates(icell)%z = temp_real_array(3,icell)
+        enddo
+      else
+        ! otherwise communicate to other ranks
+#if UGRID_DEBUG
+        write(string,*) num_to_read
+        write(word,*) irank
+        string = trim(adjustl(string)) // ' cells sent from p0 to p' // &
+                 trim(adjustl(word))
+        print *, trim(string)
+#endif
+        int_mpi = num_to_read*3
+        call MPI_Send(temp_real_array,int_mpi,MPI_DOUBLE_PRECISION,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
+    enddo
+  else
+    ! other ranks post the recv
+#if UGRID_DEBUG
+    write(string,*) num_cells_local
+    write(word,*) option%myrank
+    string = trim(adjustl(string)) // ' cells received from p0 at p' // &
+              trim(adjustl(word))
+    print *, trim(string)
+#endif
+    allocate(temp_real_array(3,num_cells_local))
+    int_mpi = num_cells_local*3
+    call MPI_Recv(temp_real_array,int_mpi, &
+                  MPI_DOUBLE_PRECISION,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+    do icell = 1, num_cells_local
+      explicit_grid%vertex_coordinates(icell)%x = temp_real_array(1,icell)
+      explicit_grid%vertex_coordinates(icell)%y = temp_real_array(2,icell)
+      explicit_grid%vertex_coordinates(icell)%z = temp_real_array(3,icell)
+    enddo
+    
+  endif
+  deallocate(temp_real_array)
 
   if (option%myrank == option%io_rank) then
     call InputDestroy(input)
