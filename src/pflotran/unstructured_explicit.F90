@@ -305,7 +305,6 @@ subroutine ExplicitUGridReadInParallel(explicit_grid,filename,option)
   if (option%myrank < remainder) num_cells_local = &
                                  num_cells_local + 1
 
-  explicit_grid%num_cells_local = num_cells_local
   allocate(explicit_grid%cell_ids(num_cells_local))
   explicit_grid%cell_ids = 0
   allocate(explicit_grid%cell_volumes(num_cells_local))

@@ -6089,15 +6089,15 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
     call VecGetArrayF90(vec,vec_ptr,ierr)
     select case(direction)
       case(X_COORDINATE)
-        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_global
+        do ivertex = 1,grid%ngmax
           vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
         enddo
       case(Y_COORDINATE)
-        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_global
+        do ivertex = 1,grid%ngmax
           vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
         enddo
       case(Z_COORDINATE)
-        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_global
+        do ivertex = 1,grid%ngmax
           vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
         enddo
     end select
@@ -6105,25 +6105,24 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
   else
     ! initialize to -999 to catch bugs
     call VecSet(vec,-999.d0,ierr)
-    allocate(values(grid%unstructured_grid%explicit_grid%num_cells_local))
-    allocate(indices(grid%unstructured_grid%explicit_grid%num_cells_local))
+    allocate(values(grid%nlmax))
+    allocate(indices(grid%nlmax))
     select case(direction)
       case(X_COORDINATE)
-        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_local
+        do ivertex = 1,grid%nlmax
           values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
         enddo
       case(Y_COORDINATE)
-        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_local
+        do ivertex = 1,grid%nlmax
           values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
         enddo
       case(Z_COORDINATE)
-        do ivertex = 1,grid%unstructured_grid%explicit_grid%num_cells_local
+        do ivertex = 1,grid%nlmax
           values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
         enddo
     end select
     indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
-    call VecSetValues(vec,grid%unstructured_grid%explicit_grid%num_cells_local, &
-                      indices,values,INSERT_VALUES,ierr)
+    call VecSetValues(vec,grid%nlmax,indices,values,INSERT_VALUES,ierr)
     call VecAssemblyBegin(vec,ierr)
     deallocate(values)
     deallocate(indices)
