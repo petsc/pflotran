@@ -602,10 +602,10 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
 
   conc_primary_node = aux_var%total(1,1)                             ! in mol/L 
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac             ! dimensionless
-  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/cm
+  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/m
   
   if (reaction%mineral%nkinmnrl > 0) then
-    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/m^2/s
     ! Arrhenius factor
     arrhenius_factor = 1.d0
     if (reaction%mineral%kinmnrl_activation_energy(1) > 0.d0) then
@@ -616,7 +616,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
     equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/kg
     equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
     mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3/mol
-    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d-3
     rhs_react = diag_react*equil_conc                                ! in mol/L
   endif
   
