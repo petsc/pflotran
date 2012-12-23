@@ -5203,8 +5203,12 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
                        + 1.d0 + diag_react*sec_zeta(ngcells)
                         
+  ! Note that sec_transport_vars%sec_conc units are in mol/kg
+  ! Need to convert to mol/L since the units of conc. in the Thomas 
+  ! algorithm are in mol/L                      
   do i = 1, ngcells
-    rhs(i) = sec_transport_vars%sec_conc(i) + rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
+    rhs(i) = sec_transport_vars%sec_conc(i)*global_aux_var%den_kg(1)*1.d-3 + &
+             rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
   enddo
   
   rhs(ngcells) = rhs(ngcells) + & 
