@@ -668,14 +668,14 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
  ! print *,'conc_dcdm= ',(sec_conc(i),i=1,ngcells)
  
    do i = 1, ngcells
-    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/cm^3/s
+    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/m^3/s
     if (Im(i) > 0.d0) then 
-      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt* &
                             mnrl_molar_vol*Im(i)
       sec_zeta(i) = 1
     else
       if (sec_mnrl_volfrac(i) > 0.d0) then
-        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt* &
                               mnrl_molar_vol*Im(i)
         sec_zeta(i) = 1
       else
