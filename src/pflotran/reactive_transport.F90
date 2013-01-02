@@ -2,9 +2,7 @@ module Reactive_Transport_module
 
   use Transport_module
   use Reaction_module
-#ifdef CHUNK  
-  use Reaction_Chunk_module
-#endif
+
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
@@ -173,8 +171,10 @@ subroutine RTSetupPatch(realization)
     patch%aux%RT%rt_parameter%coll_spec_to_pri_spec = &
       reaction%coll_spec_to_pri_spec
   endif
-  
-  
+  if (reaction%nimcomp > 0) then
+    patch%aux%RT%rt_parameter%nimcomp = reaction%nimcomp
+    patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
+  endif
   
 !============== Create secondary continuum variables - SK 10/8/12 ==============
 
@@ -276,10 +276,6 @@ subroutine RTSetupPatch(realization)
     call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),reaction,option)
   enddo
   patch%aux%RT%num_aux = grid%ngmax
-  
-#ifdef CHUNK
-  patch%aux%RT%aux_var_chunk => RTAuxVarChunkCreate(reaction,option)
-#endif   
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
@@ -926,6 +922,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
                         volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: dof_offset, istart, iendaq, iendall
+  PetscInt :: istartim, iendim
   PetscInt :: istartcoll, iendcoll
   PetscErrorCode :: ierr
   PetscReal :: vol_frac_prim
@@ -972,6 +969,12 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
       iendcoll = dof_offset + reaction%offset_colloid + reaction%ncoll
       rt_aux_vars(ghosted_id)%colloid%conc_mob = xx_p(istartcoll:iendcoll)* &
         global_aux_vars(ghosted_id)%den_kg(1)*1.d-3
+    endif
+    
+    if (reaction%nimcomp > 0) then
+      istartim = dof_offset + reaction%offset_immobile + 1
+      iendim = dof_offset + reaction%offset_immobile + reaction%nimcomp
+      rt_aux_vars(ghosted_id)%immobile = xx_p(istartim:iendim)
     endif
     
     if (option%use_mc) then
@@ -2040,23 +2043,14 @@ subroutine RTReactPatch(realization)
   type(option_type), pointer :: option
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: istart, iend
+  PetscInt :: istart, iend, iendaq
   PetscInt :: iphase
   PetscInt :: ithread, vector_length
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: mask_p(:)
-#ifdef CHUNK
-  PetscInt :: num_iterations(realization%option%chunk_size,realization%option%num_threads)
-  PetscInt :: ichunk
-  PetscInt :: id_count
-  PetscInt :: local_ids(realization%option%chunk_size,realization%option%num_threads)
-  PetscInt :: icell
-  type(react_tran_auxvar_chunk_type), pointer :: rt_auxvar_chunk
-#else
   PetscInt :: num_iterations
-#endif
 #ifdef OS_STATISTICS
   PetscInt :: sum_iterations
   PetscInt :: max_iterations
@@ -2092,75 +2086,13 @@ subroutine RTReactPatch(realization)
   icount = 0
 #endif
 
-#ifdef CHUNK
-  rt_auxvar_chunk => patch%aux%RT%aux_var_chunk
-    
-  !$omp parallel do num_threads(option%num_threads) &
-  !$omp             private(icell,local_id,ghosted_id,istart,iend, &
-  !$omp                     ithread,vector_length)
-  do icell = 1, grid%nlmax, option%chunk_size
-!$  ithread = omp_get_thread_num() + 1
-    vector_length = 0
-    
-    ! fill an array of local ids for entries in chunk and vector
-    do icount = 0, min(option%chunk_size-1,grid%nlmax-icell)
-      local_id = icell + icount
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) > 0) then
-        vector_length = vector_length + 1
-        local_ids(vector_length,ithread) = local_id
-      endif
-    enddo !icount
-    
-   ! print *, 'geh: ', ithread, vector_length, icell
-    
-    do ichunk = 1, vector_length
-      local_id = local_ids(ichunk,ithread)
-      ghosted_id = grid%nL2G(local_id)
-      istart = (local_id-1)*reaction%naqcomp+1
-      iend = istart+reaction%naqcomp-1
-      ! tran_xx_p passes in total component concentrations
-      !       and returns free ion concentrations
-      call RPack(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                 tran_xx_p(istart:iend), &
-                 rt_auxvar_chunk,volume_p(local_id), &
-                 porosity_loc_p(ghosted_id),ichunk,ithread,reaction)
-    enddo !ichunk
-
-    call RReactChunk(rt_auxvar_chunk,num_iterations, &
-                     reaction,vector_length,ithread,option)
-
-    do ichunk = 1, vector_length
-      local_id = local_ids(ichunk,ithread)
-      ghosted_id = grid%nL2G(local_id)
-      istart = (local_id-1)*reaction%naqcomp+1
-      iend = istart+reaction%naqcomp-1
-      ! tran_xx_p passes in total component concentrations
-      !       and returns free ion concentrations
-      call RUnpack(rt_aux_vars(ghosted_id),tran_xx_p(istart:iend), &
-                   rt_auxvar_chunk,ichunk,ithread,reaction)
-!geh      print *, local_id, tran_xx_p(istart:iend)
-    enddo
-
-#ifdef OS_STATISTICS
-    do ichunk = 1, vector_length
-      if (num_iterations(ichunk,ithread) > max_iterations) then
-        max_iterations = num_iterations(ichunk,ithread)
-      endif
-      sum_iterations = sum_iterations + num_iterations(ichunk,ithread)
-    enddo
-#endif
- 
-  enddo ! icell
-  !%omp end parallel do
-  
-#else
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
     
-    iend = local_id*reaction%naqcomp
-    istart = iend-reaction%naqcomp+1
+    istart = (local_id-1)*reaction%ncomp+1
+    iend = istart + reaction%ncomp - 1
+    iendaq = istart + reaction%naqcomp - 1
     
     if (option%use_mc) then
       vol_frac_prim = rt_sec_transport_vars(ghosted_id)%epsilon
@@ -2171,7 +2103,12 @@ subroutine RTReactPatch(realization)
                 porosity_loc_p(ghosted_id), &
                 num_iterations,reaction,option,vol_frac_prim)
     ! set primary dependent var back to free-ion molality
-    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+    tran_xx_p(istart:iendaq) = rt_aux_vars(ghosted_id)%pri_molal
+    if (reaction%nimcomp > 0) then
+      tran_xx_p(reaction%offset_immobile: &
+                reaction%offset_immobile + reaction%nimcomp) = &
+        rt_aux_vars(ghosted_id)%immobile
+    endif
 #ifdef OS_STATISTICS
     if (num_iterations > max_iterations) then
       max_iterations = num_iterations
@@ -2180,7 +2117,6 @@ subroutine RTReactPatch(realization)
     icount = icount + 1
 #endif
   enddo
-#endif  
   
 #ifdef OS_STATISTICS
   patch%aux%RT%rt_parameter%newton_call_count = icount

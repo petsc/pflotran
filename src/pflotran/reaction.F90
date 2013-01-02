@@ -556,12 +556,6 @@ subroutine ReactionRead(reaction,input,option)
         enddo
       case('NO_BDOT')
         reaction%act_coef_use_bdot = PETSC_FALSE
-      case('CHUNK_SIZE')
-        call InputReadInt(input,option,option%chunk_size)
-        call InputErrorMsg(input,option,'chunk_size','CHEMISTRY')
-      case('NUM_THREADS')
-        call InputReadInt(input,option,option%num_threads)
-        call InputErrorMsg(input,option,'num_thread','CHEMISTRY')
       case('UPDATE_POROSITY')
         reaction%update_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')
@@ -2983,7 +2977,7 @@ end subroutine RJumpStartKineticSorption
 ! date: 05/04/10
 !
 ! ************************************************************************** !
-subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
+subroutine RReact(rt_auxvar,global_auxvar,tran_xx_p,volume,porosity, &
                   num_iterations_,reaction,option,vol_frac_prim)
 
   use Option_module
@@ -2993,7 +2987,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar 
   type(global_auxvar_type) :: global_auxvar
-  PetscReal :: total(reaction%ncomp)
+  PetscReal :: tran_xx_p(reaction%ncomp)
   type(option_type) :: option
   PetscReal :: volume
   PetscReal :: porosity
@@ -3024,12 +3018,24 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   ! Since RTAccumulation uses rt_auxvar%total, we must overwrite the 
   ! rt_auxvar total variables
   ! aqueous
-  rt_auxvar%total(:,iphase) = total(1:reaction%naqcomp)
+  rt_auxvar%total(:,iphase) = tran_xx_p(1:reaction%naqcomp)
+  
+  if (reaction%ncoll > 0) then
+    option%io_buffer = 'Colloids not set up for operator split mode.'
+    call printErrMsg(option)
+  endif
+    
+  if (reaction%nimcomp > 0) then
+    rt_auxvar%immobile = &
+      tran_xx_p(reaction%offset_immobile: &
+                reaction%offset_immobile + reaction%nimcomp)
+  endif
 
 ! skip chemistry if species nonreacting 
 #if 1  
   if (.not.reaction%use_full_geochemistry) then
-    rt_auxvar%pri_molal(:) = total(:)/global_auxvar%den_kg(iphase)*1.d3
+    rt_auxvar%pri_molal(:) = tran_xx_p(1:reaction%naqcomp) / &
+                             global_auxvar%den_kg(iphase)*1.d3
     return
   endif
 #endif  
@@ -4630,9 +4636,11 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
   PetscInt :: iphase
   PetscInt :: istart, iend
   PetscInt :: idof
+  PetscInt :: iimob
   PetscInt :: icoll
   PetscInt :: icollcomp
   PetscInt :: iaqcomp
+  PetscInt :: iimb
   PetscReal :: psv_t
   PetscReal :: v_t
   PetscReal :: vol_frac_prim
@@ -4658,6 +4666,13 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,por,vol,reaction,option, &
       iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
       Res(iaqcomp) = Res(iaqcomp) + &
         psv_t*rt_auxvar%colloid%total_eq_mob(icollcomp)
+    enddo
+  endif
+  if (reaction%nimcomp > 0) then
+    do iimob = 1, reaction%nimcomp
+      idof = reaction%offset_immobile + iimob
+      Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
+                              vol/option%tran_dt 
     enddo
   endif
 
@@ -4707,6 +4722,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   PetscInt :: istart, iendaq
   PetscInt :: idof
   PetscInt :: icoll
+  PetscInt :: iimob
   PetscReal :: psvd_t, v_t
   PetscReal :: vol_frac_prim
 
@@ -4742,6 +4758,12 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! need the below
     ! dRj_dSic
     ! dRic_dCj                                 
+  endif
+  if (reaction%nimcomp > 0) then
+    do iimob = 1, reaction%nimcomp
+      idof = reaction%offset_immobile + iimob
+      J(idof,idof) = vol/option%tran_dt
+    enddo
   endif
 
 ! Add in multiphase, clu 12/29/08
