@@ -3392,6 +3392,12 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
         r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
                                                - qsrc1 *option%flow_dt
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
+      else
+        ! extraction
+        r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
+                                               - qsrc1 *option%flow_dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+                                        qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -3921,7 +3927,14 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
-      endif  
+      else
+        ! extraction
+        dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp*option%flow_dt
+        dresT_dt = -qsrc1*aux_vars(ghosted_id)%dh_dt*option%flow_dt
+        istart = ghosted_id*option%nflowdof
+        call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
+      endif
     
       if (csrc1 > 0.d0) then ! injection
         call printErrMsg(option,"concentration source not yet implemented in THC")
