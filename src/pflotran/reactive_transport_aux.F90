@@ -530,7 +530,9 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
   PetscInt :: sec_zeta(sec_transport_vars%ncells)
   PetscReal :: diag_react, rhs_react
-  
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
+
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -538,6 +540,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   dm_plus = sec_transport_vars%dm_plus
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
+  sec_zeta = sec_transport_vars%sec_zeta
   
   coeff_left = 0.d0
   coeff_diag = 0.d0
@@ -555,17 +558,25 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
 
   conc_primary_node = aux_var%total(1,1)                             ! in mol/L 
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac             ! dimensionless
-  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/cm
+  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/m
   
   if (reaction%mineral%nkinmnrl > 0) then
-    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
-    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
-    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/m^2/s
+    ! Arrhenius factor
+    arrhenius_factor = 1.d0
+    if (reaction%mineral%kinmnrl_activation_energy(1) > 0.d0) then
+      arrhenius_factor = exp(reaction%mineral%kinmnrl_activation_energy(1)/rgas &
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
+    endif    
+    kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/kg
+    equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3/mol
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d-3
     rhs_react = diag_react*equil_conc                                ! in mol/L
   endif
- 
-  alpha = diffusion_coefficient*option%tran_dt/porosity   
+  
+  alpha = diffusion_coefficient*option%tran_dt 
   
   ! Setting the coefficients
   do i = 2, ngcells-1
@@ -587,8 +598,12 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
                        + 1.d0 + diag_react*sec_zeta(ngcells)
                         
+  ! Note that sec_transport_vars%sec_conc units are in mol/kg
+  ! Need to convert to mol/L since the units of conc. in the Thomas 
+  ! algorithm are in mol/L
   do i = 1, ngcells
-    rhs(i) = sec_transport_vars%sec_conc(i) + rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
+    rhs(i) = sec_transport_vars%sec_conc(i)*global_aux_var%den_kg(1)*1.d-3 + &
+             rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
   enddo
   
   rhs(ngcells) = rhs(ngcells) + & 
@@ -613,14 +628,14 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
  ! print *,'conc_dcdm= ',(sec_conc(i),i=1,ngcells)
  
    do i = 1, ngcells
-    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/cm^3/s
+    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/m^3/s
     if (Im(i) > 0.d0) then 
-      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt* &
                             mnrl_molar_vol*Im(i)
       sec_zeta(i) = 1
     else
       if (sec_mnrl_volfrac(i) > 0.d0) then
-        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt* &
                               mnrl_molar_vol*Im(i)
         sec_zeta(i) = 1
       else
@@ -634,7 +649,9 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
     endif
   enddo
 
-  sec_transport_vars%sec_conc = sec_conc
+  ! Convert the units of sec_conc from mol/L to mol/kg before passing to
+  ! sec_transport_vars
+  sec_transport_vars%sec_conc = sec_conc/global_aux_var%den_kg(1)/1.d-3
   sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
   sec_transport_vars%sec_zeta = sec_zeta
 
