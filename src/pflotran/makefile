@@ -255,7 +255,6 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}microbial.o\
 	${common_src}solid_solution.o\
 	${common_src}reaction.o\
-	${common_src}reaction_sandbox.o\
 	${common_src}reactive_transport.o\
 	${common_src}thc.o\
 	${common_src}thmc.o\

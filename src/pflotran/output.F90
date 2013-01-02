@@ -5211,7 +5211,8 @@ subroutine OutputHDF5(realization)
                               FILE_CREATE, file_id, ierr)
   endif
 
-#else  ! PARALLELIO_LIB_WRITE is not defined
+#else
+! PARALLELIO_LIB_WRITE is not defined
 
     ! initialize fortran interface
   call h5open_f(hdf5_err)
@@ -5239,7 +5240,8 @@ subroutine OutputHDF5(realization)
                         H5P_DEFAULT_F,prop_id)
     endif
     call h5pclose_f(prop_id,hdf5_err)
-#endif ! PARALLELIO_LIB_WRITE
+#endif
+! PARALLELIO_LIB_WRITE
 
     if (first) then
       option%io_buffer = '--> creating hdf5 output file: ' // filename
@@ -5321,7 +5323,8 @@ subroutine OutputHDF5(realization)
       call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
     endif
     call h5eset_auto_f(ON,hdf5_err)
-#endif ! PARALLELIO_LIB_WRITE
+#endif
+! PARALLELIO_LIB_WRITE
 
 #ifdef VAMSI_HDF5_WRITE
   endif
@@ -5436,7 +5439,8 @@ subroutine OutputHDF5(realization)
     endif
 #endif
      call h5close_f(hdf5_err)
-#endif !PARALLELIO_LIB_WRITE
+#endif
+!PARALLELIO_LIB_WRITE
 #endif
 
   hdf5_first = PETSC_FALSE
@@ -5860,7 +5864,8 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   endif
 #endif
 
-#endif ! PARALLELIO_LIB_WRITE
+#endif
+! PARALLELIO_LIB_WRITE
 
   call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
 
@@ -8068,8 +8073,8 @@ subroutine OutputHDF5UGrid(realization)
     call WriteHDF5CoordinatesUGrid(grid,option,grp_id)
     call h5gclose_f(grp_id,hdf5_err)
   endif
-#endif ! PARALLELIO_LIB_WRITE
-
+#endif
+! PARALLELIO_LIB_WRITE
 
     ! create a group for the data set
     write(string,'(''Time:'',es13.5,x,a1)') &
@@ -8090,7 +8095,8 @@ subroutine OutputHDF5UGrid(realization)
       call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
     endif
     call h5eset_auto_f(ON,hdf5_err)
-#endif ! PARALLELIO_LIB_WRITE
+#endif
+! PARALLELIO_LIB_WRITE
 
   ! write out data sets
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -8195,11 +8201,13 @@ subroutine OutputHDF5UGrid(realization)
   call h5gclose_f(grp_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
-#endif !PARALLELIO_LIB_WRITE
+#endif
+!PARALLELIO_LIB_WRITE
 
   hdf5_first = PETSC_FALSE
 
-#endif ! !defined(PETSC_HAVE_HDF5)
+#endif
+! !defined(PETSC_HAVE_HDF5)
 
 end subroutine OutputHDF5UGrid
 
@@ -10594,6 +10602,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF2(surf_realization,realization,option,fi
 
 end subroutine WriteHDF5CoordinatesUGridXDMF2
 
-#endif SURFACE_FLOW
+#endif
+!SURFACE_FLOW
 
 end module Output_module
