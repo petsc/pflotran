@@ -58,8 +58,12 @@ end function DatabaseRxnCreate
 ! date: 10/30/12
 !
 ! ************************************************************************** !
-function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
-                                        primary_species_names,option)
+function DatabaseRxnCreateFromRxnString(reaction_string, &
+                                        naqcomp, aq_offset, &
+                                        primary_aq_species_names, &
+                                        nimcomp, im_offset, &
+                                        primary_im_species_names, &
+                                        option)
 
   use Option_module
   use String_module
@@ -68,8 +72,12 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: reaction_string
-  PetscInt :: ncomp
-  character(len=MAXWORDLENGTH) :: primary_species_names(ncomp)
+  PetscInt :: naqcomp ! mobile aqueoues species
+  PetscInt :: aq_offset ! offset for aqueous species
+  character(len=MAXWORDLENGTH) :: primary_aq_species_names(naqcomp)
+  PetscInt :: nimcomp ! immobile primary speces (e.g. biomass)
+  PetscInt :: im_offset ! offset for aqueous species
+  character(len=MAXWORDLENGTH) :: primary_im_species_names(nimcomp)
   type(option_type) :: option
     
   type(database_rxn_type), pointer :: DatabaseRxnCreateFromRxnString
@@ -169,16 +177,28 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
             dbaserxn%stoich(icount) = -1.d0
           endif
 
-          ! set the primary species id
+          ! set the primary aqueous species id
           found = PETSC_FALSE
-          do i = 1, ncomp
-            if (StringCompare(word,primary_species_names(i), &
+          do i = 1, naqcomp
+            if (StringCompare(word,primary_aq_species_names(i), &
                               MAXWORDLENGTH)) then
-              dbaserxn%spec_ids(icount) = i
+              dbaserxn%spec_ids(icount) = i + aq_offset
               found = PETSC_TRUE
               exit      
             endif
           enddo
+          ! set the primary immobile species id
+          if (.not.found) then
+            do i = 1, nimcomp
+              if (StringCompare(word,primary_im_species_names(i), &
+                                MAXWORDLENGTH)) then
+                dbaserxn%spec_ids(icount) = i + im_offset
+                found = PETSC_TRUE
+                exit      
+              endif
+            enddo
+          endif
+          
           ! check water
           word2 = 'H2O'
           if (StringCompareIgnoreCase(word,word2)) then

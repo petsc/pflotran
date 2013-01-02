@@ -1270,6 +1270,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
     ! PCL add in colloid dofs
     option%ntrandof = GetPrimarySpeciesCount(reaction)
     option%ntrandof = option%ntrandof + GetColloidCount(reaction)
+    option%ntrandof = option%ntrandof + GetImmobileCount(reaction)
     reaction%ncomp = option%ntrandof
   endif
     

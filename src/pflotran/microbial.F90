@@ -126,6 +126,53 @@ end subroutine MicrobialRead
 
 ! ************************************************************************** !
 !
+! MicrobialBiomassRead: Reads biomass species
+! author: Glenn Hammond
+! date: 01/02/13
+!
+! ************************************************************************** !
+subroutine MicrobialBiomassRead(microbial,input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  
+  implicit none
+  
+  type(microbial_type) :: microbial
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  type(biomass_species_type), pointer :: biomass, prev_biomass
+           
+  nullify(prev_biomass)
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+          
+    microbial%nbiomass = microbial%nbiomass + 1
+          
+    biomass => MicrobialBiomassSpeciesCreate()
+    call InputReadWord(input,option,biomass%name,PETSC_TRUE)  
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
+    if (.not.associated(microbial%biomass_list)) then
+      microbial%biomass_list => biomass
+      biomass%id = 1
+    endif
+    if (associated(prev_biomass)) then
+      prev_biomass%next => biomass
+      biomass%id = prev_biomass%id + 1
+    endif
+    prev_biomass => biomass
+    nullify(biomass)
+  enddo
+
+end subroutine MicrobialBiomassRead
+
+! ************************************************************************** !
+!
 ! RMicrobial: Computes the microbial reaction
 ! author: Glenn Hammond
 ! date: 10/31/12
@@ -154,13 +201,14 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt, parameter :: iphase = 1
   PetscReal :: por_sat_vol
   PetscInt :: irxn, i, ii, icomp, jcomp, ncomp
-  PetscInt :: imonod, iinhibition
+  PetscInt :: imonod, iinhibition, ibiomass
   PetscReal :: Im
   PetscReal :: rate_constant
   PetscReal :: activity
   PetscReal :: act_coef
   PetscReal :: monod(10)
   PetscReal :: inhibition(10)
+  PetscReal :: biomass
   PetscReal :: denominator, dR_dX, dX_dc, dR_dc
   type(microbial_type), pointer :: microbial
   
@@ -172,6 +220,9 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   
   do irxn = 1, microbial%nrxn
   
+    ! units:
+    !   without biomass: mol/L-sec
+    !   with biomass: mol/L-sec * (m^3 bulk / mol biomass)
     rate_constant = microbial%rate_constant(irxn)
     Im = rate_constant
 
@@ -193,6 +244,13 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                       (microbial%inhibition_C(iinhibition) + activity)
       Im = Im*inhibition(ii)
     enddo
+    
+    ! biomass term
+    ibiomass = microbial%biomassid(irxn)
+    if (ibiomass > 0) then
+      biomass = rt_auxvar%immobile(microbial%biomassid(ibiomass))
+      Im = Im*biomass
+    endif
     
     ! por_sat_vol units: m^3 water
     por_sat_vol = porosity*global_auxvar%sat(iphase)*volume

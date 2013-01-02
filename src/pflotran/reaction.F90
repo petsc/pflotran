@@ -85,19 +85,21 @@ subroutine ReactionRead(reaction,input,option)
   character(len=MAXWORDLENGTH) :: card
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
+  type(biomass_species_type), pointer :: biomass, prev_biomass
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
-  PetscInt :: i, tempint
-  PetscReal :: tempreal
+  PetscInt :: i, temp_int
+  PetscReal :: temp_real
   PetscInt :: srfcplx_count
   PetscInt :: temp_srfcplx_count
   PetscBool :: found
 
   nullify(prev_species)
   nullify(prev_gas)
+  nullify(prev_biomass)
   nullify(prev_colloid)
   nullify(prev_cation)
   nullify(prev_general_rxn)
@@ -187,10 +189,31 @@ subroutine ReactionRead(reaction,input,option)
           prev_gas => gas
           nullify(gas)
         enddo
-      case('GENERAL_REACTION')
+      case('BIOMASS_SPECIES')
+        nullify(prev_biomass)
+        do
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
 
+          reaction%microbial%nbiomass = reaction%microbial%nbiomass + 1
+          
+          biomass => MicrobialBiomassSpeciesCreate()
+          call InputReadWord(input,option,biomass%name,PETSC_TRUE)  
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,GAS_SPECIES')    
+          if (.not.associated(reaction%microbial%biomass_list)) then
+            reaction%microbial%biomass_list => biomass
+            biomass%id = 1
+          endif
+          if (associated(prev_biomass)) then
+            prev_biomass%next => biomass
+            biomass%id = prev_biomass%id + 1
+          endif
+          prev_biomass => biomass
+          nullify(biomass)
+        enddo        
+      case('GENERAL_REACTION')
         reaction%ngeneral_rxn = reaction%ngeneral_rxn + 1
-        
         general_rxn => GeneralRxnCreate()
         do 
           call InputReadFlotranString(input,option)
@@ -291,12 +314,15 @@ subroutine ReactionRead(reaction,input,option)
       case('MINERALS')
         call MineralRead(reaction%mineral,input,option)
       case('MINERAL_KINETICS') ! mineral kinetics read on second round
+        !geh: but we need to count the number of kinetic minerals this round
+        temp_int = 0 ! used to count kinetic minerals
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,name,PETSC_TRUE)
           call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
+          temp_int = temp_int + 1
           do
             call InputReadFlotranString(input,option)
             call InputReadStringErrorMsg(input,option,card)
@@ -322,7 +348,8 @@ subroutine ReactionRead(reaction,input,option)
                 enddo
             end select
           enddo
-        enddo       
+        enddo
+        reaction%mineral%nkinmnrl = reaction%mineral%nkinmnrl + temp_int
       case('SOLID_SOLUTIONS') ! solid solutions read on second round
 #ifdef SOLID_SOLUTION
         do
