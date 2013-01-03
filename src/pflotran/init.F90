@@ -1175,7 +1175,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
   type(level_type), pointer :: level
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
-  type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   
@@ -1208,7 +1207,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-  case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -1268,15 +1267,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call InputFindStringInFile(input,option,string)
 
   if (.not.InputError(input)) then
-    reaction => ReactionCreate()
-    realization%reaction => reaction
-    call ReactionRead(reaction,input,option)
-    reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
-    ! PCL add in colloid dofs
-    option%ntrandof = GetPrimarySpeciesCount(reaction)
-    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
-    option%ntrandof = option%ntrandof + GetImmobileCount(reaction)
-    reaction%ncomp = option%ntrandof
+    call ReactionInit(realization%reaction,input,option)
   endif
     
 end subroutine InitReadRequiredCardsFromInput
@@ -1442,84 +1433,7 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('CHEMISTRY')
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'word','CHEMISTRY') 
-          select case(trim(word))
-            case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS','GENERAL_REACTION', &
-                 'MICROBIAL_REACTION','REACTION_SANDBOX')
-              call InputSkipToEND(input,option,card)
-            case('REDOX_SPECIES')
-              call ReactionReadRedoxSpecies(reaction,input,option)
-            case('OUTPUT')
-              call ReactionReadOutput(reaction,input,option)
-            case('MINERAL_KINETICS')
-              call MineralReadKinetics(reaction%mineral,input,option)
-            case('SOLID_SOLUTIONS')
-#ifdef SOLID_SOLUTION                
-              call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
-                                                  input,option)
-#endif
-            case('SORPTION')
-              do
-                call InputReadFlotranString(input,option)
-                call InputReadStringErrorMsg(input,option,card)
-                if (InputCheckExit(input,option)) exit
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
-                select case(trim(word))
-                  case('ISOTHERM_REACTIONS')
-                    do
-                      call InputReadFlotranString(input,option)
-                      call InputReadStringErrorMsg(input,option,card)
-                      if (InputCheckExit(input,option)) exit
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      call InputErrorMsg(input,option,word, &
-                                         'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS') 
-                      ! skip over remaining cards to end of each kd entry
-                      call InputSkipToEnd(input,option,word)
-                    enddo
-                  case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
-                    do
-                      call InputReadFlotranString(input,option)
-                      call InputReadStringErrorMsg(input,option,card)
-                      if (InputCheckExit(input,option)) exit
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'SORPTION','CHEMISTRY')
-                      select case(trim(word))
-                        case('COMPLEXES','CATIONS')
-                          call InputSkipToEND(input,option,word)
-                        case('COMPLEX_KINETICS')
-                          do
-                            call InputReadFlotranString(input,option)
-                            call InputReadStringErrorMsg(input,option,card)
-                            if (InputCheckExit(input,option)) exit
-                            call InputReadWord(input,option,word,PETSC_TRUE)
-                            call InputErrorMsg(input,option,word, &
-                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
-                            ! skip over remaining cards to end of each mineral entry
-                            call InputSkipToEnd(input,option,word)
-                          enddo
-                      end select 
-                    enddo
-                  case('NUM_THREADS')
-                  case('JUMPSTART_KINETIC_SORPTION')
-                  case('NO_CHECKPOINT_KINETIC_SORPTION')
-                  case('NO_RESTART_KINETIC_SORPTION')
-                    ! dummy placeholder
-                end select
-              enddo
-            case('MOLAL','MOLALITY', &
-                 'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
-                 'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
-                 'NO_RESTART_MINERAL_VOL_FRAC')
-              ! dummy placeholder
-          end select
-        enddo
+        call ReactionReadPass2(reaction,input,option)
 
 !....................
       case ('UNIFORM_VELOCITY')

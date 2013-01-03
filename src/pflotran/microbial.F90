@@ -36,6 +36,7 @@ subroutine MicrobialRead(microbial,input,option)
   character(len=MAXWORDLENGTH) :: word
   type(microbial_rxn_type), pointer :: microbial_rxn, cur_microbial_rxn
   type(monod_type), pointer :: monod, prev_monod
+  type(biomass_type), pointer :: biomass
   type(inhibition_type), pointer :: inhibition, prev_inhibition
   
   microbial%nrxn = microbial%nrxn + 1
@@ -98,6 +99,15 @@ subroutine MicrobialRead(microbial,input,option)
         endif
         prev_inhibition => inhibition
         nullify(inhibition)
+      case('BIOMASS')
+        biomass => MicrobialBiomassCreate()
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'species name', &
+                           'CHEMISTRY,MICROBIAL_REACTION,BIOMASS')
+        biomass%species_name = word
+        call InputReadDouble(input,option,biomass%yield)  
+        call InputErrorMsg(input,option,'yield', &
+                           'CHEMISTRY,MICROBIAL_REACTION,BIOMASS')
       case default
         option%io_buffer = 'CHEMISTRY,MICROBIAL_REACTION keyword: ' // &
           trim(word) // ' not recognized.'

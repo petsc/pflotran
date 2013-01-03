@@ -100,11 +100,11 @@ module Microbial_Aux_module
             MicrobialRxnCreate, &
             MicrobialMonodCreate, &
             MicrobialInhibitionCreate, &
+            MicrobialBiomassCreate, &
             MicrobialBiomassSpeciesCreate, &
             MicrobialGetMonodCount, &
             MicrobialGetInhibitionCount, &
             MicrobialGetBiomassCount, &
-            MicrobialBiomassSpeciesDestroy, &
             MicrobialRxnDestroy, &
             MicrobialDestroy
              
