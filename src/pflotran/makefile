@@ -307,14 +307,16 @@ pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 	$(relations_obj) $(properties_obj) $(dataset_obj) \
 	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
 
-pflotran_rxn_obj = $(util_obj) $(shared_mode_aux_obj) $(chem_obj) \
-	${pflotran_src}pflotran_rxn.o
+pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
 pflotran : $(pflotran_obj)
 	${FLINKER} -o pflotran $(pflotran_obj) ${PETSC_LIB} ${LIBS} 
 
-pflotran_rxn : $(pflotran_rxn_obj)
-	${FLINKER} -o pflotran_rxn $(pflotran_rxn_obj) ${PETSC_LIB} ${LIBS} 
+libpflotranchem.a : $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
+	$(AR) $(ARFLAGS) $@ $(util_obj) $(shared_mode_aux_obj) $(chem_obj)
+
+pflotran_rxn : $(pflotran_rxn_obj) libpflotranchem.a
+	${FLINKER} -o $@ $(pflotran_rxn_obj) -L. -lpflotranchem ${PETSC_LIB} ${LIBS} 
 
 ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \

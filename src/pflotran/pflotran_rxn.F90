@@ -45,27 +45,35 @@ program pflotran_rxn
   use Option_module
   use Input_module
   
+  !use Condition_module
+  !use Constraint_module
+
   implicit none
 
 #include "definitions.h"
 #include "finclude/petsclog.h"
 
+  PetscErrorCode :: ierr
   PetscBool :: option_found  
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: filename_out
   type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
   type(input_type), pointer :: input
-  PetscErrorCode :: ierr
+
+  !character(len=MAXWORDLENGTH) :: card
+  !character(len=MAXWORDLENGTH) :: word
+  !type(tran_constraint_type), pointer :: tran_constraint
+  !type(tran_constraint_list_type), pointer :: transport_constraints
   
   option => OptionCreate()
   option%fid_out = OUT_UNIT
 
   call MPI_Init(ierr)
   option%global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
+  call MPI_Comm_rank(MPI_COMM_WORLD, option%global_rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD, option%global_commsize, ierr)
+  call MPI_Comm_group(MPI_COMM_WORLD, option%global_group, ierr)
   option%mycomm = option%global_comm
   option%myrank = option%global_rank
   option%mycommsize = option%global_commsize
@@ -74,10 +82,10 @@ program pflotran_rxn
   ! check for non-default input filename
   option%input_filename = "pflotran.in"
   string = '-pflotranin'
-  call InputGetCommandLineString(string, option%input_filename, option_found,option)
+  call InputGetCommandLineString(string, option%input_filename, option_found, option)
 
   string = '-output_prefix'
-  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
+  call InputGetCommandLineString(string, option%global_prefix, option_found, option)
 
   PETSC_COMM_WORLD = MPI_COMM_WORLD
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
@@ -91,12 +99,19 @@ program pflotran_rxn
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
 
+  !
+  ! initialize chemistry
+  !
+
   ! first pass through the input file to check for a CHEMISTRY block
   string = "CHEMISTRY"
-  call InputFindStringInFile(input,option,string)
+  call InputFindStringInFile(input, option, string)
   if (.not.InputError(input)) then
     ! found a chemistry block, initialize the chemistry
     call ReactionInit(reaction, input, option)
+    ! rewind the input file to prepare for the second pass
+    ! NOTE(bja): rewind(input.fid) doesn't work...?
+    call InputFindStringInFile(input, option, string)
     ! the second pass through the input file to read the remaining blocks
     call ReactionReadPass2(reaction, input, option)
   endif
@@ -115,7 +130,52 @@ program pflotran_rxn
     endif
   endif
 
+  !
   ! process the constraints...
+  !
+
+  ! NOTE(bja): this opens up a huge list of dependancies on other modules
+  
+!!$  ! create the constraint list
+!!$  allocate(transport_constraints)
+!!$  call TranConstraintInitList(transport_constraints)
+!!$
+!!$  ! look through the input file
+!!$  rewind(input%fid)        
+!!$  do
+!!$    call InputReadFlotranString(input, option)
+!!$    if (InputError(input)) exit
+!!$
+!!$    call InputReadWord(input, option, word, PETSC_FALSE)
+!!$    call StringToUpper(word)
+!!$    card = trim(word)
+!!$
+!!$    option%io_buffer = 'pflotran card:: ' // trim(card)
+!!$    call printMsg(option)
+!!$
+!!$    select case(trim(card))
+!!$!....................
+!!$      case('CONSTRAINT')
+!!$        if (.not.associated(reaction)) then
+!!$          option%io_buffer = 'CONSTRAINTs not supported without CHEMISTRY.'
+!!$          call printErrMsg(option)
+!!$        endif
+!!$        tran_constraint => TranConstraintCreate(option)
+!!$        call InputReadWord(input, option, tran_constraint%name, PETSC_TRUE)
+!!$        call InputErrorMsg(input, option, 'constraint', 'name') 
+!!$        call printMsg(option, tran_constraint%name)
+!!$        call TranConstraintRead(tran_constraint, reaction, input, option)
+!!$        call TranConstraintAddToList(tran_constraint, transport_constraints)
+!!$        nullify(tran_constraint)
+!!$
+!!$      case default
+!!$    
+!!$        option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
+!!$                           'not recognized'
+!!$        call printErrMsg(option)
+!!$
+!!$    end select
+!!$  enddo
 
   ! cleanup
   call ReactionDestroy(reaction)
