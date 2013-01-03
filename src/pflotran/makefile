@@ -282,6 +282,9 @@ pflotran_obj = ${common_src}option.o \
 pflotran : $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o
 	${FLINKER} -o pflotran $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS} 
 
+pflotran_batch : $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran_rxn.o
+	${FLINKER} -o $@ $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran_rxn.o ${PETSC_LIB} ${LIBS} 
+
 ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
 	$(LIBS)

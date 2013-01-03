@@ -41,6 +41,7 @@ program pflotran_rxn
   
   use Reaction_module
   use Reaction_Aux_module
+  use Database_module
   use Option_module
   use Input_module
   
@@ -49,8 +50,12 @@ program pflotran_rxn
 #include "definitions.h"
 #include "finclude/petsclog.h"
 
+  PetscBool :: option_found  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: filename_out
   type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
+  type(input_type), pointer :: input
   PetscErrorCode :: ierr
   
   option => OptionCreate()
@@ -66,6 +71,62 @@ program pflotran_rxn
   option%mycommsize = option%global_commsize
   option%mygroup = option%global_group
 
+  ! check for non-default input filename
+  option%input_filename = "pflotran.in"
+  string = '-pflotranin'
+  call InputGetCommandLineString(string, option%input_filename, option_found,option)
+
+  string = '-output_prefix'
+  call InputGetCommandLineString(string,option%global_prefix,option_found,option)
+
+  PETSC_COMM_WORLD = MPI_COMM_WORLD
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+
+  input => InputCreate(IN_UNIT, option%input_filename, option)
+
+  filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
+                 '.out'
+
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    open(option%fid_out, file=filename_out, action="write", status="unknown")
+  endif
+
+  ! first pass through the input file to check for a CHEMISTRY block
+  string = "CHEMISTRY"
+  call InputFindStringInFile(input,option,string)
+  if (.not.InputError(input)) then
+    ! found a chemistry block, initialize the chemistry
+    reaction => ReactionCreate()
+    call ReactionRead(reaction, input, option)
+    reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
+    ! PCL add in colloid dofs
+    option%ntrandof = GetPrimarySpeciesCount(reaction)
+    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
+    reaction%ncomp = option%ntrandof
+  endif
+    
+  if (associated(reaction)) then
+    if (reaction%use_full_geochemistry) then
+       call DatabaseRead(reaction, option)
+       call BasisInit(reaction, option)    
+    else
+      ! NOTE(bja): do we need this for the batch chemistry driver?
+
+      ! turn off activity coefficients since the database has not been read
+      reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
+      allocate(reaction%primary_species_print(option%ntrandof))
+      reaction%primary_species_print = PETSC_TRUE
+    endif
+  endif
+
+  ! the second pass through the input file to read the remaining blocks
+  ! NOTE(bja) : how do we read chemistry info w/o requiring a full simualtion object?
+  !call InitReadInput(simulation)
+
+
+  ! cleanup
+  call ReactionDestroy(reaction)
+  call InputDestroy(input)
   call OptionDestroy(option)
   call PetscFinalize(ierr)
   call MPI_Finalize(ierr)
