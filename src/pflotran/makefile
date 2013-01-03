@@ -144,7 +144,7 @@ FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 
-CLEANFILES       = pflotran 
+CLEANFILES       = pflotran pflotran_rxn
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
@@ -166,120 +166,155 @@ FC = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_ma
 FLINKER = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
 endif
 
-util_obj  = ${common_src}input.o \
+util_obj  = \
+	${common_src}cf90bridge.o \
+	${common_src}input.o \
+	${common_src}logging.o \
+	${common_src}matrix_block_aux.o \
+	${common_src}matrix_buffer.o \
+	${common_src}option.o \
+	${common_src}output_aux.o \
+	${common_src}spline.o \
 	${common_src}string.o \
-	${common_src}water_eos.o \
-	${common_src}gaseos_mod.o \
+	${common_src}units.o \
+	${common_src}utility.o \
+	${common_src}variables.o
+
+eos_obj = \
 	${common_src}co2eos.o \
+	${common_src}co2_sw.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
-	${common_src}spline.o \
 	${common_src}co2_span_wagner_spline.o \
-	${common_src}co2_sw.o \
-	${common_src}utility.o
+	${common_src}gaseos_mod.o \
+	${common_src}water_eos.o 
 
-pflotran_obj = ${common_src}option.o \
-	${common_src}variables.o\
-	${common_src}geometry.o\
-	${common_src}units.o\
-	${common_src}logging.o \
-	${common_src}output_aux.o \
-	${common_src}hdf5_aux.o \
-	${common_src}global_aux.o\
-	${common_src}material_aux.o\
-	${common_src}matrix_block_aux.o\
-	${common_src}database_aux.o\
-	${common_src}secondary_continuum.o\
-	${common_src}surface_complexation_aux.o\
-	${common_src}mineral_aux.o\
-	${common_src}microbial_aux.o\
-	${common_src}solid_solution_aux.o\
-	${common_src}reaction_aux.o\
-	${common_src}reactive_transport_aux.o\
-	${common_src}thc_aux.o\
-	${common_src}thmc_aux.o\
-	${common_src}richards_aux.o\
-	${common_src}general_aux.o\
-	${common_src}mphase_aux.o\
-	${common_src}miscible_aux.o\
-	${common_src}immis_aux.o\
-	${common_src}mfd_aux.o\
-	${common_src}flash2_aux.o\
-	${common_src}auxilliary.o\
-	${common_src}field.o \
-	${common_src}debug.o \
-	${common_src}waypoint.o \
-	${common_src}region.o \
-	${common_src}fluid.o \
-	${common_src}time_series.o \
-	${common_src}dataset_aux.o \
-	${common_src}dataset.o \
-	${common_src}saturation_function.o \
-	${common_src}material.o \
-	${common_src}pckr_mod.o \
-	${common_src}strata.o \
+mode_aux_obj = \
+	${common_src}auxilliary.o \
+	${common_src}flash2_aux.o \
+	${common_src}general_aux.o \
+	${common_src}immis_aux.o \
+	${common_src}miscible_aux.o \
+	${common_src}mphase_aux.o \
+	${common_src}richards_aux.o \
+	${common_src}thc_aux.o \
+	${common_src}thmc_aux.o
+
+mode_obj = \
+	${common_src}flash2.o \
+	${common_src}general.o \
+	${common_src}global.o \
+	${common_src}immis.o \
+	${common_src}miscible.o \
+	${common_src}mphase.o \
+	${common_src}reactive_transport.o \
+	${common_src}richards.o \
+	${common_src}thc.o \
+	${common_src}thmc.o 
+
+shared_mode_aux_obj = \
+	${common_src}global_aux.o \
+	${common_src}reactive_transport_aux.o 
+
+chem_obj = \
+	${common_src}constraint.o \
+	${common_src}database.o \
+	${common_src}database_aux.o \
+	${common_src}database_hpt.o \
+	${common_src}microbial.o \
+	${common_src}microbial_aux.o \
+	${common_src}mineral.o \
+	${common_src}mineral_aux.o \
+	${common_src}reaction.o \
+	${common_src}reaction_aux.o \
+	${common_src}reaction_sandbox.o \
+	${common_src}solid_solution.o \
+	${common_src}solid_solution_aux.o \
+	${common_src}surface_complexation.o \
+	${common_src}surface_complexation_aux.o 
+
+grid_obj = \
 	${common_src}connection.o \
-	${common_src}observation.o \
-	${common_src}solver.o \
-	${common_src}cf90bridge.o\
+	${common_src}discretization.o \
+	${common_src}general_grid.o \
+	${common_src}grid.o \
+	${common_src}mfd.o \
+	${common_src}mfd_aux.o \
 	${common_src}unstructured_cell.o \
 	${common_src}unstructured_explicit.o \
 	${common_src}unstructured_grid_aux.o \
 	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o \
-	${common_src}constraint.o \
-	${common_src}condition.o \
-	${common_src}coupler.o \
-	${common_src}grid.o \
-	${common_src}matrix_buffer.o \
-	${common_src}hydrostatic.o \
+	${common_src}structured_grid.o 
+
+relations_obj = \
 	${common_src}saturation.o \
-	${common_src}patch.o \
-	${common_src}mfd.o\
-	${common_src}level.o \
-	${common_src}discretization.o \
-	${common_src}database.o \
-	${common_src}database_hpt.o \
-	${common_src}velocity.o \
-	${common_src}realization.o \
+	${common_src}saturation_function.o \
+	${common_src}pckr_mod.o 
+
+properties_obj = \
+	${common_src}fluid.o \
+	${common_src}material_aux.o \
+	${common_src}material.o 
+
+dataset_obj = \
+	${common_src}dataset.o \
+	${common_src}dataset_aux.o \
+	${common_src}time_series.o 
+
+io_obj = \
 	${common_src}hdf5.o \
-	${common_src}global.o \
-	${common_src}mphase.o\
-	${common_src}immis.o\
-	${common_src}miscible.o\
-	${common_src}flash2.o\
-	${common_src}transport.o\
-	${common_src}reaction_sandbox.o\
-	${common_src}surface_complexation.o\
-	${common_src}mineral.o\
-	${common_src}microbial.o\
-	${common_src}solid_solution.o\
-	${common_src}reaction.o\
-	${common_src}reactive_transport.o\
-	${common_src}thc.o\
-	${common_src}thmc.o\
-	${common_src}richards.o\
-	${common_src}general.o\
-	${common_src}condition_control.o \
-	${common_src}general_grid.o \
+	${common_src}hdf5_aux.o \
+	${common_src}output.o 
+
+misc_obj = \
 	${common_src}checkpoint.o \
+	${common_src}condition.o \
+	${common_src}condition_control.o \
 	${common_src}convergence.o \
-	${common_src}timestepper.o \
-	${common_src}simulation.o \
-	${common_src}stochastic_aux.o \
-	${common_src}stochastic.o \
-	${common_src}surface_field.o \
-	${common_src}surface_flow_aux.o \
-	${common_src}surface_flow.o \
-	${common_src}surface_material.o \
-	${common_src}surface_realization.o \
-	${common_src}output.o \
+	${common_src}coupler.o \
+	${common_src}debug.o \
+	${common_src}field.o \
+	${common_src}geometry.o \
+	${common_src}hydrostatic.o \
+	${common_src}init.o \
+	${common_src}level.o \
+	${common_src}observation.o \
+	${common_src}patch.o \
+	${common_src}realization.o \
+	${common_src}region.o \
 	${common_src}regression.o \
-	${common_src}init.o
+	${common_src}secondary_continuum.o \
+	${common_src}simulation.o \
+	${common_src}solver.o \
+	${common_src}stochastic.o \
+	${common_src}stochastic_aux.o \
+	${common_src}strata.o \
+	${common_src}timestepper.o \
+	${common_src}transport.o \
+	${common_src}velocity.o \
+	${common_src}waypoint.o 
 #	${common_src}reaction_chunk.o\
 
-pflotran : $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o
-	${FLINKER} -o pflotran $(util_obj) ${pflotran_obj} ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS} 
+surface_obj = \
+	${common_src}surface_field.o \
+	${common_src}surface_flow.o \
+	${common_src}surface_flow_aux.o \
+	${common_src}surface_material.o \
+	${common_src}surface_realization.o 
+
+pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
+	$(shared_mode_aux_obj) $(chem_obj) $(grid_obj) \
+	$(relations_obj) $(properties_obj) $(dataset_obj) \
+	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
+
+pflotran_rxn_obj = $(util_obj) $(shared_mode_aux_obj) $(chem_obj) \
+	${pflotran_src}pflotran_rxn.o
+
+pflotran : $(pflotran_obj)
+	${FLINKER} -o pflotran $(pflotran_obj) ${PETSC_LIB} ${LIBS} 
+
+pflotran_rxn : $(pflotran_rxn_obj)
+	${FLINKER} -o pflotran_rxn $(pflotran_rxn_obj) ${PETSC_LIB} ${LIBS} 
 
 ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
@@ -297,7 +332,7 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
-               miscible_aux.o
+               miscible_aux.o general_aux.o material_aux.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.F90 dataset.o time_series.o \
@@ -312,6 +347,8 @@ constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                units.o string.o logging.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
             auxilliary.o
+co2_span_wagner.o : co2_sw_rtsafe.o
+co2_sw.o : co2_span_wagner.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
              database_aux.o surface_complexation_aux.o string.o mineral_aux.o \
              microbial_aux.o
@@ -341,7 +378,8 @@ grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 hdf5.o : realization.o discretization.o grid.o region.o patch.o field.o
 hdf5_aux.o : option.o logging.o dataset_aux.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
-                structured_grid.o dataset.o time_series.o
+                structured_grid.o dataset.o time_series.o water_eos.o \
+                utility.o dataset_aux.o
 immis.o : immis_aux.o realization.o global_aux.o variables.o
 immis_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
               co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
@@ -389,6 +427,7 @@ patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           variables.o constraint.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
              stochastic_aux.o stochastic.o surface_flow_aux.o regression.o
+pflotran_rxn.o : reaction.o reaction_aux.o option.o input.o
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
@@ -443,9 +482,9 @@ surface_realization.o : condition.o debug.o discretization.o input.o level.o \
 thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \
         variables.o
 thc_aux.o : secondary_continuum.o option.o material.o water_eos.o \
-            saturation_function.o grid.o
+            saturation_function.o grid.o global_aux.o
 thmc.o : thmc_aux.o realization.o saturation_function.o
-thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o
+thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o global_aux.o
 timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
@@ -458,7 +497,7 @@ unstructured_cell.o : option.o utility.o
 unstructured_explicit.o : geometry.o unstructured_grid_aux.o
 unstructured_grid.o : option.o connection.o unstructured_cell.o \
                       unstructured_grid_aux.o geometry.o
-unstructured_grid_aux.o : unstructured_cell.o
+unstructured_grid_aux.o : unstructured_cell.o geometry.o option.o utility.o
 utility.o : string.o input.o option.o
 velocity.o : option.o input.o string.o logging.o units.o
 waypoint.o : option.o output_aux.o
