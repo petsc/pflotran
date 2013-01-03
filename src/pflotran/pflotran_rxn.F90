@@ -96,13 +96,9 @@ program pflotran_rxn
   call InputFindStringInFile(input,option,string)
   if (.not.InputError(input)) then
     ! found a chemistry block, initialize the chemistry
-    reaction => ReactionCreate()
-    call ReactionRead(reaction, input, option)
-    reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
-    ! PCL add in colloid dofs
-    option%ntrandof = GetPrimarySpeciesCount(reaction)
-    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
-    reaction%ncomp = option%ntrandof
+    call ReactionInit(reaction, input, option)
+    ! the second pass through the input file to read the remaining blocks
+    call ReactionReadPass2(reaction, input, option)
   endif
     
   if (associated(reaction)) then
@@ -119,10 +115,7 @@ program pflotran_rxn
     endif
   endif
 
-  ! the second pass through the input file to read the remaining blocks
-  ! NOTE(bja) : how do we read chemistry info w/o requiring a full simualtion object?
-  !call InitReadInput(simulation)
-
+  ! process the constraints...
 
   ! cleanup
   call ReactionDestroy(reaction)
