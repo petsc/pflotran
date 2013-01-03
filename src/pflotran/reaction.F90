@@ -27,7 +27,9 @@ module Reaction_module
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
-  public :: ReactionRead, &
+  public :: ReactionInit, &
+            ReactionReadPass1, &
+            ReactionReadPass2, &
             ReactionReadOutput, &
             ReactionReadRedoxSpecies, &
             RTotal, &
@@ -58,12 +60,42 @@ contains
 
 ! ************************************************************************** !
 !
-! ReactionRead: Reads chemical species
+! ReactionReadPass1: Initializes the reaction object, creating object and
+!                    reading first pass of CHEMISTRY input file block
+! author: Glenn Hammond
+! date: 01/03/13
+!
+! ************************************************************************** !
+subroutine ReactionInit(reaction,input,option)
+
+  use Option_module
+  use Input_module
+  
+  implicit none
+  
+  type(reaction_type), pointer :: reaction
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  reaction => ReactionCreate()
+  call ReactionReadPass1(reaction,input,option)
+  reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
+  ! PCL add in colloid dofs
+  option%ntrandof = GetPrimarySpeciesCount(reaction)
+  option%ntrandof = option%ntrandof + GetColloidCount(reaction)
+  option%ntrandof = option%ntrandof + GetImmobileCount(reaction)
+  reaction%ncomp = option%ntrandof  
+
+end subroutine ReactionInit
+
+! ************************************************************************** !
+!
+! ReactionReadPass1: Reads chemistry (first pass)
 ! author: Glenn Hammond
 ! date: 05/02/08
 !
 ! ************************************************************************** !
-subroutine ReactionRead(reaction,input,option)
+subroutine ReactionReadPass1(reaction,input,option)
 
   use Option_module
   use String_module
@@ -702,7 +734,113 @@ subroutine ReactionRead(reaction,input,option)
   if (len_trim(reaction%database_filename) < 2) &
     reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
   
-end subroutine ReactionRead
+end subroutine ReactionReadPass1
+
+! ************************************************************************** !
+!
+! ReactionReadPass2: Reads chemistry on pass 2
+! author: Glenn Hammond
+! date: 01/03/13
+!
+! ************************************************************************** !
+subroutine ReactionReadPass2(reaction,input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  
+  implicit none
+
+  type(reaction_type) :: reaction
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: card
+  
+  do
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,card)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'word','CHEMISTRY') 
+    select case(trim(word))
+      case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
+            'MINERALS','COLLOIDS','GENERAL_REACTION', &
+            'MICROBIAL_REACTION','REACTION_SANDBOX','BIOMASS_SPECIES')
+        call InputSkipToEND(input,option,card)
+      case('REDOX_SPECIES')
+        call ReactionReadRedoxSpecies(reaction,input,option)
+      case('OUTPUT')
+        call ReactionReadOutput(reaction,input,option)
+      case('MINERAL_KINETICS')
+        call MineralReadKinetics(reaction%mineral,input,option)
+      case('SOLID_SOLUTIONS')
+#ifdef SOLID_SOLUTION                
+        call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
+                                            input,option)
+#endif
+      case('SORPTION')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
+          select case(trim(word))
+            case('ISOTHERM_REACTIONS')
+              do
+                call InputReadFlotranString(input,option)
+                call InputReadStringErrorMsg(input,option,card)
+                if (InputCheckExit(input,option)) exit
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,word, &
+                                    'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS') 
+                ! skip over remaining cards to end of each kd entry
+                call InputSkipToEnd(input,option,word)
+              enddo
+            case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
+              do
+                call InputReadFlotranString(input,option)
+                call InputReadStringErrorMsg(input,option,card)
+                if (InputCheckExit(input,option)) exit
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'SORPTION','CHEMISTRY')
+                select case(trim(word))
+                  case('COMPLEXES','CATIONS')
+                    call InputSkipToEND(input,option,word)
+                  case('COMPLEX_KINETICS')
+                    do
+                      call InputReadFlotranString(input,option)
+                      call InputReadStringErrorMsg(input,option,card)
+                      if (InputCheckExit(input,option)) exit
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,word, &
+                              'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
+                      ! skip over remaining cards to end of each mineral entry
+                      call InputSkipToEnd(input,option,word)
+                    enddo
+                end select 
+              enddo
+            case('NUM_THREADS')
+            case('JUMPSTART_KINETIC_SORPTION')
+            case('NO_CHECKPOINT_KINETIC_SORPTION')
+            case('NO_RESTART_KINETIC_SORPTION')
+              ! dummy placeholder
+          end select
+        enddo
+      case('MOLAL','MOLALITY', &
+            'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
+            'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
+            'NO_RESTART_MINERAL_VOL_FRAC')
+        ! dummy placeholder
+    end select
+  enddo  
+  
+end subroutine ReactionReadPass2
 
 ! ************************************************************************** !
 !
