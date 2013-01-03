@@ -472,7 +472,7 @@ surface_complexation.o : surface_complexation_aux.o reaction_aux.o \
                          string.o input.o utility.o
 surface_complexation_aux.o : option.o string.o database_aux.o 
 surface_flow.o : surface_flow_aux.o surface_realization.o surface_field.o \
-                 surface_material.o
+                 surface_material.o solver.o
 surface_material.o : string.o option.o input.o
 surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         option.o patch.o region.o surface_field.o \
