@@ -60,7 +60,7 @@ module Microbial_Aux_module
     ! Any changes here must be incorporated within ReactionProcessConstraint()
     ! where constraints are reordered
 !TODO(geh): set up constraints for microbial life
-!    character(len=MAXWORDLENGTH), pointer :: names(:)
+    character(len=MAXWORDLENGTH), pointer :: names(:)
 !    PetscReal, pointer :: constraint_vol_frac(:)
 !    PetscReal, pointer :: constraint_area(:)
 !    PetscReal, pointer :: basis_vol_frac(:)

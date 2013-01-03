@@ -334,7 +334,6 @@ subroutine MineralReadKinetics(mineral_reaction,input,option)
           enddo
         endif
         cur_mineral%id = abs(cur_mineral%id)
-        mineral_reaction%nkinmnrl = mineral_reaction%nkinmnrl + 1
         exit
       endif
       cur_mineral => cur_mineral%next
