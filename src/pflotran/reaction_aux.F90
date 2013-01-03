@@ -179,11 +179,13 @@ module Reaction_Aux_module
     PetscInt :: ncomp
     PetscInt :: naqcomp
     PetscInt :: ncollcomp
+    PetscInt :: nimcomp
     
     ! offsets
-    PetscInt :: offset_aq
-    PetscInt :: offset_coll
+    PetscInt :: offset_aqueous
+    PetscInt :: offset_colloid
     PetscInt :: offset_collcomp
+    PetscInt :: offset_immobile
     
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscBool, pointer :: primary_species_print(:)
@@ -252,6 +254,9 @@ module Reaction_Aux_module
     PetscBool, pointer :: total_sorb_mobile_print(:)
     PetscBool, pointer :: colloid_print(:)
     
+    ! immobile species
+    character(len=MAXWORDLENGTH), pointer :: imcomp_names(:)
+    
     ! general rxn
     PetscInt :: ngeneral_rxn
     ! ids and stoichiometries for species involved in reaction
@@ -310,6 +315,7 @@ module Reaction_Aux_module
             GetColloidCount, &
             GetColloidNames, &
             GetColloidIDFromName, &
+            GetImmobileCount, &
             ReactionFitLogKCoef, &
             ReactionInitializeLogK, &
             ReactionInterpolateLogK, &
@@ -433,9 +439,11 @@ function ReactionCreate()
   reaction%naqcomp = 0
   reaction%ncoll = 0
   reaction%ncollcomp = 0
-  reaction%offset_aq = 0
-  reaction%offset_coll = 0
+  reaction%nimcomp = 0
+  reaction%offset_aqueous = 0
+  reaction%offset_colloid = 0
   reaction%offset_collcomp = 0
+  reaction%offset_immobile = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)
@@ -484,6 +492,8 @@ function ReactionCreate()
   nullify(reaction%pri_spec_to_coll_spec)
   nullify(reaction%coll_spec_to_pri_spec)
   nullify(reaction%colloid_mobile_fraction)
+  
+  nullify(reaction%imcomp_names)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -1193,9 +1203,29 @@ function GetColloidCount(reaction)
 
 end function GetColloidCount
 
+
 ! ************************************************************************** !
 !
-! ReactionFitLogKCoef: Least squares fit to log K over database temperature range
+! GetImmobileCount: Returns the number of immobile species
+! author: Glenn Hammond
+! date: 01/02/13
+!
+! ************************************************************************** !
+function GetImmobileCount(reaction)
+
+  implicit none
+  
+  PetscInt :: GetImmobileCount
+  type(reaction_type) :: reaction
+
+  GetImmobileCount = MicrobialGetBiomassCount(reaction%microbial)
+  
+end function GetImmobileCount
+
+! ************************************************************************** !
+!
+! ReactionFitLogKCoef: Least squares fit to log K over database temperature 
+!                      range
 ! author: P.C. Lichtner
 ! date: 02/13/09
 !
@@ -1842,6 +1872,8 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%pri_spec_to_coll_spec)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
+  
+  call DeallocateArray(reaction%imcomp_names)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

@@ -34,6 +34,8 @@ subroutine DatabaseRead(reaction,option)
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
   use Mineral_module
+  use Microbial_Aux_module
+  use Microbial_module
   
   implicit none
   
@@ -43,12 +45,14 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_rxn_type), pointer :: cur_mineral, cur_mineral2
+  type(biomass_species_type), pointer :: cur_biomass_spec
   type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
                                          cur_srfcplx_in_master_list
   type(mineral_type), pointer :: mineral
+  type(microbial_type), pointer :: microbial
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -64,6 +68,7 @@ subroutine DatabaseRead(reaction,option)
   
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
+  microbial => reaction%microbial
   
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
@@ -84,6 +89,12 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec%id = -abs(cur_gas_spec%id)
     cur_gas_spec => cur_gas_spec%next
   enddo  
+  cur_biomass_spec => microbial%biomass_list
+  do
+    if (.not.associated(cur_biomass_spec)) exit
+    cur_biomass_spec%id = -abs(cur_biomass_spec%id)
+    cur_biomass_spec => cur_biomass_spec%next
+  enddo
   cur_mineral => mineral%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
@@ -177,13 +188,14 @@ subroutine DatabaseRead(reaction,option)
           if (found .or. .not.associated(cur_colloid)) exit
           if (StringCompare(name,cur_colloid%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
-          ! change negative id to positive, indicating it was found in database
+            ! change negative id to positive, indicating it was found in 
+            ! database
             cur_colloid%id = abs(cur_colloid%id)
 
             ! skip the Debye-Huckel ion size parameter (a0)
             call InputReadDouble(input,option,temp_real)
             call InputErrorMsg(input,option,'Colloid skip a0','DATABASE')            
-            ! skipo the valence
+            ! skip the valence
             call InputReadDouble(input,option,temp_real)
             call InputErrorMsg(input,option,'Colloid skip Z','DATABASE')            
             ! read the molar weight
@@ -193,6 +205,30 @@ subroutine DatabaseRead(reaction,option)
             cycle ! avoid the aqueous species parameters below
           endif
           cur_colloid => cur_colloid%next
+        enddo
+        ! check if biomass
+        if (.not.found) cur_biomass_spec => microbial%biomass_list
+        do
+          if (found .or. .not.associated(cur_biomass_spec)) exit
+          if (StringCompare(name,cur_biomass_spec%name,MAXWORDLENGTH)) then
+            found = PETSC_TRUE          
+            ! change negative id to positive, indicating it was found in 
+            ! database
+            cur_biomass_spec%id = abs(cur_biomass_spec%id)
+
+            ! skip the Debye-Huckel ion size parameter (a0)
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'Biomass skip a0','DATABASE')            
+            ! skip the valence
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'Biomass skip Z','DATABASE')            
+            ! read the molar weight
+            call InputReadDouble(input,option,cur_biomass_spec%molar_weight)
+            call InputErrorMsg(input,option,'Biomass molar weight','DATABASE')
+            
+            cycle ! avoid the aqueous species parameters below
+          endif
+          cur_biomass_spec => cur_biomass_spec%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
@@ -698,6 +734,7 @@ subroutine BasisInit(reaction,option)
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1
   type(gas_species_type), pointer :: cur_gas_spec2
+  type(biomass_species_type), pointer :: cur_biomass_spec
   type(surface_complexation_type), pointer :: surface_complexation
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx_in_rxn
@@ -891,16 +928,17 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
 
-  ! # of components sorbed to colloids
   reaction%naqcomp = GetPrimarySpeciesCount(reaction)
-  reaction%ncoll = GetColloidCount(reaction)
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
-
+  reaction%nimcomp = GetImmobileCount(reaction)
+  reaction%ncoll = GetColloidCount(reaction)
   reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
-  reaction%offset_aq = 0
-  reaction%offset_coll = reaction%offset_aq + reaction%naqcomp
-  reaction%offset_collcomp = reaction%offset_coll + reaction%ncoll
+  
+  reaction%offset_aqueous = 0
+  reaction%offset_immobile = reaction%offset_aqueous + reaction%naqcomp
+  reaction%offset_colloid = reaction%offset_immobile + reaction%nimcomp
+  reaction%offset_collcomp = reaction%offset_colloid + reaction%ncoll
 
   ! account for H2O in the basis by adding 1
   ncomp_h2o = reaction%naqcomp+1
@@ -1701,9 +1739,40 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec)
   igas_spec = -1 ! to catch bugs
 
+  ! microbial biomass species
+  microbial%nbiomass = MicrobialGetBiomassCount(microbial)
+  if (microbial%nbiomass > 0) then
+    allocate(microbial%biomass_names(microbial%nbiomass))
+    microbial%biomass_names = ''
+    allocate(microbial%biomass_print(microbial%nbiomass))
+    microbial%biomass_print = PETSC_FALSE
+
+    cur_biomass_spec => microbial%biomass_list
+    temp_int = 0
+    do
+      if (.not.associated(cur_biomass_spec)) exit
+      temp_int = temp_int + 1
+      microbial%biomass_names(temp_int) = cur_biomass_spec%name
+      microbial%biomass_print(temp_int) = cur_biomass_spec%print_me
+      cur_biomass_spec => cur_biomass_spec%next
+    enddo
+  endif
+  
+  ! immobile species - must come after initialization of immobile species
+  ! such as biomass
+  if (reaction%nimcomp > 0) then
+    allocate(reaction%imcomp_names(reaction%nimcomp))
+    reaction%imcomp_names = ''
+    
+    ! biomass first
+    reaction%imcomp_names(1:microbial%nbiomass) = &
+      microbial%biomass_names(microbial%nbiomass)
+  endif
+  
   ! minerals
   ! Count the number of kinetic mineral reactions, max number of prefactors in a
   !   tst reaction, and the maximum number or species in a prefactor
+  temp_int = mineral%nkinmnrl !geh: store for check after processing
   mineral%nkinmnrl = 0
   max_num_prefactors = 0
   max_num_prefactor_species = 0
@@ -1736,6 +1805,13 @@ subroutine BasisInit(reaction,option)
     endif
     cur_mineral => cur_mineral%next
   enddo
+  
+  if (mineral%nkinmnrl /= temp_int) then
+    write(string,'(2i4)') temp_int, mineral%nkinmnrl
+    option%io_buffer = 'Inconsistent number of kinetic minerals: ' // &
+      trim(string)
+    call printErrMsg(option)
+  endif
 
   if (mineral%nmnrl > 0) then
   
@@ -2106,7 +2182,8 @@ subroutine BasisInit(reaction,option)
   endif
   
   ! colloids
-  reaction%ncoll = GetColloidCount(reaction)
+  ! already calculated above
+  !reaction%ncoll = GetColloidCount(reaction)
 
   if (reaction%ncoll > 0) then
     allocate(reaction%colloid_names(reaction%ncoll))
@@ -2697,7 +2774,11 @@ subroutine BasisInit(reaction,option)
       cur_general_rxn%dbaserxn => &
         DatabaseRxnCreateFromRxnString(cur_general_rxn%reaction, &
                                        reaction%naqcomp, &
+                                       reaction%offset_aqueous, &
                                        reaction%primary_species_names, &
+                                       reaction%nimcomp, &
+                                       reaction%offset_immobile, &
+                                       reaction%imcomp_names, &
                                        option)
       cur_general_rxn => cur_general_rxn%next
     enddo
@@ -2814,7 +2895,11 @@ subroutine BasisInit(reaction,option)
       cur_microbial_rxn%dbaserxn => &
         DatabaseRxnCreateFromRxnString(cur_microbial_rxn%reaction, &
                                        reaction%naqcomp, &
+                                       reaction%offset_aqueous, &
                                        reaction%primary_species_names, &
+                                       reaction%nimcomp, &
+                                       reaction%offset_immobile, &
+                                       reaction%imcomp_names, &
                                        option)
       temp_int = cur_microbial_rxn%dbaserxn%nspec
       if (temp_int > max_species_count) max_species_count = temp_int
@@ -2837,8 +2922,14 @@ subroutine BasisInit(reaction,option)
     microbial%specid = 0
     allocate(microbial%stoich(max_species_count,microbial%nrxn))
     microbial%stoich = 0
+    
+    ! biomass id and yield
+    allocate(microbial%biomassid(microbial%nrxn))
+    microbial%biomassid = 0
+    allocate(microbial%biomass_yield(microbial%nrxn))
+    microbial%biomass_yield = 0.d0
 
-    ! linkage
+    ! linkage to monod and inhibition terms
     allocate(microbial%monodid(0:max_monod_count,microbial%nrxn))
     microbial%monodid = 0
     allocate(microbial%inhibitionid(0:max_inhibition_count, &
@@ -2876,6 +2967,33 @@ subroutine BasisInit(reaction,option)
         microbial%specid(i,irxn) = dbaserxn%spec_ids(i)
         microbial%stoich(i,irxn) = dbaserxn%stoich(i)
       enddo
+      
+      if (associated(cur_microbial_rxn%biomass)) then
+        ! check for biomass species in global biomass list
+        temp_int = &
+          StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
+                                microbial%biomass_names)
+        if (temp_int == 0) then
+          option%io_buffer = 'Biomass species "' // &
+            trim(cur_microbial_rxn%biomass%species_name) // &
+            ' not found among biomass species.'
+          call printErrMsg(option)
+        else
+          microbial%biomassid(irxn) = temp_int
+          microbial%biomass_yield(irxn) = &
+            cur_microbial_rxn%biomass%yield
+        endif
+        ! check for biomass species in microbial reaction
+        temp_int = &
+          StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
+                                dbaserxn%spec_name)
+        if (temp_int == 0) then
+          option%io_buffer = 'Biomass species "' // &
+            trim(cur_microbial_rxn%biomass%species_name) // &
+            ' not found in microbial reaction.'
+          call printErrMsg(option)
+        endif       
+      endif
       
       cur_monod => cur_microbial_rxn%monod
       do
