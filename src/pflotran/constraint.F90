@@ -49,9 +49,14 @@ module Constraint_module
     type(tran_constraint_coupler_type), pointer :: next   
   end type tran_constraint_coupler_type
       
-  public :: TranConstraintAddToList, TranConstraintInitList, &
-            TranConstraintDestroyList, TranConstraintGetPtrFromList, &
-            TranConstraintRead, TranConstraintDestroy, &
+  public :: TranConstraintAddToList, &
+            TranConstraintInitList, &
+            TranConstraintDestroyList, &
+            TranConstraintGetPtrFromList, &
+            TranConstraintCreate, &
+            TranConstraintRead, &
+            TranConstraintDestroy, &
+            TranConstraintCouplerCreate, &
             TranConstraintCouplerDestroy
     
 contains

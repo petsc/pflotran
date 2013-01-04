@@ -44,9 +44,9 @@ program pflotran_rxn
   use Database_module
   use Option_module
   use Input_module
+  use String_module
   
-  !use Condition_module
-  !use Constraint_module
+  use Constraint_module
 
   implicit none
 
@@ -61,10 +61,10 @@ program pflotran_rxn
   type(option_type), pointer :: option
   type(input_type), pointer :: input
 
-  !character(len=MAXWORDLENGTH) :: card
-  !character(len=MAXWORDLENGTH) :: word
-  !type(tran_constraint_type), pointer :: tran_constraint
-  !type(tran_constraint_list_type), pointer :: transport_constraints
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: word
+  type(tran_constraint_type), pointer :: tran_constraint
+  type(tran_constraint_list_type), pointer :: transport_constraints
   
   option => OptionCreate()
   option%fid_out = OUT_UNIT
@@ -136,46 +136,46 @@ program pflotran_rxn
 
   ! NOTE(bja): this opens up a huge list of dependancies on other modules
   
-!!$  ! create the constraint list
-!!$  allocate(transport_constraints)
-!!$  call TranConstraintInitList(transport_constraints)
-!!$
-!!$  ! look through the input file
-!!$  rewind(input%fid)        
-!!$  do
-!!$    call InputReadFlotranString(input, option)
-!!$    if (InputError(input)) exit
-!!$
-!!$    call InputReadWord(input, option, word, PETSC_FALSE)
-!!$    call StringToUpper(word)
-!!$    card = trim(word)
-!!$
-!!$    option%io_buffer = 'pflotran card:: ' // trim(card)
-!!$    call printMsg(option)
-!!$
-!!$    select case(trim(card))
-!!$!....................
-!!$      case('CONSTRAINT')
-!!$        if (.not.associated(reaction)) then
-!!$          option%io_buffer = 'CONSTRAINTs not supported without CHEMISTRY.'
-!!$          call printErrMsg(option)
-!!$        endif
-!!$        tran_constraint => TranConstraintCreate(option)
-!!$        call InputReadWord(input, option, tran_constraint%name, PETSC_TRUE)
-!!$        call InputErrorMsg(input, option, 'constraint', 'name') 
-!!$        call printMsg(option, tran_constraint%name)
-!!$        call TranConstraintRead(tran_constraint, reaction, input, option)
-!!$        call TranConstraintAddToList(tran_constraint, transport_constraints)
-!!$        nullify(tran_constraint)
-!!$
-!!$      case default
-!!$    
-!!$        option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
-!!$                           'not recognized'
-!!$        call printErrMsg(option)
-!!$
-!!$    end select
-!!$  enddo
+  ! create the constraint list
+  allocate(transport_constraints)
+  call TranConstraintInitList(transport_constraints)
+
+  ! look through the input file
+  rewind(input%fid)        
+  do
+    call InputReadFlotranString(input, option)
+    if (InputError(input)) exit
+
+    call InputReadWord(input, option, word, PETSC_FALSE)
+    call StringToUpper(word)
+    card = trim(word)
+
+    option%io_buffer = 'pflotran card:: ' // trim(card)
+    call printMsg(option)
+
+    select case(trim(card))
+!....................
+      case('CONSTRAINT')
+        if (.not.associated(reaction)) then
+          option%io_buffer = 'CONSTRAINTs not supported without CHEMISTRY.'
+          call printErrMsg(option)
+        endif
+        tran_constraint => TranConstraintCreate(option)
+        call InputReadWord(input, option, tran_constraint%name, PETSC_TRUE)
+        call InputErrorMsg(input, option, 'constraint', 'name') 
+        call printMsg(option, tran_constraint%name)
+        call TranConstraintRead(tran_constraint, reaction, input, option)
+        call TranConstraintAddToList(tran_constraint, transport_constraints)
+        nullify(tran_constraint)
+
+      case default
+    
+        option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
+                           'not recognized'
+        call printErrMsg(option)
+
+    end select
+  enddo
 
   ! cleanup
   call ReactionDestroy(reaction)

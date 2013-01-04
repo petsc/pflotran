@@ -110,10 +110,11 @@ module Condition_module
   
   public :: FlowConditionCreate, FlowConditionDestroy, FlowConditionRead, &
             FlowConditionGeneralRead, &
-            FlowConditionAddToList, FlowConditionInitList, FlowConditionDestroyList, &
+            FlowConditionAddToList, FlowConditionInitList, &
+            FlowConditionDestroyList, &
             FlowConditionGetPtrFromList, FlowConditionUpdate, &
             FlowConditionPrint, &
-            TranConditionCreate, TranConstraintCreate, &
+            TranConditionCreate, &
             TranConditionAddToList, TranConditionInitList, &
             TranConditionDestroyList, TranConditionGetPtrFromList, &
             TranConstraintAddToList, TranConstraintInitList, &
@@ -198,78 +199,6 @@ function TranConditionCreate(option)
   TranConditionCreate => condition
 
 end function TranConditionCreate
-
-! ************************************************************************** !
-!
-! TranConstraintCreate: Creates a transport constraint (set of concentrations
-!                       and constraints for setting boundary or initial 
-!                       condition).
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-function TranConstraintCreate(option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  type(tran_constraint_type), pointer :: TranConstraintCreate
-  
-  type(tran_constraint_type), pointer :: constraint
-  
-  allocate(constraint)
-  nullify(constraint%aqueous_species)
-  nullify(constraint%minerals)
-  nullify(constraint%surface_complexes)
-  nullify(constraint%colloids)
-  nullify(constraint%next)
-  constraint%id = 0
-  constraint%name = ''
-  constraint%requires_equilibration = PETSC_FALSE
-  
-  TranConstraintCreate => constraint
-
-end function TranConstraintCreate
-
-! ************************************************************************** !
-!
-! TranConstraintCouplerCreate: Creates a coupler that ties a constraint to a
-!                              transport condition
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-function TranConstraintCouplerCreate(option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  type(tran_constraint_coupler_type), pointer :: TranConstraintCouplerCreate
-  
-  type(tran_constraint_coupler_type), pointer :: coupler
-  
-  allocate(coupler)
-  nullify(coupler%aqueous_species)
-  nullify(coupler%minerals)
-  nullify(coupler%surface_complexes)
-  nullify(coupler%colloids)
-  
-  coupler%num_iterations = 0
-  nullify(coupler%rt_auxvar)
-  nullify(coupler%global_auxvar)
-  
-  nullify(coupler%next)
-  coupler%constraint_name = ''
-  coupler%time = 0.d0
-  coupler%time_units = ''
-  
-  TranConstraintCouplerCreate => coupler
-
-end function TranConstraintCouplerCreate
 
 ! ************************************************************************** !
 !
