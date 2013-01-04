@@ -157,15 +157,15 @@ function RTAuxCreate(option)
   type(reactive_transport_type), pointer :: aux
 
   allocate(aux)  
-  aux%num_aux = 0
-  aux%num_aux_bc = 0
-  aux%num_aux_ss = 0
-  nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
-  nullify(aux%aux_vars_ss)
-  aux%n_zero_rows = 0
-  nullify(aux%zero_rows_local)
-  nullify(aux%zero_rows_local_ghosted)
+  aux%num_aux = 0      ! number of rt_auxvars objects for local and ghosted cells
+  aux%num_aux_bc = 0   ! number of rt_auxvars objects for boundary connections
+  aux%num_aux_ss = 0   ! number of rt_auxvars objects for source/sinks
+  nullify(aux%aux_vars)      ! rt_auxvars for local and ghosted grid cells
+  nullify(aux%aux_vars_bc)   ! rt_auxvars for boundary connections
+  nullify(aux%aux_vars_ss)   ! rt_auxvars for source/sinks
+  aux%n_zero_rows = 0    ! number of zeroed rows in Jacobian for inactive cells
+  nullify(aux%zero_rows_local)  ! ids of zero rows in local, non-ghosted numbering
+  nullify(aux%zero_rows_local_ghosted) ! ids of zero rows in ghosted numbering
   aux%aux_vars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
 
