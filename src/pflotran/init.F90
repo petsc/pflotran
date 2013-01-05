@@ -209,6 +209,9 @@ subroutine Init(simulation)
   endif
 #endif
 
+  ! initialize plot variables
+  realization%output_option%output_variable_list => OutputVariableListCreate()
+  
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
@@ -776,9 +779,6 @@ subroutine Init(simulation)
   if (associated(tran_stepper)) then
     tran_stepper%cur_waypoint => realization%waypoints%first
   endif
-  
-  ! initialize plot variables
-  realization%output_option%output_variable_list => OutputVariableListCreate()
   
   ! initialize global auxilliary variable object
   call GlobalSetup(realization)
@@ -2203,6 +2203,8 @@ subroutine InitReadInput(simulation)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+            case('VARIABLES')
+              call OutputVariableRead(input,option,output_option%output_variable_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'

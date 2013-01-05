@@ -67,11 +67,13 @@ module Output_Aux_module
     character(len=MAXWORDLENGTH) :: name   ! string that appears in hdf5 file
     character(len=MAXWORDLENGTH) :: units
     PetscBool :: plot_only
-    PetscInt :: iformat
+    PetscInt :: iformat   ! 0 = for REAL values; 1 = for INTEGER values
     PetscInt :: icategory ! category for variable-specific regression testing
     PetscInt :: ivar
     PetscInt :: isubvar
     PetscInt :: isubsubvar
+    PetscBool :: itaveg ! PETSC_FALSE for instantaneous values; 
+                        ! PETSC_TRUE for temporally averaged values
     type(output_variable_type), pointer :: next
   end type output_variable_type
   
@@ -103,6 +105,7 @@ module Output_Aux_module
             OutputAppendToHeader, &
             OutputVariableListToHeader, &
             OutputVariableToCategoryString, &
+            OutputVariableRead, &
             OutputOptionDestroy, &
             OutputVariableListDestroy
 
@@ -187,6 +190,7 @@ function OutputVariableCreate1()
   output_variable%ivar = 0
   output_variable%isubvar = 0
   output_variable%isubsubvar = 0
+  output_variable%itaveg = PETSC_FALSE
   nullify(output_variable%next)
   
   OutputVariableCreate1 => output_variable
@@ -260,6 +264,7 @@ function OutputVariableCreate3(output_variable)
   new_output_variable%ivar = output_variable%ivar
   new_output_variable%isubvar = output_variable%isubvar
   new_output_variable%isubsubvar = output_variable%isubsubvar
+  new_output_variable%itaveg = output_variable%itaveg
   nullify(new_output_variable%next)
   
   OutputVariableCreate3 => new_output_variable
@@ -525,6 +530,85 @@ function OutputVariableToCategoryString(icategory)
   OutputVariableToCategoryString = string
 
 end function OutputVariableToCategoryString
+
+! ************************************************************************** !
+!> This routine reads variable from input file.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 12/21/12
+! ************************************************************************** !
+subroutine OutputVariableRead(input,option,output_variable_list)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Variables_module
+
+  implicit none
+
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  type(output_variable_list_type), pointer :: output_variable_list
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name, units
+
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','VARIABLES')
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case ('LIQUID_PRESSURE')
+        name = 'Liquid Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_PRESSURE,units, &
+                                     LIQUID_PRESSURE)
+
+      case ('LIQUID_SATURATION')
+        name = 'Liquid Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
+                               LIQUID_SATURATION)
+
+!      case ('LIQUID_VELOCITIY_AT_CELL_CENTER')
+!        name = 'Liquid Velocity at Cell Center'
+!        units = 'm/s'
+!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
+!                               LIQUID_VELOCITY_CELL_CENT)
+!
+!      case ('LIQUID_VELOCITIY_AT_CELL_FACE')
+!        name = 'Liquid Velocity at Cell Face'
+!        units = 'm/s'
+!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
+!                               LIQUID_VELOCITY_CELL_FACE)
+      case default
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in VARIABLES.'
+    end select
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    if (len_trim(word) > 1) then
+      call StringToUpper(word)
+      select case(trim(word))
+        case('AVEG')
+          output_variable_list%last%itaveg=PETSC_TRUE
+        case('INST')
+          output_variable_list%last%itaveg=PETSC_FALSE
+        case default
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in VARIABLES.'
+      end select
+    endif
+  enddo
+
+end subroutine OutputVariableRead
 
 ! ************************************************************************** !
 !

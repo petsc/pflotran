@@ -6462,6 +6462,10 @@ subroutine RichardsSetPlotVariables(realization)
   type(output_variable_list_type), pointer :: list
   
   list => realization%output_option%output_variable_list
+
+  if (associated(list%first)) then
+    return
+  endif
   
   name = 'Liquid Pressure'
   units = 'Pa'
