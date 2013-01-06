@@ -111,12 +111,14 @@ module Output_module
 #endif
   end interface
 
+#if defined(PETSC_HAVE_HDF5)
   interface WriteHDF5CoordinatesUGridXDMF
     module procedure WriteHDF5CoordinatesUGridXDMF1
 #ifdef SURFACE_FLOW
     module procedure WriteHDF5CoordinatesUGridXDMF2
 #endif
   end interface
+#endif
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
@@ -5343,7 +5345,7 @@ subroutine OutputHDF5(realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -8111,7 +8113,7 @@ subroutine OutputHDF5UGrid(realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -8231,6 +8233,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
   use Reaction_Aux_module
 
 #if  !defined(PETSC_HAVE_HDF5)
+
   implicit none
   
   type(realization_type) :: realization
@@ -8240,7 +8243,8 @@ subroutine OutputHDF5UGridXDMF1(realization)
         '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids Darn.")')
   call printErrMsg(realization%option)
-#endif
+
+#else
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
@@ -8418,7 +8422,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -8448,6 +8452,9 @@ subroutine OutputHDF5UGridXDMF1(realization)
   endif
 
   hdf5_first = PETSC_FALSE
+
+#endif
+! !defined(PETSC_HAVE_HDF5)
 
 end subroutine OutputHDF5UGridXDMF1
 
@@ -10278,7 +10285,7 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
