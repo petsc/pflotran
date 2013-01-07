@@ -1762,12 +1762,6 @@ subroutine InitReadInput(simulation)
 
 !......................
 
-      case ('HDF5_READ_GROUP_SIZE')
-        call InputReadInt(input,option,option%hdf5_read_group_size)
-        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
-
-!......................
-
       case ('NUMERICAL_JACOBIAN_FLOW')
         option%numerical_derivatives_flow = PETSC_TRUE
 
@@ -2298,7 +2292,7 @@ subroutine InitReadInput(simulation)
 !......................
       case ('HDF5_WRITE_GROUP_SIZE')
         call InputReadInt(input,option,option%hdf5_write_group_size)
-        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+        call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
 
 !....................
       case default
@@ -3469,7 +3463,6 @@ end subroutine readTransportInitialCondition
 ! date: 07/14/09
 !
 ! ************************************************************************** !
-
 subroutine Create_IOGroups(option)
 
   use Option_module
@@ -3544,135 +3537,8 @@ subroutine Create_IOGroups(option)
     call printMsg(option)      
   call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #endif   ! PARALLELIO_LIB 
-
-#ifdef VAMSI_HDF5_READ  
-  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
-
-  if (option%hdf5_read_group_size <= 0) then
-    write(option%io_buffer,& 
-          '("The keyword HDF5_READ_GROUP_SIZE & 
-            & in the input file (pflotran.in) is either not set or &
-            & its value is less than or equal to ZERO. &
-            & HDF5_READ_GROUP_SIZE =  ",i6)') &
-             option%hdf5_read_group_size
-    call printErrMsg(option)      
-  endif         
-                  
-  option%rcolor = floor(real(option%myrank / option%hdf5_read_group_size))
-  option%rkey = option%myrank
-  call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
-                      option%read_group,ierr)
-  call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
-  call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
-
-  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
-    option%reader_color = 1
-  else
-    option%reader_color = 0
-  endif
-  option%reader_key = option%myrank
-  call MPI_Comm_split(option%mycomm,option%reader_color, &
-                      option%reader_key,option%readers,ierr)
-  call MPI_Comm_size(option%readers,option%readers_size,ierr)
-  call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
-
-  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
-#ifdef VAMSI_DEBUG    
-  if (option%myrank == 0) write (*,'("Number of readers = ",i6)') option%readers_size
-  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
-    write(*,'("I''m a reader, My rank = ",i6)') option%myrank
-  endif   
-#endif
-
-#endif
-
-#ifdef VAMSI_HDF5_WRITE  
-  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
-
-  if (option%hdf5_write_group_size <= 0) then
-    write(option%io_buffer,& 
-          '("The keyword HDF5_WRITE_GROUP_SIZE & 
-            &in the input file (pflotran.in) is either not set or &
-            &its value is less than or equal to ZERO. &
-            &HDF5_WRITE_GROUP_SIZE =  ",i6)') &
-             option%hdf5_write_group_size
-    call printErrMsg(option)      
-  endif         
-                  
-  option%wcolor = floor(real(option%myrank / option%hdf5_write_group_size))
-  option%wkey = option%myrank
-  call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
-  call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
-  call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
-
-  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
-    option%writer_color = 1
-  else
-    option%writer_color = 0
-  endif
-  option%writer_key = option%myrank
-  call MPI_Comm_split(option%mycomm,option%writer_color,option%writer_key,option%writers,ierr)
-  call MPI_Comm_size(option%writers,option%writers_size,ierr)
-  call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
-
-  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
-#endif
  
 end subroutine Create_IOGroups
-
-! ************************************************************************** !
-!
-! InitReadHDF5CardsFromInput: Reads from pflow input file cards related to
-!                             group size for HDF5 read and write.
-! author: Gautam Bisht
-! date: 05/12/11
-!
-! ************************************************************************** !
-subroutine InitReadHDF5CardsFromInput(realization)
-
-  use Simulation_module
-  use Option_module
-  use Input_module
-  use Realization_module
-  
-
-  implicit none
-  
-  type(simulation_type) :: simulation
-
-  PetscErrorCode :: ierr
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: card
-  character(len=MAXSTRINGLENGTH) :: string
-
-  type(realization_type), pointer :: realization
-  type(input_type), pointer :: input
-  type(option_type), pointer :: option
-
-  input => realization%input
-  option => realization%option
-
-!......................
-  string = "HDF5_READ_GROUP_SIZE"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then  
-    ! read in keyword 
-        call InputReadInt(input,option,option%hdf5_read_group_size)
-        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
-  endif
-
-!......................
-  string = "HDF5_WRITE_GROUP_SIZE"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then  
-    ! read in keyword 
-        call InputReadInt(input,option,option%hdf5_write_group_size)
-        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
-  endif
-
-end subroutine InitReadHDF5CardsFromInput
 
 #ifdef SURFACE_FLOW
 ! ************************************************************************** !

@@ -9,10 +9,6 @@ pflotran_test_dir = ../../test
 
 MYFLAGS = -I${objdir} 
 
-ifdef hdf5-vamsi
-    MYFLAGS += -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
-endif   
-
 ifdef compile_broken
   MYFLAGS += -DCOMPILE_BROKEN
 endif
@@ -101,10 +97,6 @@ endif
 
 ifdef dont_use_wateos
   MYFLAGS += -DDONT_USE_WATEOS
-endif
-
-ifdef vamsi_hdf5
-  MYFLAGS += -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
 endif
 
 ifdef have_hdf5
