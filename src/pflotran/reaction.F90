@@ -1634,7 +1634,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         'constraint "' // trim(constraint_name) // '".'
       call printMsgByRank(option)
       ! now figure out which species have zero concentrations
-      do idof = 1, option%ntrandof
+      do idof = 1, reaction%naqcomp
         if (rt_auxvar%pri_molal(idof) <= 0.d0) then
           write(string,*) rt_auxvar%pri_molal(idof)
           option%io_buffer = '  Species "' // &
@@ -1647,8 +1647,21 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       option%io_buffer = 'Free ion concentations RESULTING from ' // &
         'constraint concentrations must be positive.'
       call printErrMsgByRank(option)
-    endif    
-
+    endif
+    
+    ! check for excessively large maximum values, which likely indicates
+    ! reaction going awry.
+    tempreal = maxval(rt_auxvar%pri_molal)
+    if (tempreal > 10.d0) then
+      !geh: for some reason, needs the array rank included in call to maxloc
+      idof = maxloc(rt_auxvar%pri_molal,1)
+      option%io_buffer = 'ERROR: Excessively large concentration for ' // &
+        'species "' // trim(reaction%primary_species_names(idof)) // &
+        '" in ReactionEquilibrateConstraint. Email input deck to ' // &
+        'pflotran-dev@googlegroups.com.'
+      call printErrMsg(option)
+    endif
+    
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
     
