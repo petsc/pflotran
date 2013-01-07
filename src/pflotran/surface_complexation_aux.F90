@@ -51,8 +51,8 @@ module Surface_Complexation_Aux_module
     ! where constraints are reordered
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
-    PetscReal, pointer :: basis_conc(:)
-    PetscReal, pointer :: constraint_free_site_conc(:)
+    ! the term basis below indicates that this quantity is calculated
+    ! internally in ReactionEquilibrateConstraint.
     PetscReal, pointer :: basis_free_site_conc(:)
   end type srfcplx_constraint_type
 
@@ -301,11 +301,6 @@ function SurfaceComplexConstraintCreate(surface_complexation,option)
   constraint%names = ''
   allocate(constraint%constraint_conc(surface_complexation%nkinsrfcplx))
   constraint%constraint_conc = 0.d0
-  allocate(constraint%basis_conc(surface_complexation%nkinsrfcplx))
-  constraint%basis_conc = 0.d0
-  allocate(constraint%constraint_free_site_conc( &
-                           surface_complexation%nkinsrfcplxrxn))
-  constraint%constraint_free_site_conc = 0.d0
   allocate(constraint%basis_free_site_conc( &
                            surface_complexation%nkinsrfcplxrxn))
   constraint%basis_free_site_conc = 0.d0
@@ -530,28 +525,17 @@ end subroutine SurfaceComplexDestroy
 ! ************************************************************************** !
 subroutine SurfaceComplexConstraintDestroy(constraint)
 
+  use Utility_module, only : DeallocateArray
   implicit none
   
   type(srfcplx_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
   
-  if (associated(constraint%names)) &
-    deallocate(constraint%names)
-  nullify(constraint%names)
-  if (associated(constraint%constraint_conc)) &
-    deallocate(constraint%constraint_conc)
-  nullify(constraint%constraint_conc)
-  if (associated(constraint%basis_conc)) &
-    deallocate(constraint%basis_conc)
-  nullify(constraint%basis_conc)
-  if (associated(constraint%constraint_free_site_conc)) &
-    deallocate(constraint%constraint_free_site_conc)
-  nullify(constraint%constraint_free_site_conc)
-  if (associated(constraint%basis_free_site_conc)) &
-    deallocate(constraint%basis_free_site_conc)
-  nullify(constraint%basis_free_site_conc)
-
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_conc)
+  call DeallocateArray(constraint%basis_free_site_conc)
+  
   deallocate(constraint)
   nullify(constraint)
 

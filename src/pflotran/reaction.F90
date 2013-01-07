@@ -906,6 +906,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                      mineral_constraint, &
                                      srfcplx_constraint, &
                                      colloid_constraint, &
+                                     biomass_constraint, &
                                      option)
   use Option_module
   use Input_module
@@ -920,29 +921,19 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
+  type(biomass_constraint_type), pointer :: biomass_constraint
   type(option_type) :: option
   
   PetscBool :: found
   PetscInt :: icomp, jcomp
-  PetscInt :: imnrl, jmnrl
   PetscInt :: icoll, jcoll
-  PetscInt :: igas
-  PetscInt :: isrfcplx, jsrfcplx
+  PetscInt :: igas, imnrl
   PetscReal :: constraint_conc(reaction%naqcomp)
   PetscInt :: constraint_type(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_aux_string(reaction%naqcomp)
-  character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%mineral%nkinmnrl)
-  character(len=MAXWORDLENGTH), allocatable :: constraint_srfcplx_name(:)
   character(len=MAXWORDLENGTH) :: constraint_colloid_name(reaction%ncoll)
   PetscInt :: constraint_id(reaction%naqcomp)
   PetscBool :: external_dataset(reaction%naqcomp)
-  
-  character(len=MAXWORDLENGTH) :: mnrl_constraint_aux_string(reaction%mineral%nkinmnrl)
-  PetscBool :: mnrl_external_dataset(reaction%mineral%nkinmnrl)
-  
-  type(mineral_type), pointer :: mineral_reaction
-  
-  mineral_reaction => reaction%mineral
   
   constraint_id = 0
   constraint_aux_string = ''
@@ -977,9 +968,9 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
       select case(constraint_type(jcomp))
         case(CONSTRAINT_MINERAL)
           found = PETSC_FALSE
-          do imnrl = 1, mineral_reaction%nmnrl
+          do imnrl = 1, reaction%mineral%nmnrl
             if (StringCompare(constraint_aux_string(jcomp), &
-                                mineral_reaction%mineral_names(imnrl), &
+                              reaction%mineral%mineral_names(imnrl), &
                                 MAXWORDLENGTH)) then
               constraint_id(jcomp) = imnrl
               found = PETSC_TRUE
@@ -1027,120 +1018,22 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   aq_species_constraint%constraint_conc = constraint_conc
   aq_species_constraint%external_dataset = external_dataset
 
+  
+  if (.not.reaction%use_full_geochemistry) return
+  
   ! minerals
-  if (reaction%use_full_geochemistry .and. associated(mineral_constraint)) then
-    constraint_mnrl_name = ''
-    mnrl_constraint_aux_string = ''
-    mnrl_external_dataset = PETSC_FALSE
-    do imnrl = 1, mineral_reaction%nkinmnrl
-      found = PETSC_FALSE
-      do jmnrl = 1, mineral_reaction%nkinmnrl
-        if (StringCompare(mineral_constraint%names(imnrl), &
-                          mineral_reaction%kinmnrl_names(jmnrl), &
-                          MAXWORDLENGTH)) then
-          found = PETSC_TRUE
-          exit
-        endif
-      enddo
-      if (.not.found) then
-        option%io_buffer = &
-                 'Mineral ' // trim(mineral_constraint%names(imnrl)) // &
-                 'from CONSTRAINT ' // trim(constraint_name) // &
-                 ' not found among kinetic minerals.'
-        call printErrMsg(option)
-      else
-        mineral_constraint%basis_vol_frac(jmnrl) = &
-          mineral_constraint%constraint_vol_frac(imnrl)
-        mineral_constraint%basis_area(jmnrl) = &
-          mineral_constraint%constraint_area(imnrl)
-        constraint_mnrl_name(jmnrl) = mineral_constraint%names(imnrl)
-        mnrl_constraint_aux_string(jmnrl) = mineral_constraint%constraint_aux_string(imnrl)
-        mnrl_external_dataset(jmnrl) = mineral_constraint%external_dataset(imnrl)
-      endif  
-    enddo
-    mineral_constraint%names = constraint_mnrl_name
-    mineral_constraint%constraint_vol_frac = mineral_constraint%basis_vol_frac
-    mineral_constraint%constraint_area = mineral_constraint%basis_area
-    mineral_constraint%constraint_aux_string = mnrl_constraint_aux_string
-    mineral_constraint%external_dataset = mnrl_external_dataset
-  endif
+  call MineralProcessConstraint(reaction%mineral,constraint_name, &
+                                mineral_constraint,option)
 
   ! surface complexes
-  if (reaction%use_full_geochemistry .and. &
-      associated(srfcplx_constraint)) then
-    if (reaction%surface_complexation%nkinsrfcplx == 0) then
-      option%io_buffer = 'Surface complexation specified in constraint "' // &
-        trim(constraint_name) // '" requires that kinetic surface ' // &
-        'complexation be defined in the CHEMISTRY section.'
-      call printErrMsg(option)
-    endif
-    allocate(constraint_srfcplx_name(reaction%surface_complexation%nkinsrfcplx))
-    constraint_srfcplx_name = ''
-    do isrfcplx = 1, reaction%surface_complexation%nkinsrfcplx
-      found = PETSC_FALSE
-      do jsrfcplx = 1, reaction%surface_complexation%nkinsrfcplx
-        if (StringCompare(srfcplx_constraint%names(isrfcplx), &
-                          reaction%surface_complexation%srfcplx_names(&
-                            !TODO(geh): fix 0 index
-                            reaction%surface_complexation%kinsrfcplx_to_name(jsrfcplx,0)), &
-                            MAXWORDLENGTH)) then
-          found = PETSC_TRUE
-          exit
-        endif
-      enddo
-      if (.not.found) then
-        option%io_buffer = &
-                 'Surface complex ' // trim(srfcplx_constraint%names(isrfcplx)) // &
-                 'from CONSTRAINT ' // trim(constraint_name) // &
-                 ' not found among kinetic surface complexes.'
-        call printErrMsg(option)
-      else
-        srfcplx_constraint%basis_conc(jsrfcplx) = &
-          srfcplx_constraint%constraint_conc(isrfcplx)
-        constraint_srfcplx_name(jsrfcplx) = srfcplx_constraint%names(isrfcplx)
-      endif  
-    enddo
-    srfcplx_constraint%names = constraint_srfcplx_name
-    srfcplx_constraint%constraint_conc = srfcplx_constraint%basis_conc
-  endif
-  
-  ! colloids
-  if (reaction%ncoll > 0) then
-    if (.not.associated(colloid_constraint)) then
-      option%io_buffer = 'Constraint "' // trim(constraint_name) // &
-        'missing colloid entries when colloids present in problem.'
-      call printErrMsg(option)
-    endif
-    constraint_colloid_name = ''
-    do icoll = 1, reaction%ncoll
-      found = PETSC_FALSE
-      do jcoll = 1, reaction%ncoll
-        if (StringCompare(colloid_constraint%names(icoll), &
-                          reaction%colloid_names(jcoll), &
-                            MAXWORDLENGTH)) then
-          found = PETSC_TRUE
-          exit
-        endif
-      enddo
-      if (.not.found) then
-        option%io_buffer = &
-                 'Surface complex ' // trim(colloid_constraint%names(icoll)) // &
-                 'from CONSTRAINT ' // trim(constraint_name) // &
-                 ' not found among colloids.'
-        call printErrMsg(option)
-      else
-        colloid_constraint%basis_conc_mob(jcoll) = &
-          colloid_constraint%constraint_conc_mob(icoll)
-        colloid_constraint%basis_conc_imb(jcoll) = &
-          colloid_constraint%constraint_conc_imb(icoll)
-        constraint_colloid_name(jcoll) = colloid_constraint%names(icoll)
-      endif  
-    enddo
-    colloid_constraint%names = constraint_colloid_name
-    colloid_constraint%constraint_conc_mob = colloid_constraint%basis_conc_mob
-    colloid_constraint%constraint_conc_imb = colloid_constraint%basis_conc_imb
-  endif
+  call SrfCplxProcessConstraint(reaction%surface_complexation, &
+                                constraint_name, &
+                                srfcplx_constraint,option)
 
+  ! microbial biomass
+  call MicrobialProcessConstraint(reaction%microbial,constraint_name, &
+                                  biomass_constraint,option)
+  
 end subroutine ReactionProcessConstraint
 
 ! ************************************************************************** !
@@ -1157,6 +1050,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          mineral_constraint, &
                                          srfcplx_constraint, &
                                          colloid_constraint, &
+                                         biomass_constraint, &
                                          porosity1, &
                                          num_iterations, &
                                          use_prev_soln_as_guess,option)
@@ -1179,6 +1073,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
+  type(biomass_constraint_type), pointer :: biomass_constraint
   PetscInt :: num_iterations
   
 ! *****************************
@@ -1265,6 +1160,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
 
+!geh: I don't believe that we need this at all.
+#if 0  
   if (associated(mineral_constraint)) then
     do imnrl = 1, mineral_reaction%nkinmnrl
       ! if read from a dataset, the mineral volume frac has already been set.
@@ -1276,12 +1173,14 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       rt_auxvar%mnrl_area(imnrl) = mineral_constraint%constraint_area(imnrl)
     enddo
   endif
+#endif  
 
   if (associated(colloid_constraint)) then      
     colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
     colloid_constraint%basis_conc_imb = colloid_constraint%constraint_conc_imb        
     rt_auxvar%colloid%conc_mob = colloid_constraint%basis_conc_mob* &
                                  convert_molar_to_molal
+    !TODO(geh): this can't be correct as immobile concentrations are mol/m^3
     rt_auxvar%colloid%conc_imb = colloid_constraint%basis_conc_imb* &
                                  convert_molar_to_molal
   endif  
@@ -1885,7 +1784,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       enddo
     enddo
 
-    if (surface_complexation%nkinsrfcplx > 0 .and. associated(srfcplx_constraint)) then
+    if (surface_complexation%nkinsrfcplx > 0 .and. &
+        associated(srfcplx_constraint)) then
     ! compute surface complex conc. at new time step (5.1-30) 
       rt_auxvar%kinsrfcplx_conc(:,1) = srfcplx_constraint%constraint_conc
       do ikinrxn = 1, surface_complexation%nkinsrfcplxrxn
@@ -1910,8 +1810,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           call printErrMsgByRank(option)
         endif
       enddo
-      srfcplx_constraint%constraint_free_site_conc = rt_auxvar%kinsrfcplx_free_site_conc
-      srfcplx_constraint%basis_free_site_conc = srfcplx_constraint%constraint_free_site_conc
+      srfcplx_constraint%basis_free_site_conc = &
+        rt_auxvar%kinsrfcplx_free_site_conc
     endif
   endif
   
