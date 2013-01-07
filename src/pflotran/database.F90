@@ -633,6 +633,8 @@ subroutine DatabaseRead(reaction,option)
   if (flag) call printErrMsg(option,'Species duplicated in input file.')
 
   ! check that all species, etc. were read
+  ! also check whether legitimate logK values exist if non-isothermal and
+  ! a database reaction exists
   flag = PETSC_FALSE
   cur_aq_spec => reaction%primary_species_list
   do
@@ -644,6 +646,9 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
+    call DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
+                                      cur_aq_spec%name, &
+                                      option)
     cur_aq_spec => cur_aq_spec%next
   enddo
   cur_aq_spec => reaction%secondary_species_list
@@ -656,6 +661,9 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
+    call DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
+                                      cur_aq_spec%name, &
+                                      option)
     cur_aq_spec => cur_aq_spec%next
   enddo  
   cur_gas_spec => reaction%gas_species_list
@@ -667,6 +675,9 @@ subroutine DatabaseRead(reaction,option)
                          ') not found in database.'
       call printMsg(option)
     endif
+    call DatabaseCheckLegitimateLogKs(cur_gas_spec%dbaserxn, &
+                                      cur_gas_spec%name, &
+                                      option)
     cur_gas_spec => cur_gas_spec%next
   enddo  
   cur_mineral => mineral%mineral_list
@@ -678,6 +689,9 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
+    call DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
+                                      cur_mineral%name, &
+                                      option)    
     cur_mineral => cur_mineral%next
   enddo
   cur_srfcplx => surface_complexation%complex_list
@@ -689,6 +703,9 @@ subroutine DatabaseRead(reaction,option)
                 ') not found in database.'
       call printMsg(option)
     endif
+    call DatabaseCheckLegitimateLogKs(cur_srfcplx%dbaserxn, &
+                                      cur_srfcplx%name, &
+                                      option)      
     cur_srfcplx => cur_srfcplx%next
   enddo  
     
