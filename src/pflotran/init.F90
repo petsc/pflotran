@@ -153,9 +153,6 @@ subroutine Init(simulation)
     call InitPrintPFLOTRANHeader(option,option%fid_out)
   endif
   
-  call InitReadHDF5CardsFromInput(realization)
-  call Create_IOGroups(option)
-
   ! read required cards
   call InitReadRequiredCardsFromInput(realization)
 #ifdef SURFACE_FLOW
@@ -213,11 +210,6 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
-
-#ifdef VAMSI_HDF5      
-  call Create_IOGroups(option)
-#endif    
-
 #if defined(PARALLELIO_LIB)
   call Create_IOGroups(option)
 #endif    
@@ -238,13 +230,8 @@ subroutine Init(simulation)
   
   if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
-!geh      if (realization%reaction%use_geothermal_hpt)then
-!geh        call DatabaseRead_hpt(realization%reaction,option)
-!geh        call BasisInit_hpt(realization%reaction,option)    
-!geh      else
         call DatabaseRead(realization%reaction,option)
         call BasisInit(realization%reaction,option)    
-!geh      endif
     else
       ! turn off activity coefficients since the database has not been read
       realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
@@ -973,17 +960,11 @@ subroutine Init(simulation)
   endif
   
 #if defined(PETSC_HAVE_HDF5)
-#if !defined(HDF5_BROADCAST) && !defined(VAMSI_HDF5_READ)
+#if !defined(HDF5_BROADCAST)
   call printMsg(option,"Default HDF5 method is used in Initialization")
-#elif defined(HDF5_BROADCAST)
+#else
   call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
-#elif defined(VAMSI_HDF5_READ)
-  call printMsg(option,"Vamsi's HDF5 broadcast method is used in Initialization")
-  if (option%myrank == option%io_rank) then
-    write(*,'(" HDF5_READ_GROUP_SIZE = ",i6)') option%hdf5_read_group_size
-    write(*,'(" HDF5_WRITE_GROUP_SIZE = ",i6)') option%hdf5_write_group_size
-  endif  
-#endif !VAMSI_HDF5_READ
+#endif
 #endif !PETSC_HAVE_HDF5
 
 #ifdef SURFACE_FLOW
@@ -2309,6 +2290,16 @@ subroutine InitReadInput(simulation)
         option%surf_flow_dt=simulation%surf_flow_stepper%dt_min
 #endif
 
+!......................
+      case ('HDF5_READ_GROUP_SIZE')
+        call InputReadInt(input,option,option%hdf5_read_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+
+!......................
+      case ('HDF5_WRITE_GROUP_SIZE')
+        call InputReadInt(input,option,option%hdf5_write_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+
 !....................
       case default
     
@@ -2318,11 +2309,8 @@ subroutine InitReadInput(simulation)
 
     end select
 
-
-
   enddo
-
-                                        
+                                      
 end subroutine InitReadInput
 
 ! ************************************************************************** !
