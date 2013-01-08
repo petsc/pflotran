@@ -1649,18 +1649,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       call printErrMsgByRank(option)
     endif
     
+#if 0
+!geh cannot use this check as for many problems (e.g. Hanford 300 Area U), the 
+!    concentrations temporarily go well above 100.
+
     ! check for excessively large maximum values, which likely indicates
     ! reaction going awry.
     tempreal = maxval(rt_auxvar%pri_molal)
-    if (tempreal > 10.d0) then
+    ! allow a few iterations; sometime charge balance constraint jumps
+    ! during initial iterations
+    if (tempreal > 100.d0 .and. num_iterations > 500) then
       !geh: for some reason, needs the array rank included in call to maxloc
       idof = maxloc(rt_auxvar%pri_molal,1)
       option%io_buffer = 'ERROR: Excessively large concentration for ' // &
         'species "' // trim(reaction%primary_species_names(idof)) // &
+        '" in constraint "' // trim(constraint_name) // &
         '" in ReactionEquilibrateConstraint. Email input deck to ' // &
         'pflotran-dev@googlegroups.com.'
       call printErrMsg(option)
     endif
+#endif
     
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
