@@ -37,86 +37,39 @@
 ! Richland, WA
 
 !=======================================================================
-program pflotran_rxn
-  
+
+
+module BatchChem
+
+  implicit none
+
+  private
+
+#include "definitions.h"
+
+  public :: BatchChemInitializeReactions, &
+            BatchChemProcessConstraints
+
+contains
+
+subroutine BatchChemInitializeReactions(option, input, reaction)
+
   use Reaction_module
   use Reaction_Aux_module
-  use Reactive_Transport_Aux_module
-  use Global_Aux_module
   use Database_module
   use Option_module
   use Input_module
   use String_module
-  
-  use Constraint_module
 
   implicit none
 
 #include "definitions.h"
 #include "finclude/petsclog.h"
 
-  PetscErrorCode :: ierr
-  PetscBool :: option_found  
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: filename_out
-  type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
   type(input_type), pointer :: input
-
-  type(global_auxvar_type), pointer :: global_auxvars
-  type(reactive_transport_auxvar_type), pointer :: rt_auxvars
-
-  character(len=MAXWORDLENGTH) :: card
-  character(len=MAXWORDLENGTH) :: word
-  type(tran_constraint_type), pointer :: tran_constraint
-  type(tran_constraint_list_type), pointer :: transport_constraints
-  type(tran_constraint_coupler_type), pointer :: constraint_coupler 
-
-  PetscBool :: use_prev_soln_as_guess
-  PetscInt :: num_iterations
-  
-  option => OptionCreate()
-  option%fid_out = OUT_UNIT
-
-  call MPI_Init(ierr)
-  option%global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD, option%global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD, option%global_commsize, ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD, option%global_group, ierr)
-  option%mycomm = option%global_comm
-  option%myrank = option%global_rank
-  option%mycommsize = option%global_commsize
-  option%mygroup = option%global_group
-
-  ! check for non-default input filename
-  option%input_filename = "pflotran.in"
-  string = '-pflotranin'
-  call InputGetCommandLineString(string, option%input_filename, option_found, option)
-
-  string = '-output_prefix'
-  call InputGetCommandLineString(string, option%global_prefix, option_found, option)
-
-  PETSC_COMM_WORLD = MPI_COMM_WORLD
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-
-  input => InputCreate(IN_UNIT, option%input_filename, option)
-
-  filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
-                 '.out'
-
-  if (option%myrank == option%io_rank .and. option%print_to_file) then
-    open(option%fid_out, file=filename_out, action="write", status="unknown")
-  endif
-
-  !
-  ! manual initialization...
-  !
-  option%nphase = 1
-
-
-  !
-  ! initialize chemistry
-  !
+  type(reaction_type), pointer :: reaction
+  character(len=MAXSTRINGLENGTH) :: string
 
   ! check for a chemistry block in the  input file
   string = "CHEMISTRY"
@@ -149,36 +102,46 @@ program pflotran_rxn
     endif
   endif
 
-  !
-  ! create the storage containers
-  !
-  ! NOTE(bja) : batch chem --> one cell
+end subroutine BatchChemInitializeReactions
 
-  ! global_auxvars --> cell by cell temperature, pressure, saturation, density
-  allocate(global_auxvars)
-  call GlobalAuxVarInit(global_auxvars, option)
 
-  ! rt_auxvars --> cell by cell chemistry data
-  allocate(rt_auxvars)
-  call RTAuxVarInit(rt_auxvars, reaction, option)
+subroutine BatchChemProcessConstraints(option, input, reaction, &
+     global_auxvars, rt_auxvars, transport_constraints, constraint_coupler)
 
-  ! assign default state values
-  global_auxvars%pres = option%reference_pressure
-  global_auxvars%temp = option%reference_temperature
-  ! global_auxvars%den_kg = option%reference_water_density
-  ! NOTE(bja): option%ref_density = 0.0, so we set it manually. This is a Bad Thing(TM)
-  global_auxvars%den_kg = 998.2
-  global_auxvars%sat = option%reference_saturation  
+  use Reaction_module
+  use Reaction_Aux_module
+  use Database_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use Constraint_module
+  use Option_module
+  use Input_module
+  use String_module
+
+  implicit none
+
+#include "definitions.h"
+#include "finclude/petsclog.h"
+
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  type(reaction_type), pointer :: reaction
+  character(len=MAXSTRINGLENGTH) :: string
+  type(global_auxvar_type), pointer :: global_auxvars
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars
+
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: word
+  type(tran_constraint_type), pointer :: tran_constraint
+  type(tran_constraint_list_type), pointer :: transport_constraints
+  type(tran_constraint_coupler_type), pointer :: constraint_coupler 
+  PetscBool :: use_prev_soln_as_guess
+  PetscInt :: num_iterations
+  
 
   !
   ! read the constraints...
   !
-
-  ! create the constraint list
-  allocate(transport_constraints)
-  call TranConstraintInitList(transport_constraints)
-  allocate(constraint_coupler)
-  constraint_coupler => TranConstraintCouplerCreate(option)
 
   ! look through the input file
   rewind(input%fid)        
@@ -260,8 +223,127 @@ program pflotran_rxn
      tran_constraint => tran_constraint%next
   enddo
 
+end subroutine BatchChemProcessConstraints
+
+
+end module BatchChem
+
+
+! ************************************************************************** !
+program pflotran_rxn
+  
+  use Reaction_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use Database_module
+  use Option_module
+  use Input_module
+  use String_module
+  
+  use Constraint_module
+
+  use BatchChem
+
+  implicit none
+
+#include "definitions.h"
+#include "finclude/petsclog.h"
+
+  PetscErrorCode :: ierr
+  PetscBool :: option_found  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: filename_out
+  type(reaction_type), pointer :: reaction
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+
+  type(global_auxvar_type), pointer :: global_auxvars
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars
+
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: word
+  type(tran_constraint_list_type), pointer :: transport_constraints
+  type(tran_constraint_coupler_type), pointer :: constraint_coupler 
+
+  option => OptionCreate()
+  option%fid_out = OUT_UNIT
+
+  call MPI_Init(ierr)
+  option%global_comm = MPI_COMM_WORLD
+  call MPI_Comm_rank(MPI_COMM_WORLD, option%global_rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD, option%global_commsize, ierr)
+  call MPI_Comm_group(MPI_COMM_WORLD, option%global_group, ierr)
+  option%mycomm = option%global_comm
+  option%myrank = option%global_rank
+  option%mycommsize = option%global_commsize
+  option%mygroup = option%global_group
+
+  ! check for non-default input filename
+  option%input_filename = "pflotran.in"
+  string = '-pflotranin'
+  call InputGetCommandLineString(string, option%input_filename, option_found, option)
+
+  string = '-output_prefix'
+  call InputGetCommandLineString(string, option%global_prefix, option_found, option)
+
+  PETSC_COMM_WORLD = MPI_COMM_WORLD
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+
+  input => InputCreate(IN_UNIT, option%input_filename, option)
+
+  filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
+                 '.out'
+
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    open(option%fid_out, file=filename_out, action="write", status="unknown")
+  endif
+
+  !
+  ! manual initialization...
+  !
+  option%nphase = 1
+
+  call BatchChemInitializeReactions(option, input, reaction)
+
+  !
+  ! create the storage containers
+  !
+  ! NOTE(bja) : batch chem --> one cell
+
+  ! global_auxvars --> cell by cell temperature, pressure, saturation, density
+  allocate(global_auxvars)
+  call GlobalAuxVarInit(global_auxvars, option)
+
+  ! rt_auxvars --> cell by cell chemistry data
+  allocate(rt_auxvars)
+  call RTAuxVarInit(rt_auxvars, reaction, option)
+
+  ! assign default state values
+  global_auxvars%pres = option%reference_pressure
+  global_auxvars%temp = option%reference_temperature
+  ! global_auxvars%den_kg = option%reference_water_density
+  ! NOTE(bja): option%ref_density = 0.0, so we set it manually. This is a Bad Thing(TM)
+  global_auxvars%den_kg = 998.2
+  global_auxvars%sat = option%reference_saturation  
+
+  ! create the constraint list
+  allocate(transport_constraints)
+  call TranConstraintInitList(transport_constraints)
+  allocate(constraint_coupler)
+  constraint_coupler => TranConstraintCouplerCreate(option)
+
+  call BatchChemProcessConstraints(option, input, reaction, &
+       global_auxvars, rt_auxvars, transport_constraints, constraint_coupler)
+
+
 
   ! cleanup
+  call TranConstraintCouplerDestroy(constraint_coupler)
+  call TranConstraintDestroyList(transport_constraints)
+  ! FIXME(bja) : causes error freeing memory.
+  !call RTAuxVarDestroy(rt_auxvars)
+  !call GlobalAuxVarDestroy(global_auxvars)
   call ReactionDestroy(reaction)
   call InputDestroy(input)
   call OptionDestroy(option)
@@ -269,3 +351,4 @@ program pflotran_rxn
   call MPI_Finalize(ierr)
 
 end program pflotran_rxn
+
