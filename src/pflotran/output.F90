@@ -111,12 +111,14 @@ module Output_module
 #endif
   end interface
 
+#if defined(PETSC_HAVE_HDF5)
   interface WriteHDF5CoordinatesUGridXDMF
     module procedure WriteHDF5CoordinatesUGridXDMF1
 #ifdef SURFACE_FLOW
     module procedure WriteHDF5CoordinatesUGridXDMF2
 #endif
   end interface
+#endif
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
@@ -190,11 +192,6 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
 
   option => realization%option
 
-#ifdef VAMSI_STAGE_BARRIER
-  ! barrier to calculate the accurate timing of Output Stage
-  call MPI_Barrier(option%mycomm,ierr)
-#endif 
-
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
   ! check for plot request from active directory
@@ -222,10 +219,6 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
       if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in & 
                                           writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
 #endif
-#ifdef VAMSI_HDF5_WRITE
-      if (option%myrank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
-                                          writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
-#endif      
       write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
@@ -289,11 +282,6 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   realization%output_option%plot_name = ''
-
-#ifdef VAMSI_STAGE_BARRIER
-  call MPI_Barrier(option%mycomm,ierr)
-  ! barrier to calculate the accurate timing of Output Stage
-#endif 
 
   call PetscLogStagePop(ierr)
   
@@ -5293,7 +5281,7 @@ subroutine OutputHDF5(realization)
                 '-' // trim(string) // '.h5'
   endif
 
-    grid => patch%grid
+  grid => patch%grid
 #if defined(PARALLELIO_LIB_WRITE)
   if (.not.first) then
     filename = trim(filename) // CHAR(0)
@@ -5307,121 +5295,112 @@ subroutine OutputHDF5(realization)
                               FILE_CREATE, file_id, ierr)
   endif
 
-#else  ! PARALLELIO_LIB_WRITE is not defined
+#else
+! PARALLELIO_LIB_WRITE is not defined
 
     ! initialize fortran interface
   call h5open_f(hdf5_err)
 
-#ifdef VAMSI_HDF5_WRITE
-  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
-#endif
-
-    call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-#ifdef VAMSI_HDF5_WRITE
-    call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
-#else
-    call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
+  if (.not.first) then
+    call h5eset_auto_f(OFF,hdf5_err)
+    call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+    if (hdf5_err /= 0) first = PETSC_TRUE
+    call h5eset_auto_f(ON,hdf5_err)
+  endif
+  if (first) then 
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                      H5P_DEFAULT_F,prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
 #endif
-    if (.not.first) then
-      call h5eset_auto_f(OFF,hdf5_err)
-      call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-      if (hdf5_err /= 0) first = PETSC_TRUE
-      call h5eset_auto_f(ON,hdf5_err)
-    endif
-    if (first) then 
-      call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
-                        H5P_DEFAULT_F,prop_id)
-    endif
-    call h5pclose_f(prop_id,hdf5_err)
-#endif ! PARALLELIO_LIB_WRITE
+! PARALLELIO_LIB_WRITE
 
-    if (first) then
-      option%io_buffer = '--> creating hdf5 output file: ' // filename
-    else
-      option%io_buffer = '--> appending to hdf5 output file: ' // filename
-    endif
-    call printMsg(option)
+  if (first) then
+    option%io_buffer = '--> creating hdf5 output file: ' // filename
+  else
+    option%io_buffer = '--> appending to hdf5 output file: ' // filename
+  endif
+  call printMsg(option)
 
-    if (first) then
+  if (first) then
 
-      ! create a group for the coordinates data set
+    ! create a group for the coordinates data set
 #if defined(PARALLELIO_LIB_WRITE)
-      string = "Coordinates" // CHAR(0)
-      call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                                          option%iowrite_group_id, ierr)
-          ! set grp_id here
-          ! As we already created the group, we will use file_id as group_id
-      grp_id = file_id
-#else
-      string = "Coordinates"
-      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-#endif
-
-      !GEH - Structured Grid Dependence - Begin
-      ! write out coordinates in x, y, and z directions
-      string = "X [m]"
-      allocate(array(grid%structured_grid%nx+1))
-      array(1) = grid%structured_grid%origin(X_DIRECTION)
-      do i=2,grid%structured_grid%nx+1
-        array(i) = array(i-1) + grid%structured_grid%dx_global(i-1)
-      enddo
-      call WriteHDF5Coordinates(string,option,grid%structured_grid%nx+1,array,grp_id)
-      deallocate(array)
-
-      string = "Y [m]"
-      allocate(array(grid%structured_grid%ny+1))
-      array(1) = grid%structured_grid%origin(Y_DIRECTION)
-      do i=2,grid%structured_grid%ny+1
-        array(i) = array(i-1) + grid%structured_grid%dy_global(i-1)
-      enddo
-      call WriteHDF5Coordinates(string,option,grid%structured_grid%ny+1,array,grp_id)
-      deallocate(array)
-
-      string = "Z [m]"
-      allocate(array(grid%structured_grid%nz+1))
-      array(1) = grid%structured_grid%origin(Z_DIRECTION)
-      do i=2,grid%structured_grid%nz+1
-        array(i) = array(i-1) + grid%structured_grid%dz_global(i-1)
-      enddo
-      call WriteHDF5Coordinates(string,option,grid%structured_grid%nz+1,array,grp_id)
-      deallocate(array)
-      !GEH - Structured Grid Dependence - End
-
-#if defined(PARALLELIO_LIB_WRITE)
-      call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
-                                          option%iowrite_group_id, ierr)
-#else
-      call h5gclose_f(grp_id,hdf5_err)
-#endif
-
-    endif
-        
-    ! create a group for the data set
-    write(string,'(''Time:'',es13.5,x,a1)') &
-          option%time/output_option%tconv,output_option%tunit
-    if (len_trim(output_option%plot_name) > 2) then
-      string = trim(string) // ' ' // output_option%plot_name
-    endif
-#if defined(PARALLELIO_LIB_WRITE)
-    string = trim(string) //CHAR(0)
-      ! This opens existing dataset and creates it if needed
+    string = "Coordinates" // CHAR(0)
     call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
-                                          option%iowrite_group_id, ierr)
+                                        option%iowrite_group_id, ierr)
+        ! set grp_id here
+        ! As we already created the group, we will use file_id as group_id
     grp_id = file_id
 #else
-    call h5eset_auto_f(OFF,hdf5_err)
-    call h5gopen_f(file_id,string,grp_id,hdf5_err)
-    if (hdf5_err /= 0) then
-      call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-    endif
-    call h5eset_auto_f(ON,hdf5_err)
-#endif ! PARALLELIO_LIB_WRITE
-
-#ifdef VAMSI_HDF5_WRITE
-  endif
+    string = "Coordinates"
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
 #endif
+
+    !GEH - Structured Grid Dependence - Begin
+    ! write out coordinates in x, y, and z directions
+    string = "X [m]"
+    allocate(array(grid%structured_grid%nx+1))
+    array(1) = grid%structured_grid%origin(X_DIRECTION)
+    do i=2,grid%structured_grid%nx+1
+      array(i) = array(i-1) + grid%structured_grid%dx_global(i-1)
+    enddo
+    call WriteHDF5Coordinates(string,option,grid%structured_grid%nx+1,array,grp_id)
+    deallocate(array)
+
+    string = "Y [m]"
+    allocate(array(grid%structured_grid%ny+1))
+    array(1) = grid%structured_grid%origin(Y_DIRECTION)
+    do i=2,grid%structured_grid%ny+1
+      array(i) = array(i-1) + grid%structured_grid%dy_global(i-1)
+    enddo
+    call WriteHDF5Coordinates(string,option,grid%structured_grid%ny+1,array,grp_id)
+    deallocate(array)
+
+    string = "Z [m]"
+    allocate(array(grid%structured_grid%nz+1))
+    array(1) = grid%structured_grid%origin(Z_DIRECTION)
+    do i=2,grid%structured_grid%nz+1
+      array(i) = array(i-1) + grid%structured_grid%dz_global(i-1)
+    enddo
+    call WriteHDF5Coordinates(string,option,grid%structured_grid%nz+1,array,grp_id)
+    deallocate(array)
+    !GEH - Structured Grid Dependence - End
+
+#if defined(PARALLELIO_LIB_WRITE)
+    call parallelio_close_dataset_group(pio_dataset_groupid, file_id, &
+                                        option%iowrite_group_id, ierr)
+#else
+    call h5gclose_f(grp_id,hdf5_err)
+#endif
+
+  endif
+        
+  ! create a group for the data set
+  write(string,'(''Time:'',es13.5,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
+#if defined(PARALLELIO_LIB_WRITE)
+  string = trim(string) //CHAR(0)
+    ! This opens existing dataset and creates it if needed
+  call parallelIO_create_dataset_group(pio_dataset_groupid, string, file_id, &
+                                        option%iowrite_group_id, ierr)
+  grp_id = file_id
+#else
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+  endif
+  call h5eset_auto_f(ON,hdf5_err)
+#endif
+! PARALLELIO_LIB_WRITE
   
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -5436,7 +5415,7 @@ subroutine OutputHDF5(realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -5523,16 +5502,11 @@ subroutine OutputHDF5(realization)
             option%iowrite_group_id, ierr)
     call parallelio_close_file(file_id, option%iowrite_group_id, ierr)
 #else
-#ifdef VAMSI_HDF5_WRITE
-    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
-#endif
-       call h5gclose_f(grp_id,hdf5_err)
-       call h5fclose_f(file_id,hdf5_err)
-#ifdef VAMSI_HDF5_WRITE
-    endif
-#endif
+    call h5gclose_f(grp_id,hdf5_err)
+    call h5fclose_f(file_id,hdf5_err)
      call h5close_f(hdf5_err)
-#endif !PARALLELIO_LIB_WRITE
+#endif
+!PARALLELIO_LIB_WRITE
 #endif
 
   hdf5_first = PETSC_FALSE
@@ -5903,7 +5877,6 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   globaldims = 0
   ! x-direction
 
-  !if (option%myrank == option%io_rank) then
   ! Only process 0 writes coordinates
   if (option%myrank == 0 ) then
      dims(1) = length
@@ -5913,20 +5886,15 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
      globaldims(1) = length
   endif
 
- call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
- call parallelio_write_dataset(array, PIO_DOUBLE, rank, globaldims, dims, &
-      file_id, name, option%iowrite_group_id, NONUNIFORM_CONTIGUOUS_WRITE, ierr)
- !call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
-                !hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
- call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
+  call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)
+  call parallelio_write_dataset(array, PIO_DOUBLE, rank, globaldims, dims, &
+       file_id, name, option%iowrite_group_id, NONUNIFORM_CONTIGUOUS_WRITE, &
+       ierr)
+  call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
 
 #else
 !PARALLELIO_LIB_WRITE is not defined
 
-#ifdef VAMSI_HDF5_WRITE
-  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
-#endif
-                            
   ! write out grid structure
   rank = 1
   dims = 0
@@ -5952,11 +5920,8 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
 
-#ifdef VAMSI_HDF5_WRITE
-  endif
 #endif
-
-#endif ! PARALLELIO_LIB_WRITE
+! PARALLELIO_LIB_WRITE
 
   call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
 
@@ -8238,8 +8203,8 @@ subroutine OutputHDF5UGrid(realization)
     call WriteHDF5CoordinatesUGrid(grid,option,grp_id)
     call h5gclose_f(grp_id,hdf5_err)
   endif
-#endif ! PARALLELIO_LIB_WRITE
-
+#endif
+! PARALLELIO_LIB_WRITE
 
     ! create a group for the data set
     write(string,'(''Time:'',es13.5,x,a1)') &
@@ -8260,7 +8225,8 @@ subroutine OutputHDF5UGrid(realization)
       call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
     endif
     call h5eset_auto_f(ON,hdf5_err)
-#endif ! PARALLELIO_LIB_WRITE
+#endif
+! PARALLELIO_LIB_WRITE
 
   ! write out data sets
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -8275,7 +8241,7 @@ subroutine OutputHDF5UGrid(realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -8365,11 +8331,13 @@ subroutine OutputHDF5UGrid(realization)
   call h5gclose_f(grp_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
-#endif !PARALLELIO_LIB_WRITE
+#endif
+!PARALLELIO_LIB_WRITE
 
   hdf5_first = PETSC_FALSE
 
-#endif ! !defined(PETSC_HAVE_HDF5)
+#endif
+! !defined(PETSC_HAVE_HDF5)
 
 end subroutine OutputHDF5UGrid
 
@@ -8393,6 +8361,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
   use Reaction_Aux_module
 
 #if  !defined(PETSC_HAVE_HDF5)
+
   implicit none
   
   type(realization_type) :: realization
@@ -8402,7 +8371,8 @@ subroutine OutputHDF5UGridXDMF1(realization)
         '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids Darn.")')
   call printErrMsg(realization%option)
-#endif
+
+#else
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
@@ -8580,7 +8550,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -8610,6 +8580,9 @@ subroutine OutputHDF5UGridXDMF1(realization)
   endif
 
   hdf5_first = PETSC_FALSE
+
+#endif
+! !defined(PETSC_HAVE_HDF5)
 
 end subroutine OutputHDF5UGridXDMF1
 
@@ -10440,7 +10413,7 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
       word = cur_variable%units
-      call HDF5MakeStringCompabible(word)
+      call HDF5MakeStringCompatible(word)
       string = trim(string) // ' [' // trim(word) // ']'
     endif
     if (cur_variable%iformat == 0) then
@@ -10764,6 +10737,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF2(surf_realization,realization,option,fi
 
 end subroutine WriteHDF5CoordinatesUGridXDMF2
 
-#endif SURFACE_FLOW
+#endif
+!SURFACE_FLOW
 
 end module Output_module

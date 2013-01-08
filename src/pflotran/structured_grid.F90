@@ -1868,7 +1868,7 @@ subroutine StructGridMapIndices(structured_grid,stencil_type,lsm_flux_method, &
       enddo
     enddo
   enddo
-  
+
   if (lsm_flux_method) then
   
     allocate(ghosted_level(structured_grid%ngmax))
@@ -2492,23 +2492,32 @@ end function StructGetTVDGhostConnection
 !!
 !! date: 08/24/12
 ! ************************************************************************** !
-subroutine StructGridComputeNeighbors(structured_grid,option)
+subroutine StructGridComputeNeighbors(structured_grid,nG2L,is_bnd_vec,option)
 
   use Option_module
 
   implicit none
   
 #include "finclude/petscdmda.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
+  PetscInt, pointer :: nG2L(:)
+  Vec :: is_bnd_vec
   
-  PetscInt :: ghosted_id, ncount, ghosted_neighbors(27)
+  PetscInt :: ghosted_id, ncount, ghosted_neighbors(26)
+  PetscInt :: local_id
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
   
-  allocate(structured_grid%cell_neighbors(0:27,structured_grid%ngmax))
+  allocate(structured_grid%cell_neighbors(0:26,structured_grid%ngmax))
   structured_grid%cell_neighbors = 0
-  
+
+  call VecGetArrayF90(is_bnd_vec,vec_ptr,ierr)
   do ghosted_id = 1,structured_grid%ngmax
+    local_id=nG2L(ghosted_id)
     call StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
                                          DMDA_STENCIL_BOX, &
                                          ONE_INTEGER_MPI, &
@@ -2519,8 +2528,16 @@ subroutine StructGridComputeNeighbors(structured_grid,option)
                                          option)
     structured_grid%cell_neighbors(0,ghosted_id) = ncount
     structured_grid%cell_neighbors(1:ncount,ghosted_id) = ghosted_neighbors(1:ncount)
+    if(local_id>0) then
+      if(ncount == 26) then
+        vec_ptr(ghosted_id) = 0.d0
+      else
+        vec_ptr(ghosted_id) = 1.d0
+      endif
+    endif
   enddo
+  call VecRestoreArrayF90(is_bnd_vec,vec_ptr,ierr)
   
-end subroutine
+end subroutine StructGridComputeNeighbors
 
 end module Structured_Grid_module
