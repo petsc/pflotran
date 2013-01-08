@@ -70,6 +70,8 @@ program pflotran_rxn
   character(len=MAXWORDLENGTH) :: word
   type(tran_constraint_type), pointer :: tran_constraint
   type(tran_constraint_list_type), pointer :: transport_constraints
+  type(tran_constraint_coupler_type), pointer :: constraint_coupler 
+
   PetscBool :: use_prev_soln_as_guess
   PetscInt :: num_iterations
   
@@ -163,7 +165,9 @@ program pflotran_rxn
   ! assign default state values
   global_auxvars%pres = option%reference_pressure
   global_auxvars%temp = option%reference_temperature
-  global_auxvars%den_kg = option%reference_water_density
+  ! global_auxvars%den_kg = option%reference_water_density
+  ! NOTE(bja): option%ref_density = 0.0, so we set it manually. This is a Bad Thing(TM)
+  global_auxvars%den_kg = 998.2
   global_auxvars%sat = option%reference_saturation  
 
   !
@@ -173,6 +177,8 @@ program pflotran_rxn
   ! create the constraint list
   allocate(transport_constraints)
   call TranConstraintInitList(transport_constraints)
+  allocate(constraint_coupler)
+  constraint_coupler => TranConstraintCouplerCreate(option)
 
   ! look through the input file
   rewind(input%fid)        
@@ -227,6 +233,16 @@ program pflotran_rxn
           tran_constraint%surface_complexes, &
           tran_constraint%colloids, &
           option)
+
+     ! link the constraint to the constraint coupler
+     constraint_coupler%constraint_name = tran_constraint%name
+     constraint_coupler%aqueous_species => tran_constraint%aqueous_species
+     constraint_coupler%minerals => tran_constraint%minerals
+     constraint_coupler%surface_complexes => tran_constraint%surface_complexes
+     constraint_coupler%colloids => tran_constraint%colloids
+     constraint_coupler%global_auxvar => global_auxvars
+     constraint_coupler%rt_auxvar => rt_auxvars
+     
      ! equilibrate
      option%io_buffer = "equilibrate constraint : " // tran_constraint%name
      call printMsg(option)
@@ -240,6 +256,7 @@ program pflotran_rxn
           num_iterations, &
           use_prev_soln_as_guess, &
           option)
+     call ReactionPrintConstraint(constraint_coupler, reaction, option)
      tran_constraint => tran_constraint%next
   enddo
 
