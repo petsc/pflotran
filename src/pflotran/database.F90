@@ -54,7 +54,7 @@ subroutine DatabaseRead(reaction,option)
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: null_name
   
-  PetscBool :: flag, found
+  PetscBool :: flag, found, logK_error_flag
   PetscInt :: ispec, itemp, i
   PetscReal :: stoich
   PetscReal :: temp_real
@@ -600,6 +600,7 @@ subroutine DatabaseRead(reaction,option)
   ! also check whether legitimate logK values exist if non-isothermal and
   ! a database reaction exists
   flag = PETSC_FALSE
+  logK_error_flag = PETSC_FALSE
   cur_aq_spec => reaction%primary_species_list
   do
     if (.not.associated(cur_aq_spec)) exit
@@ -610,9 +611,12 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
-    call DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
-                                      cur_aq_spec%name, &
-                                      option)
+    if (.not.DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
+                                          cur_aq_spec%name, &
+                                          reaction%dbase_temperatures, &
+                                          option)) then
+      logK_error_flag = PETSC_TRUE
+    endif
     cur_aq_spec => cur_aq_spec%next
   enddo
   cur_aq_spec => reaction%secondary_species_list
@@ -625,9 +629,12 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
-    call DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
-                                      cur_aq_spec%name, &
-                                      option)
+    if (.not.DatabaseCheckLegitimateLogKs(cur_aq_spec%dbaserxn, &
+                                          cur_aq_spec%name, &
+                                          reaction%dbase_temperatures, &
+                                          option)) then
+      logK_error_flag = PETSC_TRUE
+    endif
     cur_aq_spec => cur_aq_spec%next
   enddo  
   cur_gas_spec => reaction%gas_species_list
@@ -639,9 +646,12 @@ subroutine DatabaseRead(reaction,option)
                          ') not found in database.'
       call printMsg(option)
     endif
-    call DatabaseCheckLegitimateLogKs(cur_gas_spec%dbaserxn, &
-                                      cur_gas_spec%name, &
-                                      option)
+    if (.not.DatabaseCheckLegitimateLogKs(cur_gas_spec%dbaserxn, &
+                                          cur_gas_spec%name, &
+                                          reaction%dbase_temperatures, &
+                                          option)) then
+      logK_error_flag = PETSC_TRUE
+    endif
     cur_gas_spec => cur_gas_spec%next
   enddo  
   cur_mineral => mineral%mineral_list
@@ -653,9 +663,12 @@ subroutine DatabaseRead(reaction,option)
                ') not found in database.'
       call printMsg(option)
     endif
-    call DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
-                                      cur_mineral%name, &
-                                      option)    
+    if (.not.DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
+                                          cur_mineral%name, &
+                                          reaction%dbase_temperatures, &
+                                          option)) then
+      logK_error_flag = PETSC_TRUE
+    endif
     cur_mineral => cur_mineral%next
   enddo
   cur_srfcplx => surface_complexation%complex_list
@@ -667,13 +680,24 @@ subroutine DatabaseRead(reaction,option)
                 ') not found in database.'
       call printMsg(option)
     endif
-    call DatabaseCheckLegitimateLogKs(cur_srfcplx%dbaserxn, &
-                                      cur_srfcplx%name, &
-                                      option)      
+    if (.not.DatabaseCheckLegitimateLogKs(cur_srfcplx%dbaserxn, &
+                                          cur_srfcplx%name, &
+                                          reaction%dbase_temperatures, &
+                                          option)) then
+      logK_error_flag = PETSC_TRUE
+    endif
     cur_srfcplx => cur_srfcplx%next
   enddo  
     
   if (flag) call printErrMsg(option,'Species not found in database.')
+#if TEMP_DEPENDENT_LOGK    
+  !geh: only stop if running with temperature dependent log Ks.
+  if (logK_error_flag) then
+    option%io_buffer = 'Non-isothermal reactions not possible due to ' // &
+      'missing logKs in database.'
+    call printErrMsg(option)
+  endif
+#endif  
 
   call InputDestroy(input)
   

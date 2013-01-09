@@ -122,7 +122,7 @@ module Output_module
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
-            OutputPermeability, OutputPrintCouplers, &
+            OutputPrintCouplers, &
             OutputGetCellCenteredVelocities
 
 contains
@@ -178,7 +178,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
 
   use Realization_module, only : realization_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
-  
+
   implicit none
   
   type(realization_type) :: realization
@@ -267,7 +267,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
     endif
-  
+
     realization%output_option%plot_number = realization%output_option%plot_number + 1
 
   endif
@@ -3074,8 +3074,6 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   endif  
 
 end subroutine WriteObservationDataForCell
-
-
 
 ! ************************************************************************** !
 !
@@ -7644,86 +7642,6 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   call VecDestroy(global_vec2,ierr)
   
 end subroutine ComputeFlowFluxVelocityStats
-
-! ************************************************************************** !
-!
-! OutputPermeability: Print vectors for permeability
-! author: Glenn Hammond
-! date: 08/25/09
-!
-! ************************************************************************** !
-subroutine OutputPermeability(realization)
-
-  use Realization_module
-  use Option_module
-  use Discretization_module
-  use Material_module
-
-  implicit none
-
-  type(realization_type) :: realization
-  
-  PetscBool :: print_all_three
-  PetscInt :: material_property_id
-  character(len=MAXSTRINGLENGTH) :: string
-  type(option_type), pointer :: option
-  type(material_property_type), pointer :: material_property
-  
-  option => realization%option
-
-  print_all_three = PETSC_FALSE
-  ! check for anisotripic permeabilities  
-  do material_property_id = 1, size(realization%material_property_array)
-    material_property => &
-      realization%material_property_array(material_property_id)%ptr
-    if (associated(material_property)) then
-      if (.not.material_property%isotropic_permeability) then
-        print_all_three = PETSC_TRUE
-      endif
-    endif
-  enddo
-  
-  if (print_all_three) then
-    if (len_trim(option%group_prefix) > 1) then
-      string = 'permeabilityX-' // trim(option%group_prefix) // '.tec'
-    else
-      string = 'permeabilityX.tec'
-    endif
-    call DiscretizationLocalToGlobal(realization%discretization, &
-                                     realization%field%perm_xx_loc, &
-                                     realization%field%work,ONEDOF)
-    call OutputVectorTecplot(string,string,realization,realization%field%work)
-    if (len_trim(option%group_prefix) > 1) then
-      string = 'permeabilityY-' // trim(option%group_prefix) // '.tec'
-    else
-      string = 'permeabilityY.tec'
-    endif
-    call DiscretizationLocalToGlobal(realization%discretization, &
-                                     realization%field%perm_yy_loc, &
-                                     realization%field%work,ONEDOF)
-    call OutputVectorTecplot(string,string,realization,realization%field%work)
-    if (len_trim(option%group_prefix) > 1) then
-      string = 'permeabilityZ-' // trim(option%group_prefix) // '.tec'
-    else
-      string = 'permeabilityZ.tec'
-    endif
-    call DiscretizationLocalToGlobal(realization%discretization, &
-                                     realization%field%perm_zz_loc, &
-                                     realization%field%work,ONEDOF)
-    call OutputVectorTecplot(string,string,realization,realization%field%work)
-  else
-    if (len_trim(option%group_prefix) > 1) then
-      string = 'permeability-' // trim(option%group_prefix) // '.tec'
-    else
-      string = 'permeability.tec'
-    endif
-    call DiscretizationLocalToGlobal(realization%discretization, &
-                                     realization%field%perm_xx_loc, &
-                                     realization%field%work,ONEDOF)
-    call OutputVectorTecplot(string,string,realization,realization%field%work)
-  endif
-  
-end subroutine OutputPermeability
 
 ! ************************************************************************** !
 !
