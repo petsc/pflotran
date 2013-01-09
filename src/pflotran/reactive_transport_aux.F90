@@ -191,7 +191,7 @@ contains
 
 ! ************************************************************************** !
 !
-! RTAuxCreate: Allocate and initialize auxilliary object
+! RTAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -255,7 +255,7 @@ end function RTAuxCreate
 
 ! ************************************************************************** !
 !
-! RTAuxVarInit: Initialize auxilliary object
+! RTAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -431,7 +431,7 @@ end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
 !
-! RTAuxVarCopy: Copys an auxilliary object
+! RTAuxVarCopy: Copys an auxiliary object
 ! author: Glenn Hammond
 ! date: 09/05/08
 !
@@ -704,7 +704,7 @@ end subroutine RTSecTransportAuxVarCompute
 
 ! ************************************************************************** !
 !
-! RTAuxVarChunkDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxVarChunkDestroy: Deallocates a reactive transport auxiliary object
 ! author: Glenn Hammond
 ! date: 01/31/11
 !
@@ -784,7 +784,7 @@ end subroutine RTAuxVarChunkDestroy
 
 ! ************************************************************************** !
 !
-! RTAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! RTAuxVarSingleDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -805,7 +805,7 @@ end subroutine RTAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! RTAuxVarArrayDestroy: Deallocates a mode auxilliary object
+! RTAuxVarArrayDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -830,7 +830,7 @@ end subroutine RTAuxVarArrayDestroy
   
 ! ************************************************************************** !
 !
-! RTAuxVarStrip: Deallocates all members of single auxilliary object
+! RTAuxVarStrip: Deallocates all members of single auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -897,7 +897,7 @@ end subroutine RTAuxVarStrip
 
 ! ************************************************************************** !
 !
-! RTAuxDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxDestroy: Deallocates a reactive transport auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

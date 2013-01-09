@@ -57,7 +57,7 @@ contains
 
 ! ************************************************************************** !
 !
-! MiscibleAuxVarCreate: Allocate and initialize auxilliary object
+! MiscibleAuxVarCreate: Allocate and initialize auxiliary object
 ! author: Chuan Lu
 ! date: 02/27/08
 !
@@ -101,7 +101,7 @@ end function MiscibleAuxCreate
 
 ! ************************************************************************** !
 !
-! MiscibleAuxVarInit: Initialize auxilliary object
+! MiscibleAuxVarInit: Initialize auxiliary object
 ! author: Chuan Lu
 ! date: 02/14/08
 !
@@ -153,7 +153,7 @@ end subroutine MiscibleAuxVarInit
 
 ! ************************************************************************** !
 !
-! MiscibleAuxVarCopy: Copies an auxilliary variable
+! MiscibleAuxVarCopy: Copies an auxiliary variable
 ! author: Chuan Lu
 ! date: 10/13/0
 !
@@ -203,7 +203,7 @@ end subroutine Water_glycol_density
 
 ! ************************************************************************** !
 !
-! MiscibleAuxVarCompute_NINC: Computes auxilliary variables for each grid cell
+! MiscibleAuxVarCompute_NINC: Computes auxiliary variables for each grid cell
 !                        No increments 
 ! author: Chuan Lu
 ! date: 10/12/08
@@ -356,7 +356,7 @@ end subroutine MiscibleAuxVarElemDestroy
 
 ! ************************************************************************** !
 !
-! MiscibleAuxVarDestroy: Deallocates a miscible auxilliary object
+! MiscibleAuxVarDestroy: Deallocates a miscible auxiliary object
 ! author: 
 ! date: 
 !
@@ -382,7 +382,7 @@ end subroutine MiscibleAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! MiscibleAuxDestroy: Deallocates a miscible auxilliary object
+! MiscibleAuxDestroy: Deallocates a miscible auxiliary object
 ! author: 
 ! date: 
 !

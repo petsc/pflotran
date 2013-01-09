@@ -52,7 +52,7 @@ contains
 
 ! ************************************************************************** !
 !
-! GlobalAuxCreate: Allocate and initialize auxilliary object
+! GlobalAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -81,7 +81,7 @@ end function GlobalAuxCreate
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarInit: Initialize auxilliary object
+! GlobalAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -201,7 +201,7 @@ end subroutine GlobalAuxVarInit
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarCopy: Copies an auxilliary variable
+! GlobalAuxVarCopy: Copies an auxiliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -276,7 +276,7 @@ end subroutine GlobalAuxVarCopy
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarSingleDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -297,7 +297,7 @@ end subroutine GlobalAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarArrayDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarArrayDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -322,7 +322,7 @@ end subroutine GlobalAuxVarArrayDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarStrip: Deallocates all members of single auxilliary object
+! GlobalAuxVarStrip: Deallocates all members of single auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -360,7 +360,7 @@ end subroutine GlobalAuxVarStrip
 
 ! ************************************************************************** !
 !
-! GlobalAuxDestroy: Deallocates a mode auxilliary object
+! GlobalAuxDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

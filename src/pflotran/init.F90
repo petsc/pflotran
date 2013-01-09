@@ -767,7 +767,7 @@ subroutine Init(simulation)
   ! initialize plot variables
   realization%output_option%output_variable_list => OutputVariableListCreate()
   
-  ! initialize global auxilliary variable object
+  ! initialize global auxiliary variable object
   call GlobalSetup(realization)
   ! initialize FLOW
   ! set up auxillary variable arrays
