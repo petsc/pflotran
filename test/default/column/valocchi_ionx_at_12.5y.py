@@ -17,12 +17,12 @@ path.append('.')
 
 #files = pft.get_default_tec_filenames([5])
 files = []
-files.append('tracer-001.tec')
+files.append('valocchi_ionx-001.tec')
 filenames = pft.get_full_paths(path,files)
 
 f = plt.figure(figsize=(6,6))
 plt.subplot(1,1,1)
-f.suptitle("Tracer at 12.5 Years",fontsize=16)
+f.suptitle("ABC at 25 Years",fontsize=16)
 plt.xlabel('X [m]')
 plt.ylabel('Concentration [M]')
 
@@ -32,7 +32,7 @@ plt.ylabel('Concentration [M]')
 #plt.yscale('log')
 
 for ifile in range(len(filenames)):
-  columns = [4]
+  columns = [4,5,6,7]
   for icol in range(len(columns)):
     data = pft.Dataset(filenames[ifile],1,columns[icol])
     plt.plot(data.get_array('x'),data.get_array('y'),label=data.get_name('yname'))
@@ -48,7 +48,7 @@ for ifile in range(len(filenames)):
 #'lower center' : 8,
 #'upper center' : 9,
 #'center'       : 10,
-plt.legend(loc=1)
+plt.legend(loc=2)
 # xx-small, x-small, small, medium, large, x-large, xx-large, 12, 14
 plt.setp(plt.gca().get_legend().get_texts(),fontsize='small')
 #      plt.setp(plt.gca().get_legend().get_texts(),linespacing=0.)

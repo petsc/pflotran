@@ -17,12 +17,12 @@ path.append('.')
 
 #files = pft.get_default_tec_filenames([5])
 files = []
-files.append('tracer-001.tec')
+files.append('ABC_general_KD-001.tec')
 filenames = pft.get_full_paths(path,files)
 
 f = plt.figure(figsize=(6,6))
 plt.subplot(1,1,1)
-f.suptitle("Tracer at 12.5 Years",fontsize=16)
+f.suptitle("ABC at 25 Years",fontsize=16)
 plt.xlabel('X [m]')
 plt.ylabel('Concentration [M]')
 
@@ -32,7 +32,7 @@ plt.ylabel('Concentration [M]')
 #plt.yscale('log')
 
 for ifile in range(len(filenames)):
-  columns = [4]
+  columns = [4,5,6]
   for icol in range(len(columns)):
     data = pft.Dataset(filenames[ifile],1,columns[icol])
     plt.plot(data.get_array('x'),data.get_array('y'),label=data.get_name('yname'))
