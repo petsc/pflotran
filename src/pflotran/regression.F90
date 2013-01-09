@@ -526,19 +526,21 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       
       ! natural cell ids
       if (associated(regression%natural_cell_ids)) then
-        call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
-        if (cur_variable%iformat == 0) then
-          do i = 1, size(regression%natural_cell_ids)
-            write(OUTPUT_UNIT,100) &
-              regression%natural_cell_ids(i),vec_ptr(i)
-          enddo
-        else
-          do i = 1, size(regression%natural_cell_ids)
-            write(OUTPUT_UNIT,101) &
-              regression%natural_cell_ids(i),int(vec_ptr(i))
-          enddo
+        if (size(regression%natural_cell_ids) > 0) then
+          call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
+          if (cur_variable%iformat == 0) then
+            do i = 1, size(regression%natural_cell_ids)
+              write(OUTPUT_UNIT,100) &
+                regression%natural_cell_ids(i),vec_ptr(i)
+            enddo
+          else
+            do i = 1, size(regression%natural_cell_ids)
+              write(OUTPUT_UNIT,101) &
+                regression%natural_cell_ids(i),int(vec_ptr(i))
+            enddo
+          endif
+          call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
         endif
-        call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
       endif
       
       ! cell ids per process
