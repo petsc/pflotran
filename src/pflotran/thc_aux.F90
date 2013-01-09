@@ -85,7 +85,7 @@ contains
 
 ! ************************************************************************** !
 !
-! THCAuxCreate: Allocate and initialize auxilliary object
+! THCAuxCreate: Allocate and initialize auxiliary object
 ! author: ???
 ! date: 02/14/08
 !
@@ -127,7 +127,7 @@ end function THCAuxCreate
 
 ! ************************************************************************** !
 !
-! THCAuxVarInit: Initialize auxilliary object
+! THCAuxVarInit: Initialize auxiliary object
 ! author: ???
 ! date: 02/14/08
 !
@@ -183,7 +183,7 @@ end subroutine THCAuxVarInit
 
 ! ************************************************************************** !
 !
-! THCAuxVarCopy: Copies an auxilliary variable
+! THCAuxVarCopy: Copies an auxiliary variable
 ! author: ???
 ! date: 12/13/07
 !
@@ -241,7 +241,7 @@ end subroutine THCAuxVarCopy
 
 ! ************************************************************************** !
 !
-! THCAuxVarCompute: Computes auxilliary variables for each grid cell
+! THCAuxVarCompute: Computes auxiliary variables for each grid cell
 ! author: ???
 ! date: 02/22/08
 !
@@ -637,7 +637,7 @@ end subroutine THCAuxVarComputeIce
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a thc auxilliary object
+! AuxVarDestroy: Deallocates a thc auxiliary object
 ! author: ???
 ! date: 02/14/08
 !
@@ -657,7 +657,7 @@ end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! THCAuxDestroy: Deallocates a thc auxilliary object
+! THCAuxDestroy: Deallocates a thc auxiliary object
 ! author: ???
 ! date: 02/14/08
 !

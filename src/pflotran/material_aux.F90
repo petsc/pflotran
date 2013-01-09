@@ -29,7 +29,7 @@ contains
 
 ! ************************************************************************** !
 !
-! MaterialAuxCreate: Allocate and initialize auxilliary object
+! MaterialAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/02/11
 !
@@ -57,7 +57,7 @@ end function MaterialAuxCreate
 
 ! ************************************************************************** !
 !
-! MaterialAuxVarInit: Initialize auxilliary object
+! MaterialAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/02/11
 !
@@ -75,7 +75,7 @@ end subroutine MaterialAuxVarInit
 
 ! ************************************************************************** !
 !
-! MaterialAuxVarCopy: Copies an auxilliary variable
+! MaterialAuxVarCopy: Copies an auxiliary variable
 ! author: Glenn Hammond
 ! date: 03/02/11
 !
@@ -93,7 +93,7 @@ end subroutine MaterialAuxVarCopy
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a material auxilliary object
+! AuxVarDestroy: Deallocates a material auxiliary object
 ! author: Glenn Hammond
 ! date: 03/02/11
 !
@@ -108,7 +108,7 @@ end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! MaterialAuxDestroy: Deallocates a material auxilliary object
+! MaterialAuxDestroy: Deallocates a material auxiliary object
 ! author: Glenn Hammond
 ! date: 03/02/11
 !

@@ -115,7 +115,7 @@ end subroutine MiscibleSetup
 
 ! ************************************************************************** !
 !
-! MiscibleSetupPatch: Creates arrays for auxilliary variables
+! MiscibleSetupPatch: Creates arrays for auxiliary variables
 ! author: Chuan Lu
 ! date: 10/1/08
 !
@@ -522,7 +522,7 @@ end subroutine MiscibleUpdateMassBalancePatch
 
 ! ***************************************************************************
 !
-! MiscibleUpdateAuxVars: Updates the auxilliary variables associated with 
+! MiscibleUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Miscible problem
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -556,7 +556,7 @@ end subroutine MiscibleUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! MiscibleUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! MiscibleUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Miscible problem
 ! author: Chuan Lu
 ! date: 12/10/07

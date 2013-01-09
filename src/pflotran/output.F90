@@ -7645,7 +7645,7 @@ end subroutine ComputeFlowFluxVelocityStats
 
 ! ************************************************************************** !
 !
-! OutputPrintCouplers: Prints values of auxilliary variables associated with
+! OutputPrintCouplers: Prints values of auxiliary variables associated with
 !                      couplers (boundary and initial conditions, source
 !                      sinks).  Note that since multiple connections for
 !                      couplers can exist for a single cell, the latter will

@@ -3367,7 +3367,7 @@ end subroutine StepperJumpStart
 
 ! ************************************************************************** !
 !
-! StepperUpdateFlowAuxVars: Updates the flow auxilliary variables
+! StepperUpdateFlowAuxVars: Updates the flow auxiliary variables
 ! author: Glenn Hammond
 ! date: 10/11/08 
 !
@@ -3419,7 +3419,7 @@ end subroutine StepperUpdateFlowAuxVars
 
 ! ************************************************************************** !
 !
-! StepperUpdateTranAuxVars: Updates the flow auxilliary variables
+! StepperUpdateTranAuxVars: Updates the flow auxiliary variables
 ! author: Glenn Hammond
 ! date: 10/11/08 
 !

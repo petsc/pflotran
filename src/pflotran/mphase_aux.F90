@@ -88,7 +88,7 @@ contains
 
 ! ************************************************************************** !
 !
-! MphaseAuxVarCreate: Allocate and initialize auxilliary object
+! MphaseAuxVarCreate: Allocate and initialize auxiliary object
 ! author: Chuan Lu
 ! date: 
 !
@@ -133,7 +133,7 @@ end function MphaseAuxCreate
 
 ! ************************************************************************** !
 !
-! MphaseAuxVarInit: Initialize auxilliary object
+! MphaseAuxVarInit: Initialize auxiliary object
 ! author: Chuan Lu
 ! date: 
 !
@@ -190,7 +190,7 @@ end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
 !
-! THCAuxVarCopy: Copies an auxilliary variable
+! THCAuxVarCopy: Copies an auxiliary variable
 ! author: 
 ! date: 
 !
@@ -236,7 +236,7 @@ end subroutine MphaseAuxVarCopy
 
 ! ************************************************************************** !
 !
-! MphaseAuxVarCompute_NI: Computes auxilliary variables for each grid cell
+! MphaseAuxVarCompute_NI: Computes auxiliary variables for each grid cell
 !                        No increments 
 ! author: Chuan Lu
 ! date: 
@@ -667,7 +667,7 @@ end subroutine MphaseSecHeatAuxVarCompute
 
 ! ************************************************************************** !
 !
-! MphaseAuxVarElemDestroy: Deallocates a mphase auxilliary elment object
+! MphaseAuxVarElemDestroy: Deallocates a mphase auxiliary elment object
 ! author: 
 ! date: 
 !
@@ -701,7 +701,7 @@ end subroutine MphaseAuxVarElemDestroy
 
 ! ************************************************************************** !
 !
-! MphaseAuxVarDestroy: Deallocates a mphase auxilliary object
+! MphaseAuxVarDestroy: Deallocates a mphase auxiliary object
 ! author: 
 ! date: 
 !
@@ -727,7 +727,7 @@ end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! MphaseAuxDestroy: Deallocates a mphase auxilliary object
+! MphaseAuxDestroy: Deallocates a mphase auxiliary object
 ! author: 
 ! date: 
 !

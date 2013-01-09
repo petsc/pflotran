@@ -182,7 +182,7 @@ eos_obj = \
 	${common_src}water_eos.o 
 
 mode_aux_obj = \
-	${common_src}auxilliary.o \
+	${common_src}auxiliary.o \
 	${common_src}flash2_aux.o \
 	${common_src}general_aux.o \
 	${common_src}immis_aux.o \
@@ -322,7 +322,7 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-auxilliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
+auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
                miscible_aux.o general_aux.o material_aux.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o
@@ -338,7 +338,7 @@ constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                surface_complexation_aux.o mineral_aux.o option.o input.o \
                units.o string.o logging.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
-            auxilliary.o
+            auxiliary.o
 co2_span_wagner.o : co2_sw_rtsafe.o
 co2_sw.o : co2_span_wagner.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
@@ -414,7 +414,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
            discretization.o logging.o unstructured_grid_aux.o \
            surface_realization.o surface_flow.o output_aux.o variables.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
-          auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
+          auxiliary.o reaction.o condition.o connection.o hydrostatic.o \
           field.o saturation.o surface_field.o mineral.o output_aux.o \
           variables.o constraint.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
