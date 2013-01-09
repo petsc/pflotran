@@ -128,7 +128,7 @@ function MaterialPropertyCreate()
   material_property%longitudinal_dispersivity = 0.d0
   material_property%min_pressure = 0.d0
   material_property%max_pressure = 1.d6
-  material_property%max_permfactor = 1.d3
+  material_property%max_permfactor = 1.d0
   material_property%secondary_continuum_name = ''
   material_property%secondary_continuum_length = 0.d0
   material_property%secondary_continuum_matrix_block_size = 0.d0

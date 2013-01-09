@@ -222,7 +222,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   global_aux_var%temp = option%reference_temperature
  
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
-
+  
 !***************  Liquid phase properties **************************
   pw = option%reference_pressure
   ds_dp = 0.d0

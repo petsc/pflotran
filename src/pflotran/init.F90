@@ -1720,6 +1720,11 @@ subroutine InitReadInput(simulation)
 
       case('MULTIPLE_CONTINUUM')
         option%use_mc = PETSC_TRUE
+        
+!......................
+
+      case('UPDATE_FLOW_PERMEABILITY')
+        option%update_flow_perm = PETSC_TRUE
 
 !......................
 
