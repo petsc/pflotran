@@ -355,7 +355,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       ! Permfactor is the multiplier to permeability to increase perm
       ! The perm increase could be due to pressure or other variable
       ! Added by Satish Karra, LANL, 1/8/12
-          do
+        do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option, &
                                        'MATERIAL_PROPERTY,PERM_FACTOR')
