@@ -785,12 +785,6 @@ subroutine RichardsUpdatePermPatch(realization)
     call printErrMsg(option)
   endif
   
-  p_min = material_property_array(patch%imat(ghosted_id))%ptr%min_pressure
-  p_max = material_property_array(patch%imat(ghosted_id))%ptr%max_pressure
-  permfactor_max = material_property_array(patch%imat(ghosted_id))%ptr% &
-                   max_permfactor
-
-
   call GridVecGetArrayF90(grid,field%perm0_xx,perm0_xx_p,ierr)
   call GridVecGetArrayF90(grid,field%perm0_zz,perm0_zz_p,ierr)
   call GridVecGetArrayF90(grid,field%perm0_yy,perm0_yy_p,ierr)
@@ -801,6 +795,10 @@ subroutine RichardsUpdatePermPatch(realization)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    p_min = material_property_array(patch%imat(ghosted_id))%ptr%min_pressure
+    p_max = material_property_array(patch%imat(ghosted_id))%ptr%max_pressure
+    permfactor_max = material_property_array(patch%imat(ghosted_id))%ptr% &
+                     max_permfactor
     if (xx_loc_p(local_id) < p_min) then
       scale = 1
     else 
