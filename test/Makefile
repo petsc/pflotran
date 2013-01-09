@@ -57,7 +57,7 @@ endif
 default-discretization-umesh :
 ifneq ($(strip $(PARMETIS_LIB)),)
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
-		-r default/discretization --suite mixed
+		-r default/discretization --suite mesh
 else
 	@echo "********************************************************"
 	@echo "  PFloTran does not appear to be compiled with Parmetis."
