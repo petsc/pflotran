@@ -1022,22 +1022,22 @@ where the product index $i$ generally runs over both primary and secondary speci
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
-\EQ\label{por}
+\EQ\label{porosity}
 \varphi \eq 1-\sum_m\varphi_m,
 \EN
-\EQ
+\EQ\label{permeability}
 k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
 \EN
-\EQ
+\EQ\label{tortuosity}
 \tau \eq \tau_0 \left(\frac{\varphi}{\varphi_0}\right)^b,
 \EN
 and
-\EQ
-a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n,
+\EQ\label{surface_area_vf}
+a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'},
 \EN
 where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$.
 
-In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{por} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
+In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{porosity} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
 \begin{subequations}
 \BA
 \varphi_m &\eq (1-\varphi) \frac{x_m \overline V_m}{\sum_{m'} x_{m'} \overline V_{m'}},\\
@@ -2703,8 +2703,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
 \item [AFFINITY\_POWER] \ {\tt Value} [---]
 \item [TEMPKINS\_CONSTANT] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
 
@@ -2834,12 +2834,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
 \item[NO\_BDOT]
-\item[UPDATE\_POROSITY] {\tt Value}
-\item[UPDATE\_TORTUOSITY] {\tt Value}
-\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity.)
-\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \\
+\item[UPDATE\_POROSITY] {\tt Value} \ \ \ [see Eqn.\eqref{porosity}]
+\item[UPDATE\_TORTUOSITY] {\tt Value} \ \ \ [see Eqn.\eqref{tortuosity}]
+\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
+\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
-\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \\
+\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
 \item[MINIMUM\_POROSITY] {\tt Value}
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]

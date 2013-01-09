@@ -2648,6 +2648,24 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+    case(PERMEABILITY,PERMEABILITY_X)
+      call GridVecGetArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Y)
+      call GridVecGetArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Z)
+      call GridVecGetArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
@@ -3136,6 +3154,18 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
       call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+    case(PERMEABILITY,PERMEABILITY_X)
+      call GridVecGetArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Y)
+      call GridVecGetArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Z)
+      call GridVecGetArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
@@ -3970,6 +4000,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
         call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       endif
+    case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
+      option%io_buffer = 'Setting of permeability in "PatchSetDataset"' // &
+        ' not supported.'
+      call printErrMsg(option)
     case(PHASE)
       if (vec_format == GLOBAL) then
         call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
