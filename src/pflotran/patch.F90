@@ -16,7 +16,7 @@ module Patch_module
   use Surface_Material_module
 #endif
   
-  use Auxilliary_module
+  use Auxiliary_module
 
   implicit none
 
@@ -29,7 +29,7 @@ module Patch_module
     PetscInt :: id
     
     ! These arrays will be used by all modes, mode-specific arrays should
-    ! go in the auxilliary data stucture for that mode
+    ! go in the auxiliary data stucture for that mode
     PetscInt, pointer :: imat(:)
     PetscInt, pointer :: sat_func_id(:)
 
@@ -62,7 +62,7 @@ module Patch_module
     type(reaction_type), pointer :: reaction
     type(dataset_type), pointer :: datasets
     
-    type(auxilliary_type) :: aux
+    type(auxiliary_type) :: aux
     
     type(patch_type), pointer :: next
 
@@ -842,7 +842,7 @@ end subroutine PatchInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! PatchUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 02/22/08
@@ -872,7 +872,7 @@ end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVars: Updates auxilliary variables associated 
+! PatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 11/26/07
@@ -2647,6 +2647,24 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+    case(PERMEABILITY,PERMEABILITY_X)
+      call GridVecGetArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Y)
+      call GridVecGetArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Z)
+      call GridVecGetArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
@@ -3135,6 +3153,18 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
       call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+    case(PERMEABILITY,PERMEABILITY_X)
+      call GridVecGetArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Y)
+      call GridVecGetArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Z)
+      call GridVecGetArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
@@ -3969,6 +3999,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
         call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       endif
+    case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
+      option%io_buffer = 'Setting of permeability in "PatchSetDataset"' // &
+        ' not supported.'
+      call printErrMsg(option)
     case(PHASE)
       if (vec_format == GLOBAL) then
         call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)

@@ -1493,7 +1493,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
          
           ! compute secondary species concentration
           if (abs(reaction%species_idx%co2_gas_id) == igas) then
-          
+           
 !           pres = global_auxvar%pres(2)
             pres = conc(icomp)*1.D5
             global_auxvar%pres(2) = pres
@@ -1546,6 +1546,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           lnQk = log(fg/henry)
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
+            reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
             
             !print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
             !   lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
@@ -1634,7 +1635,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         'constraint "' // trim(constraint_name) // '".'
       call printMsgByRank(option)
       ! now figure out which species have zero concentrations
-      do idof = 1, option%ntrandof
+      do idof = 1, reaction%naqcomp
         if (rt_auxvar%pri_molal(idof) <= 0.d0) then
           write(string,*) rt_auxvar%pri_molal(idof)
           option%io_buffer = '  Species "' // &
@@ -1647,8 +1648,29 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       option%io_buffer = 'Free ion concentations RESULTING from ' // &
         'constraint concentrations must be positive.'
       call printErrMsgByRank(option)
-    endif    
+    endif
+    
+#if 0
+!geh cannot use this check as for many problems (e.g. Hanford 300 Area U), the 
+!    concentrations temporarily go well above 100.
 
+    ! check for excessively large maximum values, which likely indicates
+    ! reaction going awry.
+    tempreal = maxval(rt_auxvar%pri_molal)
+    ! allow a few iterations; sometime charge balance constraint jumps
+    ! during initial iterations
+    if (tempreal > 100.d0 .and. num_iterations > 500) then
+      !geh: for some reason, needs the array rank included in call to maxloc
+      idof = maxloc(rt_auxvar%pri_molal,1)
+      option%io_buffer = 'ERROR: Excessively large concentration for ' // &
+        'species "' // trim(reaction%primary_species_names(idof)) // &
+        '" in constraint "' // trim(constraint_name) // &
+        '" in ReactionEquilibrateConstraint. Email input deck to ' // &
+        'pflotran-dev@googlegroups.com.'
+      call printErrMsg(option)
+    endif
+#endif
+    
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
     
@@ -1894,6 +1916,17 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (associated(reaction%eqgas_logKcoef)) then
         call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                      global_auxvar%temp(iphase),reaction%ngas)
+#ifdef CHUAN_CO2
+        do i = 1, reaction%naqcomp
+          if (aq_species_constraint%constraint_type(i) == &
+              CONSTRAINT_SUPERCRIT_CO2) then
+            igas = aq_species_constraint%constraint_spec_id(i)
+            if (abs(reaction%species_idx%co2_gas_id) == igas) then
+              reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+            endif
+          endif
+        enddo
+#endif                                     
       endif
       if (associated(surface_complexation%srfcplx_logKcoef)) then
         call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
@@ -1923,6 +1956,17 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                      global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                      reaction%ngas)
+#ifdef CHUAN_CO2
+        do i = 1, reaction%naqcomp
+          if (aq_species_constraint%constraint_type(i) == &
+              CONSTRAINT_SUPERCRIT_CO2) then
+            igas = aq_species_constraint%constraint_spec_id(i)
+            if (abs(reaction%species_idx%co2_gas_id) == igas) then
+              reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+            endif
+          endif
+        enddo
+#endif
       endif
       if (associated(surface_complexation%srfcplx_logKcoef)) then
         call ReactionInterpolateLogK_hpt(surface_complexation%srfcplx_logKcoef, &
@@ -3308,7 +3352,7 @@ end subroutine RReactionDerivative
 subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
     
   use Option_module
-#ifndef PFLOTRAN_RXN  
+#ifdef CHUAN_CO2  
   use co2eos_module
 #endif
 
@@ -3335,7 +3379,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
      m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
-#ifndef PFLOTRAN_RXN  
+#ifdef CHUAN_CO2  
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
 #endif
@@ -3601,7 +3645,7 @@ end subroutine RActivityCoefficients
 subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
-#ifndef PFLOTRAN_RXN  
+#ifdef CHUAN_CO2  
   use co2eos_module, only: Henry_duan_sun
   use water_eos_module
 #endif  

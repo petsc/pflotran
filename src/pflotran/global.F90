@@ -50,7 +50,7 @@ end subroutine GlobalSetup
   
 ! ************************************************************************** !
 !
-! GlobalSetupPatch: Creates arrays for auxilliary variables
+! GlobalSetupPatch: Creates arrays for auxiliary variables
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -183,7 +183,7 @@ end subroutine GlobalSetAuxVarScalar
 
 ! ************************************************************************** !
 !
-! GlobalSetAuxVarScalarPatch: Updates the auxilliary variables associated with 
+! GlobalSetAuxVarScalarPatch: Updates the auxiliary variables associated with 
 !                             the Global problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -291,7 +291,7 @@ end subroutine GlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
 !
-! GlobalSetAuxVarVecPatch: Updates the auxilliary variables associated with 
+! GlobalSetAuxVarVecPatch: Updates the auxiliary variables associated with 
 !                             the Global problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -498,7 +498,7 @@ end subroutine GlobalSetAuxVarVecLocPatch
 
 ! ************************************************************************** !
 !
-! GlobalUpdateDenAndSat: Updates the densities and saturations in auxilliary 
+! GlobalUpdateDenAndSat: Updates the densities and saturations in auxiliary 
 !                    variables associated with reactive transport
 ! author: Glenn Hammond
 ! date: 11/03/08
@@ -533,7 +533,7 @@ end subroutine GlobalUpdateDenAndSat
 
 ! ************************************************************************** !
 !
-! GlobalUpdateDenAndSatPatch: Updates the densities and saturations in auxilliary 
+! GlobalUpdateDenAndSatPatch: Updates the densities and saturations in auxiliary 
 !                         variables associated with reactive transport
 ! author: Glenn Hammond
 ! date: 11/03/08

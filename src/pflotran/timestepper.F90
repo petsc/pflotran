@@ -308,7 +308,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Option_module
   use Output_Aux_module
   use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
-                            OutputPermeability, OutputPrintCouplers
+                            OutputPrintCouplers
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
@@ -503,21 +503,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     transient_plot_flag_surf = PETSC_TRUE
     call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
 #endif
-    if (output_option%print_permeability) then
-      call OutputPermeability(realization)
-    endif
-    if (output_option%print_porosity) then
-      if (len_trim(option%group_prefix) > 1) then
-        string = 'porosity-' // trim(option%group_prefix) // '.tec'
-      else
-        string = 'porosity.tec'
-      endif
-      call DiscretizationLocalToGlobal(realization%discretization, &
-                                       realization%field%porosity_loc, &
-                                       realization%field%work,ONEDOF)
-      call OutputVectorTecplot(string,string,realization,realization%field%work)
-    endif
-
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 0, print out initial condition only
@@ -2894,28 +2879,6 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   if (output_option%print_initial) then
     transient_plot_flag = PETSC_FALSE
     call Output(realization,plot_flag,transient_plot_flag)
-    if (output_option%print_permeability) then
-      if (len_trim(option%group_prefix) > 1) then
-        string = 'permeability-' // trim(option%group_prefix) // '.tec'
-      else
-        string = 'permeability.tec'
-      endif
-      call DiscretizationLocalToGlobal(realization%discretization, &
-                                       realization%field%perm_xx_loc, &
-                                       realization%field%work,ONEDOF)
-      call OutputVectorTecplot(string,string,realization,realization%field%work)
-    endif
-    if (output_option%print_porosity) then
-      if (len_trim(option%group_prefix) > 1) then
-        string = 'porosity-' // trim(option%group_prefix) // '.tec'
-      else
-        string = 'porosity.tec'
-      endif
-      call DiscretizationLocalToGlobal(realization%discretization, &
-                                       realization%field%porosity_loc, &
-                                       realization%field%work,ONEDOF)
-      call OutputVectorTecplot(string,string,realization,realization%field%work)
-    endif
   endif
 
   if (OptionPrintToScreen(option)) then
@@ -3404,7 +3367,7 @@ end subroutine StepperJumpStart
 
 ! ************************************************************************** !
 !
-! StepperUpdateFlowAuxVars: Updates the flow auxilliary variables
+! StepperUpdateFlowAuxVars: Updates the flow auxiliary variables
 ! author: Glenn Hammond
 ! date: 10/11/08 
 !
@@ -3456,7 +3419,7 @@ end subroutine StepperUpdateFlowAuxVars
 
 ! ************************************************************************** !
 !
-! StepperUpdateTranAuxVars: Updates the flow auxilliary variables
+! StepperUpdateTranAuxVars: Updates the flow auxiliary variables
 ! author: Glenn Hammond
 ! date: 10/11/08 
 !

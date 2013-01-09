@@ -101,7 +101,7 @@ end subroutine RichardsSetup
 
 ! ************************************************************************** !
 !
-! RichardsSetupPatch: Creates arrays for auxilliary variables
+! RichardsSetupPatch: Creates arrays for auxiliary variables
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -739,7 +739,7 @@ end subroutine RichardsUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
+! RichardsUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -827,7 +827,7 @@ end subroutine RichardsUpdateCellPressure
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! RichardsUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -1397,7 +1397,7 @@ end subroutine RichardsUpdateCellPressurePatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVarsPatchMFDLP: Computes  updates the auxilliary variables associated with 
+! RichardsUpdateAuxVarsPatchMFDLP: Computes  updates the auxiliary variables associated with 
 !                        the Richards problem for LP formulation
 ! author: Daniil Svyatskiy
 ! date: 07/29/10
@@ -6540,7 +6540,7 @@ subroutine RichardsDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! taken care of in auxilliary.F90
+  ! taken care of in auxiliary.F90
 
 end subroutine RichardsDestroyPatch
 

@@ -84,7 +84,7 @@ contains
 
 ! ************************************************************************** !
 !
-! Flash2AuxVarCreate: Allocate and initialize auxilliary object
+! Flash2AuxVarCreate: Allocate and initialize auxiliary object
 ! author: Chuan Lu
 ! date: 02/27/08
 !
@@ -122,7 +122,7 @@ end function Flash2AuxCreate
 
 ! ************************************************************************** !
 !
-! Flash2AuxVarInit: Initialize auxilliary object
+! Flash2AuxVarInit: Initialize auxiliary object
 ! author: Chuan Lu
 ! date: 02/14/08
 !
@@ -179,7 +179,7 @@ end subroutine Flash2AuxVarInit
 
 ! ************************************************************************** !
 !
-! Flash2AuxVarCopy: Copies an auxilliary variable
+! Flash2AuxVarCopy: Copies an auxiliary variable
 ! author: Chuan Lu
 ! date: 10/13/0
 !
@@ -225,7 +225,7 @@ end subroutine Flash2AuxVarCopy
 
 ! ************************************************************************** !
 !
-! Flash2AuxVarCompute_NI: Computes auxilliary variables for each grid cell
+! Flash2AuxVarCompute_NI: Computes auxiliary variables for each grid cell
 !                        No increments 
 ! author: Chuan Lu
 ! date: 10/12/08
@@ -524,7 +524,7 @@ end subroutine Flash2AuxVarCompute_WINC
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a FLASH2 auxilliary object
+! AuxVarDestroy: Deallocates a FLASH2 auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -557,7 +557,7 @@ end subroutine Flash2AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsAuxDestroy: Deallocates a FLASH2 auxilliary object
+! RichardsAuxDestroy: Deallocates a FLASH2 auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

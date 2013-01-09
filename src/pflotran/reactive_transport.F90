@@ -3789,7 +3789,7 @@ end subroutine RTJacobianPatch2
 
 ! ************************************************************************** !
 !
-! RTUpdateAuxVars: Updates the auxilliary variables associated with 
+! RTUpdateAuxVars: Updates the auxiliary variables associated with 
 !                  reactive transport
 ! author: Glenn Hammond
 ! date: 02/15/08
@@ -3813,7 +3813,7 @@ end subroutine RTUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! RTUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! RTUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                       reactive transport
 ! author: Glenn Hammond
 ! date: 02/15/08
@@ -4559,7 +4559,7 @@ subroutine RTJumpStartKineticSorptionPatch(realization)
   field => realization%field
   reaction => realization%reaction
   
-  ! This subroutine assumes that the auxilliary variables are current!
+  ! This subroutine assumes that the auxiliary variables are current!
 
   if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
     do ghosted_id = 1, grid%ngmax
@@ -5487,7 +5487,7 @@ subroutine RTDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! taken care of in auxilliary.F90
+  ! taken care of in auxiliary.F90
   
 end subroutine RTDestroyPatch
 
