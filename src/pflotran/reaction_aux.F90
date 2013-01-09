@@ -221,7 +221,10 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
-    
+#ifdef CHUAN_CO2        
+    PetscReal :: scco2_eq_logK ! SC CO2 
+#endif    
+
     PetscInt :: nsorb
     PetscInt :: neqsorb
     PetscBool, pointer :: kd_print(:)
@@ -447,6 +450,9 @@ function ReactionCreate()
   nullify(reaction%eqgash2ostoich)
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
+#ifdef CHUAN_CO2  
+  reaction%scco2_eq_logK = 0.d0
+#endif
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)
