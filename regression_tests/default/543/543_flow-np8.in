@@ -1,4 +1,5 @@
-:Description: 3D test problem for variably saturated flow and tracer transport
+:Description: 3D test problem for testing chemical reactions
+:             based on chemistry from Hammond and Lichtner, WRR, 2010
 
 :=========================== regression =======================================
 REGRESSION
@@ -11,33 +12,18 @@ END
 :=========================== flow mode ========================================
 MODE RICHARDS
 
-:=========================== chemistry ========================================
-CHEMISTRY
-  PRIMARY_SPECIES
-    Tracer
-  /
-/
-
 :=========================== solver options ===================================
 TIMESTEPPER
   TS_ACCELERATION 8
-/
+END
 
 NEWTON_SOLVER FLOW
-/
+END
 
 LINEAR_SOLVER FLOW
-  KSP_TYPE PREONLY
-  PC_TYPE LU
-/
-
-NEWTON_SOLVER TRANSPORT
-/
-
-LINEAR_SOLVER TRANSPORT
-  KSP_TYPE PREONLY
-  PC_TYPE LU
-/
+:  KSP_TYPE PREONLY
+:  PC_TYPE LU
+END
 
 :=========================== discretization ===================================
 GRID
@@ -54,7 +40,20 @@ END
 :=========================== fluid properties =================================
 FLUID_PROPERTY 
   DIFFUSION_COEFFICIENT 1.d-9
-/
+END
+
+:=========================== datasets =========================================
+skip
+DATASET U
+  HDF5_DATASET_NAME U 
+  FILENAME datasets.h5
+END
+
+DATASET Calcite
+  HDF5_DATASET_NAME Calcite 
+  FILENAME datasets.h5
+END
+noskip
 
 :=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
@@ -67,7 +66,7 @@ MATERIAL_PROPERTY soil1
     PERM_Y 1.d-12
     PERM_Z 1.d-13
   /
-/
+END
 
 MATERIAL_PROPERTY soil2
   ID 2
@@ -79,7 +78,7 @@ MATERIAL_PROPERTY soil2
     PERM_Y 1.d-11
     PERM_Z 1.d-12
   /
-/
+END
 
 MATERIAL_PROPERTY soil3
   ID 3
@@ -91,7 +90,7 @@ MATERIAL_PROPERTY soil3
     PERM_Y 1.d-10
     PERM_Z 1.d-11
   /
-/
+END
 
 MATERIAL_PROPERTY soil4
   ID 4
@@ -103,7 +102,7 @@ MATERIAL_PROPERTY soil4
     PERM_Y 1.d-9
     PERM_Z 1.d-10
   /
-/
+END
 
 :=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
@@ -111,42 +110,43 @@ SATURATION_FUNCTION sf1
   RESIDUAL_SATURATION 0.115
   LAMBDA 0.286
   ALPHA 1.9401d-4
-/
+END
 
 SATURATION_FUNCTION sf2
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.110
   LAMBDA 0.486
   ALPHA 3.8801d-4
-/
+END
 
 SATURATION_FUNCTION sf3
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.118
   LAMBDA 0.541
   ALPHA 1.0211d-4
-/
+END
 
 SATURATION_FUNCTION sf4
   SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
   RESIDUAL_SATURATION 0.143
   LAMBDA 0.527
   ALPHA 5.1054d-5
-/
+END
 
 :=========================== output options ===================================
 OUTPUT
 :  TIMES d 0.001 0.01 0.1 1. 10. 
+:  PERIODIC TIME 1 d
   FORMAT TECPLOT BLOCK
   VELOCITIES
-/
+END
 
 :=========================== times ============================================
 TIME
   FINAL_TIME 100.d0 d
   INITIAL_TIMESTEP_SIZE 1.d-6 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
-/
+END
 
 :=========================== regions ==========================================
 REGION all
@@ -204,6 +204,10 @@ REGION south
   /
 END
 
+REGION plume
+  BLOCK 2 3 2 3 2 3
+END
+
 REGION well
   BLOCK 4 4 2 3 3 3 
 END
@@ -214,8 +218,11 @@ FLOW_CONDITION initial
     PRESSURE hydrostatic
   /
   DATUM 0.d0 0.d0 35.d0
+  GRADIENT
+    PRESSURE -1.6666667d-2 0.d0 0.d0
+  /
   PRESSURE 101325 ! Pa
-/
+END
 
 FLOW_CONDITION east
   TYPE
@@ -224,89 +231,61 @@ FLOW_CONDITION east
   INTERPOLATION LINEAR
   DATUM LIST
     TIME_UNITS d
-    0.d0 0.d0 0.d0 25.d0
-    10.d0 0.d0 0.d0 26.d0
-    50.d0 0.d0 0.d0 24.d0
-    90.d0 0.d0 0.d0 26.d0
+    0.d0 0.d0 0.d0 34.d0
+    10.d0 0.d0 0.d0 39.d0
+    50.d0 0.d0 0.d0 33.d0
+    100.d0 0.d0 0.d0 34.d0
   /
   PRESSURE 101325 ! Pa
-/
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 5.d0 cm/yr
+END
 
 FLOW_CONDITION injection_well
   TYPE
-    RATE volumetric_rate
+    RATE scaled_volumetric_rate
   /
-  RATE 2.77777778d-4  ! 1 m^3/hr
-/
-
-:=========================== transport conditions =============================
-TRANSPORT_CONDITION initial
-  TYPE dirichlet_zero_gradient
-  CONSTRAINT_LIST
-    0.d0 initial
-  /
-END
-
-TRANSPORT_CONDITION well_concentration
-  TYPE dirichlet
-  CONSTRAINT_LIST
-    0.d0 source
-  /
-/
-
-:=========================== constraints ======================================
-CONSTRAINT source
-  CONCENTRATIONS
-    Tracer 1.d0 T
-  /
-END
-
-CONSTRAINT initial
-  CONCENTRATIONS
-    Tracer 1.d-40 T
-  /
+  RATE 1 m^3/hr
 END
 
 :=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
   REGION all
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION plume
 END
 
 : west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
   REGION west
 END
 
 : east boundary condition
 BOUNDARY_CONDITION east
   FLOW_CONDITION east
-  TRANSPORT_CONDITION initial
   REGION east
 END
 
-: north boundary condition
-BOUNDARY_CONDITION north
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
-  REGION north
-END
-
-: south boundary condition
-BOUNDARY_CONDITION south
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
-  REGION south
+: top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION recharge
+  REGION top
 END
 
 : well source/sink
 SOURCE_SINK well
   FLOW_CONDITION injection_well
-  TRANSPORT_CONDITION well_concentration
   REGION well
 END
 

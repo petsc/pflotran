@@ -138,7 +138,7 @@ end subroutine ImmisSetup
 
 ! ************************************************************************** !
 !
-! ImmisSetupPatch: Creates arrays for auxilliary variables
+! ImmisSetupPatch: Creates arrays for auxiliary variables
 ! author: Chuan Lu
 ! date: 10/1/08
 !
@@ -541,7 +541,7 @@ end subroutine ImmisUpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! ImmisUpdateAuxVars: Updates the auxilliary variables associated with 
+! ImmisUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -658,7 +658,7 @@ end subroutine ImmisUpdateReason
 
 ! ***************************************************************************
 !
-! ImmisUpdateAuxVars: Updates the auxilliary variables associated with 
+! ImmisUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Immis problem
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -692,7 +692,7 @@ end subroutine ImmisUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! ImmisUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! ImmisUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Immis problem
 ! author: Chuan Lu
 ! date: 12/10/07

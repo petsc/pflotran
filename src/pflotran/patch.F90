@@ -16,7 +16,7 @@ module Patch_module
   use Surface_Material_module
 #endif
   
-  use Auxilliary_module
+  use Auxiliary_module
 
   implicit none
 
@@ -29,7 +29,7 @@ module Patch_module
     PetscInt :: id
     
     ! These arrays will be used by all modes, mode-specific arrays should
-    ! go in the auxilliary data stucture for that mode
+    ! go in the auxiliary data stucture for that mode
     PetscInt, pointer :: imat(:)
     PetscInt, pointer :: sat_func_id(:)
 
@@ -62,7 +62,7 @@ module Patch_module
     type(reaction_type), pointer :: reaction
     type(dataset_type), pointer :: datasets
     
-    type(auxilliary_type) :: aux
+    type(auxiliary_type) :: aux
     
     type(patch_type), pointer :: next
 
@@ -842,7 +842,7 @@ end subroutine PatchInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! PatchUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 02/22/08
@@ -872,7 +872,7 @@ end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVars: Updates auxilliary variables associated 
+! PatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 11/26/07
@@ -2573,6 +2573,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             endif
             if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
               do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = 0.d0
                 do irxn = 1, &
                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn

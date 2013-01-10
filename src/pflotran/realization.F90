@@ -778,7 +778,7 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationProcessConditions: Sets up auxilliary data associated with 
+! RealizationProcessConditions: Sets up auxiliary data associated with 
 !                               conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -806,7 +806,7 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxilliary arrays
+!                               and saturation function, auxiliary arrays
 !                               and datasets
 ! author: Glenn Hammond
 ! date: 01/21/09, 01/12/11
@@ -1016,7 +1016,7 @@ end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
 !
-! RealProcessTranConditions: Sets up auxilliary data associated with 
+! RealProcessTranConditions: Sets up auxiliary data associated with 
 !                            transport conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -1332,7 +1332,7 @@ end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08

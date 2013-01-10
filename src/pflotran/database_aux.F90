@@ -534,7 +534,8 @@ end subroutine BasisSubSpeciesInMineralRxn
 ! date: 01/07/13
 !
 ! ************************************************************************** !
-subroutine DatabaseCheckLegitimateLogKs(dbaserxn,species_name,option)
+function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
+                                      option)
 
   use Option_module
   
@@ -542,22 +543,36 @@ subroutine DatabaseCheckLegitimateLogKs(dbaserxn,species_name,option)
     
   type(database_rxn_type), pointer :: dbaserxn
   character(len=MAXWORDLENGTH) :: species_name
+  PetscReal :: temperatures(:)
   type(option_type) :: option
 
-  PetscInt :: itemp
+  PetscBool :: DatabaseCheckLegitimateLogKs
   
+  PetscInt :: itemp
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  
+  DatabaseCheckLegitimateLogKs = PETSC_TRUE
+
   if (.not.associated(dbaserxn) .or. option%use_isothermal) return
   
+  string = ''
   do itemp = 1, size(dbaserxn%logK)
     if (dabs(dbaserxn%logK(itemp) - 500.) < 1.d-10) then
-      option%io_buffer = 'Undefined log Ks exist for species "' // &
-                         trim(species_name) // '" in database. ' // &
-                         'Non-isothermal reactions not possible.'
-      call printErrMsg(option)
+      write(word,'(f5.1)') temperatures(itemp)
+      string = trim(string) // ' ' // word
+      DatabaseCheckLegitimateLogKs = PETSC_FALSE
     endif
   enddo
   
-end subroutine DatabaseCheckLegitimateLogKs
+  if (.not.DatabaseCheckLegitimateLogKs) then
+    option%io_buffer = 'Undefined log Ks for temperatures (' // &
+                       trim(adjustl(string)) // ') for species "' // &
+                       trim(species_name) // '" in database.'
+    call printWrnMsg(option)
+  endif
+  
+end function DatabaseCheckLegitimateLogKs
 
 ! ************************************************************************** !
 !

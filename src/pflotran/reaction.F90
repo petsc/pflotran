@@ -1551,7 +1551,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
          
           ! compute secondary species concentration
           if (abs(reaction%species_idx%co2_gas_id) == igas) then
-          
+           
 !           pres = global_auxvar%pres(2)
             pres = conc(icomp)*1.D5
             global_auxvar%pres(2) = pres
@@ -1604,6 +1604,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           lnQk = log(fg/henry)
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
+            reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
             
             !print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
             !   lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
@@ -1974,6 +1975,17 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (associated(reaction%eqgas_logKcoef)) then
         call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                      global_auxvar%temp(iphase),reaction%ngas)
+#ifdef CHUAN_CO2
+        do i = 1, reaction%naqcomp
+          if (aq_species_constraint%constraint_type(i) == &
+              CONSTRAINT_SUPERCRIT_CO2) then
+            igas = aq_species_constraint%constraint_spec_id(i)
+            if (abs(reaction%species_idx%co2_gas_id) == igas) then
+              reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+            endif
+          endif
+        enddo
+#endif                                     
       endif
       if (associated(surface_complexation%srfcplx_logKcoef)) then
         call ReactionInterpolateLogK(surface_complexation%srfcplx_logKcoef, &
@@ -2003,6 +2015,17 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                      global_auxvar%temp(iphase),global_auxvar%pres(iphase),&
                                      reaction%ngas)
+#ifdef CHUAN_CO2
+        do i = 1, reaction%naqcomp
+          if (aq_species_constraint%constraint_type(i) == &
+              CONSTRAINT_SUPERCRIT_CO2) then
+            igas = aq_species_constraint%constraint_spec_id(i)
+            if (abs(reaction%species_idx%co2_gas_id) == igas) then
+              reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+            endif
+          endif
+        enddo
+#endif
       endif
       if (associated(surface_complexation%srfcplx_logKcoef)) then
         call ReactionInterpolateLogK_hpt(surface_complexation%srfcplx_logKcoef, &
