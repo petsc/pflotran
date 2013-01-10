@@ -778,7 +778,7 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationProcessConditions: Sets up auxilliary data associated with 
+! RealizationProcessConditions: Sets up auxiliary data associated with 
 !                               conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -806,7 +806,7 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxilliary arrays
+!                               and saturation function, auxiliary arrays
 !                               and datasets
 ! author: Glenn Hammond
 ! date: 01/21/09, 01/12/11
@@ -1016,7 +1016,7 @@ end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
 !
-! RealProcessTranConditions: Sets up auxilliary data associated with 
+! RealProcessTranConditions: Sets up auxiliary data associated with 
 !                            transport conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -1074,6 +1074,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
+                                   cur_constraint%biomass, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -1097,6 +1098,7 @@ subroutine RealProcessTranConditions(realization)
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
+            cur_constraint_coupler%biomass => cur_constraint%biomass
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1330,7 +1332,7 @@ end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08

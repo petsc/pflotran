@@ -20,6 +20,7 @@ module Database_Aux_module
             BasisSubSpeciesinMineralRxn, &
             DatabaseRxnCreate, &
             DatabaseRxnCreateFromRxnString, &
+            DatabaseCheckLegitimateLogKs, &
             DatabaseRxnDestroy
             
 contains
@@ -255,35 +256,6 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
   DatabaseRxnCreateFromRxnString => dbaserxn
   
 end function DatabaseRxnCreateFromRxnString
-
-! ************************************************************************** !
-!
-! DatabaseRxnDestroy: Deallocates a database reaction
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
-subroutine DatabaseRxnDestroy(dbaserxn)
-
-  implicit none
-    
-  type(database_rxn_type), pointer :: dbaserxn
-
-  if (.not.associated(dbaserxn)) return
-  
-  if (associated(dbaserxn%spec_name)) deallocate(dbaserxn%spec_name)
-  nullify(dbaserxn%spec_name)
-  if (associated(dbaserxn%spec_ids)) deallocate(dbaserxn%spec_ids)
-  nullify(dbaserxn%spec_ids)
-  if (associated(dbaserxn%stoich)) deallocate(dbaserxn%stoich)
-  nullify(dbaserxn%stoich)
-  if (associated(dbaserxn%logK)) deallocate(dbaserxn%logK)
-  nullify(dbaserxn%logK)
-
-  deallocate(dbaserxn)  
-  nullify(dbaserxn)
-
-end subroutine DatabaseRxnDestroy
 
 ! ************************************************************************** !
 !
@@ -552,5 +524,83 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
   mnrl_dbaserxn%logK = mnrl_dbaserxn%logK + scale*sec_dbaserxn%logK
 
 end subroutine BasisSubSpeciesInMineralRxn
+
+! ************************************************************************** !
+!
+! DatabaseCheckLegitimateLogKs: Checks whether legitimate log Ks exist for
+!                               all database temperatures if running 
+!                               non-isothermal
+! author: Glenn Hammond
+! date: 01/07/13
+!
+! ************************************************************************** !
+function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
+                                      option)
+
+  use Option_module
+  
+  implicit none
+    
+  type(database_rxn_type), pointer :: dbaserxn
+  character(len=MAXWORDLENGTH) :: species_name
+  PetscReal :: temperatures(:)
+  type(option_type) :: option
+
+  PetscBool :: DatabaseCheckLegitimateLogKs
+  
+  PetscInt :: itemp
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  
+  DatabaseCheckLegitimateLogKs = PETSC_TRUE
+
+  if (.not.associated(dbaserxn) .or. option%use_isothermal) return
+  
+  string = ''
+  do itemp = 1, size(dbaserxn%logK)
+    if (dabs(dbaserxn%logK(itemp) - 500.) < 1.d-10) then
+      write(word,'(f5.1)') temperatures(itemp)
+      string = trim(string) // ' ' // word
+      DatabaseCheckLegitimateLogKs = PETSC_FALSE
+    endif
+  enddo
+  
+  if (.not.DatabaseCheckLegitimateLogKs) then
+    option%io_buffer = 'Undefined log Ks for temperatures (' // &
+                       trim(adjustl(string)) // ') for species "' // &
+                       trim(species_name) // '" in database.'
+    call printWrnMsg(option)
+  endif
+  
+end function DatabaseCheckLegitimateLogKs
+
+! ************************************************************************** !
+!
+! DatabaseRxnDestroy: Deallocates a database reaction
+! author: Glenn Hammond
+! date: 05/29/08
+!
+! ************************************************************************** !
+subroutine DatabaseRxnDestroy(dbaserxn)
+
+  implicit none
+    
+  type(database_rxn_type), pointer :: dbaserxn
+
+  if (.not.associated(dbaserxn)) return
+  
+  if (associated(dbaserxn%spec_name)) deallocate(dbaserxn%spec_name)
+  nullify(dbaserxn%spec_name)
+  if (associated(dbaserxn%spec_ids)) deallocate(dbaserxn%spec_ids)
+  nullify(dbaserxn%spec_ids)
+  if (associated(dbaserxn%stoich)) deallocate(dbaserxn%stoich)
+  nullify(dbaserxn%stoich)
+  if (associated(dbaserxn%logK)) deallocate(dbaserxn%logK)
+  nullify(dbaserxn%logK)
+
+  deallocate(dbaserxn)  
+  nullify(dbaserxn)
+
+end subroutine DatabaseRxnDestroy
 
 end module Database_Aux_module

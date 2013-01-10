@@ -158,7 +158,7 @@ end subroutine MphaseSetup
 
 ! ************************************************************************** !
 !
-! MphaseSetupPatch: Creates arrays for auxilliary variables
+! MphaseSetupPatch: Creates arrays for auxiliary variables
 ! author: Chuan Lu
 ! date: 5/13/08
 !
@@ -738,7 +738,7 @@ end subroutine MPhaseUpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -856,7 +856,7 @@ end subroutine MPhaseUpdateReason
 
 ! ***********************************
 !
-! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -890,7 +890,7 @@ end subroutine MphaseUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! MphaseUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Chuan Lu
 ! date: 12/10/07

@@ -425,7 +425,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   type(mfd_type), pointer :: MFD_aux
   
 
-!  type(auxilliary_type) :: aux
+!  type(auxiliary_type) :: aux
   type(option_type) :: option
 
 #ifdef DASVYAT

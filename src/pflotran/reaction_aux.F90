@@ -223,7 +223,10 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
-    
+#ifdef CHUAN_CO2        
+    PetscReal :: scco2_eq_logK ! SC CO2 
+#endif    
+
     PetscInt :: nsorb
     PetscInt :: neqsorb
     PetscBool, pointer :: kd_print(:)
@@ -455,6 +458,9 @@ function ReactionCreate()
   nullify(reaction%eqgash2ostoich)
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
+#ifdef CHUAN_CO2  
+  reaction%scco2_eq_logK = 0.d0
+#endif
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)
@@ -1642,36 +1648,21 @@ end subroutine KDRxnDestroy
 ! ************************************************************************** !
 subroutine AqueousSpeciesConstraintDestroy(constraint)
 
+  use Utility_module, only: DeallocateArray
+  
   implicit none
   
   type(aq_species_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
   
-  if (associated(constraint%names)) &
-    deallocate(constraint%names)
-  nullify(constraint%names)
-  if (associated(constraint%constraint_conc)) &
-    deallocate(constraint%constraint_conc)
-  nullify(constraint%constraint_conc)
-  if (associated(constraint%basis_molarity)) &
-    deallocate(constraint%basis_molarity)
-  nullify(constraint%basis_molarity)
-  if (associated(constraint%constraint_type)) &
-    deallocate(constraint%constraint_type)
-  nullify(constraint%constraint_type)
-  if (associated(constraint%constraint_spec_id)) &
-    deallocate(constraint%constraint_spec_id)
-  nullify(constraint%constraint_spec_id)
-  if (associated(constraint%constraint_aux_string)) &
-    deallocate(constraint%constraint_aux_string)
-  nullify(constraint%constraint_aux_string)
-  if (associated(constraint%constraint_aux_string)) &
-    deallocate(constraint%constraint_aux_string)
-  nullify(constraint%constraint_aux_string)
-  if (associated(constraint%external_dataset)) &
-    deallocate(constraint%external_dataset)
-  nullify(constraint%external_dataset)
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_conc)
+  call DeallocateArray(constraint%basis_molarity)
+  call DeallocateArray(constraint%constraint_type)
+  call DeallocateArray(constraint%constraint_spec_id)
+  call DeallocateArray(constraint%constraint_aux_string)
+  call DeallocateArray(constraint%external_dataset)
 
   deallocate(constraint)
   nullify(constraint)
@@ -1687,27 +1678,19 @@ end subroutine AqueousSpeciesConstraintDestroy
 ! ************************************************************************** !
 subroutine ColloidConstraintDestroy(constraint)
 
+  use Utility_module, only: DeallocateArray
+
   implicit none
   
   type(colloid_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
   
-  if (associated(constraint%names)) &
-    deallocate(constraint%names)
-  nullify(constraint%names)
-  if (associated(constraint%constraint_conc_mob)) &
-    deallocate(constraint%constraint_conc_mob)
-  nullify(constraint%constraint_conc_mob)
-  if (associated(constraint%constraint_conc_imb)) &
-    deallocate(constraint%constraint_conc_imb)
-  nullify(constraint%constraint_conc_imb)
-  if (associated(constraint%basis_conc_mob)) &
-    deallocate(constraint%basis_conc_mob)
-  nullify(constraint%basis_conc_mob)
-  if (associated(constraint%basis_conc_imb)) &
-    deallocate(constraint%basis_conc_imb)
-  nullify(constraint%basis_conc_imb)
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_conc_mob)
+  call DeallocateArray(constraint%constraint_conc_imb)
+  call DeallocateArray(constraint%basis_conc_mob)
+  call DeallocateArray(constraint%basis_conc_imb)
 
   deallocate(constraint)
   nullify(constraint)

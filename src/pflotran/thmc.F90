@@ -104,7 +104,7 @@ end subroutine THMCSetup
   
 ! ************************************************************************** !
 !
-! THMCSetupPatch: Creates arrays for auxilliary variables
+! THMCSetupPatch: Creates arrays for auxiliary variables
 ! author:
 ! date: 3/2/12
 !
@@ -438,7 +438,7 @@ end subroutine THMCUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! THMCUpdateAuxVars: Updates the auxilliary variables in a realization
+! THMCUpdateAuxVars: Updates the auxiliary variables in a realization
 !                    associated with the THMC problem
 ! author:
 ! date: 3/2/12
@@ -472,7 +472,7 @@ end subroutine THMCUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! THMCUpdateAuxVarsPatch: Updates the auxilliary variables in a patch
+! THMCUpdateAuxVarsPatch: Updates the auxiliary variables in a patch
 !                         associated with the THMC problem
 ! author:
 ! date: 3/2/12

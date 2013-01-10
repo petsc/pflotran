@@ -104,7 +104,7 @@ end subroutine THCSetup
   
 ! ************************************************************************** !
 !
-! THCSetupPatch: Creates arrays for auxilliary variables
+! THCSetupPatch: Creates arrays for auxiliary variables
 ! author: ???
 ! date: 02/22/08
 !
@@ -788,7 +788,7 @@ end subroutine THCUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVars: Updates the auxilliary variables associated with 
+! THCUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the THC problem
 ! author: ???
 ! date: 12/10/07
@@ -822,7 +822,7 @@ end subroutine THCUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! THCUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the THC problem
 ! author: ???
 ! date: 12/10/07

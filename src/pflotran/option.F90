@@ -37,18 +37,6 @@ module Option_module
     PetscMPIInt :: ioread_group_id, iowrite_group_id
 #endif
 
-#ifdef VAMSI_HDF5_READ
-    MPI_Comm :: read_group, readers
-    PetscMPIInt :: read_grp_size, read_grp_rank, readers_size, readers_rank 
-    PetscMPIInt :: rcolor, rkey, reader_color, reader_key
-#endif
-
-#ifdef VAMSI_HDF5_WRITE    
-    MPI_Comm :: write_group, writers
-    PetscMPIInt:: write_grp_size, write_grp_rank, writers_size, writers_rank
-    PetscMPIInt :: wcolor, wkey, writer_color, writer_key
-#endif  
-
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_out
@@ -308,32 +296,6 @@ subroutine OptionInitAll(option)
   option%io_rank = 0
   option%hdf5_read_group_size = 0
   option%hdf5_write_group_size = 0
-
-#ifdef VAMSI_HDF5_READ
-  option%read_group = 0
-  option%readers = 0
-  option%read_grp_size = 0
-  option%read_grp_rank = 0
-  option%readers_size = 0
-  option%readers_rank = 0
-  option%rcolor = 0
-  option%rkey = 0
-  option%reader_color = 0
-  option%reader_key = 0
-#endif
-  
-#ifdef VAMSI_HDF5_WRITE
-  option%write_group = 0
-  option%writers = 0
-  option%write_grp_size = 0
-  option%write_grp_rank = 0
-  option%writers_size = 0
-  option%writers_rank = 0
-  option%wcolor = 0
-  option%wkey = 0
-  option%writer_color = 0
-  option%writer_key = 0
-#endif
 
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
