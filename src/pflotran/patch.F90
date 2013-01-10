@@ -2572,6 +2572,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             endif
             if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
               do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = 0.d0
                 do irxn = 1, &
                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn
