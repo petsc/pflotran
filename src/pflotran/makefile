@@ -5,7 +5,7 @@ srcdir = ./
 pflotran_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
-pflotran_test_dir = ../../test
+pflotran_test_dir = ../../regression_tests
 
 MYFLAGS = -I${objdir} 
 
