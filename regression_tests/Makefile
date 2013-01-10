@@ -29,6 +29,10 @@ endif
 STANDARD_TESTS = \
 	ascem-geochemistry \
 	ascem-geochemistry-parallel \
+	default-flow \
+	default-transport \
+	default-geochemistry \
+	default-parallel \
 	default-discretization-umesh
 
 # regression tests for developers changing pflotran
@@ -65,6 +69,28 @@ else
 	@echo "********************************************************"
 endif
 
+default-flow : 
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		-r default --suite flow 
+
+default-transport : 
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		-r default --suite transport 
+
+default-geochemistry : 
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		-r default --suite geochemistry 
+
+default-parallel :
+ifneq ($(strip $(MPIEXEC)),)
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--mpiexec $(MPIEXEC) -r default --suite parallel
+else
+	@echo "********************************************************"
+	@echo "  Could not find mpiexec."
+	@echo "  Skipping parallel tests."
+	@echo "********************************************************"
+endif
 
 cu-leaching :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
