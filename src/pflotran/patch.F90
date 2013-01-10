@@ -16,7 +16,7 @@ module Patch_module
   use Surface_Material_module
 #endif
   
-  use Auxilliary_module
+  use Auxiliary_module
 
   implicit none
 
@@ -29,21 +29,9 @@ module Patch_module
     PetscInt :: id
     
     ! These arrays will be used by all modes, mode-specific arrays should
-    ! go in the auxilliary data stucture for that mode
+    ! go in the auxiliary data stucture for that mode
     PetscInt, pointer :: imat(:)
     PetscInt, pointer :: sat_func_id(:)
-
-#ifdef SUBCONTINUUM_MODEL
-    !These arrays will hold the no. of subcontinuum types at each cell 
-    PetscInt, pointer :: num_subcontinuum_type(:,:)
-    
-    !These arrays will hold the subcontinuum types ids
-    PetscInt, pointer :: subcontinuum_type_ids(:)
-
-    type(subcontinuum_property_ptr_type), pointer ::  &
-                          subcontinuum_property_array(:)
-    type(subcontinuum_field_typep), pointer :: subcontinuum_field_patch
-#endif
 
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
@@ -74,7 +62,7 @@ module Patch_module
     type(reaction_type), pointer :: reaction
     type(dataset_type), pointer :: datasets
     
-    type(auxilliary_type) :: aux
+    type(auxiliary_type) :: aux
     
     type(patch_type), pointer :: next
 
@@ -146,12 +134,6 @@ function PatchCreate()
   patch%surf_or_subsurf_flag = SUBSURFACE
   nullify(patch%imat)
   nullify(patch%sat_func_id)
-#ifdef SUBCONTINUUM_MODEL
-  nullify(patch%subcontinuum_count)
-  nullify(patch%subcontinnuum_ids)
-  nullify(patch%subcontinuum_property_array)  
-  nullify(patch%subcontinuum_field_patch)  
-#endif
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
@@ -331,16 +313,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Constraint_module
   use Connection_module
 
-#ifdef SUBCONTINUUM_MODEL
-  use Subcontinuum_module
-#endif
-
   implicit none
   
   type(patch_type) :: patch
-#ifdef SUBCONTINUUM_MODEL
-  type(subcontinuum_property_type), pointer :: subcontinuum_properties
-#endif
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
@@ -351,12 +326,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(observation_type), pointer :: observation, next_observation
   
   PetscInt :: temp_int, isub
-  
-#ifdef SUBCONTINUUM_MODEL
-  option%io_buffer = 'Jitu, move the call to SubcontinuumPropConvertListToArray to RealProcessMatPropAndSatFunc -- Glenn'
-  call printErrMsg(option)
-  call SubcontinuumPropConvertListToArray(subcontinuum_properties,patch%subcontinuum_property_array,option)
-#endif
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -582,35 +551,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         endif
 #endif
 
-#ifdef SUBCONTINUUM_PROPERTY
-        ! connect subcontinuum properties pointers
-        ! allocate storage to hold subcontinuum pointers
-        if (strata%material_property%num_subcontinuum_type > 0) then
-          allocate(strata%subcontinuum_property( & 
-                      strata%material_property%subcontinuum_type_count))
-          ! loop over each subcontinuum
-          do isub=1,strata%material_property%num_subcontinuum_type
-            strata%subcontinuum_property(isub) => &
-              SubcontinuumPropGetPtrFromArray( & 
-               strata%material_property%subcontinuum_property_name(isub), &
-               patch%subcontinuum_property_array)
-            if (.not.associated(strata%subcontinuum_property(isub))) then
-              option%io_buffer = 'Subcontinuum ' // &
-                trim(strata%material_property%subcontinuum_property_name(isub)) // &
-                             ' not found in subcontinuum list'
-              call printErrMsg(option)
-            endif
-          enddo
-        endif
-#endif
-
       endif
     else
       nullify(strata%region)
       nullify(strata%material_property)
-#ifdef SUBCONTINUUM_MODEL
-      nullify(strata%subcontinuum_property)
-#endif
     endif
     strata => strata%next
   enddo
@@ -898,7 +842,7 @@ end subroutine PatchInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! PatchUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 02/22/08
@@ -928,7 +872,7 @@ end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchUpdateCouplerAuxVars: Updates auxilliary variables associated 
+! PatchUpdateCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 11/26/07
@@ -1815,6 +1759,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%minerals, &
                             cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%colloids, &
+                            cur_constraint_coupler%biomass, &
                             option%reference_porosity, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_FALSE,option)
@@ -2628,6 +2573,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             endif
             if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
               do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = 0.d0
                 do irxn = 1, &
                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn
@@ -2703,6 +2649,24 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
         vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
       enddo
       call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+    case(PERMEABILITY,PERMEABILITY_X)
+      call GridVecGetArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Y)
+      call GridVecGetArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Z)
+      call GridVecGetArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
@@ -3191,6 +3155,18 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
       call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+    case(PERMEABILITY,PERMEABILITY_X)
+      call GridVecGetArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_xx_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Y)
+      call GridVecGetArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_yy_loc,vec_ptr2,ierr)
+    case(PERMEABILITY_Z)
+      call GridVecGetArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%perm_zz_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
@@ -3200,6 +3176,7 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
     case(PROCESSOR_ID)
       value = option%myrank
     case(SECONDARY_CONCENTRATION)
+      ! Note that the units are in mol/kg
       value = patch%aux%RT%sec_transport_vars(ghosted_id)%sec_conc(isubvar)
     case(SEC_MIN_VOLFRAC)
       value = patch%aux%RT%sec_transport_vars(ghosted_id)% &
@@ -4024,6 +4001,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
         call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       endif
+    case(PERMEABILITY,PERMEABILITY_X,PERMEABILITY_Y,PERMEABILITY_Z)
+      option%io_buffer = 'Setting of permeability in "PatchSetDataset"' // &
+        ' not supported.'
+      call printErrMsg(option)
     case(PHASE)
       if (vec_format == GLOBAL) then
         call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)

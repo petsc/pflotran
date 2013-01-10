@@ -58,7 +58,7 @@ contains
 
 ! ************************************************************************** !
 !
-! GeneralAuxCreate: Allocate and initialize auxilliary object
+! GeneralAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/07/11
 !
@@ -100,7 +100,7 @@ end function GeneralAuxCreate
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarInit: Initialize auxilliary object
+! GeneralAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/07/11
 !
@@ -137,7 +137,7 @@ end subroutine GeneralAuxVarInit
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarCopy: Copies an auxilliary variable
+! GeneralAuxVarCopy: Copies an auxiliary variable
 ! author: Glenn Hammond
 ! date: 03/07/11
 !
@@ -166,7 +166,7 @@ end subroutine GeneralAuxVarCopy
   
 ! ************************************************************************** !
 !
-! GeneralAuxVarCompute: Computes auxilliary variables for each grid cell
+! GeneralAuxVarCompute: Computes auxiliary variables for each grid cell
 ! author: Glenn Hammond
 ! date: 03/07/11
 !
@@ -347,7 +347,7 @@ end subroutine GeneralAuxVarCompute
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! GeneralAuxVarSingleDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -368,7 +368,7 @@ end subroutine GeneralAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! GeneralAuxVarArray1Destroy: Deallocates a mode auxilliary object
+! GeneralAuxVarArray1Destroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -393,7 +393,7 @@ end subroutine GeneralAuxVarArray1Destroy
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarArray2Destroy: Deallocates a mode auxilliary object
+! GeneralAuxVarArray2Destroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -420,7 +420,7 @@ end subroutine GeneralAuxVarArray2Destroy
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarDestroy: Deallocates a general auxilliary object
+! GeneralAuxVarDestroy: Deallocates a general auxiliary object
 ! author: Glenn Hammond
 ! date: 03/07/11
 !
@@ -452,7 +452,7 @@ end subroutine GeneralAuxVarStrip
 
 ! ************************************************************************** !
 !
-! GeneralAuxDestroy: Deallocates a general auxilliary object
+! GeneralAuxDestroy: Deallocates a general auxiliary object
 ! author: Glenn Hammond
 ! date: 03/07/11
 !

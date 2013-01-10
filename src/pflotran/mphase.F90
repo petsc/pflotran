@@ -158,7 +158,7 @@ end subroutine MphaseSetup
 
 ! ************************************************************************** !
 !
-! MphaseSetupPatch: Creates arrays for auxilliary variables
+! MphaseSetupPatch: Creates arrays for auxiliary variables
 ! author: Chuan Lu
 ! date: 5/13/08
 !
@@ -258,6 +258,11 @@ subroutine MphaseSetupPatch(realization)
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
       mphase_sec_heat_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
+      mphase_sec_heat_vars(ghosted_id)%log_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+      mphase_sec_heat_vars(ghosted_id)%outer_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
+        
 
       allocate(mphase_sec_heat_vars(ghosted_id)%area(mphase_sec_heat_vars(ghosted_id)%ncells))
       allocate(mphase_sec_heat_vars(ghosted_id)%vol(mphase_sec_heat_vars(ghosted_id)%ncells))
@@ -273,6 +278,8 @@ subroutine MphaseSetupPatch(realization)
                               mphase_sec_heat_vars(ghosted_id)%dm_plus, &
                               mphase_sec_heat_vars(ghosted_id)%aperture, &
                               mphase_sec_heat_vars(ghosted_id)%epsilon, &
+                              mphase_sec_heat_vars(ghosted_id)%log_spacing, &
+                              mphase_sec_heat_vars(ghosted_id)%outer_spacing, &
                               area_per_vol,option)
                                 
       mphase_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
@@ -731,7 +738,7 @@ end subroutine MPhaseUpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -849,7 +856,7 @@ end subroutine MPhaseUpdateReason
 
 ! ***********************************
 !
-! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -883,7 +890,7 @@ end subroutine MphaseUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! MphaseUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Chuan Lu
 ! date: 12/10/07

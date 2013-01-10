@@ -36,7 +36,7 @@ contains
 
 ! ************************************************************************** !
 !
-! MatrixBlockAuxCreate: Allocate and initialize auxilliary object
+! MatrixBlockAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/04/2010
 !
@@ -61,7 +61,7 @@ end function MatrixBlockAuxVarCreate
 
 ! ************************************************************************** !
 !
-! MatrixBlockAuxVarInit1: Initialize auxilliary object
+! MatrixBlockAuxVarInit1: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/04/2010
 !
@@ -86,7 +86,7 @@ end subroutine MatrixBlockAuxVarInit1
 
 ! ************************************************************************** !
 !
-! MatrixBlockAuxVarInit2: Initialize auxilliary object
+! MatrixBlockAuxVarInit2: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 03/04/2010
 !
@@ -108,7 +108,7 @@ end subroutine MatrixBlockAuxVarInit2
 
 ! ************************************************************************** !
 !
-! MatrixBlockAuxVarCopy: Copys an auxilliary object
+! MatrixBlockAuxVarCopy: Copys an auxiliary object
 ! author: Glenn Hammond
 ! date: 03/04/2010
 !
@@ -128,7 +128,7 @@ end subroutine MatrixBlockAuxVarCopy
 
 ! ************************************************************************** !
 !
-! MatrixBlockAuxVarDestroy: Deallocates a matrix block auxilliary object
+! MatrixBlockAuxVarDestroy: Deallocates a matrix block auxiliary object
 ! author: Glenn Hammond
 ! date: 03/04/2010
 !

@@ -40,12 +40,12 @@
 \headheight 0.25in
 \lhead{\sl PFLOTRAN: Quick Reference User Guide}
 \chead{\sl DRAFT}
-%\chead{\rm - \thepage\ -}
+\chead{\S\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
 %\rhead{DRAFT \qquad \qquad \ \today}
 \rhead{\today}
 %\rfoot{\today--[\thepage]}
 \rfoot{}
-\cfoot{\rm - \thepage\ -}
+\cfoot{\rm < \thepage\ >}
 %\cfoot{}
 %\footrulewidth 0.4pt
 \newcommand\keyend{{(., \, /, \, END)}}
@@ -102,7 +102,7 @@
 \renewcommand{\P}{{{\mathcal P}}}
 \newcommand{\Q}{{\mathcal Q}}
 \newcommand{\R}{{{\mathcal R}}}
-\renewcommand{\S}{{\mathcal S}}
+\newcommand{\mcS}{{\mathcal S}}
 \newcommand{\T}{{\mathcal T}}
 \newcommand{\W}{{\mathcal W}}
 \newcommand{\X}{{\mathcal X}}
@@ -209,10 +209,12 @@
 
 \thispagestyle{empty}
 
-\renewcommand{\theequation}{\arabic{equation}}
+%\renewcommand{\theequation}{\arabic{equation}}
 %\renewcommand{\thetable}{{\protect\bf\arabic{table}}}
 %\renewcommand{\thefigure}{{\protect\bf\arabic{figure}}}
 %\renewcommand{\thepage}{\roman{page}}
+
+\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
 
 \setlongtables
 
@@ -309,6 +311,8 @@ endorse the viewpoint of a publication or guarantee its technical correctness.
 PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and laptops (Hammond et al., 2011). Parallelization is achieved through domain decomposition using the PETSc (Port\-a\-ble Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
 
 \section{Governing Equations}
+
+\setcounter{equation}{0}
 
 \subsection{Mode: {\tt RICHARDS}}
 
@@ -1018,22 +1022,22 @@ where the product index $i$ generally runs over both primary and secondary speci
 The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
 
 Porosity, permeability, tortuosity and mineral surface area may be updated optionally due to mineral precipitation and dissolution reactions according to the relations
-\EQ\label{por}
+\EQ\label{porosity}
 \varphi \eq 1-\sum_m\varphi_m,
 \EN
-\EQ
+\EQ\label{permeability}
 k \eq k_0 \left(\frac{\varphi}{\varphi_0}\right)^a,
 \EN
-\EQ
+\EQ\label{tortuosity}
 \tau \eq \tau_0 \left(\frac{\varphi}{\varphi_0}\right)^b,
 \EN
 and
-\EQ
-a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n,
+\EQ\label{surface_area_vf}
+a_m \eq a_m^0 \left(\frac{\varphi_m}{\varphi_m^0}\right)^n  \left(\frac{1-\varphi}{1-\varphi_0}\right)^{n'},
 \EN
 where the super/subscript 0 denotes initial values, with a typical value for $n$ of $2/3$ reflecting the surface to volume ratio. Note that this relation only applies to primary minerals $(\varphi_m^0\ne 0)$.
 
-In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{por} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
+In PFLOTRAN the solid is represented as an aggregate of minerals described quantitatively by specifying its porosity $\varphi$ and the volume fraction $\varphi_m$ of each primary mineral such that Eqn.\eqref{porosity} holds. Typically, however, the solid composition is specified by giving the mass fraction $y_m$ of each of the primary minerals making up the solid phase. The volume fraction is related to mole $x_m$ and mass $y_m$ fractions by the expressions
 \begin{subequations}
 \BA
 \varphi_m &\eq (1-\varphi) \frac{x_m \overline V_m}{\sum_{m'} x_{m'} \overline V_{m'}},\\
@@ -1170,9 +1174,9 @@ and for $j=l$
 
 Surface complexation reactions are assumed to have the form
 \EQ\label{srfrxn}
-\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \S_{i\a},
+\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \mcS_{i\a},
 \EN
-for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$.
+for the $i$th surface complex $>\!\!\mcS_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$.
 As follows from the corresponding mass action equation the equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
 \EQ
 S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
@@ -1328,6 +1332,8 @@ Surface Complexes: & $>$name, nspec, $\nu$, $>$site,
 
 \section{Method of Solution}
 
+\setcounter{equation}{0}
+
 The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, \ldots) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
 Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
 
@@ -1432,6 +1438,8 @@ Thus for $R=1$, $C^{t+\Delta t}=C^*$ and the solution advances unretarded. As $R
 
 \section{Code Structure}
 
+\setcounter{equation}{0}
+
 A flow diagram of the PFLOTRAN code structure is shown in Figure~\ref{fdiag}.
 
 \begin{figure}[h]\centering
@@ -1455,6 +1463,8 @@ Flow diagram definitions:
 In order to facilitate code development and better preserve the extensibility and modularity of the code, an object-oriented coding paradigm is employed within PFLOTRAN.  In comparison to traditional procedural paradigms, the object-oriented programming paradigm facilitates code modification and reuse.  Within the context of PFLOTRAN, the utilization of this paradigm greatly accelerates the incorporation of new flow and transport modes through the extension of existing algorithms.  The compartmentalization of methods, processes and data enables the spawning of multi-realization simulations, each of which can be simultaneously run in parallel (i.e. each realization of the multi-realization simulation can be run in parallel utilizing multiple processor cores).
 
 \section{Installation}
+
+\setcounter{equation}{0}
 
 It should be possible to build and run PFLOTRAN on essentially any system with 
 modern C and Fortran (95 standard or higher) compilers and an available 
@@ -1683,8 +1693,8 @@ A number of command line options are available:
 
 \begin{tabular}{ll}
 {\tt -pflotranin} <input file name> & specify an input file [Default: {\tt pflotran.in}]\\
+{\tt -file\_prefix} <output file name> & specify an output file [Default: {\tt pflotran.out, \,\ldots}]\\
 {\tt -screen\_output off} & turn off screen output\\
-{\tt -file\_output} <output file name> & specify an output file [Default: {\tt pflotran.out}]\\
 %{\tt -v} &\\
 {\tt -multisimulation} & run multiple input files in one run\\
 {\tt -stochastic} & Monte Carlo multiple realization run\\
@@ -2088,6 +2098,8 @@ The default restart frequency is 30.
 \newpage
 \section{Creating the Input File: PFLOTRAN Keywords}
 
+\setcounter{equation}{0}
+
 The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
@@ -2213,9 +2225,9 @@ Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
 : == debugging ================================================================\\
 :\hyperlink{target_dbg}{\bf DEBUG}\\
 %\hypertarget{target_key}{\bf DEBUG}\\
-:MATVIEW\_JACOBIAN\\
-:VECVIEW\_RESIDUAL\\
-:VECVIEW\_SOLUTION\\
+:  MATVIEW\_JACOBIAN\\
+:  VECVIEW\_RESIDUAL\\
+:  VECVIEW\_SOLUTION\\
 :/
 
 \noindent
@@ -2227,23 +2239,23 @@ Surface Site Density: & Mole/Meter$^{3}$ [mol/m$^{3}$]\\
 \hyperlink{target_chem}{\bf CHEMISTRY}\\
 OPERATOR\_SPLIT\\
 PRIMARY\_SPECIES\\
-Ca++\\
-H+\\
-CO2(aq)\\
-Tracer\\
+  Ca++\\
+  H+\\
+  CO2(aq)\\
+  Tracer\\
 /\\
 SECONDARY\_SPECIES\\
-OH-\\
-HCO3$-$\\
-CO3$-$$-$\\
-CaHCO3+\\
-CaCO3(aq)\\
+  OH-\\
+  HCO3$-$\\
+  CO3$-$$-$\\
+  CaHCO3+\\
+  CaCO3(aq)\\
 /\\
 GAS\_SPECIES\\
-CO2(g)\\
+  CO2(g)\\
 /\\
 MINERALS\\
-Calcite\\
+  Calcite\\
 /\\
 :\\
 MINERAL\_KINETICS\\
@@ -2644,10 +2656,6 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \begin{deflist}{000}
 
-\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
-
-~\\
-
 \item [PRIMARY\_SPECIES] ~
 \item {\tt Name}
 \item [\keyend]
@@ -2695,8 +2703,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item [AFFINITY\_THRESHOLD] \ {\tt Value} [---]
 \item [AFFINITY\_POWER] \ {\tt Value} [---]
 \item [TEMPKINS\_CONSTANT] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---]
-\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---]
+\item [SURFACE\_AREA\_POROSITY\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
+\item [SURFACE\_AREA\_VOL\_FRAC\_POWER] \ {\tt Value} [---] \ \ \ [see Eqn.\eqref{surface_area_vf}]
 \item [RATE\_LIMITER] \ {\tt Value} [---]
 \item [IRREVERSIBLE] \ 
 
@@ -2814,6 +2822,10 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 ~\\
 
+\item [OPERATOR\_SPLITTING] \ Toggles operator-splitting mode (Default implicit)
+
+~\\
+
 \item[GEOTHERMAL\_HPT] Use high pressure and temperature thermodynamic database
 \item[DATABASE] {\tt Path/Database\_Name}
 \item[LOG\_FORMULATION]
@@ -2822,12 +2834,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[ACTIVITY\_H2O, ACTIVITY\_WATER]
 \item[MOLAL, MOLALITY]
 \item[NO\_BDOT]
-\item[UPDATE\_POROSITY] {\tt Value}
-\item[UPDATE\_TORTUOSITY] {\tt Value}
-\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity.)
-\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \\
+\item[UPDATE\_POROSITY] {\tt Value} \ \ \ [see Eqn.\eqref{porosity}]
+\item[UPDATE\_TORTUOSITY] {\tt Value} \ \ \ [see Eqn.\eqref{tortuosity}]
+\item[UPDATE\_PERMEABILITY] {\tt Value} \ (Must activate update\_porosity, see Eqn.\eqref{permeability}.)
+\item[UPDATE\_MINERAL\_SURFACE\_AREA] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_VOL\_FRAC\_POWER)
-\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \\
+\item[UPDATE\_MNRL\_SURF\_AREA\_WITH\_POR] {\tt Value} \ \ \ [see Eqn.\eqref{surface_area_vf}]\\
 (Must set SURFACE\_AREA\_POROSITY\_POWER)
 \item[MINIMUM\_POROSITY] {\tt Value}
 %\item[UPDATE\_MINERAL\_SURFACE\_AREA]

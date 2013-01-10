@@ -161,7 +161,7 @@ end subroutine GeneralSetup
 
 ! ************************************************************************** !
 !
-! GeneralSetupPatch: Creates arrays for auxilliary variables
+! GeneralSetupPatch: Creates arrays for auxiliary variables
 ! author: Glenn Hammond
 ! date: 03/10/11
 !
@@ -443,7 +443,7 @@ end subroutine GeneralUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! GeneralUpdateAuxVars: Updates the auxilliary variables associated with 
+! GeneralUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the General problem
 ! author: Glenn Hammond
 ! date: 03/10/11
@@ -477,7 +477,7 @@ end subroutine GeneralUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! GeneralUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! GeneralUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the General problem
 ! author: Glenn Hammond
 ! date: 03/10/11
@@ -935,7 +935,7 @@ end subroutine GeneralNumericalJacTest
 
 ! ************************************************************************** !
 !
-! GeneralAuxVarPerturb: Calculates auxilliary variables for perturbed system
+! GeneralAuxVarPerturb: Calculates auxiliary variables for perturbed system
 ! author: Glenn Hammond
 ! date: 03/09/11
 !

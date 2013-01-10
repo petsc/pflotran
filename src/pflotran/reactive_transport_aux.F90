@@ -60,59 +60,10 @@ module Reactive_Transport_Aux_module
 
     type(colloid_auxvar_type), pointer :: colloid
     
+    ! immobile species such as biomass
+    PetscReal, pointer :: immobile(:)
+    
   end type reactive_transport_auxvar_type
-
-  ! START CHUNKED!!!!!
-  type, public :: react_tran_auxvar_chunk_type
-  
-    PetscReal, pointer :: den(:,:,:)
-    PetscReal, pointer :: temp(:,:,:)
-    PetscReal, pointer :: sat(:,:,:)
-    PetscReal, pointer :: vol(:,:)
-    PetscReal, pointer :: por(:,:)
-    
-#ifdef CHUAN_CO2
-    PetscReal, pointer :: pres(:,:,:)
-    PetscReal, pointer :: xmass(:,:,:)
-    PetscReal, pointer :: fugacoeff(:,:,:)
-#endif    
-  
-    ! molality
-    PetscReal, pointer :: pri_molal(:,:,:)     ! mol/kg water
-    PetscReal, pointer :: ln_pri_molal(:,:,:)
-    
-    ! phase dependent totals
-    PetscReal, pointer :: total(:,:,:,:)       ! mol solute/L water
-    PetscReal, pointer :: dtotal(:,:,:,:,:)
-
-    ! sorbed totals
-    PetscReal, pointer :: total_sorb_eq(:,:,:)    ! mol/m^3 bulk
-    PetscReal, pointer :: dtotal_sorb_eq(:,:,:,:) ! kg water/m^3 bulk
-    
-    ! aqueous species
-    ! aqueous complexes
-    PetscReal, pointer :: sec_molal(:,:,:)
-    PetscReal, pointer :: gas_molal(:,:,:)
-    
-    PetscReal, pointer :: eqsrfcplx_conc(:,:,:)
-    PetscReal, pointer :: eqsrfcplx_free_site_conc(:,:,:)
-
-    ! mineral reactions
-!    PetscReal, pointer :: mnrl_volfrac0(:,:,:)
-    PetscReal, pointer :: mnrl_volfrac(:,:,:)
-!    PetscReal, pointer :: mnrl_area0(:,:,:)
-    PetscReal, pointer :: mnrl_area(:,:,:)
-    PetscReal, pointer :: mnrl_rate(:,:,:)
-    
-    ! activity coefficients
-!   PetscReal :: act_h2o
-    PetscReal, pointer :: pri_act_coef(:,:,:)
-    PetscReal, pointer :: sec_act_coef(:,:,:)
-    
-    PetscReal, pointer :: ln_act_h2o(:,:)
-
-  end type react_tran_auxvar_chunk_type
-  ! END CHUNKED!!!!!
 
   type, public :: reactive_transport_param_type
     PetscInt :: ncomp
@@ -120,9 +71,10 @@ module Reactive_Transport_Aux_module
     PetscInt :: nimcomp
     PetscInt :: ncoll
     PetscInt :: ncollcomp
-    PetscInt :: offset_aq
-    PetscInt :: offset_coll
+    PetscInt :: offset_aqueous
+    PetscInt :: offset_colloid
     PetscInt :: offset_collcomp
+    PetscInt :: offset_immobile
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscReal, pointer :: diffusion_coefficient(:)
@@ -169,9 +121,6 @@ module Reactive_Transport_Aux_module
 #ifndef PFLOTRAN_RXN    
     type(sec_transport_type), pointer :: sec_transport_vars(:)
 #endif
-#ifdef CHUNK
-    type(react_tran_auxvar_chunk_type), pointer :: aux_var_chunk
-#endif
   end type reactive_transport_type
 
   interface RTAuxVarDestroy
@@ -184,14 +133,14 @@ module Reactive_Transport_Aux_module
 #ifndef PFLOTRAN_RXN    
             RTSecTransportAuxVarCompute, &
 #endif
-            RTAuxVarChunkDestroy, RTAuxVarStrip
+            RTAuxVarStrip
             
 contains
 
 
 ! ************************************************************************** !
 !
-! RTAuxCreate: Allocate and initialize auxilliary object
+! RTAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -208,18 +157,15 @@ function RTAuxCreate(option)
   type(reactive_transport_type), pointer :: aux
 
   allocate(aux)  
-  aux%num_aux = 0
-  aux%num_aux_bc = 0
-  aux%num_aux_ss = 0
-  nullify(aux%aux_vars)
-  nullify(aux%aux_vars_bc)
-  nullify(aux%aux_vars_ss)
-#ifdef CHUNK
-  nullify(aux%aux_var_chunk)
-#endif  
-  aux%n_zero_rows = 0
-  nullify(aux%zero_rows_local)
-  nullify(aux%zero_rows_local_ghosted)
+  aux%num_aux = 0      ! number of rt_auxvars objects for local and ghosted cells
+  aux%num_aux_bc = 0   ! number of rt_auxvars objects for boundary connections
+  aux%num_aux_ss = 0   ! number of rt_auxvars objects for source/sinks
+  nullify(aux%aux_vars)      ! rt_auxvars for local and ghosted grid cells
+  nullify(aux%aux_vars_bc)   ! rt_auxvars for boundary connections
+  nullify(aux%aux_vars_ss)   ! rt_auxvars for source/sinks
+  aux%n_zero_rows = 0    ! number of zeroed rows in Jacobian for inactive cells
+  nullify(aux%zero_rows_local)  ! ids of zero rows in local, non-ghosted numbering
+  nullify(aux%zero_rows_local_ghosted) ! ids of zero rows in ghosted numbering
   aux%aux_vars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
 
@@ -233,9 +179,10 @@ function RTAuxCreate(option)
   aux%rt_parameter%nimcomp = 0
   aux%rt_parameter%ncoll = 0
   aux%rt_parameter%ncollcomp = 0
-  aux%rt_parameter%offset_aq = 0
-  aux%rt_parameter%offset_coll = 0
+  aux%rt_parameter%offset_aqueous = 0
+  aux%rt_parameter%offset_colloid = 0
   aux%rt_parameter%offset_collcomp = 0
+  aux%rt_parameter%offset_immobile = 0
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
   nullify(aux%rt_parameter%coll_spec_to_pri_spec)
 #ifdef OS_STATISTICS
@@ -255,7 +202,7 @@ end function RTAuxCreate
 
 ! ************************************************************************** !
 !
-! RTAuxVarInit: Initialize auxilliary object
+! RTAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -427,11 +374,18 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%colloid)
   endif
   
+  if (reaction%nimcomp > 0) then
+    allocate(aux_var%immobile(reaction%nimcomp))
+    aux_var%immobile = 0.d0
+  else
+    nullify(aux_var%immobile)
+  endif
+  
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
 !
-! RTAuxVarCopy: Copys an auxilliary object
+! RTAuxVarCopy: Copys an auxiliary object
 ! author: Glenn Hammond
 ! date: 09/05/08
 !
@@ -497,14 +451,12 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%sec_act_coef)) &
     aux_var%sec_act_coef = aux_var2%sec_act_coef
 
-  if (associated(aux_var%mass_balance) .and. &
-      associated(aux_var2%mass_balance)) then
+  if (associated(aux_var%mass_balance)) then
     aux_var%mass_balance = aux_var2%mass_balance
     aux_var%mass_balance_delta = aux_var2%mass_balance_delta
   endif
 
-  if (associated(aux_var%kinmr_total_sorb) .and. &
-      associated(aux_var2%kinmr_total_sorb)) then
+  if (associated(aux_var%kinmr_total_sorb)) then
     aux_var%kinmr_total_sorb = aux_var2%kinmr_total_sorb
   endif
 
@@ -527,6 +479,10 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
                                aux_var2%colloid%dRic_dSic,option)
   endif
 
+  if (associated(aux_var%immobile)) then
+    aux_var%immobile = aux_var2%immobile
+  endif
+  
 end subroutine RTAuxVarCopy
 
 #ifndef PFLOTRAN_RXN    
@@ -574,7 +530,9 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   PetscReal :: sec_mnrl_volfrac(sec_transport_vars%ncells)
   PetscInt :: sec_zeta(sec_transport_vars%ncells)
   PetscReal :: diag_react, rhs_react
-  
+  PetscReal, parameter :: rgas = 8.3144621d-3
+  PetscReal :: arrhenius_factor
+
   
   ngcells = sec_transport_vars%ncells
   area = sec_transport_vars%area
@@ -582,6 +540,7 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
   dm_plus = sec_transport_vars%dm_plus
   dm_minus = sec_transport_vars%dm_minus
   area_fm = sec_transport_vars%interfacial_area
+  sec_zeta = sec_transport_vars%sec_zeta
   
   coeff_left = 0.d0
   coeff_diag = 0.d0
@@ -599,17 +558,25 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
 
   conc_primary_node = aux_var%total(1,1)                             ! in mol/L 
   sec_mnrl_volfrac = sec_transport_vars%sec_mnrl_volfrac             ! dimensionless
-  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/cm
+  mnrl_area = sec_transport_vars%sec_mnrl_area                       ! in 1/m
   
   if (reaction%mineral%nkinmnrl > 0) then
-    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/cm^2/s
-    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/L
-    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3
-    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d3
+    kin_mnrl_rate = reaction%mineral%kinmnrl_rate(1)                 ! in mol/m^2/s
+    ! Arrhenius factor
+    arrhenius_factor = 1.d0
+    if (reaction%mineral%kinmnrl_activation_energy(1) > 0.d0) then
+      arrhenius_factor = exp(reaction%mineral%kinmnrl_activation_energy(1)/rgas &
+          *(1.d0/(25.d0+273.15d0)-1.d0/(global_aux_var%temp(1)+273.15d0)))
+    endif    
+    kin_mnrl_rate = kin_mnrl_rate*arrhenius_factor
+    equil_conc = (10.d0)**(reaction%mineral%mnrl_logK(1))            ! in mol/kg
+    equil_conc = equil_conc*global_aux_var%den_kg(1)*1.d-3           ! in mol/L
+    mnrl_molar_vol = reaction%mineral%kinmnrl_molar_vol(1)           ! in m^3/mol
+    diag_react = kin_mnrl_rate/equil_conc*mnrl_area*option%tran_dt/porosity*1.d-3
     rhs_react = diag_react*equil_conc                                ! in mol/L
   endif
- 
-  alpha = diffusion_coefficient*option%tran_dt/porosity   
+  
+  alpha = diffusion_coefficient*option%tran_dt 
   
   ! Setting the coefficients
   do i = 2, ngcells-1
@@ -631,8 +598,12 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
                        + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
                        + 1.d0 + diag_react*sec_zeta(ngcells)
                         
+  ! Note that sec_transport_vars%sec_conc units are in mol/kg
+  ! Need to convert to mol/L since the units of conc. in the Thomas 
+  ! algorithm are in mol/L
   do i = 1, ngcells
-    rhs(i) = sec_transport_vars%sec_conc(i) + rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
+    rhs(i) = sec_transport_vars%sec_conc(i)*global_aux_var%den_kg(1)*1.d-3 + &
+             rhs_react*sec_zeta(i) ! secondary continuum values from previous time step
   enddo
   
   rhs(ngcells) = rhs(ngcells) + & 
@@ -657,14 +628,14 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
  ! print *,'conc_dcdm= ',(sec_conc(i),i=1,ngcells)
  
    do i = 1, ngcells
-    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/cm^3/s
+    Im(i) = kin_mnrl_rate*mnrl_area*(sec_conc(i)/equil_conc - 1.d0) ! in mol/m^3/s
     if (Im(i) > 0.d0) then 
-      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+      sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt* &
                             mnrl_molar_vol*Im(i)
       sec_zeta(i) = 1
     else
       if (sec_mnrl_volfrac(i) > 0.d0) then
-        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt*1.d6* &
+        sec_mnrl_volfrac(i) = sec_mnrl_volfrac(i) + option%tran_dt* &
                               mnrl_molar_vol*Im(i)
         sec_zeta(i) = 1
       else
@@ -678,7 +649,9 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
     endif
   enddo
 
-  sec_transport_vars%sec_conc = sec_conc
+  ! Convert the units of sec_conc from mol/L to mol/kg before passing to
+  ! sec_transport_vars
+  sec_transport_vars%sec_conc = sec_conc/global_aux_var%den_kg(1)/1.d-3
   sec_transport_vars%sec_mnrl_volfrac = sec_mnrl_volfrac
   sec_transport_vars%sec_zeta = sec_zeta
 
@@ -687,87 +660,7 @@ end subroutine RTSecTransportAuxVarCompute
 
 ! ************************************************************************** !
 !
-! RTAuxVarChunkDestroy: Deallocates a reactive transport auxilliary object
-! author: Glenn Hammond
-! date: 01/31/11
-!
-! ************************************************************************** !
-subroutine RTAuxVarChunkDestroy(auxvar)
-
-  implicit none
-
-  type(react_tran_auxvar_chunk_type), pointer :: auxvar
-  
-    ! for global auxvar
-  if (associated(auxvar%den)) deallocate(auxvar%den)
-  nullify(auxvar%den)
-  if (associated(auxvar%temp)) deallocate(auxvar%temp)
-  nullify(auxvar%temp)
-  if (associated(auxvar%sat)) deallocate(auxvar%sat)
-  nullify(auxvar%sat)
-  if (associated(auxvar%vol)) deallocate(auxvar%vol)
-  nullify(auxvar%vol)
-  if (associated(auxvar%por)) deallocate(auxvar%por)
-  nullify(auxvar%por)
-
-#ifdef CHUAN_CO2
-  if (associated(auxvar%pres)) deallocate(auxvar%pres)
-  nullify(auxvar%pres)
-  if (associated(auxvar%xmass)) deallocate(auxvar%xmass)
-  nullify(auxvar%xmass)
-  if (associated(auxvar%fugacoeff)) deallocate(auxvar%fugacoeff)
-  nullify(auxvar%fugacoeff)
-#endif
-  
-  if (associated(auxvar%pri_molal)) deallocate(auxvar%pri_molal)
-  nullify(auxvar%pri_molal)
-
-  if (associated(auxvar%total)) deallocate(auxvar%total)
-  nullify(auxvar%total)
-
-  if (associated(auxvar%total)) deallocate(auxvar%dtotal)
-  nullify(auxvar%dtotal)
-
-  if (associated(auxvar%sec_molal))deallocate(auxvar%sec_molal)
-  nullify(auxvar%sec_molal)
-  
-  if (associated(auxvar%gas_molal))deallocate(auxvar%gas_molal)
-  nullify(auxvar%gas_molal)
-  
-  if (associated(auxvar%total_sorb_eq)) deallocate(auxvar%total_sorb_eq)
-  nullify(auxvar%total_sorb_eq)
-  if (associated(auxvar%dtotal_sorb_eq))deallocate(auxvar%dtotal_sorb_eq)
-  nullify(auxvar%dtotal_sorb_eq)
-
-  if (associated(auxvar%eqsrfcplx_conc)) deallocate(auxvar%eqsrfcplx_conc)
-  nullify(auxvar%eqsrfcplx_conc)
-  if (associated(auxvar%eqsrfcplx_free_site_conc)) &
-    deallocate(auxvar%eqsrfcplx_free_site_conc)
-  nullify(auxvar%eqsrfcplx_free_site_conc)
-  
-  if (associated(auxvar%mnrl_volfrac))deallocate(auxvar%mnrl_volfrac)
-  nullify(auxvar%mnrl_volfrac)
-  if (associated(auxvar%mnrl_area))deallocate(auxvar%mnrl_area)
-  nullify(auxvar%mnrl_area)
-  if (associated(auxvar%mnrl_rate))deallocate(auxvar%mnrl_rate)
-  nullify(auxvar%mnrl_rate)
-  
-  if (associated(auxvar%pri_act_coef))deallocate(auxvar%pri_act_coef)
-  nullify(auxvar%pri_act_coef)
-  if (associated(auxvar%sec_act_coef))deallocate(auxvar%sec_act_coef)
-  nullify(auxvar%sec_act_coef)
-
-  if (associated(auxvar%ln_act_h2o))deallocate(auxvar%ln_act_h2o)
-  nullify(auxvar%ln_act_h2o)
-  
-  deallocate(auxvar)
-  nullify(auxvar)
-
-end subroutine RTAuxVarChunkDestroy
-
-! ************************************************************************** !
-!
-! RTAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! RTAuxVarSingleDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -788,7 +681,7 @@ end subroutine RTAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! RTAuxVarArrayDestroy: Deallocates a mode auxilliary object
+! RTAuxVarArrayDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -807,13 +700,13 @@ subroutine RTAuxVarArrayDestroy(aux_vars)
     enddo  
     deallocate(aux_vars)
   endif
-  nullify(aux_vars)  
+  nullify(aux_vars)
 
 end subroutine RTAuxVarArrayDestroy
   
 ! ************************************************************************** !
 !
-! RTAuxVarStrip: Deallocates all members of single auxilliary object
+! RTAuxVarStrip: Deallocates all members of single auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -826,8 +719,8 @@ subroutine RTAuxVarStrip(aux_var)
 
   type(reactive_transport_auxvar_type) :: aux_var
   
-  call DeallocateArray(aux_var%pri_molal)  
-  call DeallocateArray(aux_var%total)  
+  call DeallocateArray(aux_var%pri_molal)
+  call DeallocateArray(aux_var%total)
   
   call MatrixBlockAuxVarDestroy(aux_var%aqueous)
 
@@ -876,11 +769,13 @@ subroutine RTAuxVarStrip(aux_var)
     nullify(aux_var%colloid)
   endif
   
+  call DeallocateArray(aux_var%immobile)
+  
 end subroutine RTAuxVarStrip
 
 ! ************************************************************************** !
 !
-! RTAuxDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxDestroy: Deallocates a reactive transport auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -899,11 +794,6 @@ subroutine RTAuxDestroy(aux)
   call RTAuxVarDestroy(aux%aux_vars)
   call RTAuxVarDestroy(aux%aux_vars_bc)
   call RTAuxVarDestroy(aux%aux_vars_ss)
-#ifdef CHUNK
-  if (associated(aux%aux_var_chunk)) then
-    call RTAuxVarChunkDestroy(aux%aux_var_chunk)
-  endif
-#endif
   call DeallocateArray(aux%zero_rows_local)
   call DeallocateArray(aux%zero_rows_local_ghosted)
 
@@ -922,7 +812,7 @@ subroutine RTAuxDestroy(aux)
 #endif
 
   deallocate(aux)
-  nullify(aux)  
+  nullify(aux)
 
   end subroutine RTAuxDestroy
 

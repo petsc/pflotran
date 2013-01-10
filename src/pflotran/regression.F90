@@ -526,19 +526,21 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
       
       ! natural cell ids
       if (associated(regression%natural_cell_ids)) then
-        call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
-        if (cur_variable%iformat == 0) then
-          do i = 1, size(regression%natural_cell_ids)
-            write(OUTPUT_UNIT,100) &
-              regression%natural_cell_ids(i),vec_ptr(i)
-          enddo
-        else
-          do i = 1, size(regression%natural_cell_ids)
-            write(OUTPUT_UNIT,101) &
-              regression%natural_cell_ids(i),int(vec_ptr(i))
-          enddo
+        if (size(regression%natural_cell_ids) > 0) then
+          call VecGetArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
+          if (cur_variable%iformat == 0) then
+            do i = 1, size(regression%natural_cell_ids)
+              write(OUTPUT_UNIT,100) &
+                regression%natural_cell_ids(i),vec_ptr(i)
+            enddo
+          else
+            do i = 1, size(regression%natural_cell_ids)
+              write(OUTPUT_UNIT,101) &
+                regression%natural_cell_ids(i),int(vec_ptr(i))
+            enddo
+          endif
+          call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
         endif
-        call VecRestoreArrayF90(regression%natural_cell_id_vec,vec_ptr,ierr)
       endif
       
       ! cell ids per process
@@ -656,39 +658,39 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
                              SCATTER_FORWARD,ierr)
         endif
       
-  104 format(i9,': ',3es21.13) 
+104 format(i9,': ',3es21.13) 
 
         ! natural cell ids
-        if (associated(regression%natural_cell_ids)) then
-          call VecGetArrayF90(x_vel_natural,vec_ptr,ierr)
-          call VecGetArrayF90(y_vel_natural,y_ptr,ierr)
-          call VecGetArrayF90(z_vel_natural,z_ptr,ierr)
-          if (option%myrank == option%io_rank) then
-            do i = 1, size(regression%natural_cell_ids)
-              write(OUTPUT_UNIT,104) &
-                regression%natural_cell_ids(i),vec_ptr(i),y_ptr(i),z_ptr(i)
-            enddo
+        if (option%myrank == option%io_rank) then
+          if (associated(regression%natural_cell_ids)) then
+            if (size(regression%natural_cell_ids) > 0) then
+              call VecGetArrayF90(x_vel_natural,vec_ptr,ierr)
+              call VecGetArrayF90(y_vel_natural,y_ptr,ierr)
+              call VecGetArrayF90(z_vel_natural,z_ptr,ierr)
+              do i = 1, size(regression%natural_cell_ids)
+                write(OUTPUT_UNIT,104) &
+                  regression%natural_cell_ids(i),vec_ptr(i),y_ptr(i),z_ptr(i)
+              enddo
+              call VecRestoreArrayF90(x_vel_natural,vec_ptr,ierr)
+              call VecRestoreArrayF90(y_vel_natural,y_ptr,ierr)
+              call VecRestoreArrayF90(z_vel_natural,z_ptr,ierr)
+            endif
           endif
-          call VecRestoreArrayF90(x_vel_natural,vec_ptr,ierr)
-          call VecRestoreArrayF90(y_vel_natural,y_ptr,ierr)
-          call VecRestoreArrayF90(z_vel_natural,z_ptr,ierr)
-        endif
       
-        ! cell ids per process
-        if (regression%num_cells_per_process > 0) then
-          call VecGetArrayF90(x_vel_process,vec_ptr,ierr)
-          call VecGetArrayF90(y_vel_process,y_ptr,ierr)
-          call VecGetArrayF90(z_vel_process,z_ptr,ierr)
-          if (option%myrank == option%io_rank) then
+          ! cell ids per process
+          if (regression%num_cells_per_process > 0) then
+            call VecGetArrayF90(x_vel_process,vec_ptr,ierr)
+            call VecGetArrayF90(y_vel_process,y_ptr,ierr)
+            call VecGetArrayF90(z_vel_process,z_ptr,ierr)
             do i = 1, regression%num_cells_per_process*option%mycommsize
               write(OUTPUT_UNIT,104) &
                 regression%cells_per_process_natural_ids(i),vec_ptr(i), &
                   y_ptr(i),z_ptr(i)
             enddo
+            call VecRestoreArrayF90(x_vel_process,vec_ptr,ierr)
+            call VecRestoreArrayF90(y_vel_process,y_ptr,ierr)
+            call VecRestoreArrayF90(z_vel_process,z_ptr,ierr)
           endif
-          call VecRestoreArrayF90(x_vel_process,vec_ptr,ierr)
-          call VecRestoreArrayF90(y_vel_process,y_ptr,ierr)
-          call VecRestoreArrayF90(z_vel_process,z_ptr,ierr)
         endif
       endif
     enddo

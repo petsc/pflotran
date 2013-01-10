@@ -104,7 +104,7 @@ end subroutine THCSetup
   
 ! ************************************************************************** !
 !
-! THCSetupPatch: Creates arrays for auxilliary variables
+! THCSetupPatch: Creates arrays for auxiliary variables
 ! author: ???
 ! date: 02/22/08
 !
@@ -222,7 +222,11 @@ subroutine THCSetupPatch(realization)
         realization%material_property_array(1)%ptr%secondary_continuum_aperture
       thc_sec_heat_vars(ghosted_id)%epsilon = &
         realization%material_property_array(1)%ptr%secondary_continuum_epsilon
-
+      thc_sec_heat_vars(ghosted_id)%log_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_log_spacing
+      thc_sec_heat_vars(ghosted_id)%outer_spacing = &
+        realization%material_property_array(1)%ptr%secondary_continuum_outer_spacing
+                
       allocate(thc_sec_heat_vars(ghosted_id)%area(thc_sec_heat_vars(ghosted_id)%ncells))
       allocate(thc_sec_heat_vars(ghosted_id)%vol(thc_sec_heat_vars(ghosted_id)%ncells))
       allocate(thc_sec_heat_vars(ghosted_id)%dm_minus(thc_sec_heat_vars(ghosted_id)%ncells))
@@ -236,6 +240,8 @@ subroutine THCSetupPatch(realization)
                                   thc_sec_heat_vars(ghosted_id)%dm_plus, &
                                   thc_sec_heat_vars(ghosted_id)%aperture, &
                                   thc_sec_heat_vars(ghosted_id)%epsilon, &
+                                  thc_sec_heat_vars(ghosted_id)%log_spacing, &
+                                  thc_sec_heat_vars(ghosted_id)%outer_spacing, &
                                   area_per_vol,option)
                                 
       thc_sec_heat_vars(ghosted_id)%interfacial_area = area_per_vol* &
@@ -782,7 +788,7 @@ end subroutine THCUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVars: Updates the auxilliary variables associated with 
+! THCUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the THC problem
 ! author: ???
 ! date: 12/10/07
@@ -816,7 +822,7 @@ end subroutine THCUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! THCUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the THC problem
 ! author: ???
 ! date: 12/10/07

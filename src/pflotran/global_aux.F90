@@ -28,6 +28,7 @@ module Global_Aux_module
     PetscReal, pointer :: reaction_rate_store(:)
 !   PetscReal, pointer :: reaction_rate_store(:,:)
     PetscReal, pointer :: displacement(:)
+    PetscReal, pointer :: dphi(:,:)
   end type global_auxvar_type
   
   type, public :: global_type
@@ -51,7 +52,7 @@ contains
 
 ! ************************************************************************** !
 !
-! GlobalAuxCreate: Allocate and initialize auxilliary object
+! GlobalAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -80,7 +81,7 @@ end function GlobalAuxCreate
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarInit: Initialize auxilliary object
+! GlobalAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -112,6 +113,8 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%den_kg_store = 0.d0
   allocate(aux_var%displacement(THREE_INTEGER))
   aux_var%displacement = 0.d0
+  allocate(aux_var%dphi(option%nphase,THREE_INTEGER))
+  aux_var%dphi = 0.d0
 
   select case(option%iflowmode)
     case(IMS_MODE, MPH_MODE, FLASH2_MODE)
@@ -198,7 +201,7 @@ end subroutine GlobalAuxVarInit
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarCopy: Copies an auxilliary variable
+! GlobalAuxVarCopy: Copies an auxiliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -221,6 +224,7 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
   aux_var2%displacement = aux_var%displacement
+!  aux_var2%dphi = aux_var%dphi
   
   if (associated(aux_var%reaction_rate) .and. &
       associated(aux_var2%reaction_rate)) then
@@ -272,7 +276,7 @@ end subroutine GlobalAuxVarCopy
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarSingleDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -287,13 +291,13 @@ subroutine GlobalAuxVarSingleDestroy(aux_var)
     call GlobalAuxVarStrip(aux_var)
     deallocate(aux_var)
   endif
-  nullify(aux_var)  
+  nullify(aux_var)
 
 end subroutine GlobalAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarArrayDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarArrayDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -312,65 +316,51 @@ subroutine GlobalAuxVarArrayDestroy(aux_vars)
     enddo  
     deallocate(aux_vars)
   endif
-  nullify(aux_vars)  
+  nullify(aux_vars)
 
 end subroutine GlobalAuxVarArrayDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarStrip: Deallocates all members of single auxilliary object
+! GlobalAuxVarStrip: Deallocates all members of single auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
 ! ************************************************************************** !
 subroutine GlobalAuxVarStrip(aux_var)
 
+  use Utility_module, only: DeallocateArray
+
   implicit none
 
   type(global_auxvar_type) :: aux_var
   
-  if (associated(aux_var%pres)) deallocate(aux_var%pres)
-  nullify(aux_var%pres)
-  if (associated(aux_var%temp)) deallocate(aux_var%temp)
-  nullify(aux_var%temp)
-  if (associated(aux_var%sat)) deallocate(aux_var%sat)
-  nullify(aux_var%sat)
-  if (associated(aux_var%den)) deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%fugacoeff)) deallocate(aux_var%fugacoeff)
-  nullify(aux_var%fugacoeff)
-  if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
-  nullify(aux_var%den_kg)
-  if (associated(aux_var%m_nacl)) deallocate(aux_var%m_nacl)
-  nullify(aux_var%m_nacl)
-  if (associated(aux_var%xmass)) deallocate(aux_var%xmass)
-  nullify(aux_var%xmass)
-  if (associated(aux_var%reaction_rate)) deallocate(aux_var%reaction_rate)
-  nullify(aux_var%reaction_rate)
-  if (associated(aux_var%displacement)) deallocate(aux_var%displacement)
-  nullify(aux_var%displacement)
+  call DeallocateArray(aux_var%pres)
+  call DeallocateArray(aux_var%temp)
+  call DeallocateArray(aux_var%sat)
+  call DeallocateArray(aux_var%den)
+  call DeallocateArray(aux_var%fugacoeff)
+  call DeallocateArray(aux_var%den_kg)
+  call DeallocateArray(aux_var%m_nacl)
+  call DeallocateArray(aux_var%xmass)
+  call DeallocateArray(aux_var%reaction_rate)
+  call DeallocateArray(aux_var%displacement)
+  call DeallocateArray(aux_var%dphi)
 
-  if (associated(aux_var%pres_store)) deallocate(aux_var%pres_store)
-  nullify(aux_var%pres_store)
-  if (associated(aux_var%temp_store)) deallocate(aux_var%temp_store)
-  nullify(aux_var%temp_store)
-  if (associated(aux_var%fugacoeff_store)) deallocate(aux_var%fugacoeff_store)
-  nullify(aux_var%fugacoeff_store)
-  if (associated(aux_var%sat_store)) deallocate(aux_var%sat_store)
-  nullify(aux_var%sat_store)
-  if (associated(aux_var%den_kg_store)) deallocate(aux_var%den_kg_store)
-  nullify(aux_var%den_kg_store)
+  call DeallocateArray(aux_var%pres_store)
+  call DeallocateArray(aux_var%temp_store)
+  call DeallocateArray(aux_var%fugacoeff_store)
+  call DeallocateArray(aux_var%sat_store)
+  call DeallocateArray(aux_var%den_kg_store)
   
-  if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
-  nullify(aux_var%mass_balance)
-  if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
-  nullify(aux_var%mass_balance_delta)
+  call DeallocateArray(aux_var%mass_balance)
+  call DeallocateArray(aux_var%mass_balance_delta)
 
 end subroutine GlobalAuxVarStrip
 
 ! ************************************************************************** !
 !
-! GlobalAuxDestroy: Deallocates a mode auxilliary object
+! GlobalAuxDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

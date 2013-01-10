@@ -244,7 +244,7 @@ end subroutine LevelInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! LevelUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! LevelUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08
@@ -273,7 +273,7 @@ end subroutine LevelUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! LevelUpdateCouplerAuxVars: Updates auxilliary variables associated 
+! LevelUpdateCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08

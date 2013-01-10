@@ -314,7 +314,7 @@ END  \bluecomment{! <-- closes out FLUID\_PROPERTY card}
     \item Three primary species: \hion, \bicarbonate and \calcium
     \item Six secondary aqueous complexes: \hydroxide, \carbonate, \cotwo, CaCO$_3$(aq), CaHCO$_3^+$, and CaOH$^+$
     \item One mineral: Calcite
-    \item A kinetic rate for Calcite dissolution: 1.e-12 [1/s]
+    \item A kinetic rate for Calcite dissolution: 1.e-6 [mol/m^2-sec]
     \item The name of a database for species parameters (e.g. molecular weight, charge) and equilibrium constants
   \end{itemize}
 \end{itemize}
@@ -354,7 +354,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite       \bluecomment{! Note: mineral name opens block}
-      RATE_CONSTANT 1.d-12  \bluecomment{! SI units}
+      RATE_CONSTANT 1.d-6 mol/m^2-sec 
     /
   /
 \end{semiverbatim}
@@ -388,19 +388,20 @@ END
 
 \begin{semiverbatim}
 
-CONSTRAINT initial      \bluecomment{! define a constraint: \greencomment{initial}}
+CONSTRAINT initial_constraint \bluecomment{! named: \greencomment{initial_constraint}}
   CONCENTRATIONS           \bluecomment{! concentration block}
     H+     1.d-8      F    \bluecomment{! \redcomment{F} = free ion}
     HCO3-  1.d-3      G  CO2(g) \bluecomment{! \redcomment{G} = equil. w/ gas}
     Ca++   5.d-4      M  Calcite \bluecomment{! \redcomment{M} = equil. w/ mineral}
   /  \bluecomment{    ! ^^^^^ \redcomment{5.e-4} is a guess}
   MINERALS               \bluecomment{! mineral block}
-    Calcite 1.d-5 1.d0   \bluecomment{! vol. frac. = \redcomment{1.e-5}; area = \redcomment{1.}}
+            \bluecomment{! vol. frac. = \redcomment{1.e-5}; area = \redcomment{1.}}
+    Calcite 1.d-5 1.d0 m^2/m^3  
   /  \bluecomment{! <-- closes out MINERAL block}
 END  \bluecomment{! <-- closes out CONSTRAINT card}
 
 \newpage
-CONSTRAINT inlet         \bluecomment{! define a constraint: \greencomment{inlet}}
+CONSTRAINT inlet_constraint \bluecomment{! named: \greencomment{inlet_constraint}}
   CONCENTRATIONS
     H+     5.         P  \bluecomment{! \redcomment{P} = pH; analogous to -log(F)}
     HCO3-  1.d-3      T  \bluecomment{! \redcomment{T} = total component}
@@ -421,17 +422,18 @@ END
   \item Couple transport constraints with transport conditions
 \end{itemize}
 \begin{semiverbatim}
-TRANSPORT_CONDITION initial  \bluecomment{! named \greencomment{initial}}
+TRANSPORT_CONDITION background_conc \bluecomment{! named \greencomment{background...}}
   TYPE zero_gradient       \bluecomment{! this is a \redcomment{zero gradient} bc}
   CONSTRAINT_LIST          \bluecomment{! list of constraints}
-    0.d0 initial  \bluecomment{! start constraint \redcomment{initial} @ time = \redcomment{0.}}
+    \bluecomment{! start constraint \redcomment{initial_constraint} @ time = \redcomment{0.}}
+    0.d0 initial_constraint  
   /  \bluecomment{! <-- closes out CONSTRAINT\_LIST block}
 END  \bluecomment{! <-- closes out TRANSPORT\_CONDITION block}
 
-TRANSPORT_CONDITION inlet    \bluecomment{! named \greencomment{inlet}}
+TRANSPORT_CONDITION inlet_conc  \bluecomment{! named \greencomment{inlet_conc}}
   TYPE dirichlet_zero_gradient  \bluecomment{! \redcomment{dirichlet_zero_gradient}}
-  CONSTRAINT_LIST                 \bluecomment{! inflow = Dirichlet}
-    0.d0 inlet                    \bluecomment{! outflow = zero grad.}
+  CONSTRAINT_LIST               \bluecomment{! inflow = Dirichlet}
+    0.d0 inlet_constraint       \bluecomment{! outflow = zero grad.}
   /    \bluecomment{! ^^^^^ constraint and transport condition}
 END    \bluecomment{!         names need not match}
 
@@ -472,7 +474,7 @@ END
 \begin{semiverbatim}
 
 INITIAL_CONDITION               \bluecomment{! notice no name}
-  TRANSPORT_CONDITION initial
+  TRANSPORT_CONDITION background_conc
   REGION all
 END
 
@@ -486,19 +488,19 @@ END
 \begin{frame}[fragile]\frametitle{BOUNDARY\_CONDITION}
 
 \begin{itemize}
-\item Couple the \greencomment{inlet} transport condition with region \greencomment{west} for the \redcomment{inlet} boundary condition.
-\item Couple the \greencomment{initial} transport condition with region \greencomment{east} for the \redcomment{outlet} boundary condition.
+\item Couple the \greencomment{inlet\_conc} transport condition with region \greencomment{west} for the \redcomment{inlet} boundary condition.
+\item Couple the \greencomment{background\_conc} transport condition with region \greencomment{east} for the \redcomment{outlet} boundary condition.
 \end{itemize}
 
 \begin{semiverbatim}
 
-BOUNDARY_CONDITION outlet      \bluecomment{! name is optional,}
-  TRANSPORT_CONDITION initial  \bluecomment{!   but recommended}
+BOUNDARY_CONDITION outlet             \bluecomment{! name is optional,}
+  TRANSPORT_CONDITION background_conc \bluecomment{!   but recommended}
   REGION east
 END
 
 BOUNDARY_CONDITION inlet
-  TRANSPORT_CONDITION inlet
+  TRANSPORT_CONDITION inlet_conc
   REGION west
 END
 
@@ -695,14 +697,14 @@ END
 \end{itemize}
 
 \begin{semiverbatim}
-FLOW_CONDITION initial   \bluecomment{! named \greencomment{initial}}
+FLOW_CONDITION initial_pressure \bluecomment{! named \greencomment{initial_pressure}}
   TYPE
     PRESSURE dirichlet   \bluecomment{! type is \redcomment{dirichlet} for pressure}
   /                      \bluecomment{!   (constant pressure [Pa])}
   PRESSURE 201325.d0     \bluecomment{! greater than atmospheric}
 END                      \bluecomment{!   to ensure saturation}
 
-FLOW_CONDITION inlet      \bluecomment{! named \greencomment{inlet}}
+FLOW_CONDITION inlet_flux \bluecomment{! named \greencomment{inlet_flux}}
   TYPE
     FLUX neumann          \bluecomment{! type is \redcomment{neumann} for a flux}
   /
@@ -747,10 +749,10 @@ END                            \bluecomment{!   function}
 \begin{semiverbatim}
 
 INITIAL_CONDITION              \bluecomment{! flow and transport} 
-  \magentacomment{FLOW_CONDITION initial}       \bluecomment{!   conditions can share}
-  TRANSPORT_CONDITION initial  \bluecomment{!   the same name, but}
-  REGION all                   \bluecomment{!   are considered}
-END                            \bluecomment{!   independent.}
+  \magentacomment{FLOW_CONDITION initial_pressure}
+  TRANSPORT_CONDITION background_conc
+  REGION all
+END
  
 \end{semiverbatim}
 
@@ -762,21 +764,21 @@ END                            \bluecomment{!   independent.}
 \begin{frame}[fragile]\frametitle{BOUNDARY\_CONDITION}
 
 \begin{itemize}
-\item Add the \greencomment{inlet} flow condition to the \redcomment{inlet} boundary condition.
-\item Add the \greencomment{initial} flow condition to the \redcomment{outlet} boundary condition.
+\item Add the \greencomment{inlet\_flux} flow condition to the \redcomment{inlet} boundary condition.
+\item Add the \greencomment{initial\_pressure} flow condition to the \redcomment{outlet} boundary condition.
 \end{itemize}
 
 \begin{semiverbatim}
 
 BOUNDARY_CONDITION outlet      
-  \magentacomment{FLOW_CONDITION initial}
-  TRANSPORT_CONDITION initial 
+  \magentacomment{FLOW_CONDITION initial_pressure}
+  TRANSPORT_CONDITION background_conc 
   REGION east
 END
 
 BOUNDARY_CONDITION inlet
-  \magentacomment{FLOW_CONDITION inlet}
-  TRANSPORT_CONDITION inlet
+  \magentacomment{FLOW_CONDITION inlet_flux}
+  TRANSPORT_CONDITION inlet_conc
   REGION west
 END
 
@@ -926,7 +928,7 @@ END}
 \end{itemize}
 
 \begin{semiverbatim}
-FLOW_CONDITION initial
+FLOW_CONDITION initial_pressure
   TYPE
     PRESSURE \magentacomment{hydrostatic}    \bluecomment{! pressure as a function}
   /                         \bluecomment{!   of elevation}
@@ -958,14 +960,14 @@ END
 \begin{semiverbatim}
 
 BOUNDARY_CONDITION outlet
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
+  FLOW_CONDITION initial_pressure
+  TRANSPORT_CONDITION background_conc
   REGION \magentacomment{bottom}
 END
 
 BOUNDARY_CONDITION inlet
   FLOW_CONDITION \magentacomment{recharge}
-  TRANSPORT_CONDITION inlet
+  TRANSPORT_CONDITION inlet_conc
   REGION \magentacomment{top}
 END
 \end{semiverbatim}

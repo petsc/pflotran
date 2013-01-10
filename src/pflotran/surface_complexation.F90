@@ -14,6 +14,7 @@ module Surface_Complexation_module
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
   public :: SurfaceComplexationRead, &
+            SrfCplxProcessConstraint, &
             RTotalSorbEqSurfCplx, &
             RMultiRateSorption, &
             RKineticSurfCplx, &
@@ -349,6 +350,74 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   nullify(srfcplx_rxn)
 
 end subroutine SurfaceComplexationRead
+
+! ************************************************************************** !
+!
+! SrfCplxProcessConstraint: Initializes constraints based on surface complex
+!                           species in system
+! author: Glenn Hammond
+! date: 01/07/13
+!
+! ************************************************************************** !
+subroutine SrfCplxProcessConstraint(surface_complexation,constraint_name, &
+                                    constraint,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Utility_module  
+  
+  implicit none
+  
+  type(surface_complexation_type), pointer :: surface_complexation
+  character(len=MAXWORDLENGTH) :: constraint_name
+  type(srfcplx_constraint_type), pointer :: constraint
+  type(option_type) :: option
+  
+  PetscBool :: found
+  PetscInt :: isrfcplx, jsrfcplx
+  
+  character(len=MAXWORDLENGTH) :: srfcplx_name(surface_complexation%nkinsrfcplx)
+  PetscReal :: constraint_conc(surface_complexation%nkinsrfcplx)
+  
+  if (.not.associated(constraint)) return
+
+  if (surface_complexation%nkinsrfcplx == 0) then
+    option%io_buffer = 'Surface complexation specified in constraint "' // &
+      trim(constraint_name) // '" requires that kinetic surface ' // &
+      'complexation be defined in the CHEMISTRY section.'
+    call printErrMsg(option)
+  endif
+  
+  srfcplx_name = ''
+  do isrfcplx = 1, surface_complexation%nkinsrfcplx
+    found = PETSC_FALSE
+    do jsrfcplx = 1, surface_complexation%nkinsrfcplx
+      if (StringCompare(constraint%names(isrfcplx), &
+                        surface_complexation%srfcplx_names(&
+                          !TODO(geh): fix 0 index
+                        surface_complexation%kinsrfcplx_to_name(jsrfcplx,0)), &
+                        MAXWORDLENGTH)) then
+        found = PETSC_TRUE
+        exit
+      endif
+    enddo
+    if (.not.found) then
+      option%io_buffer = &
+                'Surface complex ' // trim(constraint%names(isrfcplx)) // &
+                'from CONSTRAINT ' // trim(constraint_name) // &
+                ' not found among kinetic surface complexes.'
+      call printErrMsg(option)
+    else
+      constraint_conc(jsrfcplx) = &
+        constraint%constraint_conc(isrfcplx)
+      srfcplx_name(jsrfcplx) = constraint%names(isrfcplx)
+    endif  
+  enddo
+  constraint%names = srfcplx_name
+  constraint%constraint_conc = constraint_conc
+  
+end subroutine SrfCplxProcessConstraint
 
 ! ************************************************************************** !
 !

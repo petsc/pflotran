@@ -57,8 +57,6 @@ module Mineral_Aux_module
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_vol_frac(:)
     PetscReal, pointer :: constraint_area(:)
-    PetscReal, pointer :: basis_vol_frac(:)
-    PetscReal, pointer :: basis_area(:)
     character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
     PetscBool, pointer :: external_dataset(:)
   end type mineral_constraint_type
@@ -333,10 +331,6 @@ function MineralConstraintCreate(mineral,option)
   constraint%constraint_vol_frac = 0.d0
   allocate(constraint%constraint_area(mineral%nkinmnrl))
   constraint%constraint_area = 0.d0
-  allocate(constraint%basis_vol_frac(mineral%nkinmnrl))
-  constraint%basis_vol_frac = 0.d0
-  allocate(constraint%basis_area(mineral%nkinmnrl))
-  constraint%basis_area = 0.d0
   allocate(constraint%constraint_aux_string(mineral%nkinmnrl))
   constraint%constraint_aux_string = ''
   allocate(constraint%external_dataset(mineral%nkinmnrl))
@@ -539,36 +533,19 @@ end subroutine TSPrefactorSpeciesDestroy
 ! ************************************************************************** !
 subroutine MineralConstraintDestroy(constraint)
 
+  use Utility_module, only: DeallocateArray
+  
   implicit none
   
   type(mineral_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
   
-  if (associated(constraint%names)) &
-    deallocate(constraint%names)
-  nullify(constraint%names)
-  if (associated(constraint%constraint_vol_frac)) &
-    deallocate(constraint%constraint_vol_frac)
-  nullify(constraint%constraint_vol_frac)
-  if (associated(constraint%constraint_area)) &
-    deallocate(constraint%constraint_area)
-  nullify(constraint%constraint_area)
-  if (associated(constraint%basis_vol_frac)) &
-    deallocate(constraint%basis_vol_frac)
-  nullify(constraint%basis_vol_frac)
-  if (associated(constraint%basis_area)) &
-    deallocate(constraint%basis_area)
-  nullify(constraint%basis_area)
-  if (associated(constraint%constraint_aux_string)) &
-    deallocate(constraint%constraint_aux_string)
-  nullify(constraint%constraint_aux_string)
-  if (associated(constraint%constraint_aux_string)) &
-    deallocate(constraint%constraint_aux_string)
-  nullify(constraint%constraint_aux_string)
-  if (associated(constraint%external_dataset)) &
-    deallocate(constraint%external_dataset)
-  nullify(constraint%external_dataset)
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_vol_frac)
+  call DeallocateArray(constraint%constraint_area)
+  call DeallocateArray(constraint%constraint_aux_string)
+  call DeallocateArray(constraint%external_dataset)
 
   deallocate(constraint)
   nullify(constraint)

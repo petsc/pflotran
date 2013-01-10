@@ -7,9 +7,6 @@ module Realization_module
   use Condition_module
   use Constraint_module
   use Material_module
-#ifdef SUBCONTINUUM_MODEL
-  use Subcontinuum_module
-#endif
   use Saturation_Function_module
   use Dataset_Aux_module
   use Fluid_module
@@ -55,11 +52,6 @@ private
     
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
-#ifdef SUBCONTINUUM_MODEL
-    type(subcontinuum_property_type), pointer :: subcontinuum_properties
-    type(subcontinuum_property_ptr_type), pointer ::  &
-                               subcontinuum_property_array(:)
-#endif
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
@@ -97,7 +89,6 @@ private
             RealizationPrintCouplers, &
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
-            RealProcessSubcontinuumProp, &
             RealProcessFluidProperties, &
             RealizationUpdateProperties, &
             RealizationCountCells, &
@@ -173,10 +164,6 @@ function RealizationCreate2(option)
 
   nullify(realization%material_properties)
   nullify(realization%material_property_array)
-#ifdef SUBCONTINUUM_MODEL
-  nullify(realization%subcontinuum_properties)
-  nullify(realization%subcontinuum_property_array)
-#endif
   nullify(realization%fluid_properties)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
@@ -213,6 +200,9 @@ subroutine RealizationCreateDiscretization(realization)
   
   implicit none
   
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(realization_type) :: realization
   
   type(discretization_type), pointer :: discretization
@@ -226,7 +216,7 @@ subroutine RealizationCreateDiscretization(realization)
   PetscOffset :: i_da
   PetscReal, pointer :: real_tmp(:)
   type(dm_ptr_type), pointer :: dm_ptr
-
+  Vec :: is_bnd_vec
 
 
   option => realization%option
@@ -392,7 +382,14 @@ subroutine RealizationCreateDiscretization(realization)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       end if
-      if (discretization%lsm_flux_method) call GridComputeNeighbors(grid,option)
+      if (discretization%lsm_flux_method) then
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                          is_bnd_vec)
+        call GridComputeNeighbors(grid,field%work_loc,option)
+        call DiscretizationLocalToLocal(discretization,field%work_loc,is_bnd_vec,ONEDOF)
+        call GridSaveBoundaryCellInfo(discretization%grid,is_bnd_vec,option)
+        call VecDestroy(is_bnd_vec,ierr)
+      endif
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -781,7 +778,7 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationProcessConditions: Sets up auxilliary data associated with 
+! RealizationProcessConditions: Sets up auxiliary data associated with 
 !                               conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -809,7 +806,7 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxilliary arrays
+!                               and saturation function, auxiliary arrays
 !                               and datasets
 ! author: Glenn Hammond
 ! date: 01/21/09, 01/12/11
@@ -887,72 +884,6 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
   
 end subroutine RealProcessMatPropAndSatFunc
-
-
-! *********************************************************************** !
-!
-! RealProcessSubcontinuumProp: Sets up linkeage between material properties
-!                         and subcontinuum properties and auxilliary arrays
-! author: Jitendra Kumar 
-! date: 10/07/2010 
-!
-! *********************************************************************** !
-subroutine RealProcessSubcontinuumProp(realization)
-
-  use String_module
-  
-  implicit none
-  type(realization_type) :: realization
-#ifdef SUBCONTINUUM_MODEL 
-  
-  PetscBool :: found
-  PetscInt :: i
-  type(option_type), pointer :: option
-  type(material_property_type), pointer :: cur_material_property
-  type(subcontinuum_property_type), pointer :: cur_subcontinuum_property
-  
-  option => realization%option
-  
-  ! organize lists
-  call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array)
-  call SubcontinuumPropConvertListToArray(realization%subcontinuum_properties, &
-                                     realization%subcontinuum_properties_array, &
-                                     option) 
-    
-  cur_material_property => realization%material_properties                            
-  do                                      
-    if (.not.associated(cur_material_property)) exit
-    found = PETSC_FALSE
-    cur_subcontinuum_property => realization%subcontinuum_properties
-    do 
-      if (.not.associated(cur_subcontinuum_property)) exit
-      do i=1,cur_material_property%subcontinuum_type_count
-        if (StringCompare(cur_material_property%subcontinuum_type_name(i), &
-                        cur_subcontinuum_property%name,MAXWORDLENGTH)) then
-          found = PETSC_TRUE
-          cur_material_property%subcontinuum_property_id(i) = &
-            cur_subcontinuum_property%id
-          exit
-        endif
-        ! START TODO(jitu): check if this error check block is at right place. might have
-        ! to push it to upper do loop: Jitu 10/07/2010 
-        if (.not.found) then
-          option%io_buffer = 'Saturation function "' // &
-               trim(cur_material_property%subcontinuum_type_name(i)) // &
-               '" in material property "' // &
-               trim(cur_material_property%name) // &
-               '" not found among available subcontinuum types.'
-          call printErrMsg(realization%option)    
-        endif
-        ! END TODO(jitu)
-      enddo  
-      cur_subcontinuum_property => cur_subcontinuum_property%next
-    enddo
-    cur_material_property => cur_material_property%next
-  enddo
-#endif 
-end subroutine RealProcessSubcontinuumProp
 
 ! ************************************************************************** !
 !
@@ -1085,7 +1016,7 @@ end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
 !
-! RealProcessTranConditions: Sets up auxilliary data associated with 
+! RealProcessTranConditions: Sets up auxiliary data associated with 
 !                            transport conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -1143,6 +1074,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
+                                   cur_constraint%biomass, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -1166,6 +1098,7 @@ subroutine RealProcessTranConditions(realization)
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
+            cur_constraint_coupler%biomass => cur_constraint%biomass
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1399,7 +1332,7 @@ end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08
