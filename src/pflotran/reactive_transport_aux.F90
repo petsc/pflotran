@@ -700,7 +700,7 @@ subroutine RTAuxVarArrayDestroy(aux_vars)
     enddo  
     deallocate(aux_vars)
   endif
-  nullify(aux_vars)  
+  nullify(aux_vars)
 
 end subroutine RTAuxVarArrayDestroy
   
@@ -719,8 +719,8 @@ subroutine RTAuxVarStrip(aux_var)
 
   type(reactive_transport_auxvar_type) :: aux_var
   
-  call DeallocateArray(aux_var%pri_molal)  
-  call DeallocateArray(aux_var%total)  
+  call DeallocateArray(aux_var%pri_molal)
+  call DeallocateArray(aux_var%total)
   
   call MatrixBlockAuxVarDestroy(aux_var%aqueous)
 
@@ -812,7 +812,7 @@ subroutine RTAuxDestroy(aux)
 #endif
 
   deallocate(aux)
-  nullify(aux)  
+  nullify(aux)
 
   end subroutine RTAuxDestroy
 

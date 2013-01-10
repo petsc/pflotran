@@ -291,7 +291,7 @@ subroutine GlobalAuxVarSingleDestroy(aux_var)
     call GlobalAuxVarStrip(aux_var)
     deallocate(aux_var)
   endif
-  nullify(aux_var)  
+  nullify(aux_var)
 
 end subroutine GlobalAuxVarSingleDestroy
   
@@ -316,7 +316,7 @@ subroutine GlobalAuxVarArrayDestroy(aux_vars)
     enddo  
     deallocate(aux_vars)
   endif
-  nullify(aux_vars)  
+  nullify(aux_vars)
 
 end subroutine GlobalAuxVarArrayDestroy
   
@@ -329,48 +329,32 @@ end subroutine GlobalAuxVarArrayDestroy
 ! ************************************************************************** !
 subroutine GlobalAuxVarStrip(aux_var)
 
+  use Utility_module, only: DeallocateArray
+
   implicit none
 
   type(global_auxvar_type) :: aux_var
   
-  if (associated(aux_var%pres)) deallocate(aux_var%pres)
-  nullify(aux_var%pres)
-  if (associated(aux_var%temp)) deallocate(aux_var%temp)
-  nullify(aux_var%temp)
-  if (associated(aux_var%sat)) deallocate(aux_var%sat)
-  nullify(aux_var%sat)
-  if (associated(aux_var%den)) deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%fugacoeff)) deallocate(aux_var%fugacoeff)
-  nullify(aux_var%fugacoeff)
-  if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
-  nullify(aux_var%den_kg)
-  if (associated(aux_var%m_nacl)) deallocate(aux_var%m_nacl)
-  nullify(aux_var%m_nacl)
-  if (associated(aux_var%xmass)) deallocate(aux_var%xmass)
-  nullify(aux_var%xmass)
-  if (associated(aux_var%reaction_rate)) deallocate(aux_var%reaction_rate)
-  nullify(aux_var%reaction_rate)
-  if (associated(aux_var%displacement)) deallocate(aux_var%displacement)
-  nullify(aux_var%displacement)
-  if (associated(aux_var%dphi)) deallocate(aux_var%dphi)
-  nullify(aux_var%dphi)
+  call DeallocateArray(aux_var%pres)
+  call DeallocateArray(aux_var%temp)
+  call DeallocateArray(aux_var%sat)
+  call DeallocateArray(aux_var%den)
+  call DeallocateArray(aux_var%fugacoeff)
+  call DeallocateArray(aux_var%den_kg)
+  call DeallocateArray(aux_var%m_nacl)
+  call DeallocateArray(aux_var%xmass)
+  call DeallocateArray(aux_var%reaction_rate)
+  call DeallocateArray(aux_var%displacement)
+  call DeallocateArray(aux_var%dphi)
 
-  if (associated(aux_var%pres_store)) deallocate(aux_var%pres_store)
-  nullify(aux_var%pres_store)
-  if (associated(aux_var%temp_store)) deallocate(aux_var%temp_store)
-  nullify(aux_var%temp_store)
-  if (associated(aux_var%fugacoeff_store)) deallocate(aux_var%fugacoeff_store)
-  nullify(aux_var%fugacoeff_store)
-  if (associated(aux_var%sat_store)) deallocate(aux_var%sat_store)
-  nullify(aux_var%sat_store)
-  if (associated(aux_var%den_kg_store)) deallocate(aux_var%den_kg_store)
-  nullify(aux_var%den_kg_store)
+  call DeallocateArray(aux_var%pres_store)
+  call DeallocateArray(aux_var%temp_store)
+  call DeallocateArray(aux_var%fugacoeff_store)
+  call DeallocateArray(aux_var%sat_store)
+  call DeallocateArray(aux_var%den_kg_store)
   
-  if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
-  nullify(aux_var%mass_balance)
-  if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
-  nullify(aux_var%mass_balance_delta)
+  call DeallocateArray(aux_var%mass_balance)
+  call DeallocateArray(aux_var%mass_balance_delta)
 
 end subroutine GlobalAuxVarStrip
 

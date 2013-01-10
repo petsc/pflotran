@@ -9,7 +9,8 @@ module Microbial_module
 #include "definitions.h"
 
   public :: MicrobialRead, &
-            RMicrobial
+            RMicrobial, &
+            MicrobialProcessConstraint
 
 contains
 
@@ -180,6 +181,73 @@ subroutine MicrobialBiomassRead(microbial,input,option)
   enddo
 
 end subroutine MicrobialBiomassRead
+
+! ************************************************************************** !
+!
+! MicrobialProcessConstraint: Initializes constraints based on biomass
+!                             species in system
+! author: Glenn Hammond
+! date: 01/07/13
+!
+! ************************************************************************** !
+subroutine MicrobialProcessConstraint(microbial,constraint_name, &
+                                      constraint,option)
+  use Option_module
+  use Input_module
+  use String_module
+  use Utility_module  
+  
+  implicit none
+  
+  type(microbial_type), pointer :: microbial
+  character(len=MAXWORDLENGTH) :: constraint_name
+  type(biomass_constraint_type), pointer :: constraint
+  type(option_type) :: option
+  
+  PetscBool :: found
+  PetscInt :: ibiomass, jbiomass
+  
+  character(len=MAXWORDLENGTH) :: biomass_name(microbial%nbiomass)
+  character(len=MAXWORDLENGTH) :: constraint_aux_string(microbial%nbiomass)
+  PetscReal :: constraint_conc(microbial%nbiomass)
+  PetscBool :: external_dataset(microbial%nbiomass)
+  
+  if (.not.associated(constraint)) return
+  
+  biomass_name = ''
+  constraint_aux_string = ''
+  external_dataset = PETSC_FALSE
+  do ibiomass = 1, microbial%nbiomass
+    found = PETSC_FALSE
+    do jbiomass = 1, microbial%nbiomass
+      if (StringCompare(constraint%names(ibiomass), &
+                        microbial%biomass_names(jbiomass), &
+                        MAXWORDLENGTH)) then
+        found = PETSC_TRUE
+        exit
+      endif
+    enddo
+    if (.not.found) then
+      option%io_buffer = &
+                'Biomass species "' // trim(constraint%names(ibiomass)) // &
+                '" from CONSTRAINT "' // trim(constraint_name) // &
+                '" not found among biomass species.'
+      call printErrMsg(option)
+    else
+      biomass_name(ibiomass) = constraint%names(ibiomass)
+      constraint_conc(ibiomass) = &
+        constraint%constraint_conc(ibiomass)
+      constraint_aux_string(ibiomass) = &
+        constraint%constraint_aux_string(ibiomass)
+      external_dataset(ibiomass) = constraint%external_dataset(ibiomass)
+    endif  
+  enddo
+  constraint%names = biomass_name
+  constraint%constraint_conc = constraint_conc
+  constraint%constraint_aux_string = constraint_aux_string
+  constraint%external_dataset = external_dataset
+
+end subroutine MicrobialProcessConstraint
 
 ! ************************************************************************** !
 !

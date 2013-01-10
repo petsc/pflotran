@@ -56,18 +56,14 @@ module Microbial_Aux_module
     PetscReal :: yield
   end type biomass_type
   
-  type, public :: microbe_constraint_type
+  type, public :: biomass_constraint_type
     ! Any changes here must be incorporated within ReactionProcessConstraint()
     ! where constraints are reordered
-!TODO(geh): set up constraints for microbial life
     character(len=MAXWORDLENGTH), pointer :: names(:)
-!    PetscReal, pointer :: constraint_vol_frac(:)
-!    PetscReal, pointer :: constraint_area(:)
-!    PetscReal, pointer :: basis_vol_frac(:)
-!    PetscReal, pointer :: basis_area(:)
-!    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
-!    PetscBool, pointer :: external_dataset(:)
-  end type microbe_constraint_type
+    PetscReal, pointer :: constraint_conc(:)
+    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
+    PetscBool, pointer :: external_dataset(:)
+  end type biomass_constraint_type
   
   type, public :: microbial_type
 
@@ -102,9 +98,11 @@ module Microbial_Aux_module
             MicrobialInhibitionCreate, &
             MicrobialBiomassCreate, &
             MicrobialBiomassSpeciesCreate, &
+            MicrobeBiomassConstraintCreate, &
             MicrobialGetMonodCount, &
             MicrobialGetInhibitionCount, &
             MicrobialGetBiomassCount, &
+            MicrobeBiomassConstraintDestroy, &
             MicrobialRxnDestroy, &
             MicrobialDestroy
              
@@ -284,6 +282,40 @@ function MicrobialBiomassSpeciesCreate()
   
 end function MicrobialBiomassSpeciesCreate
 
+! ************************************************************************** !
+!
+! MicrobeBiomassConstraintCreate: Creates a microbial biomass constraint
+!                                 object
+! author: Glenn Hammond
+! date: 01/07/13
+!
+! ************************************************************************** !
+function MicrobeBiomassConstraintCreate(microbial,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(microbial_type) :: microbial
+  type(option_type) :: option
+  type(biomass_constraint_type), pointer :: MicrobeBiomassConstraintCreate
+
+  type(biomass_constraint_type), pointer :: constraint  
+
+  allocate(constraint)
+  allocate(constraint%names(microbial%nbiomass))
+  constraint%names = ''
+  allocate(constraint%constraint_conc(microbial%nbiomass))
+  constraint%constraint_conc = 0.d0
+  allocate(constraint%constraint_aux_string(microbial%nbiomass))
+  constraint%constraint_aux_string = ''
+  allocate(constraint%external_dataset(microbial%nbiomass))
+  constraint%external_dataset = PETSC_FALSE
+
+  MicrobeBiomassConstraintCreate => constraint
+
+end function MicrobeBiomassConstraintCreate
+  
 ! ************************************************************************** !
 !
 ! MicrobialGetMonodCount: Counts number of monod expressions in
@@ -476,6 +508,34 @@ subroutine MicrobialBiomassSpeciesDestroy(species)
   nullify(species)
 
 end subroutine MicrobialBiomassSpeciesDestroy
+
+
+! ************************************************************************** !
+!
+! MicrobeBiomassConstraintDestroy: Destroys a colloid constraint object
+! author: Glenn Hammond
+! date: 03/12/10
+!
+! ************************************************************************** !
+subroutine MicrobeBiomassConstraintDestroy(constraint)
+
+  use Utility_module, only: DeallocateArray
+
+  implicit none
+  
+  type(biomass_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_conc)
+  call DeallocateArray(constraint%constraint_aux_string)
+  call DeallocateArray(constraint%external_dataset)
+  
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine MicrobeBiomassConstraintDestroy
 
 ! ************************************************************************** !
 !

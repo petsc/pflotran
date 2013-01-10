@@ -4028,6 +4028,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
               boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
+              boundary_condition%tran_condition%cur_constraint_coupler%biomass, &
               porosity_loc_p(ghosted_id), &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
