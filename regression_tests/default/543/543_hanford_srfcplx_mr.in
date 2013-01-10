@@ -200,7 +200,7 @@ CHEMISTRY
       /
     /
   /
-  DATABASE ../../../database/hanford.dat
+  DATABASE ../hanford.dat
   LOG_FORMULATION
   ACTIVITY_COEFFICIENTS NEWTON_ITERATION
   MOLAL
@@ -502,17 +502,17 @@ END
 :=========================== transport constraints ============================
 CONSTRAINT groundwater
   CONCENTRATIONS
-    H+       1.d-7            M Calcite
+    H+       2.734d-8         M Calcite
     Ca++     1.20644e-3       T
     Cu++     1.e-8            T
-    Mg++     5.09772e-4       T Dolomite
+    Mg++     5.09772e-4       T !Dolomite
     UO2++    2.4830E-11       T
     K+       1.54789e-4       T
-    Na+      1.03498e-3       Z
+    Na+      1.3344d-3        Z
     HCO3-    2.57305e-3       T
     Cl-      6.97741e-4       T
     F-       2.09491e-5       T
-    HPO4--   1.e-8            M Fluorapatite
+    HPO4--   8.9094d-10       M Fluorapatite
     NO3-     4.69979e-4       T
     SO4--    6.37961e-4       T
     Tracer   1.e-7            F
@@ -526,17 +526,17 @@ END
 
 CONSTRAINT U_source
   CONCENTRATIONS
-    H+       1.d-7            M Calcite
+    H+       2.7316d-8        M Calcite
     Ca++     1.20644e-3       T
     Cu++     1.e-6            T
-    Mg++     5.09772e-4       T Dolomite
+    Mg++     5.09772e-4       T !Dolomite
     UO2++    2.34845e-7       T
     K+       1.54789e-4       T
-    Na+      1.03498e-3       Z
+    Na+      1.3338d-3        Z
     HCO3-    2.57305e-3       T
     Cl-      6.97741e-4       T
     F-       2.09491e-5       T
-    HPO4--   1.e-6            M Fluorapatite
+    HPO4--   8.9056d-10       M Fluorapatite
     NO3-     4.69979e-4       T
     SO4--    6.37961e-4       T
     Tracer   1.e-7            F
@@ -556,7 +556,7 @@ CONSTRAINT river_water
     Mg++     1.82316e-4       T
     UO2++    2.4830E-11       T
     K+       1.905371e-5      T
-    Na+      1.00551e-4       Z
+    Na+      5.1142d-5        Z
     HCO3-    1.127881e-3      T
     Cl-      3.3895e-5        T
     F-       6.23269e-6       T
@@ -570,17 +570,17 @@ END
 
 CONSTRAINT well_tracer
   CONCENTRATIONS
-    H+       1.d-7            M Calcite
+    H+       2.734d-8         M Calcite
     Ca++     1.20644e-3       T
     Cu++     1.e-8            T
-    Mg++     5.09772e-4       T Dolomite
+    Mg++     5.09772e-4       T !Dolomite
     UO2++    2.4830E-11       T
     K+       1.54789e-4       T
     Na+      1.03498e-3       Z
     HCO3-    2.57305e-3       T
     Cl-      6.97741e-4       T
     F-       2.09491e-5       T
-    HPO4--   1.e-8            M Fluorapatite
+    HPO4--   8.9094d-10       M Fluorapatite
     NO3-     4.69979e-4       T
     SO4--    6.37961e-4       T
     Tracer   1.e-7            F
