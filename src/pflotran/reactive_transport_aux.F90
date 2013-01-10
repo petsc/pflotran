@@ -661,7 +661,6 @@ end subroutine RTSecTransportAuxVarCompute
 ! ************************************************************************** !
 !
 ! RTAuxVarSingleDestroy: Deallocates a mode auxiliary object
->>>>>>> other
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
