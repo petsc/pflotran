@@ -1160,8 +1160,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
 
-!geh: I don't believe that we need this at all.
-#if 0  
+  !geh: We do need this setting of mineral volume fractions.  If not specified
+  !     by a dataset, we must set the volume fraction and areas so that
+  !     surface complexation is scaled correctly.  Yes, these will get 
+  !     overwrittent with the same values when called from 
+  !     CondControlAssignTranInitCond(), but big deal.
   if (associated(mineral_constraint)) then
     do imnrl = 1, mineral_reaction%nkinmnrl
       ! if read from a dataset, the mineral volume frac has already been set.
@@ -1173,7 +1176,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       rt_auxvar%mnrl_area(imnrl) = mineral_constraint%constraint_area(imnrl)
     enddo
   endif
-#endif  
 
   if (associated(colloid_constraint)) then      
     colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
