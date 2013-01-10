@@ -89,6 +89,7 @@ function TranConstraintCreate(option)
   nullify(constraint%minerals)
   nullify(constraint%surface_complexes)
   nullify(constraint%colloids)
+  nullify(constraint%biomass)
   nullify(constraint%next)
   constraint%id = 0
   constraint%name = ''
@@ -122,6 +123,7 @@ function TranConstraintCouplerCreate(option)
   nullify(coupler%minerals)
   nullify(coupler%surface_complexes)
   nullify(coupler%colloids)
+  nullify(coupler%biomass)
   
   coupler%num_iterations = 0
   nullify(coupler%rt_auxvar)
