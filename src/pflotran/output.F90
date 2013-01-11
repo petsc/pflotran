@@ -5310,8 +5310,7 @@ subroutine OutputHDF5(realization,var_list_type)
   PetscReal, pointer :: v_ptr
   
   character(len=MAXSTRINGLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: string2
+  character(len=MAXSTRINGLENGTH) :: string,string2,string3
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
@@ -5332,15 +5331,17 @@ subroutine OutputHDF5(realization,var_list_type)
 
   if (realization%discretization%itype == UNSTRUCTURED_GRID) then
     !call OutputHDF5UGrid(realization)
-    call OutputHDF5UGridXDMF(realization)
+    call OutputHDF5UGridXDMF(realization,var_list_type)
     return
   endif
 
   select case (var_list_type)
     case (INST_VARS)
       string2=''
+      write(string3,'(i4)') output_option%plot_number
     case (AVEG_VARS)
       string2='_aveg'
+      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
   end select
 
   if (output_option%print_single_h5_file) then
@@ -5475,6 +5476,7 @@ subroutine OutputHDF5(realization,var_list_type)
   if (len_trim(output_option%plot_name) > 2) then
     string = trim(string) // ' ' // output_option%plot_name
   endif
+  string = trim(string3) // ' ' // trim(string)
 #if defined(PARALLELIO_LIB_WRITE)
   string = trim(string) //CHAR(0)
     ! This opens existing dataset and creates it if needed
@@ -5533,7 +5535,7 @@ subroutine OutputHDF5(realization,var_list_type)
 
         call HDF5WriteStructDataSetFromVec(string,realization, &
                                            field%avg_vars_vec(ivar),grp_id, &
-                                           H5T_NATIVE_INTEGER)
+                                           H5T_NATIVE_DOUBLE)
 
         cur_variable => cur_variable%next
       enddo
@@ -8308,7 +8310,7 @@ end subroutine OutputHDF5UGrid
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine OutputHDF5UGridXDMF1(realization)
+subroutine OutputHDF5UGridXDMF1(realization,var_list_type)
 
   use Realization_module
   use Discretization_module
@@ -8323,6 +8325,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
   implicit none
   
   type(realization_type) :: realization
+  PetscInt :: var_list_type
 
   call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
@@ -8347,6 +8350,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
   implicit none
 
   type(realization_type) :: realization
+  PetscInt :: var_list_type
 
 #if defined(PARALLELIO_LIB_WRITE)
   integer:: file_id
@@ -8391,7 +8395,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
 
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: xmf_filename, att_datasetname, group_name
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, string2,string3
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
@@ -8413,14 +8417,40 @@ subroutine OutputHDF5UGridXDMF1(realization)
 
   xmf_filename = OutputFilename(output_option,option,'xmf','')
 
+  select case (var_list_type)
+    case (INST_VARS)
+      string2=''
+      write(string3,'(i4)') output_option%plot_number
+    case (AVEG_VARS)
+      string2='_aveg'
+      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+  end select
+
   if (output_option%print_single_h5_file) then
     first = hdf5_first
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
-  else
-    string = OutputFilenameID(output_option,option)
-    first = PETSC_TRUE
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-                '-' // trim(string) // '.h5'
+               trim(string2) // '.h5'
+  else
+    string = OutputHDF5FilenameID(output_option,option,var_list_type)
+    select case (var_list_type)
+      case (INST_VARS)
+        if (mod(output_option%plot_number,output_option%times_per_h5_file)==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+      case (AVEG_VARS)
+        if (mod((option%time-output_option%periodic_output_time_incr)/ &
+                output_option%periodic_output_time_incr, &
+                real(output_option%times_per_h5_file))==0) then
+          first = PETSC_TRUE
+        else
+          first = PETSC_FALSE
+        endif
+    end select
+
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+                '-' // trim(string) // trim(string2) // '.h5'
   endif
 
   grid => patch%grid
@@ -8482,6 +8512,7 @@ subroutine OutputHDF5UGridXDMF1(realization)
   if (len_trim(output_option%plot_name) > 2) then
     string = trim(string) // ' ' // output_option%plot_name
   endif
+  string = trim(string3) // ' ' // trim(string)
 
   call h5eset_auto_f(OFF,hdf5_err)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
@@ -8497,33 +8528,56 @@ subroutine OutputHDF5UGridXDMF1(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
                                   option)
 
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
-  do
-    if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
-                                cur_variable%isubvar)
-    call DiscretizationGlobalToNatural(discretization,global_vec, &
-                                        natural_vec,ONEDOF)
-    string = cur_variable%name
-    if (len_trim(cur_variable%units) > 0) then
-      word = cur_variable%units
-      call HDF5MakeStringCompatible(word)
-      string = trim(string) // ' [' // trim(word) // ']'
-    endif
-    if (cur_variable%iformat == 0) then
-      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                          natural_vec,grp_id,H5T_NATIVE_DOUBLE)
-    else
-      call HDF5WriteUnstructuredDataSetFromVec(string,option, &
-                                          natural_vec,grp_id,H5T_NATIVE_INTEGER)
-    endif
-    att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
-    if (option%myrank == option%io_rank) then
-      call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
-    endif
-    cur_variable => cur_variable%next
-  enddo
+  select case (var_list_type)
+
+    case (INST_VARS)
+      ! loop over variables and write to file
+      cur_variable => output_option%output_variable_list%first
+      do
+        if (.not.associated(cur_variable)) exit
+        call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+                                   cur_variable%isubvar)
+        call DiscretizationGlobalToNatural(discretization,global_vec, &
+                                           natural_vec,ONEDOF)
+        string = cur_variable%name
+        if (len_trim(cur_variable%units) > 0) then
+          word = cur_variable%units
+          call HDF5MakeStringCompatible(word)
+          string = trim(string) // ' [' // trim(word) // ']'
+        endif
+        if (cur_variable%iformat == 0) then
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                              natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+        else
+          call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                              natural_vec,grp_id,H5T_NATIVE_INTEGER)
+        endif
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
+        cur_variable => cur_variable%next
+      enddo
+
+    case (AVEG_VARS)
+      cur_variable => output_option%aveg_output_variable_list%first
+      do ivar = 1,output_option%aveg_output_variable_list%nvars
+        string = 'Aveg. ' // cur_variable%name
+        if (len_trim(cur_variable%units) > 0) then
+          word = cur_variable%units
+          call HDF5MakeStringCompatible(word)
+          string = trim(string) // ' [' // trim(word) // ']'
+        endif
+
+        call DiscretizationGlobalToNatural(discretization,field%avg_vars_vec(ivar), &
+                                           natural_vec,ONEDOF)
+        call HDF5WriteUnstructuredDataSetFromVec(string,option, &
+                                           natural_vec,grp_id,H5T_NATIVE_DOUBLE)
+
+        cur_variable => cur_variable%next
+      enddo
+
+  end select
 
   call VecDestroy(global_vec,ierr)
   call VecDestroy(natural_vec,ierr)
