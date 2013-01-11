@@ -144,7 +144,7 @@ subroutine THCSetupPatch(realization)
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate(option)
-  patch%aux%SC => SecondaryAuxCreat(option)
+  patch%aux%SC => SecondaryAuxCreate(option)
 
 ! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
 !                    'must be initialized with the proper variables ' // &

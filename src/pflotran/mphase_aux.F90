@@ -575,6 +575,7 @@ subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,aux_var,global_aux_var, &
 
   use Option_module 
   use Global_Aux_module
+  use Secondary_continuum_module
   
   implicit none
   

@@ -70,7 +70,8 @@ module Secondary_Continuum_module
   end type SC_type
 
   public :: SecondaryContinuumType, &
-            SecondaryContinuumSetProperties
+            SecondaryContinuumSetProperties, &
+            SecondaryAuxCreate, SecondaryAuxDestroy
             
   contains
   
@@ -230,7 +231,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         call SecondaryContinuumCalcLogSpacing(matrix_block_size,outer_spacing, &
                                               nmat,grid_spacing,option)
         
-        r0 = 2*grid_spacing(1)                                                                                                                                  
+        r0 = 2*grid_spacing(1)
         dm1(1) = 0.5*grid_spacing(1)
         dm2(1) = 0.5*grid_spacing(1)
         volm(1) = r0**3

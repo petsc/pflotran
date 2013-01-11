@@ -3,9 +3,6 @@ module Reactive_Transport_Aux_module
   ! this module cannot depend on any other modules besides Option_module
   ! and Matrix_Block_Aux_module
   use Matrix_Block_Aux_module
-#ifndef PFLOTRAN_RXN
-  use Secondary_Continuum_module
-#endif
 
   implicit none
   
@@ -495,7 +492,8 @@ subroutine RTSecTransportAuxVarCompute(sec_transport_vars,aux_var, &
 
   use Option_module 
   use Global_Aux_module
-  use Reaction_Aux_module  
+  use Reaction_Aux_module
+  use Secondary_Continuum_module  
   
   implicit none
   
@@ -799,11 +797,6 @@ subroutine RTAuxDestroy(aux)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)
-
-#ifndef PFLOTRAN_RXN    
-  if (associated(aux%sec_transport_vars)) deallocate (aux%sec_transport_vars)
-  nullify (aux%sec_transport_vars)
-#endif
 
   deallocate(aux)
   nullify(aux)
