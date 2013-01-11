@@ -180,9 +180,6 @@ module Option_module
     PetscBool :: ani_relative_permeability
     
     PetscBool :: use_upwinding
-
-    PetscInt :: chunk_size
-    PetscInt :: num_threads
     
     PetscBool :: out_of_table
 
@@ -313,9 +310,6 @@ subroutine OptionInitAll(option)
 
   option%use_upwinding = PETSC_TRUE
 
-  option%chunk_size = 8
-  option%num_threads = 1
-  
   option%out_of_table = PETSC_FALSE
  
   call OptionInitRealization(option)
