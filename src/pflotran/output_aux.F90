@@ -6,6 +6,9 @@ module Output_Aux_module
 
 #include "definitions.h"
 
+  PetscInt, parameter, public :: INST_VARS = 1
+  PetscInt, parameter, public :: AVEG_VARS = 2
+
   type, public :: output_option_type
 
     character(len=2) :: tunit
@@ -18,6 +21,7 @@ module Output_Aux_module
     PetscBool :: print_hdf5_velocities
     PetscBool :: print_hdf5_flux_velocities
     PetscBool :: print_single_h5_file
+    PetscInt  :: times_per_h5_file
 
     PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
@@ -47,6 +51,10 @@ module Output_Aux_module
     PetscInt :: xmf_vert_len
     
     type(output_variable_list_type), pointer :: output_variable_list
+    type(output_variable_list_type), pointer :: aveg_output_variable_list
+
+    PetscReal :: aveg_var_time
+    PetscReal :: aveg_var_dtime
     
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
@@ -61,6 +69,7 @@ module Output_Aux_module
   type, public :: output_variable_list_type
     type(output_variable_type), pointer :: first
     type(output_variable_type), pointer :: last
+    PetscInt :: nvars
   end type output_variable_list_type
   
   type, public :: output_variable_type
@@ -72,10 +81,12 @@ module Output_Aux_module
     PetscInt :: ivar
     PetscInt :: isubvar
     PetscInt :: isubsubvar
-    PetscBool :: itaveg ! PETSC_FALSE for instantaneous values; 
-                        ! PETSC_TRUE for temporally averaged values
     type(output_variable_type), pointer :: next
   end type output_variable_type
+
+!  type, public, EXTENDS (output_variable_type) :: aveg_output_variable_type
+!    PetscReal :: time_interval
+!  end type aveg_output_variable_type
   
   interface OutputVariableCreate
     module procedure OutputVariableCreate1
@@ -131,6 +142,7 @@ function OutputOptionCreate()
   output_option%print_hdf5_velocities = PETSC_FALSE
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
   output_option%print_single_h5_file = PETSC_TRUE
+  output_option%times_per_h5_file = 0
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
@@ -152,8 +164,11 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
+  output_option%aveg_var_time = 0.d0
+  output_option%aveg_var_dtime = 0.d0
   
   nullify(output_option%output_variable_list)
+  nullify(output_option%aveg_output_variable_list)
   
   output_option%tconv = 1.d0
   output_option%tunit = 's'
@@ -190,7 +205,6 @@ function OutputVariableCreate1()
   output_variable%ivar = 0
   output_variable%isubvar = 0
   output_variable%isubsubvar = 0
-  output_variable%itaveg = PETSC_FALSE
   nullify(output_variable%next)
   
   OutputVariableCreate1 => output_variable
@@ -264,7 +278,6 @@ function OutputVariableCreate3(output_variable)
   new_output_variable%ivar = output_variable%ivar
   new_output_variable%isubvar = output_variable%isubvar
   new_output_variable%isubsubvar = output_variable%isubsubvar
-  new_output_variable%itaveg = output_variable%itaveg
   nullify(new_output_variable%next)
   
   OutputVariableCreate3 => new_output_variable
@@ -289,6 +302,7 @@ function OutputVariableListCreate()
   allocate(output_variable_list)
   nullify(output_variable_list%first)
   nullify(output_variable_list%last)
+  output_variable_list%nvars = 0
   
   OutputVariableListCreate => output_variable_list
   
@@ -315,6 +329,7 @@ function OutputVariableListDuplicate(old_list,new_list)
   allocate(new_list)
   nullify(new_list%first)
   nullify(new_list%last)
+  new_list%nvars = old_list%nvars
   
   cur_variable => old_list%first
   do
@@ -347,6 +362,8 @@ subroutine OutputVariableAddToList1(list,variable)
     list%last%next => variable
   endif
   list%last => variable
+  
+  list%nvars = list%nvars+1
   
 end subroutine OutputVariableAddToList1
 
@@ -593,19 +610,6 @@ subroutine OutputVariableRead(input,option,output_variable_list)
                                  ' not recognized in VARIABLES.'
     end select
 
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    if (len_trim(word) > 1) then
-      call StringToUpper(word)
-      select case(trim(word))
-        case('AVEG')
-          output_variable_list%last%itaveg=PETSC_TRUE
-        case('INST')
-          output_variable_list%last%itaveg=PETSC_FALSE
-        case default
-        option%io_buffer = 'Keyword: ' // trim(word) // &
-                                 ' not recognized in VARIABLES.'
-      end select
-    endif
   enddo
 
 end subroutine OutputVariableRead

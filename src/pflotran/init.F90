@@ -208,6 +208,7 @@ subroutine Init(simulation)
 
   ! initialize plot variables
   realization%output_option%output_variable_list => OutputVariableListCreate()
+  realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
   
   ! read in the remainder of the input file
   call InitReadInput(simulation)
@@ -766,9 +767,6 @@ subroutine Init(simulation)
   if (associated(tran_stepper)) then
     tran_stepper%cur_waypoint => realization%waypoints%first
   endif
-  
-  ! initialize plot variables
-  realization%output_option%output_variable_list => OutputVariableListCreate()
   
   ! initialize global auxiliary variable object
   call GlobalSetup(realization)
@@ -2133,13 +2131,29 @@ subroutine InitReadInput(simulation)
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputDefaultMsg(input,option, &
                                        'OUTPUT,FORMAT,HDF5,# FILES')
-                  if (len_trim(word) > 1) then 
+                  if (len_trim(word) > 0) then
                     call StringToUpper(word)
                     select case(trim(word))
                       case('SINGLE_FILE')
                         output_option%print_single_h5_file = PETSC_TRUE
                       case('MULTIPLE_FILES')
                         output_option%print_single_h5_file = PETSC_FALSE
+                        output_option%times_per_h5_file = 1
+                        call InputReadWord(input,option,word,PETSC_TRUE)
+                        if (len_trim(word)>0) then
+                          select case(trim(word))
+                            case('TIMES_PER_FILE')
+                              call InputReadInt(input,option, &
+                                              output_option%times_per_h5_file)
+                              call InputErrorMsg(input,option,'timestep increment', &
+                                        'OUTPUT,FORMAT,MULTIPLE_FILES,TIMES_PER_FILE')
+                            case default
+                              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,'// &
+                                     'FORMAT,MULTIPLE_FILES,TIMES_PER_FILE.'
+                              call printErrMsg(option)
+                          end select
+                        endif
                       case default
                         option%io_buffer = 'HDF5 keyword (' // trim(word) // &
                           ') not recongnized.  Use "SINGLE_FILE" or ' // &
@@ -2189,6 +2203,8 @@ subroutine InitReadInput(simulation)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
             case('VARIABLES')
               call OutputVariableRead(input,option,output_option%output_variable_list)
+            case('AVERAGE_VARIABLES')
+              call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
@@ -2208,6 +2224,17 @@ subroutine InitReadInput(simulation)
             output_option%print_tecplot_flux_velocities = PETSC_TRUE
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
+        endif
+        if(output_option%aveg_output_variable_list%nvars>0) then
+          if(output_option%periodic_output_time_incr==0.d0) then
+            option%io_buffer = 'Keyword: AVERAGE_VARIABLES defined without' // &
+                               ' PERIODIC TIME being set.'
+            call printErrMsg(option)
+          endif
+          if(.not.output_option%print_hdf5) then
+            option%io_buffer = 'Keyword: AVERAGE_VARIABLES only defined for FORMAT HDF5'
+            call printErrMsg(option)
+          endif
         endif
 
 !.....................

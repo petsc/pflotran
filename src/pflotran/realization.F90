@@ -217,7 +217,7 @@ subroutine RealizationCreateDiscretization(realization)
   PetscReal, pointer :: real_tmp(:)
   type(dm_ptr_type), pointer :: dm_ptr
   Vec :: is_bnd_vec
-
+  PetscInt :: ivar
 
   option => realization%option
   field => realization%field
@@ -468,6 +468,19 @@ subroutine RealizationCreateDiscretization(realization)
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
+
+  ! Allocate vectors to hold temporally average output quantites
+  if(realization%output_option%aveg_output_variable_list%nvars>0) then
+
+    field%nvars = realization%output_option%aveg_output_variable_list%nvars
+    allocate(field%avg_vars_vec(field%nvars))
+
+    do ivar=1,field%nvars
+      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                         field%avg_vars_vec(ivar))
+      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
+    enddo
+  endif
        
 
 end subroutine RealizationCreateDiscretization
