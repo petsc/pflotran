@@ -154,6 +154,7 @@ subroutine RTSetupPatch(realization)
   reaction => realization%reaction
 
   patch%aux%RT => RTAuxCreate(option)
+  patch%aux%SC => SecondaryAuxCreate(option)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%offset_aqueous = reaction%offset_aqueous
