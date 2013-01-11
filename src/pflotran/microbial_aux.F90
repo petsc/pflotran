@@ -131,6 +131,10 @@ function MicrobialCreate()
   microbial%nrxn = 0
   microbial%nbiomass = 0
 
+    ! biomass species
+  nullify(microbial%biomass_names)
+  nullify(microbial%biomass_print)
+
   nullify(microbial%rate_constant)
   nullify(microbial%stoich)
   nullify(microbial%specid)

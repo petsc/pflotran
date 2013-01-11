@@ -195,6 +195,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
           tran_constraint%minerals, &
           tran_constraint%surface_complexes, &
           tran_constraint%colloids, &
+          tran_constraint%biomass, &
           option)
 
      ! link the constraint to the constraint coupler
@@ -215,6 +216,7 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
           tran_constraint%minerals, &
           tran_constraint%surface_complexes, &
           tran_constraint%colloids, &
+          tran_constraint%biomass, &
           option%reference_porosity, &
           num_iterations, &
           use_prev_soln_as_guess, &
@@ -303,6 +305,8 @@ program pflotran_rxn
   ! manual initialization...
   !
   option%nphase = 1
+  option%liquid_phase = 1
+  option%reference_water_density = 998.2
 
   call BatchChemInitializeReactions(option, input, reaction)
 
