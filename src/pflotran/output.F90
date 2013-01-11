@@ -5476,7 +5476,7 @@ subroutine OutputHDF5(realization,var_list_type)
   if (len_trim(output_option%plot_name) > 2) then
     string = trim(string) // ' ' // output_option%plot_name
   endif
-  string = trim(string3) // ' ' // trim(string)
+  !string = trim(string3) // ' ' // trim(string)
 #if defined(PARALLELIO_LIB_WRITE)
   string = trim(string) //CHAR(0)
     ! This opens existing dataset and creates it if needed
