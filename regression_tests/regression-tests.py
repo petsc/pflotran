@@ -16,6 +16,7 @@ import pprint
 import re
 import subprocess
 import sys
+import textwrap
 import time
 import traceback
 
@@ -52,6 +53,7 @@ class RegressionTest(object):
         self._PFLOTRAN_SUCCESS = 86
         # misc test parameters
         self._pprint = pprint.PrettyPrinter(indent=2)
+        self._txtwrap = textwrap.TextWrapper(width=78, subsequent_indent=4*" ")
         self._debug = False
         self._verbose = False
         self._executable = None
@@ -127,10 +129,12 @@ class RegressionTest(object):
             if self._np is None:
                 self._np = '1'
                 if verbose:
-                    print("WARNING : mpiexec specified for test '{0}', "
-                          "but the test section does not specify the number "
-                          "of parallel jobs! Running test as "
-                          "serial.".format(self.name()))
+                    message = self._txtwrap.fill(
+                        "WARNING : mpiexec specified for test '{0}', "
+                        "but the test section does not specify the number "
+                        "of parallel jobs! Running test as "
+                        "serial.".format(self.name()))
+                    print(message)
             command.append(self._np)
         else:
             if self._np is not None:
@@ -176,18 +180,22 @@ class RegressionTest(object):
                 if time.time() - start > self._timeout:
                     proc.terminate()
                     time.sleep(0.1)
-                    print("ERROR: job '{0}' has exceeded timeout limit of "
-                          "{1} seconds.".format(self.name(), self._timeout))
+                    message = self._txtwrap.fill(
+                        "ERROR: job '{0}' has exceeded timeout limit of "
+                        "{1} seconds.".format(self.name(), self._timeout))
+                    print(''.join(['\n', message, '\n']))
             status = abs(proc.returncode)
             run_stdout.close()
         # pflotran returns 0 on an error (e.g. can't find an input
         # file), 86 on success. 59 for timeout errors?
         if status != self._PFLOTRAN_SUCCESS:
-            print("\nWARNING : {name} : pflotran return an error "
-                  "code ({status}) indicating the simulation may have "
-                  "failed. Please check '{name}.out' and '{name}.stdout' "
-                  "for error messages.\n".format(
+            message = self._txtwrap.fill(
+                "WARNING : {name} : pflotran return an error "
+                "code ({status}) indicating the simulation may have "
+                "failed. Please check '{name}.out' and '{name}.stdout' "
+                "for error messages.".format(
                     name=self.name(), status=status))
+            print("".join(['\n', message, '\n']))
         return status
 
     def check(self, verbose):
@@ -201,9 +209,11 @@ class RegressionTest(object):
         self._verbose = verbose
         gold_filename = self.name() + ".regression.gold"
         if not os.path.isfile(gold_filename):
-            print("ERROR: could not find regression test gold file "
-                  "'{0}'. If this is a new test, please create "
-                  "it with '--new-test'.".format(gold_filename))
+            message = self._txtwrap.fill(
+                "ERROR: could not find regression test gold file "
+                "'{0}'. If this is a new test, please create "
+                "it with '--new-test'.".format(gold_filename))
+            print("".join(['\n', message, '\n']))
             return 1
         else:
             with open(gold_filename, 'rU') as gold_file:
@@ -211,9 +221,11 @@ class RegressionTest(object):
 
         current_filename = self.name() + ".regression"
         if not os.path.isfile(current_filename):
-            print("ERROR: could not find regression test file '{0}'."
-                  " Please check the standard output file for "
-                  "errors.".format(current_filename))
+            message = self._txtwrap.fill(
+                "ERROR: could not find regression test file '{0}'."
+                " Please check the standard output file for "
+                "errors.".format(current_filename))
+            print("".join(['\n', message, '\n']))
             return 1
         else:
             with open(current_filename, 'rU') as current_file:
@@ -654,6 +666,8 @@ class RegressionTestManager(object):
         * Foo
     """
 
+    NO_TESTS_RUN = -1000
+
     def __init__(self):
         self._debug = False
         self._verbose = False
@@ -662,8 +676,9 @@ class RegressionTestManager(object):
         self._executable_args = None
         self._default_test_criteria = None
         self._available_tests = {}
-        self._available_suites = None
+        self._available_suites = {}
         self._tests = []
+        self._txtwrap = textwrap.TextWrapper(width=78, subsequent_indent=4*" ")
 
     def __str__(self):
         data = "Regression Test Manager :\n"
@@ -682,6 +697,9 @@ class RegressionTestManager(object):
             data += t.__str__()
 
         return data
+
+    def num_tests(self):
+        return len(self._tests)
 
     def generate_tests(self, config_file, user_suites, user_tests,
                        timeout, check_performance):
@@ -712,15 +730,17 @@ class RegressionTestManager(object):
         * check_only - flag to indicate just diffing the existing
           regression files without rerunning pflotran.
         """
-
-        if new_test:
-            self._run_new(mpiexec, executable, dry_run, verbose)
-        elif update:
-            self._run_update(mpiexec, executable, dry_run, verbose)
-        elif check_only:
-            self._check_only(dry_run, verbose)
+        if self.num_tests() > 0:
+            if new_test:
+                self._run_new(mpiexec, executable, dry_run, verbose)
+            elif update:
+                self._run_update(mpiexec, executable, dry_run, verbose)
+            elif check_only:
+                self._check_only(dry_run, verbose)
+            else:
+                self._run_check(mpiexec, executable, dry_run, verbose)
         else:
-            self._run_check(mpiexec, executable, dry_run, verbose)
+            self._num_failed = self.NO_TESTS_RUN
 
     def _run_check(self, mpiexec, executable, dry_run, verbose):
         if dry_run:
@@ -845,7 +865,7 @@ class RegressionTestManager(object):
             else:
                 print("{0} : no tests run.".format(self._config_filename))
 
-    def status(self):
+    def run_status(self):
         return self._num_failed
 
     def display_available_tests(self):
@@ -919,13 +939,33 @@ class RegressionTestManager(object):
         return output_dict
 
     def _validate_suites(self):
+        """
+        Validates the suites defined in configuration file by
+        checking that each test in a suite is one of the available
+        tests.
+
+        If the config file has an empty suite, we report that to the
+        user then remove it from the list.
+        """
         invalid_tests = []
+        empty_suites = []
         for s in self._available_suites:
             suite_tests = self._available_suites[s].split()
-            for t in suite_tests:
-                if t not in self._available_tests:
-                    name = "suite : '{0}' --> test : '{1}'".format(s, t)
-                    invalid_tests.append(name)
+            if len(suite_tests) == 0:
+                empty_suites.append(s)
+            else:
+                # validate the list
+                for t in suite_tests:
+                    if t not in self._available_tests:
+                        name = "suite : '{0}' --> test : '{1}'".format(s, t)
+                        invalid_tests.append(name)
+
+        for s in empty_suites:
+            # empty suite, warn the user and remove it from the list
+            del self._available_suites[s]
+            print("DEV WARNING : {0} : cfg validation : empty suite "
+                  ": '{1}'".format(self._config_filename, s))
+
 
         if len(invalid_tests) != 0:
             raise Exception("ERROR : suites contain unknown tests in "
@@ -933,36 +973,37 @@ class RegressionTestManager(object):
                     self._config_filename, invalid_tests))
 
     def _validate_user_lists(self, user_suites, user_tests):
-
-        # if no suites or tests is specified, use all tests
+        """
+        Check that the list of suites or tests passed from the command
+        line are valid.
+        """
+        # if no suites or tests is specified, use all available tests
         if len(user_suites) == 0 and len(user_tests) == 0:
             u_suites = []
             u_tests = self._available_tests
         else:
+            # check that the processed user supplied names are valid
             # convert user supplied names to lower case
             u_suites = []
             for s in user_suites:
-                u_suites.append(s.lower())
+                if s.lower() in self._available_suites:
+                    u_suites.append(s.lower())
+                else:
+                    message = self._txtwrap.fill(
+                        "WARNING : {0} : Skipping requested suite '{1}' (not "
+                        "present, misspelled or empty).".format(
+                            self._config_filename, s))
+                    print(message)
 
             u_tests = []
             for t in user_tests:
-                u_tests.append(t.lower())
-
-        # now check that the processed user supplied names are valid
-        invalid_user_names = []
-        for s in u_suites:
-            if s.lower() not in self._available_suites:
-                invalid_user_names.append("suite : '{0}'".format(s))
-
-        for t in u_tests:
-            if t not in self._available_tests:
-                invalid_user_names.append("test : '{0}'".format(t))
-
-        if len(invalid_user_names) != 0:
-            # exception or print a warning and continue...?
-            raise Exception("ERROR : {0} : unknown suite or test provided "
-                            "on command line : {1}".format(
-                    self._config_filename, invalid_user_names))
+                if t in self._available_tests:
+                    u_tests.append(t.lower())
+                else:
+                    message = self._txtwrap.fill(
+                        "WARNING : {0} : Skipping test '{1}' (not present or "
+                        "misspelled).".format(self._config_filename, t))
+                    print(message)
 
         return u_suites, u_tests
 
@@ -1185,6 +1226,7 @@ def check_for_mpiexec(options):
 
 
 def main(options):
+    txtwrap = textwrap.TextWrapper(width=78, subsequent_indent=4*" ")
     check_options(options)
     executable = check_for_executable(options)
     mpiexec = check_for_mpiexec(options)
@@ -1200,7 +1242,7 @@ def main(options):
             # a single test throws an exception in a large batch of
             # tests, we can recover and at least try running the other
             # config files.
-            print(70 * '-')
+            print(80 * '=')
 
             # get the absolute path of the directory
             test_dir = os.path.dirname(f)
@@ -1242,13 +1284,14 @@ def main(options):
                                    options.new_tests,
                                    options.check_only)
 
-            report[filename] = test_manager.status()
+            report[filename] = test_manager.run_status()
         except Exception as e:
-            message = ("\nERROR: a problem occured in file '{0}'.\n  This is "
+            message = txtwrap.fill(
+                "ERROR: a problem occured in file '{0}'.  This is "
                        "probably an error with commandline options, the "
-                       "configuration file, or an enternal error.\n  The "
+                       "configuration file, or an internal error.  The "
                        "error is:\n{1}".format(f, str(e)))
-            print(message)
+            print(''.join(['\n', message, '\n']))
             if options.backtrace:
                 traceback.print_exc()
             report[filename] = -1
@@ -1265,14 +1308,17 @@ def main(options):
                 print("    {0}... {1} tests failed".format(t, report[t]))
             elif report[t] == 0:
                 print("    {0}... all tests passed".format(t))
+            elif report[t] == RegressionTestManager.NO_TESTS_RUN:
+                print("    {0}... no tests were run.".format(t, report[t]))
             else:
                 print("    {0}... could not be run.".format(t, report[t]))
         print("\n\n")
 
     if options.update:
-        print("\nTest results were updated!\n"
-              "Please document why you modified the gold standard test "
-              "results in your revision control commit message!\n")
+        message = txtwrap.fill(
+            "Test results were updated! Please document why you modified the "
+            "gold standard test results in your revision control commit message!\n")
+        print(''.join(['\n', message, '\n']))
 
     return status
 

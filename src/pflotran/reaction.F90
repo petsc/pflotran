@@ -1828,8 +1828,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
   aq_species_constraint%basis_molarity = rt_auxvar%pri_molal* &
-                                         global_auxvar%den_kg(option%liquid_phase)/ &
-                                         1000.d0
+                                 global_auxvar%den_kg(option%liquid_phase)/ &
+                                 1000.d0
 
 #if 0
   call RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)

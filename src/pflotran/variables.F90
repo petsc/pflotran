@@ -71,4 +71,7 @@ module Variables_module
 
   PetscInt, parameter, public :: SURFACE_FLOW_PRESSURE =   61
 
+!  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
+!  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
+
 end module Variables_module

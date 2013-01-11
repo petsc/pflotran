@@ -426,6 +426,7 @@ mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
                co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
                fluid.o saturation_function.o secondary_continuum.o
 observation.o : region.o option.o input.o
+output_aux.o : variables.o
 option.o :
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o observation.o \
