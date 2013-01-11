@@ -197,6 +197,7 @@ subroutine MphaseSetupPatch(realization)
   grid => patch%grid 
 
   patch%aux%Mphase => MphaseAuxCreate()
+  patch%aux%SC => SecondaryAuxCreate(option)
   mphase => patch%aux%Mphase
 
   
