@@ -64,63 +64,116 @@ module Secondary_Continuum_module
     PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
   end type sec_transport_type  
 
-  type, public :: sc_type
+  type, public :: sc_heat_type
     type(sec_heat_type), pointer :: sec_heat_vars(:)
+  end type sc_heat_type
+
+  type, public :: sc_rt_type
     type(sec_transport_type), pointer :: sec_transport_vars(:)
-  end type SC_type
+  end type sc_rt_type
 
   public :: SecondaryContinuumType, &
             SecondaryContinuumSetProperties, &
-            SecondaryAuxCreate, SecondaryAuxDestroy
+            SecondaryAuxHeatCreate, SecondaryAuxHeatDestroy, &
+            SecondaryAuxRTCreate, SecondaryAuxRTDestroy
             
   contains
   
   
 ! ************************************************************************** !
 !
-! SecondaryAuxCreate: Allocate and initialize auxiliary object
+! SecondaryAuxHeatCreate: Allocate and initialize secondary continuum heat
+! auxiliary object
 ! author: Satish Karra
 ! date: 01/10/13
 !
 ! ************************************************************************** !
-function SecondaryAuxCreate(option)
+function SecondaryAuxHeatCreate(option)
 
   use Option_module
 
   implicit none
   
   type(option_type) :: option
-  type(sc_type), pointer :: SecondaryAuxCreate
+  type(sc_heat_type), pointer :: SecondaryAuxHeatCreate
   
-  type(sc_type), pointer :: aux
+  type(sc_heat_type), pointer :: aux
 
   allocate(aux) 
   nullify(aux%sec_heat_vars)
-  nullify(aux%sec_transport_vars)
- 
-  SecondaryAuxCreate => aux
   
-end function SecondaryAuxCreate  
+  SecondaryAuxHeatCreate => aux
+  
+end function SecondaryAuxHeatCreate  
   
 ! ************************************************************************** !
 !
-! SecondaryAuxDestroy: Deallocates a thc auxiliary object
+! SecondaryAuxHeatDestroy: Deallocates a secondary continuum heat
+! auxiliary object
 ! author: Satish Karra
 ! date: 01/10/13
 !
 ! ************************************************************************** !
-subroutine SecondaryAuxDestroy(aux)
+subroutine SecondaryAuxHeatDestroy(aux)
 
   implicit none
 
-  type(sc_type), pointer :: aux
+  type(sc_heat_type), pointer :: aux
    
   if (.not.associated(aux)) return
   
   deallocate(aux)
   nullify(aux)  
 
-  end subroutine SecondaryAuxDestroy
+end subroutine SecondaryAuxHeatDestroy
+
+
+! ************************************************************************** !
+!
+! SecondaryAuxRTCreate: Allocate and initialize secondary continuum
+! reactive transport auxiliary object
+! author: Satish Karra
+! date: 01/10/13
+!
+! ************************************************************************** !
+function SecondaryAuxRTCreate(option)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(sc_rt_type), pointer :: SecondaryAuxRTCreate
+  
+  type(sc_rt_type), pointer :: aux
+
+  allocate(aux) 
+  nullify(aux%sec_transport_vars)
+  
+  SecondaryAuxRTCreate => aux
+  
+end function SecondaryAuxRTCreate  
+  
+! ************************************************************************** !
+!
+! SecondaryAuxRTDestroy: Deallocates a secondary continuum reactive 
+! transport auxiliary object
+! author: Satish Karra
+! date: 01/10/13
+!
+! ************************************************************************** !
+subroutine SecondaryAuxRTDestroy(aux)
+
+  implicit none
+
+  type(sc_rt_type), pointer :: aux
+   
+  if (.not.associated(aux)) return
+  
+  deallocate(aux)
+  nullify(aux)  
+
+end subroutine SecondaryAuxRTDestroy
 
 
 ! ************************************************************************** !

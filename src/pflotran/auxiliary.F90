@@ -34,7 +34,8 @@ module Auxiliary_module
     type(flash2_type), pointer :: Flash2
     type(general_type), pointer :: General
     type(material_type), pointer :: Material
-    type(sc_type), pointer :: SC
+    type(sc_heat_type), pointer :: SC_heat
+    type(sc_rt_type), pointer :: SC_RT
 #ifdef SURFACE_FLOW
     !type(surface_flow_type),pointer :: SurfaceFlow
 #endif
@@ -70,7 +71,9 @@ subroutine AuxInit(aux)
   nullify(aux%Miscible)
   nullify(aux%General)
   nullify(aux%Material)
-  nullify(aux%SC)
+  nullify(aux%SC_heat)
+  nullify(aux%SC_RT)
+
 #ifdef SURFACE_FLOW
   !nullify(aux%SurfaceFlow)
 #endif
@@ -98,7 +101,8 @@ subroutine AuxDestroy(aux)
   call MiscibleAuxDestroy(aux%Miscible)
   call GeneralAuxDestroy(aux%General)
   call MaterialAuxDestroy(aux%Material)
-  call SecondaryAuxDestroy(aux%SC)
+  call SecondaryAuxHeatDestroy(aux%SC_heat)
+  call SecondaryAuxRTDestroy(aux%SC_RT)
   nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%THC)
@@ -109,7 +113,8 @@ subroutine AuxDestroy(aux)
   nullify(aux%Miscible)
   nullify(aux%General)
   nullify(aux%Material)
-  nullify(aux%SC)
+  nullify(aux%SC_Heat)
+  nullify(aux%SC_RT)
 #ifdef SURFACE_FLOW
   !call SurfaceFlowAuxDestroy(aux%SurfaceFlow)
   !nullify(aux%SurfaceFlow)
