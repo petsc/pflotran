@@ -301,7 +301,7 @@ subroutine MphaseSetupPatch(realization)
 
     enddo
       
-    patch%aux%Mphase%sec_heat_vars => mphase_sec_heat_vars    
+    patch%aux%SC%sec_heat_vars => mphase_sec_heat_vars    
   
   endif
 
@@ -1288,7 +1288,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
+  mphase_sec_heat_vars => patch%aux%SC%sec_heat_vars
 
       
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -2495,7 +2495,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
-  mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
+  mphase_sec_heat_vars => patch%aux%SC%sec_heat_vars
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -3241,7 +3241,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  sec_heat_vars => patch%aux%mphase%sec_heat_vars
+  sec_heat_vars => patch%aux%SC%sec_heat_vars
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s

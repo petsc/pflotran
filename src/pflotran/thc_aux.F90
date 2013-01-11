@@ -1,5 +1,4 @@
 module THC_Aux_module
-use Secondary_Continuum_module
 
   implicit none
   
@@ -67,7 +66,6 @@ use Secondary_Continuum_module
     type(thc_parameter_type), pointer :: thc_parameter
     type(thc_auxvar_type), pointer :: aux_vars(:)
     type(thc_auxvar_type), pointer :: aux_vars_bc(:)
-    type(sec_heat_type), pointer :: sec_heat_vars(:)
   end type thc_type
 
 
@@ -118,9 +116,7 @@ function THCAuxCreate(option)
   allocate(aux%thc_parameter%diffusion_activation_energy(option%nphase))
   aux%thc_parameter%diffusion_coefficient = 1.d-9
   aux%thc_parameter%diffusion_activation_energy = 0.d0
-
-  nullify(aux%sec_heat_vars)
-  
+ 
   THCAuxCreate => aux
   
 end function THCAuxCreate
@@ -385,6 +381,7 @@ subroutine THCSecHeatAuxVarCompute(sec_heat_vars,global_aux_var, &
 
   use Option_module 
   use Global_Aux_module
+  use Secondary_continuum_module
   
   implicit none
   
@@ -711,8 +708,6 @@ subroutine THCAuxDestroy(aux)
     nullify(aux%thc_parameter%sir)
   endif
   nullify(aux%thc_parameter)
-  
-  nullify(aux%sec_heat_vars)
   
   deallocate(aux)
   nullify(aux)  

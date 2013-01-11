@@ -1,7 +1,6 @@
 module Mphase_Aux_module
   
   use mphase_pckr_module
-  use Secondary_Continuum_module
 
   implicit none
   
@@ -73,7 +72,6 @@ type, public :: mphase_auxvar_elem_type
      type(mphase_auxvar_type), pointer :: aux_vars(:)
      type(mphase_auxvar_type), pointer :: aux_vars_bc(:)
      type(mphase_auxvar_type), pointer :: aux_vars_ss(:)
-     type(sec_heat_type), pointer :: sec_heat_vars(:)
   end type mphase_type
 
 
@@ -123,8 +121,6 @@ function MphaseAuxCreate()
   nullify(aux%res_old_FL)
   nullify(aux%delx)
   
-  nullify(aux%sec_heat_vars)
-
   MphaseAuxCreate => aux
   
 end function MphaseAuxCreate
@@ -784,8 +780,6 @@ subroutine MphaseAuxDestroy(aux)
   if (associated(aux%res_old_FL)) deallocate(aux%res_old_FL)
   if (associated(aux%delx)) deallocate(aux%delx)
   
-  nullify(aux%sec_heat_vars)
-
   deallocate(aux)
   nullify(aux)
   

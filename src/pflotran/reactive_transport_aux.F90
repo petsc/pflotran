@@ -118,9 +118,6 @@ module Reactive_Transport_Aux_module
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_ss(:)
-#ifndef PFLOTRAN_RXN    
-    type(sec_transport_type), pointer :: sec_transport_vars(:)
-#endif
   end type reactive_transport_type
 
   interface RTAuxVarDestroy
@@ -193,9 +190,6 @@ function RTAuxCreate(option)
   aux%rt_parameter%max_newton_iterations = 0
   aux%rt_parameter%overall_max_newton_iterations = 0
 #endif   
-#ifndef PFLOTRAN_RXN    
-  nullify(aux%sec_transport_vars)
-#endif
   RTAuxCreate => aux
   
 end function RTAuxCreate

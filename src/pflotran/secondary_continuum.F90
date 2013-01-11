@@ -64,11 +64,63 @@ module Secondary_Continuum_module
     PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
   end type sec_transport_type  
 
+  type, public :: sc_type
+    type(sec_heat_type), pointer :: sec_heat_vars(:)
+    type(sec_transport_type), pointer :: sec_transport_vars(:)
+  end type SC_type
 
   public :: SecondaryContinuumType, &
             SecondaryContinuumSetProperties
             
   contains
+  
+  
+! ************************************************************************** !
+!
+! SecondaryAuxCreate: Allocate and initialize auxiliary object
+! author: Satish Karra
+! date: 01/10/13
+!
+! ************************************************************************** !
+function SecondaryAuxCreate(option)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(sc_type), pointer :: SecondaryAuxCreate
+  
+  type(sc_type), pointer :: aux
+
+  allocate(aux) 
+  nullify(aux%sec_heat_vars)
+  nullify(aux%sec_transport_vars)
+ 
+  SecondaryAuxCreate => aux
+  
+end function SecondaryAuxCreate  
+  
+! ************************************************************************** !
+!
+! SecondaryAuxDestroy: Deallocates a thc auxiliary object
+! author: Satish Karra
+! date: 01/10/13
+!
+! ************************************************************************** !
+subroutine SecondaryAuxDestroy(aux)
+
+  implicit none
+
+  type(sc_type), pointer :: aux
+   
+  if (.not.associated(aux)) return
+  
+  deallocate(aux)
+  nullify(aux)  
+
+  end subroutine SecondaryAuxDestroy
+
 
 ! ************************************************************************** !
 !
