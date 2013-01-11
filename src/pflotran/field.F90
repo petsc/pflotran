@@ -27,7 +27,7 @@ module Field_module
     
     Vec :: work, work_loc
 
-    Vec :: volume 
+    Vec :: volume, volume0
     
     ! residual vectors
     Vec :: flow_r          
@@ -108,6 +108,7 @@ function FieldCreate()
   field%work_loc = 0
 
   field%volume = 0
+  field%volume0 = 0
   
   field%flow_r = 0
   field%flow_xx = 0
@@ -192,6 +193,7 @@ subroutine FieldDestroy(field)
   if (field%work_loc /= 0) call VecDestroy(field%work_loc,ierr)
 
   if (field%volume /= 0) call VecDestroy(field%volume,ierr)
+  if (field%volume0 /= 0) call VecDestroy(field%volume0,ierr)
   
   if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)
   if (field%flow_xx /= 0) call VecDestroy(field%flow_xx,ierr)

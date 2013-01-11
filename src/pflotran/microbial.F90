@@ -9,7 +9,8 @@ module Microbial_module
 #include "definitions.h"
 
   public :: MicrobialRead, &
-            RMicrobial
+            RMicrobial, &
+            MicrobialProcessConstraint
 
 contains
 
@@ -36,6 +37,7 @@ subroutine MicrobialRead(microbial,input,option)
   character(len=MAXWORDLENGTH) :: word
   type(microbial_rxn_type), pointer :: microbial_rxn, cur_microbial_rxn
   type(monod_type), pointer :: monod, prev_monod
+  type(biomass_type), pointer :: biomass
   type(inhibition_type), pointer :: inhibition, prev_inhibition
   
   microbial%nrxn = microbial%nrxn + 1
@@ -98,6 +100,15 @@ subroutine MicrobialRead(microbial,input,option)
         endif
         prev_inhibition => inhibition
         nullify(inhibition)
+      case('BIOMASS')
+        biomass => MicrobialBiomassCreate()
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'species name', &
+                           'CHEMISTRY,MICROBIAL_REACTION,BIOMASS')
+        biomass%species_name = word
+        call InputReadDouble(input,option,biomass%yield)  
+        call InputErrorMsg(input,option,'yield', &
+                           'CHEMISTRY,MICROBIAL_REACTION,BIOMASS')
       case default
         option%io_buffer = 'CHEMISTRY,MICROBIAL_REACTION keyword: ' // &
           trim(word) // ' not recognized.'
@@ -123,6 +134,120 @@ subroutine MicrobialRead(microbial,input,option)
   nullify(microbial_rxn)
 
 end subroutine MicrobialRead
+
+! ************************************************************************** !
+!
+! MicrobialBiomassRead: Reads biomass species
+! author: Glenn Hammond
+! date: 01/02/13
+!
+! ************************************************************************** !
+subroutine MicrobialBiomassRead(microbial,input,option)
+
+  use Option_module
+  use String_module
+  use Input_module
+  use Utility_module
+  
+  implicit none
+  
+  type(microbial_type) :: microbial
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  type(biomass_species_type), pointer :: biomass, prev_biomass
+           
+  nullify(prev_biomass)
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+          
+    microbial%nbiomass = microbial%nbiomass + 1
+          
+    biomass => MicrobialBiomassSpeciesCreate()
+    call InputReadWord(input,option,biomass%name,PETSC_TRUE)  
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
+    if (.not.associated(microbial%biomass_list)) then
+      microbial%biomass_list => biomass
+      biomass%id = 1
+    endif
+    if (associated(prev_biomass)) then
+      prev_biomass%next => biomass
+      biomass%id = prev_biomass%id + 1
+    endif
+    prev_biomass => biomass
+    nullify(biomass)
+  enddo
+
+end subroutine MicrobialBiomassRead
+
+! ************************************************************************** !
+!
+! MicrobialProcessConstraint: Initializes constraints based on biomass
+!                             species in system
+! author: Glenn Hammond
+! date: 01/07/13
+!
+! ************************************************************************** !
+subroutine MicrobialProcessConstraint(microbial,constraint_name, &
+                                      constraint,option)
+  use Option_module
+  use Input_module
+  use String_module
+  use Utility_module  
+  
+  implicit none
+  
+  type(microbial_type), pointer :: microbial
+  character(len=MAXWORDLENGTH) :: constraint_name
+  type(biomass_constraint_type), pointer :: constraint
+  type(option_type) :: option
+  
+  PetscBool :: found
+  PetscInt :: ibiomass, jbiomass
+  
+  character(len=MAXWORDLENGTH) :: biomass_name(microbial%nbiomass)
+  character(len=MAXWORDLENGTH) :: constraint_aux_string(microbial%nbiomass)
+  PetscReal :: constraint_conc(microbial%nbiomass)
+  PetscBool :: external_dataset(microbial%nbiomass)
+  
+  if (.not.associated(constraint)) return
+  
+  biomass_name = ''
+  constraint_aux_string = ''
+  external_dataset = PETSC_FALSE
+  do ibiomass = 1, microbial%nbiomass
+    found = PETSC_FALSE
+    do jbiomass = 1, microbial%nbiomass
+      if (StringCompare(constraint%names(ibiomass), &
+                        microbial%biomass_names(jbiomass), &
+                        MAXWORDLENGTH)) then
+        found = PETSC_TRUE
+        exit
+      endif
+    enddo
+    if (.not.found) then
+      option%io_buffer = &
+                'Biomass species "' // trim(constraint%names(ibiomass)) // &
+                '" from CONSTRAINT "' // trim(constraint_name) // &
+                '" not found among biomass species.'
+      call printErrMsg(option)
+    else
+      biomass_name(ibiomass) = constraint%names(ibiomass)
+      constraint_conc(ibiomass) = &
+        constraint%constraint_conc(ibiomass)
+      constraint_aux_string(ibiomass) = &
+        constraint%constraint_aux_string(ibiomass)
+      external_dataset(ibiomass) = constraint%external_dataset(ibiomass)
+    endif  
+  enddo
+  constraint%names = biomass_name
+  constraint%constraint_conc = constraint_conc
+  constraint%constraint_aux_string = constraint_aux_string
+  constraint%external_dataset = external_dataset
+
+end subroutine MicrobialProcessConstraint
 
 ! ************************************************************************** !
 !
@@ -154,13 +279,14 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt, parameter :: iphase = 1
   PetscReal :: por_sat_vol
   PetscInt :: irxn, i, ii, icomp, jcomp, ncomp
-  PetscInt :: imonod, iinhibition
+  PetscInt :: imonod, iinhibition, ibiomass
   PetscReal :: Im
   PetscReal :: rate_constant
   PetscReal :: activity
   PetscReal :: act_coef
   PetscReal :: monod(10)
   PetscReal :: inhibition(10)
+  PetscReal :: biomass
   PetscReal :: denominator, dR_dX, dX_dc, dR_dc
   type(microbial_type), pointer :: microbial
   
@@ -172,6 +298,9 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
   
   do irxn = 1, microbial%nrxn
   
+    ! units:
+    !   without biomass: mol/L-sec
+    !   with biomass: mol/L-sec * (m^3 bulk / mol biomass)
     rate_constant = microbial%rate_constant(irxn)
     Im = rate_constant
 
@@ -193,6 +322,13 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
                       (microbial%inhibition_C(iinhibition) + activity)
       Im = Im*inhibition(ii)
     enddo
+    
+    ! biomass term
+    ibiomass = microbial%biomassid(irxn)
+    if (ibiomass > 0) then
+      biomass = rt_auxvar%immobile(microbial%biomassid(ibiomass))
+      Im = Im*biomass
+    endif
     
     ! por_sat_vol units: m^3 water
     por_sat_vol = porosity*global_auxvar%sat(iphase)*volume

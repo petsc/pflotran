@@ -1759,6 +1759,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%minerals, &
                             cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%colloids, &
+                            cur_constraint_coupler%biomass, &
                             option%reference_porosity, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_FALSE,option)
@@ -2572,6 +2573,7 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
             endif
             if (patch%reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
               do local_id=1,grid%nlmax
+                ghosted_id = grid%nL2G(local_id)
                 vec_ptr(local_id) = 0.d0
                 do irxn = 1, &
                   patch%reaction%surface_complexation%nkinmrsrfcplxrxn
