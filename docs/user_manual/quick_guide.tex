@@ -1275,14 +1275,32 @@ I_k^m \eq k_k\big(S_k^m - S_{km}^{\rm eq}\big),
 \EN
 with rate constant $k_k$ and where $S_{km}^{\rm eq}$ is a known function of the solute concentrations. In this case, Eqn.\eqref{mobile} must be added to the primary species transport equations. Further reduction of the transport equations for the case where a flux term is present in the kinetic equation is not possible in general for complex flux terms.
 
-\subsection{Solute Age}
+\subsection{Tracer Mean Age}
 
 PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for the mean age given by
 \EQ
 \frac{\p}{\p t} \varphi s AC + \bnabla\cdot\Big(\bq AC - \varphi s D \bnabla (AC)\Big) \eq \varphi s C,
 \EN
-where $A$ denotes the mean age of the solute with concentration $C$. Other quantities appearing in the age equation are identical to the solute transport equation for a partially saturated porous medium with saturation state $s$. The age and solute transport equations are solved simultaneously.
+where $A$ denotes the mean age of the tracer with concentration $C$. Other quantities appearing in the age equation are identical to the tracer transport equation for a partially saturated porous medium with saturation state $s$. The age and tracer transport equations are solved simultaneously for the age-concentration $\alpha = A C$ and tracer concentration $C$. The age-concentration $\a$ satisfies the usual advection-diffusion-dispersion equation with a source term on the right-hand side.
 
+The mean tracer is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age} together with {\tt Tracer} to the list of primary species
+\newpage
+\begin{verbatim}
+  PRIMARY_SPECIES
+    Tracer
+    Tracer_Age
+  /
+\end{verbatim}
+and specifying these species in the initial and boundary {\tt CONSTRAINT} condition as e.g.:
+\begin{verbatim}
+CONSTRAINT initial
+  CONCENTRATIONS
+    Tracer     1.e-8        F
+    Tracer_Age 1.e-16       F
+  /
+/
+\end{verbatim}
+Output is given in terms of $\alpha$ and $C$ from which the mean age $A$ can be obtained as $A\eq\alpha/C$. 
 
 \subsection{Thermodynamic Database}
 
