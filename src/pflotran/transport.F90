@@ -391,12 +391,12 @@ subroutine TFlux(rt_parameter, &
   iphase = 1
   ndof = rt_parameter%naqcomp
   
+  Res = 0.d0
+  
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
-
-
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
@@ -471,6 +471,9 @@ subroutine TFlux_CD(rt_parameter, &
 
   iphase = 1
   ndof = rt_parameter%naqcomp
+  
+  Res_1 = 0.d0
+  Res_2 = 0.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
@@ -990,6 +993,8 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
   
   ndof = rt_parameter%naqcomp
 
+  flux = 0.d0
+  
   ! flux should be in mol/sec
   
   do iphase = 1, option%nphase
@@ -998,7 +1003,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
     velocity_area = velocity(iphase)*area*1000.d0
     if (velocity_area >= 0.d0) then
       ! mol/sec = L/sec * mol/L
-      flux = velocity_area*rt_aux_var_up%total(:,iphase)
+      flux = velocity_area*rt_aux_var_up%total(1:rt_parameter%naqcomp,iphase)
       if (associated(total_up2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &
@@ -1022,7 +1027,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
         enddo
       endif
     else
-      flux = velocity_area*rt_aux_var_dn%total(:,iphase)
+      flux = velocity_area*rt_aux_var_dn%total(1:rt_parameter%naqcomp,iphase)
       if (associated(total_dn2)) then
         do idof = 1, ndof
           dc = rt_aux_var_dn%total(idof,iphase) - &

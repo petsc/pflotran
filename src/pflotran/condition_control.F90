@@ -565,7 +565,7 @@ subroutine CondControlAssignTranInitCond(realization)
           
         ! read in heterogeneous biomass
         if (associated(constraint_coupler%biomass)) then
-          do idof = 1, reaction%microbial%nbiomass
+          do idof = 1, reaction%biomass%nbiomass
             if (constraint_coupler%biomass%external_dataset(idof)) then
               ! no need to requilibrate at each cell
               string = 'constraint ' // trim(constraint_coupler%constraint_name)
@@ -716,9 +716,9 @@ subroutine CondControlAssignTranInitCond(realization)
             enddo
           endif
           ! biomass
-          if (reaction%microbial%nbiomass > 0) then
+          if (associated(constraint_coupler%biomass)) then
             offset = ibegin + reaction%offset_immobile - 1
-            do idof = 1, reaction%microbial%nbiomass
+            do idof = 1, reaction%biomass%nbiomass
               if (constraint_coupler%biomass%external_dataset(idof)) then
                 ! already read into rt_aux_vars above.
                 xx_p(offset+idof) = &
@@ -768,10 +768,17 @@ subroutine CondControlAssignTranInitCond(realization)
       call VecStrideMin(field%tran_xx,idof-1,offset,tempreal,ierr)
       if (tempreal <= 0.d0) then
         write(string,*) tempreal
-        option%io_buffer = '  Species "' // &
-          trim(reaction%primary_species_names(idof)) // &
-          '" has zero concentration (' // &
-          trim(adjustl(string)) // ').'
+        if (idof <= reaction%naqcomp) then
+          string2 = '  Aqueous species "' // &
+            trim(reaction%primary_species_names(idof))
+        else
+          string2 = '  Immobile species "' // &
+            trim(reaction%immobile_species_names(idof- &
+                                                 reaction%offset_immobile))
+        endif
+          string2 = trim(string2) // &
+            '" has zero concentration (' // &
+            trim(adjustl(string)) // ').'
         call printMsg(option)
       endif
     enddo

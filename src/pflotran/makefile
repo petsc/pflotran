@@ -213,6 +213,8 @@ shared_mode_aux_obj = \
 	${common_src}reactive_transport_aux.o 
 
 chem_obj = \
+	${common_src}biomass.o \
+	${common_src}biomass_aux.o \
 	${common_src}constraint.o \
 	${common_src}database.o \
 	${common_src}database_aux.o \
@@ -335,6 +337,8 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
                miscible_aux.o general_aux.o material_aux.o
+biomass.o : biomass_aux.o option.o string.o input.o utility.o
+biomass_aux.o : option.o utility.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
               string.o hdf5_aux.o dataset.o time_series.o \
@@ -347,10 +351,12 @@ convergence.o : option.o solver.o grid.o
 ifdef PFLOTRAN_RXN_FLAG
 constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                surface_complexation_aux.o mineral_aux.o option.o input.o \
+               biomass.o \
                units.o string.o
 else
 constraint.o : reaction_aux.o reactive_transport_aux.o global_aux.o \
                surface_complexation_aux.o mineral_aux.o option.o input.o \
+               biomass.o \
                units.o string.o logging.o
 endif
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o \
@@ -360,7 +366,7 @@ co2_span_wagner_spline.o : spline.o
 co2_sw.o : co2_span_wagner.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o \
              database_aux.o surface_complexation_aux.o string.o mineral_aux.o \
-             microbial_aux.o
+             microbial.o microbial_aux.o biomass.o biomass_aux.o
 database_aux.o : option.o string.o input.o
 database_hpt.o : database.o reaction.o database_aux.o mineral_aux.o
 dataset.o : hdf5_aux.o utility.o option.o dataset_aux.o
@@ -452,8 +458,9 @@ else
 reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
              surface_complexation_aux.o mineral_aux.o solid_solution_aux.o \
              surface_complexation.o mineral.o solid_solution.o option.o \
-             string.o input.o co2eos.o water_eos.o microbial.o \
-             microbial_aux.o variables.o reaction_sandbox.o constraint.o
+             string.o input.o microbial.o microbial_aux.o variables.o \
+             reaction_sandbox.o constraint.o biomass.o biomass_aux.o \
+             co2eos.o water_eos.o 
 endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
