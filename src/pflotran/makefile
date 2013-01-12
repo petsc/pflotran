@@ -464,7 +464,7 @@ reaction.o : reactive_transport_aux.o reaction_aux.o global_aux.o \
 endif
 reaction_aux.o : option.o string.o database_aux.o mineral_aux.o \
                  surface_complexation_aux.o solid_solution_aux.o utility.o \
-                 microbial_aux.o
+                 microbial_aux.o biomass_aux.o
 reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
                      input.o utility.o
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
