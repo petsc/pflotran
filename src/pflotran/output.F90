@@ -5340,7 +5340,7 @@ subroutine OutputHDF5(realization,var_list_type)
       string2=''
       write(string3,'(i4)') output_option%plot_number
     case (AVEG_VARS)
-      string2='_aveg'
+      string2='-aveg'
       write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
   end select
 
@@ -8415,21 +8415,20 @@ subroutine OutputHDF5UGridXDMF1(realization,var_list_type)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  xmf_filename = OutputFilename(output_option,option,'xmf','')
-
   select case (var_list_type)
     case (INST_VARS)
       string2=''
       write(string3,'(i4)') output_option%plot_number
+      xmf_filename = OutputFilename(output_option,option,'xmf','')
     case (AVEG_VARS)
-      string2='_aveg'
+      string2='-aveg'
       write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      xmf_filename = OutputFilename(output_option,option,'xmf','aveg')
   end select
 
   if (output_option%print_single_h5_file) then
     first = hdf5_first
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               trim(string2) // '.h5'
+    filename = trim(option%global_prefix) // trim(string2) // trim(option%group_prefix) // '.h5'
   else
     string = OutputHDF5FilenameID(output_option,option,var_list_type)
     select case (var_list_type)
@@ -8450,7 +8449,7 @@ subroutine OutputHDF5UGridXDMF1(realization,var_list_type)
     end select
 
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-                '-' // trim(string) // trim(string2) // '.h5'
+               trim(string2) // '-' // trim(string) // '.h5'
   endif
 
   grid => patch%grid
@@ -8573,7 +8572,10 @@ subroutine OutputHDF5UGridXDMF1(realization,var_list_type)
                                            natural_vec,ONEDOF)
         call HDF5WriteUnstructuredDataSetFromVec(string,option, &
                                            natural_vec,grp_id,H5T_NATIVE_DOUBLE)
-
+        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        if (option%myrank == option%io_rank) then
+          call OutputXMFAttribute(OUTPUT_UNIT,grid%nmax,string,att_datasetname)
+        endif
         cur_variable => cur_variable%next
       enddo
 
