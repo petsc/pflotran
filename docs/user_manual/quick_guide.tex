@@ -48,7 +48,7 @@
 \cfoot{\rm < \thepage\ >}
 %\cfoot{}
 %\footrulewidth 0.4pt
-\newcommand\keyend{{(., \, /, \, END)}}
+\newcommand\keyend{{(END \, / \, .)}}
 \newcommand\return{{\hfill$\hookrightarrow$}}
 \newcommand\returnb{{\hfill$\nearrow$}}
 %\newcommand\return{{\hfill\bf RETURN}}
@@ -2833,7 +2833,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[SITE] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[COMPLEXES] ~
 \begin{deflist}{000}
-\item[\tt Complex Name]
+\item[\tt Surface\_Complex Name]
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2851,11 +2851,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item [EQUILIBRIUM]
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
-\item [CEC] {\tt Value}[mol/m$^3$]
+\item [CEC] {\tt Value} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
-\item[\tt Name] $K$
+\item[\tt Name]  \ \ \ {\tt Selectivity\_Coefficient}
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
