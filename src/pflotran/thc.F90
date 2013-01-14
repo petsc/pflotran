@@ -144,6 +144,7 @@ subroutine THCSetupPatch(realization)
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate(option)
+  patch%aux%SC_heat => SecondaryAuxHeatCreate(option)
 
 ! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
 !                    'must be initialized with the proper variables ' // &
@@ -263,7 +264,7 @@ subroutine THCSetupPatch(realization)
     
     enddo
       
-    patch%aux%THC%sec_heat_vars => thc_sec_heat_vars    
+    patch%aux%SC_heat%sec_heat_vars => thc_sec_heat_vars    
 
   endif
 
@@ -539,7 +540,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
   thc_aux_vars => realization%patch%aux%THC%aux_vars
   thc_parameter => realization%patch%aux%THC%thc_parameter
   global_aux_vars => realization%patch%aux%Global%aux_vars
-  thc_sec_heat_vars => realization%patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => realization%patch%aux%SC_heat%sec_heat_vars
 
   
   dP_changed = PETSC_FALSE
@@ -1148,7 +1149,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   thc_parameter => patch%aux%THC%thc_parameter
   thc_aux_vars => patch%aux%THC%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
           
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -3251,7 +3252,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
@@ -3813,7 +3814,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  sec_heat_vars => patch%aux%THC%sec_heat_vars
+  sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
 #if 0
    call THCNumericalJacobianTest(xx,realization)
