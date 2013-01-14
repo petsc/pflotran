@@ -1326,6 +1326,21 @@ The mean tracer is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age
     Tracer_Age
   /
 \end{verbatim}
+including sorption through a constant $K_d$ model if desired
+\begin{verbatim}
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+      Tracer_Age
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
 and specifying these species in the initial and boundary {\tt CONSTRAINT} condition as e.g.:
 \begin{verbatim}
 CONSTRAINT initial
