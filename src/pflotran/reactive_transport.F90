@@ -901,13 +901,13 @@ subroutine RTUpdateSolutionPatch(realization)
                                       secondary_continuum_diff_coeff
           sec_porosity = realization%material_property_array(1)%ptr% &
                          secondary_continuum_porosity
-          call RTSecTransportAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
-                                           rt_aux_vars(ghosted_id), &
-                                           global_aux_vars(ghosted_id), &
-                                           reaction, &
-                                           sec_diffusion_coefficient, &
-                                           sec_porosity, &
-                                           option)
+          call SecondaryRTAuxVarCompute(rt_sec_transport_vars(ghosted_id), &
+                                        rt_aux_vars(ghosted_id), &
+                                        global_aux_vars(ghosted_id), &
+                                        reaction, &
+                                        sec_diffusion_coefficient, &
+                                        sec_porosity, &
+                                        option)
       enddo
     endif
 
