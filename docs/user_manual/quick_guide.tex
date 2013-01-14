@@ -48,7 +48,7 @@
 \cfoot{\rm < \thepage\ >}
 %\cfoot{}
 %\footrulewidth 0.4pt
-\newcommand\keyend{{(., \, /, \, END)}}
+\newcommand\keyend{{(END \, / \, .)}}
 \newcommand\return{{\hfill$\hookrightarrow$}}
 \newcommand\returnb{{\hfill$\nearrow$}}
 %\newcommand\return{{\hfill\bf RETURN}}
@@ -1241,6 +1241,41 @@ The total sorbed concentrations are obtained from the equations
 \frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
 \EN
 
+\subsubsection{Sorption Isotherm}
+
+A sorption isotherm $S_j$ may be specified for any primary species $\A_j$. 
+The following transport equation is solved 
+\EQ
+\frac{\p}{\p t} \varphi s C_j + \bnabla\cdot\bF_j \eq -\frac{\p S_j}{\p t},
+\EN
+with $C_j \eq \rho_w m_j$ and $\rho_w$ refers to the density of pure water.
+Three distinct models are available for the sorption isotherm $S_j$:
+\begin{itemize}
+\item linear $K_D$ model
+\EQ\label{linkd}
+S_j \eq K_j^D \gamma_j m_j,
+\EN
+with activity coefficient $\gamma_j$ and molality $m_j$,
+\item Langmuir isotherm:
+\EQ\label{Langmuir}
+S_j \eq \frac{K_j^L b_j^L \gamma_j m_j}{(1+K_j^L \gamma_j m_j)},
+\EN
+with Langmuir coefficients $K_j^L$ and $b_j^L$, and
+\item Freundlich isotherm:
+\EQ\label{Freundlich}
+S_j \eq K_j^F \big(\gamma_j m_j\big)^{(1/n_j^F)},
+\EN
+with coefficients $K_j^F$ and $n_j^F$.
+\end{itemize}
+The linear $K_D$ model results in the retardation factor $\R_j$ given by
+\EQ
+\R_j \eq 1 + \frac{\gamma_j K_j^D}{\varphi s \rho_w}.
+\EN
+In terms of the retardation the transport equation becomes
+\EQ
+\frac{\p}{\p t} \big(\R_j\varphi s \rho_w m_j\big) + \bnabla\cdot\bF_j \eq 0.
+\EN
+
 \subsubsection{Colloid-Facilitated Transport}
 
 Colloid-facilitated transport is implemented into PFLOTRAN based on surface complexation reactions. Competition between mobile and immobile colloids and stationary mineral surfaces is taken into account. Colloid filtration processes are not currently implemented into PFLOTRAN. 
@@ -1284,7 +1319,7 @@ PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tra
 where $A$ denotes the mean age of the tracer with concentration $C$. Other quantities appearing in the age equation are identical to the tracer transport equation for a partially saturated porous medium with saturation state $s$. The age and tracer transport equations are solved simultaneously for the age-concentration $\alpha = A C$ and tracer concentration $C$. The age-concentration $\a$ satisfies the usual advection-diffusion-dispersion equation with a source term on the right-hand side.
 
 The mean tracer is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age} together with {\tt Tracer} to the list of primary species
-\newpage
+%\newpage
 \begin{verbatim}
   PRIMARY_SPECIES
     Tracer
@@ -2798,7 +2833,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[SITE] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[COMPLEXES] ~
 \begin{deflist}{000}
-\item[\tt Complex Name]
+\item[\tt Surface\_Complex Name]
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2816,11 +2851,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 %\item [EQUILIBRIUM]
 \item [MINERAL] {\tt Mineral Name}
 \begin{deflist}{000}
-\item [CEC] {\tt Value}[mol/m$^3$]
+\item [CEC] {\tt Value} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
 \item[CATIONS] ~
 \begin{deflist}{000}
-\item[\tt Name] $K$
+\item[\tt Name]  \ \ \ {\tt Selectivity\_Coefficient}
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -2830,7 +2865,26 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 ~\\
 
-\item[DISTRIBUTION\_COEF] \ (not implemented)
+%\begin{deflist}{000}
+\item [ISOTHERM\_REACTIONS] ~
+
+\begin{deflist}{000}
+\item [Species\_Name] ~
+
+\begin{deflist}{000}
+\item [TYPE] LINEAR, \ LANGMUIR, \ FREUNDLICH
+\item [DISTRIBUTION\_COEF, KD] \ {\tt Value} \ \ [kg water/m$^3$ bulk] \ [see Eqn.\eqref{linkd}]
+\item [LANGMUIR\_B] \ {\tt Value} \ \ [---] \ [see Eqn.\eqref{Langmuir}]
+\item [FREUNDLICH\_N] \ {\tt Value} \ \ [---] \ [see Eqn.\eqref{Freundlich}]
+\end{deflist}
+\item [\keyend] ~
+
+\end{deflist}
+
+\item [\keyend] ~
+
+~\\
+
 \item[JUMPSTART\_KINETIC\_SORPTION]
 \item[NO\_CHECKPOINT\_KINETIC\_SORPTION]
 \item[NO\_RESTART\_KINETIC\_SORPTION]
@@ -2910,6 +2964,27 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \bf Secondary\_Species & List of aqueous species in equilibrium with primary species.\\
 \midrule
 \bf Gas\_Species & List of gas species.\\
+\midrule
+\bf Sorption & Surface complexation, ion exchange and specified isotherm.\\
+\end{tabularx}
+\begin{verbatim}
+  SORPTION
+    ISOTHERM_REACTIONS
+      Tracer
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+      Tracer_Age
+        TYPE LINEAR 
+        DISTRIBUTION_COEFFICIENT 500. ! kg water/m^3 bulk
+      /
+    /
+  /
+\end{verbatim}
+\end{center}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
 \midrule
 \bf Output &
 To print secondary aqueous complex concentrations, either add the names of the secondary species of interest or the keyword ``SECONDARY\_SPECIES'' for all secondary species to the CHEMISTRY OUTPUT card:

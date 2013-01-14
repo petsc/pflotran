@@ -1581,7 +1581,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             pco2 = conc(icomp)*1.e5
 !           pco2 = pres - sat_pressure
             
-!            pres = conc(icomp)*1.D5 + sat_pressure
+            pres = pco2 + sat_pressure
             yco2 = pco2/pres
              
             iflag = 1
@@ -1596,9 +1596,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             !compute fugacity coefficient
             fg = fg*1.D6
             xphico2 = fg / pres
-!            global_auxvar%fugacoeff(1) = xphico2
-            
-!           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            global_auxvar%fugacoeff(1) = xphico2
+!          call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
             m_na = 0.d0
             m_cl = 0.d0
             if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
@@ -1616,15 +1615,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             endif
             
             lnQk = -log(xphico2*henry)-lngamco2
-!            lnQk = -log(xphico2*henry)
-!           lnQk = log(fg/henry)
+!          lnQk = -log(xphico2*henry)
+!          lnQk = log(fg/henry)
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
-            reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
+!           reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
+            global_auxvar%scco2_eq_logK = -lnQK*LN_TO_LOG
             
-            !print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-            !   lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
-            !    reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
+!           print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+!             lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
+!             reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1635,8 +1635,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
 !                log(rt_auxvar%pri_molal(comp_id))
                log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
-            !    print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
-            !      rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
+!                print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
+!                  rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
             enddo
           
 !           QK = exp(lnQK)
@@ -1997,7 +1997,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
               CONSTRAINT_SUPERCRIT_CO2) then
             igas = aq_species_constraint%constraint_spec_id(i)
             if (abs(reaction%species_idx%co2_gas_id) == igas) then
-              reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+              reaction%eqgas_logK(igas) = global_auxvar%scco2_eq_logK
             endif
           endif
         enddo
@@ -2037,7 +2037,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
               CONSTRAINT_SUPERCRIT_CO2) then
             igas = aq_species_constraint%constraint_spec_id(i)
             if (abs(reaction%species_idx%co2_gas_id) == igas) then
-              reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+!             reaction%eqgas_logK(igas) = reaction%scco2_eq_logK
+              reaction%eqgas_logK(igas) = global_auxvar%scco2_eq_logK
             endif
           endif
         enddo
