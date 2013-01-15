@@ -4676,7 +4676,6 @@ subroutine RTExplicitAdvectionPatch(realization)
   PetscErrorCode :: ierr
   PetscViewer :: viewer
 
-#ifdef FORTRAN_2003_COMPLIANT  
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
   
   select case(realization%option%tvd_flux_limiter)
@@ -4693,7 +4692,6 @@ subroutine RTExplicitAdvectionPatch(realization)
     case default
       TFluxLimitPtr => TFluxLimiter
   end select
-#endif
 
   option => realization%option
   field => realization%field
@@ -4835,9 +4833,7 @@ subroutine RTExplicitAdvectionPatch(realization)
                     rt_aux_vars(ghosted_id_up), &
                     rt_aux_vars(ghosted_id_dn), &
                     total_dn2, &
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif      
                     option,flux)
           
       ! contribution upwind
@@ -4886,9 +4882,7 @@ subroutine RTExplicitAdvectionPatch(realization)
                     rt_aux_vars_bc(sum_connection), &
                     rt_aux_vars(ghosted_id), &
                     total_dn2, &
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif      
                     option,flux)
 
       ! contribution downwind

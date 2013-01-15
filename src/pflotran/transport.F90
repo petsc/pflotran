@@ -964,9 +964,7 @@ end subroutine TSrcSinkCoef
 subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     total_up2,rt_aux_var_up, & 
                     rt_aux_var_dn,total_dn2, & 
-#ifdef FORTRAN_2003_COMPLIANT  
                     TFluxLimitPtr, &
-#endif
                     option,flux)
 
   use Option_module
@@ -979,9 +977,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
   PetscReal, pointer :: total_up2(:,:), total_dn2(:,:)
   type(option_type) :: option
   PetscReal :: flux(rt_parameter%ncomp)
-#ifdef FORTRAN_2003_COMPLIANT  
   procedure (TFluxLimiterDummy), pointer :: TFluxLimitPtr
-#endif
   PetscReal :: dist(-1:3)    ! list of distance vectors, size(-1:3,num_connections) where
                             !   -1 = fraction upwind
                             !   0 = magnitude of distance 
@@ -1017,11 +1013,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
           endif
           ! mol/sec = L/sec * mol/L
           correction = 0.5d0*velocity_area*(1.d0-nu)* &
-#ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
-#else
-                       TFluxLimiter(theta)* &
-#endif
                        dc
           flux(idof) = flux(idof) + correction
         enddo
@@ -1040,11 +1032,7 @@ subroutine TFluxTVD(rt_parameter,velocity,area,dist, &
                     dc
           endif
           correction = 0.5d0*velocity_area*(1.d0+nu)* &
-#ifdef FORTRAN_2003_COMPLIANT          
                        TFluxLimitPtr(theta)* &
-#else
-                       TFluxLimiter(theta)* &
-#endif
                        dc
           flux(idof) = flux(idof) + correction
         enddo
