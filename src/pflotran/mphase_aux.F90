@@ -77,7 +77,6 @@ type, public :: mphase_auxvar_elem_type
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
             MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC, &
-            MphaseSecHeatAuxVarCompute, &
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
@@ -560,107 +559,6 @@ subroutine MphaseAuxVarCompute_WINC(x,delx,aux_var,global_auxvar,iphase,saturati
   enddo
 
 end subroutine MphaseAuxVarCompute_WINC
-
-! ************************************************************************** !
-! 
-! MphaesSecHeatAuxVarCompute: Computes secondary auxillary variables in each
-!                             grid cell for heat transfer only
-! author: Satish Karra
-! Date: 06/28/12
-!
-! ************************************************************************** !
-subroutine MphaseSecHeatAuxVarCompute(sec_heat_vars,aux_var,global_aux_var, &
-                                   therm_conductivity,dencpr, &
-                                   option)
-
-  use Option_module 
-  use Global_Aux_module
-  use Secondary_continuum_module
-  
-  implicit none
-  
-  type(sec_heat_type) :: sec_heat_vars
-  type(mphase_auxvar_elem_type) :: aux_var
-  type(global_auxvar_type) :: global_aux_var
-  type(option_type) :: option
-  PetscReal :: coeff_left(sec_heat_vars%ncells)
-  PetscReal :: coeff_diag(sec_heat_vars%ncells)
-  PetscReal :: coeff_right(sec_heat_vars%ncells)
-  PetscReal :: rhs(sec_heat_vars%ncells)
-  PetscReal :: sec_temp(sec_heat_vars%ncells)
-  PetscReal :: area(sec_heat_vars%ncells)
-  PetscReal :: vol(sec_heat_vars%ncells)
-  PetscReal :: dm_plus(sec_heat_vars%ncells)
-  PetscReal :: dm_minus(sec_heat_vars%ncells)
-  PetscInt :: i, ngcells
-  PetscReal :: area_fm
-  PetscReal :: alpha, therm_conductivity, dencpr
-  PetscReal :: temp_primary_node
-  PetscReal :: m
-  
-  
-  ngcells = sec_heat_vars%ncells
-  area = sec_heat_vars%area
-  vol = sec_heat_vars%vol
-  dm_plus = sec_heat_vars%dm_plus
-  dm_minus = sec_heat_vars%dm_minus
-  area_fm = sec_heat_vars%interfacial_area
-  temp_primary_node = aux_var%temp
-
-  
-  coeff_left = 0.d0
-  coeff_diag = 0.d0
-  coeff_right = 0.d0
-  rhs = 0.d0
-  sec_temp = 0.d0
-  
-  alpha = option%flow_dt*therm_conductivity/dencpr
-
-  
-  ! Setting the coefficients
-  do i = 2, ngcells-1
-    coeff_left(i) = -alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i))
-    coeff_diag(i) = alpha*area(i-1)/((dm_minus(i) + dm_plus(i-1))*vol(i)) + &
-                    alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i)) + 1.d0
-    coeff_right(i) = -alpha*area(i)/((dm_minus(i+1) + dm_plus(i))*vol(i))
-  enddo
-  
-  coeff_diag(1) = alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1)) + 1.d0
-  coeff_right(1) = -alpha*area(1)/((dm_minus(2) + dm_plus(1))*vol(1))
-  
-  coeff_left(ngcells) = -alpha*area(ngcells-1)/ &
-                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells))
-  coeff_diag(ngcells) = alpha*area(ngcells-1)/ &
-                       ((dm_minus(ngcells) + dm_plus(ngcells-1))*vol(ngcells)) &
-                       + alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells)) &
-                       + 1.d0
-                        
-  rhs = sec_heat_vars%sec_temp  ! secondary continuum values from previous time step
-  rhs(ngcells) = rhs(ngcells) + & 
-                 alpha*area(ngcells)/(dm_plus(ngcells)*vol(ngcells))* &
-                 temp_primary_node
-                
-  ! Thomas algorithm for tridiagonal system
-  ! Forward elimination
-  do i = 2, ngcells
-    m = coeff_left(i)/coeff_diag(i-1)
-    coeff_diag(i) = coeff_diag(i) - m*coeff_right(i-1)
-    rhs(i) = rhs(i) - m*rhs(i-1)
-  enddo
-
-  ! Back substitution
-  ! Calculate temperature in the secondary continuum
-  sec_temp(ngcells) = rhs(ngcells)/coeff_diag(ngcells)
-  do i = ngcells-1, 1, -1
-    sec_temp(i) = (rhs(i) - coeff_right(i)*sec_temp(i+1))/coeff_diag(i)
-  enddo
-
-! print *,'temp_dcdm= ',(sec_temp(i),i=1,ngcells)
-  
-  sec_heat_vars%sec_temp = sec_temp
-
-
-end subroutine MphaseSecHeatAuxVarCompute
 
 ! ************************************************************************** !
 !

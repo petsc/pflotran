@@ -11,7 +11,7 @@ module Auxiliary_module
   use Flash2_Aux_Module
   use General_Aux_module
   use Material_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 #ifdef SURFACE_FLOW
   !use Surface_Flow_Aux_module
 #endif
