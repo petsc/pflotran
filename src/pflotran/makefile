@@ -284,6 +284,7 @@ misc_obj = \
 	${common_src}realization.o \
 	${common_src}region.o \
 	${common_src}regression.o \
+	${common_src}secondary_continuum_aux.o\
 	${common_src}secondary_continuum.o \
 	${common_src}simulation.o \
 	${common_src}solver.o \
@@ -337,6 +338,7 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
                mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
                miscible_aux.o general_aux.o material_aux.o
+			   secondary_continuum_aux.o
 biomass.o : biomass_aux.o option.o string.o input.o utility.o
 biomass_aux.o : option.o utility.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o
@@ -427,10 +429,10 @@ mineral_aux.o : database_aux.o option.o string.o utility.o
 miscible.o : miscible_aux.o realization.o global_aux.o variables.o
 miscible_aux.o : option.o material.o
 mphase.o : mphase_aux.o realization.o fluid.o global_aux.o \
-           secondary_continuum.o variables.o
+           secondary_continuum.o secondary_continuum_aux.o variables.o
 mphase_aux.o : option.o material.o water_eos.o co2_span_wagner.o \
                co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
-               fluid.o saturation_function.o secondary_continuum.o
+               fluid.o saturation_function.o 
 observation.o : region.o option.o input.o
 output_aux.o : variables.o
 option.o :
@@ -470,7 +472,8 @@ reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
 #reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
-                       output_aux.o variables.o
+                       output_aux.o variables.o secondary_continuum_aux.o\
+					   secondary_continuum.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -488,8 +491,9 @@ richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                 matrix_buffer.o global_aux.o
 saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
-secondary_continuum.o : option.o string.o global_aux.o reaction_aux.o \
-                        reactive_transport_aux.o
+secondary_continuum.o : string.o secondary_continuum_aux.o
+secondary_continuum_aux.o : option.o global_aux.o reaction_aux.o\
+							reactive_transport_aux.o mphase_aux.o
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o
@@ -514,8 +518,8 @@ surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         string.o grid.o strata.o unstructured_grid.o dataset.o \
                         unstructured_grid_aux.o
 thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \
-        variables.o
-thc_aux.o : secondary_continuum.o option.o material.o water_eos.o \
+        variables.o secondary_continuum_aux.o
+thc_aux.o : option.o material.o water_eos.o \
             saturation_function.o grid.o global_aux.o
 thmc.o : thmc_aux.o realization.o saturation_function.o
 thmc_aux.o : option.o material.o water_eos.o saturation_function.o grid.o global_aux.o

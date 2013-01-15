@@ -119,6 +119,7 @@ subroutine THCSetupPatch(realization)
   use Coupler_module
   use Connection_module
   use Fluid_module
+  use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
  
   implicit none
@@ -495,7 +496,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
   use Grid_module
   use Field_module
   use Option_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
  
   implicit none
   
@@ -1117,7 +1118,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
 
   implicit none
@@ -3175,7 +3176,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3735,7 +3736,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   SNES :: snes
   Vec :: xx
@@ -4724,7 +4725,7 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
   
@@ -4819,7 +4820,7 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
   

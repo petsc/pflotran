@@ -126,6 +126,7 @@ subroutine RTSetupPatch(realization)
   use Connection_module
   use Fluid_module
   use Material_module
+  use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
  
   implicit none
@@ -755,7 +756,7 @@ subroutine RTUpdateSolutionPatch(realization)
   use Option_module
   use Grid_module
   use Reaction_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
  
   implicit none
 
@@ -935,7 +936,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   use Option_module
   use Field_module  
   use Grid_module
-  use Secondary_Continuum_module  
+  use Secondary_Continuum_Aux_module  
 
   implicit none
   
@@ -2057,7 +2058,7 @@ subroutine RTReactPatch(realization)
   use Option_module
   use Field_module  
   use Grid_module  
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
 !$ use omp_lib
      
@@ -2514,7 +2515,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   use Connection_module
   use Coupler_module  
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -2822,7 +2823,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3235,7 +3236,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module  
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3486,7 +3487,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module  
   use Debug_module
   use Logging_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   
   implicit none
@@ -5040,7 +5041,7 @@ subroutine RTSecondaryTransport(sec_transport_vars,aux_var,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
   
@@ -5184,7 +5185,7 @@ subroutine RTSecondaryTransportJacobian(aux_var,sec_transport_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
   

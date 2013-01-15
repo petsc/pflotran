@@ -2771,7 +2771,6 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   use Realization_module
   use Option_module
   use Reactive_Transport_module
-  use Secondary_Continuum_module
 
   implicit none
   
