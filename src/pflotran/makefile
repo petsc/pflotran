@@ -139,10 +139,10 @@ ifdef amanzi_bgd
   MYFLAGS += -DAMANZI_BGD
 endif
 
-CFLAGS		 = 
-FFLAGS		 =
-CPPFLAGS         = ${MYFLAGS}
-FPPFLAGS         = ${MYFLAGS}
+CFLAGS   = 
+FFLAGS   =
+CPPFLAGS = ${MYFLAGS}
+FPPFLAGS = ${MYFLAGS}
 
 CLEANFILES       = pflotran pflotran_rxn libpflotranchem.a make.log
 
@@ -336,9 +336,9 @@ ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxiliary.o : thc_aux.o thmc_aux.o richards_aux.o reactive_transport_aux.o \
-               mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
-               miscible_aux.o general_aux.o material_aux.o
-			   secondary_continuum_aux.o
+              mphase_aux.o flash2_aux.o global_aux.o immis_aux.o \
+              miscible_aux.o general_aux.o material_aux.o \
+              secondary_continuum_aux.o
 biomass.o : biomass_aux.o option.o string.o input.o utility.o
 biomass_aux.o : option.o utility.o
 checkpoint.o : realization.o logging.o output_aux.o variables.o
@@ -473,7 +473,7 @@ reaction_sandbox.o : option.o reaction_aux.o reactive_transport_aux.o string.o \
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global.o \
                        output_aux.o variables.o secondary_continuum_aux.o\
-					   secondary_continuum.o
+                       secondary_continuum.o
 reactive_transport_aux.o : option.o reaction_aux.o surface_complexation_aux.o \
                            matrix_block_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -493,7 +493,7 @@ saturation.o : option.o grid.o coupler.o condition.o connection.o region.o
 saturation_function.o : option.o input.o string.o utility.o
 secondary_continuum.o : string.o secondary_continuum_aux.o
 secondary_continuum_aux.o : option.o global_aux.o reaction_aux.o\
-							reactive_transport_aux.o mphase_aux.o
+                            reactive_transport_aux.o mphase_aux.o
 simulation.o : timestepper.o realization.o regression.o
 solid_solution.o : solid_solution_aux.o option.o string.o reaction_aux.o mineral_aux.o \
                    utility.o mineral.o input.o
