@@ -62,6 +62,7 @@ module Secondary_Continuum_Aux_module
     PetscReal :: sec_mnrl_area                 ! secondary mineral surface area
     PetscBool :: log_spacing                   ! flag to check if log spacing is set
     PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
+    PetscReal, pointer :: updated_conc(:)      ! This stores the secondary concentration update values from secondary NR iteration
   end type sec_transport_type  
 
   type, public :: sc_heat_type
