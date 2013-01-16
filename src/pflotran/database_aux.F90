@@ -59,8 +59,12 @@ end function DatabaseRxnCreate
 ! date: 10/30/12
 !
 ! ************************************************************************** !
-function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
-                                        primary_species_names,option)
+function DatabaseRxnCreateFromRxnString(reaction_string, &
+                                        naqcomp, aq_offset, &
+                                        primary_aq_species_names, &
+                                        nimcomp, im_offset, &
+                                        primary_im_species_names, &
+                                        option)
 
   use Option_module
   use String_module
@@ -69,8 +73,12 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: reaction_string
-  PetscInt :: ncomp
-  character(len=MAXWORDLENGTH) :: primary_species_names(ncomp)
+  PetscInt :: naqcomp ! mobile aqueoues species
+  PetscInt :: aq_offset ! offset for aqueous species
+  character(len=MAXWORDLENGTH) :: primary_aq_species_names(naqcomp)
+  PetscInt :: nimcomp ! immobile primary speces (e.g. biomass)
+  PetscInt :: im_offset ! offset for aqueous species
+  character(len=MAXWORDLENGTH) :: primary_im_species_names(nimcomp)
   type(option_type) :: option
     
   type(database_rxn_type), pointer :: DatabaseRxnCreateFromRxnString
@@ -170,16 +178,28 @@ function DatabaseRxnCreateFromRxnString(reaction_string,ncomp, &
             dbaserxn%stoich(icount) = -1.d0
           endif
 
-          ! set the primary species id
+          ! set the primary aqueous species id
           found = PETSC_FALSE
-          do i = 1, ncomp
-            if (StringCompare(word,primary_species_names(i), &
+          do i = 1, naqcomp
+            if (StringCompare(word,primary_aq_species_names(i), &
                               MAXWORDLENGTH)) then
-              dbaserxn%spec_ids(icount) = i
+              dbaserxn%spec_ids(icount) = i + aq_offset
               found = PETSC_TRUE
               exit      
             endif
           enddo
+          ! set the primary immobile species id
+          if (.not.found) then
+            do i = 1, nimcomp
+              if (StringCompare(word,primary_im_species_names(i), &
+                                MAXWORDLENGTH)) then
+                dbaserxn%spec_ids(icount) = i + im_offset
+                found = PETSC_TRUE
+                exit      
+              endif
+            enddo
+          endif
+          
           ! check water
           word2 = 'H2O'
           if (StringCompareIgnoreCase(word,word2)) then
@@ -514,7 +534,8 @@ end subroutine BasisSubSpeciesInMineralRxn
 ! date: 01/07/13
 !
 ! ************************************************************************** !
-subroutine DatabaseCheckLegitimateLogKs(dbaserxn,species_name,option)
+function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
+                                      option)
 
   use Option_module
   
@@ -522,22 +543,36 @@ subroutine DatabaseCheckLegitimateLogKs(dbaserxn,species_name,option)
     
   type(database_rxn_type), pointer :: dbaserxn
   character(len=MAXWORDLENGTH) :: species_name
+  PetscReal :: temperatures(:)
   type(option_type) :: option
 
-  PetscInt :: itemp
+  PetscBool :: DatabaseCheckLegitimateLogKs
   
+  PetscInt :: itemp
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  
+  DatabaseCheckLegitimateLogKs = PETSC_TRUE
+
   if (.not.associated(dbaserxn) .or. option%use_isothermal) return
   
+  string = ''
   do itemp = 1, size(dbaserxn%logK)
     if (dabs(dbaserxn%logK(itemp) - 500.) < 1.d-10) then
-      option%io_buffer = 'Undefined log Ks exist for species "' // &
-                         trim(species_name) // '" in database. ' // &
-                         'Non-isothermal reactions not possible.'
-      call printErrMsg(option)
+      write(word,'(f5.1)') temperatures(itemp)
+      string = trim(string) // ' ' // word
+      DatabaseCheckLegitimateLogKs = PETSC_FALSE
     endif
   enddo
   
-end subroutine DatabaseCheckLegitimateLogKs
+  if (.not.DatabaseCheckLegitimateLogKs) then
+    option%io_buffer = 'Undefined log Ks for temperatures (' // &
+                       trim(adjustl(string)) // ') for species "' // &
+                       trim(species_name) // '" in database.'
+    call printWrnMsg(option)
+  endif
+  
+end function DatabaseCheckLegitimateLogKs
 
 ! ************************************************************************** !
 !

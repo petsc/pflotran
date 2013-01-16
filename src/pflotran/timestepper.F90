@@ -3367,7 +3367,7 @@ end subroutine StepperJumpStart
 
 ! ************************************************************************** !
 !
-! StepperUpdateFlowAuxVars: Updates the flow auxilliary variables
+! StepperUpdateFlowAuxVars: Updates the flow auxiliary variables
 ! author: Glenn Hammond
 ! date: 10/11/08 
 !
@@ -3419,7 +3419,7 @@ end subroutine StepperUpdateFlowAuxVars
 
 ! ************************************************************************** !
 !
-! StepperUpdateTranAuxVars: Updates the flow auxilliary variables
+! StepperUpdateTranAuxVars: Updates the flow auxiliary variables
 ! author: Glenn Hammond
 ! date: 10/11/08 
 !
@@ -3459,7 +3459,7 @@ subroutine StepperSandbox(realization)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use String_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
 
@@ -3494,7 +3494,7 @@ subroutine StepperSandbox(realization)
 
   rt_aux_vars => patch%Aux%RT%aux_vars
   global_aux_vars => patch%Aux%Global%aux_vars
-  rt_sec_transport_vars => patch%Aux%RT%sec_transport_vars
+  rt_sec_transport_vars => patch%Aux%SC_RT%sec_transport_vars
 
                                    ! cells     bcs        act coefs.
   call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)

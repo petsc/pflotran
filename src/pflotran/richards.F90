@@ -101,7 +101,7 @@ end subroutine RichardsSetup
 
 ! ************************************************************************** !
 !
-! RichardsSetupPatch: Creates arrays for auxilliary variables
+! RichardsSetupPatch: Creates arrays for auxiliary variables
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -742,6 +742,7 @@ end subroutine RichardsUpdateMassBalancePatch
 ! RichardsUpdatePermPatch: Updates the permeability based on pressure
 ! author: Satish Karra
 ! Date: 01/09/12
+!
 ! ************************************************************************** !
 subroutine RichardsUpdatePermPatch(realization)
 
@@ -834,7 +835,7 @@ end subroutine RichardsUpdatePermPatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
+! RichardsUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -922,7 +923,7 @@ end subroutine RichardsUpdateCellPressure
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! RichardsUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -1492,7 +1493,7 @@ end subroutine RichardsUpdateCellPressurePatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVarsPatchMFDLP: Computes  updates the auxilliary variables associated with 
+! RichardsUpdateAuxVarsPatchMFDLP: Computes  updates the auxiliary variables associated with 
 !                        the Richards problem for LP formulation
 ! author: Daniil Svyatskiy
 ! date: 07/29/10
@@ -6561,6 +6562,10 @@ subroutine RichardsSetPlotVariables(realization)
   type(output_variable_list_type), pointer :: list
   
   list => realization%output_option%output_variable_list
+
+  if (associated(list%first)) then
+    return
+  endif
   
   name = 'Liquid Pressure'
   units = 'Pa'
@@ -6635,7 +6640,7 @@ subroutine RichardsDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! taken care of in auxilliary.F90
+  ! taken care of in auxiliary.F90
 
 end subroutine RichardsDestroyPatch
 

@@ -217,7 +217,7 @@ subroutine RealizationCreateDiscretization(realization)
   PetscReal, pointer :: real_tmp(:)
   type(dm_ptr_type), pointer :: dm_ptr
   Vec :: is_bnd_vec
-
+  PetscInt :: ivar
 
   option => realization%option
   field => realization%field
@@ -468,6 +468,19 @@ subroutine RealizationCreateDiscretization(realization)
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
+
+  ! Allocate vectors to hold temporally average output quantites
+  if(realization%output_option%aveg_output_variable_list%nvars>0) then
+
+    field%nvars = realization%output_option%aveg_output_variable_list%nvars
+    allocate(field%avg_vars_vec(field%nvars))
+
+    do ivar=1,field%nvars
+      call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                         field%avg_vars_vec(ivar))
+      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
+    enddo
+  endif
        
 
 end subroutine RealizationCreateDiscretization
@@ -778,7 +791,7 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationProcessConditions: Sets up auxilliary data associated with 
+! RealizationProcessConditions: Sets up auxiliary data associated with 
 !                               conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -806,7 +819,7 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function, auxilliary arrays
+!                               and saturation function, auxiliary arrays
 !                               and datasets
 ! author: Glenn Hammond
 ! date: 01/21/09, 01/12/11
@@ -1016,7 +1029,7 @@ end subroutine RealProcessFlowConditions
 
 ! ************************************************************************** !
 !
-! RealProcessTranConditions: Sets up auxilliary data associated with 
+! RealProcessTranConditions: Sets up auxiliary data associated with 
 !                            transport conditions
 ! author: Glenn Hammond
 ! date: 10/14/08
@@ -1074,6 +1087,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
                                    cur_constraint%colloids, &
+                                   cur_constraint%biomass, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -1097,6 +1111,7 @@ subroutine RealProcessTranConditions(realization)
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             cur_constraint_coupler%colloids => cur_constraint%colloids
+            cur_constraint_coupler%biomass => cur_constraint%biomass
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1330,7 +1345,7 @@ end subroutine RealizationInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
+! RealizUpdateAllCouplerAuxVars: Updates auxiliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
 ! date: 02/22/08

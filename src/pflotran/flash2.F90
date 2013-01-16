@@ -139,7 +139,7 @@ end subroutine Flash2Setup
 
 ! ************************************************************************** !
 !
-! Flash2SetupPatch: Creates arrays for auxilliary variables
+! Flash2SetupPatch: Creates arrays for auxiliary variables
 ! author: Chuan Lu
 ! date: 10/1/08
 !
@@ -375,7 +375,7 @@ end subroutine Flash2UpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! Flash2UpdateAuxVars: Updates the auxilliary variables associated with 
+! Flash2UpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Richards problem
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -492,7 +492,7 @@ end subroutine Flash2UpdateReason
 
 ! ***************************************************************************
 !
-! Flash2UpdateAuxVars: Updates the auxilliary variables associated with 
+! Flash2UpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Flash2 problem
 ! author: Chuan Lu
 ! date: 10/10/08
@@ -526,7 +526,7 @@ end subroutine Flash2UpdateAuxVars
 
 ! ************************************************************************** !
 !
-! Flash2UpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! Flash2UpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Flash2 problem
 ! author: Chuan Lu
 ! date: 12/10/07

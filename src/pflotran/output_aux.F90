@@ -6,6 +6,9 @@ module Output_Aux_module
 
 #include "definitions.h"
 
+  PetscInt, parameter, public :: INST_VARS = 1
+  PetscInt, parameter, public :: AVEG_VARS = 2
+
   type, public :: output_option_type
 
     character(len=2) :: tunit
@@ -18,6 +21,7 @@ module Output_Aux_module
     PetscBool :: print_hdf5_velocities
     PetscBool :: print_hdf5_flux_velocities
     PetscBool :: print_single_h5_file
+    PetscInt  :: times_per_h5_file
 
     PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
@@ -47,6 +51,10 @@ module Output_Aux_module
     PetscInt :: xmf_vert_len
     
     type(output_variable_list_type), pointer :: output_variable_list
+    type(output_variable_list_type), pointer :: aveg_output_variable_list
+
+    PetscReal :: aveg_var_time
+    PetscReal :: aveg_var_dtime
     
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
@@ -61,19 +69,24 @@ module Output_Aux_module
   type, public :: output_variable_list_type
     type(output_variable_type), pointer :: first
     type(output_variable_type), pointer :: last
+    PetscInt :: nvars
   end type output_variable_list_type
   
   type, public :: output_variable_type
     character(len=MAXWORDLENGTH) :: name   ! string that appears in hdf5 file
     character(len=MAXWORDLENGTH) :: units
     PetscBool :: plot_only
-    PetscInt :: iformat
+    PetscInt :: iformat   ! 0 = for REAL values; 1 = for INTEGER values
     PetscInt :: icategory ! category for variable-specific regression testing
     PetscInt :: ivar
     PetscInt :: isubvar
     PetscInt :: isubsubvar
     type(output_variable_type), pointer :: next
   end type output_variable_type
+
+!  type, public, EXTENDS (output_variable_type) :: aveg_output_variable_type
+!    PetscReal :: time_interval
+!  end type aveg_output_variable_type
   
   interface OutputVariableCreate
     module procedure OutputVariableCreate1
@@ -103,6 +116,7 @@ module Output_Aux_module
             OutputAppendToHeader, &
             OutputVariableListToHeader, &
             OutputVariableToCategoryString, &
+            OutputVariableRead, &
             OutputOptionDestroy, &
             OutputVariableListDestroy
 
@@ -128,6 +142,7 @@ function OutputOptionCreate()
   output_option%print_hdf5_velocities = PETSC_FALSE
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
   output_option%print_single_h5_file = PETSC_TRUE
+  output_option%times_per_h5_file = 0
   output_option%print_tecplot = PETSC_FALSE
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
@@ -149,8 +164,11 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
+  output_option%aveg_var_time = 0.d0
+  output_option%aveg_var_dtime = 0.d0
   
   nullify(output_option%output_variable_list)
+  nullify(output_option%aveg_output_variable_list)
   
   output_option%tconv = 1.d0
   output_option%tunit = 's'
@@ -284,6 +302,7 @@ function OutputVariableListCreate()
   allocate(output_variable_list)
   nullify(output_variable_list%first)
   nullify(output_variable_list%last)
+  output_variable_list%nvars = 0
   
   OutputVariableListCreate => output_variable_list
   
@@ -310,6 +329,7 @@ function OutputVariableListDuplicate(old_list,new_list)
   allocate(new_list)
   nullify(new_list%first)
   nullify(new_list%last)
+  new_list%nvars = old_list%nvars
   
   cur_variable => old_list%first
   do
@@ -342,6 +362,8 @@ subroutine OutputVariableAddToList1(list,variable)
     list%last%next => variable
   endif
   list%last => variable
+  
+  list%nvars = list%nvars+1
   
 end subroutine OutputVariableAddToList1
 
@@ -525,6 +547,72 @@ function OutputVariableToCategoryString(icategory)
   OutputVariableToCategoryString = string
 
 end function OutputVariableToCategoryString
+
+! ************************************************************************** !
+!> This routine reads variable from input file.
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 12/21/12
+! ************************************************************************** !
+subroutine OutputVariableRead(input,option,output_variable_list)
+
+  use Option_module
+  use Input_module
+  use String_module
+  use Variables_module
+
+  implicit none
+
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  type(output_variable_list_type), pointer :: output_variable_list
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name, units
+
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','VARIABLES')
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case ('LIQUID_PRESSURE')
+        name = 'Liquid Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_PRESSURE,units, &
+                                     LIQUID_PRESSURE)
+
+      case ('LIQUID_SATURATION')
+        name = 'Liquid Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
+                               LIQUID_SATURATION)
+
+!      case ('LIQUID_VELOCITIY_AT_CELL_CENTER')
+!        name = 'Liquid Velocity at Cell Center'
+!        units = 'm/s'
+!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
+!                               LIQUID_VELOCITY_CELL_CENT)
+!
+!      case ('LIQUID_VELOCITIY_AT_CELL_FACE')
+!        name = 'Liquid Velocity at Cell Face'
+!        units = 'm/s'
+!        call OutputVariableAddToList(output_variable_list,name,OUTPUT_SATURATION,units, &
+!                               LIQUID_VELOCITY_CELL_FACE)
+      case default
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in VARIABLES.'
+    end select
+
+  enddo
+
+end subroutine OutputVariableRead
 
 ! ************************************************************************** !
 !

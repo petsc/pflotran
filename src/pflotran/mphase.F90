@@ -158,7 +158,7 @@ end subroutine MphaseSetup
 
 ! ************************************************************************** !
 !
-! MphaseSetupPatch: Creates arrays for auxilliary variables
+! MphaseSetupPatch: Creates arrays for auxiliary variables
 ! author: Chuan Lu
 ! date: 5/13/08
 !
@@ -171,6 +171,7 @@ subroutine MphaseSetupPatch(realization)
   use Coupler_module
   use Connection_module
   use Grid_module
+  use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
  
   implicit none
@@ -197,6 +198,7 @@ subroutine MphaseSetupPatch(realization)
   grid => patch%grid 
 
   patch%aux%Mphase => MphaseAuxCreate()
+  patch%aux%SC_heat => SecondaryAuxHeatCreate(option)
   mphase => patch%aux%Mphase
 
   
@@ -301,7 +303,7 @@ subroutine MphaseSetupPatch(realization)
 
     enddo
       
-    patch%aux%Mphase%sec_heat_vars => mphase_sec_heat_vars    
+    patch%aux%SC_heat%sec_heat_vars => mphase_sec_heat_vars    
   
   endif
 
@@ -738,7 +740,7 @@ end subroutine MPhaseUpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -856,7 +858,7 @@ end subroutine MPhaseUpdateReason
 
 ! ***********************************
 !
-! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -890,7 +892,7 @@ end subroutine MphaseUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! MphaseUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the Mphase problem
 ! author: Chuan Lu
 ! date: 12/10/07
@@ -1253,7 +1255,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
 
   implicit none
@@ -1288,7 +1290,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
+  mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
       
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -2408,7 +2410,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -2495,7 +2497,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
-  mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
+  mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -3139,7 +3141,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3241,7 +3243,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  sec_heat_vars => patch%aux%mphase%sec_heat_vars
+  sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -4259,7 +4261,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
   
@@ -4358,7 +4360,7 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
   

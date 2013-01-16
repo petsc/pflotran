@@ -179,11 +179,13 @@ module Reaction_Aux_module
     PetscInt :: ncomp
     PetscInt :: naqcomp
     PetscInt :: ncollcomp
+    PetscInt :: nimcomp
     
     ! offsets
-    PetscInt :: offset_aq
-    PetscInt :: offset_coll
+    PetscInt :: offset_aqueous
+    PetscInt :: offset_colloid
     PetscInt :: offset_collcomp
+    PetscInt :: offset_immobile
     
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscBool, pointer :: primary_species_print(:)
@@ -221,7 +223,10 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
-    
+!#ifdef CHUAN_CO2
+!   PetscReal :: scco2_eq_logK ! SC CO2 
+!#endif
+
     PetscInt :: nsorb
     PetscInt :: neqsorb
     PetscBool, pointer :: kd_print(:)
@@ -251,6 +256,9 @@ module Reaction_Aux_module
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscBool, pointer :: total_sorb_mobile_print(:)
     PetscBool, pointer :: colloid_print(:)
+    
+    ! immobile species
+    character(len=MAXWORDLENGTH), pointer :: imcomp_names(:)
     
     ! general rxn
     PetscInt :: ngeneral_rxn
@@ -310,6 +318,7 @@ module Reaction_Aux_module
             GetColloidCount, &
             GetColloidNames, &
             GetColloidIDFromName, &
+            GetImmobileCount, &
             ReactionFitLogKCoef, &
             ReactionInitializeLogK, &
             ReactionInterpolateLogK, &
@@ -433,9 +442,11 @@ function ReactionCreate()
   reaction%naqcomp = 0
   reaction%ncoll = 0
   reaction%ncollcomp = 0
-  reaction%offset_aq = 0
-  reaction%offset_coll = 0
+  reaction%nimcomp = 0
+  reaction%offset_aqueous = 0
+  reaction%offset_colloid = 0
   reaction%offset_collcomp = 0
+  reaction%offset_immobile = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)
@@ -447,6 +458,9 @@ function ReactionCreate()
   nullify(reaction%eqgash2ostoich)
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
+!#ifdef CHUAN_CO2
+! reaction%scco2_eq_logK = 0.d0
+!#endif
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)
@@ -484,6 +498,8 @@ function ReactionCreate()
   nullify(reaction%pri_spec_to_coll_spec)
   nullify(reaction%coll_spec_to_pri_spec)
   nullify(reaction%colloid_mobile_fraction)
+  
+  nullify(reaction%imcomp_names)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -1193,9 +1209,29 @@ function GetColloidCount(reaction)
 
 end function GetColloidCount
 
+
 ! ************************************************************************** !
 !
-! ReactionFitLogKCoef: Least squares fit to log K over database temperature range
+! GetImmobileCount: Returns the number of immobile species
+! author: Glenn Hammond
+! date: 01/02/13
+!
+! ************************************************************************** !
+function GetImmobileCount(reaction)
+
+  implicit none
+  
+  PetscInt :: GetImmobileCount
+  type(reaction_type) :: reaction
+
+  GetImmobileCount = MicrobialGetBiomassCount(reaction%microbial)
+  
+end function GetImmobileCount
+
+! ************************************************************************** !
+!
+! ReactionFitLogKCoef: Least squares fit to log K over database temperature 
+!                      range
 ! author: P.C. Lichtner
 ! date: 02/13/09
 !
@@ -1612,36 +1648,21 @@ end subroutine KDRxnDestroy
 ! ************************************************************************** !
 subroutine AqueousSpeciesConstraintDestroy(constraint)
 
+  use Utility_module, only: DeallocateArray
+  
   implicit none
   
   type(aq_species_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
   
-  if (associated(constraint%names)) &
-    deallocate(constraint%names)
-  nullify(constraint%names)
-  if (associated(constraint%constraint_conc)) &
-    deallocate(constraint%constraint_conc)
-  nullify(constraint%constraint_conc)
-  if (associated(constraint%basis_molarity)) &
-    deallocate(constraint%basis_molarity)
-  nullify(constraint%basis_molarity)
-  if (associated(constraint%constraint_type)) &
-    deallocate(constraint%constraint_type)
-  nullify(constraint%constraint_type)
-  if (associated(constraint%constraint_spec_id)) &
-    deallocate(constraint%constraint_spec_id)
-  nullify(constraint%constraint_spec_id)
-  if (associated(constraint%constraint_aux_string)) &
-    deallocate(constraint%constraint_aux_string)
-  nullify(constraint%constraint_aux_string)
-  if (associated(constraint%constraint_aux_string)) &
-    deallocate(constraint%constraint_aux_string)
-  nullify(constraint%constraint_aux_string)
-  if (associated(constraint%external_dataset)) &
-    deallocate(constraint%external_dataset)
-  nullify(constraint%external_dataset)
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_conc)
+  call DeallocateArray(constraint%basis_molarity)
+  call DeallocateArray(constraint%constraint_type)
+  call DeallocateArray(constraint%constraint_spec_id)
+  call DeallocateArray(constraint%constraint_aux_string)
+  call DeallocateArray(constraint%external_dataset)
 
   deallocate(constraint)
   nullify(constraint)
@@ -1657,27 +1678,19 @@ end subroutine AqueousSpeciesConstraintDestroy
 ! ************************************************************************** !
 subroutine ColloidConstraintDestroy(constraint)
 
+  use Utility_module, only: DeallocateArray
+
   implicit none
   
   type(colloid_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
   
-  if (associated(constraint%names)) &
-    deallocate(constraint%names)
-  nullify(constraint%names)
-  if (associated(constraint%constraint_conc_mob)) &
-    deallocate(constraint%constraint_conc_mob)
-  nullify(constraint%constraint_conc_mob)
-  if (associated(constraint%constraint_conc_imb)) &
-    deallocate(constraint%constraint_conc_imb)
-  nullify(constraint%constraint_conc_imb)
-  if (associated(constraint%basis_conc_mob)) &
-    deallocate(constraint%basis_conc_mob)
-  nullify(constraint%basis_conc_mob)
-  if (associated(constraint%basis_conc_imb)) &
-    deallocate(constraint%basis_conc_imb)
-  nullify(constraint%basis_conc_imb)
+  call DeallocateArray(constraint%names)
+  call DeallocateArray(constraint%constraint_conc_mob)
+  call DeallocateArray(constraint%constraint_conc_imb)
+  call DeallocateArray(constraint%basis_conc_mob)
+  call DeallocateArray(constraint%basis_conc_imb)
 
   deallocate(constraint)
   nullify(constraint)
@@ -1842,6 +1855,8 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%pri_spec_to_coll_spec)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
+  
+  call DeallocateArray(reaction%imcomp_names)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

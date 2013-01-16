@@ -64,7 +64,7 @@ contains
 
 ! ************************************************************************** !
 !
-! MFDAuxCreate: Allocate and initialize auxilliary object
+! MFDAuxCreate: Allocate and initialize auxiliary object
 ! author: Daniil Svyatskiy
 ! date: 02/03/10
 !
@@ -121,7 +121,7 @@ end function MFDAuxCreate
 
 ! ************************************************************************** !
 !
-! MFDAuxInit: Initialize auxilliary object
+! MFDAuxInit: Initialize auxiliary object
 ! author: Daniil Svyatskiy
 ! date: 02/03/10
 !
@@ -156,7 +156,7 @@ end subroutine MFDAuxInit
 
 ! ************************************************************************** !
 !
-! MFDAuxVarInit: Initialize auxilliary object
+! MFDAuxVarInit: Initialize auxiliary object
 ! author: Daniil Svyatskiy
 ! date: 02/03/10
 !
@@ -223,7 +223,7 @@ end subroutine MFDAuxAddFace
   
 ! ************************************************************************** !
 !
-! MFDAuxVarDestroy: Deallocates a mode auxilliary object
+! MFDAuxVarDestroy: Deallocates a mode auxiliary object
 ! author: Daniil Svyatskiy
 ! date: 02/03/10
 !
@@ -262,7 +262,7 @@ end subroutine MFDAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! MFDAuxDestroy: Deallocates a mode auxilliary object
+! MFDAuxDestroy: Deallocates a mode auxiliary object
 ! author: Daniil Svyatskiy
 ! date: 02/03/10
 !

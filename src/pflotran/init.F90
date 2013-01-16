@@ -206,6 +206,10 @@ subroutine Init(simulation)
   endif
 #endif
 
+  ! initialize plot variables
+  realization%output_option%output_variable_list => OutputVariableListCreate()
+  realization%output_option%aveg_output_variable_list => OutputVariableListCreate()
+  
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
@@ -764,10 +768,7 @@ subroutine Init(simulation)
     tran_stepper%cur_waypoint => realization%waypoints%first
   endif
   
-  ! initialize plot variables
-  realization%output_option%output_variable_list => OutputVariableListCreate()
-  
-  ! initialize global auxilliary variable object
+  ! initialize global auxiliary variable object
   call GlobalSetup(realization)
   ! initialize FLOW
   ! set up auxillary variable arrays
@@ -1162,7 +1163,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
   type(level_type), pointer :: level
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
-  type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   
@@ -1195,7 +1195,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationReadRequiredCards(discretization,input,option)
   
   select case(discretization%itype)
-  case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -1255,14 +1255,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call InputFindStringInFile(input,option,string)
 
   if (.not.InputError(input)) then
-    reaction => ReactionCreate()
-    realization%reaction => reaction
-    call ReactionRead(reaction,input,option)
-    reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
-    ! PCL add in colloid dofs
-    option%ntrandof = GetPrimarySpeciesCount(reaction)
-    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
-    reaction%ncomp = option%ntrandof
+    call ReactionInit(realization%reaction,input,option)
   endif
     
 end subroutine InitReadRequiredCardsFromInput
@@ -1428,85 +1421,7 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('CHEMISTRY')
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'word','CHEMISTRY') 
-          select case(trim(word))
-            case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS','GENERAL_REACTION', &
-                 'MICROBIAL_REACTION','REACTION_SANDBOX')
-              call InputSkipToEND(input,option,card)
-            case('REDOX_SPECIES')
-              call ReactionReadRedoxSpecies(reaction,input,option)
-            case('OUTPUT')
-              call ReactionReadOutput(reaction,input,option)
-            case('MINERAL_KINETICS')
-              call MineralReadKinetics(reaction%mineral,input,option)
-            case('SOLID_SOLUTIONS')
-#ifdef SOLID_SOLUTION                
-              call SolidSolutionReadFromInputFile(reaction%solid_solution_list, &
-                                                  input,option)
-#endif
-            case('SORPTION')
-              do
-                call InputReadFlotranString(input,option)
-                call InputReadStringErrorMsg(input,option,card)
-                if (InputCheckExit(input,option)) exit
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
-                select case(trim(word))
-                  case('ISOTHERM_REACTIONS')
-                    do
-                      call InputReadFlotranString(input,option)
-                      call InputReadStringErrorMsg(input,option,card)
-                      if (InputCheckExit(input,option)) exit
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      call InputErrorMsg(input,option,word, &
-                                         'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS') 
-                      ! skip over remaining cards to end of each kd entry
-                      call InputSkipToEnd(input,option,word)
-                    enddo
-                  case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
-                    do
-                      call InputReadFlotranString(input,option)
-                      call InputReadStringErrorMsg(input,option,card)
-                      if (InputCheckExit(input,option)) exit
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'SORPTION','CHEMISTRY')
-                      select case(trim(word))
-                        case('COMPLEXES','CATIONS')
-                          call InputSkipToEND(input,option,word)
-                        case('COMPLEX_KINETICS')
-                          do
-                            call InputReadFlotranString(input,option)
-                            call InputReadStringErrorMsg(input,option,card)
-                            if (InputCheckExit(input,option)) exit
-                            call InputReadWord(input,option,word,PETSC_TRUE)
-                            call InputErrorMsg(input,option,word, &
-                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
-                            ! skip over remaining cards to end of each mineral entry
-                            call InputSkipToEnd(input,option,word)
-                          enddo
-                      end select 
-                    enddo
-                  case('CHUNK_SIZE')
-                  case('NUM_THREADS')
-                  case('JUMPSTART_KINETIC_SORPTION')
-                  case('NO_CHECKPOINT_KINETIC_SORPTION')
-                  case('NO_RESTART_KINETIC_SORPTION')
-                    ! dummy placeholder
-                end select
-              enddo
-            case('MOLAL','MOLALITY', &
-                 'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
-                 'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
-                 'NO_RESTART_MINERAL_VOL_FRAC')
-              ! dummy placeholder
-          end select
-        enddo
+        call ReactionReadPass2(reaction,input,option)
 
 !....................
       case ('UNIFORM_VELOCITY')
@@ -2135,13 +2050,29 @@ subroutine InitReadInput(simulation)
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputDefaultMsg(input,option, &
                                        'OUTPUT,FORMAT,HDF5,# FILES')
-                  if (len_trim(word) > 1) then 
+                  if (len_trim(word) > 0) then
                     call StringToUpper(word)
                     select case(trim(word))
                       case('SINGLE_FILE')
                         output_option%print_single_h5_file = PETSC_TRUE
                       case('MULTIPLE_FILES')
                         output_option%print_single_h5_file = PETSC_FALSE
+                        output_option%times_per_h5_file = 1
+                        call InputReadWord(input,option,word,PETSC_TRUE)
+                        if (len_trim(word)>0) then
+                          select case(trim(word))
+                            case('TIMES_PER_FILE')
+                              call InputReadInt(input,option, &
+                                              output_option%times_per_h5_file)
+                              call InputErrorMsg(input,option,'timestep increment', &
+                                        'OUTPUT,FORMAT,MULTIPLE_FILES,TIMES_PER_FILE')
+                            case default
+                              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,'// &
+                                     'FORMAT,MULTIPLE_FILES,TIMES_PER_FILE.'
+                              call printErrMsg(option)
+                          end select
+                        endif
                       case default
                         option%io_buffer = 'HDF5 keyword (' // trim(word) // &
                           ') not recongnized.  Use "SINGLE_FILE" or ' // &
@@ -2189,6 +2120,10 @@ subroutine InitReadInput(simulation)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+            case('VARIABLES')
+              call OutputVariableRead(input,option,output_option%output_variable_list)
+            case('AVERAGE_VARIABLES')
+              call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
@@ -2208,6 +2143,17 @@ subroutine InitReadInput(simulation)
             output_option%print_tecplot_flux_velocities = PETSC_TRUE
           if (output_option%print_hdf5) &
            output_option%print_hdf5_flux_velocities = PETSC_TRUE
+        endif
+        if(output_option%aveg_output_variable_list%nvars>0) then
+          if(output_option%periodic_output_time_incr==0.d0) then
+            option%io_buffer = 'Keyword: AVERAGE_VARIABLES defined without' // &
+                               ' PERIODIC TIME being set.'
+            call printErrMsg(option)
+          endif
+          if(.not.output_option%print_hdf5) then
+            option%io_buffer = 'Keyword: AVERAGE_VARIABLES only defined for FORMAT HDF5'
+            call printErrMsg(option)
+          endif
         endif
 
 !.....................

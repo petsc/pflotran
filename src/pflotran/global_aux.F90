@@ -29,6 +29,7 @@ module Global_Aux_module
 !   PetscReal, pointer :: reaction_rate_store(:,:)
     PetscReal, pointer :: displacement(:)
     PetscReal, pointer :: dphi(:,:)
+    PetscReal :: scco2_eq_logK ! SC CO2
   end type global_auxvar_type
   
   type, public :: global_type
@@ -52,7 +53,7 @@ contains
 
 ! ************************************************************************** !
 !
-! GlobalAuxCreate: Allocate and initialize auxilliary object
+! GlobalAuxCreate: Allocate and initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -81,7 +82,7 @@ end function GlobalAuxCreate
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarInit: Initialize auxilliary object
+! GlobalAuxVarInit: Initialize auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -115,6 +116,8 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%displacement = 0.d0
   allocate(aux_var%dphi(option%nphase,THREE_INTEGER))
   aux_var%dphi = 0.d0
+
+  aux_var%scco2_eq_logK = 0.d0
 
   select case(option%iflowmode)
     case(IMS_MODE, MPH_MODE, FLASH2_MODE)
@@ -201,7 +204,7 @@ end subroutine GlobalAuxVarInit
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarCopy: Copies an auxilliary variable
+! GlobalAuxVarCopy: Copies an auxiliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -276,7 +279,7 @@ end subroutine GlobalAuxVarCopy
 
 ! ************************************************************************** !
 !
-! GlobalAuxVarSingleDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarSingleDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -297,7 +300,7 @@ end subroutine GlobalAuxVarSingleDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarArrayDestroy: Deallocates a mode auxilliary object
+! GlobalAuxVarArrayDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -322,7 +325,7 @@ end subroutine GlobalAuxVarArrayDestroy
   
 ! ************************************************************************** !
 !
-! GlobalAuxVarStrip: Deallocates all members of single auxilliary object
+! GlobalAuxVarStrip: Deallocates all members of single auxiliary object
 ! author: Glenn Hammond
 ! date: 01/10/12
 !
@@ -360,7 +363,7 @@ end subroutine GlobalAuxVarStrip
 
 ! ************************************************************************** !
 !
-! GlobalAuxDestroy: Deallocates a mode auxilliary object
+! GlobalAuxDestroy: Deallocates a mode auxiliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

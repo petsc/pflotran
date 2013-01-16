@@ -2,73 +2,18 @@
 
 module Secondary_Continuum_module
 
+  use Secondary_Continuum_Aux_module
+
   implicit none
 
   private
 
 #include "definitions.h"
 
-  type, public :: slab_type
-    PetscReal :: length                       ! input - length of slab
-    PetscReal :: area                         ! input - surface area
-  end type slab_type
-  
-  type, public :: nested_cube_type
-    PetscReal :: matrix_block_size            ! input - side of cube
-    PetscReal :: fracture_spacing             ! input - fracture spacing
-  end type nested_cube_type
-  
-  type, public :: nested_sphere_type
-    PetscReal :: radius                       ! input - radius of sphere
-  end type nested_sphere_type
-  
-  type, public :: sec_continuum_type
-    PetscInt :: itype                         ! input - type of sec. continuum (slab, nested_cube, nested_sphere,....) 
-    type(slab_type) :: slab
-    type(nested_cube_type) :: nested_cube
-    type(nested_sphere_type) :: nested_sphere 
-  end type sec_continuum_type
-
-  type, public :: sec_heat_type  
-    PetscBool :: sec_temp_update               ! flag to check if the temp is updated
-    PetscInt :: ncells                         ! number of secondary grid cells
-    PetscReal :: aperture                      ! fracture aperture
-    PetscReal :: epsilon                       ! vol. frac. of primary continuum
-    type(sec_continuum_type) :: sec_continuum
-    PetscReal, pointer :: sec_temp(:)          ! array of temp. at secondary grid cells
-    PetscReal, pointer :: area(:)              ! surface area
-    PetscReal, pointer :: vol(:)               ! volume     face      node       face
-    PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
-    PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
-    PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
-    PetscBool :: log_spacing                   ! flag to check if log spacing is set
-    PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
-  end type sec_heat_type  
-  
-  type, public :: sec_transport_type  
-    PetscBool :: sec_conc_update               ! flag to check if the temp is updated
-    PetscInt :: ncells                         ! number of secondary grid cells
-    PetscReal :: aperture                      ! fracture aperture
-    PetscReal :: epsilon                       ! vol. frac. of primary continuum
-    type(sec_continuum_type) :: sec_continuum
-    PetscReal, pointer :: sec_conc(:)          ! array of aqueous species conc. at secondary grid cells
-    PetscReal, pointer :: sec_mnrl_volfrac(:)  ! array of mineral vol fraction at secondary grid cells
-    PetscInt, pointer :: sec_zeta(:)           ! array of zetas at secondary grid cells
-    PetscReal, pointer :: area(:)              ! surface area
-    PetscReal, pointer :: vol(:)               ! volume     face      node       face
-    PetscReal, pointer :: dm_plus(:)           ! see fig.    |----------o----------|
-    PetscReal, pointer :: dm_minus(:)          ! see fig.      <dm_minus> <dm_plus>
-    PetscReal :: interfacial_area              ! interfacial area between prim. and sec. per unit volume of prim.+sec.
-    PetscReal :: sec_mnrl_area                 ! secondary mineral surface area
-    PetscBool :: log_spacing                   ! flag to check if log spacing is set
-    PetscReal :: outer_spacing                 ! value of the outer most grid cell spacing
-  end type sec_transport_type  
-
-
   public :: SecondaryContinuumType, &
             SecondaryContinuumSetProperties
-            
-  contains
+
+contains
 
 ! ************************************************************************** !
 !
@@ -178,7 +123,7 @@ subroutine SecondaryContinuumType(sec_continuum,nmat,aream, &
         call SecondaryContinuumCalcLogSpacing(matrix_block_size,outer_spacing, &
                                               nmat,grid_spacing,option)
         
-        r0 = 2*grid_spacing(1)                                                                                                                                  
+        r0 = 2*grid_spacing(1)
         dm1(1) = 0.5*grid_spacing(1)
         dm2(1) = 0.5*grid_spacing(1)
         volm(1) = r0**3

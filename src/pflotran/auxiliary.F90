@@ -1,4 +1,4 @@
-module Auxilliary_module
+module Auxiliary_module
   
   use Global_Aux_module
   use THC_Aux_module
@@ -11,6 +11,7 @@ module Auxilliary_module
   use Flash2_Aux_Module
   use General_Aux_module
   use Material_Aux_module
+  use Secondary_Continuum_Aux_module
 #ifdef SURFACE_FLOW
   !use Surface_Flow_Aux_module
 #endif
@@ -21,7 +22,7 @@ module Auxilliary_module
 
 #include "definitions.h"
 
-  type, public :: auxilliary_type 
+  type, public :: auxiliary_type 
     type(global_type), pointer :: Global
     type(reactive_transport_type), pointer :: RT
     type(thc_type), pointer :: THC
@@ -33,10 +34,12 @@ module Auxilliary_module
     type(flash2_type), pointer :: Flash2
     type(general_type), pointer :: General
     type(material_type), pointer :: Material
+    type(sc_heat_type), pointer :: SC_heat
+    type(sc_rt_type), pointer :: SC_RT
 #ifdef SURFACE_FLOW
     !type(surface_flow_type),pointer :: SurfaceFlow
 #endif
-  end type auxilliary_type
+  end type auxiliary_type
   
   public :: AuxInit, &
             AuxDestroy
@@ -45,7 +48,7 @@ contains
 
 ! ************************************************************************** !
 !
-! AuxInit: Nullifies pointers in auxilliary object
+! AuxInit: Nullifies pointers in auxiliary object
 ! author: Glenn Hammond
 ! date: 04/09/08
 !
@@ -54,19 +57,23 @@ subroutine AuxInit(aux)
 
   implicit none
   
-  type(auxilliary_type) :: aux
+  type(auxiliary_type) :: aux
   
   nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%THC)
   nullify(aux%THMC)
   nullify(aux%Richards)
+  
   nullify(aux%Mphase)
   nullify(aux%Immis)
   nullify(aux%Flash2)
   nullify(aux%Miscible)
   nullify(aux%General)
   nullify(aux%Material)
+  nullify(aux%SC_heat)
+  nullify(aux%SC_RT)
+
 #ifdef SURFACE_FLOW
   !nullify(aux%SurfaceFlow)
 #endif
@@ -74,7 +81,7 @@ end subroutine AuxInit
 
 ! ************************************************************************** !
 !
-! AuxDestroy: Deallocates any allocated pointers in auxilliary object
+! AuxDestroy: Deallocates any allocated pointers in auxiliary object
 ! author: Glenn Hammond
 ! date: 04/09/08
 !
@@ -83,7 +90,7 @@ subroutine AuxDestroy(aux)
 
   implicit none
   
-  type(auxilliary_type) :: aux
+  type(auxiliary_type) :: aux
   
   call GlobalAuxDestroy(aux%Global)
   call RTAuxDestroy(aux%RT)
@@ -94,6 +101,8 @@ subroutine AuxDestroy(aux)
   call MiscibleAuxDestroy(aux%Miscible)
   call GeneralAuxDestroy(aux%General)
   call MaterialAuxDestroy(aux%Material)
+  call SecondaryAuxHeatDestroy(aux%SC_heat)
+  call SecondaryAuxRTDestroy(aux%SC_RT)
   nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%THC)
@@ -104,11 +113,12 @@ subroutine AuxDestroy(aux)
   nullify(aux%Miscible)
   nullify(aux%General)
   nullify(aux%Material)
-
+  nullify(aux%SC_Heat)
+  nullify(aux%SC_RT)
 #ifdef SURFACE_FLOW
   !call SurfaceFlowAuxDestroy(aux%SurfaceFlow)
   !nullify(aux%SurfaceFlow)
 #endif
 end subroutine AuxDestroy
 
-end module Auxilliary_module
+end module Auxiliary_module

@@ -27,7 +27,7 @@ module Field_module
     
     Vec :: work, work_loc
 
-    Vec :: volume 
+    Vec :: volume, volume0
     
     ! residual vectors
     Vec :: flow_r          
@@ -55,6 +55,10 @@ module Field_module
 
     ! vector that holds the second layer of ghost cells for tvd
     Vec :: tvd_ghosts
+
+    ! vectors to save temporally average quantities
+    Vec, pointer :: avg_vars_vec(:)
+    PetscInt :: nvars
 
   end type field_type
 
@@ -108,6 +112,7 @@ function FieldCreate()
   field%work_loc = 0
 
   field%volume = 0
+  field%volume0 = 0
   
   field%flow_r = 0
   field%flow_xx = 0
@@ -143,7 +148,9 @@ function FieldCreate()
   field%flow_yy_faces = 0
   field%flow_bc_loc_faces = 0
   field%work_loc_faces = 0
-   
+
+  nullify(field%avg_vars_vec)
+  field%nvars = 0
 
   FieldCreate => field
   
@@ -163,6 +170,7 @@ subroutine FieldDestroy(field)
   type(field_type), pointer :: field
   
   PetscErrorCode :: ierr
+  PetscInt :: ivar
 
   ! Destroy PetscVecs
   if (field%porosity0 /= 0) call VecDestroy(field%porosity0,ierr)
@@ -192,6 +200,7 @@ subroutine FieldDestroy(field)
   if (field%work_loc /= 0) call VecDestroy(field%work_loc,ierr)
 
   if (field%volume /= 0) call VecDestroy(field%volume,ierr)
+  if (field%volume0 /= 0) call VecDestroy(field%volume0,ierr)
   
   if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)
   if (field%flow_xx /= 0) call VecDestroy(field%flow_xx,ierr)
@@ -247,6 +256,10 @@ subroutine FieldDestroy(field)
 
   if (field%work_loc_faces /= 0) &
     call VecDestroy(field%work_loc_faces ,ierr)
+
+  do ivar = 1,field%nvars
+    call VecDestroy(field%avg_vars_vec(ivar),ierr)
+  enddo
 
   deallocate(field)
   nullify(field)

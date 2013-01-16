@@ -104,7 +104,7 @@ end subroutine THCSetup
   
 ! ************************************************************************** !
 !
-! THCSetupPatch: Creates arrays for auxilliary variables
+! THCSetupPatch: Creates arrays for auxiliary variables
 ! author: ???
 ! date: 02/22/08
 !
@@ -119,6 +119,7 @@ subroutine THCSetupPatch(realization)
   use Coupler_module
   use Connection_module
   use Fluid_module
+  use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
  
   implicit none
@@ -144,6 +145,7 @@ subroutine THCSetupPatch(realization)
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate(option)
+  patch%aux%SC_heat => SecondaryAuxHeatCreate(option)
 
 ! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
 !                    'must be initialized with the proper variables ' // &
@@ -263,7 +265,7 @@ subroutine THCSetupPatch(realization)
     
     enddo
       
-    patch%aux%THC%sec_heat_vars => thc_sec_heat_vars    
+    patch%aux%SC_heat%sec_heat_vars => thc_sec_heat_vars    
 
   endif
 
@@ -494,7 +496,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
   use Grid_module
   use Field_module
   use Option_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
  
   implicit none
   
@@ -539,7 +541,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
   thc_aux_vars => realization%patch%aux%THC%aux_vars
   thc_parameter => realization%patch%aux%THC%thc_parameter
   global_aux_vars => realization%patch%aux%Global%aux_vars
-  thc_sec_heat_vars => realization%patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => realization%patch%aux%SC_heat%sec_heat_vars
 
   
   dP_changed = PETSC_FALSE
@@ -788,7 +790,7 @@ end subroutine THCUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVars: Updates the auxilliary variables associated with 
+! THCUpdateAuxVars: Updates the auxiliary variables associated with 
 !                        the THC problem
 ! author: ???
 ! date: 12/10/07
@@ -822,7 +824,7 @@ end subroutine THCUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! THCUpdateAuxVarsPatch: Updates the auxiliary variables associated with 
 !                        the THC problem
 ! author: ???
 ! date: 12/10/07
@@ -1116,7 +1118,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
 
   implicit none
@@ -1148,7 +1150,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   thc_parameter => patch%aux%THC%thc_parameter
   thc_aux_vars => patch%aux%THC%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
           
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -3174,7 +3176,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3251,7 +3253,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
@@ -3392,6 +3394,12 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
         r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
                                                - qsrc1 *option%flow_dt
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
+      else
+        ! extraction
+        r_p((local_id)*option%nflowdof+jh2o) = r_p((local_id-1)*option%nflowdof+jh2o) &
+                                               - qsrc1 *option%flow_dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
+                                        qsrc1*aux_vars(ghosted_id)%h*option%flow_dt
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -3728,7 +3736,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Coupler_module
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   SNES :: snes
   Vec :: xx
@@ -3807,7 +3815,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  sec_heat_vars => patch%aux%THC%sec_heat_vars
+  sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
 #if 0
    call THCNumericalJacobianTest(xx,realization)
@@ -3921,7 +3929,14 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
-      endif  
+      else
+        ! extraction
+        dresT_dp = -qsrc1*aux_vars(ghosted_id)%dh_dp*option%flow_dt
+        dresT_dt = -qsrc1*aux_vars(ghosted_id)%dh_dt*option%flow_dt
+        istart = ghosted_id*option%nflowdof
+        call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
+      endif
     
       if (csrc1 > 0.d0) then ! injection
         call printErrMsg(option,"concentration source not yet implemented in THC")
@@ -4710,7 +4725,7 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
   
@@ -4805,7 +4820,7 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
   
