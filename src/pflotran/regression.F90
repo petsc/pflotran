@@ -218,9 +218,28 @@ subroutine RegressionCreateMapping(regression,realization)
   
   grid => realization%patch%grid
   option => realization%option
-
+  
   ! natural cell ids
   if (associated(regression%natural_cell_ids)) then
+    ! ensure that natural ids are within problem domain
+    if (maxval(regression%natural_cell_ids) > grid%nmax) then
+      option%io_buffer = 'Natural IDs outside problem domain requested ' // &
+        'for regression output.  Removing non-existent IDs.'
+      call printWrnMsg(option)
+      count = 0
+      allocate(int_array(size(regression%natural_cell_ids)))
+      do i = 1, size(regression%natural_cell_ids)
+        if (regression%natural_cell_ids(i) <= grid%nmax) then
+          count = count + 1
+          int_array(count) = regression%natural_cell_ids(i)
+        endif
+      enddo
+      ! reallocate array
+      deallocate(regression%natural_cell_ids)
+      allocate(regression%natural_cell_ids(count))
+      regression%natural_cell_ids = int_array
+      deallocate(int_array)
+    endif
     call VecCreate(PETSC_COMM_SELF,regression%natural_cell_id_vec,ierr)
     if (option%myrank == option%io_rank) then
       call VecSetSizes(regression%natural_cell_id_vec, &

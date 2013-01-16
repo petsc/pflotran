@@ -13,14 +13,6 @@ module Microbial_Aux_module
   PetscInt, parameter :: INHIBITION_MONOD = 3
   PetscInt, parameter :: INHIBITION_INVERSE_MONOD = 4
   
-  type, public :: biomass_species_type
-    PetscInt :: id
-    character(len=MAXWORDLENGTH) :: name
-    PetscReal :: molar_weight
-    PetscBool :: print_me
-    type(biomass_species_type), pointer :: next    
-  end type biomass_species_type
-  
   type, public :: microbial_rxn_type
     PetscInt :: id
     PetscInt :: itype
@@ -30,7 +22,7 @@ module Microbial_Aux_module
     type(database_rxn_type), pointer :: dbaserxn    
     type(monod_type), pointer :: monod
     type(inhibition_type), pointer :: inhibition
-    type(biomass_type), pointer :: biomass
+    type(microbial_biomass_type), pointer :: biomass
     type(microbial_rxn_type), pointer :: next
   end type microbial_rxn_type
   
@@ -50,32 +42,17 @@ module Microbial_Aux_module
     type(inhibition_type), pointer :: next
   end type inhibition_type
 
-  type, public :: biomass_type
+  type, public :: microbial_biomass_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: species_name
     PetscReal :: yield
-  end type biomass_type
-  
-  type, public :: biomass_constraint_type
-    ! Any changes here must be incorporated within ReactionProcessConstraint()
-    ! where constraints are reordered
-    character(len=MAXWORDLENGTH), pointer :: names(:)
-    PetscReal, pointer :: constraint_conc(:)
-    character(len=MAXWORDLENGTH), pointer :: constraint_aux_string(:)
-    PetscBool, pointer :: external_dataset(:)
-  end type biomass_constraint_type
+  end type microbial_biomass_type
   
   type, public :: microbial_type
 
     PetscInt :: nrxn
-    PetscInt :: nbiomass
     
     type(microbial_rxn_type), pointer :: microbial_rxn_list
-    type(biomass_species_type), pointer :: biomass_list
-
-    ! biomass species
-    character(len=MAXWORDLENGTH), pointer :: biomass_names(:)
-    PetscBool, pointer :: biomass_print(:)    
 
     ! microbial reactions
     PetscReal, pointer :: rate_constant(:)
@@ -97,12 +74,9 @@ module Microbial_Aux_module
             MicrobialMonodCreate, &
             MicrobialInhibitionCreate, &
             MicrobialBiomassCreate, &
-            MicrobialBiomassSpeciesCreate, &
-            MicrobeBiomassConstraintCreate, &
             MicrobialGetMonodCount, &
             MicrobialGetInhibitionCount, &
             MicrobialGetBiomassCount, &
-            MicrobeBiomassConstraintDestroy, &
             MicrobialRxnDestroy, &
             MicrobialDestroy
              
@@ -126,14 +100,8 @@ function MicrobialCreate()
   allocate(microbial)  
     
   nullify(microbial%microbial_rxn_list)
-  nullify(microbial%biomass_list)
     
   microbial%nrxn = 0
-  microbial%nbiomass = 0
-
-    ! biomass species
-  nullify(microbial%biomass_names)
-  nullify(microbial%biomass_print)
 
   nullify(microbial%rate_constant)
   nullify(microbial%stoich)
@@ -246,9 +214,9 @@ function MicrobialBiomassCreate()
 
   implicit none
   
-  type(biomass_type), pointer :: MicrobialBiomassCreate
+  type(microbial_biomass_type), pointer :: MicrobialBiomassCreate
   
-  type(biomass_type), pointer :: biomass
+  type(microbial_biomass_type), pointer :: biomass
 
   allocate(biomass)  
   biomass%id = 0
@@ -259,67 +227,6 @@ function MicrobialBiomassCreate()
   
 end function MicrobialBiomassCreate
 
-! ************************************************************************** !
-!
-! MicrobialBiomassSpeciesCreate: Allocate and initialize a biomass species 
-!                                object
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
-function MicrobialBiomassSpeciesCreate()
-
-  implicit none
-  
-  type(biomass_species_type), pointer :: MicrobialBiomassSpeciesCreate
-  
-  type(biomass_species_type), pointer :: species
-
-  allocate(species)  
-  species%id = 0
-  species%name = ''
-  species%molar_weight = 0.d0
-  species%print_me = PETSC_FALSE
-  nullify(species%next)
-
-  MicrobialBiomassSpeciesCreate => species
-  
-end function MicrobialBiomassSpeciesCreate
-
-! ************************************************************************** !
-!
-! MicrobeBiomassConstraintCreate: Creates a microbial biomass constraint
-!                                 object
-! author: Glenn Hammond
-! date: 01/07/13
-!
-! ************************************************************************** !
-function MicrobeBiomassConstraintCreate(microbial,option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(microbial_type) :: microbial
-  type(option_type) :: option
-  type(biomass_constraint_type), pointer :: MicrobeBiomassConstraintCreate
-
-  type(biomass_constraint_type), pointer :: constraint  
-
-  allocate(constraint)
-  allocate(constraint%names(microbial%nbiomass))
-  constraint%names = ''
-  allocate(constraint%constraint_conc(microbial%nbiomass))
-  constraint%constraint_conc = 0.d0
-  allocate(constraint%constraint_aux_string(microbial%nbiomass))
-  constraint%constraint_aux_string = ''
-  allocate(constraint%external_dataset(microbial%nbiomass))
-  constraint%external_dataset = PETSC_FALSE
-
-  MicrobeBiomassConstraintCreate => constraint
-
-end function MicrobeBiomassConstraintCreate
-  
 ! ************************************************************************** !
 !
 ! MicrobialGetMonodCount: Counts number of monod expressions in
@@ -396,14 +303,14 @@ function MicrobialGetBiomassCount(microbial)
   PetscInt :: MicrobialGetBiomassCount
   type(microbial_type) :: microbial
 
-  type(biomass_species_type), pointer :: biomass
+  type(microbial_rxn_type), pointer :: microbial_rxn
 
   MicrobialGetBiomassCount = 0
-  biomass => microbial%biomass_list
+  microbial_rxn => microbial%microbial_rxn_list
   do
-    if (.not.associated(biomass)) exit
+    if (.not.associated(microbial_rxn%biomass)) exit
     MicrobialGetBiomassCount = MicrobialGetBiomassCount + 1
-    biomass => biomass%next
+    microbial_rxn => microbial_rxn%next
   enddo
 
 end function MicrobialGetBiomassCount
@@ -486,7 +393,7 @@ subroutine MicrobialBiomassDestroy(biomass)
 
   implicit none
     
-  type(biomass_type), pointer :: biomass
+  type(microbial_biomass_type), pointer :: biomass
 
   if (.not.associated(biomass)) return
   
@@ -494,52 +401,6 @@ subroutine MicrobialBiomassDestroy(biomass)
   nullify(biomass)
   
 end subroutine MicrobialBiomassDestroy
-
-! ************************************************************************** !
-!
-! MicrobialBiomassSpeciesDestroy: Deallocates a biomass species
-! author: Glenn Hammond
-! date: 01/02/13
-!
-! ************************************************************************** !
-subroutine MicrobialBiomassSpeciesDestroy(species)
-
-  implicit none
-    
-  type(biomass_species_type), pointer :: species
-
-  deallocate(species)  
-  nullify(species)
-
-end subroutine MicrobialBiomassSpeciesDestroy
-
-
-! ************************************************************************** !
-!
-! MicrobeBiomassConstraintDestroy: Destroys a colloid constraint object
-! author: Glenn Hammond
-! date: 03/12/10
-!
-! ************************************************************************** !
-subroutine MicrobeBiomassConstraintDestroy(constraint)
-
-  use Utility_module, only: DeallocateArray
-
-  implicit none
-  
-  type(biomass_constraint_type), pointer :: constraint
-  
-  if (.not.associated(constraint)) return
-  
-  call DeallocateArray(constraint%names)
-  call DeallocateArray(constraint%constraint_conc)
-  call DeallocateArray(constraint%constraint_aux_string)
-  call DeallocateArray(constraint%external_dataset)
-  
-  deallocate(constraint)
-  nullify(constraint)
-
-end subroutine MicrobeBiomassConstraintDestroy
 
 ! ************************************************************************** !
 !
@@ -557,7 +418,6 @@ subroutine MicrobialDestroy(microbial)
   type(microbial_type), pointer :: microbial
   
   type(microbial_rxn_type), pointer :: cur_microbial, prev_microbial
-  type(biomass_species_type), pointer :: cur_biomass, prev_biomass
 
   if (.not.associated(microbial)) return
   
@@ -570,19 +430,6 @@ subroutine MicrobialDestroy(microbial)
     call MicrobialRxnDestroy(prev_microbial)
   enddo    
   nullify(microbial%microbial_rxn_list)
-  
-  ! biomass species
-  cur_biomass => microbial%biomass_list
-  do
-    if (.not.associated(cur_biomass)) exit
-    prev_biomass => cur_biomass
-    cur_biomass => cur_biomass%next
-    call MicrobialBiomassSpeciesDestroy(prev_biomass)
-  enddo    
-  nullify(microbial%biomass_list)
-  
-  call DeallocateArray(microbial%biomass_names)
-  call DeallocateArray(microbial%biomass_print)
   
   call DeallocateArray(microbial%rate_constant)
   call DeallocateArray(microbial%stoich)
