@@ -2,6 +2,8 @@
 
 module Surface_Realization_module
 
+  use Realization_Base_class
+  
   use Condition_module
   use Debug_module
   use Discretization_module
@@ -26,10 +28,8 @@ private
 
   PetscReal, parameter :: eps       = 1.D-8
 
-  type, public :: surface_realization_type
+  type, public, extends(realization_base_type) :: surface_realization_type
 
-    PetscInt :: id
-    
     type(discretization_type), pointer :: discretization
     type(level_list_type),pointer      :: level_list
     type(patch_type), pointer          :: patch
@@ -101,6 +101,7 @@ function SurfaceRealizationCreate(option)
   type(surface_realization_type),pointer :: surf_realization
   
   allocate(surf_realization)
+  call RealizationBaseInit(surf_realization)
   surf_realization%discretization => DiscretizationCreate()
   surf_realization%option => option
   nullify(surf_realization%input)

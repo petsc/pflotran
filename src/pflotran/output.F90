@@ -9213,17 +9213,15 @@ end subroutine WriteHDF5CoordinatesUGridXDMF1
 !!
 !! date: 05/29/12
 ! ************************************************************************** !
-subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
+subroutine Output2(surf_realization,plot_flag,transient_plot_flag)
 
   use Surface_Realization_module, only : surface_realization_type
-  use Realization_module, only : realization_type
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
 
   implicit none
 
-  type(surface_realization_type) :: surf_realization
-  type(realization_type)         :: realization
+  class(surface_realization_type) :: surf_realization
   PetscBool                      :: plot_flag
   PetscBool                      :: transient_plot_flag
 
@@ -9250,7 +9248,7 @@ subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
 
   if (plot_flag) then
     if (surf_realization%output_option%print_hdf5) then
-      call OutputHDF5UGridXDMF(surf_realization,realization)
+      call OutputHDF5UGridXDMF(surf_realization)
     endif
   
     if (surf_realization%output_option%print_tecplot) then
@@ -9258,7 +9256,7 @@ subroutine Output2(surf_realization,realization,plot_flag,transient_plot_flag)
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       select case(surf_realization%output_option%tecplot_format)
         case (TECPLOT_FEQUADRILATERAL_FORMAT)
-          call OutputTecplotFEQUAD(surf_realization,realization)
+          call OutputTecplotFEQUAD(surf_realization)
       end select
       call PetscGetTime(tend,ierr)
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)
@@ -9287,7 +9285,7 @@ end subroutine Output2
 !!
 !! date: 05/29/12
 ! ************************************************************************** !
-subroutine OutputTecplotFEQUAD(surf_realization,realization)
+subroutine OutputTecplotFEQUAD(surf_realization)
 
   use Surface_Realization_module, only : surface_realization_type
   use Realization_module, only : realization_type
@@ -10224,7 +10222,7 @@ end subroutine OutputHydrograph
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
+subroutine OutputHDF5UGridXDMF2(surf_realization)
 
   use Surface_Realization_module
   use Realization_module
@@ -10379,7 +10377,7 @@ subroutine OutputHDF5UGridXDMF2(surf_realization,realization)
     ! create a group for the coordinates data set
     string = "Domain"
     call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-    call WriteHDF5CoordinatesUGridXDMF(surf_realization,realization,option,grp_id)
+    call WriteHDF5CoordinatesUGridXDMF(surf_realization,option,grp_id)
     call h5gclose_f(grp_id,hdf5_err)
   endif
 
@@ -10467,7 +10465,7 @@ end subroutine OutputHDF5UGridXDMF2
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine WriteHDF5CoordinatesUGridXDMF2(surf_realization,realization,option,file_id)
+subroutine WriteHDF5CoordinatesUGridXDMF2(surf_realization,option,file_id)
 
   use hdf5
   use HDF5_module

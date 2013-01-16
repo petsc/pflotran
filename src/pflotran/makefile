@@ -282,6 +282,7 @@ misc_obj = \
 	${common_src}observation.o \
 	${common_src}patch.o \
 	${common_src}realization.o \
+	${common_src}realization_base.o \
 	${common_src}region.o \
 	${common_src}regression.o \
 	${common_src}secondary_continuum_aux.o\
@@ -481,7 +482,7 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 observation.o velocity.o patch.o level.o discretization.o \
                 reaction.o reaction_aux.o fluid.o saturation_function.o \
                 dataset.o surface_field.o surface_material.o output_aux.o \
-                constraint.o
+                constraint.o realization_base.o
 region.o : input.o utility.o logging.o string.o geometry.o
 regression.o : realization.o discretization.o timestepper.o option.o string.o \
                utility.o grid.o output.o output_aux.o
@@ -516,7 +517,7 @@ surface_realization.o : condition.o debug.o discretization.o input.o level.o \
                         option.o patch.o region.o surface_field.o \
                         surface_material.o waypoint.o dataset_aux.o coupler.o \
                         string.o grid.o strata.o unstructured_grid.o dataset.o \
-                        unstructured_grid_aux.o
+                        unstructured_grid_aux.o realization_base.o
 thc.o : secondary_continuum.o thc_aux.o realization.o saturation_function.o \
         variables.o secondary_continuum_aux.o
 thc_aux.o : option.o material.o water_eos.o \

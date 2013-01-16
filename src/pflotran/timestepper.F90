@@ -501,7 +501,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #ifdef SURFACE_FLOW
     plot_flag_surf = PETSC_TRUE
     transient_plot_flag_surf = PETSC_TRUE
-    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+    call Output(surf_realization,plot_flag_surf,transient_plot_flag_surf)
 #endif
   endif
   
@@ -815,7 +815,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
 
 #ifdef SURFACE_FLOW
-    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+    call Output(surf_realization,plot_flag_surf,transient_plot_flag_surf)
     if(associated(surf_flow_stepper)) then
       call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
     endif

@@ -1,4 +1,6 @@
 module Realization_module
+  
+  use Realization_Base_class
 
   use Option_module
   use Output_Aux_module
@@ -27,9 +29,8 @@ module Realization_module
 private
 
 #include "definitions.h"
-  type, public :: realization_type
+  type, public, extends(realization_base_type) :: realization_type
 
-    PetscInt :: id
     type(discretization_type), pointer :: discretization
     type(level_list_type), pointer :: level_list
     type(patch_type), pointer :: patch
@@ -139,6 +140,7 @@ function RealizationCreate2(option)
   type(realization_type), pointer :: realization
   
   allocate(realization)
+  call RealizationBaseInit(realization)
   realization%discretization => DiscretizationCreate()
   if (associated(option)) then
     realization%option => option
