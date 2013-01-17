@@ -40,7 +40,7 @@
 program pflotran
   
   use Simulation_module
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Option_module
   use Input_module

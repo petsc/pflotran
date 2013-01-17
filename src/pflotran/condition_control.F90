@@ -31,7 +31,7 @@ contains
 ! ************************************************************************** !
 subroutine CondControlAssignFlowInitCond(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -428,7 +428,7 @@ end subroutine CondControlAssignFlowInitCond
 ! ************************************************************************** !
 subroutine CondControlAssignTranInitCond(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -804,7 +804,7 @@ end subroutine CondControlAssignTranInitCond
 ! ************************************************************************** !
 subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
                                            mdof_vec,vec_type)
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Dataset_Aux_module
@@ -861,7 +861,7 @@ end subroutine ConditionControlMapDatasetToVec
 ! ************************************************************************** !
 subroutine CondControlScaleSourceSink(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -1021,7 +1021,7 @@ end subroutine CondControlScaleSourceSink
 #ifdef SURFACE_FLOW
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Discretization_module
   use Region_module
   use Option_module

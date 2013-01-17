@@ -187,7 +187,7 @@ end subroutine RegressionRead
 subroutine RegressionCreateMapping(regression,realization)
 
   use Option_module
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Discretization_module
   
@@ -443,7 +443,7 @@ end subroutine RegressionCreateMapping
 subroutine RegressionOutput(regression,realization,flow_stepper, &
                             tran_stepper)
 
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Option_module
   use Discretization_module

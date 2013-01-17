@@ -71,8 +71,8 @@ end subroutine OutputSurfaceInit
 subroutine OutputSurface(surf_realization,realization,plot_flag, &
                          transient_plot_flag)
 
-  use Surface_Realization_module, only : surface_realization_type
-  use Realization_module, only : realization_type
+  use Surface_Realization_class, only : surface_realization_type
+  use Realization_class, only : realization_type
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
 
@@ -145,8 +145,8 @@ end subroutine OutputSurface
 ! ************************************************************************** !
 subroutine OutputTecplotFEQUAD(surf_realization,realization)
 
-  use Surface_Realization_module, only : surface_realization_type
-  use Realization_module, only : realization_type
+  use Surface_Realization_class, only : surface_realization_type
+  use Realization_class, only : realization_type
   use Discretization_module
   use Grid_module
   use Unstructured_Grid_Aux_module
@@ -251,7 +251,7 @@ end subroutine OutputTecplotFEQUAD
 ! ************************************************************************** !
 subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Grid_module
   use Option_module
   use Patch_module
@@ -327,7 +327,7 @@ end subroutine OutputTecplotHeader
 ! ************************************************************************** !
 function OutputTecplotZoneHeader(surf_realization,variable_count,tecplot_format)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Grid_module
   use Option_module
   
@@ -410,7 +410,7 @@ end function OutputTecplotZoneHeader
 subroutine WriteTecplotUGridElements(fid, &
                                       surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Grid_module
   use Unstructured_Grid_Aux_module
   use Option_module
@@ -491,7 +491,7 @@ end subroutine WriteTecplotUGridElements
 ! ************************************************************************** !
 subroutine WriteTecplotUGridVertices(fid,surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Grid_module
   use Unstructured_Grid_Aux_module
   use Option_module
@@ -552,7 +552,7 @@ end subroutine WriteTecplotUGridVertices
 
 subroutine OutputHydrograph(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -677,8 +677,8 @@ end subroutine OutputHydrograph
 ! ************************************************************************** !
 subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
 
-  use Surface_Realization_module
-  use Realization_module
+  use Surface_Realization_class
+  use Realization_class
   use Discretization_module
   use Option_module
   use Grid_module
@@ -924,8 +924,8 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 
   use hdf5
   use HDF5_module
-  use Surface_Realization_module
-  use Realization_module
+  use Surface_Realization_class
+  use Realization_class
   use Grid_module
   use Option_module
   use Unstructured_Grid_Aux_module

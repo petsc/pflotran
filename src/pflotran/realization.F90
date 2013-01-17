@@ -1,4 +1,4 @@
-module Realization_module
+module Realization_class
   
   use Realization_Base_class
 
@@ -2376,4 +2376,4 @@ subroutine RealizationDestroy(realization)
   
 end subroutine RealizationDestroy
 
-end module Realization_module
+end module Realization_class

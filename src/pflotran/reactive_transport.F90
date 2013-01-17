@@ -55,7 +55,7 @@ contains
 ! ************************************************************************** !
 subroutine RTTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Field_module
   use Global_module
  
@@ -98,7 +98,7 @@ end subroutine RTTimeCut
 ! ************************************************************************** !
 subroutine RTSetup(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -116,7 +116,7 @@ end subroutine RTSetup
 ! ************************************************************************** !
 subroutine RTSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -343,7 +343,7 @@ subroutine RTCheckUpdate(line_search,C,dC,changed,realization,ierr)
 subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
 #endif
  
-  use Realization_module
+  use Realization_class
  
   implicit none
   
@@ -380,7 +380,7 @@ subroutine RTCheckUpdatePatch(line_search,C,dC,changed,realization,ierr)
 subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
 #endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
  
   implicit none
@@ -458,7 +458,7 @@ end subroutine RTCheckUpdatePatch
 ! ************************************************************************** !
 subroutine RTComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
@@ -479,7 +479,7 @@ end subroutine RTComputeMassBalance
 ! ************************************************************************** !
 subroutine RTComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -583,7 +583,7 @@ end subroutine RTComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine RTZeroMassBalanceDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -630,7 +630,7 @@ end subroutine RTZeroMassBalanceDeltaPatch
 ! ************************************************************************** !
 subroutine RTUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -683,7 +683,7 @@ end subroutine RTUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine RTInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -700,7 +700,7 @@ end subroutine RTInitializeTimestep
 ! ************************************************************************** !
 subroutine RTInitializeTimestepPatch(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -722,7 +722,7 @@ end subroutine RTInitializeTimestepPatch
 ! ************************************************************************** !
 subroutine RTUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Field_module
   
@@ -751,7 +751,7 @@ end subroutine RTUpdateSolution
 ! ************************************************************************** !
 subroutine RTUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -930,7 +930,7 @@ end subroutine RTUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine RTUpdateFixedAccumulationPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Reactive_Transport_Aux_module
   use Option_module
@@ -1050,7 +1050,7 @@ end subroutine RTUpdateFixedAccumulationPatch
 ! ************************************************************************** !
 subroutine RTUpdateTransportCoefs(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1067,7 +1067,7 @@ end subroutine RTUpdateTransportCoefs
 ! ************************************************************************** !
 subroutine RTUpdateTransportCoefsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1211,7 +1211,7 @@ end subroutine RTUpdateTransportCoefsPatch
 ! ************************************************************************** !
 subroutine RTUpdateRHSCoefs(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1229,7 +1229,7 @@ end subroutine RTUpdateRHSCoefs
 ! ************************************************************************** !
 subroutine RTUpdateRHSCoefsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1291,7 +1291,7 @@ end subroutine RTUpdateRHSCoefsPatch
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t0(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1309,7 +1309,7 @@ end subroutine RTCalculateRHS_t0
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t0Patch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1372,7 +1372,7 @@ end subroutine RTCalculateRHS_t0Patch
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t1(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -1390,7 +1390,7 @@ end subroutine RTCalculateRHS_t1
 ! ************************************************************************** !
 subroutine RTCalculateRHS_t1Patch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1610,7 +1610,7 @@ end subroutine RTCalculateRHS_t1Patch
 ! ************************************************************************** !
 subroutine RTCalculateTransportMatrix(realization,T)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Grid_module
 
@@ -1654,7 +1654,7 @@ end subroutine RTCalculateTransportMatrix
 ! ************************************************************************** !
 subroutine RTCalculateTranMatrixPatch1(realization,T)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1802,7 +1802,7 @@ end subroutine RTCalculateTranMatrixPatch1
 ! ************************************************************************** !
 subroutine RTCalculateTranMatrixPatch2(realization,T)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1936,7 +1936,7 @@ end subroutine RTCalculateTranMatrixPatch2
 ! ************************************************************************** !
 subroutine RTReact(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Discretization_module    
   use Option_module
@@ -2051,7 +2051,7 @@ end subroutine RTReact
 ! ************************************************************************** !
 subroutine RTReactPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -2182,7 +2182,7 @@ end subroutine RTReactPatch
 ! ************************************************************************** !
 subroutine RTComputeBCMassBalanceOSPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2341,7 +2341,7 @@ end subroutine RTComputeBCMassBalanceOSPatch
 ! ************************************************************************** !
 subroutine RTNumericalJacobianTest(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -2431,7 +2431,7 @@ end subroutine RTNumericalJacobianTest
 ! ************************************************************************** !
 subroutine RTResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2506,7 +2506,7 @@ end subroutine RTResidual
 ! ************************************************************************** !
 subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2813,7 +2813,7 @@ end subroutine RTResidualPatch1
 ! ************************************************************************** !
 subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3130,7 +3130,7 @@ end subroutine RTResidualPatch2
 ! ************************************************************************** !
 subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3226,7 +3226,7 @@ end subroutine RTJacobian
 ! ************************************************************************** !
 subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3477,7 +3477,7 @@ end subroutine RTJacobianPatch1
 ! ************************************************************************** !
 subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3737,7 +3737,7 @@ end subroutine RTJacobianPatch2
 subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
                            update_activity_coefs)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   PetscBool :: update_cells
@@ -3761,7 +3761,7 @@ end subroutine RTUpdateAuxVars
 subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
                                 compute_activity_coefs)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Coupler_module
@@ -4158,7 +4158,7 @@ end subroutine RTCreateZeroArray
 ! ************************************************************************** !
 subroutine RTMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Patch_module
@@ -4194,7 +4194,7 @@ end subroutine RTMaxChange
 ! ************************************************************************** !
 subroutine RTSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Option_module
   use Output_Aux_module
   use Variables_module
@@ -4454,7 +4454,7 @@ end subroutine RTSetPlotVariables
 ! ************************************************************************** !
 subroutine RTJumpStartKineticSorption(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -4474,7 +4474,7 @@ end subroutine RTJumpStartKineticSorption
 ! ************************************************************************** !
 subroutine RTJumpStartKineticSorptionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4524,7 +4524,7 @@ end subroutine RTJumpStartKineticSorptionPatch
 ! ************************************************************************** !
 subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4612,7 +4612,7 @@ end subroutine RTCheckpointKineticSorption
 ! ************************************************************************** !
 subroutine RTExplicitAdvection(realization)
 
-  use Realization_module
+  use Realization_class
 
   type(realization_type) :: realization
   
@@ -4629,7 +4629,7 @@ end subroutine RTExplicitAdvection
 ! ************************************************************************** !
 subroutine RTExplicitAdvectionPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -5303,7 +5303,7 @@ end subroutine RTSecondaryTransportJacobian
 ! ************************************************************************** !
 subroutine RTDestroy(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
 
@@ -5415,7 +5415,7 @@ end subroutine RTDestroy
 ! ************************************************************************** !
 subroutine RTDestroyPatch(realization)
 
-  use Realization_module
+  use Realization_class
 
   implicit none
 

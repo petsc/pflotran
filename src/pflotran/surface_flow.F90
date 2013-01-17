@@ -47,7 +47,7 @@ contains
 ! ************************************************************************** !
 subroutine SurfaceFlowSetup(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   
   type(surface_realization_type) :: surf_realization
 
@@ -65,7 +65,7 @@ end subroutine SurfaceFlowSetup
 ! ************************************************************************** !
 subroutine SurfaceFlowSetPlotVariables(surf_realization)
   
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Output_Aux_module
   use Variables_module
     
@@ -105,7 +105,7 @@ subroutine SurfaceFlowReadRequiredCardsFromInput(surf_realization,input,option)
   use Input_module
   use String_module
   use Surface_Material_module
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
@@ -197,7 +197,7 @@ subroutine SurfaceFlowRead(surf_realization,surf_flow_solver,input,option)
   use Input_module
   use String_module
   use Surface_Material_module
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
@@ -711,7 +711,7 @@ end subroutine SurfaceFlowRead
 ! ************************************************************************** !
 subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Surface_Field_module
   use Patch_module
   use Level_module
@@ -820,7 +820,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1038,7 +1038,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1182,7 +1182,7 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
 ! ************************************************************************** !
 subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Level_module
   use Patch_module
   use Grid_module
@@ -1274,7 +1274,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1479,7 +1479,7 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1951,7 +1951,7 @@ end subroutine SurfaceFlowDiffusionDerivative
 ! ************************************************************************** !
 subroutine SurfaceFlowTimeCut(surf_realization)
  
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Surface_Field_module
  
   implicit none
@@ -1978,7 +1978,7 @@ end subroutine SurfaceFlowTimeCut
 ! ************************************************************************** !
 subroutine SurfaceFlowInitializeTimestep(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Surface_Field_module
   
   implicit none
@@ -1999,7 +1999,7 @@ end subroutine SurfaceFlowInitializeTimestep
 ! ************************************************************************** !
 subroutine SurfaceFlowUpdateFixedAccum(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Level_module
   use Patch_module
 
@@ -2034,7 +2034,7 @@ end subroutine SurfaceFlowUpdateFixedAccum
 ! ************************************************************************** !
 subroutine SurfaceFlowUpdateFixedAccumPatch(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -2252,7 +2252,7 @@ end subroutine SurfaceBCFluxDerivative
 ! ************************************************************************** !
 subroutine SurfaceFlowMaxChange(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Option_module
   use Surface_Field_module
   
@@ -2284,7 +2284,7 @@ end subroutine SurfaceFlowMaxChange
 ! ************************************************************************** !
 subroutine SurfaceFlowUpdateSolution(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Surface_Field_module
 
   implicit none
@@ -2309,7 +2309,7 @@ end subroutine SurfaceFlowUpdateSolution
 ! ************************************************************************** !
 function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Option_module
 
   implicit none

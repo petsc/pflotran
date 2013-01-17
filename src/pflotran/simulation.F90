@@ -1,12 +1,12 @@
 module Simulation_module
 
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Solver_module
   use Regression_module
 
 #ifdef SURFACE_FLOW
-  use Surface_Realization_module
+  use Surface_Realization_class
 #endif
   implicit none
 

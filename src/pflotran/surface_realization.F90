@@ -1,6 +1,6 @@
 #ifdef SURFACE_FLOW
 
-module Surface_Realization_module
+module Surface_Realization_class
 
   use Realization_Base_class
   
@@ -712,7 +712,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -996,7 +996,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   use String_module
   use Unstructured_Grid_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Surface_Field_module
@@ -1266,7 +1266,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1382,7 +1382,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1675,7 +1675,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1851,7 +1851,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1926,6 +1926,6 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
 
 end subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec
 
-end module Surface_Realization_module
+end module Surface_Realization_class
 
 #endif

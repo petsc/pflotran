@@ -46,7 +46,7 @@ contains
 ! ************************************************************************** !
 subroutine THCTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -76,7 +76,7 @@ end subroutine THCTimeCut
 ! ************************************************************************** !
 subroutine THCSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -111,7 +111,7 @@ end subroutine THCSetup
 ! ************************************************************************** !
 subroutine THCSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -329,7 +329,7 @@ subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
 subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
 #endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Field_module
   use Option_module
@@ -492,7 +492,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
                                    P1_changed,ierr)
 #endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Field_module
   use Option_module
@@ -603,7 +603,7 @@ end subroutine THCCheckUpdatePost
 ! ************************************************************************** !
 subroutine THCComputeMassBalance(realization, mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -640,7 +640,7 @@ end subroutine THCComputeMassBalance
 ! ************************************************************************** !
 subroutine THCComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -699,7 +699,7 @@ end subroutine THCComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine THCZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -746,7 +746,7 @@ end subroutine THCZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine THCUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -798,7 +798,7 @@ end subroutine THCUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine THCUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -832,7 +832,7 @@ end subroutine THCUpdateAuxVars
 ! ************************************************************************** !
 subroutine THCUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -994,7 +994,7 @@ end subroutine THCUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine THCInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -1013,7 +1013,7 @@ end subroutine THCInitializeTimestep
 ! ************************************************************************** !
 subroutine THCUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -1057,7 +1057,7 @@ end subroutine THCUpdateSolution
 ! ************************************************************************** !
 subroutine THCUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -1079,7 +1079,7 @@ end subroutine THCUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine THCUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -1113,7 +1113,7 @@ end subroutine THCUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine THCUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1233,7 +1233,7 @@ end subroutine THCUpdateFixedAccumPatch
 ! ************************************************************************** !
 subroutine THCNumericalJacobianTest(xx,realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -3090,7 +3090,7 @@ end subroutine THCBCFlux
 ! ************************************************************************** !
 subroutine THCResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -3169,7 +3169,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3647,7 +3647,7 @@ end subroutine THCResidualPatch
 ! ************************************************************************** !
 subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -3731,7 +3731,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -4306,7 +4306,7 @@ end subroutine THCCreateZeroArray
 ! ************************************************************************** !
 subroutine THCMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   
@@ -4341,7 +4341,7 @@ end subroutine THCMaxChange
 ! ************************************************************************** !
 subroutine THCResidualToMass(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -4411,7 +4411,7 @@ end subroutine THCResidualToMass
 ! ************************************************************************** !
 function THCGetTecplotHeader(realization,icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -4536,7 +4536,7 @@ end function THCGetTecplotHeader
 ! ************************************************************************** !
 subroutine THCSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 

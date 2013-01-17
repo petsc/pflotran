@@ -1901,7 +1901,7 @@ end subroutine WriteObservationSecondaryDataAtCell
 ! ************************************************************************** !  
 subroutine OutputMassBalance(realization)
 
-  use Realization_module
+  use Realization_class
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module
