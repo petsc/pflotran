@@ -44,13 +44,13 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputCommonInit(realization,num_steps)
+subroutine OutputCommonInit(realization_base,num_steps)
 
   use Option_module
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: num_steps
   
   ! set size to -1 in order to re-initialize parallel communication blocks
@@ -144,7 +144,7 @@ end function OutputFilename
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
+subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 
   use Realization_Base_class, only : RealizationGetDataset
   use Grid_module
@@ -157,7 +157,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -167,7 +167,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
-  call RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
+  call RealizationGetDataset(realization_base,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   
@@ -231,7 +231,7 @@ end subroutine ConvertArrayToNatural
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
+function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
                                       num_cells,ghosted_ids,isubvar1)
 
   use Realization_Base_class, only : RealizGetDatasetValueAtCell
@@ -241,7 +241,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
   implicit none
   
   PetscReal :: OutputGetVarFromArrayAtCoord
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
@@ -258,7 +258,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
   sum_value = 0.d0
   sum_weight = 0.d0
   
-  grid => realization%patch%grid
+  grid => realization_base%patch%grid
 
   do icell=1, num_cells
     ghosted_id = ghosted_ids(icell)
@@ -267,7 +267,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
     dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
+    value = RealizGetDatasetValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
       isubvar1)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
@@ -291,7 +291,7 @@ end function OutputGetVarFromArrayAtCoord
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputGetCellCenteredVelocities(realization,vec,iphase,direction)
+subroutine OutputGetCellCenteredVelocities(realization_base,vec,iphase,direction)
 
   use Grid_module
   use Option_module
@@ -306,7 +306,7 @@ subroutine OutputGetCellCenteredVelocities(realization,vec,iphase,direction)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vec
   PetscInt :: direction
   PetscInt :: iphase
@@ -333,11 +333,11 @@ subroutine OutputGetCellCenteredVelocities(realization,vec,iphase,direction)
 
   call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr) 
                             
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
     
   allocate(sum_area(grid%nlmax))
   sum_area(1:grid%nlmax) = 0.d0
