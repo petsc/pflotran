@@ -119,6 +119,7 @@ subroutine OutputVTK(realization)
 
   write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
 
+  !TODO(geh): refactor to use variable list in loop
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
          FLASH2_MODE,G_MODE)

@@ -555,6 +555,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%y(ghosted_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
 
+  !TODO(geh): refactor to use variable list in loop
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
     
