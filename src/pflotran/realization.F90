@@ -31,25 +31,10 @@ private
 #include "definitions.h"
   type, public, extends(realization_base_type) :: realization_type
 
-    type(discretization_type), pointer :: discretization
-    type(level_list_type), pointer :: level_list
-    type(patch_type), pointer :: patch
-      ! This is simply used to point to the patch associated with the current 
-      ! level.  In other words: Never trust this!
-
-    type(option_type), pointer :: option
-
-    type(input_type), pointer :: input
-    type(field_type), pointer :: field
-    type(flow_debug_type), pointer :: debug
-    type(output_option_type), pointer :: output_option
-
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: flow_conditions
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
-    
-    type(reaction_type), pointer :: reaction
     
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
@@ -84,9 +69,9 @@ private
             RealizationAddObservation, &
             RealizUpdateUniformVelocity, &
             RealizationRevertFlowParameters, &
-            RealizationGetDataset, &
-            RealizGetDatasetValueAtCell, &
-            RealizationSetDataset, &
+!            RealizationGetDataset, &
+!            RealizGetDatasetValueAtCell, &
+!            RealizationSetDataset, &
             RealizationPrintCouplers, &
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
@@ -140,19 +125,7 @@ function RealizationCreate2(option)
   type(realization_type), pointer :: realization
   
   allocate(realization)
-  call RealizationBaseInit(realization)
-  realization%discretization => DiscretizationCreate()
-  if (associated(option)) then
-    realization%option => option
-  else
-    realization%option => OptionCreate()
-  endif
-  nullify(realization%input)
-  realization%field => FieldCreate()
-  realization%debug => DebugCreateFlow()
-  realization%output_option => OutputOptionCreate()
-
-  realization%level_list => LevelCreateList()
+  call RealizationBaseInit(realization,option)
 
   allocate(realization%regions)
   call RegionInitList(realization%regions)
@@ -173,10 +146,6 @@ function RealizationCreate2(option)
   nullify(realization%datasets)
   nullify(realization%velocity_dataset)
   
-  nullify(realization%reaction)
-
-  nullify(realization%patch)
-  nullify(realization%level_list)
   nullify(realization%waypoints)
 
   RealizationCreate2 => realization
@@ -1609,6 +1578,7 @@ subroutine RealizationAddWaypointsToList(realization)
 
 end subroutine RealizationAddWaypointsToList
 
+#if 0
 ! ************************************************************************** !
 !
 ! RealizationGetDataset: Extracts variables indexed by ivar and isubvar from a 
@@ -1693,6 +1663,8 @@ subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
                        vec,vec_format,ivar,isubvar)
 
 end subroutine RealizationSetDataset
+
+#endif
 
 ! ************************************************************************** !
 !

@@ -2562,7 +2562,7 @@ end subroutine HDF5ReadCellIndexedRealArray
 subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
 
   use hdf5
-  use Realization_module
+  use Realization_Base_class, only : realization_base_type
   use Grid_module
   use Option_module
   use Patch_module
@@ -2573,7 +2573,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
 #include "finclude/petscvec.h90"
 
   character(len=*) :: name
-  type(realization_type) :: realization
+  class(realization_base_type) :: realization
   Vec :: vec
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type

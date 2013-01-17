@@ -30,14 +30,6 @@ private
 
   type, public, extends(realization_base_type) :: surface_realization_type
 
-    type(discretization_type), pointer :: discretization
-    type(level_list_type),pointer      :: level_list
-    type(patch_type), pointer          :: patch
-
-    type(option_type), pointer         :: option
-    type(input_type), pointer          :: input
-    type(flow_debug_type), pointer     :: debug
-    type(output_option_type), pointer  :: output_option
     type(waypoint_list_type), pointer  :: waypoints
     
     type(surface_field_type), pointer                 :: surf_field
@@ -101,8 +93,7 @@ function SurfaceRealizationCreate(option)
   type(surface_realization_type),pointer :: surf_realization
   
   allocate(surf_realization)
-  call RealizationBaseInit(surf_realization)
-  surf_realization%discretization => DiscretizationCreate()
+  call RealizationBaseInit(surf_realization,option)
   surf_realization%option => option
   nullify(surf_realization%input)
 
