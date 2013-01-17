@@ -3,6 +3,8 @@ module Output_Surface_module
   use Logging_module 
   use Output_Aux_module
   use Output_Common_module
+  use Output_HDF5_module
+  use Output_Tecplot_module
   
   implicit none
 
@@ -103,7 +105,7 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   if (plot_flag) then
     if (surf_realization%output_option%print_hdf5) then
-      call OutputHDF5UGridXDMF(surf_realization,realization)
+      call OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
     endif
   
     if (surf_realization%output_option%print_tecplot) then
@@ -131,284 +133,6 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
 end subroutine OutputSurface
 
-
-! ************************************************************************** !
-!> This routine temporally averages variables and outputs thems
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 01/10/13
-! ************************************************************************** !
-subroutine OutputAvegVars(realization)
-
-  use Realization_module, only : realization_type
-  use Option_module, only : OptionCheckTouch, option_type, printMsg
-  use Output_Aux_module
-  use Field_module
-
-  implicit none
-  
-  class(realization_type) :: realization
-
-  type(option_type), pointer :: option
-  type(output_option_type), pointer :: output_option
-  type(output_variable_type), pointer :: cur_variable
-  type(field_type), pointer :: field  
-
-  PetscReal :: dtime
-  PetscBool :: aveg_plot_flag
-  PetscInt :: ivar
-  PetscReal,pointer :: aval_p(:),ival_p(:)
-  PetscErrorCode :: ierr  
-  PetscLogDouble :: tstart, tend
-
-  option => realization%option
-  output_option => realization%output_option
-  field => realization%field
-
-  ! 
-  if(option%time<1.d-10) return
-  
-  if(.not.associated(output_option%aveg_output_variable_list%first)) then
-    return
-  endif
-  
-  dtime = option%time-output_option%aveg_var_time
-  output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
-  output_option%aveg_var_time = output_option%aveg_var_time + dtime
-  
-  if(abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
-    aveg_plot_flag=PETSC_TRUE
-  else
-    aveg_plot_flag=PETSC_FALSE
-  endif
-
-  ivar = 0
-  cur_variable => output_option%aveg_output_variable_list%first
-  do
-    if (.not.associated(cur_variable)) exit
-
-    ! Get the variable
-    call OutputGetVarFromArray(realization,field%work, &
-                               cur_variable%ivar, &
-                               cur_variable%isubvar)
-
-    ! Cumulatively add the variable*dtime
-    ivar = ivar + 1
-    call VecGetArrayF90(field%work,ival_p,ierr)
-    call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-    aval_p = aval_p + ival_p*dtime
-    call VecRestoreArrayF90(field%work,ival_p,ierr)
-    call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-
-    ! Check if it is time to output the temporally average variable
-    if(aveg_plot_flag) then
-
-      ! Divide vector values by 'time'
-      call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-      aval_p = aval_p/output_option%periodic_output_time_incr
-      call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
-
-    endif
-    
-    cur_variable => cur_variable%next
-  enddo
-
-  if(aveg_plot_flag) then
-
-    if (realization%output_option%print_hdf5) then
-      call PetscGetTime(tstart,ierr)
-      call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
-      call OutputHDF5(realization, AVERAGED_VARS)
-      call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
-      call PetscGetTime(tend,ierr)
-      write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
-      call printMsg(option)
-    endif
-
-    ! Reset the vectors to zero
-    do ivar=1,output_option%aveg_output_variable_list%nvars
-      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
-    enddo
-
-    output_option%aveg_var_dtime=0.d0
-
-  endif
-
-
-end subroutine OutputAvegVars
-
-! ************************************************************************** !
-!> This subroutine writes header to a .xmf file
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/12
-! ************************************************************************** !
-!subroutine OutputXMFHeader(fid,realization,filename)
-subroutine OutputXMFHeader(fid,nmax,xmf_vert_len,ngvert,filename)
-
-  use Realization_module
-  use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_Aux_module
-  use Option_module
-  use Patch_module
-
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
-  use Reaction_Aux_module
-  
-  implicit none
-
-  PetscInt :: fid, vert_count
-!  class(realization_type) :: realization
-  PetscInt :: nmax,xmf_vert_len,ngvert
-  character(len=MAXSTRINGLENGTH) :: filename
-
-  character(len=MAXHEADERLENGTH) :: header, header2
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: word
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch 
-!  type(output_option_type), pointer :: output_option
-  PetscInt :: comma_count, quote_count, variable_count
-  PetscInt :: i
-  
-!  patch => realization%patch
-!  grid => patch%grid
-!  option => realization%option
-!  output_option => realization%output_option
-
-  string="<?xml version=""1.0"" ?>"
-  write(fid,'(a)') trim(string)
-  
-  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
-  write(fid,'(a)') trim(string)
-
-  string="<Xdmf>"
-  write(fid,'(a)') trim(string)
-
-  string="  <Domain>"
-  write(fid,'(a)') trim(string)
-
-  string="    <Grid Name=""Mesh"">"
-  write(fid,'(a)') trim(string)
-
-!  write(string2,*) grid%nmax
-  write(string2,*) nmax
-  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
-    trim(adjustl(string2)) // """ >"
-  write(fid,'(a)') trim(string)
-
-!  write(string2,*) realization%output_option%xmf_vert_len
-  write(string2,*) xmf_vert_len
-  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
-    trim(adjustl(string2)) // """>"
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/Cells"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem>"
-  write(fid,'(a)') trim(string)
-
-  string="      </Topology>"
-  write(fid,'(a)') trim(string)
-
-  string="      <Geometry GeometryType=""XYZ"">"
-  write(fid,'(a)') trim(string)
-
-!  write(string2,*) grid%unstructured_grid%num_vertices_global
-  write(string2,*) ngvert
-  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/Vertices"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem>"
-  write(fid,'(a)') trim(string)
-
-  string="      </Geometry>"
-  write(fid,'(a)') trim(string)
-
-end subroutine OutputXMFHeader
-
-! ************************************************************************** !
-!> This subroutine writes footer to a .xmf file
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/12
-! ************************************************************************** !
-subroutine OutputXMFFooter(fid)
-
-  implicit none
-
-  PetscInt :: fid
-
-  character(len=MAXSTRINGLENGTH) :: string
-
-  string="    </Grid>"
-  write(fid,'(a)') trim(string)
-
-  string="  </Domain>"
-  write(fid,'(a)') trim(string)
-
-  string="</Xdmf>"
-  write(fid,'(a)') trim(string)
-
-end subroutine OutputXMFFooter
-
-! ************************************************************************** !
-!> This subroutine writes an attribute to a .xmf file
-!!
-!> @author
-!! Gautam Bisht, LBNL
-!!
-!! date: 10/29/12
-! ************************************************************************** !
-subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
-
-  implicit none
-
-  PetscInt :: fid,nmax
-  
-  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
-  character(len=MAXSTRINGLENGTH) :: string,string2
-  string="      <Attribute Name=""" // trim(attname) // &
-    """ AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-!  write(string2,*) grid%nmax
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="        " // trim(att_datasetname)
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-end subroutine OutputXMFAttribute
-
 ! ************************************************************************** !
 !> This subroutine print to Tecplot file in FEQUADRILATERAL format for surface
 !! flows.
@@ -429,19 +153,6 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   use Surface_Field_module
   use Patch_module
   
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
-  use Reaction_Aux_module
-  use Variables_module
-  
   implicit none
 
   type(surface_realization_type) :: surf_realization
@@ -458,7 +169,6 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   type(discretization_type), pointer :: discretization
   type(surface_field_type), pointer :: surf_field
   type(patch_type), pointer :: patch 
-  type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
@@ -542,24 +252,9 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
 
   use Surface_Realization_module
   use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
 
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
-  use Reaction_Aux_module
-  use Surface_Flow_Module
-  
   implicit none
 
   PetscInt :: fid
@@ -864,8 +559,6 @@ subroutine OutputHydrograph(surf_realization)
   use Connection_module
   use Utility_module
 
-  use Surface_Flow_Module
-  
   implicit none
   
   type(surface_realization_type) :: surf_realization
@@ -981,7 +674,7 @@ end subroutine OutputHydrograph
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine OutputHDF5UGridXDMF(surf_realization,realization)
+subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization)
 
   use Surface_Realization_module
   use Realization_module
@@ -1056,7 +749,6 @@ subroutine OutputHDF5UGridXDMF(surf_realization,realization)
   type(option_type), pointer :: option
   type(surface_field_type), pointer :: surf_field
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
 
@@ -1216,7 +908,7 @@ subroutine OutputHDF5UGridXDMF(surf_realization,realization)
 
   surf_hdf5_first = PETSC_FALSE
 
-end subroutine OutputHDF5UGridXDMF
+end subroutine OutputSurfaceHDF5UGridXDMF
 
 ! ************************************************************************** !
 !> This routine writes unstructured coordinates to HDF5 file in XDMF format

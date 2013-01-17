@@ -19,7 +19,8 @@ module Output_HDF5_module
   PetscBool :: hdf5_first
   
   public :: OutputHDF5Init, &
-            OutputHDF5
+            OutputHDF5, &
+            OutputHDF5UGridXDMF
 
 contains
 
@@ -121,7 +122,6 @@ subroutine OutputHDF5(realization,var_list_type)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
   
@@ -148,7 +148,6 @@ subroutine OutputHDF5(realization,var_list_type)
   patch => realization%patch
   option => realization%option
   field => realization%field
-  reaction => realization%reaction
   output_option => realization%output_option
 
   select case (var_list_type)
@@ -530,7 +529,6 @@ subroutine OutputHDF5UGrid(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
   
@@ -561,7 +559,6 @@ subroutine OutputHDF5UGrid(realization)
   patch => realization%patch
   option => realization%option
   field => realization%field
-  reaction => realization%reaction
   output_option => realization%output_option
 
 
@@ -875,7 +872,6 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
 
@@ -904,7 +900,6 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
   patch => realization%patch
   option => realization%option
   field => realization%field
-  reaction => realization%reaction
   output_option => realization%output_option
 
   select case (var_list_type)

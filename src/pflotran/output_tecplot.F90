@@ -21,7 +21,10 @@ module Output_Tecplot_module
             OutputFluxVelocitiesTecplotBlk, &
             OutputVelocitiesTecplotPoint, &
             OutputVectorTecplot, &
-            GetCellConnectionsTecplot
+            GetCellConnectionsTecplot, &
+            WriteTecplotDatasetFromVec, &
+            WriteTecplotDatasetNumPerLine, &
+            WriteTecplotDataset
 
 contains
 
@@ -36,22 +39,8 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
-  use Structured_Grid_module
-  use Unstructured_Grid_Aux_module
   use Option_module
   use Patch_module
-
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
-  use Reaction_Aux_module
   
   implicit none
 
@@ -212,16 +201,6 @@ subroutine OutputTecplotBlock(realization)
   use Field_module
   use Patch_module
   
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
   use Reaction_Aux_module
  
   implicit none
@@ -238,7 +217,6 @@ subroutine OutputTecplotBlock(realization)
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch 
-  type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
@@ -252,7 +230,6 @@ subroutine OutputTecplotBlock(realization)
   grid => patch%grid
   option => realization%option
   field => realization%field
-  reaction => realization%reaction
   output_option => realization%output_option
   
   filename = OutputFilename(output_option,option,'tec','')
@@ -821,17 +798,7 @@ subroutine OutputTecplotPoint(realization)
   use Option_module
   use Field_module
   use Patch_module
-  
-  use Mphase_module
-  use Immis_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  use Flash2_module
-  use Miscible_module
-  use General_module
-  
-  use Reactive_Transport_module
+
   use Reaction_Aux_module
  
   implicit none
@@ -848,7 +815,6 @@ subroutine OutputTecplotPoint(realization)
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch 
-  type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
@@ -865,7 +831,6 @@ subroutine OutputTecplotPoint(realization)
   grid => patch%grid
   option => realization%option
   field => realization%field
-  reaction => realization%reaction
   output_option => realization%output_option
 
   filename = OutputFilename(output_option,option,'tec','')

@@ -67,6 +67,7 @@ subroutine Init(simulation)
 !  use Utility_module
   use Output_module
   use Output_Aux_module
+  use Output_Tecplot_module, only : OutputVectorTecplot
   use Regression_module
     
 #ifdef SURFACE_FLOW
@@ -2713,6 +2714,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   use Condition_module
   use Grid_module
   use Output_module
+  use Output_Tecplot_module, only : OutputVectorTecplot  
   use Patch_module
 
   implicit none

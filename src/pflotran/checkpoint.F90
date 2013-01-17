@@ -112,6 +112,7 @@ subroutine Checkpoint(realization, &
                       id)
 
   use Realization_module
+  use Realization_Base_class, only : RealizationGetDataset
   use Reaction_Aux_module
   use Discretization_module
   use Option_module
@@ -531,6 +532,7 @@ subroutine Restart(realization, &
                    activity_coefs_read)
 
   use Realization_module
+  use Realization_Base_class, only : RealizationSetDataset
   use Discretization_module
   use Option_module
   use Output_Aux_module

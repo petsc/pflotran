@@ -1958,7 +1958,6 @@ subroutine OutputMassBalance(realization)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscMPIInt :: int_mpi
   PetscBool :: bcs_done
-  class(realization_type), pointer :: realization_cast
   PetscErrorCode :: ierr
   
   patch => realization%patch
@@ -1966,7 +1965,6 @@ subroutine OutputMassBalance(realization)
   option => realization%option
   reaction => realization%reaction
   output_option => realization%output_option
-  realization_cast => realization
  
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.dat'
@@ -2211,23 +2209,29 @@ subroutine OutputMassBalance(realization)
 
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsComputeMassBalance(realization_cast,sum_kg(1,:))
-      case(THC_MODE)
-        call THCComputeMassBalance(realization,sum_kg(1,:))
-      case(THMC_MODE)
-        call THMCComputeMassBalance(realization,sum_kg(1,:))
-      case(MIS_MODE)
-        call MiscibleComputeMassBalance(realization,sum_kg(:,1))
-      case(MPH_MODE)
-        call MphaseComputeMassBalance(realization,sum_kg(:,:))
-      case(IMS_MODE)
-        call ImmisComputeMassBalance(realization,sum_kg(:,1))
-      case(G_MODE)
-        option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
+    select type(realization)
+      class is(realization_type)
+        select case(option%iflowmode)
+          case(RICHARDS_MODE)
+            call RichardsComputeMassBalance(realization,sum_kg(1,:))
+          case(THC_MODE)
+            call THCComputeMassBalance(realization,sum_kg(1,:))
+          case(THMC_MODE)
+            call THMCComputeMassBalance(realization,sum_kg(1,:))
+          case(MIS_MODE)
+            call MiscibleComputeMassBalance(realization,sum_kg(:,1))
+          case(MPH_MODE)
+            call MphaseComputeMassBalance(realization,sum_kg(:,:))
+          case(IMS_MODE)
+            call ImmisComputeMassBalance(realization,sum_kg(:,1))
+          case(G_MODE)
+            option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
+            call printErrMsg(option)
+            call GeneralComputeMassBalance(realization,sum_kg(1,:))
+        end select
+      class default
+        option%io_buffer = 'Unrecognized realization class in MassBalance().'
         call printErrMsg(option)
-        call GeneralComputeMassBalance(realization,sum_kg(1,:))
     end select
     int_mpi = option%nflowspec*option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
@@ -2249,7 +2253,13 @@ subroutine OutputMassBalance(realization)
   
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
-    call RTComputeMassBalance(realization,sum_mol)
+    select type(realization)
+      class is(realization_type)
+        call RTComputeMassBalance(realization,sum_mol)
+      class default
+        option%io_buffer = 'Unrecognized realization class in MassBalance().'
+        call printErrMsg(option)
+    end select
     int_mpi = option%nphase*option%ntrandof
     call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &

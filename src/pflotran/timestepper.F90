@@ -307,14 +307,14 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   use Option_module
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
-                            OutputPrintCouplers
+  use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
   use Surface_Realization_module
+  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
 #endif
   implicit none
   
@@ -492,6 +492,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
+#ifdef SURFACE_FLOW
+  call OutputSurfaceInit(realization,master_stepper%steps)
+#endif
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
@@ -501,7 +504,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #ifdef SURFACE_FLOW
     plot_flag_surf = PETSC_TRUE
     transient_plot_flag_surf = PETSC_TRUE
-    call Output(surf_realization,plot_flag_surf,transient_plot_flag_surf)
+    call OutputSurface(surf_realization,realization,plot_flag_surf, &
+                       transient_plot_flag_surf)
 #endif
   endif
   
@@ -815,7 +819,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
 
 #ifdef SURFACE_FLOW
-    call Output(surf_realization,plot_flag_surf,transient_plot_flag_surf)
+    call OutputSurface(surf_realization,realization,plot_flag_surf, &
+                       transient_plot_flag_surf)
     if(associated(surf_flow_stepper)) then
       call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
     endif
@@ -2841,7 +2846,7 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
 
   use Option_module
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputVectorTecplot
+  use Output_module, only : Output, OutputInit
   use Logging_module
   use Discretization_module
 

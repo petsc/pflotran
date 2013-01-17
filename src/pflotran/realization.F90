@@ -83,7 +83,11 @@ private
             RealizatonPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep
- 
+
+  !TODO(intel)
+  ! public from Realization_Base_class
+  !public :: RealizationGetDataset
+
 contains
   
 ! ************************************************************************** !

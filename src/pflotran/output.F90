@@ -3,7 +3,7 @@ module Output_module
   use Logging_module 
   use Output_Aux_module
 
-  use Output_Surface_module
+ ! use Output_Surface_module
   use Output_HDF5_module
   use Output_Tecplot_module
   use Output_VTK_module
@@ -38,12 +38,8 @@ module Output_module
   PetscBool :: hdf5_first
   PetscBool :: mass_balance_first
 
-  interface Output
-    module procedure Output1
-    module procedure OutputSurface
-  end interface 
-
-  public :: OutputInit, Output, &
+  public :: OutputInit, &
+            Output, &
             OutputPrintCouplers
 
 contains
@@ -59,6 +55,7 @@ subroutine OutputInit(realization,num_steps)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
+  use Output_Common_module
 
   implicit none
   
@@ -78,7 +75,7 @@ end subroutine OutputInit
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output1(realization,plot_flag,transient_plot_flag)
+subroutine Output(realization,plot_flag,transient_plot_flag)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
@@ -86,7 +83,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   
   implicit none
   
-  type(realization_base_type), target :: realization
+  class(realization_base_type) :: realization
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
 
@@ -189,7 +186,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   endif
 
   ! Output temporally average variables 
-  call OutputAvegVars1(realization)
+  call OutputAvegVars(realization)
 
   if(plot_flag) then
     realization%output_option%plot_number = realization%output_option%plot_number + 1
@@ -202,7 +199,7 @@ subroutine Output1(realization,plot_flag,transient_plot_flag)
   call PetscLogStagePop(ierr)
 
 
-end subroutine Output1
+end subroutine Output
 
 ! ************************************************************************** !
 !
@@ -221,6 +218,7 @@ subroutine OutputMAD(realization)
   use Patch_module
   use Reaction_Aux_module
   use Variables_module
+  use Output_Common_module, only : OutputGetVarFromArray
  
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -743,5 +741,113 @@ subroutine OutputPrintCouplers(realization,istep)
   enddo
 
 end subroutine OutputPrintCouplers
+
+! ************************************************************************** !
+!> This routine temporally averages variables and outputs thems
+!!
+!> @author
+!! Gautam Bisht, LBNL
+!!
+!! date: 01/10/13
+! ************************************************************************** !
+subroutine OutputAvegVars(realization)
+
+  use Realization_Base_class, only : realization_base_type
+  use Option_module, only : OptionCheckTouch, option_type, printMsg
+  use Output_Aux_module
+  use Output_Common_module, only : OutputGetVarFromArray  
+  use Field_module
+
+  implicit none
+  
+  class(realization_base_type) :: realization
+
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
+  type(field_type), pointer :: field  
+
+  PetscReal :: dtime
+  PetscBool :: aveg_plot_flag
+  PetscInt :: ivar
+  PetscReal,pointer :: aval_p(:),ival_p(:)
+  PetscErrorCode :: ierr  
+  PetscLogDouble :: tstart, tend
+
+  option => realization%option
+  output_option => realization%output_option
+  field => realization%field
+
+  ! 
+  if(option%time<1.d-10) return
+  
+  if(.not.associated(output_option%aveg_output_variable_list%first)) then
+    return
+  endif
+  
+  dtime = option%time-output_option%aveg_var_time
+  output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
+  output_option%aveg_var_time = output_option%aveg_var_time + dtime
+  
+  if(abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
+    aveg_plot_flag=PETSC_TRUE
+  else
+    aveg_plot_flag=PETSC_FALSE
+  endif
+
+  ivar = 0
+  cur_variable => output_option%aveg_output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+
+    ! Get the variable
+    call OutputGetVarFromArray(realization,field%work, &
+                               cur_variable%ivar, &
+                               cur_variable%isubvar)
+
+    ! Cumulatively add the variable*dtime
+    ivar = ivar + 1
+    call VecGetArrayF90(field%work,ival_p,ierr)
+    call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
+    aval_p = aval_p + ival_p*dtime
+    call VecRestoreArrayF90(field%work,ival_p,ierr)
+    call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
+
+    ! Check if it is time to output the temporally average variable
+    if(aveg_plot_flag) then
+
+      ! Divide vector values by 'time'
+      call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
+      aval_p = aval_p/output_option%periodic_output_time_incr
+      call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p,ierr)
+
+    endif
+    
+    cur_variable => cur_variable%next
+  enddo
+
+  if(aveg_plot_flag) then
+
+    if (realization%output_option%print_hdf5) then
+      call PetscGetTime(tstart,ierr)
+      call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
+      call OutputHDF5(realization, AVERAGED_VARS)
+      call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
+      call PetscGetTime(tend,ierr)
+      write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
+      call printMsg(option)
+    endif
+
+    ! Reset the vectors to zero
+    do ivar=1,output_option%aveg_output_variable_list%nvars
+      call VecSet(field%avg_vars_vec(ivar),0.d0,ierr)
+    enddo
+
+    output_option%aveg_var_dtime=0.d0
+
+  endif
+
+
+end subroutine OutputAvegVars
 
 end module Output_module

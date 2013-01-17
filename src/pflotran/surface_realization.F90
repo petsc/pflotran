@@ -68,12 +68,18 @@ private
             SurfaceRealizationInitAllCouplerAuxVars, &
             SurfaceRealizationProcessMatProp, &
             SurfaceRealizationUpdate, &
-            SurfaceRealizationGetDataset, &
             SurfaceRealizationCreateSurfaceSubsurfaceVec, &
             SurfaceRealizationUpdateSubsurfaceBC, &
             SurfaceRealizationUpdateSurfaceBC, &
             SurfaceRealizationComputeSurfaceSubsurfFlux
 
+  !TODO(intel)
+!  public :: SurfaceRealizationGetDataset     
+  
+!  interface SurfaceRealizationGetDataset
+!    module procedure :: RealizationGetDataset ! from Realization_Base_class
+!  end interface
+  
 contains
 
 ! ************************************************************************** !
@@ -1211,6 +1217,7 @@ subroutine SurfaceRealizationUpdate(surf_realization)
 
 end subroutine SurfaceRealizationUpdate
 
+#if 0
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar and isubvar from surface
 !! realization.
@@ -1241,7 +1248,7 @@ subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubva
                        vec,ivar,isubvar,isubvar1)
 
 end subroutine SurfaceRealizationGetDataset
-
+#endif
 
 ! ************************************************************************** !
 !> This routine prescribes the strength of source/sink between surface and

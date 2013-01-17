@@ -621,6 +621,7 @@ end subroutine GlobalUpdateDenAndSatPatch
 subroutine GlobalUpdateAuxVars(realization,time_level)
 
   use Realization_module
+  use Realization_Base_class, only : RealizationGetDataset
   use Field_module
   use Option_module
   use Discretization_module

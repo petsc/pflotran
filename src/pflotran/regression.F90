@@ -449,6 +449,8 @@ subroutine RegressionOutput(regression,realization,flow_stepper, &
   use Discretization_module
   use Output_module
   use Output_Aux_module
+  use Output_Common_module, only : OutputGetCellCenteredVelocities, &
+                                   OutputGetVarFromArray
   
   implicit none
   

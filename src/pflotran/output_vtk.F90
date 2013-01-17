@@ -34,15 +34,6 @@ subroutine OutputVTK(realization)
   use Field_module
   use Patch_module
   
-  use Flash2_module
-  use Mphase_module
-  use Immis_module
-  use Miscible_module
-  use THC_module
-  use THMC_module
-  use Richards_module
-  
-  use Reactive_Transport_module
   use Reaction_Aux_module
   use Variables_module
  
