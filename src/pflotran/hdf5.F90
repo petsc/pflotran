@@ -2559,7 +2559,7 @@ end subroutine HDF5ReadCellIndexedRealArray
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
+subroutine HDF5WriteStructDataSetFromVec(name,realization_base,vec,file_id,data_type)
 
   use hdf5
   use Realization_Base_class, only : realization_base_type
@@ -2573,7 +2573,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
 #include "finclude/petscvec.h90"
 
   character(len=*) :: name
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vec
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -2583,9 +2583,9 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   type(patch_type), pointer :: patch  
   PetscReal, pointer :: vec_ptr(:)
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
+  option => realization_base%option
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - Begin

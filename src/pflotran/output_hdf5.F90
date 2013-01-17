@@ -31,14 +31,14 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputHDF5Init(realization,num_steps)
+subroutine OutputHDF5Init(realization_base,num_steps)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: num_steps
   
   if (num_steps == 0) then
@@ -56,7 +56,7 @@ end subroutine OutputHDF5Init
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputHDF5(realization,var_list_type)
+subroutine OutputHDF5(realization_base,var_list_type)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -69,13 +69,13 @@ subroutine OutputHDF5(realization,var_list_type)
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
-  call printMsg(realization%option,'')
-  write(realization%option%io_buffer, &
+  call printMsg(realization_base%option,'')
+  write(realization_base%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids Darn.")')
-  call printErrMsg(realization%option)
+  call printErrMsg(realization_base%option)
 #else
 
 ! 64-bit stuff
@@ -96,7 +96,7 @@ subroutine OutputHDF5(realization,var_list_type)
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
 
 #if defined(PARALLELIO_LIB_WRITE)
@@ -144,11 +144,11 @@ subroutine OutputHDF5(realization,var_list_type)
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr
 
-  discretization => realization%discretization
-  patch => realization%patch
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  discretization => realization_base%discretization
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
   select case (var_list_type)
     case (INSTANTANEOUS_VARS)
@@ -320,7 +320,7 @@ subroutine OutputHDF5(realization,var_list_type)
       cur_variable => output_option%output_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
-        call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+        call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
                                    cur_variable%isubvar)
         string = cur_variable%name
         if (len_trim(cur_variable%units) > 0) then
@@ -329,10 +329,10 @@ subroutine OutputHDF5(realization,var_list_type)
           string = trim(string) // ' [' // trim(word) // ']'
         endif
         if (cur_variable%iformat == 0) then
-          call HDF5WriteStructDataSetFromVec(string,realization, &
+          call HDF5WriteStructDataSetFromVec(string,realization_base, &
                                             global_vec,grp_id,H5T_NATIVE_DOUBLE)
         else
-          call HDF5WriteStructDataSetFromVec(string,realization, &
+          call HDF5WriteStructDataSetFromVec(string,realization_base, &
                                             global_vec,grp_id,H5T_NATIVE_INTEGER)
         endif
         cur_variable => cur_variable%next
@@ -348,7 +348,7 @@ subroutine OutputHDF5(realization,var_list_type)
           string = trim(string) // ' [' // trim(word) // ']'
         endif
 
-        call HDF5WriteStructDataSetFromVec(string,realization, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base, &
                                            field%avg_vars_vec(ivar),grp_id, &
                                            H5T_NATIVE_DOUBLE)
 
@@ -360,34 +360,34 @@ subroutine OutputHDF5(realization,var_list_type)
   if (output_option%print_hdf5_velocities.and.(var_list_type==INSTANTANEOUS_VARS)) then
 
     ! velocities
-    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
-    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
-    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
         string = "Gas X-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
-        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+        call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
     endif
   endif
@@ -397,28 +397,28 @@ subroutine OutputHDF5(realization,var_list_type)
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
         string = "Liquid X-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,X_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas X-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,X_DIRECTION,grp_id)
         endif
     endif
 
     if (grid%structured_grid%ny > 1) then
         string = "Liquid Y-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,Y_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas Y-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,Y_DIRECTION,grp_id)
         endif
     endif
 
     if (grid%structured_grid%nz > 1) then
         string = "Liquid Z-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,Z_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas Z-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,Z_DIRECTION,grp_id)
         endif
     endif
    
@@ -451,7 +451,7 @@ end subroutine OutputHDF5
 !!
 !! date: 05/31/12
 ! ************************************************************************** !
-subroutine OutputHDF5UGrid(realization)
+subroutine OutputHDF5UGrid(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -465,13 +465,13 @@ subroutine OutputHDF5UGrid(realization)
 #if  !defined(PETSC_HAVE_HDF5)
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
-  call printMsg(realization%option,'')
-  write(realization%option%io_buffer, &
+  call printMsg(realization_base%option,'')
+  write(realization_base%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids Darn.")')
-  call printErrMsg(realization%option)
+  call printErrMsg(realization_base%option)
 #else
 
 ! 64-bit stuff
@@ -492,7 +492,7 @@ subroutine OutputHDF5UGrid(realization)
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
 #if defined(PARALLELIO_LIB_WRITE)
   integer:: file_id
@@ -555,11 +555,11 @@ subroutine OutputHDF5UGrid(realization)
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr  
 
-  discretization => realization%discretization
-  patch => realization%patch
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  discretization => realization_base%discretization
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
 
   if (output_option%print_single_h5_file) then
@@ -680,7 +680,7 @@ subroutine OutputHDF5UGrid(realization)
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+    call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
     string = cur_variable%name
     if (len_trim(cur_variable%units) > 0) then
@@ -701,32 +701,32 @@ subroutine OutputHDF5UGrid(realization)
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
     call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
-    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
     call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
-    call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
     call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
           H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
-        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
         string = "Gas X-Velocity"
         call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
         string = "Gas Y-Velocity"
         call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
 
-        call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+        call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
         string = "Gas Z-Velocity"
         call HDF5WriteUnstructuredDataSetFromVec(string,option,global_vec,grp_id, &
             H5T_NATIVE_DOUBLE)
@@ -738,28 +738,28 @@ subroutine OutputHDF5UGrid(realization)
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
         string = "Liquid X-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,X_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas X-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,X_DIRECTION,grp_id)
         endif
     endif
 
     if (grid%structured_grid%ny > 1) then
         string = "Liquid Y-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,Y_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas Y-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,Y_DIRECTION,grp_id)
         endif
     endif
 
     if (grid%structured_grid%nz > 1) then
         string = "Liquid Z-Flux Velocities"
-        call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
+        call WriteHDF5FluxVelocities(string,realization_base,LIQUID_PHASE,Z_DIRECTION,grp_id)
         if (option%nphase > 1) then
           string = "Gas Z-Flux Velocities"
-          call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
+          call WriteHDF5FluxVelocities(string,realization_base,GAS_PHASE,Z_DIRECTION,grp_id)
         endif
     endif
    
@@ -793,7 +793,7 @@ end subroutine OutputHDF5UGrid
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine OutputHDF5UGridXDMF(realization,var_list_type)
+subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -807,14 +807,14 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
 
-  call printMsg(realization%option,'')
-  write(realization%option%io_buffer, &
+  call printMsg(realization_base%option,'')
+  write(realization_base%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids Darn.")')
-  call printErrMsg(realization%option)
+  call printErrMsg(realization_base%option)
 
 #else
 
@@ -836,7 +836,7 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
 
 #if defined(PARALLELIO_LIB_WRITE)
@@ -896,11 +896,11 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
   PetscInt :: vert_count
   PetscErrorCode :: ierr
 
-  discretization => realization%discretization
-  patch => realization%patch
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  discretization => realization_base%discretization
+  patch => realization_base%patch
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
   select case (var_list_type)
     case (INSTANTANEOUS_VARS)
@@ -977,7 +977,7 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
     ! create a group for the coordinates data set
     string = "Domain"
     call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-    call WriteHDF5CoordinatesUGridXDMF(realization,option,grp_id)
+    call WriteHDF5CoordinatesUGridXDMF(realization_base,option,grp_id)
     call h5gclose_f(grp_id,hdf5_err)
   endif
 
@@ -985,10 +985,10 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
     option%io_buffer = '--> write xmf output file: ' // trim(filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
-    !call OutputXMFHeader(OUTPUT_UNIT,realization,filename)
+    !call OutputXMFHeader(OUTPUT_UNIT,realization_base,filename)
     call OutputXMFHeader(OUTPUT_UNIT, &
                          grid%nmax, &
-                         realization%output_option%xmf_vert_len, &
+                         realization_base%output_option%xmf_vert_len, &
                          grid%unstructured_grid%num_vertices_global,filename)
   endif
 
@@ -1021,7 +1021,7 @@ subroutine OutputHDF5UGridXDMF(realization,var_list_type)
       cur_variable => output_option%output_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
-        call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+        call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
                                    cur_variable%isubvar)
         call DiscretizationGlobalToNatural(discretization,global_vec, &
                                            natural_vec,ONEDOF)
@@ -1143,7 +1143,7 @@ end function OutputHDF5FilenameID
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
+subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_id)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -1162,7 +1162,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 #include "finclude/petsclog.h"
 
   character(len=32) :: name
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: iphase
   PetscInt :: direction
   integer(HID_T) :: file_id
@@ -1193,12 +1193,12 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
     
-  discretization => realization%discretization
-  patch => realization%patch
+  discretization => realization_base%discretization
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option  
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option  
 
   ! in a few cases (i.e. for small test problems), some processors may
   ! have no velocities to print.  This results in zero-length arrays
@@ -1735,7 +1735,7 @@ end subroutine WriteHDF5CoordinatesUGrid
 !!
 !! date: 10/29/2012
 ! ************************************************************************** !
-subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
+subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 
   use hdf5
   use HDF5_module
@@ -1751,7 +1751,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
 
 #if defined(PARALLELIO_LIB_WRITE)
@@ -1805,7 +1805,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
   PetscInt :: WED_ID_XDMF = 8
   PetscInt :: HEX_ID_XDMF = 9
 
-  grid => realization%patch%grid
+  grid => realization_base%patch%grid
 
   call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
                     grid%unstructured_grid%num_vertices_global, &
@@ -1941,7 +1941,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization,option,file_id)
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
   call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
-  realization%output_option%xmf_vert_len=dims(1)
+  realization_base%output_option%xmf_vert_len=dims(1)
 
   ! file space which is a 2D block
   rank_mpi = 1

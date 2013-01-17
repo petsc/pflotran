@@ -35,7 +35,7 @@ contains
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-subroutine OutputTecplotHeader(fid,realization,icolumn)
+subroutine OutputTecplotHeader(fid,realization_base,icolumn)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -45,7 +45,7 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
   implicit none
 
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: header, header2
@@ -58,10 +58,10 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
   PetscInt :: comma_count, quote_count, variable_count
   PetscInt :: i
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  output_option => realization%output_option
+  option => realization_base%option
+  output_option => realization_base%output_option
 
   ! write header
   ! write title
@@ -97,7 +97,7 @@ subroutine OutputTecplotHeader(fid,realization,icolumn)
 
   !geh: due to pgi bug, cannot embed functions with calls to write() within
   !     write statement
-  string = OutputTecplotZoneHeader(realization,variable_count, &
+  string = OutputTecplotZoneHeader(realization_base,variable_count, &
                                    output_option%tecplot_format)
   write(fid,'(a)') trim(string)
 
@@ -110,7 +110,7 @@ end subroutine OutputTecplotHeader
 ! date: 01/13/12
 !
 ! ************************************************************************** !  
-function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
+function OutputTecplotZoneHeader(realization_base,variable_count,tecplot_format)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -118,7 +118,7 @@ function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
   
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
@@ -129,9 +129,9 @@ function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
   
-  grid => realization%patch%grid
-  option => realization%option
-  output_option => realization%output_option  
+  grid => realization_base%patch%grid
+  option => realization_base%option
+  output_option => realization_base%output_option
 
   string = 'ZONE T="' // &
            trim(OutputFormatDouble(option%time/output_option%tconv)) // &
@@ -139,8 +139,8 @@ function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
   string2 = ''
   select case(tecplot_format)
     case (TECPLOT_POINT_FORMAT)
-      if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-          (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+      if ((realization_base%discretization%itype == STRUCTURED_GRID).or. &
+          (realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
         string2 = ', I=' // &
                   trim(OutputFormatInt(grid%structured_grid%nx)) // &
                   ', J=' // &
@@ -153,8 +153,8 @@ function OutputTecplotZoneHeader(realization,variable_count,tecplot_format)
       string2 = trim(string2) // &
               ', DATAPACKING=POINT'
     case default !(TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
-      if ((realization%discretization%itype == STRUCTURED_GRID).or. &
-          (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
+      if ((realization_base%discretization%itype == STRUCTURED_GRID).or. &
+          (realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
         string2 = ', I=' // &
                   trim(OutputFormatInt(grid%structured_grid%nx+1)) // &
                   ', J=' // &
@@ -190,7 +190,7 @@ end function OutputTecplotZoneHeader
 ! date: 10/25/07
 !
 ! ************************************************************************** !  
-subroutine OutputTecplotBlock(realization)
+subroutine OutputTecplotBlock(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -205,7 +205,7 @@ subroutine OutputTecplotBlock(realization)
  
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   PetscInt :: i, comma_count, quote_count
   PetscInt, parameter :: icolumn = -1
@@ -225,12 +225,12 @@ subroutine OutputTecplotBlock(realization)
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr
   
-  discretization => realization%discretization
-  patch => realization%patch
+  discretization => realization_base%discretization
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
   
   filename = OutputFilename(output_option,option,'tec','')
   
@@ -238,7 +238,7 @@ subroutine OutputTecplotBlock(realization)
     option%io_buffer = '--> write tecplot output file: ' // trim(filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=filename,action="write")
-    call OutputTecplotHeader(OUTPUT_UNIT,realization,icolumn)
+    call OutputTecplotHeader(OUTPUT_UNIT,realization_base,icolumn)
   endif
     
   ! write blocks
@@ -249,26 +249,26 @@ subroutine OutputTecplotBlock(realization)
                                   option)  
 
   ! write out coordinates
-  if (realization%discretization%itype == STRUCTURED_GRID .or. &
-      realization%discretization%itype == STRUCTURED_GRID_MIMETIC ) then
-    call WriteTecplotStructuredGrid(OUTPUT_UNIT,realization)
+  if (realization_base%discretization%itype == STRUCTURED_GRID .or. &
+      realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC ) then
+    call WriteTecplotStructuredGrid(OUTPUT_UNIT,realization_base)
   else
-    call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
+    call WriteTecplotUGridVertices(OUTPUT_UNIT,realization_base)
   endif
 
   ! loop over variables and write to file
   cur_variable => output_option%output_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization,global_vec,cur_variable%ivar, &
+    call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
                                 cur_variable%isubvar)
     call DiscretizationGlobalToNatural(discretization,global_vec, &
                                         natural_vec,ONEDOF)
     if (cur_variable%iformat == 0) then
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec, &
                                       TECPLOT_REAL)
     else
-      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec, &
+      call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec, &
                                       TECPLOT_INTEGER)
     endif
     cur_variable => cur_variable%next
@@ -277,43 +277,43 @@ subroutine OutputTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (realization%discretization%itype == UNSTRUCTURED_GRID .and. &
-      realization%discretization%grid%itype == &
+  if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization_base%discretization%grid%itype == &
       IMPLICIT_UNSTRUCTURED_GRID)  then
-    call WriteTecplotUGridElements(OUTPUT_UNIT,realization)
+    call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif
   
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
   if (output_option%print_tecplot_velocities) then
-    call OutputVelocitiesTecplotBlock(realization)
+    call OutputVelocitiesTecplotBlock(realization_base)
   endif
   
   if (output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
-      call OutputFluxVelocitiesTecplotBlk(realization,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
                                           X_DIRECTION)
       select case(option%iflowmode)
         case(MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputFluxVelocitiesTecplotBlk(realization,GAS_PHASE, &
+          call OutputFluxVelocitiesTecplotBlk(realization_base,GAS_PHASE, &
                                               X_DIRECTION)
       end select
     endif
     if (grid%structured_grid%ny > 1) then
-      call OutputFluxVelocitiesTecplotBlk(realization,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
                                           Y_DIRECTION)
       select case(option%iflowmode)
         case(MPH_MODE, IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputFluxVelocitiesTecplotBlk(realization,GAS_PHASE, &
+          call OutputFluxVelocitiesTecplotBlk(realization_base,GAS_PHASE, &
                                               Y_DIRECTION)
       end select
     endif
     if (grid%structured_grid%nz > 1) then
-      call OutputFluxVelocitiesTecplotBlk(realization,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplotBlk(realization_base,LIQUID_PHASE, &
                                           Z_DIRECTION)
       select case(option%iflowmode)
         case(MPH_MODE, IMS_MODE,FLASH2_MODE,G_MODE)
-          call OutputFluxVelocitiesTecplotBlk(realization,GAS_PHASE, &
+          call OutputFluxVelocitiesTecplotBlk(realization_base,GAS_PHASE, &
                                               Z_DIRECTION)
       end select
     endif
@@ -328,7 +328,7 @@ end subroutine OutputTecplotBlock
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVelocitiesTecplotBlock(realization)
+subroutine OutputVelocitiesTecplotBlock(realization_base)
  
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -341,7 +341,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -357,12 +357,12 @@ subroutine OutputVelocitiesTecplotBlock(realization)
 
   PetscReal, pointer :: vec_ptr(:)
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
-  option => realization%option
-  output_option => realization%output_option
-  discretization => realization%discretization
+  field => realization_base%field
+  option => realization_base%option
+  output_option => realization_base%output_option
+  discretization => realization_base%discretization
 
   filename = OutputFilename(output_option,option,'tec','vel')
   
@@ -395,10 +395,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     write(OUTPUT_UNIT,'(a)') trim(string)
   
     if (option%nphase > 1) then
-      string = OutputTecplotZoneHeader(realization,TEN_INTEGER, &
+      string = OutputTecplotZoneHeader(realization_base,TEN_INTEGER, &
                                        TECPLOT_BLOCK_FORMAT)
     else
-      string = OutputTecplotZoneHeader(realization,SEVEN_INTEGER, &
+      string = OutputTecplotZoneHeader(realization_base,SEVEN_INTEGER, &
                                        TECPLOT_BLOCK_FORMAT)
     endif
     write(OUTPUT_UNIT,'(a)') trim(string)
@@ -413,51 +413,51 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                                   option)    
 
   ! write out coorindates
-  if (realization%discretization%itype == STRUCTURED_GRID .or. &
-      realization%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
-    call WriteTecplotStructuredGrid(OUTPUT_UNIT,realization)
+  if (realization_base%discretization%itype == STRUCTURED_GRID .or. &
+      realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
+    call WriteTecplotStructuredGrid(OUTPUT_UNIT,realization_base)
   else
-    call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
+    call WriteTecplotUGridVertices(OUTPUT_UNIT,realization_base)
   endif
   
-  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,X_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Y_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-  call OutputGetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec,LIQUID_PHASE,Z_DIRECTION)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
   if (option%nphase > 1) then
-    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,X_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Y_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-    call OutputGetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+    call OutputGetCellCenteredVelocities(realization_base,global_vec,GAS_PHASE,Z_DIRECTION)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_REAL)
+    call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
   endif
 
   ! material id
-  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization,natural_vec,TECPLOT_INTEGER)
+  call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (realization%discretization%itype == UNSTRUCTURED_GRID .and. &
-      realization%discretization%grid%itype == &
+  if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization_base%discretization%grid%itype == &
       IMPLICIT_UNSTRUCTURED_GRID)  then
-    call WriteTecplotUGridElements(OUTPUT_UNIT,realization)
+    call WriteTecplotUGridElements(OUTPUT_UNIT,realization_base)
   endif
 
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
@@ -472,7 +472,7 @@ end subroutine OutputVelocitiesTecplotBlock
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
+subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
                                             direction)
 !geh - specifically, the flow velocities at the interfaces between cells
  
@@ -486,7 +486,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: iphase
   PetscInt :: direction
   
@@ -522,12 +522,12 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
 
   call PetscLogEventBegin(logging%event_output_write_flux_tecplot,ierr) 
                           
-  discretization => realization%discretization
-  patch => realization%patch
+  discretization => realization_base%discretization
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
@@ -677,7 +677,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   ! thus, you cannot pass in local_size, since it is needed later
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
   ! since the array has potentially been resized, must reallocate
   deallocate(array)
   nullify(array)
@@ -699,7 +699,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   enddo
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
 
@@ -720,7 +720,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   enddo
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
 
@@ -769,7 +769,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
-  call WriteTecplotDataSet(OUTPUT_UNIT,realization,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
   
@@ -788,7 +788,7 @@ end subroutine OutputFluxVelocitiesTecplotBlk
 ! date: 11/03/08
 !
 ! ************************************************************************** !  
-subroutine OutputTecplotPoint(realization)
+subroutine OutputTecplotPoint(realization_base)
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetDatasetValueAtCell
@@ -803,7 +803,7 @@ subroutine OutputTecplotPoint(realization)
  
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   PetscInt :: i, comma_count, quote_count
   PetscInt :: icolumn
@@ -826,12 +826,12 @@ subroutine OutputTecplotPoint(realization)
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr  
   
-  discretization => realization%discretization
-  patch => realization%patch
+  discretization => realization_base%discretization
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
   filename = OutputFilename(output_option,option,'tec','')
   
@@ -846,7 +846,7 @@ subroutine OutputTecplotPoint(realization)
     else
       icolumn = -1
     endif
-    call OutputTecplotHeader(OUTPUT_UNIT,realization,icolumn)
+    call OutputTecplotHeader(OUTPUT_UNIT,realization_base,icolumn)
   endif
   
 1000 format(es13.6,1x)
@@ -863,7 +863,7 @@ subroutine OutputTecplotPoint(realization)
     cur_variable => output_option%output_variable_list%first
     do
       if (.not.associated(cur_variable)) exit
-      value = RealizGetDatasetValueAtCell(realization,cur_variable%ivar, &
+      value = RealizGetDatasetValueAtCell(realization_base,cur_variable%ivar, &
                                           cur_variable%isubvar,ghosted_id)
       if (cur_variable%iformat == 0) then
         write(OUTPUT_UNIT,1000,advance='no') value
@@ -880,7 +880,7 @@ subroutine OutputTecplotPoint(realization)
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
   
   if (output_option%print_tecplot_velocities) then
-    call OutputVelocitiesTecplotPoint(realization)
+    call OutputVelocitiesTecplotPoint(realization_base)
   endif
   
 end subroutine OutputTecplotPoint
@@ -892,7 +892,7 @@ end subroutine OutputTecplotPoint
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVelocitiesTecplotPoint(realization)
+subroutine OutputVelocitiesTecplotPoint(realization_base)
  
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetDatasetValueAtCell
@@ -905,7 +905,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -923,12 +923,12 @@ subroutine OutputVelocitiesTecplotPoint(realization)
 
   PetscReal, pointer :: vec_ptr_vx(:), vec_ptr_vy(:), vec_ptr_vz(:)
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
-  option => realization%option
-  output_option => realization%output_option
-  discretization => realization%discretization
+  field => realization_base%field
+  option => realization_base%option
+  output_option => realization_base%output_option
+  discretization => realization_base%discretization
   
   filename = OutputFilename(output_option,option,'tec','vel')
   
@@ -978,9 +978,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec_vz,GLOBAL, &
                                   option)  
   
-  call OutputGetCellCenteredVelocities(realization,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
-  call OutputGetCellCenteredVelocities(realization,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
-  call OutputGetCellCenteredVelocities(realization,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vx,LIQUID_PHASE,X_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vy,LIQUID_PHASE,Y_DIRECTION)
+  call OutputGetCellCenteredVelocities(realization_base,global_vec_vz,LIQUID_PHASE,Z_DIRECTION)
 
   call GridVecGetArrayF90(grid,global_vec_vx,vec_ptr_vx,ierr)
   call GridVecGetArrayF90(grid,global_vec_vy,vec_ptr_vy,ierr)
@@ -1003,7 +1003,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(OUTPUT_UNIT,1000,advance='no') vec_ptr_vz(ghosted_id)
 
     ! material id
-    value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
+    value = RealizGetDatasetValueAtCell(realization_base,MATERIAL_ID, &
                                         ZERO_INTEGER,ghosted_id)
     write(OUTPUT_UNIT,1001,advance='no') int(value)
   
@@ -1030,7 +1030,7 @@ end subroutine OutputVelocitiesTecplotPoint
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
+subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
  
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -1045,7 +1045,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vector
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -1061,11 +1061,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   call PetscLogEventBegin(logging%event_output_vec_tecplot,ierr) 
 
-  option => realization%option
-  patch => realization%patch
+  option => realization_base%option
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
-  discretization => realization%discretization
+  field => realization_base%field
+  discretization => realization_base%discretization
   
   ! open file
   if (option%myrank == option%io_rank) then
@@ -1087,7 +1087,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
     !geh: due to pgi bug, cannot embed functions with calls to write() within
     !     write statement
-    string = OutputTecplotZoneHeader(realization,FIVE_INTEGER, &
+    string = OutputTecplotZoneHeader(realization_base,FIVE_INTEGER, &
                                      TECPLOT_BLOCK_FORMAT)
     write(fid,'(a)') trim(string)
   endif
@@ -1101,27 +1101,27 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   ! write out coorindates
 
-  if (realization%discretization%itype == STRUCTURED_GRID .or. &
-      realization%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
-    call WriteTecplotStructuredGrid(fid,realization)
+  if (realization_base%discretization%itype == STRUCTURED_GRID .or. &
+      realization_base%discretization%itype == STRUCTURED_GRID_MIMETIC)  then
+    call WriteTecplotStructuredGrid(fid,realization_base)
   else  
-    call WriteTecplotUGridVertices(fid,realization)
+    call WriteTecplotUGridVertices(fid,realization_base)
   endif    
 
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(fid,realization_base,natural_vec,TECPLOT_REAL)
 
-  call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
+  call WriteTecplotDataSetFromVec(fid,realization_base,natural_vec,TECPLOT_INTEGER)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (realization%discretization%itype == UNSTRUCTURED_GRID .and. &
-      realization%discretization%grid%itype == &
+  if (realization_base%discretization%itype == UNSTRUCTURED_GRID .and. &
+      realization_base%discretization%grid%itype == &
       IMPLICIT_UNSTRUCTURED_GRID)  then
-    call WriteTecplotUGridElements(fid,realization)
+    call WriteTecplotUGridElements(fid,realization_base)
   endif    
 
   close(fid)
@@ -1138,7 +1138,7 @@ end subroutine OutputVectorTecplot
 ! date: 02/26/08
 !
 ! ************************************************************************** !
-subroutine WriteTecplotStructuredGrid(fid,realization)
+subroutine WriteTecplotStructuredGrid(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1148,7 +1148,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1162,9 +1162,9 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   
   call PetscLogEventBegin(logging%event_output_str_grid_tecplot,ierr) 
                               
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
+  option => realization_base%option
   
   nx = grid%structured_grid%nx
   ny = grid%structured_grid%ny
@@ -1175,7 +1175,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     count = 0
     do k=1,nz+1
       do j=1,ny+1
-        temp_real = realization%discretization%origin(X_DIRECTION)
+        temp_real = realization_base%discretization%origin(X_DIRECTION)
         write(fid,1000,advance='no') temp_real
         count = count + 1
         if (mod(count,10) == 0) then
@@ -1197,7 +1197,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     ! y-dir
     count = 0
     do k=1,nz+1
-      temp_real = realization%discretization%origin(Y_DIRECTION)
+      temp_real = realization_base%discretization%origin(Y_DIRECTION)
       do i=1,nx+1
         write(fid,1000,advance='no') temp_real
         count = count + 1
@@ -1221,7 +1221,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     if (count /= 0) write(fid,'(a)') ""
     ! z-dir
     count = 0
-    temp_real = realization%discretization%origin(Z_DIRECTION)
+    temp_real = realization_base%discretization%origin(Z_DIRECTION)
     do i=1,(nx+1)*(ny+1)
       write(fid,1000,advance='no') temp_real
       count = count + 1
@@ -1258,7 +1258,7 @@ end subroutine WriteTecplotStructuredGrid
 ! date: 01/12/12
 !
 ! ************************************************************************** !
-subroutine WriteTecplotUGridVertices(fid,realization)
+subroutine WriteTecplotUGridVertices(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1270,7 +1270,7 @@ subroutine WriteTecplotUGridVertices(fid,realization)
   implicit none
 
   PetscInt :: fid
-  class(realization_base_type) :: realization 
+  class(realization_base_type) :: realization_base
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1280,9 +1280,9 @@ subroutine WriteTecplotUGridVertices(fid,realization)
   PetscInt :: local_size
   PetscErrorCode :: ierr
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
+  option => realization_base%option
 
   if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
     call VecCreateMPI(option%mycomm,PETSC_DECIDE, &
@@ -1291,19 +1291,19 @@ subroutine WriteTecplotUGridVertices(fid,realization)
     call VecGetLocalSize(global_vertex_vec,local_size,ierr)
     call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
     call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+    call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
                              local_size)
     call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
     call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
     call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+    call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
                              local_size)
     call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
     call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
     call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr)
-    call WriteTecplotDataSet(fid,realization,vec_ptr,TECPLOT_REAL, &
+    call WriteTecplotDataSet(fid,realization_base,vec_ptr,TECPLOT_REAL, &
                              local_size)
     call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr)
 
@@ -1323,7 +1323,7 @@ end subroutine WriteTecplotUGridVertices
 ! date: 01/12/12
 !
 ! ************************************************************************** !
-subroutine WriteTecplotUGridElements(fid,realization)
+subroutine WriteTecplotUGridElements(fid,realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1334,7 +1334,7 @@ subroutine WriteTecplotUGridElements(fid,realization)
   implicit none
 
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1347,9 +1347,9 @@ subroutine WriteTecplotUGridElements(fid,realization)
   Vec :: global_vec
   Vec :: natural_vec
 
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
+  option => realization_base%option
   
   call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
   call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
@@ -1362,7 +1362,7 @@ subroutine WriteTecplotUGridElements(fid,realization)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
                       INSERT_VALUES,SCATTER_FORWARD,ierr) 
   call VecGetArrayF90(natural_vec,vec_ptr,ierr)
-  call WriteTecplotDataSetNumPerLine(fid,realization,vec_ptr, &
+  call WriteTecplotDataSetNumPerLine(fid,realization_base,vec_ptr, &
                                      TECPLOT_INTEGER, &
                                      grid%unstructured_grid%nlmax*8, &
                                      EIGHT_INTEGER)
@@ -1487,14 +1487,14 @@ end subroutine GetCellConnectionsTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
+subroutine WriteTecplotDataSetFromVec(fid,realization_base,vec,datatype)
 
   use Realization_base_class, only : realization_base_type
   
   implicit none
 
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vec
   PetscInt :: datatype
   PetscErrorCode :: ierr  
@@ -1502,7 +1502,7 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   PetscReal, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)                ! 0 implies grid%nlmax
-  call WriteTecplotDataSet(fid,realization,vec_ptr,datatype,ZERO_INTEGER) 
+  call WriteTecplotDataSet(fid,realization_base,vec_ptr,datatype,ZERO_INTEGER) 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
@@ -1515,7 +1515,7 @@ end subroutine WriteTecplotDataSetFromVec
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
+subroutine WriteTecplotDataSet(fid,realization_base,array,datatype,size_flag)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -1525,14 +1525,14 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   implicit none
 
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscReal :: array(:)
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
 
   PetscInt, parameter :: num_per_line = 10
 
-  call WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
+  call WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
                                      size_flag,num_per_line) 
   
 end subroutine WriteTecplotDataSet
@@ -1546,7 +1546,7 @@ end subroutine WriteTecplotDataSet
 ! date: 10/25/07, 12/02/11
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
+subroutine WriteTecplotDataSetNumPerLine(fid,realization_base,array,datatype, &
                                          size_flag,num_per_line)
 
   use Realization_Base_class, only : realization_base_type
@@ -1557,7 +1557,7 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscReal :: array(:)
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
@@ -1584,9 +1584,9 @@ subroutine WriteTecplotDataSetNumPerLine(fid,realization,array,datatype, &
 1004 format(100(i10,1x))
 1010 format(100(es13.6,1x))
 
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
+  option => realization_base%option
 
   call PetscLogEventBegin(logging%event_output_write_tecplot,ierr)    
 

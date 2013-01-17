@@ -51,7 +51,7 @@ contains
 ! date: 01/22/09
 !
 ! ************************************************************************** !
-subroutine OutputInit(realization,num_steps)
+subroutine OutputInit(realization_base,num_steps)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -59,12 +59,12 @@ subroutine OutputInit(realization,num_steps)
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: num_steps
   
-  call OutputCommonInit(realization,num_steps)
-  call OutputObservationInit(realization,num_steps)
-  call OutputHDF5Init(realization,num_steps)
+  call OutputCommonInit(realization_base,num_steps)
+  call OutputObservationInit(realization_base,num_steps)
+  call OutputHDF5Init(realization_base,num_steps)
 
 end subroutine OutputInit
 
@@ -75,7 +75,7 @@ end subroutine OutputInit
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(realization,plot_flag,transient_plot_flag)
+subroutine Output(realization_base,plot_flag,transient_plot_flag)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
@@ -83,7 +83,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
 
@@ -92,7 +92,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   PetscLogDouble :: tstart, tend
   type(option_type), pointer :: option
 
-  option => realization%option
+  option => realization_base%option
   
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
@@ -102,7 +102,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
     if (option%use_touch_options) then
       string = 'plot'
       if (OptionCheckTouch(option,string)) then
-        realization%output_option%plot_name = 'plot'
+        realization_base%output_option%plot_name = 'plot'
         plot_flag = PETSC_TRUE
       endif
     endif
@@ -111,14 +111,14 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
   if (plot_flag) then
   
-    if (realization%output_option%print_hdf5) then
+    if (realization_base%output_option%print_hdf5) then
       call PetscGetTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
-      if (realization%discretization%itype == UNSTRUCTURED_GRID) then
-        !call OutputHDF5UGrid(realization)
-        call OutputHDF5UGridXDMF(realization,INSTANTANEOUS_VARS)
+      if (realization_base%discretization%itype == UNSTRUCTURED_GRID) then
+        !call OutputHDF5UGrid(realization_base)
+        call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
       else
-        call OutputHDF5(realization,INSTANTANEOUS_VARS)
+        call OutputHDF5(realization_base,INSTANTANEOUS_VARS)
       endif      
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
@@ -131,14 +131,14 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       call printMsg(option)
     endif
    
-    if (realization%output_option%print_tecplot) then
+    if (realization_base%output_option%print_tecplot) then
       call PetscGetTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
-      select case(realization%output_option%tecplot_format)
+      select case(realization_base%output_option%tecplot_format)
         case (TECPLOT_POINT_FORMAT)
-          call OutputTecplotPoint(realization)
+          call OutputTecplotPoint(realization_base)
         case (TECPLOT_BLOCK_FORMAT,TECPLOT_FEBRICK_FORMAT)
-          call OutputTecplotBlock(realization)
+          call OutputTecplotBlock(realization_base)
       end select
       call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
@@ -147,10 +147,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       call printMsg(option)        
     endif
 
-    if (realization%output_option%print_vtk) then
+    if (realization_base%output_option%print_vtk) then
       call PetscGetTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_vtk,ierr) 
-      call OutputVTK(realization)
+      call OutputVTK(realization_base)
 
       call PetscLogEventEnd(logging%event_output_vtk,ierr)    
       call PetscGetTime(tend,ierr) 
@@ -159,10 +159,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       call printMsg(option) 
     endif
       
-    if (realization%output_option%print_mad) then
+    if (realization_base%output_option%print_mad) then
       call PetscGetTime(tstart,ierr) 
       call PetscLogEventBegin(logging%event_output_mad,ierr) 
-      call OutputMAD(realization)
+      call OutputMAD(realization_base)
 
       call PetscLogEventEnd(logging%event_output_mad,ierr)    
       call PetscGetTime(tend,ierr) 
@@ -172,29 +172,29 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
     endif
       
     if (option%compute_statistics) then
-      call ComputeFlowCellVelocityStats(realization)
-      call ComputeFlowFluxVelocityStats(realization)
+      call ComputeFlowCellVelocityStats(realization_base)
+      call ComputeFlowFluxVelocityStats(realization_base)
     endif
 
   endif
   
   if (transient_plot_flag) then
     if (option%compute_mass_balance_new) then
-      call OutputMassBalance(realization)
+      call OutputMassBalance(realization_base)
     endif
-    call OutputObservation(realization)
+    call OutputObservation(realization_base)
   endif
 
   ! Output temporally average variables 
-  call OutputAvegVars(realization)
+  call OutputAvegVars(realization_base)
 
   if(plot_flag) then
-    realization%output_option%plot_number = realization%output_option%plot_number + 1
+    realization_base%output_option%plot_number = realization_base%output_option%plot_number + 1
   endif
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
-  realization%output_option%plot_name = ''
+  realization_base%output_option%plot_name = ''
 
   call PetscLogStagePop(ierr)
 
@@ -208,7 +208,7 @@ end subroutine Output
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputMAD(realization)
+subroutine OutputMAD(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -223,13 +223,13 @@ subroutine OutputMAD(realization)
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
-  call printMsg(realization%option,'')
-  write(realization%option%io_buffer, &
+  call printMsg(realization_base%option,'')
+  write(realization_base%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to ", &
         &"write HDF5 formatted structured grids.")')
-  call printErrMsg(realization%option)
+  call printErrMsg(realization_base%option)
 #else
 
 ! 64-bit stuff
@@ -245,7 +245,7 @@ subroutine OutputMAD(realization)
   
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
@@ -279,13 +279,13 @@ subroutine OutputMAD(realization)
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
 
-  discretization => realization%discretization
-  patch => realization%patch
+  discretization => realization_base%discretization
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  reaction => realization%reaction
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  reaction => realization_base%reaction
+  output_option => realization_base%output_option
 
 #define ALL
 #ifdef ALL
@@ -330,13 +330,13 @@ subroutine OutputMAD(realization)
                                   option)   
 
   ! pressure
-  call OutputGetVarFromArray(realization,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+  call OutputGetVarFromArray(realization_base,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
 #ifdef ALL
   string = 'Pressure' // trim(option%group_prefix)
 #else
   string = 'Pressure'
 #endif
-  call HDF5WriteStructDataSetFromVec(string,realization,global_vec,file_id,H5T_NATIVE_DOUBLE)
+  call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,file_id,H5T_NATIVE_DOUBLE)
 
   call VecDestroy(global_vec,ierr)
 
@@ -352,7 +352,7 @@ end subroutine OutputMAD
 ! date: 03/11/08
 !
 ! ************************************************************************** !
-subroutine ComputeFlowCellVelocityStats(realization)
+subroutine ComputeFlowCellVelocityStats(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Grid_module
@@ -365,7 +365,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -391,12 +391,12 @@ subroutine ComputeFlowCellVelocityStats(realization)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
 
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
-  discretization => realization%discretization
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
+  discretization => realization_base%discretization
     
   allocate(sum_area(grid%nlmax))
   call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec)
@@ -512,7 +512,7 @@ end subroutine ComputeFlowCellVelocityStats
 ! date: 03/11/08
 !
 ! ************************************************************************** !
-subroutine ComputeFlowFluxVelocityStats(realization)
+subroutine ComputeFlowFluxVelocityStats(realization_base)
 !geh - specifically, the flow velocities at the interfaces between cells
  
   use Realization_Base_class, only : realization_base_type
@@ -525,7 +525,7 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -550,12 +550,12 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
     
-  discretization => realization%discretization
-  patch => realization%patch
+  discretization => realization_base%discretization
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
   
   call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec) 
   call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec2) 
@@ -645,7 +645,7 @@ end subroutine ComputeFlowFluxVelocityStats
 ! date: 11/02/11
 !
 ! ************************************************************************** !
-subroutine OutputPrintCouplers(realization,istep)
+subroutine OutputPrintCouplers(realization_base,istep)
 
   use Realization_Base_class, only : realization_base_type
   use Coupler_module
@@ -658,7 +658,7 @@ subroutine OutputPrintCouplers(realization,istep)
   use Grid_module
   use Input_module
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: istep
   
   type(option_type), pointer :: option
@@ -676,9 +676,9 @@ subroutine OutputPrintCouplers(realization,istep)
   PetscErrorCode :: ierr
   
   
-  option => realization%option
-  flow_debug => realization%debug
-  field => realization%field
+  option => realization_base%option
+  flow_debug => realization_base%debug
+  field => realization_base%field
 
   if (len_trim(flow_debug%coupler_string) == 0) then
     option%io_buffer = &
@@ -701,7 +701,7 @@ subroutine OutputPrintCouplers(realization,istep)
         call printErrMsg(option)
     end select
     
-    cur_level => realization%level_list%first
+    cur_level => realization_base%level_list%first
     do 
       if (.not.associated(cur_level)) exit
       cur_patch => cur_level%patch_list%first
@@ -736,7 +736,7 @@ subroutine OutputPrintCouplers(realization,istep)
       string = trim(string) // trim(option%group_prefix)
     endif
     string = trim(string) // '.tec'
-    call OutputVectorTecplot(string,word,realization,field%work)
+    call OutputVectorTecplot(string,word,realization_base,field%work)
       
   enddo
 
@@ -750,7 +750,7 @@ end subroutine OutputPrintCouplers
 !!
 !! date: 01/10/13
 ! ************************************************************************** !
-subroutine OutputAvegVars(realization)
+subroutine OutputAvegVars(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
@@ -760,7 +760,7 @@ subroutine OutputAvegVars(realization)
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
@@ -774,9 +774,9 @@ subroutine OutputAvegVars(realization)
   PetscErrorCode :: ierr  
   PetscLogDouble :: tstart, tend
 
-  option => realization%option
-  output_option => realization%output_option
-  field => realization%field
+  option => realization_base%option
+  output_option => realization_base%output_option
+  field => realization_base%field
 
   ! 
   if(option%time<1.d-10) return
@@ -801,7 +801,7 @@ subroutine OutputAvegVars(realization)
     if (.not.associated(cur_variable)) exit
 
     ! Get the variable
-    call OutputGetVarFromArray(realization,field%work, &
+    call OutputGetVarFromArray(realization_base,field%work, &
                                cur_variable%ivar, &
                                cur_variable%isubvar)
 
@@ -828,10 +828,10 @@ subroutine OutputAvegVars(realization)
 
   if(aveg_plot_flag) then
 
-    if (realization%output_option%print_hdf5) then
+    if (realization_base%output_option%print_hdf5) then
       call PetscGetTime(tstart,ierr)
       call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
-      call OutputHDF5(realization, AVERAGED_VARS)
+      call OutputHDF5(realization_base, AVERAGED_VARS)
       call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
       write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
