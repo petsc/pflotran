@@ -32,7 +32,7 @@ subroutine Init(simulation)
   use Grid_module
   use Solver_module
   use Discretization_module
-  use Realization_module
+  use Realization_class
   use Material_module
   use Timestepper_module
   use Field_module
@@ -67,13 +67,14 @@ subroutine Init(simulation)
 !  use Utility_module
   use Output_module
   use Output_Aux_module
+  use Output_Tecplot_module, only : OutputVectorTecplot
   use Regression_module
     
 #ifdef SURFACE_FLOW
   use Surface_Field_module
   use Surface_Flow_Module
   use Unstructured_Grid_module
-  use Surface_Realization_module
+  use Surface_Realization_class
 #endif
 
   implicit none
@@ -1144,7 +1145,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   use String_module
   use Patch_module
   use Level_module
-  use Realization_module
+  use Realization_class
 
   use Reaction_module  
   use Reaction_Aux_module  
@@ -1280,7 +1281,7 @@ subroutine InitReadInput(simulation)
   use Saturation_Function_module  
   use Dataset_Aux_module
   use Fluid_module
-  use Realization_module
+  use Realization_class
   use Timestepper_module
   use Region_module
   use Condition_module
@@ -2366,7 +2367,7 @@ end subroutine setFlowMode
 ! ************************************************************************** !
 subroutine assignMaterialPropToRegions(realization)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Strata_module
   use Region_module
@@ -2667,7 +2668,7 @@ end subroutine assignMaterialPropToRegions
 ! ************************************************************************** !
 subroutine verifyAllCouplers(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Coupler_module
@@ -2706,13 +2707,14 @@ end subroutine verifyAllCouplers
 ! ************************************************************************** !
 subroutine verifyCoupler(realization,patch,coupler_list)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module 
   use Coupler_module
   use Condition_module
   use Grid_module
   use Output_module
+  use Output_Tecplot_module, only : OutputVectorTecplot  
   use Patch_module
 
   implicit none
@@ -2791,7 +2793,7 @@ end subroutine verifyCoupler
 ! ************************************************************************** !
 subroutine readRegionFiles(realization)
 
-  use Realization_module
+  use Realization_class
   use Region_module
   use HDF5_module
 
@@ -2845,7 +2847,7 @@ end subroutine readRegionFiles
 ! ************************************************************************** !
 subroutine readMaterialsFromFile(realization,realization_dependent,filename)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Grid_module
   use Option_module
@@ -2933,7 +2935,7 @@ end subroutine readMaterialsFromFile
 ! ************************************************************************** !
 subroutine readPermeabilitiesFromFile(realization,material_property)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Grid_module
   use Option_module
@@ -3102,7 +3104,7 @@ end subroutine readPermeabilitiesFromFile
 ! ************************************************************************** !
 subroutine readVectorFromFile(realization,vector,filename,vector_type)
 
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Field_module
   use Grid_module
@@ -3217,7 +3219,7 @@ end subroutine readVectorFromFile
 ! ************************************************************************** !
 subroutine readFlowInitialCondition(realization,filename)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -3318,7 +3320,7 @@ end subroutine readFlowInitialCondition
 ! ************************************************************************** !
 subroutine readTransportInitialCondition(realization,filename)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -3513,7 +3515,7 @@ subroutine InitReadRequiredCardsFromInputSurf(surf_realization)
   use Level_module
 
   use Surface_Flow_module
-  use Surface_Realization_module
+  use Surface_Realization_class
 
   implicit none
 
@@ -3580,7 +3582,7 @@ end subroutine InitReadRequiredCardsFromInputSurf
 
 subroutine assignSurfaceMaterialPropToRegions(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Discretization_module
   use Strata_module
   use Region_module
@@ -3773,7 +3775,7 @@ end subroutine assignSurfaceMaterialPropToRegions
 ! ************************************************************************** !
 subroutine readSurfaceRegionFiles(surf_realization)
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Region_module
   use HDF5_module
   use Grid_module

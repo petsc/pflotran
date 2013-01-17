@@ -31,7 +31,7 @@ contains
 #if !defined(PETSC_HAVE_HDF5)
 subroutine ReadStructuredGridHDF5(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   
   implicit none
@@ -58,7 +58,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   use hdf5
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Grid_module

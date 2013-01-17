@@ -6,8 +6,8 @@ module Output_Aux_module
 
 #include "definitions.h"
 
-  PetscInt, parameter, public :: INST_VARS = 1
-  PetscInt, parameter, public :: AVEG_VARS = 2
+  PetscInt, parameter, public :: INSTANTANEOUS_VARS = 1
+  PetscInt, parameter, public :: AVERAGED_VARS = 2
 
   type, public :: output_option_type
 

@@ -1670,7 +1670,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   use hdf5
 #endif
   
-  use Realization_module
+  use Realization_class
   use Option_module
   use Grid_module
   use Region_module
@@ -1883,7 +1883,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   use hdf5
 #endif
   
-  use Realization_module
+  use Realization_class
   use Option_module
   use Grid_module
   use Region_module
@@ -2139,7 +2139,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   use hdf5
 #endif
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Grid_module
@@ -2352,7 +2352,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   use hdf5
 #endif
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Grid_module
@@ -2562,7 +2562,7 @@ end subroutine HDF5ReadCellIndexedRealArray
 subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
 
   use hdf5
-  use Realization_module
+  use Realization_Base_class, only : realization_base_type
   use Grid_module
   use Option_module
   use Patch_module
@@ -2573,7 +2573,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
 #include "finclude/petscvec.h90"
 
   character(len=*) :: name
-  type(realization_type) :: realization
+  class(realization_base_type) :: realization
   Vec :: vec
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -2618,7 +2618,7 @@ end subroutine HDF5WriteStructDataSetFromVec
 subroutine HDF5WriteUnstructuredDataSetFromVec(name,option,vec,file_id,data_type)
 
   use hdf5
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Option_module
   use Patch_module

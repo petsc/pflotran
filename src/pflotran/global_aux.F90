@@ -29,6 +29,7 @@ module Global_Aux_module
 !   PetscReal, pointer :: reaction_rate_store(:,:)
     PetscReal, pointer :: displacement(:)
     PetscReal, pointer :: dphi(:,:)
+    PetscReal :: scco2_eq_logK ! SC CO2
   end type global_auxvar_type
   
   type, public :: global_type
@@ -115,6 +116,8 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%displacement = 0.d0
   allocate(aux_var%dphi(option%nphase,THREE_INTEGER))
   aux_var%dphi = 0.d0
+
+  aux_var%scco2_eq_logK = 0.d0
 
   select case(option%iflowmode)
     case(IMS_MODE, MPH_MODE, FLASH2_MODE)

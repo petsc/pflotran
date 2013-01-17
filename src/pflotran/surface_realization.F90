@@ -1,7 +1,9 @@
 #ifdef SURFACE_FLOW
 
-module Surface_Realization_module
+module Surface_Realization_class
 
+  use Realization_Base_class
+  
   use Condition_module
   use Debug_module
   use Discretization_module
@@ -26,18 +28,8 @@ private
 
   PetscReal, parameter :: eps       = 1.D-8
 
-  type, public :: surface_realization_type
+  type, public, extends(realization_base_type) :: surface_realization_type
 
-    PetscInt :: id
-    
-    type(discretization_type), pointer :: discretization
-    type(level_list_type),pointer      :: level_list
-    type(patch_type), pointer          :: patch
-
-    type(option_type), pointer         :: option
-    type(input_type), pointer          :: input
-    type(flow_debug_type), pointer     :: debug
-    type(output_option_type), pointer  :: output_option
     type(waypoint_list_type), pointer  :: waypoints
     
     type(surface_field_type), pointer                 :: surf_field
@@ -76,12 +68,18 @@ private
             SurfaceRealizationInitAllCouplerAuxVars, &
             SurfaceRealizationProcessMatProp, &
             SurfaceRealizationUpdate, &
-            SurfaceRealizationGetDataset, &
             SurfaceRealizationCreateSurfaceSubsurfaceVec, &
             SurfaceRealizationUpdateSubsurfaceBC, &
             SurfaceRealizationUpdateSurfaceBC, &
             SurfaceRealizationComputeSurfaceSubsurfFlux
 
+  !TODO(intel)
+!  public :: SurfaceRealizationGetDataset     
+  
+!  interface SurfaceRealizationGetDataset
+!    module procedure :: RealizationGetDataset ! from Realization_Base_class
+!  end interface
+  
 contains
 
 ! ************************************************************************** !
@@ -101,7 +99,7 @@ function SurfaceRealizationCreate(option)
   type(surface_realization_type),pointer :: surf_realization
   
   allocate(surf_realization)
-  surf_realization%discretization => DiscretizationCreate()
+  call RealizationBaseInit(surf_realization,option)
   surf_realization%option => option
   nullify(surf_realization%input)
 
@@ -714,7 +712,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrids(realization,surf_realization
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -998,7 +996,7 @@ subroutine SurfaceRealizationMapSurfSubsurfaceGrid( &
   use String_module
   use Unstructured_Grid_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Surface_Field_module
@@ -1219,6 +1217,7 @@ subroutine SurfaceRealizationUpdate(surf_realization)
 
 end subroutine SurfaceRealizationUpdate
 
+#if 0
 ! ************************************************************************** !
 !> This routine extracts variables indexed by ivar and isubvar from surface
 !! realization.
@@ -1249,7 +1248,7 @@ subroutine SurfaceRealizationGetDataset(surf_realization,vec,ivar,isubvar,isubva
                        vec,ivar,isubvar,isubvar1)
 
 end subroutine SurfaceRealizationGetDataset
-
+#endif
 
 ! ************************************************************************** !
 !> This routine prescribes the strength of source/sink between surface and
@@ -1267,7 +1266,7 @@ subroutine SurfaceRealizationUpdateSubsurfaceBC(realization,surf_realization,dt)
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1383,7 +1382,7 @@ subroutine SurfaceRealizationUpdateSurfaceBC(realization,surf_realization)
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1676,7 +1675,7 @@ subroutine SurfaceRealizationComputeSurfaceSubsurfFlux(realization,surf_realizat
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1852,7 +1851,7 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
   use Unstructured_Grid_module
   use Unstructured_Grid_Aux_module
   use Unstructured_Cell_module
-  use Realization_module
+  use Realization_class
   use Option_module
   use Level_module
   use Patch_module
@@ -1927,6 +1926,6 @@ subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec(realization,surf_realiza
 
 end subroutine SurfaceRealizationCreateSurfaceSubsurfaceVec
 
-end module Surface_Realization_module
+end module Surface_Realization_class
 
 #endif

@@ -46,7 +46,7 @@ contains
 ! ************************************************************************** !
 subroutine THCTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -76,7 +76,7 @@ end subroutine THCTimeCut
 ! ************************************************************************** !
 subroutine THCSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -111,7 +111,7 @@ end subroutine THCSetup
 ! ************************************************************************** !
 subroutine THCSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -119,6 +119,7 @@ subroutine THCSetupPatch(realization)
   use Coupler_module
   use Connection_module
   use Fluid_module
+  use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
  
   implicit none
@@ -144,6 +145,7 @@ subroutine THCSetupPatch(realization)
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate(option)
+  patch%aux%SC_heat => SecondaryAuxHeatCreate(option)
 
 ! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
 !                    'must be initialized with the proper variables ' // &
@@ -263,7 +265,7 @@ subroutine THCSetupPatch(realization)
     
     enddo
       
-    patch%aux%THC%sec_heat_vars => thc_sec_heat_vars    
+    patch%aux%SC_heat%sec_heat_vars => thc_sec_heat_vars    
 
   endif
 
@@ -327,7 +329,7 @@ subroutine THCCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
 subroutine THCCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
 #endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Field_module
   use Option_module
@@ -490,11 +492,11 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
                                    P1_changed,ierr)
 #endif
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Field_module
   use Option_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
  
   implicit none
   
@@ -539,7 +541,7 @@ subroutine THCCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
   thc_aux_vars => realization%patch%aux%THC%aux_vars
   thc_parameter => realization%patch%aux%THC%thc_parameter
   global_aux_vars => realization%patch%aux%Global%aux_vars
-  thc_sec_heat_vars => realization%patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => realization%patch%aux%SC_heat%sec_heat_vars
 
   
   dP_changed = PETSC_FALSE
@@ -601,7 +603,7 @@ end subroutine THCCheckUpdatePost
 ! ************************************************************************** !
 subroutine THCComputeMassBalance(realization, mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -638,7 +640,7 @@ end subroutine THCComputeMassBalance
 ! ************************************************************************** !
 subroutine THCComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -697,7 +699,7 @@ end subroutine THCComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine THCZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -744,7 +746,7 @@ end subroutine THCZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine THCUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -796,7 +798,7 @@ end subroutine THCUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine THCUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -830,7 +832,7 @@ end subroutine THCUpdateAuxVars
 ! ************************************************************************** !
 subroutine THCUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -992,7 +994,7 @@ end subroutine THCUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine THCInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -1011,7 +1013,7 @@ end subroutine THCInitializeTimestep
 ! ************************************************************************** !
 subroutine THCUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -1055,7 +1057,7 @@ end subroutine THCUpdateSolution
 ! ************************************************************************** !
 subroutine THCUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -1077,7 +1079,7 @@ end subroutine THCUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine THCUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -1111,12 +1113,12 @@ end subroutine THCUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine THCUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
   use Grid_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
 
   implicit none
@@ -1148,7 +1150,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   thc_parameter => patch%aux%THC%thc_parameter
   thc_aux_vars => patch%aux%THC%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
           
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -1231,7 +1233,7 @@ end subroutine THCUpdateFixedAccumPatch
 ! ************************************************************************** !
 subroutine THCNumericalJacobianTest(xx,realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -3088,7 +3090,7 @@ end subroutine THCBCFlux
 ! ************************************************************************** !
 subroutine THCResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -3167,14 +3169,14 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   use water_eos_module
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3251,7 +3253,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  thc_sec_heat_vars => patch%aux%THC%sec_heat_vars
+  thc_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
   call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
@@ -3645,7 +3647,7 @@ end subroutine THCResidualPatch
 ! ************************************************************************** !
 subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -3729,12 +3731,12 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   SNES :: snes
   Vec :: xx
@@ -3813,7 +3815,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  sec_heat_vars => patch%aux%THC%sec_heat_vars
+  sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
 #if 0
    call THCNumericalJacobianTest(xx,realization)
@@ -4304,7 +4306,7 @@ end subroutine THCCreateZeroArray
 ! ************************************************************************** !
 subroutine THCMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   
@@ -4339,7 +4341,7 @@ end subroutine THCMaxChange
 ! ************************************************************************** !
 subroutine THCResidualToMass(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -4409,7 +4411,7 @@ end subroutine THCResidualToMass
 ! ************************************************************************** !
 function THCGetTecplotHeader(realization,icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -4534,7 +4536,7 @@ end function THCGetTecplotHeader
 ! ************************************************************************** !
 subroutine THCSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 
@@ -4723,7 +4725,7 @@ subroutine THCSecondaryHeat(sec_heat_vars,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
   
@@ -4818,7 +4820,7 @@ subroutine THCSecondaryHeatJacobian(sec_heat_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
   

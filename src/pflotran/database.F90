@@ -36,6 +36,8 @@ subroutine DatabaseRead(reaction,option)
   use Mineral_module
   use Microbial_Aux_module
   use Microbial_module
+  use Biomass_Aux_module
+  use Biomass_module
   
   implicit none
   
@@ -52,7 +54,7 @@ subroutine DatabaseRead(reaction,option)
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2, &
                                          cur_srfcplx_in_master_list
   type(mineral_type), pointer :: mineral
-  type(microbial_type), pointer :: microbial
+  type(biomass_type), pointer :: biomass
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -68,7 +70,7 @@ subroutine DatabaseRead(reaction,option)
   
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
-  microbial => reaction%microbial
+  biomass => reaction%biomass
   
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
@@ -89,7 +91,7 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec%id = -abs(cur_gas_spec%id)
     cur_gas_spec => cur_gas_spec%next
   enddo  
-  cur_biomass_spec => microbial%biomass_list
+  cur_biomass_spec => biomass%list
   do
     if (.not.associated(cur_biomass_spec)) exit
     cur_biomass_spec%id = -abs(cur_biomass_spec%id)
@@ -207,7 +209,7 @@ subroutine DatabaseRead(reaction,option)
           cur_colloid => cur_colloid%next
         enddo
         ! check if biomass
-        if (.not.found) cur_biomass_spec => microbial%biomass_list
+        if (.not.found) cur_biomass_spec => biomass%list
         do
           if (found .or. .not.associated(cur_biomass_spec)) exit
           if (StringCompare(name,cur_biomass_spec%name,MAXWORDLENGTH)) then
@@ -756,6 +758,7 @@ subroutine BasisInit(reaction,option)
   use Surface_Complexation_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
+  use Biomass_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Solid_Solution_module
@@ -794,6 +797,7 @@ subroutine BasisInit(reaction,option)
   type(inhibition_type), pointer :: cur_inhibition
   type(mineral_type), pointer :: mineral
   type(microbial_type), pointer :: microbial
+  type(biomass_type), pointer :: biomass
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -849,6 +853,7 @@ subroutine BasisInit(reaction,option)
   surface_complexation => reaction%surface_complexation
   mineral => reaction%mineral
   microbial => reaction%microbial
+  biomass => reaction%biomass
   
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
@@ -1780,21 +1785,21 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec)
   igas_spec = -1 ! to catch bugs
 
-  ! microbial biomass species
-  microbial%nbiomass = MicrobialGetBiomassCount(microbial)
-  if (microbial%nbiomass > 0) then
-    allocate(microbial%biomass_names(microbial%nbiomass))
-    microbial%biomass_names = ''
-    allocate(microbial%biomass_print(microbial%nbiomass))
-    microbial%biomass_print = PETSC_FALSE
+  ! biomass species
+  biomass%nbiomass = BiomassGetCount(biomass)
+  if (biomass%nbiomass > 0) then
+    allocate(biomass%names(biomass%nbiomass))
+    biomass%names = ''
+    allocate(biomass%print_me(biomass%nbiomass))
+    biomass%print_me = PETSC_FALSE
 
-    cur_biomass_spec => microbial%biomass_list
+    cur_biomass_spec => biomass%list
     temp_int = 0
     do
       if (.not.associated(cur_biomass_spec)) exit
       temp_int = temp_int + 1
-      microbial%biomass_names(temp_int) = cur_biomass_spec%name
-      microbial%biomass_print(temp_int) = cur_biomass_spec%print_me
+      biomass%names(temp_int) = cur_biomass_spec%name
+      biomass%print_me(temp_int) = cur_biomass_spec%print_me
       cur_biomass_spec => cur_biomass_spec%next
     enddo
   endif
@@ -1802,12 +1807,12 @@ subroutine BasisInit(reaction,option)
   ! immobile species - must come after initialization of immobile species
   ! such as biomass
   if (reaction%nimcomp > 0) then
-    allocate(reaction%imcomp_names(reaction%nimcomp))
-    reaction%imcomp_names = ''
+    allocate(reaction%immobile_species_names(reaction%nimcomp))
+    reaction%immobile_species_names = ''
     
     ! biomass first
-    reaction%imcomp_names(1:microbial%nbiomass) = &
-      microbial%biomass_names(microbial%nbiomass)
+    reaction%immobile_species_names(1:biomass%nbiomass) = &
+      biomass%names(biomass%nbiomass)
   endif
   
   ! minerals
@@ -2819,7 +2824,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%primary_species_names, &
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
-                                       reaction%imcomp_names, &
+                                       reaction%immobile_species_names, &
                                        option)
       cur_general_rxn => cur_general_rxn%next
     enddo
@@ -2940,7 +2945,7 @@ subroutine BasisInit(reaction,option)
                                        reaction%primary_species_names, &
                                        reaction%nimcomp, &
                                        reaction%offset_immobile, &
-                                       reaction%imcomp_names, &
+                                       reaction%immobile_species_names, &
                                        option)
       temp_int = cur_microbial_rxn%dbaserxn%nspec
       if (temp_int > max_species_count) max_species_count = temp_int
@@ -3013,7 +3018,7 @@ subroutine BasisInit(reaction,option)
         ! check for biomass species in global biomass list
         temp_int = &
           StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
-                                microbial%biomass_names)
+                                biomass%names)
         if (temp_int == 0) then
           option%io_buffer = 'Biomass species "' // &
             trim(cur_microbial_rxn%biomass%species_name) // &
@@ -3329,8 +3334,8 @@ subroutine BasisInit(reaction,option)
     write(86,'("#        date : ",a,"   ",a)') trim(word), trim(word2)
     write(86,'("#       input : ",a)') trim(option%input_filename)
 
-    write(86,'(/,"<Primary Species")')
-    do icomp = 1, reaction%ncomp
+    write(86,'(/,"<Primary Aqueous Species")')
+    do icomp = 1, reaction%naqcomp
       write(86,'(a,x,3(" ; ",f6.2))') trim(reaction%primary_species_names(icomp)), &
                                       reaction%primary_spec_a0(icomp), &
                                       reaction%primary_spec_Z(icomp), &
