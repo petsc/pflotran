@@ -1,3 +1,4 @@
+#ifdef SURFACE_FLOW
 module Output_Surface_module
 
   use Logging_module 
@@ -1205,3 +1206,4 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 end subroutine WriteHDF5CoordinatesUGridXDMF
 
 end module Output_Surface_module
+#endif

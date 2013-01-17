@@ -562,7 +562,7 @@ timestepper.o : thc.o thmc.o richards.o mphase.o flash2.o general.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 input.o string.o reactive_transport.o condition_control.o \
-                surface_flow.o output_aux.o
+                surface_flow.o output_aux.o output_surface.o
 time_series.o : string.o option.o input.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 units.o : option.o

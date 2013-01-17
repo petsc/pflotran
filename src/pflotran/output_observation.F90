@@ -382,7 +382,6 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
                                          icolumn)
   use Realization_Base_class, only : realization_base_type
   use Option_module
-  use Reactive_Transport_module
 
   implicit none
   
