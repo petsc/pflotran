@@ -607,7 +607,7 @@ subroutine THCComputeMassBalance(realization, mass_balance)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
    
   type(level_type), pointer :: cur_level
@@ -648,7 +648,7 @@ subroutine THCComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option

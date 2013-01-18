@@ -460,7 +460,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
   
@@ -487,7 +487,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
 
