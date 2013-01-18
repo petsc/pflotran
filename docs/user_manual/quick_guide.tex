@@ -7,11 +7,16 @@
 \usepackage{deflist}
 %\usepackage{fancyheadings}
 \usepackage{fancyhdr}
+\usepackage{colortbl}
+\usepackage{color}
+\usepackage[table]{xcolor}
+
+\usepackage{fancybox}
+
 \usepackage{tabularx}
 \usepackage{verbatim}
 \usepackage{moreverb}
 \usepackage{float}
-\usepackage{fancybox}
 \usepackage{graphicx}
 \usepackage{longtable}
 \usepackage{subfigure}
@@ -19,15 +24,18 @@
 \usepackage{fancybox}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{colortbl}
-\usepackage{color}
-\usepackage[table]{xcolor}
 %\usepackage{toc_entr}
-\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
 
 \definecolor{lightgray}{gray}{0.9}
 \definecolor{lightblue}{rgb}{0.93,0.95,1.0}
+\definecolor{lightteal}{rgb}{0.95, 1.38, 1.39}
 
+%\usepackage[framemethod=tikz,outerlinewidth=2,outerlinecolor=blue,backgroundcolor=lightblue]{mdframed}
+\usepackage[framemethod=tikz,outerlinewidth=2,outerlinecolor=teal,backgroundcolor=lightteal]{mdframed}
+
+%\usepackage[tikz]{bclogo}
+
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=teal, citecolor=black, urlcolor=green]{hyperref}
 
 \textwidth 6.5in
 \textheight 9.5in
@@ -2634,7 +2642,11 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 
 \bigskip
 
+\newpage
+\begin{mdframed}
+
 {\noindent\bf Examples:}
+
 \begin{verbatim}
 BOUNDARY_CONDITION river
   FLOW_CONDITION river_stage
@@ -2648,6 +2660,8 @@ BOUNDARY_CONDITION recharge
   REGION ground_surface
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -2695,12 +2709,16 @@ A file named {\tt restart.chk} will also be written when PFLOTRAN properly termi
 
 \bigskip
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 CHECKPOINT 1000
 
 CHECKPOINT 5
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -2982,6 +3000,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \midrule
 \bf Sorption & Surface complexation, ion exchange and specified isotherm.\\
 \end{tabularx}
+
+\begin{mdframed}
+
 \begin{verbatim}
   SORPTION
     ISOTHERM_REACTIONS
@@ -2996,6 +3017,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
     /
   /
 \end{verbatim}
+\end{mdframed}
+
 \end{center}
 
 \begin{center}
@@ -3005,6 +3028,8 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 To print secondary aqueous complex concentrations, either add the names of the secondary species of interest or the keyword ``SECONDARY\_SPECIES'' for all secondary species to the CHEMISTRY OUTPUT card:
 \end{tabularx}
 \end{center}
+
+\begin{mdframed}
 
 \begin{verbatim}
 CHEMISTRY
@@ -3030,12 +3055,15 @@ REDOX_SPECIES
   Ethanol(aq)
 /
 \end{verbatim}
+\end{mdframed}
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ & By default, if ALL or MINERALS are listed under CHEMISTRY OUTPUT, the volume fractions and rates of kinetic minerals are printed.  To print out the saturation indices of minerals listed under the MINERAL keyword, add the name of the mineral to the OUTPUT specification.  In other words, if the following appears in the input deck:
 \end{tabularx}
 \end{center}
+
+\begin{mdframed}
 
 \begin{verbatim}
 CHEMISTRY
@@ -3057,6 +3085,8 @@ CHEMISTRY
   ...
 END
 \end{verbatim}
+\end{mdframed}
+
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
@@ -3069,6 +3099,8 @@ END
 \end{center}
 
 \bigskip
+
+\begin{mdframed}
 
 \noindent
 {\bf Examples:}
@@ -3107,6 +3139,7 @@ MINERAL_KINETICS
   /
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3128,11 +3161,14 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 
 \noindent {\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent
 {\bf Example:}
 \begin{verbatim}
 COMPUTE_STATISTICS
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3187,6 +3223,8 @@ SC, \ CONSTRAINT\_SUPERCRIT\_CO2 & --Supercritical CO$_2$ EOS\\
 Z, \ CHG & --Charge balance
 \end{tabular}
 
+\begin{mdframed}
+
 \noindent
 {\bf Example:}
 \begin{verbatim}
@@ -3218,6 +3256,9 @@ CONSTRAINT initial
   /
 END
 \end{verbatim}
+
+\end{mdframed}
+
 
 \hyperlink{target_key}{\return}
 
@@ -3269,6 +3310,8 @@ VIEW\_JACOBIAN\_DETAILED]
 
 \bigskip
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 DEBUG
@@ -3276,6 +3319,7 @@ DEBUG
   PRINT_JACOBIAN
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3419,6 +3463,8 @@ IPHASE & Phases present & CO$_2$ concentration\\
 
 \bigskip
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 FLOW_CONDITION initial
@@ -3463,6 +3509,7 @@ FLOW_CONDITION East
   PRESSURE 101325.d0
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3492,6 +3539,8 @@ D_m(T) \eq D_m^\circ\exp\Big[\frac{A_D}{R}\Big(\frac{1}{T_0} -\frac{1}{T}\Big)\B
 \EN
 where $D_m^\circ$ is the reference diffusion coefficient at temperature $T_0 = 25$\degc\ and $A_D$ denotes the diffusion activation energy.
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 FLUID_PROPERTY
@@ -3499,6 +3548,7 @@ FLUID_PROPERTY
   DIFFUSION_ACTIVATION_ENERGY 12.6 ! kJ/K/mol
 /
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3570,6 +3620,8 @@ FLUID_PROPERTY
 \end{description}
 \end{description}
 
+\begin{mdframed}
+
 \noindent
 {\bf Format of unstructured grid file:}
 
@@ -3594,6 +3646,9 @@ Implicitly defined grid:
 ! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
 ! -----------------------------------------------------------------
 \end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
 
 Explicitly defined grid:
   
@@ -3624,6 +3679,9 @@ Explicitly defined grid:
 ! id_up_M id_dn_M x_M y_M z_M area_M
 ! -----------------------------------------------------------------
 \end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}
 
 \noindent
 {\bf Examples:}
@@ -3649,6 +3707,7 @@ GRID
   /
 END
 \end{verbatim}
+\end{mdframed}
 
 \noindent
 By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-independent fashion and, as a result, the grid spacing may be changed by modifying the keyword {\tt NXYZ} only.
@@ -3681,6 +3740,8 @@ By using the {\tt BOUNDS} keyword, the model domain is specified in a grid-indep
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 
 \begin{verbatim}
@@ -3693,6 +3754,7 @@ INITIAL_CONDITION
   REGION all
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3849,6 +3911,8 @@ END
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 MATERIAL_PROPERTY  Hanford
@@ -3882,6 +3946,7 @@ MATERIAL_PROPERTY soil1
   /
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 %\hyperlink{target_key}{\hfill$\hookrightarrow$}
@@ -3902,6 +3967,8 @@ END
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 :          dpmax dtmax dsmax dcmax
@@ -3910,6 +3977,7 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 /
 /
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -3959,10 +4027,13 @@ MAX_CHANGE 5.d4    5.  0.02   0.05
 \end{tabularx}
 %\end{center}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 MODE THC
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4067,6 +4138,8 @@ The user must specify either a region or boundary condition to which the observa
 \item[Keyword SECONDARY\_TEMPERATURE] (optional) toggles on the printing of the secondary continuum (matrix nodal) temperatures.
 \end{description}
 
+\begin{mdframed}
+
 {\noindent\bf Examples:}
 \begin{verbatim}
 OBSERVATION
@@ -4078,6 +4151,7 @@ OBSERVATION
 BOUNDARY_CONDITION river
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4167,6 +4241,8 @@ MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes.
 \end{tabularx}
 \end{center}
 
+\begin{mdframed}
+
 \noindent {\bf Examples:}
 
 \begin{verbatim}
@@ -4182,6 +4258,7 @@ OUTPUT
   MASS_BALANCE
 END
 \end{verbatim}
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4211,14 +4288,19 @@ END
 \begin{deflist}{0000}
 \item[PROC] <int int int> 
 \item[Description:] The number of processor to be employed in each direction $x$, $y$, and $z$ (structured grids only). Default: let PETSc decide. {\em Warning: the product of the integers must be equal to the number of processor employed.}
-\item[Examples:] ~
+\end{deflist}
+
+\begin{mdframed}
+
+\noindent {\bf Examples:}
 
 {\tt PROC 100 10 10} \ \ \ \ \ ! 10,000 processes
 
 {\tt PROC 2 2 2} \ \ \ \ \ ! 2$\times$2$\times$2 decomposition
 
 {\tt PROC 1 1 8} \ \ \ \ ! Force decomposition in z direction only (1$\times$1$\times$8 decomposition).
-\end{deflist}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4264,6 +4346,8 @@ region\_name contains a list of grid cells corresponding to a region.
 \item [Keyword FACE] Defines the face of the grid cell to which boundary conditions are connected where face\_name is one of WEST, EAST, NORTH, SOUTH, BOTTOM, TOP (structured grids only).
 \item [Keyword END] Ends the region entry (can be one of . \ END).
 \end{description}
+
+\begin{mdframed}
 
 {\noindent\bf
 Examples:}
@@ -4311,6 +4395,8 @@ REGION west_boundary
 END
 \end{verbatim}
 
+\end{mdframed}
+
 \hyperlink{target_key}{\return}
 
 %========================================================================
@@ -4341,6 +4427,8 @@ The RESTART card defines a checkpoint file from which the current simulation sho
 {\noindent\bf
 Examples:}
 
+\begin{mdframed}
+
 \begin{verbatim}
 : restart the simulation from the end of the previous simulation, /
   but set the time back to 0.
@@ -4353,6 +4441,8 @@ RESTART restart.chk 0.d0 y
 RESTART pflotran.chk3000
 
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4384,6 +4474,8 @@ RESTART pflotran.chk3000
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 SATURATION_FUNCTION sf1
@@ -4396,6 +4488,8 @@ SATURATION_FUNCTION sf1
   POWER 1.d0
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4415,6 +4509,8 @@ END
 \item[(., /, END)]
 \end{deflist}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 SOURCE_SINK Well_2-9_1
@@ -4423,6 +4519,8 @@ SOURCE_SINK Well_2-9_1
   REGION Well_2-9_1
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4469,6 +4567,8 @@ END
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 TIME
@@ -4489,6 +4589,9 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 10. y at 11. y
 END
 \end{verbatim}
+
+\end{mdframed}
+
 \hyperlink{target_key}{\return}
 
 %================================================================
@@ -4550,6 +4653,8 @@ END
 \end{deflist}
 
 \noindent{\bf Explanation:}
+
+\begin{mdframed}
 
 \noindent{\bf Example:}
 
@@ -4624,6 +4729,8 @@ CONSTRAINT initial
 END
 \end{verbatim}
 
+\end{mdframed}
+
 \hyperlink{target_key}{\return}
 
 %========================================================================
@@ -4643,10 +4750,14 @@ END
 
 \noindent{\bf Explanation:} Set uniform velocity for transport mode.
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4698,6 +4809,8 @@ UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
 
 \noindent{\bf Explanation:}
 
+\begin{mdframed}
+
 \noindent{\bf Example:}
 \begin{verbatim}
 VELOCITY_DATASET
@@ -4713,6 +4826,8 @@ VELOCITY_DATASET
   /
 END
 \end{verbatim}
+
+\end{mdframed}
 
 \hyperlink{target_key}{\return}
 
@@ -4730,7 +4845,11 @@ END
 
 \noindent{\bf Explanation:} Specifies a wall clock time at which the simulation will shut down gracefully generating a restart file, if specified. The option is especially useful when there is an upper limit on wall clock time that can be requested (e.g. on a supercomputer) and it is not certain if the run will be completed within that time.
 
+\begin{mdframed}
+
 \noindent{\bf Example:} {\tt WALLCLOCK\_STOP 9.5 h}
+
+\end{mdframed}
 
 %========================================================================
 
@@ -4739,9 +4858,13 @@ END
 %========================================================================
 %========================================================================
 \newpage
+
+
 \section{Example Input Files}
 
 \subsection{Richards Equation}
+
+\begin{mdframed}
 
 \footnotesize
 \begin{verbatim}
@@ -5052,9 +5175,13 @@ END
 
 \end{verbatim}
 
+\end{mdframed}
+
 \normalsize
 
 \subsection{Carbon Sequestration Problem with Reaction with Calcite}
+
+\begin{mdframed}
 
 \footnotesize
 \begin{verbatim}
@@ -5282,6 +5409,8 @@ STRATA
 END
 
 \end{verbatim}
+
+\end{mdframed}
 
 \normalsize
 
