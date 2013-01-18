@@ -47,30 +47,30 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine RealizationBaseInit(realization,option)
+subroutine RealizationBaseInit(realization_base,option)
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
   
-  realization%id = 0
+  realization_base%id = 0
   if (associated(option)) then
-    realization%option => option
+    realization_base%option => option
   else
-    realization%option => OptionCreate()
+    realization_base%option => OptionCreate()
   endif
-  nullify(realization%input)
-  realization%discretization => DiscretizationCreate()
-  realization%field => FieldCreate()
-  realization%debug => DebugCreateFlow()
-  realization%output_option => OutputOptionCreate()
+  nullify(realization_base%input)
+  realization_base%discretization => DiscretizationCreate()
+  realization_base%field => FieldCreate()
+  realization_base%debug => DebugCreateFlow()
+  realization_base%output_option => OutputOptionCreate()
 
-  realization%level_list => LevelCreateList()
+  realization_base%level_list => LevelCreateList()
 
-  nullify(realization%reaction)
+  nullify(realization_base%reaction)
 
-  nullify(realization%patch)
+  nullify(realization_base%patch)
   
 end subroutine RealizationBaseInit
 
@@ -82,7 +82,7 @@ end subroutine RealizationBaseInit
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
+subroutine RealizationGetDataset(realization_base,vec,ivar,isubvar,isubvar1)
 
   use Option_module
 
@@ -91,15 +91,15 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
   
-  call PatchGetDataset(realization%patch,realization%field, &
-                       realization%reaction,realization%option, &
-                       realization%output_option,vec,ivar,isubvar,isubvar1)
+  call PatchGetDataset(realization_base%patch,realization_base%field, &
+                       realization_base%reaction,realization_base%option, &
+                       realization_base%output_option,vec,ivar,isubvar,isubvar1)
 
 end subroutine RealizationGetDataset
 
@@ -111,7 +111,7 @@ end subroutine RealizationGetDataset
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
+function RealizGetDatasetValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
                                      isubvar1)
 
   use Option_module
@@ -119,7 +119,7 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
   implicit none
   
   PetscReal :: RealizGetDatasetValueAtCell
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt, optional :: isubvar1
@@ -127,10 +127,10 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
   
   PetscReal :: value
   
-  value = PatchGetDatasetValueAtCell(realization%patch,realization%field, &
-                                     realization%reaction, &
-                                     realization%option, &
-                                     realization%output_option, &
+  value = PatchGetDatasetValueAtCell(realization_base%patch,realization_base%field, &
+                                     realization_base%reaction, &
+                                     realization_base%option, &
+                                     realization_base%output_option, &
                                      ivar,isubvar,ghosted_id,isubvar1)
   RealizGetDatasetValueAtCell = value
 
@@ -144,7 +144,7 @@ end function RealizGetDatasetValueAtCell
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
+subroutine RealizationSetDataset(realization_base,vec,vec_format,ivar,isubvar)
 
   use Option_module
 
@@ -153,14 +153,14 @@ subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   Vec :: vec
   PetscInt :: vec_format
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  call PatchSetDataset(realization%patch,realization%field, &
-                       realization%option, &
+  call PatchSetDataset(realization_base%patch,realization_base%field, &
+                       realization_base%option, &
                        vec,vec_format,ivar,isubvar)
 
 end subroutine RealizationSetDataset

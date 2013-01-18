@@ -3040,10 +3040,10 @@ subroutine BasisInit(reaction,option)
         temp_int = &
           StringFindEntryInList(cur_microbial_rxn%biomass%species_name, &
                                 dbaserxn%spec_name)
-        if (temp_int == 0) then
+        if (temp_int /= 0) then
           option%io_buffer = 'Biomass species "' // &
             trim(cur_microbial_rxn%biomass%species_name) // &
-            ' not found in microbial reaction.'
+            ' should not be included in microbial reaction.'
           call printErrMsg(option)
         endif       
       endif

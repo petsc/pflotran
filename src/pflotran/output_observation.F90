@@ -28,14 +28,14 @@ contains
 ! date: 01/16/13
 !
 ! ************************************************************************** !
-subroutine OutputObservationInit(realization,num_steps)
+subroutine OutputObservationInit(realization_base,num_steps)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
 
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: num_steps
   
   if (num_steps == 0) then
@@ -55,24 +55,24 @@ end subroutine OutputObservationInit
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-subroutine OutputObservation(realization)
+subroutine OutputObservation(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Option_Module
   
   implicit none
   
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
 
-!  if (realization%output_option%print_hdf5) then
+!  if (realization_base%output_option%print_hdf5) then
 !    call OutputObservationHDF5(realization)
 !    call OutputObservationTecplot(realization)
 !  endif
  
-!  if (realization%output_option%print_tecplot .or. &
-!      realization%output_option%print_hdf5) then
-  if (realization%output_option%print_observation) then
-    call OutputObservationTecplotColumnTXT(realization)
+!  if (realization_base%output_option%print_tecplot .or. &
+!      realization_base%output_option%print_hdf5) then
+  if (realization_base%output_option%print_observation) then
+    call OutputObservationTecplotColumnTXT(realization_base)
   endif
 
 end subroutine OutputObservation
@@ -84,7 +84,7 @@ end subroutine OutputObservation
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine OutputObservationTecplotColumnTXT(realization)
+subroutine OutputObservationTecplotColumnTXT(realization_base)
 
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
@@ -97,7 +97,7 @@ subroutine OutputObservationTecplotColumnTXT(realization)
  
   implicit none
 
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   
   PetscInt :: fid, icell
   character(len=MAXSTRINGLENGTH) :: filename
@@ -116,11 +116,11 @@ subroutine OutputObservationTecplotColumnTXT(realization)
 
   call PetscLogEventBegin(logging%event_output_observation,ierr)    
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  field => realization%field
-  output_option => realization%output_option
+  option => realization_base%option
+  field => realization_base%field
+  output_option => realization_base%output_option
   
   if (check_for_observation_points) then
     open_file = PETSC_FALSE
@@ -183,7 +183,7 @@ subroutine OutputObservationTecplotColumnTXT(realization)
                 'functioning properly for minerals.  Perhaps due to ' // &
                 'non-ghosting of vol frac....>? - geh'
               call printErrMsg(option)
-              call WriteObservationHeaderForCoord(fid,realization, &
+              call WriteObservationHeaderForCoord(fid,realization_base, &
                                                   observation%region, &
                                                   observation%print_velocities, &
                                                   observation% &
@@ -191,7 +191,7 @@ subroutine OutputObservationTecplotColumnTXT(realization)
                                                   icolumn)
             else
               do icell=1,observation%region%num_cells
-                call WriteObservationHeaderForCell(fid,realization, &
+                call WriteObservationHeaderForCell(fid,realization_base, &
                                                    observation%region,icell, &
                                                    observation%print_velocities, &
                                                    observation% &
@@ -201,7 +201,7 @@ subroutine OutputObservationTecplotColumnTXT(realization)
             endif
           case(OBSERVATION_FLUX)
             if (option%myrank == option%io_rank) then
-              call WriteObservationHeaderForBC(fid,realization, &
+              call WriteObservationHeaderForBC(fid,realization_base, &
                                                 observation%linkage_name)
             endif
         end select
@@ -221,38 +221,38 @@ subroutine OutputObservationTecplotColumnTXT(realization)
           case(OBSERVATION_SCALAR)
             if (associated(observation%region%coordinates) .and. &
                 .not.observation%at_cell_center) then
-              call WriteObservationDataForCoord(fid,realization, &
+              call WriteObservationDataForCoord(fid,realization_base, &
                                                  observation%region)
               if (observation%print_velocities) then
-                call WriteVelocityAtCoord(fid,realization, &
+                call WriteVelocityAtCoord(fid,realization_base, &
                                           observation%region)
               endif
             else
               do icell=1,observation%region%num_cells
                 local_id = observation%region%cell_ids(icell)
-                call WriteObservationDataForCell(fid,realization,local_id)
+                call WriteObservationDataForCell(fid,realization_base,local_id)
                 if (observation%print_velocities) then
-                  call WriteVelocityAtCell(fid,realization,local_id)
+                  call WriteVelocityAtCell(fid,realization_base,local_id)
                 endif
                 if (observation%print_secondary_data(1)) then
-                  call WriteObservationSecondaryDataAtCell(fid,realization, &
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
                                                            local_id, &
                                                            PRINT_SEC_TEMP)
                 endif
                 if (observation%print_secondary_data(2)) then
-                  call WriteObservationSecondaryDataAtCell(fid,realization, &
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
                                                            local_id, &
                                                            PRINT_SEC_CONC)
                 endif
                 if (observation%print_secondary_data(3)) then
-                  call WriteObservationSecondaryDataAtCell(fid,realization, &
+                  call WriteObservationSecondaryDataAtCell(fid,realization_base, &
                                                         local_id, &
                                                         PRINT_SEC_MIN_VOLFRAC)
                 endif
               enddo
             endif
           case(OBSERVATION_FLUX)
-            call WriteObservationDataForBC(fid,realization, &
+            call WriteObservationDataForBC(fid,realization_base, &
                                             patch, &
                                             observation%connection_set)
       end select
@@ -276,7 +276,7 @@ end subroutine OutputObservationTecplotColumnTXT
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
+subroutine WriteObservationHeaderForCell(fid,realization_base,region,icell, &
                                          print_velocities, &
                                          print_secondary_data, &
                                          icolumn)
@@ -292,7 +292,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(region_type) :: region
   PetscInt :: icell
   PetscBool :: print_velocities
@@ -305,7 +305,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   type(grid_type), pointer :: grid
 
-  grid => realization%patch%grid
+  grid => realization_base%patch%grid
   
   local_id = region%cell_ids(icell)
   write(cell_string,*) grid%nG2A(grid%nL2G(region%cell_ids(icell)))
@@ -319,7 +319,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                 ' ' // trim(adjustl(y_string)) // &
                 ' ' // trim(adjustl(z_string)) // ')'
   
-  call WriteObservationHeader(fid,realization,cell_string,print_velocities, &
+  call WriteObservationHeader(fid,realization_base,cell_string,print_velocities, &
                               print_secondary_data,icolumn)
 
 end subroutine WriteObservationHeaderForCell
@@ -331,7 +331,7 @@ end subroutine WriteObservationHeaderForCell
 ! date: 04/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteObservationHeaderForCoord(fid,realization,region, &
+subroutine WriteObservationHeaderForCoord(fid,realization_base,region, &
                                          print_velocities, &
                                          print_secondary_data, &
                                          icolumn)
@@ -345,7 +345,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(region_type) :: region
   PetscBool :: print_velocities
   PetscBool :: print_secondary_data(3)
@@ -364,7 +364,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                 trim(adjustl(y_string)) // ' ' // &
                 trim(adjustl(z_string)) // ')'
 
-  call WriteObservationHeader(fid,realization,cell_string,print_velocities, &
+  call WriteObservationHeader(fid,realization_base,cell_string,print_velocities, &
                               print_secondary_data,icolumn)
 
 end subroutine WriteObservationHeaderForCoord
@@ -376,7 +376,7 @@ end subroutine WriteObservationHeaderForCoord
 ! date: 10/27/11
 !
 ! ************************************************************************** !  
-subroutine WriteObservationHeader(fid,realization,cell_string, &
+subroutine WriteObservationHeader(fid,realization_base,cell_string, &
                                          print_velocities, &
                                          print_secondary_data, &
                                          icolumn)
@@ -386,7 +386,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscBool :: print_velocities
   PetscBool :: print_secondary_data(3)
   character(len=MAXSTRINGLENGTH) :: cell_string
@@ -398,8 +398,8 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option  
   
-  option => realization%option
-  output_option => realization%output_option
+  option => realization_base%option
+  output_option => realization_base%output_option
   
   header = OutputVariableListToHeader(output_option%output_variable_list, &
                                       cell_string,icolumn,PETSC_FALSE)
@@ -407,7 +407,7 @@ subroutine WriteObservationHeader(fid,realization,cell_string, &
 
   if (print_velocities) then
     header = ''
-    write(string,'(''[m/'',a,'']'')') trim(realization%output_option%tunit)
+    write(string,'(''[m/'',a,'']'')') trim(realization_base%output_option%tunit)
     call OutputAppendToHeader(header,'vlx',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vly',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
@@ -461,7 +461,7 @@ end subroutine WriteObservationHeader
 ! date: 12/18/08
 !
 ! ************************************************************************** !  
-subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
+subroutine WriteObservationHeaderForBC(fid,realization_base,coupler_name)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -470,7 +470,7 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   character(len=MAXWORDLENGTH) :: coupler_name
   
   PetscInt :: i
@@ -478,8 +478,8 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction 
   
-  option => realization%option
-  reaction => realization%reaction
+  option => realization_base%option
+  reaction => realization_base%reaction
   
   select case(option%iflowmode)
     case(FLASH2_MODE)
@@ -490,7 +490,7 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
     case(MIS_MODE)
     case(RICHARDS_MODE)
       string = ',"Darcy flux ' // trim(coupler_name) // &
-               ' [m^3/' // trim(realization%output_option%tunit) // ']"'
+               ' [m^3/' // trim(realization_base%output_option%tunit) // ']"'
     case default
   end select
   write(fid,'(a)',advance="no") trim(string)
@@ -501,7 +501,7 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
       write(fid,'(a)',advance="no") ',"' // &
         trim(reaction%primary_species_names(i)) // ' ' // &
         trim(coupler_name) // &
-        ' [mol/' // trim(realization%output_option%tunit) // ']"'
+        ' [mol/' // trim(realization_base%output_option%tunit) // ']"'
     enddo
   endif
 
@@ -514,7 +514,7 @@ end subroutine WriteObservationHeaderForBC
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteObservationDataForCell(fid,realization,local_id)
+subroutine WriteObservationDataForCell(fid,realization_base,local_id)
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetDatasetValueAtCell
@@ -528,7 +528,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   implicit none
   
   PetscInt :: fid, i
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscReal :: temp_real
@@ -540,11 +540,11 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   type(output_option_type), pointer :: output_option  
   type(output_variable_type), pointer :: cur_variable
   
-  option => realization%option
-  patch => realization%patch
+  option => realization_base%option
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
-  output_option => realization%output_option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
 100 format(es14.6)
 101 format(i2)
@@ -561,7 +561,8 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
       cur_variable => cur_variable%next
       cycle
     endif     
-    temp_real = RealizGetDatasetValueAtCell(realization,cur_variable%ivar, &
+    temp_real = RealizGetDatasetValueAtCell(realization_base, &
+                                            cur_variable%ivar, &
                                             cur_variable%isubvar,ghosted_id)
     if (cur_variable%iformat == 0) then ! real
       write(fid,110,advance="no") temp_real
@@ -570,7 +571,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     endif
     cur_variable => cur_variable%next
   enddo  
-  
+
 end subroutine WriteObservationDataForCell
 
 ! ************************************************************************** !
@@ -580,7 +581,7 @@ end subroutine WriteObservationDataForCell
 ! date: 04/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteObservationDataForCoord(fid,realization,region)
+subroutine WriteObservationDataForCoord(fid,realization_base,region)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -596,7 +597,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(region_type) :: region
 
   PetscInt :: local_id
@@ -615,11 +616,11 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   PetscInt :: i, j, k
   PetscInt :: istart, iend, jstart, jend, kstart, kend
   
-  option => realization%option
-  patch => realization%patch
+  option => realization_base%option
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
-  output_option => realization%output_option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
 100 format(es14.6)
 101 format(i2)
@@ -683,7 +684,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       cur_variable => cur_variable%next
       cycle
     endif    
-    temp_real = OutputGetVarFromArrayAtCoord(realization,cur_variable%ivar, &
+    temp_real = OutputGetVarFromArrayAtCoord(realization_base, &
+                                           cur_variable%ivar, &
                                            cur_variable%isubvar, &
                                            region%coordinates(ONE_INTEGER)%x, &
                                            region%coordinates(ONE_INTEGER)%y, &
@@ -706,7 +708,7 @@ end subroutine WriteObservationDataForCoord
 ! date: 12/18/08
 !
 ! ************************************************************************** !  
-subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
+subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -717,7 +719,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(patch_type), pointer :: patch
   type(connection_set_type), pointer :: connection_set
 
@@ -726,16 +728,16 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   PetscInt :: offset
   PetscInt :: iphase
   PetscMPIInt :: int_mpi
-  PetscReal :: sum_volumetric_flux(realization%option%nphase)
-  PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
-  PetscReal :: sum_solute_flux(realization%option%ntrandof)
-  PetscReal :: sum_solute_flux_global(realization%option%ntrandof)
+  PetscReal :: sum_volumetric_flux(realization_base%option%nphase)
+  PetscReal :: sum_volumetric_flux_global(realization_base%option%nphase)
+  PetscReal :: sum_solute_flux(realization_base%option%ntrandof)
+  PetscReal :: sum_solute_flux_global(realization_base%option%ntrandof)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   PetscErrorCode :: ierr
   
-  option => realization%option
-  reaction => realization%reaction
+  option => realization_base%option
+  reaction => realization_base%reaction
 
 100 format(es14.6)
 !100 format(es16.9)
@@ -805,7 +807,7 @@ end subroutine WriteObservationDataForBC
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-subroutine WriteVelocityAtCell(fid,realization,local_id)
+subroutine WriteVelocityAtCell(fid,realization_base,local_id)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -813,16 +815,16 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: local_id
 
   PetscReal :: velocity(1:3)
   
 200 format(3(es14.6))
   
-  velocity = GetVelocityAtCell(fid,realization,local_id)
+  velocity = GetVelocityAtCell(fid,realization_base,local_id)
   
-  write(fid,200,advance="no") velocity(1:3)*realization%output_option%tconv   
+  write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv   
 
 end subroutine WriteVelocityAtCell
 
@@ -834,7 +836,7 @@ end subroutine WriteVelocityAtCell
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-function GetVelocityAtCell(fid,realization,local_id)
+function GetVelocityAtCell(fid,realization_base,local_id)
 
   use Realization_Base_class, only : realization_base_type
   use Option_module
@@ -848,7 +850,7 @@ function GetVelocityAtCell(fid,realization,local_id)
   
   PetscReal :: GetVelocityAtCell(3)
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: local_id
 
   PetscInt :: ghosted_id
@@ -865,10 +867,10 @@ function GetVelocityAtCell(fid,realization,local_id)
   PetscReal :: area
   PetscReal :: sum_velocity(1:3), sum_area(1:3), velocity(1:3)
   
-  option => realization%option
-  patch => realization%patch
+  option => realization_base%option
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
+  field => realization_base%field
 
   sum_velocity = 0.d0
   sum_area = 0.d0
@@ -940,7 +942,7 @@ end function GetVelocityAtCell
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-subroutine WriteVelocityAtCoord(fid,realization,region)
+subroutine WriteVelocityAtCoord(fid,realization_base,region)
 
   use Realization_Base_class, only : realization_base_type
   use Region_module
@@ -949,7 +951,7 @@ subroutine WriteVelocityAtCoord(fid,realization,region)
   implicit none
   
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   type(region_type) :: region
   PetscInt :: local_id
   PetscReal :: coordinate(3)
@@ -958,12 +960,12 @@ subroutine WriteVelocityAtCoord(fid,realization,region)
   
 200 format(3(es14.6))
   
-  velocity = GetVelocityAtCoord(fid,realization,region%cell_ids(1), &
+  velocity = GetVelocityAtCoord(fid,realization_base,region%cell_ids(1), &
                                 region%coordinates(ONE_INTEGER)%x, &
                                 region%coordinates(ONE_INTEGER)%y, &
                                 region%coordinates(ONE_INTEGER)%z)
   
-  write(fid,200,advance="no") velocity(1:3)*realization%output_option%tconv   
+  write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv   
 
 end subroutine WriteVelocityAtCoord
 
@@ -975,7 +977,7 @@ end subroutine WriteVelocityAtCoord
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
+function GetVelocityAtCoord(fid,realization_base,local_id,x,y,z)
   use Realization_Base_class, only : realization_base_type
   use Option_module
   use Grid_module
@@ -988,7 +990,7 @@ function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
   
   PetscReal :: GetVelocityAtCoord(3)
   PetscInt :: fid
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: local_id
   PetscReal :: x, y, z
   
@@ -1009,10 +1011,10 @@ function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
   PetscReal :: sum_velocity(1:3), velocity(1:3)
   PetscReal :: sum_weight(1:3)
   
-  option => realization%option
-  patch => realization%patch
+  option => realization_base%option
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
+  field => realization_base%field
 
   sum_velocity = 0.d0
   sum_weight = 0.d0
@@ -1115,7 +1117,7 @@ end function GetVelocityAtCoord
 ! date: 10/4/12
 !
 ! ************************************************************************** !  
-subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
+subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,ivar)
 
   use Realization_Base_class, only : realization_base_type, &
                                      RealizGetDatasetValueAtCell
@@ -1128,7 +1130,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
   implicit none
   
   PetscInt :: fid, i
-  class(realization_base_type) :: realization
+  class(realization_base_type) :: realization_base
   PetscInt :: local_id
   PetscInt :: ghosted_id
   type(option_type), pointer :: option
@@ -1138,11 +1140,11 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
   type(output_option_type), pointer :: output_option    
   PetscInt :: ivar
   
-  option => realization%option
-  patch => realization%patch
+  option => realization_base%option
+  patch => realization_base%patch
   grid => patch%grid
-  field => realization%field
-  output_option => realization%output_option
+  field => realization_base%field
+  output_option => realization_base%output_option
 
 100 format(es14.6)
 101 format(i2)
@@ -1157,7 +1159,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
         case(MPH_MODE,THC_MODE)
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization,SECONDARY_TEMPERATURE,i, &
+              RealizGetDatasetValueAtCell(realization_base,SECONDARY_TEMPERATURE,i, &
                                           ghosted_id)
           enddo
         end select
@@ -1165,14 +1167,14 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization,local_id,ivar)
      if (ivar == PRINT_SEC_CONC) then
        do i = 1, option%nsec_cells 
          write(fid,110,advance="no") &
-           RealizGetDatasetValueAtCell(realization,SECONDARY_CONCENTRATION,i, &
+           RealizGetDatasetValueAtCell(realization_base,SECONDARY_CONCENTRATION,i, &
                                        ghosted_id)
        enddo
      endif
      if (ivar == PRINT_SEC_MIN_VOLFRAC) then
        do i = 1, option%nsec_cells 
          write(fid,110,advance="no") &
-           RealizGetDatasetValueAtCell(realization,SEC_MIN_VOLFRAC,i, &
+           RealizGetDatasetValueAtCell(realization_base,SEC_MIN_VOLFRAC,i, &
                                        ghosted_id)
        enddo
      endif
@@ -1187,7 +1189,7 @@ end subroutine WriteObservationSecondaryDataAtCell
 ! date: 06/18/08
 !
 ! ************************************************************************** !  
-subroutine OutputMassBalance(realization)
+subroutine OutputMassBalance(realization_base)
 
   use Realization_class
   use Realization_Base_class, only : realization_base_type
@@ -1212,7 +1214,7 @@ subroutine OutputMassBalance(realization)
   
   implicit none
 
-  class(realization_base_type), target :: realization
+  class(realization_base_type), target :: realization_base
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1239,19 +1241,19 @@ subroutine OutputMassBalance(realization)
   PetscInt :: icomp
   PetscReal :: sum_area(4)
   PetscReal :: sum_area_global(4)
-  PetscReal :: sum_kg(realization%option%nflowspec,realization%option%nphase)
-  PetscReal :: sum_kg_global(realization%option%nflowspec,realization%option%nphase)
-  PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
-  PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
+  PetscReal :: sum_kg(realization_base%option%nflowspec,realization_base%option%nphase)
+  PetscReal :: sum_kg_global(realization_base%option%nflowspec,realization_base%option%nphase)
+  PetscReal :: sum_mol(realization_base%option%ntrandof,realization_base%option%nphase)
+  PetscReal :: sum_mol_global(realization_base%option%ntrandof,realization_base%option%nphase)
   PetscMPIInt :: int_mpi
   PetscBool :: bcs_done
   PetscErrorCode :: ierr
   
-  patch => realization%patch
+  patch => realization_base%patch
   grid => patch%grid
-  option => realization%option
-  reaction => realization%reaction
-  output_option => realization%output_option
+  option => realization_base%option
+  reaction => realization_base%reaction
+  output_option => realization_base%output_option
  
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.dat'
@@ -1496,25 +1498,25 @@ subroutine OutputMassBalance(realization)
 
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
-    select type(realization)
+    select type(realization_base)
       class is(realization_type)
         select case(option%iflowmode)
           case(RICHARDS_MODE)
-            call RichardsComputeMassBalance(realization,sum_kg(1,:))
+            call RichardsComputeMassBalance(realization_base,sum_kg(1,:))
           case(THC_MODE)
-            call THCComputeMassBalance(realization,sum_kg(1,:))
+            call THCComputeMassBalance(realization_base,sum_kg(1,:))
           case(THMC_MODE)
-            call THMCComputeMassBalance(realization,sum_kg(1,:))
+            call THMCComputeMassBalance(realization_base,sum_kg(1,:))
           case(MIS_MODE)
-            call MiscibleComputeMassBalance(realization,sum_kg(:,1))
+            call MiscibleComputeMassBalance(realization_base,sum_kg(:,1))
           case(MPH_MODE)
-            call MphaseComputeMassBalance(realization,sum_kg(:,:))
+            call MphaseComputeMassBalance(realization_base,sum_kg(:,:))
           case(IMS_MODE)
-            call ImmisComputeMassBalance(realization,sum_kg(:,1))
+            call ImmisComputeMassBalance(realization_base,sum_kg(:,1))
           case(G_MODE)
             option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
             call printErrMsg(option)
-            call GeneralComputeMassBalance(realization,sum_kg(1,:))
+            call GeneralComputeMassBalance(realization_base,sum_kg(1,:))
         end select
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
@@ -1540,9 +1542,9 @@ subroutine OutputMassBalance(realization)
   
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
-    select type(realization)
+    select type(realization_base)
       class is(realization_type)
-        call RTComputeMassBalance(realization,sum_mol)
+        call RTComputeMassBalance(realization_base,sum_mol)
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
         call printErrMsg(option)

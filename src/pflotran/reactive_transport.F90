@@ -3790,6 +3790,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   PetscInt :: istartcoll, iendcoll
   PetscInt :: istartaq_loc, iendaq_loc
   PetscInt :: istartcoll_loc, iendcoll_loc
+  PetscInt :: istartim, iendim
   PetscReal, pointer :: xx_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal :: xxbc(realization%reaction%ncomp)
@@ -3828,10 +3829,16 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       iendaq = offset + reaction%offset_aqueous + reaction%naqcomp
       
       patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
+      if (reaction%nimcomp > 0) then
+        istartim = offset + reaction%offset_immobile + 1
+        iendim = offset + reaction%offset_immobile + reaction%nimcomp
+        patch%aux%RT%aux_vars(ghosted_id)%immobile = xx_loc_p(istartim:iendim)
+      endif
       if (reaction%ncoll > 0) then
         istartcoll = offset + reaction%offset_colloid + 1
         iendcoll = offset + reaction%offset_colloid + reaction%ncoll
-        patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
+        patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = &
+          xx_loc_p(istartcoll:iendcoll)* &
           patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
       
@@ -3876,7 +3883,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
       basis_molarity_p => boundary_condition%tran_condition% &
         cur_constraint_coupler%aqueous_species%basis_molarity
-        
 
       if (reaction%ncoll > 0) then
         basis_coll_conc_p => boundary_condition%tran_condition% &

@@ -453,7 +453,7 @@ subroutine CondControlAssignTranInitCond(realization)
   
   type(realization_type) :: realization
   
-  PetscInt :: icell, iconn, idof, isub_condition, temp_int
+  PetscInt :: icell, iconn, idof, isub_condition, temp_int, ibiomass
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscInt :: irxn, isite, imnrl, ikinrxn
   PetscReal, pointer :: xx_p(:), xx_loc_p(:), porosity_loc(:), vec_p(:)
@@ -565,13 +565,14 @@ subroutine CondControlAssignTranInitCond(realization)
           
         ! read in heterogeneous biomass
         if (associated(constraint_coupler%biomass)) then
-          do idof = 1, reaction%biomass%nbiomass
-            if (constraint_coupler%biomass%external_dataset(idof)) then
+          do ibiomass = 1, reaction%biomass%nbiomass
+            idof = reaction%biomass%immobile_id(ibiomass)
+            if (constraint_coupler%biomass%external_dataset(ibiomass)) then
               ! no need to requilibrate at each cell
               string = 'constraint ' // trim(constraint_coupler%constraint_name)
               dataset => DatasetGetPointer(realization%datasets, &
-                           constraint_coupler%biomass%constraint_aux_string(idof), &
-                           string,option)
+                  constraint_coupler%biomass%constraint_aux_string(ibiomass), &
+                  string,option)
               string = '' ! group name
               string2 = dataset%h5_dataset_name ! dataset name
               call HDF5ReadCellIndexedRealArray(realization,field%work, &
@@ -718,16 +719,17 @@ subroutine CondControlAssignTranInitCond(realization)
           ! biomass
           if (associated(constraint_coupler%biomass)) then
             offset = ibegin + reaction%offset_immobile - 1
-            do idof = 1, reaction%biomass%nbiomass
-              if (constraint_coupler%biomass%external_dataset(idof)) then
+            do ibiomass = 1, reaction%biomass%nbiomass
+              idof = reaction%biomass%immobile_id(ibiomass)
+              if (constraint_coupler%biomass%external_dataset(ibiomass)) then
                 ! already read into rt_aux_vars above.
                 xx_p(offset+idof) = &
                   rt_aux_vars(ghosted_id)%immobile(idof)
               else
                 xx_p(offset+idof) = &
-                  constraint_coupler%biomass%constraint_conc(idof)
+                  constraint_coupler%biomass%constraint_conc(ibiomass)
                 rt_aux_vars(ghosted_id)%immobile(idof) = &
-                  constraint_coupler%biomass%constraint_conc(idof)
+                  constraint_coupler%biomass%constraint_conc(ibiomass)
               endif
             enddo
           endif
