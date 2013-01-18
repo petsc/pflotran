@@ -380,7 +380,7 @@ subroutine MphaseComputeMassBalance(realization,mass_balance)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec, &
                             realization%option%nphase)
   
