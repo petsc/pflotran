@@ -28,7 +28,7 @@ subroutine GlobalSetup(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -66,7 +66,7 @@ subroutine GlobalSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -159,7 +159,7 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: value
   PetscInt :: ivar
   
@@ -201,7 +201,7 @@ subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: value
   PetscInt :: ivar
 
@@ -266,7 +266,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"  
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -313,7 +313,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -510,7 +510,7 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: weight
   
   type(level_type), pointer :: cur_level
@@ -547,7 +547,7 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: weight
   
   type(option_type), pointer :: option
@@ -630,7 +630,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                GAS_DENSITY, GAS_SATURATION, &
                                TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: time_level
   
   type(field_type), pointer :: field

@@ -63,7 +63,7 @@ subroutine MiscibleTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -91,7 +91,7 @@ subroutine MiscibleSetup(realization)
   use Level_module
   use Patch_module
    
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -131,7 +131,7 @@ subroutine MiscibleSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -228,7 +228,7 @@ subroutine MiscibleComputeMassBalance(realization,mass_balance)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,1)
    
   type(level_type), pointer :: cur_level
@@ -269,7 +269,7 @@ subroutine MiscibleComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,1)
 
   type(option_type), pointer :: option
@@ -335,7 +335,7 @@ subroutine MiscibleZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -387,7 +387,7 @@ subroutine MiscibleUpdateMassBalancePatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -444,7 +444,7 @@ end subroutine MiscibleUpdateMassBalancePatch
   use Option_module
   
   PetscInt ::  MiscibleInitGuessCheck
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -499,7 +499,7 @@ end subroutine MiscibleUpdateMassBalancePatch
     implicit none
     
     PetscInt :: MiscibleInitGuessCheckPatch 
-    type(realization_type) :: realization
+    class(realization_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -534,7 +534,7 @@ subroutine MiscibleUpdateAuxVars(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -575,7 +575,7 @@ subroutine MiscibleUpdateAuxVarsPatch(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -694,7 +694,7 @@ subroutine MiscibleInitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   call MiscibleUpdateFixedAccumulation(realization)
 
@@ -716,7 +716,7 @@ subroutine MiscibleUpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -759,7 +759,7 @@ subroutine MiscibleUpdateSolutionPatch(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
     call MiscibleUpdateMassBalancePatch(realization)
@@ -781,7 +781,7 @@ subroutine MiscibleUpdateFixedAccumulation(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -819,7 +819,7 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1346,7 +1346,7 @@ subroutine MiscibleResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -1477,7 +1477,7 @@ subroutine MiscibleResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -1765,7 +1765,7 @@ subroutine MiscibleResidualPatch0(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -1934,7 +1934,7 @@ subroutine MiscibleResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2182,7 +2182,7 @@ subroutine MiscibleJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B, J
   MatType :: mat_type
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -2289,7 +2289,7 @@ subroutine MiscibleJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -2679,7 +2679,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -3077,7 +3077,7 @@ subroutine MiscibleMaxChange(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -3125,7 +3125,7 @@ function MiscibleGetTecplotHeader(realization, icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: MiscibleGetTecplotHeader
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -3193,7 +3193,7 @@ subroutine MiscibleSetPlotVariables(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units

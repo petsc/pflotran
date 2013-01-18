@@ -16,7 +16,7 @@ module Simulation_module
 
   type, public :: simulation_type
 
-    type(realization_type), pointer :: realization
+    class(realization_type), pointer :: realization
     type(stepper_type), pointer :: flow_stepper
     type(stepper_type), pointer :: tran_stepper
 #ifdef SURFACE_FLOW

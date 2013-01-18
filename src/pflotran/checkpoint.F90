@@ -133,7 +133,7 @@ subroutine Checkpoint(realization, &
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: grid_discretization_type
   PetscInt :: flow_num_constant_time_steps
   PetscInt :: flow_num_newton_iterations
@@ -552,7 +552,7 @@ subroutine Restart(realization, &
 
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: flow_num_constant_time_steps
   PetscInt :: flow_num_newton_iterations
   PetscInt :: flow_time_steps, flow_cumulative_newton_iterations

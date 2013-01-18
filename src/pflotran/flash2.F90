@@ -67,7 +67,7 @@ subroutine Flash2TimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -98,7 +98,7 @@ subroutine Flash2Setup(realization)
 !  use co2_sw_module
 !  use span_wagner_spline_module 
    
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -155,7 +155,7 @@ subroutine Flash2SetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -263,7 +263,7 @@ end subroutine Flash2SetupPatch
   use Option_module
   
   PetscInt ::  Flash2InitGuessCheck
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -315,7 +315,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   implicit none
  
   PetscInt, intent(out):: reason
-  type(realization_type) :: realization  
+  class(realization_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -388,7 +388,7 @@ subroutine Flash2UpdateReason(reason, realization)
   use Patch_module
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -445,7 +445,7 @@ end subroutine Flash2UpdateReason
     implicit none
     
     PetscInt :: Flash2InitGuessCheckPatch 
-    type(realization_type) :: realization
+    class(realization_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -504,7 +504,7 @@ subroutine Flash2UpdateAuxVars(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -545,7 +545,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -705,7 +705,7 @@ subroutine Flash2InitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   call Flash2UpdateFixedAccumulation(realization)
 
@@ -724,7 +724,7 @@ subroutine Flash2UpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   
@@ -749,7 +749,7 @@ subroutine Flash2UpdateFixedAccumulation(realization)
   use Level_module
   use Patch_module
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -787,7 +787,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1773,7 +1773,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -1897,7 +1897,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2415,7 +2415,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2710,7 +2710,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2867,7 +2867,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3100,7 +3100,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   Vec :: xx
   Mat :: A, B, J
   MatType :: mat_type
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -3206,7 +3206,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -3762,7 +3762,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -4169,7 +4169,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -4584,7 +4584,7 @@ subroutine Flash2MaxChange(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  class(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -4649,7 +4649,7 @@ function Flash2GetTecplotHeader(realization, icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: Flash2GetTecplotHeader
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4804,7 +4804,7 @@ subroutine Flash2SetPlotVariables(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  class(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
