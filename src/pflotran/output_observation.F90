@@ -531,12 +531,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   class(realization_base_type) :: realization
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscReal :: temp_real
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
-  type(output_option_type), pointer :: output_option    
+  type(output_option_type), pointer :: output_option  
+  type(output_variable_type), pointer :: cur_variable
   
   option => realization%option
   patch => realization%patch
@@ -550,11 +552,26 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 111 format(i2)
 
   ghosted_id = grid%nL2G(local_id)
-  ! write out coorindates
-  !write(fid,110,advance="no") grid%x(ghosted_id)
-  !write(fid,110,advance="no") grid%y(ghosted_id)
-  !write(fid,110,advance="no") grid%z(ghosted_id)
 
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    if (cur_variable%plot_only) then
+      cur_variable => cur_variable%next
+      cycle
+    endif     
+    temp_real = RealizGetDatasetValueAtCell(realization,cur_variable%ivar, &
+                                            cur_variable%isubvar,ghosted_id)
+    if (cur_variable%iformat == 0) then ! real
+      write(fid,110,advance="no") temp_real
+    else ! integer
+      write(fid,111,advance="no") int(temp_real + 1.d-5)
+    endif
+    cur_variable => cur_variable%next
+  enddo  
+  
+#if 0  
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,THMC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
     
@@ -843,7 +860,8 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   if (output_option%print_porosity) then
     write(fid,110,advance="no") &
       RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
-  endif  
+  endif
+#endif
 
 end subroutine WriteObservationDataForCell
 
@@ -875,12 +893,14 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscReal :: temp_real
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
-  type(output_option_type), pointer :: output_option  
+  type(output_option_type), pointer :: output_option
+  type(output_variable_type), pointer :: cur_variable
     
   PetscInt :: ghosted_ids(8)
   PetscInt :: count
@@ -898,13 +918,6 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 110 format(es14.6)
 111 format(i2)
 
-
-  ! write out coorindates
-!geh - do not print coordinates for now
-  !write(fid,110,advance="no") region%coordinate(X_DIRECTION)
-  !write(fid,110,advance="no") region%coordinate(Y_DIRECTION)
-  !write(fid,110,advance="no") region%coordinate(Z_DIRECTION)
-  
   count = 0
   local_id = region%cell_ids(1)
   ghosted_id = grid%nL2G(local_id)
@@ -953,19 +966,37 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       enddo
     enddo
   enddo
+  
+  ! loop over variables and write to file
+  cur_variable => output_option%output_variable_list%first
+  do
+    if (.not.associated(cur_variable)) exit
+    if (cur_variable%plot_only) then
+      cur_variable => cur_variable%next
+      cycle
+    endif    
+    temp_real = OutputGetVarFromArrayAtCoord(realization,cur_variable%ivar, &
+                                           cur_variable%isubvar, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+    if (cur_variable%iformat == 0) then ! real
+      write(fid,110,advance="no") temp_real
+    else ! integer
+      write(fid,111,advance="no") int(temp_real + 1.d-5)
+    endif
+    cur_variable => cur_variable%next
+  enddo
 
+!TODO(geh)
+#if 0  
   select case(option%iflowmode)
     case(RICHARDS_MODE,MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
 
     ! temperature
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,THMC_MODE,IMS_MODE,FLASH2_MODE,G_MODE)
-          write(fid,110,advance="no") &
-            OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
-                                         region%coordinates(ONE_INTEGER)%x, &
-                                         region%coordinates(ONE_INTEGER)%y, &
-                                         region%coordinates(ONE_INTEGER)%z, &
-                                         count,ghosted_ids)
       end select
 
       ! liquid pressure
@@ -1408,6 +1439,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                    region%coordinates(ONE_INTEGER)%z, &
                                    count,ghosted_ids)
   endif
+  
+#endif
 
 end subroutine WriteObservationDataForCoord
 
