@@ -154,7 +154,7 @@ subroutine StochasticRun(stochastic,option)
   PetscLogDouble :: timex_wall(4)
   PetscInt :: irealization
   type(simulation_type), pointer :: simulation
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   PetscInt :: status

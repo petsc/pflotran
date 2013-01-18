@@ -50,7 +50,7 @@ subroutine GeneralTimeCut(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -99,7 +99,7 @@ subroutine GeneralTimeCutPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -139,7 +139,7 @@ subroutine GeneralSetup(realization)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -180,7 +180,7 @@ subroutine GeneralSetupPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -289,7 +289,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
   type(level_type), pointer :: cur_level
@@ -329,7 +329,7 @@ subroutine GeneralComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option
@@ -385,7 +385,7 @@ subroutine GeneralZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -420,7 +420,7 @@ subroutine GeneralUpdateMassBalancePatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -455,7 +455,7 @@ subroutine GeneralUpdateAuxVars(realization)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -496,7 +496,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization,update_state)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscBool :: update_state
   
   type(option_type), pointer :: option
@@ -613,7 +613,7 @@ subroutine GeneralInitializeTimestep(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   call GeneralUpdateFixedAccum(realization)
 
@@ -637,7 +637,7 @@ subroutine GeneralUpdateSolution(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -688,7 +688,7 @@ subroutine GeneralUpdateSolutionPatch(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -736,7 +736,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -775,7 +775,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -861,7 +861,7 @@ subroutine GeneralNumericalJacTest(xx,realization)
   implicit none
 
   Vec :: xx
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -1753,7 +1753,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -1849,7 +1849,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
 
@@ -2090,7 +2090,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
 
@@ -2221,7 +2221,7 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
 
@@ -2334,7 +2334,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -2579,7 +2579,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -2787,7 +2787,7 @@ subroutine GeneralMaxChange(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -2936,7 +2936,7 @@ function GeneralGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: GeneralGetTecplotHeader
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -3058,7 +3058,7 @@ subroutine GeneralDestroy(realization)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -3091,7 +3091,7 @@ subroutine GeneralDestroyPatch(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   ! place anything that needs to be freed here.
 

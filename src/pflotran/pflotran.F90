@@ -67,7 +67,7 @@ program pflotran
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
   nullify(stochastic)

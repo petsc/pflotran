@@ -52,7 +52,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
@@ -451,7 +451,7 @@ subroutine CondControlAssignTranInitCond(realization)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscInt :: icell, iconn, idof, isub_condition, temp_int
   PetscInt :: local_id, ghosted_id, iend, ibegin
@@ -816,7 +816,7 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"  
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(dataset_type), pointer :: dataset
   PetscInt :: idof
   Vec :: mdof_vec
@@ -880,7 +880,7 @@ subroutine CondControlScaleSourceSink(realization)
 #include "finclude/petscdmda.h"
 
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscErrorCode :: ierr
   

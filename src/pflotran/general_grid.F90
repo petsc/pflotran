@@ -36,7 +36,7 @@ subroutine ReadStructuredGridHDF5(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
@@ -69,7 +69,7 @@ subroutine ReadStructuredGridHDF5(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization

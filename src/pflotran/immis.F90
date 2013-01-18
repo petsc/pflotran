@@ -66,7 +66,7 @@ subroutine ImmisTimeCut(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -97,7 +97,7 @@ subroutine ImmisSetup(realization)
   use co2_sw_module
   use span_wagner_spline_module 
    
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -154,7 +154,7 @@ subroutine ImmisSetupPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -274,7 +274,7 @@ subroutine ImmisComputeMassBalance(realization,mass_balance)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 ! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_balance(realization%option%nflowspec,1)
   
@@ -315,7 +315,7 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 ! PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_balance(realization%option%nflowspec,1)
 
@@ -379,7 +379,7 @@ subroutine ImmisZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -430,7 +430,7 @@ end subroutine ImmisZeroMassBalDeltaPatch
   use Option_module
   
   PetscInt ::  ImmisInitGuessCheck
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -481,7 +481,7 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
   implicit none
  
   PetscInt, intent(out):: reason
-  class(realization_type) :: realization  
+  type(realization_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -554,7 +554,7 @@ subroutine ImmisUpdateReason(reason, realization)
   use Patch_module
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -611,7 +611,7 @@ end subroutine ImmisUpdateReason
     implicit none
     
     PetscInt :: ImmisInitGuessCheckPatch 
-    class(realization_type) :: realization
+    type(realization_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -670,7 +670,7 @@ subroutine ImmisUpdateAuxVars(realization)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -711,7 +711,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -844,7 +844,7 @@ subroutine ImmisInitializeTimestep(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   call ImmisUpdateFixedAccumulation(realization)
 
@@ -866,7 +866,7 @@ subroutine ImmisUpdateSolution(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
@@ -909,7 +909,7 @@ subroutine ImmisUpdateSolutionPatch(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
     call ImmisUpdateMassBalancePatch(realization)
@@ -933,7 +933,7 @@ subroutine ImmisUpdateMassBalancePatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -982,7 +982,7 @@ subroutine ImmisUpdateFixedAccumulation(realization)
   use Level_module
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1020,7 +1020,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1651,7 +1651,7 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -1727,7 +1727,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, iphase, jn
@@ -2230,7 +2230,7 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B, J
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -2276,7 +2276,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -2915,7 +2915,7 @@ subroutine ImmisMaxChange(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2980,7 +2980,7 @@ function ImmisGetTecplotHeader(realization, icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: ImmisGetTecplotHeader
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -3124,7 +3124,7 @@ subroutine ImmisSetPlotVariables(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units

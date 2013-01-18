@@ -54,7 +54,7 @@ subroutine RichardsTimeCut(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -92,7 +92,7 @@ subroutine RichardsSetup(realization)
   use Realization_class
   use Patch_module
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   call RichardsSetupPatch(realization)
   call RichardsSetPlotVariables(realization)
@@ -117,7 +117,7 @@ subroutine RichardsSetupPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -213,7 +213,7 @@ subroutine RichardsCheckUpdatePre(snes_,P,dP,realization,changed,ierr)
   Vec :: dP
   ! ignore changed flag for now.
   PetscBool :: changed
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscReal, pointer :: P_p(:)
   PetscReal, pointer :: dP_p(:)
@@ -345,7 +345,7 @@ subroutine RichardsCheckUpdatePost(snes_,P0,dP,P1,realization,dP_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dP_changed
   PetscBool :: P1_changed
@@ -417,7 +417,7 @@ subroutine RichardsComputeMassBalance(realization,mass_balance)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
   mass_balance = 0.d0
@@ -443,7 +443,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option
@@ -507,7 +507,7 @@ subroutine RichardsCheckMassBalancePatch(realization)
                         volume_p(:), &
                         accum_p(:), xx_faces_loc_p(:)
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
 
   type(grid_type), pointer :: grid
@@ -641,7 +641,7 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -693,7 +693,7 @@ subroutine RichardsUpdateMassBalancePatch(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -750,7 +750,7 @@ subroutine RichardsUpdateAuxVars(realization)
   use Realization_class
   use Grid_module, only : STRUCTURED_GRID_MIMETIC
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
 !          if (.not.cur_patch%aux%Richards%aux_vars_cell_pressures_up_to_date) then
@@ -779,7 +779,7 @@ end subroutine RichardsUpdateAuxVars
 !   use Realization_class
 !   use Patch_module
 ! 
-!   class(realization_type) :: realization
+!   type(realization_type) :: realization
 !   
 !   type(level_type), pointer :: cur_level
 !   type(patch_type), pointer :: cur_patch
@@ -816,7 +816,7 @@ subroutine RichardsUpdateCellPressure(realization)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   if (.not.realization%patch%aux%Richards% &
       aux_vars_cell_pressures_up_to_date) then
@@ -847,7 +847,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -994,7 +994,7 @@ subroutine RichardsUpdateLSMAuxVarsPatch(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1129,7 +1129,7 @@ end subroutine RichardsUpdateLSMAuxVarsPatch
 !   
 !   implicit none
 ! 
-!   class(realization_type) :: realization
+!   type(realization_type) :: realization
 !   type(discretization_type), pointer :: discretization
 ! 
 !   
@@ -1269,7 +1269,7 @@ subroutine RichardsUpdateCellPressurePatch(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   
   type(option_type), pointer :: option
@@ -1420,7 +1420,7 @@ subroutine RichardsUpdateAuxVarsPatchMFDLP(realization)
   
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
 #ifdef DASVYAT
   
@@ -1567,7 +1567,7 @@ subroutine RichardsInitializeTimestep(realization)
   
 
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscViewer :: viewer
   PetscErrorCode :: ierr
@@ -1606,7 +1606,7 @@ subroutine RichardsUpdateSolution(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   type(field_type), pointer :: field
   PetscErrorCode :: ierr
@@ -1640,7 +1640,7 @@ subroutine RichardsUpdateSolutionPatch(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
     call RichardsUpdateMassBalancePatch(realization)
@@ -1660,7 +1660,7 @@ subroutine RichardsUpdateFixedAccum(realization)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   call RichardsUpdateFixedAccumPatch(realization)
 
@@ -1687,7 +1687,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1783,7 +1783,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   implicit none
 
   Vec :: xx
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -3004,7 +3004,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -3090,7 +3090,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 #ifdef DASVYAT
@@ -3222,7 +3222,7 @@ use Logging_module
   SNES :: snes
   Vec :: xx
   Vec :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
@@ -3382,7 +3382,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
@@ -3653,7 +3653,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -3846,7 +3846,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -4116,7 +4116,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -4436,7 +4436,7 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -4736,7 +4736,7 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscErrorCode :: ierr
 
 #ifdef DASVYAT
@@ -5061,7 +5061,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -5157,7 +5157,7 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -5229,7 +5229,7 @@ subroutine RichardsJacobianMFDLP(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
   
@@ -5333,7 +5333,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -5650,7 +5650,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -5841,7 +5841,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -6075,7 +6075,7 @@ subroutine RichardsJacobianPatchMFDLP (snes,xx,A,B,flag,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   MatStructure flag
 
   PetscErrorCode :: ierr
@@ -6355,7 +6355,7 @@ subroutine RichardsMaxChange(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -6409,7 +6409,7 @@ function RichardsGetTecplotHeader(realization,icolumn)
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -6456,7 +6456,7 @@ subroutine RichardsSetPlotVariables(realization)
     
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -6519,7 +6519,7 @@ subroutine RichardsDestroy(realization)
 
   use Realization_class
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   call RichardsDestroyPatch(realization)
 
@@ -6538,7 +6538,7 @@ subroutine RichardsDestroyPatch(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   ! taken care of in auxiliary.F90
 

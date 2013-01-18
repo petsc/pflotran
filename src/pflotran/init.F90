@@ -86,7 +86,7 @@ subroutine Init(simulation)
   type(stepper_type), pointer :: tran_stepper
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1156,7 +1156,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -1343,7 +1343,7 @@ subroutine InitReadInput(simulation)
   type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
 
-  class(realization_type), pointer :: realization
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2382,7 +2382,7 @@ subroutine assignMaterialPropToRegions(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
@@ -2675,7 +2675,7 @@ subroutine verifyAllCouplers(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -2719,7 +2719,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(coupler_list_type), pointer :: coupler_list
 
   type(option_type), pointer :: option
@@ -2799,7 +2799,7 @@ subroutine readRegionFiles(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   
   type(region_type), pointer :: region
  
@@ -2860,7 +2860,7 @@ subroutine readMaterialsFromFile(realization,realization_dependent,filename)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   PetscBool :: realization_dependent
   character(len=MAXSTRINGLENGTH) :: filename
   
@@ -2948,7 +2948,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   type(material_property_type) :: material_property
 
   type(field_type), pointer :: field
@@ -3116,7 +3116,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   
   implicit none
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   Vec :: vector
   character(len=MAXWORDLENGTH) :: filename
   PetscInt :: vector_type
@@ -3233,7 +3233,7 @@ subroutine readFlowInitialCondition(realization,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset
@@ -3336,7 +3336,7 @@ subroutine readTransportInitialCondition(realization,filename)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  type(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset, idof
