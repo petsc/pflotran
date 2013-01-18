@@ -1936,6 +1936,7 @@ subroutine OutputMassBalance(realization_base)
   type(global_auxvar_type), pointer :: global_aux_vars_bc_or_ss(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc_or_ss(:)
   
+  class(realization_type), pointer :: realization
   character(len=MAXHEADERLENGTH) :: header
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word, units
@@ -2211,23 +2212,24 @@ subroutine OutputMassBalance(realization_base)
     sum_kg = 0.d0
     select type(realization_base)
       class is(realization_type)
+        realization => realization_base
         select case(option%iflowmode)
           case(RICHARDS_MODE)
-            call RichardsComputeMassBalance(realization_base,sum_kg(1,:))
+            call RichardsComputeMassBalance(realization,sum_kg(1,:))
           case(THC_MODE)
-            call THCComputeMassBalance(realization_base,sum_kg(1,:))
+            call THCComputeMassBalance(realization,sum_kg(1,:))
           case(THMC_MODE)
-            call THMCComputeMassBalance(realization_base,sum_kg(1,:))
+            call THMCComputeMassBalance(realization,sum_kg(1,:))
           case(MIS_MODE)
-            call MiscibleComputeMassBalance(realization_base,sum_kg(:,1))
+            call MiscibleComputeMassBalance(realization,sum_kg(:,1))
           case(MPH_MODE)
-            call MphaseComputeMassBalance(realization_base,sum_kg(:,:))
+            call MphaseComputeMassBalance(realization,sum_kg(:,:))
           case(IMS_MODE)
-            call ImmisComputeMassBalance(realization_base,sum_kg(:,1))
+            call ImmisComputeMassBalance(realization,sum_kg(:,1))
           case(G_MODE)
             option%io_buffer = 'Mass balance calculations not yet implemented for General Mode'
             call printErrMsg(option)
-            call GeneralComputeMassBalance(realization_base,sum_kg(1,:))
+            call GeneralComputeMassBalance(realization,sum_kg(1,:))
         end select
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'
