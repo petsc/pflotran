@@ -3,6 +3,7 @@ module Reaction_Aux_module
   use Database_Aux_module
   use Mineral_Aux_module
   use Microbial_Aux_module
+  use Biomass_Aux_module
   use Surface_Complexation_Aux_module
   
 #ifdef SOLID_SOLUTION  
@@ -169,6 +170,7 @@ module Reaction_Aux_module
     type(surface_complexation_type), pointer :: surface_complexation
     type(mineral_type), pointer :: mineral
     type(microbial_type), pointer :: microbial
+    type(biomass_type), pointer :: biomass
     
 #ifdef SOLID_SOLUTION    
     type(solid_solution_type), pointer :: solid_solution_list
@@ -223,9 +225,9 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
-#ifdef CHUAN_CO2        
-    PetscReal :: scco2_eq_logK ! SC CO2 
-#endif    
+!#ifdef CHUAN_CO2
+!   PetscReal :: scco2_eq_logK ! SC CO2 
+!#endif
 
     PetscInt :: nsorb
     PetscInt :: neqsorb
@@ -258,7 +260,7 @@ module Reaction_Aux_module
     PetscBool, pointer :: colloid_print(:)
     
     ! immobile species
-    character(len=MAXWORDLENGTH), pointer :: imcomp_names(:)
+    character(len=MAXWORDLENGTH), pointer :: immobile_species_names(:)
     
     ! general rxn
     PetscInt :: ngeneral_rxn
@@ -418,6 +420,7 @@ function ReactionCreate()
   reaction%surface_complexation => SurfaceComplexationCreate()
   reaction%mineral => MineralCreate()
   reaction%microbial => MicrobialCreate()
+  reaction%biomass => BiomassCreate()
 #ifdef SOLID_SOLUTION  
   nullify(reaction%solid_solution_list)
 #endif
@@ -458,9 +461,9 @@ function ReactionCreate()
   nullify(reaction%eqgash2ostoich)
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
-#ifdef CHUAN_CO2  
-  reaction%scco2_eq_logK = 0.d0
-#endif
+!#ifdef CHUAN_CO2
+! reaction%scco2_eq_logK = 0.d0
+!#endif
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)
@@ -499,7 +502,7 @@ function ReactionCreate()
   nullify(reaction%coll_spec_to_pri_spec)
   nullify(reaction%colloid_mobile_fraction)
   
-  nullify(reaction%imcomp_names)
+  nullify(reaction%immobile_species_names)
   
   reaction%ngeneral_rxn = 0
   nullify(reaction%generalspecid)
@@ -1224,7 +1227,7 @@ function GetImmobileCount(reaction)
   PetscInt :: GetImmobileCount
   type(reaction_type) :: reaction
 
-  GetImmobileCount = MicrobialGetBiomassCount(reaction%microbial)
+  GetImmobileCount = BiomassGetCount(reaction%biomass)
   
 end function GetImmobileCount
 
@@ -1789,6 +1792,7 @@ subroutine ReactionDestroy(reaction)
   call SurfaceComplexationDestroy(reaction%surface_complexation)
   call MineralDestroy(reaction%mineral)
   call MicrobialDestroy(reaction%microbial)
+  call BiomassDestroy(reaction%biomass)
 #ifdef SOLID_SOLUTION  
   call SolidSolutionDestroy(reaction%solid_solution_list)
 #endif  
@@ -1856,7 +1860,7 @@ subroutine ReactionDestroy(reaction)
   call DeallocateArray(reaction%coll_spec_to_pri_spec)
   call DeallocateArray(reaction%colloid_mobile_fraction)
   
-  call DeallocateArray(reaction%imcomp_names)
+  call DeallocateArray(reaction%immobile_species_names)
   
   call DeallocateArray(reaction%generalspecid)
   call DeallocateArray(reaction%generalstoich)

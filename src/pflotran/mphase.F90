@@ -61,7 +61,7 @@ contains
 ! ************************************************************************** !
 subroutine MphaseTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -92,7 +92,7 @@ end subroutine MphaseTimeCut
 !
 ! ************************************************************************** !
 subroutine init_span_wanger(realization)
-  use Realization_module
+  use Realization_class
   use span_wagner_module
   use co2_sw_module
   use span_wagner_spline_module 
@@ -129,7 +129,7 @@ end subroutine init_span_wanger
 ! ************************************************************************** !
 subroutine MphaseSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
    
@@ -165,12 +165,13 @@ end subroutine MphaseSetup
 ! ************************************************************************** !
 subroutine MphaseSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
   use Connection_module
   use Grid_module
+  use Secondary_Continuum_Aux_module
   use Secondary_Continuum_module
  
   implicit none
@@ -197,6 +198,7 @@ subroutine MphaseSetupPatch(realization)
   grid => patch%grid 
 
   patch%aux%Mphase => MphaseAuxCreate()
+  patch%aux%SC_heat => SecondaryAuxHeatCreate(option)
   mphase => patch%aux%Mphase
 
   
@@ -301,7 +303,7 @@ subroutine MphaseSetupPatch(realization)
 
     enddo
       
-    patch%aux%Mphase%sec_heat_vars => mphase_sec_heat_vars    
+    patch%aux%SC_heat%sec_heat_vars => mphase_sec_heat_vars    
   
   endif
 
@@ -374,7 +376,7 @@ end subroutine MphaseSetupPatch
 ! ************************************************************************** !
 subroutine MphaseComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -411,7 +413,7 @@ end subroutine MphaseComputeMassBalance
 ! ************************************************************************** !
 subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -478,7 +480,7 @@ end subroutine MphaseComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine MphaseZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -531,7 +533,7 @@ end subroutine MphaseZeroMassBalDeltaPatch
 ! ************************************************************************** !
 subroutine MphaseUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -590,7 +592,7 @@ end subroutine MphaseUpdateMassBalancePatch
 ! ************************************************************************** !
 function MphaseInitGuessCheck(realization)
  
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Option_module
@@ -634,7 +636,7 @@ end function MphaseInitGuessCheck
 !
 ! ************************************************************************** !
 subroutine MPhaseUpdateReasonPatch(reason,realization)
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -746,7 +748,7 @@ end subroutine MPhaseUpdateReasonPatch
 ! ************************************************************************** !
 subroutine MPhaseUpdateReason(reason, realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   implicit none
@@ -801,7 +803,7 @@ end subroutine MPhaseUpdateReason
    
      use span_wagner_module
      
-    use Realization_module
+    use Realization_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -864,7 +866,7 @@ end subroutine MPhaseUpdateReason
 ! ************************************************************************** !
 subroutine MphaseUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -898,7 +900,7 @@ end subroutine MphaseUpdateAuxVars
 ! ************************************************************************** !
 subroutine MphaseUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -1124,7 +1126,7 @@ end subroutine MphaseUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine MphaseInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -1143,7 +1145,7 @@ end subroutine MphaseInitializeTimestep
 ! ************************************************************************** !
 subroutine MphaseUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -1192,7 +1194,7 @@ end subroutine MphaseUpdateSolution
 ! ************************************************************************** !
 subroutine MphaseUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -1214,7 +1216,7 @@ end subroutine MphaseUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine MphaseUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -1248,12 +1250,12 @@ end subroutine MphaseUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine MphaseUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
   use Grid_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
 
   implicit none
@@ -1288,7 +1290,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
-  mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
+  mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
       
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -1981,7 +1983,7 @@ end subroutine MphaseBCFlux
 ! ************************************************************************** !
 subroutine MphaseResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -2083,7 +2085,7 @@ end subroutine MphaseResidual
 
 subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
   use Grid_module
@@ -2401,14 +2403,14 @@ end subroutine MphaseVarSwitchPatch
 subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
   use Coupler_module  
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -2495,7 +2497,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   global_aux_vars_ss => patch%aux%Global%aux_vars_ss
 
-  mphase_sec_heat_vars => patch%aux%Mphase%sec_heat_vars
+  mphase_sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -3052,7 +3054,7 @@ end subroutine MphaseResidualPatch
 ! ************************************************************************** !
 subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -3134,12 +3136,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
   use Debug_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
   
   implicit none
 
@@ -3241,7 +3243,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  sec_heat_vars => patch%aux%mphase%sec_heat_vars
+  sec_heat_vars => patch%aux%SC_heat%sec_heat_vars
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -3836,7 +3838,7 @@ end subroutine MphaseCreateZeroArray
 ! ************************************************************************** !
 subroutine MphaseMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Field_module
@@ -3901,7 +3903,7 @@ end subroutine MphaseMaxChange
 
 subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
 
-  use Realization_module
+  use Realization_class
   use Grid_module
   use Patch_module
   use Field_module
@@ -3973,7 +3975,7 @@ end subroutine MphaseMaxChangePatch
 ! ************************************************************************** !
 function MphaseGetTecplotHeader(realization,icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -4138,7 +4140,7 @@ end function MphaseGetTecplotHeader
 ! ************************************************************************** !
 subroutine MphaseSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 
@@ -4259,7 +4261,7 @@ subroutine MphaseSecondaryHeat(sec_heat_vars,aux_var,global_aux_var, &
                             
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
   
@@ -4358,7 +4360,7 @@ subroutine MphaseSecondaryHeatJacobian(sec_heat_vars, &
                                     
   use Option_module 
   use Global_Aux_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
   

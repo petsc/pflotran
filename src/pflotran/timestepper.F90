@@ -303,18 +303,18 @@ subroutine StepperRun(realization,surf_realization,flow_stepper,tran_stepper,sur
 subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #endif
 
-  use Realization_module
+  use Realization_class
 
   use Option_module
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
-                            OutputPrintCouplers
+  use Output_module, only : Output, OutputInit, OutputPrintCouplers
   use Logging_module  
   use Discretization_module
   use Condition_Control_module
 #ifdef SURFACE_FLOW
   use Surface_Flow_module
-  use Surface_Realization_module
+  use Surface_Realization_class
+  use Output_Surface_module, only : OutputSurface, OutputSurfaceInit
 #endif
   implicit none
   
@@ -492,6 +492,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   ! print initial condition output if not a restarted sim
   call OutputInit(realization,master_stepper%steps)
+#ifdef SURFACE_FLOW
+  call OutputSurfaceInit(realization,master_stepper%steps)
+#endif
   if (output_option%plot_number == 0 .and. &
       master_stepper%max_time_step >= 0 .and. &
       output_option%print_initial) then
@@ -501,7 +504,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 #ifdef SURFACE_FLOW
     plot_flag_surf = PETSC_TRUE
     transient_plot_flag_surf = PETSC_TRUE
-    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+    call OutputSurface(surf_realization,realization,plot_flag_surf, &
+                       transient_plot_flag_surf)
 #endif
   endif
   
@@ -815,7 +819,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call StepperUpdateDT(flow_stepper,tran_stepper,option)
 
 #ifdef SURFACE_FLOW
-    call Output(surf_realization,realization,plot_flag_surf,transient_plot_flag_surf)
+    call OutputSurface(surf_realization,realization,plot_flag_surf, &
+                       transient_plot_flag_surf)
     if(associated(surf_flow_stepper)) then
       call StepperUpdateSurfaceFlowDT(surf_flow_stepper,option)
     endif
@@ -1643,7 +1648,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
   use Output_module, only : Output
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Solver_module
@@ -2119,7 +2124,7 @@ end subroutine StepperStepFlowDT
 #ifdef SURFACE_FLOW
 subroutine StepperStepSurfaceFlowDT(surf_realization,stepper,failure)
   
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Surface_Flow_module
   use Discretization_module
   use Option_module
@@ -2324,7 +2329,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   use Reactive_Transport_module
   use Output_module, only : Output
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Solver_module
@@ -2599,7 +2604,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
         RTCalculateTransportMatrix, RTReact, RTMaxChange, RTExplicitAdvection
   use Output_module, only : Output
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Solver_module
@@ -2837,11 +2842,11 @@ end subroutine StepperStepTransportDT_OS
 ! ************************************************************************** !
 subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
 
-  use Realization_module
+  use Realization_class
 
   use Option_module
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputVectorTecplot
+  use Output_module, only : Output, OutputInit
   use Logging_module
   use Discretization_module
 
@@ -2983,7 +2988,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 
   use Global_module, only : GlobalUpdateAuxVars
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Solver_module
@@ -3085,7 +3090,7 @@ end subroutine StepperSolveFlowSteadyState
 ! ************************************************************************** !
 subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   
-  use Realization_module
+  use Realization_class
   use Discretization_module
   use Option_module
   use Solver_module
@@ -3202,10 +3207,10 @@ subroutine StepperUpdateSolution(realization,surf_realization)
 subroutine StepperUpdateSolution(realization)
 #endif
 
-  use Realization_module
+  use Realization_class
   use Option_module
 #ifdef SURFACE_FLOW
-  use Surface_Realization_module
+  use Surface_Realization_class
 #endif
 
   implicit none
@@ -3248,7 +3253,7 @@ subroutine StepperUpdateFlowSolution(realization)
   use THMC_module, only : THMCUpdateSolution
   use General_module, only : GeneralUpdateSolution
 
-  use Realization_module
+  use Realization_class
   use Option_module
 
   implicit none
@@ -3295,7 +3300,7 @@ subroutine StepperUpdateSurfaceFlowSolution(surf_realization)
 
   use Surface_Flow_module
 
-  use Surface_Realization_module
+  use Surface_Realization_class
   use Option_module
 
   implicit none
@@ -3326,7 +3331,7 @@ end subroutine StepperUpdateSurfaceFlowSolution
 ! ************************************************************************** !
 subroutine StepperUpdateTransportSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Reactive_Transport_module, only : RTUpdateSolution
 
   implicit none
@@ -3354,7 +3359,7 @@ end subroutine StepperUpdateTransportSolution
 ! ************************************************************************** !
 subroutine StepperJumpStart(realization)
 
-  use Realization_module
+  use Realization_class
   use Reactive_Transport_module, only : RTJumpStartKineticSorption
 
   implicit none
@@ -3383,7 +3388,7 @@ subroutine StepperUpdateFlowAuxVars(realization)
   use THMC_module, only : THMCUpdateAuxVars
   use General_module, only : GeneralUpdateAuxVars
 
-  use Realization_module
+  use Realization_class
   use Option_module
 
   implicit none
@@ -3427,7 +3432,7 @@ end subroutine StepperUpdateFlowAuxVars
 subroutine StepperUpdateTranAuxVars(realization)
   
   use Reactive_Transport_module, only : RTUpdateAuxVars
-  use Realization_module
+  use Realization_class
 
   implicit none
 
@@ -3448,7 +3453,7 @@ end subroutine StepperUpdateTranAuxVars
 subroutine StepperSandbox(realization)
   
   use Reactive_Transport_module, only : RTUpdateAuxVars
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Field_module
@@ -3459,7 +3464,7 @@ subroutine StepperSandbox(realization)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use String_module
-  use Secondary_Continuum_module
+  use Secondary_Continuum_Aux_module
 
   implicit none
 
@@ -3494,7 +3499,7 @@ subroutine StepperSandbox(realization)
 
   rt_aux_vars => patch%Aux%RT%aux_vars
   global_aux_vars => patch%Aux%Global%aux_vars
-  rt_sec_transport_vars => patch%Aux%RT%sec_transport_vars
+  rt_sec_transport_vars => patch%Aux%SC_RT%sec_transport_vars
 
                                    ! cells     bcs        act coefs.
   call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
@@ -3557,7 +3562,7 @@ end subroutine StepperSandbox
 ! ************************************************************************** !
 subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
 
-  use Realization_module
+  use Realization_class
   use Checkpoint_module
   use Option_module
 
@@ -3626,7 +3631,7 @@ end subroutine StepperCheckpoint
 subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
                           flow_read,transport_read,activity_coefs_read)
 
-  use Realization_module
+  use Realization_class
   use Checkpoint_module
   use Option_module
 
@@ -3751,7 +3756,7 @@ end subroutine TimestepperSetTranWeights
 ! ************************************************************************** !
 subroutine TimestepperCheckCFLLimit(stepper,realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
 

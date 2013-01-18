@@ -6,7 +6,7 @@ module Constraint_module
   
   use Surface_Complexation_Aux_module  
   use Mineral_Aux_module
-  use Microbial_Aux_module
+  use Biomass_Aux_module
   
   implicit none
 
@@ -508,7 +508,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
       case('BIOMASS')
 
         biomass_constraint => &
-          MicrobeBiomassConstraintCreate(reaction%microbial,option)
+          BiomassConstraintCreate(reaction%biomass,option)
 
         block_string = 'CONSTRAINT, BIOMASS'
         ibiomass = 0
@@ -520,7 +520,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           
           ibiomass = ibiomass + 1
 
-          if (ibiomass > reaction%microbial%nbiomass) then
+          if (ibiomass > reaction%biomass%nbiomass) then
             option%io_buffer = &
                      'Number of biomass constraints exceeds number of ' // &
                      'biomass species in constraint: ' // &
@@ -568,7 +568,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           endif
         enddo  
         
-        if (ibiomass < reaction%microbial%nbiomass) then
+        if (ibiomass < reaction%biomass%nbiomass) then
           option%io_buffer = &
                    'Biomass lists in constraints must provide a ' // &
                    'concentration all biomass species ' // &
@@ -578,7 +578,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         endif
         
         if (associated(constraint%biomass)) then
-          call MicrobeBiomassConstraintDestroy(constraint%biomass)
+          call BiomassConstraintDestroy(constraint%biomass)
         endif
         constraint%biomass => biomass_constraint 
         
@@ -705,7 +705,7 @@ subroutine TranConstraintDestroy(constraint)
     call ColloidConstraintDestroy(constraint%colloids)
   nullify(constraint%colloids)
   if (associated(constraint%biomass)) &
-    call MicrobeBiomassConstraintDestroy(constraint%biomass)
+    call BiomassConstraintDestroy(constraint%biomass)
   nullify(constraint%biomass)
 
   deallocate(constraint)

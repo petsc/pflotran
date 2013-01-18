@@ -60,7 +60,7 @@ contains
 ! ************************************************************************** !
 subroutine ImmisTimeCut(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
  
@@ -90,7 +90,7 @@ end subroutine ImmisTimeCut
 ! ************************************************************************** !
 subroutine ImmisSetup(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use span_wagner_module
@@ -145,7 +145,7 @@ end subroutine ImmisSetup
 ! ************************************************************************** !
 subroutine ImmisSetupPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -270,7 +270,7 @@ end subroutine ImmisSetupPatch
 ! ************************************************************************** !
 subroutine ImmisComputeMassBalance(realization,mass_balance)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -307,7 +307,7 @@ end subroutine ImmisComputeMassBalance
 ! ************************************************************************** !
 subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Field_module
@@ -372,7 +372,7 @@ end subroutine ImmisComputeMassBalancePatch
 ! ************************************************************************** !
 subroutine ImmisZeroMassBalDeltaPatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -424,7 +424,7 @@ end subroutine ImmisZeroMassBalDeltaPatch
 ! ************************************************************************** !
   function  ImmisInitGuessCheck(realization)
  
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Option_module
@@ -472,7 +472,7 @@ end subroutine ImmisZeroMassBalDeltaPatch
 !
 ! ************************************************************************** !
 subroutine ImmisUpdateReasonPatch(reason,realization)
-   use Realization_module
+   use Realization_class
    use Patch_module
    use Field_module
    use Option_module
@@ -549,7 +549,7 @@ end subroutine ImmisUpdateReasonPatch
 ! ************************************************************************** !
 subroutine ImmisUpdateReason(reason, realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   implicit none
@@ -603,7 +603,7 @@ end subroutine ImmisUpdateReason
    
      use span_wagner_module
      
-    use Realization_module
+    use Realization_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -666,7 +666,7 @@ end subroutine ImmisUpdateReason
 ! ************************************************************************** !
 subroutine ImmisUpdateAuxVars(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -700,7 +700,7 @@ end subroutine ImmisUpdateAuxVars
 ! ************************************************************************** !
 subroutine ImmisUpdateAuxVarsPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Field_module
   use Option_module
@@ -840,7 +840,7 @@ end subroutine ImmisUpdateAuxVarsPatch
 ! ************************************************************************** !
 subroutine ImmisInitializeTimestep(realization)
 
-  use Realization_module
+  use Realization_class
   
   implicit none
   
@@ -859,7 +859,7 @@ end subroutine ImmisInitializeTimestep
 ! ************************************************************************** !
 subroutine ImmisUpdateSolution(realization)
 
-  use Realization_module
+  use Realization_class
   use Field_module
   use Level_module
   use Patch_module
@@ -905,7 +905,7 @@ end subroutine ImmisUpdateSolution
 ! ************************************************************************** !
 subroutine ImmisUpdateSolutionPatch(realization)
 
-  use Realization_module
+  use Realization_class
     
   implicit none
   
@@ -926,7 +926,7 @@ end subroutine ImmisUpdateSolutionPatch
 ! ************************************************************************** !
 subroutine ImmisUpdateMassBalancePatch(realization)
  
-  use Realization_module
+  use Realization_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -978,7 +978,7 @@ end subroutine ImmisUpdateMassBalancePatch
 ! ************************************************************************** !
 subroutine ImmisUpdateFixedAccumulation(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
 
@@ -1012,7 +1012,7 @@ end subroutine ImmisUpdateFixedAccumulation
 ! ************************************************************************** !
 subroutine ImmisUpdateFixedAccumPatch(realization)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1638,7 +1638,7 @@ end subroutine ImmisBCFlux
 ! ************************************************************************** !
 subroutine ImmisResidual(snes,xx,r,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Discretization_module
@@ -1714,7 +1714,7 @@ end subroutine ImmisResidual
 subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
   use Connection_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2219,7 +2219,7 @@ end subroutine ImmisResidualPatch
 ! ************************************************************************** !
 subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Level_module
   use Grid_module
@@ -2265,7 +2265,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_module
+  use Realization_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -2906,7 +2906,7 @@ end subroutine ImmisCreateZeroArray
 ! ************************************************************************** !
 subroutine ImmisMaxChange(realization)
 
-  use Realization_module
+  use Realization_class
   use Level_module
   use Patch_module
   use Field_module
@@ -2973,7 +2973,7 @@ end subroutine ImmisMaxChange
 ! ************************************************************************** !
 function ImmisGetTecplotHeader(realization, icolumn)
 
-  use Realization_module
+  use Realization_class
   use Option_module
   use Field_module
 
@@ -3118,7 +3118,7 @@ end function ImmisGetTecplotHeader
 ! ************************************************************************** !
 subroutine ImmisSetPlotVariables(realization)
   
-  use Realization_module
+  use Realization_class
   use Output_Aux_module
   use Variables_module
 
