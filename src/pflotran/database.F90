@@ -1792,6 +1792,8 @@ subroutine BasisInit(reaction,option)
     biomass%names = ''
     allocate(biomass%print_me(biomass%nbiomass))
     biomass%print_me = PETSC_FALSE
+    allocate(biomass%immobile_id(biomass%nbiomass))
+    biomass%immobile_id = 0
 
     cur_biomass_spec => biomass%list
     temp_int = 0
@@ -1799,7 +1801,8 @@ subroutine BasisInit(reaction,option)
       if (.not.associated(cur_biomass_spec)) exit
       temp_int = temp_int + 1
       biomass%names(temp_int) = cur_biomass_spec%name
-      biomass%print_me(temp_int) = cur_biomass_spec%print_me
+      biomass%print_me(temp_int) = cur_biomass_spec%print_me .or. &
+                                   biomass%print_all
       cur_biomass_spec => cur_biomass_spec%next
     enddo
   endif
@@ -1810,9 +1813,13 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%immobile_species_names(reaction%nimcomp))
     reaction%immobile_species_names = ''
     
+    icount = 0
     ! biomass first
-    reaction%immobile_species_names(1:biomass%nbiomass) = &
-      biomass%names(biomass%nbiomass)
+    do i = 1, biomass%nbiomass
+      icount = icount + 1
+      reaction%immobile_species_names(icount) = biomass%names(i)
+      biomass%immobile_id(i) = icount
+    enddo
   endif
   
   ! minerals
@@ -2097,7 +2104,7 @@ subroutine BasisInit(reaction,option)
       if (cur_mineral%itype == MINERAL_KINETIC) then
         mineral%kinmnrl_names(ikinmnrl) = mineral%mineral_names(imnrl)
         mineral%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
-                                           reaction%print_all_mineral_species
+                                           reaction%mineral%print_all
         mineral%kinmnrlspecid(:,ikinmnrl) = mineral%mnrlspecid(:,imnrl)
         mineral%kinmnrlstoich(:,ikinmnrl) = mineral%mnrlstoich(:,imnrl)
         mineral%kinmnrlh2oid(ikinmnrl) = mineral%mnrlh2oid(imnrl)

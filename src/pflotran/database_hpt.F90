@@ -1760,7 +1760,7 @@ subroutine BasisInit_hpt(reaction,option)
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
         reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
-                                           reaction%print_all_mineral_species
+                                           reaction%mineral%print_all
         reaction%kinmnrlspecid(:,ikinmnrl) = reaction%mnrlspecid(:,imnrl)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)

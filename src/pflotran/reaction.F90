@@ -2868,6 +2868,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
   type(mineral_rxn_type), pointer :: cur_mineral
+  type(biomass_species_type), pointer :: cur_biomass
   type(surface_complex_type), pointer :: cur_srfcplx
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   
@@ -2895,7 +2896,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_primary_species = PETSC_FALSE
         reaction%print_all_secondary_species = PETSC_FALSE
         reaction%print_all_gas_species = PETSC_FALSE
-        reaction%print_all_mineral_species = PETSC_FALSE
+        reaction%mineral%print_all = PETSC_FALSE
         reaction%print_pH = PETSC_FALSE
         reaction%print_kd = PETSC_FALSE
         reaction%print_total_sorb = PETSC_FALSE
@@ -2909,7 +2910,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_primary_species = PETSC_TRUE
  !       reaction%print_all_secondary_species = PETSC_TRUE
  !       reaction%print_all_gas_species = PETSC_TRUE
-        reaction%print_all_mineral_species = PETSC_TRUE
+        reaction%mineral%print_all = PETSC_TRUE
+        reaction%biomass%print_all = PETSC_TRUE
         reaction%print_pH = PETSC_TRUE
       case('PRIMARY_SPECIES')
         reaction%print_all_primary_species = PETSC_TRUE
@@ -2919,7 +2921,9 @@ subroutine ReactionReadOutput(reaction,input,option)
       case('GASES')
         reaction%print_all_gas_species = PETSC_TRUE
       case('MINERALS')
-        reaction%print_all_mineral_species = PETSC_TRUE
+        reaction%mineral%print_all = PETSC_TRUE
+      case('BIOMASS')
+        reaction%biomass%print_all = PETSC_TRUE
       case('PH')
         reaction%print_pH = PETSC_TRUE
       case('KD')
@@ -2961,6 +2965,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         enddo
       case default        
         found = PETSC_FALSE
+        ! primary aqueous species
         if (.not.found) then
           cur_aq_spec => reaction%primary_species_list
           do
@@ -2973,6 +2978,7 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_aq_spec => cur_aq_spec%next
           enddo
         endif
+        ! secondary aqueous complex
         if (.not.found) then
           cur_aq_spec => reaction%secondary_species_list
           do
@@ -2985,6 +2991,7 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_aq_spec => cur_aq_spec%next
           enddo  
         endif
+        ! gas
         if (.not.found) then
           cur_gas_spec => reaction%gas_species_list
           do
@@ -2997,6 +3004,7 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_gas_spec => cur_gas_spec%next
           enddo  
         endif
+        ! minerals
         if (.not.found) then
           cur_mineral => reaction%mineral%mineral_list
           do
@@ -3009,6 +3017,20 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_mineral => cur_mineral%next
           enddo
         endif
+        ! biomass
+        if (.not.found) then
+          cur_biomass => reaction%biomass%list
+          do  
+            if (.not.associated(cur_biomass)) exit
+            if (StringCompare(name,cur_biomass%name,MAXWORDLENGTH)) then
+              cur_biomass%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_biomass => cur_biomass%next
+          enddo
+        endif 
+        ! surface complexation reaction
         if (.not.found) then
           cur_srfcplx_rxn => reaction%surface_complexation%rxn_list
           do
@@ -3022,6 +3044,7 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_srfcplx_rxn => cur_srfcplx_rxn%next
           enddo
         endif
+        ! surface complex
         if (.not.found) then
           cur_srfcplx => reaction%surface_complexation%complex_list
           do  
@@ -3034,7 +3057,6 @@ subroutine ReactionReadOutput(reaction,input,option)
             cur_srfcplx => cur_srfcplx%next
           enddo
         endif
-
         if (.not.found) then
           option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
                              ' not found among chemical species'

@@ -4324,6 +4324,16 @@ subroutine RTSetPlotVariables(realization)
     endif
   enddo
   
+  do i=1,reaction%biomass%nbiomass
+    if (reaction%biomass%print_me(i)) then
+      name = trim(reaction%biomass%names(i)) 
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   IMMOBILE_SPECIES, &
+                                   reaction%biomass%immobile_id(i))
+    endif
+  enddo
+  
   do i=1,realization%reaction%surface_complexation%nsrfcplxrxn
     if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
       name = trim(reaction%surface_complexation%srfcplxrxn_site_names(i)) // &

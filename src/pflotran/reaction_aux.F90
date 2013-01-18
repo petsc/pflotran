@@ -129,7 +129,6 @@ module Reaction_Aux_module
     PetscBool :: print_all_primary_species
     PetscBool :: print_all_secondary_species
     PetscBool :: print_all_gas_species
-    PetscBool :: print_all_mineral_species
     PetscBool :: print_pH
     PetscBool :: print_kd
     PetscBool :: print_total_sorb
@@ -381,7 +380,6 @@ function ReactionCreate()
   reaction%print_all_primary_species = PETSC_FALSE
   reaction%print_all_secondary_species = PETSC_FALSE
   reaction%print_all_gas_species = PETSC_FALSE
-  reaction%print_all_mineral_species = PETSC_FALSE
   reaction%print_pH = PETSC_FALSE
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE

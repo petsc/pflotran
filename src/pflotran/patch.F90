@@ -2379,7 +2379,8 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
          KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK, &
+         IMMOBILE_SPECIES)
          
       select case(ivar)
         case(PH)
@@ -2447,7 +2448,8 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
           enddo
         case(TOTAL_MOLARITY)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
           enddo
         case(TOTAL_BULK) ! mol/m^3 bulk
           ! add in total molarity and convert to mol/m^3 bulk
@@ -2483,11 +2485,13 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
           endif
         case(MINERAL_VOLUME_FRACTION)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar)
           enddo
         case(MINERAL_RATE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_rate(isubvar)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_rate(isubvar)
           enddo
         case(MINERAL_SATURATION_INDEX)
           do local_id = 1, grid%nlmax
@@ -2497,6 +2501,11 @@ subroutine PatchGetDataset1(patch,field,reaction,option,output_option,vec,ivar, 
                                                   patch%aux%Global%aux_vars(ghosted_id), &
                                                   reaction,option)
           enddo
+        case(IMMOBILE_SPECIES)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%immobile(isubvar)
+          enddo          
         case(SURFACE_CMPLX)
           if (associated(patch%aux%RT%aux_vars(1)%eqsrfcplx_conc)) then
             do local_id=1,grid%nlmax
@@ -3016,7 +3025,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,SURFACE_SITE_DENSITY, &
          KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE,TOTAL_BULK, &
+         IMMOBILE_SPECIES)
          
       select case(ivar)
         case(PH)
@@ -3071,6 +3081,8 @@ function PatchGetDatasetValueAtCell(patch,field,reaction,option, &
           value = RMineralSaturationIndex(isubvar,patch%aux%RT%aux_vars(ghosted_id), &
                                           patch%aux%Global%aux_vars(ghosted_id), &
                                           reaction,option)
+        case(IMMOBILE_SPECIES)
+          value = patch%aux%RT%aux_vars(ghosted_id)%immobile(isubvar)
         case(SURFACE_CMPLX)
           if (associated(patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc)) then
             value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
@@ -3906,7 +3918,7 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         end select         
       endif
     case(PRIMARY_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,IMMOBILE_SPECIES)
       select case(ivar)
         case(PRIMARY_MOLALITY)
           if (vec_format == GLOBAL) then
@@ -3936,6 +3948,16 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           else if (vec_format == LOCAL) then
             do ghosted_id=1,grid%ngmax
               patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar) = vec_ptr(ghosted_id)
+            enddo
+          endif
+        case(IMMOBILE_SPECIES)
+          if (vec_format == GLOBAL) then
+            do local_id=1,grid%nlmax
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%immobile(isubvar) = vec_ptr(local_id)
+            enddo
+          else if (vec_format == LOCAL) then
+            do ghosted_id=1,grid%ngmax
+              patch%aux%RT%aux_vars(ghosted_id)%immobile(isubvar) = vec_ptr(ghosted_id)
             enddo
           endif
         case(PRIMARY_ACTIVITY_COEF)
