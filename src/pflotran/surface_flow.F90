@@ -21,7 +21,7 @@ module Surface_Flow_module
 
 
 ! Cutoff parameters
-  PetscReal, parameter :: eps       = 1.D-10
+  PetscReal, parameter :: eps       = 1.D-12
   PetscReal, parameter :: perturbation_tolerance = 1.d-6
 
   public SurfaceFlowSetup, &
@@ -733,7 +733,7 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string,string2
   
   call PetscLogEventBegin(logging%event_r_residual,ierr)
   
@@ -772,32 +772,44 @@ subroutine SurfaceFlowResidual(snes,xx,r,surf_realization,ierr)
   enddo
 
   surf_realization%iter_count = surf_realization%iter_count+1
-  if (surf_realization%debug%vecview_residual) then
-    write(string,*) surf_realization%iter_count
-    string = 'Surf_Rresidual_' // trim(adjustl(string)) // '.out'
-    call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
-                              viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+  if (surf_realization%iter_count < 10) then
+    write(string2,'("00",i1)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 100) then
+    write(string2,'("0",i2)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 1000) then
+    write(string2,'(i3)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 10000) then
+    write(string2,'(i4)') surf_realization%iter_count
+  endif 
 
-    write(string,*) surf_realization%iter_count
-    string = 'Surf_Rresidual_' // trim(adjustl(string)) // '.bin'
+  if (surf_realization%debug%vecview_residual) then
+    !write(string,*) surf_realization%iter_count
+    string = 'Surf_Rresidual_' // trim(adjustl(string2)) // '.out'
+    !call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
+    !                          viewer,ierr)
+    !call VecView(r,viewer,ierr)
+    !call PetscViewerDestroy(viewer,ierr)
+
+    !write(string,*) surf_realization%iter_count
+    string = 'Surf_Rresidual_' // trim(adjustl(string2)) // '.bin'
+    write(*,*),'Writing -- ',trim(adjustl(string))
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+    !call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
   endif
 
   if (surf_realization%debug%vecview_solution) then
-    write(string,*) surf_realization%iter_count
-    string = 'Surf_Rxx_' // trim(adjustl(string)) // '.out'
-    call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
-                              viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+    !write(string,*) surf_realization%iter_count
+    string = 'Surf_Rxx_' // trim(adjustl(string2)) // '.out'
+    !call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
+    !                          viewer,ierr)
+    !call VecView(xx,viewer,ierr)
+    !call PetscViewerDestroy(viewer,ierr)
 
-    write(string,*) surf_realization%iter_count
-    string = 'Surf_Rxx_' // trim(adjustl(string)) // '.bin'
+    !write(string,*) surf_realization%iter_count
+    string = 'Surf_Rxx_' // trim(adjustl(string2)) // '.bin'
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
     call VecView(xx,viewer,ierr)
@@ -896,7 +908,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   zc => surf_realization%discretization%grid%z
 
   ! Interior Flux Terms -----------------------------------
-  !write(*,*),'Interior fluxes: Residual'
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -917,15 +928,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
       
-#if 0
-      dP = xx_loc_p(ghosted_id_up)-option%reference_pressure
-      if (dP<eps) dP = 0.0d0
-      hw_up = dP/abs(option%gravity(3))/rho
-      
-      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
-      if (dP<eps) dP = 0.0d0
-      hw_dn = dP/abs(option%gravity(3))/rho
-#endif
       hw_up = xx_loc_p(ghosted_id_up)
       hw_dn = xx_loc_p(ghosted_id_dn)
       
@@ -975,7 +977,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
   enddo
 
   ! Boundary Flux Terms -----------------------------------
-  !write(*,*),'Boundary fluxes: Residual'
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -993,11 +994,7 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       dy = yc(ghosted_id_dn) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id_dn) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
-#if 0
-      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
-      if (dP<eps) dP = 0.0d0
-      hw_dn = dP/abs(option%gravity(3))/rho
-#endif
+
       hw_dn = xx_loc_p(ghosted_id_dn)
       if(hw_dn<0) then
         hw_dn = 0.d0
@@ -1012,7 +1009,6 @@ subroutine SurfaceFlowResidualPatch1(snes,xx,r,surf_realization,ierr)
       patch%boundary_velocities(1,sum_connection) = vel
       patch%surf_boundary_fluxes(sum_connection) = Res(1)
       
-      !write(*,*),'Res: BC term: ',local_id,r_p(local_id),Res(1)
       r_p(local_id) = r_p(local_id) - Res(1)
     enddo
     boundary_condition => boundary_condition%next
@@ -1110,25 +1106,19 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   call density(option%reference_temperature,option%reference_pressure,rho)
 
   ! Accumulation terms ------------------------------------
-  !write(*,*),'Accumulation terms: Residual '
   r_p = r_p - accum_p
 
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
 
-#if 0
-    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
-    if(head < 1.D-8) head = 0.d0
-#endif    
+
     head = xx_loc_p(ghosted_id)
     if(head<0) head = 0.d0
-    !write(*,*),'head = ',ghosted_id,head
     call SurfaceFlowAccumulation(head,area_p(local_id),option,Res)
     
     r_p(local_id) = r_p(local_id) + Res(1)
   enddo
-  !write(*,*),''
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
@@ -1136,7 +1126,6 @@ subroutine SurfaceFlowResidualPatch2(snes,xx,r,surf_realization,ierr)
   do
     if (.not.associated(source_sink)) exit
     
-    !write(*,*),'surface source/sink: ',source_sink%name
     qsrc_flow = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
       
     cur_connection_set => source_sink%connection_set
@@ -1206,7 +1195,7 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
   type(grid_type),  pointer :: grid
   type(option_type), pointer :: option
   PetscReal :: norm
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string,string2
 
   call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
@@ -1240,16 +1229,26 @@ subroutine SurfaceFlowJacobian(snes,xx,A,B,flag,surf_realization,ierr)
     cur_level => cur_level%next
   enddo
 
-  if (surf_realization%debug%matview_Jacobian) then
-    write(string,*) surf_realization%iter_count
-    string = 'Surf_Rjacobian_' // trim(adjustl(string)) // '.out'
-    call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
-                              viewer,ierr)
-    call MatView(J,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+  if (surf_realization%iter_count < 10) then
+    write(string2,'("00",i1)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 100) then
+    write(string2,'("0",i2)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 1000) then
+    write(string2,'(i3)') surf_realization%iter_count
+  else if (surf_realization%iter_count < 10000) then
+    write(string2,'(i4)') surf_realization%iter_count
+  endif 
 
-    write(string,*) surf_realization%iter_count
-    string = 'Surf_Rjacobian_' // trim(adjustl(string)) // '.bin'
+  if (surf_realization%debug%matview_Jacobian) then
+    !write(string,*) surf_realization%iter_count
+    string = 'Surf_Rjacobian_' // trim(adjustl(string2)) // '.out'
+    !call PetscViewerASCIIOpen(surf_realization%option%mycomm,string, &
+    !                          viewer,ierr)
+    !call MatView(J,viewer,ierr)
+    !call PetscViewerDestroy(viewer,ierr)
+
+    !write(string,*) surf_realization%iter_count
+    string = 'Surf_Rjacobian_' // trim(adjustl(string2)) // '.bin'
     call PetscViewerBinaryOpen(surf_realization%option%mycomm,string, &
                               FILE_MODE_WRITE,viewer,ierr)
     call MatView(J,viewer,ierr)
@@ -1345,8 +1344,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0    
-  !write(*,*),'Interior fluxes: - Jac'
-  do 
+  do
     if (.not.associated(cur_connection_set)) exit
     
     do iconn = 1, cur_connection_set%num_connections
@@ -1364,15 +1362,7 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
       dist = sqrt(dx*dx + dy*dy + dz*dz)
       slope = dz/dist
 
-#if 0
-      dP = xx_loc_p(ghosted_id_up)-option%reference_pressure
-      if (dP<eps) dP = 0.0d0
-      hw_up = dP/abs(option%gravity(3))/rho
-      
-      dP = xx_loc_p(ghosted_id_dn)-option%reference_pressure
-      if (dP<eps) dP = 0.0d0
-      hw_dn = dP/abs(option%gravity(3))/rho
-#endif
+
       hw_up = xx_loc_p(ghosted_id_up)
       hw_dn = xx_loc_p(ghosted_id_dn)
       if(hw_up<0) hw_up = 0.d0
@@ -1418,7 +1408,6 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
   enddo
    
   ! Boundary Flux Terms -----------------------------------  
-  !write(*,*),'Boundary fluxes: - Jac'
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -1431,18 +1420,13 @@ subroutine SurfaceFlowJacobianPatch1(snes,xx,A,B,flag,surf_realization,ierr)
     
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      !write(*,*),sum_connection,ghosted_id,local_id
   
       dx = xc(ghosted_id) - cur_connection_set%intercp(1,iconn)
       dy = yc(ghosted_id) - cur_connection_set%intercp(2,iconn)
       dz = zc(ghosted_id) - cur_connection_set%intercp(3,iconn)
       slope_dn = dz/sqrt(dx*dx + dy*dy + dz*dz)
 
-#if 0
-      dP = xx_loc_p(ghosted_id)-option%reference_pressure
-      if (dP<eps) dP = 0.0d0
-      hw_dn = dP/abs(option%gravity(3))/rho
-#endif
+
       hw_dn = xx_loc_p(ghosted_id)
       call SurfaceBCFluxDerivative( boundary_condition%flow_condition%itype, &
                                     hw_dn,slope_dn,mannings_loc_p(ghosted_id), &
@@ -1547,15 +1531,11 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
   zc => surf_realization%discretization%grid%z
 
   ! Accumulation terms ------------------------------------
-  !write(*,*),'Accumulation terms: Jac'
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
 
-#if 0
-    head = (xx_loc_p(ghosted_id)-option%reference_pressure)/abs(option%gravity(3))/rho
-    if(head < 1.D-8) head = 0.d0
-#endif
+
     head = xx_loc_p(ghosted_id)
     call SurfaceFlowAccumulationDerivative(head,area_p(local_id),option,Jup(1,1))
     
@@ -1566,35 +1546,6 @@ subroutine SurfaceFlowJacobianPatch2(snes,xx,A,B,flag,surf_realization,ierr)
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first
   sum_connection = 0
-  !write(*,*),'Source/Sink'
-#if 0
-  do 
-    if (.not.associated(source_sink)) exit
-    
-    qsrc = source_sink%flow_condition%rate%flow_dataset%time_series%cur_value(1)
-      
-    cur_connection_set => source_sink%connection_set
-    
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1     
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) cycle
-
-      !write(*,*),sum_connection,ghosted_id,local_id,qsrc,area_p(local_id)
-      select case(source_sink%flow_condition%rate%itype)
-        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-          ! qsrc = m^3/sec
-          qsrc = qsrc/1.d0*area_p(local_id)
-        case default
-          option%io_buffer = 'Source/Sink flow condition type not recognized'
-          call printErrMsg(option)
-      end select
-
-    enddo
-    source_sink => source_sink%next
-  enddo
-#endif
 
   call GridVecRestoreArrayF90(grid, surf_field%mannings_loc, mannings_loc_p, ierr)
   call GridVecRestoreArrayF90(grid, surf_field%flow_xx_loc, xx_loc_p, ierr)
@@ -1765,18 +1716,23 @@ subroutine SurfaceFlowDiffusion(hw_up, &
       hw_half = 0.d0
     endif
   endif
-
+  hw_half = 0.5d0*(hw_up+hw_dn)
+  
   !vel = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)* &
   !          (hw_half**(2.d0/3.d0))* &
   !          (abs((head_dn-head_up)/dist)**(1.d0/2.d0))
   dhead=head_up-head_dn
-  if(abs(dhead)<eps*100.d0) then
+  if(abs(dhead)<eps) then
     dhead=0.d0
+    vel = 0.d0
+  else
+!    vel = (dhead)/mannings_half/(dist**(1.d0/2.d0))* &
+!          (hw_half**(2.d0/3.d0))* &
+!          1.d0/(abs(dhead)**(1.d0/2.d0))
+    vel = (hw_half**(2.d0/3.d0))/mannings_half* &
+          dhead/(abs(dhead)**(1.d0/2.d0))* &
+          1.d0/(dist**0.5d0)
   endif
-
-  vel = (dhead)/mannings_half/(dist**(1.d0/2.d0))* &
-        (hw_half**(2.d0/3.d0))* &
-        1.d0/(abs(dhead+eps)**(1.d0/2.d0))
 
   flux = hw_half*vel
   Res(1) = flux*length
@@ -1827,8 +1783,6 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
   Cd = 1.0d0
   dhw_half_dhw_up = 0.d0
   dhw_half_dhw_dn = 0.d0
-  dhead_up_dhw_up = 0.d0
-  dhead_dn_dhw_dn = 0.d0
 
   head_up = hw_up + zc_up
   head_dn = hw_dn + zc_dn
@@ -1843,7 +1797,6 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
       !else
         hw_half         = hw_up
         dhw_half_dhw_up = 1.d0
-        dhead_up_dhw_up = 1.d0
       !endif
     else
       hw_half = 0.d0
@@ -1858,66 +1811,46 @@ subroutine SurfaceFlowDiffusionDerivative(hw_up,zc_up,mannings_up, &
       !else
         hw_half = hw_dn
         dhw_half_dhw_dn = 1.d0
-        dhead_dn_dhw_dn = 1.d0
       !endif
     else
       hw_half = 0.d0
     endif
   endif
-
-#if 0
-  !
-  term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
-          (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
-          dhw_half_dhw_up
-  !
-  term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
-  term2 = term2 *(-(head_dn-head_up))/2.d0/ &
-          (abs((head_dn-head_up) + eps)**(3.d0/2.d0))
-  
-  Jup = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
-          
-  !
-  term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0)) * &
-          (abs((head_dn-head_up)/dist)**(1.d0/2.d0)) * &
-          dhw_half_dhw_dn
-
-  term2 = (hw_half**(5.d0/3.d0))/(dist**(1.d0/2.d0))
-  term2 = term2 *((head_dn-head_up))/2.d0/ &
-          (abs((head_dn-head_up) + eps)**(3.d0/2.d0))
-  Jdn = -dsign(1.d0,head_dn-head_up)*(1.0d0/mannings_half)*(term1+term2)*length
-
-#endif
+  hw_half = 0.5d0*(hw_up+hw_dn)
+  dhw_half_dhw_dn = 0.5d0
+  dhw_half_dhw_up = 0.5d0
 
   dhead = head_up-head_dn
 
-  term0 = (2.0d0*dhead**2.d0 - head_dn**2.d0 - head_up**2.d0 + 2*head_dn*head_up)
-  term0 = term0/(2.d0*((dhead+eps)**2.d0)*(abs(dhead+eps)**(1.d0/2.d0)))
-
-  if(abs(dhead)<eps*100.d0) then
+  if(abs(dhead)<eps) then
     dhw_half_dhw_up=0.d0
     dhw_half_dhw_dn=0.d0
     dhead=0.d0
     term0=0.d0
+    Jup=0.d0
+    Jdn=0.d0
+    return
   endif
 
-  term1 = (5.d0/3.d0)/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(2.d0/3.d0))
-  term1 = term1*dhead/(abs(dhead+eps)**(1.d0/2.d0))*dhw_half_dhw_up
 
-  term2 = 1.d0/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(5.d0/3.d0))
+  term0 = (2.0d0*dhead**2.d0 - head_dn**2.d0 - head_up**2.d0 + 2*head_dn*head_up)
+  term0 = term0/(2.d0*((dhead)**2.d0)*(abs(dhead)**(1.d0/2.d0)))
+
+  term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0))/mannings_half/(dist**(1.d0/2.d0))
+  term1 = term1*dhead/(abs(dhead)**(1.d0/2.d0))*dhw_half_dhw_up
+
+  term2 = (hw_half**(5.d0/3.d0))/mannings_half/(dist**(1.d0/2.d0))
   term2 = term0*term2
 
-  Jup_new = (term1+term2)*length
+  Jup = (term1+term2)*length
 
-  term1 = (5.d0/3.d0)/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(2.d0/3.d0))
-  term1 = term1*dhead/(abs(dhead+eps)**(1.d0/2.d0))*dhw_half_dhw_dn
+  term1 = (5.d0/3.d0)*(hw_half**(2.d0/3.d0))/mannings_half/(dist**(1.d0/2.d0))
+  term1 = term1*dhead/(abs(dhead)**(1.d0/2.d0))*dhw_half_dhw_dn
 
-  term2 = 1.d0/mannings_half/(dist**(1.d0/2.d0))*(hw_half**(5.d0/3.d0))
+  term2 = (hw_half**(5.d0/3.d0))/mannings_half/(dist**(1.d0/2.d0))
   term2 = -term0*term2
 
-  Jdn_new = (term1+term2)*length
-  Jup=Jup_new
-  Jdn=Jdn_new
+  Jdn = (term1+term2)*length
 
   if(option%numerical_derivatives_flow) then
     call SurfaceFlowDiffusion(hw_up,zc_up,mannings_up, &
