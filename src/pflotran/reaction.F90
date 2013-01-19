@@ -1564,8 +1564,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           pres = global_auxvar%pres(2)
             pres = conc(icomp)*1.D5
             global_auxvar%pres(2) = pres
-
-!           print *,'reaction-SC: ',icomp,igas,pres,conc(icomp)*1.d5
             
             tc = global_auxvar%temp(1)
 
@@ -1608,17 +1606,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             endif
             
             lnQk = -log(xphico2*henry)-lngamco2
-!          lnQk = -log(xphico2*henry)
-!          lnQk = log(fg/henry)
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
 !           reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
             global_auxvar%scco2_eq_logK = -lnQK*LN_TO_LOG
-            
-!           print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-!             lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
-!             reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
-            
+                        
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
               lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
@@ -1634,8 +1626,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           
 !           QK = exp(lnQK)
              
-!           Res(icomp) = QK - conc(icomp)
-            Res(icomp) = lnQK - log(pco2*1D-5)!log(conc(icomp)) ! gas pressure bars
+            Res(icomp) = lnQK - log(pco2*1D-5) ! gas pressure bars
             Jac(icomp,:) = 0.d0
             do jcomp = 1,reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
@@ -1644,9 +1635,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
                 rt_auxvar%pri_molal(comp_id)
               
-!             print *,'SC CO2 constraint Jac,',igas, icomp, comp_id, &
-!               reaction%eqgasstoich(jcomp,igas),&
-!               Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id),conc(icomp) 
             enddo
          endif       
 #endif           

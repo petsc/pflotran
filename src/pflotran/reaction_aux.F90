@@ -1277,9 +1277,6 @@ subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
       if (dabs(logK(i) - 500.) < 1.d-10) then
         iflag = 1
         temp_int(i) = ZERO_INTEGER
-!       option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
-!                          trim(name)
-!       call printWrnMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
