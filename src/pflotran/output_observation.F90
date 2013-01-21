@@ -407,7 +407,8 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
 
   if (print_velocities) then
     header = ''
-    write(string,'(''[m/'',a,'']'')') trim(realization_base%output_option%tunit)
+!   write(string,'(''[m/'',a,'']'')') trim(realization_base%output_option%tunit)
+    write(string,'(''m/'',a,'' '')') trim(realization_base%output_option%tunit)
     call OutputAppendToHeader(header,'vlx',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vly',string,cell_string,icolumn)
     call OutputAppendToHeader(header,'vlz',string,cell_string,icolumn)
