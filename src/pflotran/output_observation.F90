@@ -2004,42 +2004,42 @@ subroutine OutputMassBalance(realization_base)
       header = ''
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          call OutputAppendToHeader(header,'Global Water Mass','[kg]','',icol)
+          call OutputAppendToHeader(header,'Global Water Mass','kg','',icol)
           
         case(THC_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[kg]','',icol)
+                                    'kg','',icol)
         case(THMC_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[kg]','',icol)
+                                    'kg','',icol)
         case(G_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[mol]','',icol)
+                                    'mol','',icol)
           call OutputAppendToHeader(header,'Global Air Mass in Liquid Phase', &
-                                    '[mol]','',icol)
+                                    'mol','',icol)
           call OutputAppendToHeader(header,'Global Water Mass in Gas Phase', &
-                                    '[mol]','',icol)
+                                    'mol','',icol)
           call OutputAppendToHeader(header,'Global Air Mass in Gas Phase', &
-                                    '[mol]','',icol)
+                                    'mol','',icol)
         case(MPH_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
-                                    '[kmol]','',icol)
+                                    'kmol','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Water Phase', &
-                                    '[kmol]','',icol)
+                                    'kmol','',icol)
           call OutputAppendToHeader(header,'Global Water Mass in Gas Phase', &
-                                    '[kmol]','',icol)
+                                    'kmol','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
-                                    '[kmol]','',icol)
+                                    'kmol','',icol)
         case(IMS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Water Phase', &
-                                    '[kmol]','',icol)
+                                    'kmol','',icol)
           call OutputAppendToHeader(header,'Global CO2 Mass in Gas Phase', &
-                                    '[kmol]','',icol)
+                                    'kmol','',icol)
         case(MIS_MODE)
           call OutputAppendToHeader(header,'Global Water Mass in Liquid Phase', &
-                                    '[kg]','',icol)
+                                    'kg','',icol)
           call OutputAppendToHeader(header,'Global Glycol Mass in Liquid Phase', &
-                                    '[kg]','',icol)
+                                    'kg','',icol)
       end select
       write(fid,'(a)',advance="no") trim(header)
 
@@ -2048,7 +2048,7 @@ subroutine OutputMassBalance(realization_base)
         do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             string = 'Global ' // trim(reaction%primary_species_names(i))
-            call OutputAppendToHeader(header,string,'[mol]','',icol)
+            call OutputAppendToHeader(header,string,'mol','',icol)
           endif
         enddo
         write(fid,'(a)',advance="no") trim(header)
@@ -2075,54 +2075,54 @@ subroutine OutputMassBalance(realization_base)
         select case(option%iflowmode)
           case(RICHARDS_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            call OutputAppendToHeader(header,string,'kg','',icol)
             
-            units = '[kg/' // trim(output_option%tunit) // ']'
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(THC_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            call OutputAppendToHeader(header,string,'kg','',icol)
             
-            units = '[kg/' // trim(output_option%tunit) // ']'
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(THMC_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            call OutputAppendToHeader(header,string,'kg','',icol)
             
-            units = '[kg/' // trim(output_option%tunit) // ']'
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(MIS_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            call OutputAppendToHeader(header,string,'kg','',icol)
             string = trim(coupler%name) // ' Glycol Mass'
-            call OutputAppendToHeader(header,string,'[kg]','',icol)
+            call OutputAppendToHeader(header,string,'kg','',icol)
             
-            units = '[kg/' // trim(output_option%tunit) // ']'
+            units = 'kg/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' Glycol Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(G_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[mol]','',icol)
+            call OutputAppendToHeader(header,string,'mol','',icol)
             string = trim(coupler%name) // ' Air Mass'
-            call OutputAppendToHeader(header,string,'[mol]','',icol)
+            call OutputAppendToHeader(header,string,'mol','',icol)
             
-            units = '[mol/' // trim(output_option%tunit) // ']'
+            units = 'mol/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' Air Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
           case(MPH_MODE,IMS_MODE)
             string = trim(coupler%name) // ' Water Mass'
-            call OutputAppendToHeader(header,string,'[kmol]','',icol)
+            call OutputAppendToHeader(header,string,'kmol','',icol)
             string = trim(coupler%name) // ' CO2 Mass'
-            call OutputAppendToHeader(header,string,'[kmol]','',icol)
+            call OutputAppendToHeader(header,string,'kmol','',icol)
             
-            units = '[kmol/' // trim(output_option%tunit) // ']'
+            units = 'kmol/' // trim(output_option%tunit) // ''
             string = trim(coupler%name) // ' Water Mass'
             call OutputAppendToHeader(header,string,units,'',icol)
             string = trim(coupler%name) // ' CO2 Mass'
@@ -2136,13 +2136,13 @@ subroutine OutputMassBalance(realization_base)
             if (reaction%primary_species_print(i)) then
               string = trim(coupler%name) // ' ' // &
                        trim(reaction%primary_species_names(i))
-              call OutputAppendToHeader(header,string,'[mol]','',icol)
+              call OutputAppendToHeader(header,string,'mol','',icol)
             endif
           enddo
           write(fid,'(a)',advance="no") trim(header)
           
           header = ''    
-          units = '[mol/' // trim(output_option%tunit) // ']'
+          units = 'mol/' // trim(output_option%tunit) // ''
           do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               string = trim(coupler%name) // ' ' // &
